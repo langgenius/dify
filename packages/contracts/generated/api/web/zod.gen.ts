@@ -24,6 +24,26 @@ export const zAccessTokenResultResponse = z.object({
   result: z.string(),
 })
 
+export const zAnyJsonValue = z.unknown()
+
+/**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zAnyJsonValue,
+})
+
 /**
  * AppAccessModeQuery
  */
@@ -171,6 +191,154 @@ export const zEmailCodeLoginVerifyPayload = z.object({
 })
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountBannedError
+ *
+ * Account is banned.
+ */
+export const zAccountBannedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_banned'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentNotPublishedError
+ *
+ * Agent has not been published. Please publish the Agent before using the web app.
+ */
+export const zAgentNotPublishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_published'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AppMoreLikeThisDisabledError
+ *
+ * The 'More like this' feature is disabled. Please refresh your page.
+ */
+export const zAppMoreLikeThisDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_more_like_this_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * The 'Suggested Questions After Answer' feature is disabled. Please refresh your page.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppUnavailableError
+ *
+ * App unavailable, please check your app configurations.
+ */
+export const zAppUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_unavailable'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AudioTooLargeError
+ *
+ * Audio size exceeded. {message}
+ */
+export const zAudioTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('audio_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * AuthenticationFailedError
+ *
+ * Invalid email or password.
+ */
+export const zAuthenticationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('authentication_failed'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailCodeError
+ *
+ * Email code is invalid or expired.
+ */
+export const zEmailCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailPasswordResetLimitError
+ *
+ * Too many failed password reset attempts. Please try again in 24 hours.
+ */
+export const zEmailPasswordResetLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_password_reset_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * EmailSendIpLimitError
+ *
+ * Too many emails have been sent from this IP address recently. Please try again later.
+ */
+export const zEmailSendIpLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_send_ip_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * EventStreamResponse
  */
 export const zEventStreamResponse = z.string()
@@ -179,6 +347,18 @@ export const zEventStreamResponse = z.string()
  * ExecutionContentType
  */
 export const zExecutionContentType = z.enum(['human_input'])
+
+/**
+ * FileExtensionBlockedError
+ *
+ * The file extension is blocked for security reasons.
+ */
+export const zFileExtensionBlockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_extension_blocked'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * FileResponse
@@ -200,6 +380,18 @@ export const zFileResponse = z.object({
   tenant_id: z.uuid().nullish(),
   user_id: z.uuid().nullish(),
 })
+
+/**
+ * FileTooLargeError
+ *
+ * File size exceeded. {message}
+ */
+export const zFileTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_too_large'),
+    status: z.literal(413),
+  }),
+)
 
 /**
  * FileTransferMethod
@@ -254,6 +446,18 @@ export const zFileWithSignedUrl = z.object({
 })
 
 /**
+ * FilenameNotExistsError
+ *
+ * The specified filename does not exist.
+ */
+export const zFilenameNotExistsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('filename_not_exists_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ForgotPasswordCheckPayload
  */
 export const zForgotPasswordCheckPayload = z.object({
@@ -289,9 +493,31 @@ export const zHumanInputFileUploadFormPayload = z.object({
 })
 
 /**
+ * HumanInputFormExpiredError
+ */
+export const zHumanInputFormExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_expired'),
+    status: z.literal(412),
+  }),
+)
+
+/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
+
+/**
+ * HumanInputFormSubmittedError
+ *
+ * This form has already been submitted by another user, form_id={form_id}
+ */
+export const zHumanInputFormSubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_submitted'),
+    status: z.literal(412),
+  }),
+)
 
 /**
  * HumanInputUploadTokenResponse
@@ -301,43 +527,65 @@ export const zHumanInputUploadTokenResponse = z.object({
   upload_token: z.string(),
 })
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+/**
+ * InvalidEmailError
+ *
+ * The email address is not valid.
+ */
+export const zInvalidEmailError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_email'),
+    status: z.literal(400),
+  }),
+)
 
 /**
- * AgentThought
+ * InvalidFormDataError
  */
-export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  files: z.array(z.string()),
-  id: z.string(),
-  message_id: z.string(),
-  observation: z.string().nullish(),
-  position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
-  tool_labels: zJsonValue,
-})
+export const zInvalidFormDataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_form_data'),
+    status: z.literal(400),
+  }),
+)
 
 /**
- * GeneratedAppResponse
+ * InvalidOrExpiredTokenError
+ *
+ * The token is invalid or has expired.
  */
-export const zGeneratedAppResponse = zJsonValue
+export const zInvalidOrExpiredTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_or_expired_token'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidParamError
+ */
+export const zInvalidParamError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_param'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidUploadTokenError
+ *
+ * Upload token is invalid or expired.
+ */
+export const zInvalidUploadTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_upload_token'),
+    status: z.literal(403),
+  }),
+)
 
 export const zJsonValueType = z.unknown()
 
-export const zJsonValue2 = z.unknown()
+export const zJsonValue = z.unknown()
 
 /**
  * HumanInputFormSubmissionData
@@ -348,7 +596,7 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
 })
 
 /**
@@ -356,7 +604,7 @@ export const zHumanInputFormSubmissionData = z.object({
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
-  inputs: z.record(z.string(), zJsonValue2),
+  inputs: z.record(z.string(), zJsonValue),
 })
 
 /**
@@ -394,6 +642,18 @@ export const zLoginStatusResponse = z.object({
   app_logged_in: z.boolean(),
   logged_in: z.boolean(),
 })
+
+/**
+ * MalformedUploadTokenError
+ *
+ * The upload token is malformed.
+ */
+export const zMalformedUploadTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('malformed_upload_token'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * MessageFeedbackPayload
@@ -435,6 +695,78 @@ export const zMessageMoreLikeThisQuery = z.object({
 })
 
 /**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NoAudioUploadedError
+ *
+ * Please upload your audio.
+ */
+export const zNoAudioUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_audio_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NoFileUploadedError
+ *
+ * Please upload your file.
+ */
+export const zNoFileUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_file_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotChatAppError
+ *
+ * Please check if your app mode matches the right API route.
+ */
+export const zNotChatAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_chat_app'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotCompletionAppError
+ *
+ * Please check if your Completion app mode matches the right API route.
+ */
+export const zNotCompletionAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_completion_app'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotWorkflowAppError
+ *
+ * Please check if your Workflow app mode matches the right API route.
+ */
+export const zNotWorkflowAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_workflow_app'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * PassportAccessTokenResponse
  */
 export const zPassportAccessTokenResponse = z.object({
@@ -447,6 +779,30 @@ export const zPassportAccessTokenResponse = z.object({
 export const zPassportQuery = z.object({
   user_id: z.string().nullish(),
 })
+
+/**
+ * PasswordMismatchError
+ *
+ * The passwords do not match.
+ */
+export const zPasswordMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('password_mismatch'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PasswordResetRateLimitExceededError
+ *
+ * Too many password reset emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zPasswordResetRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('password_reset_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * PluginInstallationScope
@@ -467,6 +823,66 @@ export const zPluginInstallationPermissionModel = z.object({
 })
 
 /**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotSupportSpeechToTextError
+ *
+ * Provider not support speech to text.
+ */
+export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_speech_to_text'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * RemoteFileAccessDeniedError
+ *
+ * The remote file cannot be accessed without authorization.
+ */
+export const zRemoteFileAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_access_denied'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * RemoteFileInfo
  */
 export const zRemoteFileInfo = z.object({
@@ -475,11 +891,71 @@ export const zRemoteFileInfo = z.object({
 })
 
 /**
+ * RemoteFileInvalidResponseError
+ *
+ * The remote file server returned an invalid response.
+ */
+export const zRemoteFileInvalidResponseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_invalid_response'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * RemoteFileInvalidUrlError
+ *
+ * The remote file URL is invalid.
+ */
+export const zRemoteFileInvalidUrlError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_invalid_url'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * RemoteFileNotFoundError
+ *
+ * The remote file could not be found.
+ */
+export const zRemoteFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * RemoteFileUnavailableError
+ *
+ * The remote file is temporarily unavailable.
+ */
+export const zRemoteFileUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_unavailable'),
+    status: z.literal(502),
+  }),
+)
+
+/**
  * RemoteFileUploadPayload
  */
 export const zRemoteFileUploadPayload = z.object({
   url: z.url(),
 })
+
+/**
+ * RemoteFileUrlBlockedError
+ *
+ * The remote file URL is not allowed.
+ */
+export const zRemoteFileUrlBlockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_url_blocked'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ResultResponse
@@ -497,17 +973,22 @@ export const zRetrieverResource = z.object({
   data_source_type: z.string().nullish(),
   dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
+  doc_metadata: z.record(z.string(), zJsonValueType).nullish(),
   document_id: z.uuid().nullish(),
   document_name: z.string().nullish(),
+  files: z.array(z.record(z.string(), zJsonValueType)).nullish(),
   hit_count: z.int().nullish(),
   id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
   message_id: z.uuid().optional(),
+  page: z.int().nullish(),
   position: z.int(),
+  retriever_from: z.string().nullish(),
   score: z.number().nullish(),
   segment_id: z.uuid().nullish(),
   segment_position: z.int().nullish(),
   summary: z.string().nullish(),
+  title: z.string().nullish(),
   word_count: z.int().nullish(),
 })
 
@@ -531,13 +1012,29 @@ export const zSavedMessageListQuery = z.object({
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
+export const zShallowJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+  ])
+  .nullable()
+
+/**
+ * GeneratedAppResponse
+ */
+export const zGeneratedAppResponse = zShallowJsonValue
+
 /**
  * SimpleConversation
  */
 export const zSimpleConversation = z.object({
   created_at: z.int().nullish(),
   id: z.uuid(),
-  inputs: z.record(z.string(), zJsonValue),
+  inputs: z.record(z.string(), zAnyJsonValue),
   introduction: z.string().nullish(),
   name: z.string(),
   status: z.string(),
@@ -596,6 +1093,18 @@ export const zSimpleResultDataResponse = z.object({
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * SpeechToTextDisabledError
+ *
+ * Speech to text is disabled.
+ */
+export const zSpeechToTextDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('speech_to_text_disabled'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * SuggestedQuestionsResponse
@@ -968,6 +1477,66 @@ export const zTextToAudioPayload = z.object({
 })
 
 /**
+ * TooManyFilesError
+ *
+ * Only one file is allowed.
+ */
+export const zTooManyFilesError = zErrorResponse.and(
+  z.object({
+    code: z.literal('too_many_files'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TriggerWorkflowServiceModeUnavailableError
+ *
+ * This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
+ */
+export const zTriggerWorkflowServiceModeUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_workflow_service_mode_unavailable'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * UnsupportedAudioTypeError
+ *
+ * Audio type not allowed.
+ */
+export const zUnsupportedAudioTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_audio_type'),
+    status: z.literal(415),
+  }),
+)
+
+/**
+ * UnsupportedFileTypeError
+ *
+ * File type not allowed.
+ */
+export const zUnsupportedFileTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_file_type'),
+    status: z.literal(415),
+  }),
+)
+
+/**
+ * UploadTokenRequiredError
+ *
+ * Upload token is required.
+ */
+export const zUploadTokenRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('upload_token_required'),
+    status: z.literal(401),
+  }),
+)
+
+/**
  * UserActionConfig
  *
  * User action configuration.
@@ -1030,10 +1599,10 @@ export const zParagraphInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
 ])
 
 /**
@@ -1118,7 +1687,6 @@ export const zSystemFeatureModel = z.object({
   enable_step_by_step_tour: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
-  knowledge_fs_enabled: z.boolean().default(false),
   license: zLicenseStatusModel.default({ status: 'none' }),
   plugin_installation_permission: zPluginInstallationPermissionModel.default({
     plugin_installation_scope: 'all',
@@ -1137,6 +1705,18 @@ export const zWebAppCustomConfigResponse = z.object({
   remove_webapp_brand: z.boolean(),
   replace_webapp_logo: z.string().nullish(),
 })
+
+/**
+ * WebFormRateLimitExceededError
+ *
+ * Too many form requests. Please try again later.
+ */
+export const zWebFormRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('web_form_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * WebMessageListItem
@@ -1283,7 +1863,7 @@ export const zWorkflowRunPayload = z.object({
 /**
  * GeneratedAppResponse
  */
-export const zGeneratedAppResponseWritable = zJsonValue
+export const zGeneratedAppResponseWritable = zShallowJsonValue
 
 /**
  * HumanInputFormSubmitResponse

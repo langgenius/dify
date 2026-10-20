@@ -201,8 +201,7 @@ class WordExtractor(BaseExtractor):
 
         header_row = table.rows[0]
         headers = self._parse_row(header_row, image_map, total_cols)
-        markdown.append("| " + " | ".join(headers) + " |")
-        markdown.append("| " + " | ".join(["---"] * total_cols) + " |")
+        markdown.extend(("| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * total_cols) + " |"))
 
         for row in table.rows[1:]:
             row_cells = self._parse_row(row, image_map, total_cols)

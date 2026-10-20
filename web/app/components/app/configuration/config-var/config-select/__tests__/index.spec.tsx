@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import ConfigSelect from '../index'
@@ -30,18 +30,6 @@ describe('ConfigSelect Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('gives each option input a localized accessible name', () => {
-    render(<ConfigSelect {...defaultProps} />)
-
-    defaultProps.options.forEach((option, index) => {
-      expect(
-        screen.getByRole('textbox', {
-          name: `appDebug.variableConfig.options ${index + 1}`,
-        }),
-      ).toHaveValue(option)
-    })
   })
 
   it('associates option errors with the inputs and clears them when corrected', () => {
@@ -92,12 +80,6 @@ describe('ConfigSelect Component', () => {
     expect(addOption).toHaveAccessibleDescription('Add at least one option')
   })
 
-  it('handles option deletion', () => {
-    render(<ConfigSelect {...defaultProps} />)
-    fireEvent.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[0]!)
-    expect(defaultProps.onChange).toHaveBeenCalledWith(['Option 2'])
-  })
-
   it.each(['{Enter}', ' '])(
     'adds an option with %s without submitting the enclosing form',
     async (key) => {
@@ -118,28 +100,43 @@ describe('ConfigSelect Component', () => {
     },
   )
 
-  it('updates option values and clears focus styles on blur', () => {
-    render(<ConfigSelect {...defaultProps} />)
-    const firstInput = screen.getByDisplayValue('Option 1')
-
-    fireEvent.change(firstInput, { target: { value: 'Updated option' } })
-    expect(defaultProps.onChange).toHaveBeenCalledWith(['Updated option', 'Option 2'])
-
-    fireEvent.focus(firstInput)
-    fireEvent.blur(firstInput)
+  it('edits, removes, and adds options through the controlled list', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    function ControlledOptions() {
+      const [options, setOptions] = useState(defaultProps.options)
+      return (
+        <ConfigSelect
+          options={options}
+          onChange={(next) => {
+            setOptions(next)
+            onChange(next)
+          }}
+        />
+      )
+    }
+    render(<ControlledOptions />)
+    const firstInput = screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 1' })
+    await user.clear(firstInput)
+    await user.type(firstInput, 'Updated option')
+    expect(onChange).toHaveBeenLastCalledWith(['Updated option', 'Option 2'])
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[0]!)
+    expect(onChange).toHaveBeenLastCalledWith(['Option 2'])
+    expect(screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 1' })).toHaveValue(
+      'Option 2',
+    )
+    await user.click(screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }))
+    expect(onChange).toHaveBeenLastCalledWith(['Option 2', ''])
+    expect(screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 2' })).toHaveValue(
+      '',
+    )
   })
 
-  it('renders empty state correctly', () => {
-    render(<ConfigSelect options={[]} onChange={defaultProps.onChange} />)
-
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(screen.getByText('appDebug.variableConfig.addOption')).toBeInTheDocument()
-  })
-
-  it('reorders options through the sortable callback', () => {
+  it('reorders options through the sortable callback', async () => {
+    const user = userEvent.setup()
     render(<ConfigSelect {...defaultProps} />)
 
-    fireEvent.click(screen.getByText('reorder-options'))
+    await user.click(screen.getByText('reorder-options'))
 
     expect(defaultProps.onChange).toHaveBeenCalledWith(['Option 2', 'Option 1'])
   })

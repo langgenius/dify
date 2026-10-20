@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -191,7 +192,10 @@ class TestReactMultiDatasetRouter:
         delta = SimpleNamespace(message=SimpleNamespace(content="part"), usage=None)
         chunk = SimpleNamespace(model="m1", prompt_messages=[Mock()], delta=delta)
 
-        text, usage = router._handle_invoke_result(iter([chunk]))
+        def stream() -> Generator[SimpleNamespace]:
+            yield chunk
+
+        text, usage = router._handle_invoke_result(stream())
 
         assert text == "part"
         assert usage == LLMUsage.empty_usage()
@@ -229,7 +233,7 @@ class TestReactMultiDatasetRouter:
         router = ReactMultiDatasetRouter()
         model_config = Mock()
         model_config.mode = "unknown-mode"
-        model_config.parameters = {}
+        model_config.parameters = dict[str, object]()
         tool = Mock()
         tool.name = "dataset-1"
         tool.description = "desc"

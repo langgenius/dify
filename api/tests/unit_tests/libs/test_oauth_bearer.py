@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
 
 import pytest
+from redis import Redis
+from sqlalchemy.orm import sessionmaker
 
 from constants.oauth_bearer import Scope, SubjectType, TokenType
-from libs.oauth_bearer import ResolvedRow, _TokenTypeResolver
+from libs.oauth_bearer import OAuthAccessTokenResolver, ResolvedRow, _TokenTypeResolver
 
 
 def _row(account_id: uuid.UUID | None) -> ResolvedRow:
@@ -26,7 +27,7 @@ def _row(account_id: uuid.UUID | None) -> ResolvedRow:
 @pytest.mark.parametrize("token_type", list(TokenType), ids=lambda t: t.value)
 def test_a_row_matches_its_subject_only_when_its_account_binding_agrees(token_type: TokenType) -> None:
     """Every token type, present or future, is held to the binding its subject declares."""
-    resolver = _TokenTypeResolver(MagicMock(), token_type)
+    resolver = _TokenTypeResolver(OAuthAccessTokenResolver(sessionmaker(), Redis()), token_type)
     bound = token_type.subject.bound_to_account
     assert resolver._matches_subject(_row(uuid.uuid4())) is bound
     assert resolver._matches_subject(_row(None)) is not bound

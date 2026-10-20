@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, AgentAppWorkspaceStore
@@ -167,7 +167,7 @@ def test_normal_conversation_pointer_does_not_create_replacement_binding(
 def test_save_snapshot_targets_binding(monkeypatch: pytest.MonkeyPatch) -> None:
     save = MagicMock()
     monkeypatch.setattr(AgentWorkspaceService, "save_binding_session_snapshot", save)
-    snapshot = CompositorSessionSnapshot(layers=[])
+    snapshot = SessionSnapshot(layers={})
 
     AgentAppWorkspaceStore().save_active_snapshot(scope=_scope(), binding_id="binding-1", snapshot=snapshot)
 

@@ -728,18 +728,28 @@ def test_setup_tracer_exception():
 
 
 @pytest.fixture
-def trace_instance():
-    with (
-        patch("dify_trace_arize_phoenix.arize_phoenix_trace.setup_tracer") as mock_setup,
-        patch("dify_trace_arize_phoenix.arize_phoenix_trace.redis_client", new=MagicMock()) as mock_redis,
-    ):
-        mock_tracer = MagicMock(spec=Tracer)
-        mock_processor = MagicMock()
-        mock_setup.return_value = (mock_tracer, mock_processor)
-        config = ArizeConfig(endpoint="http://a.com", api_key="k", space_id="s", project="p")
-        instance = ArizePhoenixDataTrace(config)
-        cast(Any, instance)._mock_redis_client = mock_redis
-        yield instance
+def span_exporter():
+    return _CollectingSpanExporter()
+
+
+@pytest.fixture
+def trace_instance(span_exporter):
+    provider = trace_sdk.TracerProvider()
+    processor = SimpleSpanProcessor(span_exporter)
+    provider.add_span_processor(processor)
+    tracer = provider.get_tracer("test-phoenix")
+    try:
+        with (
+            patch.object(tracer, "start_span", wraps=tracer.start_span),
+            patch("dify_trace_arize_phoenix.arize_phoenix_trace.setup_tracer", return_value=(tracer, processor)),
+            patch("dify_trace_arize_phoenix.arize_phoenix_trace.redis_client", new=MagicMock()) as mock_redis,
+        ):
+            config = ArizeConfig(endpoint="http://a.com", api_key="k", space_id="s", project="p")
+            instance = ArizePhoenixDataTrace(config)
+            cast(Any, instance)._mock_redis_client = mock_redis
+            yield instance
+    finally:
+        provider.shutdown()
 
 
 def test_trace_dispatch(trace_instance):
@@ -864,7 +874,7 @@ def test_workflow_trace_uses_canonical_root_context_for_top_level_workflow(mock_
     mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
 
     root_carrier = {}
-    root_context = object()
+    root_context = Context()
 
     with (
         patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
@@ -984,7 +994,7 @@ def test_workflow_trace_reuses_upstream_parent_workflow_context_when_no_parent_n
     mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
 
     parent_carrier = {}
-    parent_context = object()
+    parent_context = Context()
 
     with (
         patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
@@ -1030,7 +1040,7 @@ def test_workflow_trace_uses_published_parent_node_context_for_nested_workflow(
     mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
     stored_carrier = '{"traceparent":"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"}'
     trace_instance._mock_redis_client.get.return_value = stored_carrier
-    parent_context = object()
+    parent_context = Context()
 
     with (
         patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
@@ -1111,7 +1121,7 @@ def test_workflow_trace_falls_back_when_parent_app_tracing_cannot_publish_parent
     trace_instance._mock_redis_client.get.return_value = None
 
     parent_carrier = {}
-    parent_context = object()
+    parent_context = Context()
 
     with (
         patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
@@ -1297,7 +1307,7 @@ def test_workflow_trace_keeps_nested_conversation_session_while_reusing_parent_r
     mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
 
     parent_carrier = {}
-    parent_context = object()
+    parent_context = Context()
 
     with (
         patch.object(trace_instance, "get_service_account_with_tenant", return_value=MagicMock()),
@@ -2101,17 +2111,15 @@ def test_ensure_root_span_uses_custom_name_and_attributes(trace_instance):
     )
 
 
-def test_ensure_root_span_records_error_status_and_exception_event(trace_instance):
+def test_ensure_root_span_records_error_status_and_exception_event(trace_instance, span_exporter):
     trace_instance.ensure_root_span("tid", root_span_error="workflow failed")
 
-    root_span = trace_instance.tracer.start_span.return_value
-    root_span.set_status.assert_called_once()
-    assert root_span.set_status.call_args.args[0].status_code == StatusCode.ERROR
-    root_span.add_event.assert_called_once()
-    assert root_span.add_event.call_args.kwargs["name"] == "exception"
-    assert root_span.add_event.call_args.kwargs["attributes"][OTELSpanAttributes.EXCEPTION_MESSAGE] == (
-        "workflow failed"
-    )
+    assert len(span_exporter.spans) == 1
+    root_span = span_exporter.spans[0]
+    assert root_span.status.status_code == StatusCode.ERROR
+    assert len(root_span.events) == 1
+    assert root_span.events[0].name == "exception"
+    assert root_span.events[0].attributes[OTELSpanAttributes.EXCEPTION_MESSAGE] == "workflow failed"
 
 
 def test_ensure_root_span_falls_back_to_dify_name_when_custom_name_is_blank(trace_instance):

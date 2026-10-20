@@ -26,7 +26,7 @@ function ApiKeySection({
   onDelete,
   onAdd,
 }: ApiKeySectionProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
   const notAllowCustomCredential = provider.allow_custom_token === false
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
 
@@ -36,16 +36,16 @@ function ApiKeySection({
         <div className="rounded-[10px] bg-linear-to-r from-state-base-hover to-transparent p-4">
           <div className="flex flex-col gap-1">
             <div className="system-sm-medium text-text-secondary">
-              {t(($) => $['modelProvider.card.noApiKeysTitle'], { ns: 'common' })}
+              {t(($) => $['modelProvider.card.noApiKeysTitle'], { ns: 'modelProvider' })}
             </div>
             <div className="system-xs-regular text-text-tertiary">
-              {t(($) => $['modelProvider.card.noApiKeysDescription'], { ns: 'common' })}
+              {t(($) => $['modelProvider.card.noApiKeysDescription'], { ns: 'modelProvider' })}
             </div>
           </div>
         </div>
         {!notAllowCustomCredential && canCreateCredential && (
           <Button onClick={onAdd} className="w-full">
-            {t(($) => $['modelProvider.auth.addApiKey'], { ns: 'common' })}
+            {t(($) => $['modelProvider.auth.addApiKey'], { ns: 'modelProvider' })}
           </Button>
         )}
       </div>
@@ -56,7 +56,7 @@ function ApiKeySection({
     <div className="border-t border-t-divider-subtle">
       <div className="px-1">
         <div className="pt-3 pr-2 pb-1 pl-7 system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['modelProvider.auth.apiKeys'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.apiKeys'], { ns: 'modelProvider' })}
         </div>
         <div className="max-h-50 overflow-y-auto">
           {credentials.map((credential) => (
@@ -78,7 +78,7 @@ function ApiKeySection({
       {!notAllowCustomCredential && canCreateCredential && (
         <div className="p-2">
           <Button onClick={onAdd} className="w-full">
-            {t(($) => $['modelProvider.auth.addApiKey'], { ns: 'common' })}
+            {t(($) => $['modelProvider.auth.addApiKey'], { ns: 'modelProvider' })}
           </Button>
         </div>
       )}

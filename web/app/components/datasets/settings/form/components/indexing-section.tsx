@@ -1,10 +1,12 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import {
@@ -17,15 +19,16 @@ import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
 import { IndexingType } from '../../../create/step-two'
+import { toChunkingMode } from '../../../dataset-fields'
 import ChunkStructure from '../../chunk-structure'
 import IndexMethod from '../../index-method'
 import SummaryIndexSetting from '../../summary-index-setting'
 
-const rowClass = 'flex gap-x-1'
-const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
+const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1'
+const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
 
 type IndexingSectionProps = {
-  currentDataset: DataSet | undefined
+  currentDataset: DatasetDetailWithPartialMembersResponse | undefined
   indexMethod: IndexingType | undefined
   setIndexMethod: (value: IndexingType | undefined) => void
   keywordNumber: number
@@ -62,6 +65,7 @@ const IndexingSection = ({
     ChunkingMode.parentChild,
   ]
 
+  const embeddingModelLabelId = useId()
   const { t } = useTranslation(['datasetSettings'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -69,6 +73,7 @@ const IndexingSection = ({
   })
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
+  const chunkingMode = toChunkingMode(currentDataset?.doc_form)
 
   const isShowIndexMethod =
     currentDataset &&
@@ -82,17 +87,18 @@ const IndexingSection = ({
 
   const showSummaryIndexSetting =
     indexMethod === IndexingType.QUALIFIED &&
-    embeddingChunkingModes.includes(currentDataset?.doc_form as ChunkingMode) &&
+    !!chunkingMode &&
+    embeddingChunkingModes.includes(chunkingMode) &&
     isNonCloudEdition
 
   return (
     <>
       {/* Chunk Structure */}
-      {!!currentDataset?.doc_form && (
+      {!!chunkingMode && (
         <>
           <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
           <div className={rowClass}>
-            <div className="flex w-45 shrink-0 flex-col">
+            <div className="flex shrink-0 flex-col @3xl/settings:w-45">
               <div className="flex h-8 items-center system-sm-semibold text-text-secondary">
                 {t(($) => $['form.chunkStructure.title'], { ns: 'datasetSettings' })}
               </div>
@@ -108,8 +114,8 @@ const IndexingSection = ({
                 {t(($) => $['form.chunkStructure.description'], { ns: 'datasetSettings' })}
               </div>
             </div>
-            <div className="grow">
-              <ChunkStructure chunkStructure={currentDataset?.doc_form} />
+            <div className="min-w-0 grow">
+              <ChunkStructure chunkStructure={chunkingMode} />
             </div>
           </div>
         </>
@@ -127,22 +133,25 @@ const IndexingSection = ({
               {t(($) => $['form.indexMethod'], { ns: 'datasetSettings' })}
             </div>
           </div>
-          <div className="grow">
+          <div className="min-w-0 grow">
             <IndexMethod
               value={indexMethod!}
               disabled={!currentDataset?.embedding_available || readonly}
               onChange={setIndexMethod}
-              currentValue={currentDataset.indexing_technique}
+              currentValue={currentDataset.indexing_technique ?? undefined}
               keywordNumber={keywordNumber}
               onKeywordNumberChange={setKeywordNumber}
             />
             {showUpgradeWarning && (
-              <div className="relative mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3">
-                <div className="absolute top-0 left-0 flex size-full items-center bg-toast-warning-bg opacity-40" />
-                <div className="p-1">
-                  <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
+              <div className="relative mt-2 flex min-h-10 items-start gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 py-2 shadow-xs shadow-shadow-shadow-3">
+                <div className="pointer-events-none absolute inset-0 rounded-xl bg-toast-warning-bg opacity-40" />
+                <div className="relative shrink-0 p-1">
+                  <span
+                    aria-hidden
+                    className="i-ri-alert-fill size-4 text-text-warning-secondary"
+                  />
                 </div>
-                <span className="system-xs-medium text-text-primary">
+                <span className="relative min-w-0 py-1 system-xs-medium wrap-anywhere text-text-primary">
                   {t(($) => $['form.upgradeHighQualityTip'], { ns: 'datasetSettings' })}
                 </span>
               </div>
@@ -154,13 +163,13 @@ const IndexingSection = ({
       {/* Embedding ProviderWithModelsResponse */}
       {indexMethod === IndexingType.QUALIFIED && (
         <div className={rowClass}>
-          <div className="flex w-45 shrink-0 flex-col pt-1">
-            <div className="system-sm-semibold text-text-secondary">
+          <div className="flex shrink-0 flex-col pt-1 @3xl/settings:w-45">
+            <div id={embeddingModelLabelId} className="system-sm-semibold text-text-secondary">
               {t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' })}
             </div>
             <MultimodalRetrievalGuidanceLearnMore />
           </div>
-          <div className="grow">
+          <div className="min-w-0 grow">
             <MultimodalRetrievalGuidance
               variant="settings"
               embeddingModel={embeddingModel}
@@ -168,6 +177,7 @@ const IndexingSection = ({
               className="mb-2"
             />
             <ModelSelector
+              aria-labelledby={embeddingModelLabelId}
               value={embeddingModel}
               models={embeddingModelList}
               onValueChange={setEmbeddingModel}
@@ -196,7 +206,7 @@ const IndexingSection = ({
           <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
           <div className={rowClass}>
             <div className={labelClass}>
-              <div className="flex w-45 shrink-0 flex-col">
+              <div className="flex shrink-0 flex-col @3xl/settings:w-45">
                 <div className="flex h-7 items-center pt-1 system-sm-semibold text-text-secondary">
                   {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
                 </div>
@@ -213,7 +223,7 @@ const IndexingSection = ({
                 </div>
               </div>
             </div>
-            <div className="grow">
+            <div className="min-w-0 grow">
               {indexMethod === IndexingType.QUALIFIED ? (
                 <RetrievalMethodConfig
                   value={retrievalConfig}

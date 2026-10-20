@@ -1,5 +1,5 @@
-import type { CommonNodeType, Node } from '../../types'
 import { renderHook } from '@testing-library/react'
+import { createNode } from '../../__tests__/fixtures'
 import { useLocateNode } from '../use-locate-node'
 
 const mockHandleNodeSelect = vi.hoisted(() => vi.fn())
@@ -50,18 +50,6 @@ vi.mock('../../utils/node-navigation', () => ({
   scrollToWorkflowNode: (nodeId: string) => mockScrollToWorkflowNode(nodeId),
 }))
 
-const createNode = (overrides: Partial<Node> = {}): Node => ({
-  id: 'node-1',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: 'llm',
-    title: 'Writer',
-    desc: 'Draft content',
-  } as CommonNodeType,
-  ...overrides,
-})
-
 describe('useLocateNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -70,6 +58,7 @@ describe('useLocateNode', () => {
   })
 
   afterEach(() => {
+    vi.clearAllTimers()
     vi.useRealTimers()
   })
 
@@ -92,7 +81,7 @@ describe('useLocateNode', () => {
 
   it('selects, scrolls to, and shows success toast when node is found', () => {
     mockSearchParams.set('node_id', 'target-node')
-    const nodes = [createNode({ id: 'target-node', data: { title: 'My Node' } as CommonNodeType })]
+    const nodes = [createNode({ id: 'target-node', data: { title: 'My Node' } })]
 
     renderHook(() => useLocateNode(nodes))
 
@@ -132,7 +121,7 @@ describe('useLocateNode', () => {
     rerender({
       nodes: [
         createNode({ id: 'other-node' }),
-        createNode({ id: 'target-node', data: { title: 'Found!' } as CommonNodeType }),
+        createNode({ id: 'target-node', data: { title: 'Found!' } }),
       ],
     })
 
@@ -140,6 +129,9 @@ describe('useLocateNode', () => {
     expect(mockToastError).not.toHaveBeenCalled()
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('target-node')
     expect(mockToastSuccess).toHaveBeenCalledWith('panel.locateNodeSuccess:Found!')
+    vi.advanceTimersByTime(500)
+    expect(mockToastError).not.toHaveBeenCalled()
+    expect(mockScrollToWorkflowNode).toHaveBeenCalledExactlyOnceWith('target-node')
   })
 
   it('locates only once even if nodes update afterwards', () => {

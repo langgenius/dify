@@ -10,6 +10,7 @@ Review explicit team conventions as contracts, including direct generated option
 - Distinguish a pass-through wrapper from a feature hook with actual orchestration. Check whether an independent execution condition or Promise composition justifies the documented query/mutation exception.
 - Trace generated input and output types through their boundaries. Identify the exact DTO mirror, field widening, placeholder input, or lost intentional empty value when reporting a violation.
 - Check whether a local mutation callback owns feature feedback or replaces shared invalidation, retry, or cache defaults. Match optimistic changes to the current list/detail owner.
+- Check whether a new or changed toast reports something the user cannot already see. Flag a success toast for a result visible in place, a second error toast for a failure another layer already reports, and validation reported through a toast.
 
 ## Imperative Access And SSR
 

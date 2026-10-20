@@ -1,6 +1,7 @@
 import type { SeedOptions } from './seed-runner.ts'
 
 export type RunOptions = {
+  downloadWebBuild: boolean
   forwardArgs: string[]
   full: boolean
   headed: boolean
@@ -18,6 +19,7 @@ const readOptionValue = (argv: string[], index: number, option: string) => {
 export const parseRunOptions = (argv: string[]): RunOptions => {
   let allowBlocked = false
   let dryRun = false
+  let downloadWebBuild = false
   let full = false
   let headed = false
   let pack = 'agent-v2'
@@ -35,6 +37,11 @@ export const parseRunOptions = (argv: string[]): RunOptions => {
 
     if (arg === '--full') {
       full = true
+      continue
+    }
+
+    if (arg === '--download-web-build') {
+      downloadWebBuild = true
       continue
     }
 
@@ -89,8 +96,10 @@ export const parseRunOptions = (argv: string[]): RunOptions => {
   if (!shouldSeed && (allowBlocked || dryRun || pack !== 'agent-v2'))
     throw new Error('Seed options require --seed-only or --profile.')
   if (dryRun && !seedOnly) throw new Error('--dry-run requires --seed-only.')
+  if (downloadWebBuild && !full) throw new Error('--download-web-build requires --full.')
 
   return {
+    downloadWebBuild,
     forwardArgs,
     full,
     headed,

@@ -1,101 +1,39 @@
 import type { MetaData, PluginCategoryEnum } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { expectLoadingButton } from '@/test/button'
-// ==================== Imports (after mocks) ====================
-import { PluginSource } from '../../types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import Action from '../action'
 
-// ==================== Mock Setup ====================
-
-// Use vi.hoisted to define mock functions that can be referenced in vi.mock
-const {
-  mockUninstallPlugin,
-  mockFetchReleases,
-  mockCheckForUpdates,
-  mockSetShowUpdatePluginModal,
-  mockInvalidateInstalledPluginList,
-  mockToastNotify,
-} = vi.hoisted(() => ({
-  mockUninstallPlugin: vi.fn(),
-  mockFetchReleases: vi.fn(),
-  mockCheckForUpdates: vi.fn(),
-  mockSetShowUpdatePluginModal: vi.fn(),
-  mockInvalidateInstalledPluginList: vi.fn(),
-  mockToastNotify: vi.fn(),
+const requests = vi.hoisted(() => ({
+  uninstall: vi.fn(),
+  releases: vi.fn(),
+  updateModal: vi.fn(),
+  invalidate: vi.fn(),
+  notify: vi.fn(),
 }))
-
-vi.mock('@/app/notifications', () => ({
-  toast: Object.assign(
-    (message: string, options?: { type?: string }) =>
-      mockToastNotify({ type: options?.type, message }),
-    {
-      success: (message: string) => mockToastNotify({ type: 'success', message }),
-      error: (message: string) => mockToastNotify({ type: 'error', message }),
-      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-      info: (message: string) => mockToastNotify({ type: 'info', message }),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    },
-  ),
+vi.mock('@/service/plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/plugins')>()),
+  uninstallPlugin: requests.uninstall,
 }))
-
-// Mock uninstall plugin service
-vi.mock('@/service/plugins', () => ({
-  uninstallPlugin: (id: string) => mockUninstallPlugin(id),
+vi.mock('../../install-plugin/hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../install-plugin/hooks')>()),
+  fetchReleases: requests.releases,
 }))
-
-// Mock GitHub release helpers
-vi.mock('../../install-plugin/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../install-plugin/hooks')>()
-  return {
-    ...actual,
-    fetchReleases: mockFetchReleases,
-    checkForUpdates: mockCheckForUpdates,
-  }
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
+  return { ...actual, toast: Object.assign(requests.notify, actual.toast) }
 })
-
-// Mock modal context
+// The shared modal host and catalog invalidation are separate owners.
 vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowUpdatePluginModal: mockSetShowUpdatePluginModal,
-  }),
+  useModalContext: () => ({ setShowUpdatePluginModal: requests.updateModal }),
 }))
-
-// Mock invalidate installed plugin list
-vi.mock('@/service/use-plugins', () => ({
-  useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
+  useInvalidateInstalledPluginList: () => requests.invalidate,
 }))
-
-// Mock PluginInfo component - has complex dependencies (Modal, KeyValueItem)
-vi.mock('../../plugin-page/plugin-info', () => ({
-  default: ({
-    repository,
-    release,
-    packageName,
-    onHide,
-  }: {
-    repository: string
-    release: string
-    packageName: string
-    onHide: () => void
-  }) => (
-    <div
-      data-testid="plugin-info-modal"
-      data-repo={repository}
-      data-release={release}
-      data-package={packageName}
-    >
-      <button data-testid="close-plugin-info" onClick={onHide}>
-        Close
-      </button>
-    </div>
-  ),
-}))
-
-// ==================== Test Utilities ====================
 
 type ActionProps = {
   author: string
@@ -130,833 +68,150 @@ const createActionProps = (overrides: Partial<ActionProps> = {}): ActionProps =>
   ...overrides,
 })
 
-const getDeleteConfirmButton = () =>
-  screen.getByRole('button', { name: /common\.operation\.confirm/ })
-const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
-const getCheckForUpdatesButton = () =>
-  screen.getByRole('button', { name: 'plugin.action.checkForUpdates' })
-const getPluginInfoButton = () => screen.getByRole('button', { name: 'plugin.action.pluginInfo' })
-const getDeleteButton = () => screen.getByRole('button', { name: 'plugin.action.delete' })
+const deleteButton = () => screen.getByRole('button', { name: 'plugin.action.delete' })
+const confirmButton = () => screen.getByRole('button', { name: 'common.operation.confirm' })
+const updateButton = () => screen.getByRole('button', { name: 'plugin.action.checkForUpdates' })
 
-// ==================== Tests ====================
+beforeEach(() => {
+  vi.clearAllMocks()
+  requests.uninstall.mockResolvedValue({ success: true })
+  requests.releases.mockResolvedValue([])
+})
 
-const queryActionButtons = () => screen.queryAllByRole('button')
-
-describe('Action Component', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUninstallPlugin.mockResolvedValue({ success: true })
-    mockFetchReleases.mockResolvedValue([])
-    mockCheckForUpdates.mockReturnValue({
-      needUpdate: false,
-      toastProps: { type: 'info', message: 'Up to date' },
-    })
+describe('installed plugin actions', () => {
+  it('hides unavailable actions', () => {
+    render(<Action {...createActionProps({ isShowDelete: false })} />)
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  // ==================== Rendering Tests ====================
-  describe('Rendering', () => {
-    it('should render delete button when isShowDelete is true', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-      })
+  it('identifies the plugin before deletion and allows cancellation', async () => {
+    const user = userEvent.setup()
+    const props = createActionProps()
+    render(<Action {...props} />)
+    await user.click(deleteButton())
+    expect(screen.getByRole('alertdialog', { name: 'plugin.action.delete' })).toHaveTextContent(
+      'test-plugin',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(requests.uninstall).not.toHaveBeenCalled()
+    expect(props.onDelete).not.toHaveBeenCalled()
+  })
 
-      // Act
-      render(<Action {...props} />)
-
-      // Assert
-      expect(getDeleteButton()).toBeInTheDocument()
+  it('deletes the current installation once and refreshes only after the request succeeds', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<{ success: boolean }>()
+    requests.uninstall.mockReturnValueOnce(pending.promise)
+    const previous = createActionProps({ installationId: 'old-installation' })
+    const props = createActionProps({
+      installationId: 'new-installation',
+      category: 'model' as PluginCategoryEnum,
     })
+    const { rerender } = render(<Action {...previous} />)
+    rerender(<Action {...props} />)
+    await user.click(deleteButton())
+    await user.click(confirmButton())
+    expectLoadingButton(confirmButton())
+    await user.click(confirmButton())
+    expect(requests.uninstall).toHaveBeenCalledExactlyOnceWith('new-installation')
+    expect(requests.invalidate).not.toHaveBeenCalled()
+    expect(props.onDelete).not.toHaveBeenCalled()
+    pending.resolve({ success: true })
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(requests.invalidate).toHaveBeenCalledExactlyOnceWith('model')
+    expect(props.onDelete).toHaveBeenCalledOnce()
+    expect(previous.onDelete).not.toHaveBeenCalled()
+  })
 
-    it('should render fetch new version button when isShowFetchNewVersion is true', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowInfo: false,
-        isShowDelete: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-
-      // Assert
-      expect(getCheckForUpdatesButton()).toBeInTheDocument()
-    })
-
-    it('should render info button when isShowInfo is true', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowFetchNewVersion: false,
-        isShowInfo: true,
-        isShowDelete: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-
-      // Assert
-      expect(getPluginInfoButton()).toBeInTheDocument()
-    })
-
-    it('should render all buttons when all flags are true', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowInfo: true,
-        isShowDelete: true,
-      })
-
-      // Act
-      render(<Action {...props} />)
-
-      // Assert
-      expect(getCheckForUpdatesButton()).toBeInTheDocument()
-      expect(getPluginInfoButton()).toBeInTheDocument()
-      expect(getDeleteButton()).toBeInTheDocument()
-    })
-
-    it('should render no buttons when all flags are false', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowFetchNewVersion: false,
-        isShowInfo: false,
-        isShowDelete: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-
-      // Assert
-      expect(queryActionButtons()).toHaveLength(0)
-    })
-
-    it('should render tooltips for each button', async () => {
+  it.each(['rejected', 'unsuccessful'])(
+    'keeps the confirmation available for retry after a %s uninstall',
+    async (failure) => {
       const user = userEvent.setup()
-      // Arrange
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowInfo: true,
-        isShowDelete: true,
-      })
-
-      // Act
+      const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      if (failure === 'rejected')
+        requests.uninstall.mockRejectedValueOnce(new Error('Network error'))
+      else requests.uninstall.mockResolvedValueOnce({ success: false })
+      const props = createActionProps()
       render(<Action {...props} />)
+      await user.click(deleteButton())
+      await user.click(confirmButton())
+      await waitFor(() => expect(confirmButton()).not.toHaveAttribute('aria-disabled', 'true'))
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      expect(props.onDelete).not.toHaveBeenCalled()
+      expect(requests.invalidate).not.toHaveBeenCalled()
+      await user.click(confirmButton())
+      await waitFor(() => expect(props.onDelete).toHaveBeenCalledOnce())
+      expect(requests.uninstall).toHaveBeenCalledTimes(2)
+      logError.mockRestore()
+    },
+  )
 
-      // Assert
-      await user.hover(getCheckForUpdatesButton())
-      expect(await screen.findByText('plugin.action.checkForUpdates'))!.toBeInTheDocument()
-      await user.unhover(getCheckForUpdatesButton())
-
-      await user.hover(getPluginInfoButton())
-      expect(await screen.findByText('plugin.action.pluginInfo'))!.toBeInTheDocument()
-      await user.unhover(getPluginInfoButton())
-
-      await user.hover(getDeleteButton())
-      expect(await screen.findByText('plugin.action.delete'))!.toBeInTheDocument()
-    })
+  it('opens repository, release and package information in the real dialog', async () => {
+    const user = userEvent.setup()
+    render(<Action {...createActionProps({ isShowInfo: true })} />)
+    await user.click(screen.getByRole('button', { name: 'plugin.action.pluginInfo' }))
+    expect(screen.getByRole('dialog', { name: 'plugin.pluginInfoModal.title' })).toBeInTheDocument()
+    expect(screen.getByText('https://github.com/test-author/test-plugin')).toBeInTheDocument()
+    expect(screen.getByText('1.0.0')).toBeInTheDocument()
+    expect(screen.getByText('test-plugin.difypkg')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  // ==================== Delete Functionality Tests ====================
-  describe('Delete Functionality', () => {
-    it('should show delete confirm modal when delete button is clicked', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-
-      // Assert
-      expect(screen.getByRole('heading', { name: 'plugin.action.delete' }))!.toBeInTheDocument()
+  it('opens the update host with the existing identifier and fetched releases, then refreshes on save', async () => {
+    const user = userEvent.setup()
+    const releases = [{ tag_name: '2.0.0', assets: [] }]
+    requests.releases.mockResolvedValue(releases)
+    render(<Action {...createActionProps({ isShowFetchNewVersion: true })} />)
+    await user.click(updateButton())
+    await waitFor(() => expect(requests.updateModal).toHaveBeenCalledOnce())
+    expect(requests.releases).toHaveBeenCalledExactlyOnceWith('test-author', 'test-plugin')
+    expect(requests.updateModal).toHaveBeenCalledWith({
+      onSaveCallback: expect.any(Function),
+      payload: {
+        category: 'tool',
+        github: {
+          originalPackageInfo: {
+            id: 'test-author/test-plugin@1.0.0',
+            repo: 'test-author/test-plugin',
+            version: '1.0.0',
+            package: 'test-plugin.difypkg',
+            releases,
+          },
+        },
+      },
     })
-
-    it('should display plugin name in delete confirm content', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        pluginName: 'my-awesome-plugin',
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-
-      // Assert
-      // Assert
-      expect(screen.getByText('my-awesome-plugin'))!.toBeInTheDocument()
-    })
-
-    it('should hide confirm modal when cancel is clicked', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-      expect(screen.getByRole('heading', { name: 'plugin.action.delete' }))!.toBeInTheDocument()
-
-      fireEvent.click(getDeleteCancelButton())
-
-      // Assert
-      return waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should call uninstallPlugin when confirm is clicked', async () => {
-      // Arrange
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        installationId: 'install-456',
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      // Assert
-      await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('install-456')
-      })
-    })
-
-    it('should call onDelete callback after successful uninstall', async () => {
-      // Arrange
-      mockUninstallPlugin.mockResolvedValue({ success: true })
-      const onDelete = vi.fn()
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        onDelete,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      // Assert
-      await waitFor(() => {
-        expect(onDelete).toHaveBeenCalled()
-      })
-    })
-
-    it('should invalidate installed plugin list after successful uninstall', async () => {
-      // Arrange
-      mockUninstallPlugin.mockResolvedValue({ success: true })
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      // Assert
-      await waitFor(() => {
-        expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
-      })
-    })
-
-    it('should not call onDelete if uninstall fails', async () => {
-      // Arrange
-      mockUninstallPlugin.mockResolvedValue({ success: false })
-      const onDelete = vi.fn()
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        onDelete,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      // Assert
-      await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalled()
-      })
-      expect(onDelete).not.toHaveBeenCalled()
-    })
-
-    it('should handle uninstall error gracefully', async () => {
-      // Arrange
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-      mockUninstallPlugin.mockRejectedValue(new Error('Network error'))
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      // Assert
-      await waitFor(() => {
-        expect(consoleError).toHaveBeenCalledWith('uninstallPlugin error', expect.any(Error))
-      })
-
-      consoleError.mockRestore()
-    })
-
-    it('should show loading state during deletion', async () => {
-      // Arrange
-      let resolveUninstall: (value: { success: boolean }) => void
-      mockUninstallPlugin.mockReturnValue(
-        new Promise((resolve) => {
-          resolveUninstall = resolve
-        }),
-      )
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      // Assert - Loading state
-      await waitFor(() => {
-        expectLoadingButton(getDeleteConfirmButton())
-      })
-
-      // Resolve and check modal closes
-      resolveUninstall!({ success: true })
-      await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-      })
-    })
+    expect(requests.notify).toHaveBeenCalledWith('New version available: 2.0.0', { type: 'info' })
+    expect(requests.invalidate).not.toHaveBeenCalled()
+    requests.updateModal.mock.calls[0]![0].onSaveCallback()
+    expect(requests.invalidate).toHaveBeenCalledExactlyOnceWith('tool')
   })
 
-  // ==================== Plugin Info Tests ====================
-  describe('Plugin Info', () => {
-    it('should show plugin info modal when info button is clicked', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowInfo: true,
-        isShowDelete: false,
-        isShowFetchNewVersion: false,
-        meta: {
-          repo: 'owner/repo-name',
-          version: '2.0.0',
-          package: 'my-package.difypkg',
-        },
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getPluginInfoButton())
-
-      // Assert
-      // Assert
-      expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
-      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute(
-        'data-repo',
-        'owner/repo-name',
-      )
-      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-release', '2.0.0')
-      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute(
-        'data-package',
-        'my-package.difypkg',
-      )
-    })
-
-    it('should hide plugin info modal when close is clicked', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowInfo: true,
-        isShowDelete: false,
-        isShowFetchNewVersion: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getPluginInfoButton())
-      expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('close-plugin-info'))
-
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      expect(screen.queryByTestId('plugin-info-modal')).not.toBeInTheDocument()
-    })
+  it('falls back to plugin identity for incomplete repository metadata and reports an up-to-date version', async () => {
+    const user = userEvent.setup()
+    requests.releases.mockResolvedValue([{ tag_name: '1.0.0', assets: [] }])
+    render(
+      <Action
+        {...createActionProps({
+          isShowFetchNewVersion: true,
+          meta: { repo: '/', version: '1.0.0', package: 'plugin.difypkg' },
+        })}
+      />,
+    )
+    await user.click(updateButton())
+    await waitFor(() =>
+      expect(requests.notify).toHaveBeenCalledWith('No new version available', { type: 'info' }),
+    )
+    expect(requests.releases).toHaveBeenCalledExactlyOnceWith('test-author', 'test-plugin')
+    expect(requests.updateModal).not.toHaveBeenCalled()
   })
 
-  // ==================== Check for Updates Tests ====================
-  describe('Check for Updates', () => {
-    it('should fetch releases when check for updates button is clicked', async () => {
-      // Arrange
-      mockFetchReleases.mockResolvedValue([{ version: '1.0.0' }])
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowDelete: false,
-        isShowInfo: false,
-        meta: {
-          repo: 'owner/repo',
-          version: '1.0.0',
-          package: 'pkg.difypkg',
-        },
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getCheckForUpdatesButton())
-
-      // Assert
-      await waitFor(() => {
-        expect(mockFetchReleases).toHaveBeenCalledWith('owner', 'repo')
-      })
-    })
-
-    it('should use author and pluginName as fallback for empty repo parts', async () => {
-      // Arrange
-      mockFetchReleases.mockResolvedValue([{ version: '1.0.0' }])
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowDelete: false,
-        isShowInfo: false,
-        author: 'fallback-author',
-        pluginName: 'fallback-plugin',
-        meta: {
-          repo: '/', // Results in empty parts after split
-          version: '1.0.0',
-          package: 'pkg.difypkg',
-        },
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getCheckForUpdatesButton())
-
-      // Assert
-      await waitFor(() => {
-        expect(mockFetchReleases).toHaveBeenCalledWith('fallback-author', 'fallback-plugin')
-      })
-    })
-
-    it('should not proceed if no releases are fetched', async () => {
-      // Arrange
-      mockFetchReleases.mockResolvedValue([])
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowDelete: false,
-        isShowInfo: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getCheckForUpdatesButton())
-
-      // Assert
-      await waitFor(() => {
-        expect(mockFetchReleases).toHaveBeenCalled()
-      })
-      expect(mockCheckForUpdates).not.toHaveBeenCalled()
-    })
-
-    it('should show toast notification after checking for updates', async () => {
-      // Arrange
-      mockFetchReleases.mockResolvedValue([{ version: '2.0.0' }])
-      mockCheckForUpdates.mockReturnValue({
-        needUpdate: false,
-        toastProps: { type: 'success', message: 'Already up to date' },
-      })
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowDelete: false,
-        isShowInfo: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getCheckForUpdatesButton())
-
-      // Assert - toast is called with the translated payload
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'Already up to date',
-        })
-      })
-    })
-
-    it('should show update modal when update is available', async () => {
-      // Arrange
-      const releases = [{ version: '2.0.0' }]
-      mockFetchReleases.mockResolvedValue(releases)
-      mockCheckForUpdates.mockReturnValue({
-        needUpdate: true,
-        toastProps: { type: 'info', message: 'Update available' },
-      })
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowDelete: false,
-        isShowInfo: false,
-        pluginUniqueIdentifier: 'test-id',
-        category: 'model' as PluginCategoryEnum,
-        meta: {
-          repo: 'owner/repo',
-          version: '1.0.0',
-          package: 'pkg.difypkg',
-        },
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getCheckForUpdatesButton())
-
-      // Assert
-      await waitFor(() => {
-        expect(mockSetShowUpdatePluginModal).toHaveBeenCalledWith(
-          expect.objectContaining({
-            payload: expect.objectContaining({
-              type: PluginSource.github,
-              category: 'model',
-              github: expect.objectContaining({
-                originalPackageInfo: expect.objectContaining({
-                  id: 'test-id',
-                  repo: 'owner/repo',
-                  version: '1.0.0',
-                  package: 'pkg.difypkg',
-                  releases,
-                }),
-              }),
-            }),
-          }),
-        )
-      })
-    })
-
-    it('should call invalidateInstalledPluginList on save callback', async () => {
-      // Arrange
-      const releases = [{ version: '2.0.0' }]
-      mockFetchReleases.mockResolvedValue(releases)
-      mockCheckForUpdates.mockReturnValue({
-        needUpdate: true,
-        toastProps: { type: 'info', message: 'Update available' },
-      })
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowDelete: false,
-        isShowInfo: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getCheckForUpdatesButton())
-
-      // Wait for modal to be called
-      await waitFor(() => {
-        expect(mockSetShowUpdatePluginModal).toHaveBeenCalled()
-      })
-
-      // Invoke the callback
-      const call = mockSetShowUpdatePluginModal.mock.calls[0]![0]
-      call.onSaveCallback()
-
-      // Assert
-      expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
-    })
-
-    it('should check updates with current version', async () => {
-      // Arrange
-      const releases = [{ version: '2.0.0' }, { version: '1.5.0' }]
-      mockFetchReleases.mockResolvedValue(releases)
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowDelete: false,
-        isShowInfo: false,
-        meta: {
-          repo: 'owner/repo',
-          version: '1.0.0',
-          package: 'pkg.difypkg',
-        },
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getCheckForUpdatesButton())
-
-      // Assert
-      await waitFor(() => {
-        expect(mockCheckForUpdates).toHaveBeenCalledWith(releases, '1.0.0')
-      })
-    })
-  })
-
-  // ==================== Callback Stability Tests ====================
-  describe('Callback Stability (useCallback)', () => {
-    it('should update handleDelete when installationId changes', async () => {
-      // Arrange
-      mockUninstallPlugin.mockResolvedValue({ success: true })
-      const props1 = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        installationId: 'install-1',
-      })
-      const props2 = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        installationId: 'install-2',
-      })
-
-      // Act
-      const { rerender } = render(<Action {...props1} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('install-1')
-      })
-
-      mockUninstallPlugin.mockClear()
-      rerender(<Action {...props2} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('install-2')
-      })
-    })
-
-    it('should update handleDelete when onDelete changes', async () => {
-      // Arrange
-      mockUninstallPlugin.mockResolvedValue({ success: true })
-      const onDelete1 = vi.fn()
-      const onDelete2 = vi.fn()
-      const props1 = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        onDelete: onDelete1,
-      })
-      const props2 = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        onDelete: onDelete2,
-      })
-
-      // Act
-      const { rerender } = render(<Action {...props1} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(onDelete1).toHaveBeenCalled()
-      })
-      expect(onDelete2).not.toHaveBeenCalled()
-
-      rerender(<Action {...props2} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(onDelete2).toHaveBeenCalled()
-      })
-    })
-  })
-
-  // ==================== Edge Cases ====================
-  describe('Edge Cases', () => {
-    it('should handle empty repo string', async () => {
-      // Arrange
-      mockFetchReleases.mockResolvedValue([{ version: '1.0.0' }])
-      const props = createActionProps({
-        isShowFetchNewVersion: true,
-        isShowDelete: false,
-        isShowInfo: false,
-        author: 'fallback-owner',
-        pluginName: 'fallback-repo',
-        meta: {
-          repo: '',
-          version: '1.0.0',
-          package: 'pkg.difypkg',
-        },
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getCheckForUpdatesButton())
-
-      // Assert - Should use author and pluginName as fallback
-      await waitFor(() => {
-        expect(mockFetchReleases).toHaveBeenCalledWith('fallback-owner', 'fallback-repo')
-      })
-    })
-
-    it('should handle concurrent delete requests gracefully', async () => {
-      // Arrange
-      let resolveFirst: (value: { success: boolean }) => void
-      const firstPromise = new Promise<{ success: boolean }>((resolve) => {
-        resolveFirst = resolve
-      })
-      mockUninstallPlugin.mockReturnValueOnce(firstPromise)
-
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-      fireEvent.click(getDeleteConfirmButton())
-
-      // The confirm button should be disabled during deletion
-      // The confirm button should be disabled during deletion
-      expectLoadingButton(getDeleteConfirmButton())
-
-      // Resolve the deletion
-      resolveFirst!({ success: true })
-
-      await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should handle special characters in plugin name', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        pluginName: 'plugin-with-special@chars#123',
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getDeleteButton())
-
-      // Assert
-      // Assert
-      expect(screen.getByText('plugin-with-special@chars#123'))!.toBeInTheDocument()
-    })
-  })
-
-  // ==================== Prop Variations ====================
-  describe('Prop Variations', () => {
-    it('should handle all category types', () => {
-      // Arrange
-      const categories = [
-        'tool',
-        'model',
-        'extension',
-        'agent-strategy',
-        'datasource',
-      ] as PluginCategoryEnum[]
-
-      categories.forEach((category) => {
-        const props = createActionProps({
-          category,
-          isShowDelete: true,
-          isShowInfo: false,
-          isShowFetchNewVersion: false,
-        })
-        expect(() => render(<Action {...props} />)).not.toThrow()
-      })
-    })
-
-    it('should handle different usedInApps values', () => {
-      // Arrange
-      const values = [0, 1, 5, 100]
-
-      values.forEach((usedInApps) => {
-        const props = createActionProps({
-          usedInApps,
-          isShowDelete: true,
-          isShowInfo: false,
-          isShowFetchNewVersion: false,
-        })
-        expect(() => render(<Action {...props} />)).not.toThrow()
-      })
-    })
-
-    it('should handle combination of multiple action buttons', () => {
-      // Arrange - Test various combinations
-      const combinations = [
-        { isShowFetchNewVersion: true, isShowInfo: false, isShowDelete: false },
-        { isShowFetchNewVersion: false, isShowInfo: true, isShowDelete: false },
-        { isShowFetchNewVersion: false, isShowInfo: false, isShowDelete: true },
-        { isShowFetchNewVersion: true, isShowInfo: true, isShowDelete: false },
-        { isShowFetchNewVersion: true, isShowInfo: false, isShowDelete: true },
-        { isShowFetchNewVersion: false, isShowInfo: true, isShowDelete: true },
-        { isShowFetchNewVersion: true, isShowInfo: true, isShowDelete: true },
-      ]
-
-      combinations.forEach((flags) => {
-        const props = createActionProps(flags)
-        const expectedCount = [
-          flags.isShowFetchNewVersion,
-          flags.isShowInfo,
-          flags.isShowDelete,
-        ].filter(Boolean).length
-
-        const { unmount } = render(<Action {...props} />)
-        const buttons = queryActionButtons()
-        expect(buttons).toHaveLength(expectedCount)
-        unmount()
-      })
-    })
+  it('does not open an update when the repository has no releases', async () => {
+    const user = userEvent.setup()
+    render(<Action {...createActionProps({ isShowFetchNewVersion: true })} />)
+    await user.click(updateButton())
+    await waitFor(() => expect(requests.releases).toHaveBeenCalledOnce())
+    expect(requests.notify).not.toHaveBeenCalled()
+    expect(requests.updateModal).not.toHaveBeenCalled()
   })
 })

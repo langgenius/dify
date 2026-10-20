@@ -16,7 +16,7 @@ it('adds the variable selected through the search and closes the add popup', asy
   const user = userEvent.setup()
   const onSelectVariable = vi.fn()
   render(<ConditionAdd variables={variables} onSelectVariable={onSelectVariable} />)
-  await user.click(screen.getByRole('button', { name: 'workflow.nodes.ifElse.addCondition' }))
+  await user.click(screen.getByRole('button', { name: 'workflowLogic.nodes.ifElse.addCondition' }))
   const search = screen.getByRole('searchbox')
   await user.type(search, 'answer{Enter}')
   expect(onSelectVariable).toHaveBeenCalledWith(['source', 'answer'], answer)
@@ -35,7 +35,9 @@ it('writes a variable expression when selecting a numeric comparison value', asy
       onValueChange={onValueChange}
     />,
   )
-  await user.click(screen.getByRole('button', { name: 'workflow.nodes.ifElse.selectVariable' }))
+  await user.click(
+    screen.getByRole('button', { name: 'workflowLogic.nodes.ifElse.selectVariable' }),
+  )
   await user.type(screen.getByRole('searchbox'), 'answer{Enter}')
   expect(onValueChange).toHaveBeenCalledWith('{{#source.answer#}}')
   expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()

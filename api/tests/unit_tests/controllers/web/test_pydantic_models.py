@@ -16,6 +16,55 @@ from pydantic import ValidationError
 # ---------------------------------------------------------------------------
 from controllers.web.app import AppAccessModeQuery
 
+# ---------------------------------------------------------------------------
+# audio.py models
+# ---------------------------------------------------------------------------
+from controllers.web.audio import TextToAudioPayload
+
+# ---------------------------------------------------------------------------
+# completion.py models
+# ---------------------------------------------------------------------------
+from controllers.web.completion import ChatMessagePayload, CompletionMessagePayload
+
+# ---------------------------------------------------------------------------
+# conversation.py models
+# ---------------------------------------------------------------------------
+from controllers.web.conversation import ConversationListQuery, ConversationRenamePayload
+
+# ---------------------------------------------------------------------------
+# forgot_password.py models
+# ---------------------------------------------------------------------------
+from controllers.web.forgot_password import (
+    ForgotPasswordCheckPayload,
+    ForgotPasswordResetPayload,
+    ForgotPasswordSendPayload,
+)
+
+# ---------------------------------------------------------------------------
+# login.py models
+# ---------------------------------------------------------------------------
+from controllers.web.login import EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload, LoginPayload
+
+# ---------------------------------------------------------------------------
+# message.py models
+# ---------------------------------------------------------------------------
+from controllers.web.message import MessageFeedbackPayload, MessageListQuery, MessageMoreLikeThisQuery
+
+# ---------------------------------------------------------------------------
+# remote_files.py models
+# ---------------------------------------------------------------------------
+from controllers.web.remote_files import RemoteFileUploadPayload
+
+# ---------------------------------------------------------------------------
+# saved_message.py models
+# ---------------------------------------------------------------------------
+from controllers.web.saved_message import SavedMessageCreatePayload, SavedMessageListQuery
+
+# ---------------------------------------------------------------------------
+# workflow.py models
+# ---------------------------------------------------------------------------
+from controllers.web.workflow import WorkflowRunPayload
+
 
 class TestAppAccessModeQuery:
     def test_alias_resolution(self) -> None:
@@ -32,12 +81,6 @@ class TestAppAccessModeQuery:
         q = AppAccessModeQuery(app_id="id1", app_code="code1")
         assert q.app_id == "id1"
         assert q.app_code == "code1"
-
-
-# ---------------------------------------------------------------------------
-# audio.py models
-# ---------------------------------------------------------------------------
-from controllers.web.audio import TextToAudioPayload
 
 
 class TestTextToAudioPayload:
@@ -60,12 +103,6 @@ class TestTextToAudioPayload:
     def test_invalid_uuid_message_id(self) -> None:
         with pytest.raises(ValidationError, match="not a valid uuid"):
             TextToAudioPayload(message_id="not-a-uuid")
-
-
-# ---------------------------------------------------------------------------
-# completion.py models
-# ---------------------------------------------------------------------------
-from controllers.web.completion import ChatMessagePayload, CompletionMessagePayload
 
 
 class TestCompletionMessagePayload:
@@ -115,12 +152,6 @@ class TestChatMessagePayload:
     def test_query_required(self) -> None:
         with pytest.raises(ValidationError):
             ChatMessagePayload(inputs={})
-
-
-# ---------------------------------------------------------------------------
-# conversation.py models
-# ---------------------------------------------------------------------------
-from controllers.web.conversation import ConversationListQuery, ConversationRenamePayload
 
 
 class TestConversationListQuery:
@@ -183,12 +214,6 @@ class TestConversationRenamePayload:
         assert p.name == "test"
 
 
-# ---------------------------------------------------------------------------
-# message.py models
-# ---------------------------------------------------------------------------
-from controllers.web.message import MessageFeedbackPayload, MessageListQuery, MessageMoreLikeThisQuery
-
-
 class TestMessageListQuery:
     def test_valid_query(self) -> None:
         cid = str(uuid4())
@@ -249,12 +274,6 @@ class TestMessageMoreLikeThisQuery:
             MessageMoreLikeThisQuery()
 
 
-# ---------------------------------------------------------------------------
-# remote_files.py models
-# ---------------------------------------------------------------------------
-from controllers.web.remote_files import RemoteFileUploadPayload
-
-
 class TestRemoteFileUploadPayload:
     def test_valid_url(self) -> None:
         p = RemoteFileUploadPayload(url="https://example.com/file.pdf")
@@ -268,12 +287,6 @@ class TestRemoteFileUploadPayload:
     def test_url_required(self) -> None:
         with pytest.raises(ValidationError):
             RemoteFileUploadPayload()
-
-
-# ---------------------------------------------------------------------------
-# saved_message.py models
-# ---------------------------------------------------------------------------
-from controllers.web.saved_message import SavedMessageCreatePayload, SavedMessageListQuery
 
 
 class TestSavedMessageListQuery:
@@ -309,12 +322,6 @@ class TestSavedMessageCreatePayload:
             SavedMessageCreatePayload()
 
 
-# ---------------------------------------------------------------------------
-# workflow.py models
-# ---------------------------------------------------------------------------
-from controllers.web.workflow import WorkflowRunPayload
-
-
 class TestWorkflowRunPayload:
     def test_defaults(self) -> None:
         p = WorkflowRunPayload(inputs={})
@@ -328,16 +335,6 @@ class TestWorkflowRunPayload:
     def test_inputs_required(self) -> None:
         with pytest.raises(ValidationError):
             WorkflowRunPayload()
-
-
-# ---------------------------------------------------------------------------
-# forgot_password.py models
-# ---------------------------------------------------------------------------
-from controllers.web.forgot_password import (
-    ForgotPasswordCheckPayload,
-    ForgotPasswordResetPayload,
-    ForgotPasswordSendPayload,
-)
 
 
 class TestForgotPasswordSendPayload:
@@ -382,12 +379,6 @@ class TestForgotPasswordResetPayload:
     def test_digits_only_password_rejected(self) -> None:
         with pytest.raises(ValidationError, match="Password must contain"):
             ForgotPasswordResetPayload(token="tok", new_password="123456789", password_confirm="123456789")
-
-
-# ---------------------------------------------------------------------------
-# login.py models
-# ---------------------------------------------------------------------------
-from controllers.web.login import EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload, LoginPayload
 
 
 class TestLoginPayload:

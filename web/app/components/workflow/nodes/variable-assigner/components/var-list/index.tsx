@@ -21,7 +21,7 @@ type Props = Readonly<{
 }>
 
 const VarList: FC<Props> = ({ readonly, nodeId, list, onChange, onOpen = noop, filterVar }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
   const handleVarReferenceChange = useCallback(
     (index: number) => {
       return (value: ValueSelector | string) => {
@@ -56,7 +56,7 @@ const VarList: FC<Props> = ({ readonly, nodeId, list, onChange, onOpen = noop, f
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t(($) => $['nodes.variableAssigner.noVarTip'], { ns: 'workflow' })}
+        {t(($) => $['nodes.variableAssigner.noVarTip'], { ns: 'workflowLogic' })}
       </ListNoDataPlaceholder>
     )
   }

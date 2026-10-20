@@ -21,6 +21,7 @@ export const getOptionalSystemFeatures = async () => {
   return queryClient.query(queryOptions).catch(() => undefined)
 }
 
+/** @public Used by New Knowledge on deploy/konwledge. */
 export const getSystemFeatures = async () => {
   await connection()
   return getRequestQueryClient().query(systemFeaturesServerQueryOptions())

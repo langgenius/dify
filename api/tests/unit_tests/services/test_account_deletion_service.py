@@ -1,23 +1,25 @@
 from __future__ import annotations
 
-from datetime import datetime
-from unittest.mock import Mock, call
+from unittest.mock import MagicMock, Mock, call
 
 import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
+from models.account import TenantAccountJoin
+from repositories.account.repository import SQLAlchemyAccountRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
+from services.account.adapters import (
+    CeleryAccountDeletionScheduler,
+    CeleryAccountDeletionVerificationNotifier,
+    EnterpriseAccountDeletionSyncGateway,
+    TokenManagerAccountDeletionVerificationGateway,
+)
 from services.account_deletion_service import AccountDeletionService
 from services.account_errors import InvalidAccountDeletionVerificationError
-from services.account_ports import (
-    AccountDeletionScheduler,
-    AccountDeletionSyncGateway,
-    AccountDeletionVerificationGateway,
-    AccountDeletionVerificationNotifier,
-    AccountRepository,
-    AccountWorkspaceMembershipQuery,
-)
-from services.entities.account_entities import AccountDeletionChallenge, AccountSnapshot
-from tests.unit_tests.model_factories import make_account_snapshot
+from tests.unit_tests.model_factories import make_account, make_tenant
 
 
 def _context() -> RequestContext:
@@ -29,77 +31,88 @@ def _context() -> RequestContext:
     )
 
 
-def _account() -> AccountSnapshot:
-    return make_account_snapshot(is_password_set=True, initialized_at=datetime(2026, 1, 1))
-
-
-def _service(*, accounts: Mock | None = None) -> tuple[AccountDeletionService, dict[str, Mock]]:
-    dependencies = {
-        "accounts": accounts or Mock(spec=AccountRepository),
-        "memberships": Mock(spec=AccountWorkspaceMembershipQuery),
-        "verification": Mock(spec=AccountDeletionVerificationGateway),
-        "notifications": Mock(spec=AccountDeletionVerificationNotifier),
-        "synchronization": Mock(spec=AccountDeletionSyncGateway),
-        "scheduler": Mock(spec=AccountDeletionScheduler),
-    }
-    service = AccountDeletionService(
-        accounts=dependencies["accounts"],
-        memberships=dependencies["memberships"],
-        verification=dependencies["verification"],
-        notifications=dependencies["notifications"],
-        synchronization=dependencies["synchronization"],
-        scheduler=dependencies["scheduler"],
+@pytest.fixture
+def service(
+    sqlite_session_factory: sessionmaker[Session], redis_transport: tuple[RedisClientWrapper, MagicMock]
+) -> AccountDeletionService:
+    redis, commands = redis_transport
+    commands.return_value = 0
+    with sqlite_session_factory.begin() as session:
+        session.add(make_account(email="account@example.com"))
+        for workspace_id in ("workspace-1", "workspace-2"):
+            session.add(make_tenant(tenant_id=workspace_id))
+            session.add(TenantAccountJoin(tenant_id=workspace_id, account_id="account-1"))
+    return AccountDeletionService(
+        accounts=SQLAlchemyAccountRepository(sqlite_session_factory),
+        memberships=WorkspaceRepository(session_factory=sqlite_session_factory),
+        verification=TokenManagerAccountDeletionVerificationGateway(),
+        notifications=CeleryAccountDeletionVerificationNotifier(redis=redis),
+        synchronization=EnterpriseAccountDeletionSyncGateway(),
+        scheduler=CeleryAccountDeletionScheduler(),
     )
-    return service, dependencies
 
 
-def test_issue_verification_reads_account_then_sends_challenge() -> None:
-    accounts = Mock(spec=AccountRepository)
-    accounts.get.return_value = _account()
-    service, dependencies = _service(accounts=accounts)
-    dependencies["verification"].create.return_value = AccountDeletionChallenge(token="token", code="123456")
+def test_issue_verification_reads_account_then_sends_challenge(
+    service: AccountDeletionService, mocker: MockerFixture
+) -> None:
+    get_account = mocker.spy(service._accounts, "get")
+    mocker.patch("services.account.adapters.secrets.randbelow", side_effect=[1, 2, 3, 4, 5, 6])
+    create_token = mocker.patch("services.account.adapters.TokenManager.generate_token", return_value="token")
+    send = mocker.patch("services.account.adapters.send_account_deletion_verification_code.delay")
 
     token = service.issue_verification(_context())
 
     assert token == "token"
-    accounts.get.assert_called_once_with("account-1")
-    dependencies["verification"].create.assert_called_once_with(
+    get_account.assert_called_once_with("account-1")
+    create_token.assert_called_once_with(
         account_id="account-1",
         email="account@example.com",
+        token_type="account_deletion",
+        additional_data={"code": "123456"},
     )
-    dependencies["notifications"].send.assert_called_once_with(email="account@example.com", code="123456")
+    send.assert_called_once_with(to="account@example.com", code="123456")
 
 
-def test_request_deletion_rejects_invalid_or_cross_account_verification_before_membership_read() -> None:
-    service, dependencies = _service()
-    dependencies["verification"].verify.return_value = False
+@pytest.mark.parametrize("token_account_id", ["account-1", "other-account"])
+def test_request_deletion_rejects_invalid_or_cross_account_verification_before_membership_read(
+    service: AccountDeletionService, mocker: MockerFixture, token_account_id: str
+) -> None:
+    mocker.patch(
+        "services.account.adapters.TokenManager.get_token_data",
+        return_value={"account_id": token_account_id, "code": "123456"},
+    )
+    memberships = mocker.spy(service._memberships, "list_ids_for_account")
+    schedule = mocker.spy(service._scheduler, "schedule")
 
     with pytest.raises(InvalidAccountDeletionVerificationError):
-        service.request_deletion(_context(), token="token", code="wrong")
+        service.request_deletion(
+            _context(), token="token", code="wrong" if token_account_id == "account-1" else "123456"
+        )
 
-    dependencies["memberships"].list_ids_for_account.assert_not_called()
-    dependencies["scheduler"].schedule.assert_not_called()
+    memberships.assert_not_called()
+    schedule.assert_not_called()
 
 
-def test_request_deletion_reads_memberships_before_external_sync_and_always_schedules() -> None:
-    service, dependencies = _service()
-    dependencies["verification"].verify.return_value = True
-    dependencies["memberships"].list_ids_for_account.return_value = ("workspace-1", "workspace-2")
-    dependencies["synchronization"].sync.return_value = False
+def test_request_deletion_reads_memberships_before_external_sync_and_always_schedules(
+    service: AccountDeletionService, mocker: MockerFixture
+) -> None:
+    read_token = mocker.patch(
+        "services.account.adapters.TokenManager.get_token_data",
+        return_value={"account_id": "account-1", "code": "123456"},
+    )
+    sync = mocker.patch("services.account.adapters.sync_account_deletion_memberships", return_value=False)
+    enqueue = mocker.patch("services.account.adapters.delete_account_task.delay")
+    memberships = mocker.spy(service._memberships, "list_ids_for_account")
     manager = Mock()
-    manager.attach_mock(dependencies["memberships"], "memberships")
-    manager.attach_mock(dependencies["synchronization"], "synchronization")
-    manager.attach_mock(dependencies["scheduler"], "scheduler")
+    manager.attach_mock(memberships, "memberships")
+    manager.attach_mock(sync, "sync")
+    manager.attach_mock(enqueue, "enqueue")
 
     service.request_deletion(_context(), token="token", code="123456")
 
-    dependencies["verification"].verify.assert_called_once_with(
-        account_id="account-1",
-        token="token",
-        code="123456",
-    )
+    read_token.assert_called_once_with("token", "account_deletion")
     assert manager.mock_calls == [
-        call.memberships.list_ids_for_account("account-1"),
-        call.synchronization.sync(account_id="account-1", workspace_ids=("workspace-1", "workspace-2")),
-        call.scheduler.schedule("account-1"),
+        call.memberships("account-1"),
+        call.sync(account_id="account-1", workspace_ids=("workspace-1", "workspace-2"), source="account_deleted"),
+        call.enqueue("account-1"),
     ]

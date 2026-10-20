@@ -41,7 +41,7 @@ const ConditionNumberInput = ({
   unit,
 }: ConditionNumberInputProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
   const [variableSelectorVisible, setVariableSelectorVisible] = useState(false)
   const [isFocus, { setTrue: setFocus, setFalse: setBlur }] = useBoolean()
 
@@ -102,7 +102,7 @@ const ConditionNumberInput = ({
                     className="mr-1 i-custom-vender-solid-development-variable-02 size-4 shrink-0"
                   />
                   <div className="w-0 grow truncate">
-                    {t(($) => $['nodes.ifElse.selectVariable'], { ns: 'workflow' })}
+                    {t(($) => $['nodes.ifElse.selectVariable'], { ns: 'workflowLogic' })}
                   </div>
                 </div>
               )}
@@ -138,7 +138,7 @@ const ConditionNumberInput = ({
               type="number"
               value={value}
               onChange={(e) => onValueChange(e.target.value)}
-              placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflow' }) || ''}
+              placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' }) || ''}
               onFocus={setFocus}
               onBlur={setBlur}
             />

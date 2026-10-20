@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType
-from services.dataset_service import DatasetCollectionBindingService
+from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 
 class DatasetCollectionBindingTestDataFactory:
@@ -168,7 +168,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
 
         # Assert
         assert len(results) == 3
-        for result, (provider, model) in zip(results, combinations):
+        for result, (provider, model) in zip(results, combinations, strict=False):
             assert result.provider_name == provider
             assert result.model_name == model
 

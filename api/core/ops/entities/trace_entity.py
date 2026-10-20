@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
@@ -12,8 +12,8 @@ class BaseTraceInfo(BaseModel):
     operation_id: str | None = None
     message_id: str | None = None
     message_data: Any | None = None
-    inputs: Union[str, dict[str, Any], list[Any]] | None = None
-    outputs: Union[str, dict[str, Any], list[Any]] | None = None
+    inputs: str | dict[str, Any] | list[Any] | None = None
+    outputs: str | dict[str, Any] | list[Any] | None = None
     start_time: datetime | None = None
     end_time: datetime | None = None
     metadata: dict[str, Any]
@@ -92,7 +92,7 @@ class WorkflowTraceInfo(BaseTraceInfo):
     workflow_id: str
     tenant_id: str
     workflow_run_id: str
-    workflow_run_elapsed_time: Union[int, float]
+    workflow_run_elapsed_time: int | float
     workflow_run_status: str
     workflow_run_inputs: Mapping[str, Any]
     workflow_run_outputs: Mapping[str, Any]
@@ -113,7 +113,7 @@ class MessageTraceInfo(BaseTraceInfo):
     answer_tokens: int
     total_tokens: int
     error: str | None = None
-    file_list: Union[str, dict[str, Any], list[Any]] | None = None
+    file_list: str | dict[str, Any] | list[Any] | None = None
     message_file_data: Any | None = None
     conversation_mode: str
     gen_ai_server_time_to_first_token: float | None = None
@@ -158,9 +158,9 @@ class ToolTraceInfo(BaseTraceInfo):
     message_file_data: Any = None
     error: str | None = None
     tool_config: dict[str, Any]
-    time_cost: Union[int, float]
+    time_cost: int | float
     tool_parameters: dict[str, Any]
-    file_url: Union[str, None, list[str]] = None
+    file_url: str | None | list[str] = None
 
 
 class GenerateNameTraceInfo(BaseTraceInfo):

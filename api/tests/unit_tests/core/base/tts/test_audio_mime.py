@@ -1,6 +1,5 @@
 from collections.abc import Generator, Iterator
-from types import SimpleNamespace
-from typing import cast, override
+from typing import override
 
 import pytest
 
@@ -10,10 +9,11 @@ from core.base.tts.audio_mime import (
     resolve_audio_mime_type,
     sniff_audio_mime_type,
 )
-from core.model_manager import ModelInstance
+from core.model_manager import ModelManager
 from core.plugin.entities.plugin_daemon import TTSAudioChunk
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
+from tests.unit_tests.audio_runtime_fixtures import AudioRuntimeObservations
 
 
 def test_inspect_audio_stream_preserves_the_prefix_with_matching_chunk_mime_type() -> None:
@@ -41,12 +41,13 @@ def test_resolve_audio_mime_type_falls_back_to_the_declared_model_type() -> None
     assert resolve_audio_mime_type(b"unrecognised", "audio/ogg") == "audio/ogg"
 
 
-def test_model_audio_mime_type_normalizes_plugin_metadata() -> None:
-    model_instance = SimpleNamespace(
-        get_model_schema=lambda: SimpleNamespace(model_properties={ModelPropertyKey.AUDIO_TYPE: "audio/x-wav"})
+def test_model_audio_mime_type_normalizes_plugin_metadata(audio_runtime: AudioRuntimeObservations) -> None:
+    audio_runtime.model_properties = {ModelPropertyKey.AUDIO_TYPE: "audio/x-wav"}
+    model_instance = ModelManager.for_tenant(tenant_id="tenant-1").get_default_model_instance(
+        tenant_id="tenant-1", model_type=ModelType.TTS
     )
 
-    assert get_model_audio_mime_type(cast(ModelInstance, model_instance)) == "audio/wav"
+    assert get_model_audio_mime_type(model_instance) == "audio/wav"
 
 
 @pytest.mark.parametrize(
@@ -113,7 +114,7 @@ def test_exhausting_inspected_stream_closes_source(chunks: list[bytes]) -> None:
 def test_closing_inspected_stream_runs_provider_finally_without_gc() -> None:
     released: list[bool] = []
 
-    def provider() -> Generator[bytes, None, None]:
+    def provider() -> Generator[bytes]:
         try:
             yield b"x" * 32
             yield b"unread"
@@ -136,7 +137,7 @@ def test_provider_error_closes_source_without_being_replaced_by_cleanup_error(
 ) -> None:
     provider_error = RuntimeError("provider interrupted")
 
-    def provider() -> Generator[bytes, None, None]:
+    def provider() -> Generator[bytes]:
         if after_prefix:
             yield b"x" * 32
         raise provider_error

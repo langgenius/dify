@@ -60,7 +60,6 @@
   <a href="../hi-IN/README.md"><img alt="README in हिन्दी" src="https://img.shields.io/badge/Hindi-d9d9d9"></a>
 </div>
 
-# 
 
 <div align="center">
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | 趋势转变" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -95,7 +94,7 @@ Dify 是一个开源的 LLM 应用开发平台。其直观的界面结合了 AI 
 ## 使用 Dify
 
 - **云 </br>**
-  我们提供[ Dify 云服务](https://dify.ai)，任何人都可以零设置尝试。它提供了自部署版本的所有功能，并在沙盒计划中包含 200 次免费的 GPT-4 调用。
+  我们提供 [Dify 云服务](https://cloud.dify.ai)，无需管理服务器即可体验 Dify。最新套餐与用量额度请参阅[定价页面](https://dify.ai/pricing)。
 
 - **自托管 Dify 社区版</br>**
   使用这个[入门指南](#%E5%BF%AB%E9%80%9F%E5%90%AF%E5%8A%A8)快速在您的环境中运行 Dify。
@@ -167,10 +166,10 @@ Dify 欢迎各种形式的贡献：
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 ## 安全问题
 
-为了保护您的隐私，请避免在 GitHub 上发布安全问题。发送问题至 security@dify.ai，我们将为您做更细致的解答。
+请按照[安全政策](../../SECURITY.md)，通过 GitHub Security Advisories 私下报告漏洞，不要在公开 issue、讨论或 PR 中披露。
 
 ## License
 

@@ -10,7 +10,6 @@ import logging
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import cast
 
 from flask import Response, stream_with_context
 from sqlalchemy import select
@@ -269,7 +268,7 @@ class AudioService:
                 if not text_to_speech_dict.get("enabled"):
                     raise ValueError("TTS is not enabled")
 
-                voice = cast(str | None, text_to_speech_dict.get("voice"))
+                voice = text_to_speech_dict.get("voice")
 
         return PreparedTextToAudio(text=text, voice=voice)
 

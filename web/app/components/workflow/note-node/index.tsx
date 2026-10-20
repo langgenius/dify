@@ -29,7 +29,6 @@ const Icon = () => {
 const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
   const { t } = useTranslation(['workflow'])
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
-  const setHistoryShortcutsEnabled = useStore((s) => s.setHistoryShortcutsEnabled)
   const ref = useRef<HTMLDivElement | null>(null)
   const theme = data.theme
   const { handleThemeChange, handleEditorChange, handleShowAuthorChange } = useNote(id)
@@ -90,7 +89,6 @@ const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
                 containerElement={ref.current}
                 placeholder={t(($) => $['nodes.note.editor.placeholder'], { ns: 'workflow' }) || ''}
                 onChange={handleEditorChange}
-                setHistoryShortcutsEnabled={setHistoryShortcutsEnabled}
               />
             </div>
           </div>

@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING, Any, override
 
 import httpx
 import qdrant_client
-
-logger = logging.getLogger(__name__)
 from flask import current_app
 from httpx import DigestAuth
 from pydantic import BaseModel
@@ -24,6 +22,7 @@ from qdrant_client.http.models import (
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -37,6 +36,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -195,7 +196,7 @@ class TidbOnQdrantVector(BaseVector):
         ids: Sequence[str] | None = None,
         batch_size: int = 64,
         group_id: str | None = None,
-    ) -> Generator[tuple[list[str], list[rest.PointStruct]], None, None]:
+    ) -> Generator[tuple[list[str], list[rest.PointStruct]]]:
         from qdrant_client.http import models as rest
 
         texts_iterator = iter(texts)
@@ -227,6 +228,7 @@ class TidbOnQdrantVector(BaseVector):
                         group_id or "",
                         Field.GROUP_KEY,
                     ),
+                    strict=False,
                 )
             ]
 
@@ -384,36 +386,69 @@ class TidbOnQdrantVector(BaseVector):
 
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        """Return docs most similar by bm25.
-        Returns:
-            List of documents most similar to the query text and distance for each.
-        """
+        """Return keyword matches in query order, leaving relevance scoring to reranking."""
         from qdrant_client.http import models
 
-        scroll_filter = None
+        keywords = list(dict.fromkeys(query.split()))[:10]
+        top_k = kwargs.get("top_k", 2)
+        if not keywords or top_k <= 0:
+            return []
+
+        base_must_conditions: list[models.FieldCondition] = []
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
+            base_must_conditions.append(
+                models.FieldCondition(
+                    key="metadata.document_id",
+                    match=models.MatchAny(any=document_ids_filter),
+                )
+            )
+
+        seen_ids: set[str | int] = set()
+        documents: list[Document] = []
+        keyword_results: list[list[rest.Record]] = []
+        # MatchText combines tokens with AND; separate searches provide OR between keywords.
+        for keyword in keywords:
             scroll_filter = models.Filter(
                 must=[
+                    *base_must_conditions,
                     models.FieldCondition(
-                        key="metadata.document_id",
-                        match=models.MatchAny(any=document_ids_filter),
-                    )
+                        key="page_content",
+                        match=models.MatchText(text=keyword),
+                    ),
                 ]
             )
-        response = self._client.scroll(
-            collection_name=self._collection_name,
-            scroll_filter=scroll_filter,
-            limit=kwargs.get("top_k", 2),
-            with_payload=True,
-            with_vectors=True,
-        )
-        results = response[0]
-        documents = []
-        for result in results:
-            if result:
-                document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
-                documents.append(document)
+            results, _ = self._client.scroll(
+                collection_name=self._collection_name,
+                scroll_filter=scroll_filter,
+                limit=top_k,
+                with_payload=True,
+                with_vectors=True,
+            )
+            keyword_results.append(results)
+
+        # Select round-robin so a common first keyword cannot fill top_k before
+        # later keywords contribute their matches.
+        result_indexes = [0] * len(keyword_results)
+        while True:
+            found_result = False
+            for index, results in enumerate(keyword_results):
+                while result_indexes[index] < len(results):
+                    result = results[result_indexes[index]]
+                    result_indexes[index] += 1
+                    if result.id not in seen_ids:
+                        seen_ids.add(result.id)
+                        documents.append(
+                            self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
+                        )
+                        found_result = True
+                        break
+                if len(documents) >= top_k:
+                    break
+            if len(documents) >= top_k:
+                break
+            if not found_result:
+                break
 
         return documents
 
@@ -437,7 +472,9 @@ class TidbOnQdrantVector(BaseVector):
 
 class TidbOnQdrantVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TidbOnQdrantVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> TidbOnQdrantVector:
         logger.info("init_vector: tenant_id=%s, dataset_id=%s", dataset.tenant_id, dataset.id)
         stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
         tidb_auth_binding = db.session.scalars(stmt).one_or_none()
@@ -448,12 +485,12 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                 tidb_auth_binding = db.session.scalars(stmt).one_or_none()
                 if tidb_auth_binding:
                     logger.info("Found binding after lock: cluster_id=%s", tidb_auth_binding.cluster_id)
-                    TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
+                    tidb_on_qdrant_api_key = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
                 else:
                     idle_tidb_auth_binding = db.session.scalar(
                         select(TidbAuthBinding)
-                        .where(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
+                        .where(TidbAuthBinding.active.is_(False), TidbAuthBinding.status == "ACTIVE")
                         .limit(1)
                     )
                     if idle_tidb_auth_binding:
@@ -466,7 +503,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                         idle_tidb_auth_binding.tenant_id = dataset.tenant_id
                         db.session.commit()
                         tidb_auth_binding = idle_tidb_auth_binding
-                        TIDB_ON_QDRANT_API_KEY = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
+                        tidb_on_qdrant_api_key = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
                     else:
                         logger.info("No idle clusters available, creating new cluster for tenant %s", dataset.tenant_id)
                         new_cluster = TidbService.create_tidb_serverless_cluster(
@@ -495,10 +532,10 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                         db.session.add(new_tidb_auth_binding)
                         db.session.commit()
                         tidb_auth_binding = new_tidb_auth_binding
-                        TIDB_ON_QDRANT_API_KEY = f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
+                        tidb_on_qdrant_api_key = f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
         else:
             logger.info("Existing binding found: cluster_id=%s", tidb_auth_binding.cluster_id)
-            TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
+            tidb_on_qdrant_api_key = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
         qdrant_url = (
             (tidb_auth_binding.qdrant_endpoint if tidb_auth_binding else None) or dify_config.TIDB_ON_QDRANT_URL or ""
@@ -525,7 +562,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             group_id=dataset.id,
             config=TidbOnQdrantConfig(
                 endpoint=qdrant_url,
-                api_key=TIDB_ON_QDRANT_API_KEY,
+                api_key=tidb_on_qdrant_api_key,
                 root_path=str(config.root_path),
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.TIDB_ON_QDRANT_GRPC_PORT,

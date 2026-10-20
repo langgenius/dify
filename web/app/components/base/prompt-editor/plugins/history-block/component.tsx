@@ -23,7 +23,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
 }) => {
   const { t } = useTranslation(['common'])
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HISTORY_BLOCK_COMMAND)
-  const [triggerRef, open, setOpen] = useTrigger()
+  const [triggerRef, open, setOpen] = useTrigger<HTMLButtonElement>()
   const { eventEmitter } = useEventEmitterContextContext()
   const [localRoleName, setLocalRoleName] = useState<RoleName>(roleName)
 
@@ -52,15 +52,16 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
       </div>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          nativeButton={false}
           render={
-            <div
+            <button
+              type="button"
+              aria-label={t(($) => $['operation.more'], { ns: 'common' })}
               className={`flex h-4.5 w-4.5 cursor-pointer items-center justify-center rounded ${open ? 'bg-[#DD2590] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'} `}
               ref={triggerRef}
               onClick={(e) => e.preventDefault()}
             >
               <RiMoreFill className="size-3" />
-            </div>
+            </button>
           }
         />
         <PopoverContent
@@ -83,12 +84,13 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
                 {t(($) => $['promptEditor.history.modal.assistant'], { ns: 'common' })}
               </div>
             </div>
-            <div
-              className="cursor-pointer rounded-b-xl border-t border-black/5 px-4 py-3 text-xs text-primary-600"
+            <button
+              type="button"
+              className="w-full cursor-pointer rounded-b-xl border-t border-black/5 px-4 py-3 text-left text-xs text-primary-600"
               onClick={onEditRole}
             >
               {t(($) => $['promptEditor.history.modal.edit'], { ns: 'common' })}
-            </div>
+            </button>
           </div>
         </PopoverContent>
       </Popover>

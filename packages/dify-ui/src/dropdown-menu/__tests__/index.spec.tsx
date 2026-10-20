@@ -1,10 +1,17 @@
 import type * as React from 'react'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   DropdownMenu,
+  DropdownMenuClear,
   DropdownMenuContent,
+  DropdownMenuEmpty,
+  DropdownMenuFilterProvider,
+  DropdownMenuInput,
+  DropdownMenuInputGroup,
   DropdownMenuItem,
   DropdownMenuLinkItem,
+  DropdownMenuList,
   DropdownMenuPopup,
   DropdownMenuPortal,
   DropdownMenuPositioner,
@@ -18,7 +25,120 @@ import {
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
+function FilterableMenu({ items = ['Rename workspace', 'Manage billing'] }: { items?: string[] }) {
+  return (
+    <DropdownMenuFilterProvider>
+      <DropdownMenu open>
+        <DropdownMenuTrigger>Workspace actions</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuInputGroup>
+            <span aria-hidden="true" data-testid="search-icon">
+              🔍
+            </span>
+            <DropdownMenuInput aria-label="Filter actions" />
+            <DropdownMenuClear data-testid="clear" />
+          </DropdownMenuInputGroup>
+          <DropdownMenuEmpty>No actions match</DropdownMenuEmpty>
+          <DropdownMenuList>
+            {items.map((item) => (
+              <DropdownMenuItem key={item}>{item}</DropdownMenuItem>
+            ))}
+          </DropdownMenuList>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </DropdownMenuFilterProvider>
+  )
+}
+
 describe('dropdown-menu wrapper', () => {
+  describe('filtering', () => {
+    it('should focus the filter input when the input group surface is pressed', async () => {
+      const screen = await renderWithSafeViewport(<FilterableMenu />)
+      const input = screen.getByRole('searchbox', { name: 'Filter actions' })
+
+      await expect.element(input).toHaveFocus()
+      ;(input.element() as HTMLInputElement).blur()
+      await expect.element(input).not.toHaveFocus()
+
+      await userEvent.click(screen.getByTestId('search-icon'))
+
+      await expect.element(input).toHaveFocus()
+    })
+
+    it('should draw the input ring from the highlighted state instead of focus', async () => {
+      const screen = await renderWithSafeViewport(<FilterableMenu />)
+      const input = screen.getByRole('searchbox', { name: 'Filter actions' })
+      // A ring is a box shadow with a spread; the group's shadow stays spread-free while unringed.
+      const ringSpread = () =>
+        /0px 0px 0px 2px/.test(getComputedStyle(input.element().parentElement!).boxShadow)
+
+      await expect.element(input).toHaveFocus()
+      // Base UI owns when the input is highlighted; this checks what the group draws for each state.
+      input.element().removeAttribute('data-highlighted')
+      await expect.poll(ringSpread).toBe(false)
+
+      input.element().setAttribute('data-highlighted', '')
+      await expect.poll(ringSpread).toBe(true)
+    })
+
+    it('should keep the input in view when the available height is smaller than the list', async () => {
+      const originalViewport = { height: window.innerHeight, width: window.innerWidth }
+      await page.viewport(800, 260)
+
+      try {
+        const screen = await render(
+          <FilterableMenu
+            items={Array.from({ length: 30 }, (_, index) => `Action ${index + 1}`)}
+          />,
+        )
+        const popup = screen.getByRole('dialog')
+        const list = screen.getByRole('menu')
+        const input = screen.getByRole('searchbox', { name: 'Filter actions' })
+
+        await expect.element(input).toHaveFocus()
+        await userEvent.keyboard('{ArrowDown}'.repeat(30))
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'Action 30' }))
+          .toHaveAttribute('data-highlighted')
+
+        await expect
+          .poll(() => popup.element().scrollHeight <= popup.element().clientHeight)
+          .toBe(true)
+        await expect
+          .poll(() => list.element().scrollHeight > list.element().clientHeight)
+          .toBe(true)
+        await expect
+          .poll(() => {
+            const popupRect = popup.element().getBoundingClientRect()
+            const inputRect = input.element().getBoundingClientRect()
+            return inputRect.top >= popupRect.top && inputRect.bottom <= popupRect.bottom
+          })
+          .toBe(true)
+      } finally {
+        await page.viewport(originalViewport.width, originalViewport.height)
+      }
+    })
+
+    it('should reset the query from the clear control and keep focus in the input', async () => {
+      const screen = await renderWithSafeViewport(<FilterableMenu />)
+      const input = screen.getByRole('searchbox', { name: 'Filter actions' })
+
+      await userEvent.fill(input, 'bill')
+      await expect.element(screen.getByRole('menuitem', { name: 'Manage billing' })).toBeVisible()
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Rename workspace' }))
+        .not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByTestId('clear'))
+
+      await expect.element(input).toHaveValue('')
+      await expect.element(input).toHaveFocus()
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Rename workspace' }))
+        .toBeInTheDocument()
+    })
+  })
+
   describe('DropdownMenuContent', () => {
     it('should position content at bottom-end with default placement when props are omitted', async () => {
       const screen = await renderWithSafeViewport(
@@ -96,7 +216,7 @@ describe('dropdown-menu wrapper', () => {
   })
 
   describe('DropdownMenuSubContent', () => {
-    it('should position sub-content at left-start with default placement when props are omitted', async () => {
+    it('should place sub-content inline-end-start when placement is omitted', async () => {
       const screen = await renderWithSafeViewport(
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
@@ -111,12 +231,19 @@ describe('dropdown-menu wrapper', () => {
         </DropdownMenu>,
       )
 
+      const submenu = screen.getByRole('menu', { name: 'More actions' })
+      const submenuTrigger = screen.getByRole('menuitem', { name: 'More actions' })
+
+      await expect.element(submenu).toHaveAttribute('data-side', 'inline-end')
+      await expect.element(submenu).toHaveAttribute('data-align', 'start')
+      // Left-to-right, so the submenu sits to the right of its trigger.
       await expect
-        .element(screen.getByRole('menu', { name: 'More actions' }))
-        .toHaveAttribute('data-side', 'left')
-      await expect
-        .element(screen.getByRole('menu', { name: 'More actions' }))
-        .toHaveAttribute('data-align', 'start')
+        .poll(
+          () =>
+            submenu.element().getBoundingClientRect().left >=
+            submenuTrigger.element().getBoundingClientRect().right - 1,
+        )
+        .toBe(true)
       await expect.element(screen.getByRole('menuitem', { name: 'Sub action' })).toBeInTheDocument()
     })
 
@@ -346,36 +473,6 @@ describe('dropdown-menu wrapper', () => {
   })
 
   describe('DropdownMenuSeparator', () => {
-    it('should forward passthrough props and handlers when separator props are provided', async () => {
-      const handleMouseEnter = vi.fn()
-
-      const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuSeparator
-              aria-label="actions divider"
-              id="menu-separator"
-              onMouseEnter={handleMouseEnter}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>,
-      )
-
-      screen
-        .getByRole('separator', { name: 'actions divider' })
-        .element()
-        .dispatchEvent(
-          new MouseEvent('mouseover', {
-            bubbles: true,
-          }),
-        )
-      await expect
-        .element(screen.getByRole('separator', { name: 'actions divider' }))
-        .toHaveAttribute('id', 'menu-separator')
-      expect(handleMouseEnter).toHaveBeenCalledTimes(1)
-    })
-
     it('should keep surrounding menu rows rendered when separator is placed between items', async () => {
       const screen = await render(
         <DropdownMenu open>

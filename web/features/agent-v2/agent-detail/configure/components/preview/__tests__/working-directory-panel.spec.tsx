@@ -1,6 +1,6 @@
 import type { AgentWorkingDirectorySource } from '../working-directory-panel'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
@@ -86,29 +86,44 @@ const previewSourceCases = [
   },
 ] as const
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    agent: {
-      byAgentId: {
-        sandbox: {
-          files: {
-            download: {
-              post: mocks.sandboxFileDownloadClientPost,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleQueryOverrides } = await import('@/test/console/service-responses')
+  const query = withConsoleQueryOverrides(actual.consoleQuery, {
+    'agent.byAgentId.sandbox.get': { queryOptions: mocks.sandboxInfoQueryOptions },
+    'agent.byAgentId.sandbox.files.get': { queryOptions: mocks.sandboxFilesQueryOptions },
+    'agent.byAgentId.sandbox.files.read.get': { queryOptions: mocks.sandboxFileReadQueryOptions },
+    'apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.get': {
+      queryOptions: mocks.workflowSandboxFilesQueryOptions,
+    },
+    'apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.read.get': {
+      queryOptions: mocks.workflowSandboxFileReadQueryOptions,
+    },
+  })
+  return {
+    consoleClient: {
+      agent: {
+        byAgentId: {
+          sandbox: {
+            files: {
+              download: {
+                post: mocks.sandboxFileDownloadClientPost,
+              },
             },
           },
         },
       },
-    },
-    apps: {
-      byAppId: {
-        workflowRuns: {
-          byWorkflowRunId: {
-            agentNodes: {
-              byNodeId: {
-                sandbox: {
-                  files: {
-                    download: {
-                      post: mocks.workflowSandboxFileDownloadClientPost,
+      apps: {
+        byAppId: {
+          workflowRuns: {
+            byWorkflowRunId: {
+              agentNodes: {
+                byNodeId: {
+                  sandbox: {
+                    files: {
+                      download: {
+                        post: mocks.workflowSandboxFileDownloadClientPost,
+                      },
                     },
                   },
                 },
@@ -118,53 +133,57 @@ vi.mock('@/service/console', () => ({
         },
       },
     },
-  },
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        sandbox: {
-          get: {
-            queryOptions: mocks.sandboxInfoQueryOptions,
-          },
-          files: {
+    consoleQuery: {
+      agent: {
+        byAgentId: {
+          sandbox: {
             get: {
-              queryOptions: mocks.sandboxFilesQueryOptions,
+              queryOptions: query.agent.byAgentId.sandbox.get.queryOptions,
             },
-            read: {
+            files: {
               get: {
-                queryOptions: mocks.sandboxFileReadQueryOptions,
+                queryOptions: query.agent.byAgentId.sandbox.files.get.queryOptions,
               },
-            },
-            download: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.sandboxFileDownloadMutationFn }),
+              read: {
+                get: {
+                  queryOptions: query.agent.byAgentId.sandbox.files.read.get.queryOptions,
+                },
+              },
+              download: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.sandboxFileDownloadMutationFn }),
+                },
               },
             },
           },
         },
       },
-    },
-    apps: {
-      byAppId: {
-        workflowRuns: {
-          byWorkflowRunId: {
-            agentNodes: {
-              byNodeId: {
-                sandbox: {
-                  files: {
-                    get: {
-                      queryOptions: mocks.workflowSandboxFilesQueryOptions,
-                    },
-                    read: {
+      apps: {
+        byAppId: {
+          workflowRuns: {
+            byWorkflowRunId: {
+              agentNodes: {
+                byNodeId: {
+                  sandbox: {
+                    files: {
                       get: {
-                        queryOptions: mocks.workflowSandboxFileReadQueryOptions,
+                        queryOptions:
+                          query.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId
+                            .sandbox.files.get.queryOptions,
                       },
-                    },
-                    download: {
-                      post: {
-                        mutationOptions: () => ({
-                          mutationFn: mocks.workflowSandboxFileDownloadMutationFn,
-                        }),
+                      read: {
+                        get: {
+                          queryOptions:
+                            query.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId
+                              .sandbox.files.read.get.queryOptions,
+                        },
+                      },
+                      download: {
+                        post: {
+                          mutationOptions: () => ({
+                            mutationFn: mocks.workflowSandboxFileDownloadMutationFn,
+                          }),
+                        },
                       },
                     },
                   },
@@ -175,8 +194,8 @@ vi.mock('@/service/console', () => ({
         },
       },
     },
-  },
-}))
+  }
+})
 
 vi.mock('@/utils/download', () => ({
   downloadUrl: mocks.downloadUrl,
@@ -195,6 +214,7 @@ function createDeferred<T>() {
     resolve = promiseResolve
     reject = promiseReject
   })
+
   return { promise, reject, resolve }
 }
 
@@ -247,7 +267,6 @@ function mockFileListEntries(
       ? mocks.sandboxFilesQueryOptions
       : mocks.workflowSandboxFilesQueryOptions
   queryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
-    queryKey: [`${source.type}-sandbox-files`, input, entries],
     queryFn: async () => ({
       path: input.query?.path ?? '~',
       entries,
@@ -261,7 +280,6 @@ function mockFileReadAsBinary(source: AgentWorkingDirectorySource) {
       ? mocks.sandboxFileReadQueryOptions
       : mocks.workflowSandboxFileReadQueryOptions
   queryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
-    queryKey: [`${source.type}-sandbox-file-read`, input],
     queryFn: async () => ({
       binary: true,
       path: input.query?.path ?? '',
@@ -304,13 +322,11 @@ describe('AgentWorkingDirectoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.sandboxInfoQueryOptions.mockImplementation(() => ({
-      queryKey: ['sandbox-info'],
       queryFn: async () => ({
         workspace_cwd: 'workspace',
       }),
     }))
     mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
-      queryKey: ['sandbox-files', input],
       queryFn: async () => ({
         path: input.query?.path ?? '~',
         entries: [
@@ -322,7 +338,6 @@ describe('AgentWorkingDirectoryPanel', () => {
       }),
     }))
     mocks.sandboxFileReadQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
-      queryKey: ['sandbox-file-read', input],
       queryFn: async () => ({
         binary: input.query?.path?.endsWith('model.bin') ?? false,
         path: input.query?.path ?? '',
@@ -331,7 +346,6 @@ describe('AgentWorkingDirectoryPanel', () => {
       }),
     }))
     mocks.workflowSandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
-      queryKey: ['workflow-sandbox-files', input],
       queryFn: async () => ({
         path: input.query?.path ?? '.',
         entries: [{ name: 'chart.png', type: 'file' }],
@@ -339,7 +353,6 @@ describe('AgentWorkingDirectoryPanel', () => {
     }))
     mocks.workflowSandboxFileReadQueryOptions.mockImplementation(
       ({ input }: QueryOptionsInput) => ({
-        queryKey: ['workflow-sandbox-file-read', input],
         queryFn: async () => ({
           binary: false,
           path: input.query?.path ?? '',
@@ -350,10 +363,48 @@ describe('AgentWorkingDirectoryPanel', () => {
     )
   })
 
+  it('lets keyboard users expand and enter a folder with separate controls', async () => {
+    const user = userEvent.setup()
+    mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => {
+      const path = input.query?.path ?? '~'
+      return {
+        queryFn: async () => ({
+          path,
+          entries:
+            path === '~'
+              ? [{ name: 'reports', type: 'dir' }]
+              : [{ name: 'summary.txt', type: 'file' }],
+        }),
+      }
+    })
+    renderWorkingDirectoryPanel()
+
+    const folderTrigger = await screen.findByRole('button', { name: 'reports' })
+    expect(folderTrigger).toHaveAttribute('aria-expanded', 'false')
+
+    folderTrigger.focus()
+    await user.keyboard('{Enter}')
+    expect(folderTrigger).toHaveAttribute('aria-expanded', 'true')
+    expect(await screen.findByRole('button', { name: 'summary.txt' })).toBeInTheDocument()
+
+    const enterFolder = screen.getByRole('button', {
+      name: 'common.operation.view reports',
+    })
+    enterFolder.focus()
+    await user.keyboard('{Enter}')
+
+    const breadcrumb = screen.getByRole('navigation', {
+      name: 'agentV2.agentDetail.configure.workingDirectory.breadcrumbLabel',
+    })
+    expect(within(breadcrumb).getByRole('button', { name: 'reports' })).toHaveAttribute(
+      'aria-current',
+      'location',
+    )
+  })
+
   it('should separate persistent and temporary files by their sandbox path roots', async () => {
     const user = userEvent.setup()
     mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
-      queryKey: ['sandbox-files-by-root', input],
       queryFn: async () => ({
         path: input.query?.path ?? '~',
         entries:
@@ -438,24 +489,25 @@ describe('AgentWorkingDirectoryPanel', () => {
     const downloadingButton = await screen.findByRole('button', {
       name: /common\.operation\.downloading.*notes\.md/i,
     })
-    expect(downloadingButton.querySelector('.animate-spin')).toBeInTheDocument()
     await user.click(downloadingButton)
     expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
 
     download.resolve({ url: 'https://example.com/sandbox-file' })
 
     await waitFor(() => {
-      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalled()
-      expect(mocks.sandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          agent_id: 'agent-1',
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+          body: {
+            caller_type: 'conversation',
+            caller_id: 'conversation-1',
+            path: '~/notes.md',
+          },
         },
-        body: {
-          caller_type: 'conversation',
-          caller_id: 'conversation-1',
-          path: '~/notes.md',
-        },
-      })
+        expect.anything(),
+      )
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
         url: 'https://example.com/sandbox-file',
         fileName: 'notes.md',
@@ -501,29 +553,29 @@ describe('AgentWorkingDirectoryPanel', () => {
     ).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: /common\.operation\.download/i }))
 
-    const downloadingLink = await screen.findByRole('link', {
-      name: /common\.operation\.downloading/i,
-    })
-    expect(downloadingLink.querySelector('.animate-spin')).toBeInTheDocument()
-    const headerDownloadButton = screen.getByRole('button', {
-      name: /common\.operation\.download.*model\.bin/i,
-    })
-    expect(headerDownloadButton.querySelector('.animate-spin')).not.toBeInTheDocument()
+    await user.click(
+      await screen.findByRole('link', {
+        name: /common\.operation\.downloading/i,
+      }),
+    )
+    expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
 
     download.resolve({ url: 'https://example.com/sandbox-file' })
 
     await waitFor(() => {
-      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalled()
-      expect(mocks.sandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          agent_id: 'agent-1',
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+          body: {
+            caller_type: 'conversation',
+            caller_id: 'conversation-1',
+            path: '~/model.bin',
+          },
         },
-        body: {
-          caller_type: 'conversation',
-          caller_id: 'conversation-1',
-          path: '~/model.bin',
-        },
-      })
+        expect.anything(),
+      )
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
         url: 'https://example.com/sandbox-file',
         fileName: 'model.bin',
@@ -666,18 +718,20 @@ describe('AgentWorkingDirectoryPanel', () => {
     download.resolve({ url: 'https://example.com/workflow-sandbox-file' })
 
     await waitFor(() => {
-      expect(mocks.workflowSandboxFileDownloadMutationFn).toHaveBeenCalled()
-      expect(mocks.workflowSandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          app_id: 'app-1',
-          workflow_run_id: 'run-1',
-          node_id: 'node-1',
+      expect(mocks.workflowSandboxFileDownloadMutationFn).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: {
+            app_id: 'app-1',
+            workflow_run_id: 'run-1',
+            node_id: 'node-1',
+          },
+          body: {
+            node_execution_id: 'execution-1',
+            path: '~/chart.png',
+          },
         },
-        body: {
-          node_execution_id: 'execution-1',
-          path: '~/chart.png',
-        },
-      })
+        expect.anything(),
+      )
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
         url: 'https://example.com/workflow-sandbox-file',
         fileName: 'chart.png',

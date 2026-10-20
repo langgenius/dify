@@ -67,6 +67,26 @@ export const zAnnotationReplyActionPayload = z.object({
   score_threshold: z.number(),
 })
 
+export const zAnyJsonValue = z.unknown()
+
+/**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zAnyJsonValue,
+})
+
 /**
  * AppFeedbackResponse
  */
@@ -312,7 +332,7 @@ export const zChildChunkResponse = z.object({
   id: z.string(),
   position: z.int(),
   segment_id: z.string(),
-  type: z.string(),
+  type: z.enum(['automatic', 'customized']),
   updated_at: z.int(),
   word_count: z.int(),
 })
@@ -597,7 +617,7 @@ export const zDatasetBoundTagListResponse = z.object({
 export const zDatasetDocMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -659,7 +679,7 @@ export const zDatasetMetadataActionResponse = z.object({
  */
 export const zDatasetMetadataBuiltInFieldResponse = z.object({
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -676,7 +696,7 @@ export const zDatasetMetadataListItemResponse = z.object({
   count: z.int().optional().default(0),
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -693,7 +713,7 @@ export const zDatasetMetadataListResponse = z.object({
 export const zDatasetMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -739,116 +759,6 @@ export const zDatasetWeightedScoreResponse = z.object({
   keyword_setting: zDatasetKeywordSettingResponse.optional(),
   vector_setting: zDatasetVectorSettingResponse.optional(),
   weight_type: z.string().nullish(),
-})
-
-/**
- * DatasetRetrievalModelResponse
- */
-export const zDatasetRetrievalModelResponse = z.object({
-  reranking_enable: z.boolean(),
-  reranking_mode: z.string().nullish(),
-  reranking_model: zDatasetRerankingModelResponse.optional(),
-  score_threshold: z.number().nullish(),
-  score_threshold_enabled: z.boolean(),
-  search_method: z.string(),
-  top_k: z.int(),
-  weights: zDatasetWeightedScoreResponse.nullish(),
-})
-
-/**
- * DatasetDetailResponse
- */
-export const zDatasetDetailResponse = z.object({
-  app_count: z.int(),
-  author_name: z.string().nullable(),
-  built_in_field_enabled: z.boolean(),
-  chunk_structure: z.string().nullable(),
-  created_at: z.int(),
-  created_by: z.string(),
-  data_source_type: z.string().nullable(),
-  description: z.string().nullable(),
-  doc_form: z.string().nullable(),
-  doc_metadata: z.array(zDatasetDocMetadataResponse),
-  document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
-  embedding_model: z.string().nullable(),
-  embedding_model_provider: z.string().nullable(),
-  enable_api: z.boolean(),
-  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
-  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
-  icon_info: zDatasetIconInfoResponse.optional(),
-  id: z.string(),
-  indexing_technique: z.string().nullable(),
-  is_multimodal: z.boolean(),
-  is_published: z.boolean(),
-  maintainer: z.string().nullish(),
-  name: z.string(),
-  permission: z.string(),
-  pipeline_id: z.string().nullable(),
-  provider: z.string(),
-  retrieval_model_dict: zDatasetRetrievalModelResponse,
-  runtime_mode: z.string().nullable(),
-  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
-  tags: z.array(zDatasetTagResponse),
-  total_available_documents: z.int(),
-  total_documents: z.int(),
-  updated_at: z.int(),
-  updated_by: z.string().nullable(),
-  word_count: z.int(),
-})
-
-/**
- * DatasetDetailWithPartialMembersResponse
- */
-export const zDatasetDetailWithPartialMembersResponse = z.object({
-  app_count: z.int(),
-  author_name: z.string().nullable(),
-  built_in_field_enabled: z.boolean(),
-  chunk_structure: z.string().nullable(),
-  created_at: z.int(),
-  created_by: z.string(),
-  data_source_type: z.string().nullable(),
-  description: z.string().nullable(),
-  doc_form: z.string().nullable(),
-  doc_metadata: z.array(zDatasetDocMetadataResponse),
-  document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
-  embedding_model: z.string().nullable(),
-  embedding_model_provider: z.string().nullable(),
-  enable_api: z.boolean(),
-  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
-  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
-  icon_info: zDatasetIconInfoResponse.optional(),
-  id: z.string(),
-  indexing_technique: z.string().nullable(),
-  is_multimodal: z.boolean(),
-  is_published: z.boolean(),
-  maintainer: z.string().nullish(),
-  name: z.string(),
-  partial_member_list: z.array(z.string()).nullish(),
-  permission: z.string(),
-  pipeline_id: z.string().nullable(),
-  provider: z.string(),
-  retrieval_model_dict: zDatasetRetrievalModelResponse,
-  runtime_mode: z.string().nullable(),
-  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
-  tags: z.array(zDatasetTagResponse),
-  total_available_documents: z.int(),
-  total_documents: z.int(),
-  updated_at: z.int(),
-  updated_by: z.string().nullable(),
-  word_count: z.int(),
-})
-
-/**
- * DatasetListResponse
- */
-export const zDatasetListResponse = z.object({
-  data: z.array(zDatasetDetailResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
 })
 
 /**
@@ -930,8 +840,8 @@ export const zDocumentListQuery = z.object({
 export const zDocumentMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
-  value: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish(),
+  type: z.enum(['number', 'string', 'time']),
+  value: z.union([z.string(), z.int(), z.number()]).nullable(),
 })
 
 /**
@@ -974,55 +884,6 @@ export const zDocumentDetailResponse = z.object({
 })
 
 /**
- * DocumentResponse
- */
-export const zDocumentResponse = z.object({
-  archived: z.boolean().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_detail_dict: z.record(z.string(), z.unknown()),
-  data_source_info: z.record(z.string(), z.unknown()).nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
-  doc_metadata: z.array(zDocumentMetadataResponse).optional(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.string(),
-  indexing_status: z.string().nullish(),
-  name: z.string(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  summary_index_status: z.string().nullish(),
-  tokens: z.int().nullish(),
-  word_count: z.int().nullish(),
-})
-
-/**
- * DocumentAndBatchResponse
- */
-export const zDocumentAndBatchResponse = z.object({
-  batch: z.string(),
-  document: zDocumentResponse,
-})
-
-/**
- * DocumentListResponse
- */
-export const zDocumentListResponse = z.object({
-  data: z.array(zDocumentResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
  * DocumentStatusPayload
  */
 export const zDocumentStatusPayload = z.object({
@@ -1037,10 +898,19 @@ export const zDocumentStatusResponse = z.object({
   completed_at: z.int().nullable(),
   completed_segments: z.int().nullish(),
   error: z.string().nullable(),
-  error_code: z.string().nullish(),
+  error_code: z.literal('vector_space_estimate_exceeded').nullish(),
   estimated_vector_space_mb: z.int().nullish(),
   id: z.string(),
-  indexing_status: z.string(),
+  indexing_status: z.enum([
+    'cleaning',
+    'completed',
+    'error',
+    'indexing',
+    'parsing',
+    'paused',
+    'splitting',
+    'waiting',
+  ]),
   parsing_completed_at: z.int().nullable(),
   paused_at: z.int().nullable(),
   processing_started_at: z.int().nullable(),
@@ -1055,6 +925,28 @@ export const zDocumentStatusResponse = z.object({
  */
 export const zDocumentStatusListResponse = z.object({
   data: z.array(zDocumentStatusResponse),
+})
+
+/**
+ * DocumentUploadFileDetailResponse
+ */
+export const zDocumentUploadFileDetailResponse = z.object({
+  created_at: z.number(),
+  created_by: z.string(),
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  size: z.int(),
+})
+
+/**
+ * DocumentSourceDetailResponse
+ *
+ * The uploaded file for file documents; Notion and website documents repeat their source info.
+ */
+export const zDocumentSourceDetailResponse = z.object({
+  upload_file: zDocumentUploadFileDetailResponse.nullish(),
 })
 
 /**
@@ -1074,6 +966,115 @@ export const zEndUserDetail = z.object({
   type: z.string(),
   updated_at: z.iso.datetime(),
 })
+
+/**
+ * ErrorMessageResponse
+ *
+ * Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+ */
+export const zErrorMessageResponse = z.object({
+  error: z.string(),
+})
+
+/**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AgentNotPublishedError
+ *
+ * Agent has not been published. Please publish the Agent before using the API.
+ */
+export const zAgentNotPublishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_published'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AppUnavailableError
+ *
+ * App unavailable, please check your app configurations.
+ */
+export const zAppUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_unavailable'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ArchivedDocumentImmutableError
+ *
+ * The archived document is not editable.
+ */
+export const zArchivedDocumentImmutableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('archived_document_immutable'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AudioTooLargeError
+ *
+ * Audio size exceeded. {message}
+ */
+export const zAudioTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('audio_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * DatasetNameDuplicateError
+ *
+ * The dataset name already exists. Please modify your dataset name.
+ */
+export const zDatasetNameDuplicateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_name_duplicate'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * EndUserNotFoundError
+ *
+ * End user not found.
+ */
+export const zEndUserNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('end_user_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * EventStreamResponse
@@ -1099,6 +1100,42 @@ export const zFeedbackListQuery = z.object({
  * Enum class for fetch from.
  */
 export const zFetchFrom = z.enum(['customizable-model', 'predefined-model'])
+
+/**
+ * FileAccessDeniedError
+ *
+ * Access to the requested file is denied.
+ */
+export const zFileAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_access_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * FileExtensionBlockedError
+ *
+ * The file extension is blocked for security reasons.
+ */
+export const zFileExtensionBlockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_extension_blocked'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * FileNotFoundError
+ *
+ * The requested file was not found.
+ */
+export const zFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * FilePreviewQuery
@@ -1127,6 +1164,18 @@ export const zFileResponse = z.object({
   tenant_id: z.uuid().nullish(),
   user_id: z.uuid().nullish(),
 })
+
+/**
+ * FileTooLargeError
+ *
+ * File size exceeded. {message}
+ */
+export const zFileTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_too_large'),
+    status: z.literal(413),
+  }),
+)
 
 /**
  * FileTransferMethod
@@ -1165,6 +1214,18 @@ export const zFileListInputConfig = z.object({
   output_variable_name: z.string(),
   type: z.literal('file-list').optional().default('file-list'),
 })
+
+/**
+ * FilenameNotExistsError
+ *
+ * The specified filename does not exist.
+ */
+export const zFilenameNotExistsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('filename_not_exists_error'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * HitTestingChildChunk
@@ -1256,19 +1317,31 @@ export const zHitTestingResponse = z.object({
 })
 
 /**
+ * HumanInputFormExpiredError
+ */
+export const zHumanInputFormExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_expired'),
+    status: z.literal(412),
+  }),
+)
+
+/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
 
 /**
- * I18nObject
+ * HumanInputFormSubmittedError
  *
- * Model class for i18n object.
+ * This form has already been submitted by another user, form_id={form_id}
  */
-export const zI18nObject = z.object({
-  en_US: z.string(),
-  zh_Hans: z.string().nullish(),
-})
+export const zHumanInputFormSubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_submitted'),
+    status: z.literal(412),
+  }),
+)
 
 /**
  * IndexInfoResponse
@@ -1278,6 +1351,45 @@ export const zIndexInfoResponse = z.object({
   server_version: z.string(),
   welcome: z.string(),
 })
+
+/**
+ * IndexTechniqueType
+ */
+export const zIndexTechniqueType = z.enum(['economy', 'high_quality'])
+
+/**
+ * InvalidActionError
+ *
+ * Invalid action.
+ */
+export const zInvalidActionError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_action'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidFormDataError
+ */
+export const zInvalidFormDataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_form_data'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidMetadataError
+ *
+ * The metadata content is incorrect. Please check and verify.
+ */
+export const zInvalidMetadataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_metadata'),
+    status: z.literal(400),
+  }),
+)
 
 export const zJsonObject = z.record(z.string(), z.unknown())
 
@@ -1345,33 +1457,62 @@ export const zChatPausedBlockingResponse = z.object({
  * Blocking chat response for a completed message or paused Chatflow.
  */
 export const zChatBlockingResponse = z.discriminatedUnion('event', [
-  zChatMessageBlockingResponse.extend({ event: z.literal('message') }),
-  zChatPausedBlockingResponse.extend({ event: z.literal('workflow_paused') }),
+  zChatMessageBlockingResponse,
+  zChatPausedBlockingResponse,
 ])
+
+export const zJsonValueType = z.unknown()
 
 export const zJsonValue = z.unknown()
 
 /**
- * AgentThought
+ * DocumentResponse
  */
-export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
+export const zDocumentResponse = z.object({
+  archived: z.boolean().nullish(),
   created_at: z.int().nullish(),
-  files: z.array(z.string()),
+  created_by: z.string().nullish(),
+  created_from: z.string().nullish(),
+  data_source_detail_dict: zDocumentSourceDetailResponse,
+  data_source_info: z.record(z.string(), zJsonValue).nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_process_rule_id: z.string().nullish(),
+  disabled_at: z.int().nullish(),
+  disabled_by: z.string().nullish(),
+  display_status: z.string().nullish(),
+  doc_form: z.string().nullish(),
+  doc_metadata: z.array(zDocumentMetadataResponse).optional(),
+  enabled: z.boolean().nullish(),
+  error: z.string().nullish(),
+  hit_count: z.int().nullish(),
   id: z.string(),
-  message_id: z.string(),
-  observation: z.string().nullish(),
-  position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
-  tool_labels: zJsonValue,
+  indexing_status: z.string().nullish(),
+  name: z.string(),
+  need_summary: z.boolean().nullish(),
+  position: z.int().nullish(),
+  summary_index_status: z.string().nullish(),
+  tokens: z.int().nullish(),
+  word_count: z.int().nullish(),
 })
 
-export const zJsonValueType = z.unknown()
+/**
+ * DocumentAndBatchResponse
+ */
+export const zDocumentAndBatchResponse = z.object({
+  batch: z.string(),
+  document: zDocumentResponse,
+})
 
-export const zJsonValue2 = z.unknown()
+/**
+ * DocumentListResponse
+ */
+export const zDocumentListResponse = z.object({
+  data: z.array(zDocumentResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
 
 /**
  * HumanInputFormSubmissionData
@@ -1382,7 +1523,7 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
 })
 
 /**
@@ -1390,7 +1531,7 @@ export const zHumanInputFormSubmissionData = z.object({
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
-  inputs: z.record(z.string(), zJsonValue2),
+  inputs: z.record(z.string(), zJsonValue),
 })
 
 /**
@@ -1398,7 +1539,7 @@ export const zHumanInputFormSubmitPayload = z.object({
  */
 export const zHumanInputFormSubmitPayloadWithUser = z.object({
   action: z.string(),
-  inputs: z.record(z.string(), zJsonValue2),
+  inputs: z.record(z.string(), zJsonValue),
   user: z.string(),
 })
 
@@ -1511,6 +1652,18 @@ export const zMetadataUpdatePayload = z.object({
 })
 
 /**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ModelFeature
  *
  * Enum class for llm feature.
@@ -1548,6 +1701,16 @@ export const zModelPropertyKey = z.enum([
 ])
 
 /**
+ * I18nObject
+ *
+ * Model class for i18n object.
+ */
+export const zModelRuntimeI18nObject = z.object({
+  en_US: z.string(),
+  zh_Hans: z.string().nullish(),
+})
+
+/**
  * ModelStatus
  *
  * Enum class for model status.
@@ -1574,6 +1737,54 @@ export const zModelType = z.enum([
   'text-embedding',
   'tts',
 ])
+
+/**
+ * NoAudioUploadedError
+ *
+ * Please upload your audio.
+ */
+export const zNoAudioUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_audio_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NoFileUploadedError
+ *
+ * Please upload your file.
+ */
+export const zNoFileUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_file_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotChatAppError
+ *
+ * Please check if your app mode matches the right API route.
+ */
+export const zNotChatAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_chat_app'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotWorkflowAppError
+ *
+ * Please check if your app mode matches the right API route.
+ */
+export const zNotWorkflowAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_workflow_app'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ServiceApiUserPayload
@@ -1652,6 +1863,18 @@ export const zPipelineRunApiEntity = z.object({
 })
 
 /**
+ * PipelineRunError
+ *
+ * An error occurred while running the pipeline.
+ */
+export const zPipelineRunError = zErrorResponse.and(
+  z.object({
+    code: z.literal('pipeline_run_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * PipelineUploadFileResponse
  */
 export const zPipelineUploadFileResponse = z.object({
@@ -1664,12 +1887,18 @@ export const zPipelineUploadFileResponse = z.object({
   size: z.int(),
 })
 
+export const zPreProcessingRuleKey = z.enum([
+  'remove_extra_spaces',
+  'remove_stopwords',
+  'remove_urls_emails',
+])
+
 /**
  * PreProcessingRule
  */
 export const zPreProcessingRule = z.object({
   enabled: z.boolean(),
-  id: z.enum(['remove_extra_spaces', 'remove_stopwords', 'remove_urls_emails']),
+  id: zPreProcessingRuleKey,
 })
 
 /**
@@ -1689,7 +1918,7 @@ export const zProviderModelWithStatusEntity = z.object({
   features: z.array(zModelFeature).nullish(),
   fetch_from: zFetchFrom,
   has_invalid_load_balancing_configs: z.boolean().optional().default(false),
-  label: zI18nObject,
+  label: zModelRuntimeI18nObject,
   load_balancing_enabled: z.boolean().optional().default(false),
   model: z.string(),
   model_properties: z.record(z.string(), z.unknown()),
@@ -1698,14 +1927,50 @@ export const zProviderModelWithStatusEntity = z.object({
 })
 
 /**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotSupportSpeechToTextError
+ *
+ * Provider not support speech to text.
+ */
+export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_speech_to_text'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ProviderWithModelsResponse
  *
  * Model class for provider with models response.
  */
 export const zProviderWithModelsResponse = z.object({
-  icon_small: zI18nObject.nullish(),
-  icon_small_dark: zI18nObject.nullish(),
-  label: zI18nObject,
+  icon_small: zModelRuntimeI18nObject.nullish(),
+  icon_small_dark: zModelRuntimeI18nObject.nullish(),
+  label: zModelRuntimeI18nObject,
   models: z.array(zProviderModelWithStatusEntity),
   provider: z.string(),
   status: zCustomConfigurationStatus,
@@ -1727,6 +1992,18 @@ export const zPublishedPipelineRunResponse = z.object({
   dataset: zPipelineDataset,
   documents: z.array(zPipelineDocument),
 })
+
+/**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * RerankingModel
@@ -1754,6 +2031,134 @@ export const zRetrievalMethod = z.enum([
 ])
 
 /**
+ * DatasetRetrievalModelResponse
+ */
+export const zDatasetRetrievalModelResponse = z.object({
+  reranking_enable: z.boolean(),
+  reranking_mode: z.string().nullish(),
+  reranking_model: zDatasetRerankingModelResponse.optional(),
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean(),
+  search_method: zRetrievalMethod,
+  top_k: z.int(),
+  weights: zDatasetWeightedScoreResponse.nullish(),
+})
+
+/**
+ * DatasetDetailResponse
+ */
+export const zDatasetDetailResponse = z.object({
+  app_count: z.int(),
+  author_name: z.string().nullable(),
+  built_in_field_enabled: z.boolean(),
+  chunk_structure: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string(),
+  data_source_type: z
+    .enum([
+      'local_file',
+      'notion_import',
+      'online_document',
+      'online_drive',
+      'upload_file',
+      'website_crawl',
+    ])
+    .nullable(),
+  description: z.string().nullable(),
+  doc_form: z.string().nullable(),
+  doc_metadata: z.array(zDatasetDocMetadataResponse),
+  document_count: z.int(),
+  embedding_available: z.boolean().nullish(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  enable_api: z.boolean(),
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  icon_info: zDatasetIconInfoResponse.optional(),
+  id: z.string(),
+  indexing_technique: zIndexTechniqueType.nullable(),
+  is_multimodal: z.boolean(),
+  is_published: z.boolean(),
+  maintainer: z.string().nullish(),
+  name: z.string(),
+  permission: z.enum(['all_team_members', 'only_me', 'partial_members']),
+  pipeline_id: z.string().nullable(),
+  provider: z.string(),
+  retrieval_model_dict: zDatasetRetrievalModelResponse,
+  runtime_mode: z.enum(['general', 'rag_pipeline']).nullable(),
+  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
+  tags: z.array(zDatasetTagResponse),
+  total_available_documents: z.int(),
+  total_documents: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
+/**
+ * DatasetDetailWithPartialMembersResponse
+ */
+export const zDatasetDetailWithPartialMembersResponse = z.object({
+  app_count: z.int(),
+  author_name: z.string().nullable(),
+  built_in_field_enabled: z.boolean(),
+  chunk_structure: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string(),
+  data_source_type: z
+    .enum([
+      'local_file',
+      'notion_import',
+      'online_document',
+      'online_drive',
+      'upload_file',
+      'website_crawl',
+    ])
+    .nullable(),
+  description: z.string().nullable(),
+  doc_form: z.string().nullable(),
+  doc_metadata: z.array(zDatasetDocMetadataResponse),
+  document_count: z.int(),
+  embedding_available: z.boolean().nullish(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  enable_api: z.boolean(),
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  icon_info: zDatasetIconInfoResponse.optional(),
+  id: z.string(),
+  indexing_technique: zIndexTechniqueType.nullable(),
+  is_multimodal: z.boolean(),
+  is_published: z.boolean(),
+  maintainer: z.string().nullish(),
+  name: z.string(),
+  partial_member_list: z.array(z.string()).nullish(),
+  permission: z.enum(['all_team_members', 'only_me', 'partial_members']),
+  pipeline_id: z.string().nullable(),
+  provider: z.string(),
+  retrieval_model_dict: zDatasetRetrievalModelResponse,
+  runtime_mode: z.enum(['general', 'rag_pipeline']).nullable(),
+  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
+  tags: z.array(zDatasetTagResponse),
+  total_available_documents: z.int(),
+  total_documents: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
+/**
+ * DatasetListResponse
+ */
+export const zDatasetListResponse = z.object({
+  data: z.array(zDatasetDetailResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * RetrieverResource
  */
 export const zRetrieverResource = z.object({
@@ -1762,17 +2167,22 @@ export const zRetrieverResource = z.object({
   data_source_type: z.string().nullish(),
   dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
+  doc_metadata: z.record(z.string(), zJsonValueType).nullish(),
   document_id: z.uuid().nullish(),
   document_name: z.string().nullish(),
+  files: z.array(z.record(z.string(), zJsonValueType)).nullish(),
   hit_count: z.int().nullish(),
   id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
   message_id: z.uuid().optional(),
+  page: z.int().nullish(),
   position: z.int(),
+  retriever_from: z.string().nullish(),
   score: z.number().nullish(),
   segment_id: z.uuid().nullish(),
   segment_position: z.int().nullish(),
   summary: z.string().nullish(),
+  title: z.string().nullish(),
   word_count: z.int().nullish(),
 })
 
@@ -1846,7 +2256,7 @@ export const zSegmentResponse = z.object({
   keywords: z.array(z.string()).nullable(),
   position: z.int(),
   sign_content: z.string(),
-  status: z.string(),
+  status: z.enum(['completed', 'error', 'indexing', 'paused', 're_segment', 'waiting']),
   stopped_at: z.int().nullable(),
   summary: z.string().nullable(),
   tokens: z.int(),
@@ -1945,7 +2355,7 @@ export const zSimpleAccountResponse = z.object({
 export const zSimpleConversation = z.object({
   created_at: z.int().nullish(),
   id: z.uuid(),
-  inputs: z.record(z.string(), zJsonValue),
+  inputs: z.record(z.string(), zAnyJsonValue),
   introduction: z.string().nullish(),
   name: z.string(),
   status: z.string(),
@@ -2013,6 +2423,18 @@ export const zSite = z.object({
   title: z.string(),
   use_icon_as_answer_icon: z.boolean(),
 })
+
+/**
+ * SpeechToTextDisabledError
+ *
+ * Speech to text is disabled.
+ */
+export const zSpeechToTextDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('speech_to_text_disabled'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * SystemParameters
@@ -2437,6 +2859,18 @@ export const zTextToAudioPayloadWithUser = z.object({
 })
 
 /**
+ * TooManyFilesError
+ *
+ * Only one file is allowed.
+ */
+export const zTooManyFilesError = zErrorResponse.and(
+  z.object({
+    code: z.literal('too_many_files'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ToolIcon
  */
 export const zToolIcon = z.object({
@@ -2450,6 +2884,42 @@ export const zToolIcon = z.object({
 export const zAppMetaResponse = z.object({
   tool_icons: z.record(z.string(), z.union([z.string(), zToolIcon])).optional(),
 })
+
+/**
+ * TriggerWorkflowServiceModeUnavailableError
+ *
+ * This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
+ */
+export const zTriggerWorkflowServiceModeUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_workflow_service_mode_unavailable'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * UnsupportedAudioTypeError
+ *
+ * Audio type not allowed.
+ */
+export const zUnsupportedAudioTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_audio_type'),
+    status: z.literal(415),
+  }),
+)
+
+/**
+ * UnsupportedFileTypeError
+ *
+ * File type not allowed.
+ */
+export const zUnsupportedFileTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_file_type'),
+    status: z.literal(415),
+  }),
+)
 
 /**
  * UrlResponse
@@ -2521,10 +2991,10 @@ export const zParagraphInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
 ])
 
 /**
@@ -3053,6 +3523,18 @@ export const zWorkflowRunResponse = z.object({
 export const zWorkflowTaskStopPayload = z.object({
   user: z.string(),
 })
+
+/**
+ * WorkflowVersionExecutionNotAllowedError
+ *
+ * Workflow version execution is not available on your current plan. Please upgrade to a paid plan.
+ */
+export const zWorkflowVersionExecutionNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_version_execution_not_allowed'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * HumanInputFormSubmitResponse

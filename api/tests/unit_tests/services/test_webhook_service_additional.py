@@ -162,7 +162,7 @@ class TestWebhookServiceValidationAndConversion:
         ("raw_value", "param_type", "expected"),
         [
             ("42", SegmentType.NUMBER, 42),
-            ("3.14", SegmentType.NUMBER, 3.14),
+            ("3.14", SegmentType.NUMBER, float("3.14")),
             ("yes", SegmentType.BOOLEAN, True),
             ("no", SegmentType.BOOLEAN, False),
         ],

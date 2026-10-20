@@ -72,13 +72,13 @@ class Tool(ABC):
         match result:
             case ToolInvokeMessage():
 
-                def single_generator() -> Generator[ToolInvokeMessage, None, None]:
+                def single_generator() -> Generator[ToolInvokeMessage]:
                     yield result
 
                 return single_generator()
             case list():
 
-                def generator() -> Generator[ToolInvokeMessage, None, None]:
+                def generator() -> Generator[ToolInvokeMessage]:
                     yield from result
 
                 return generator()
@@ -106,7 +106,7 @@ class Tool(ABC):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
+    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage]:
         pass
 
     def get_runtime_parameters(

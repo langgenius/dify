@@ -2,7 +2,7 @@ import pytest
 from yarl import URL
 
 
-def test_yarl_urls():
+def test_yarl_urls() -> None:
     expected_1 = "https://dify.ai/api"
     assert str(URL("https://dify.ai") / "api") == expected_1
     assert str(URL("https://dify.ai/") / "api") == expected_1
@@ -24,6 +24,6 @@ def test_yarl_urls():
     expected_5 = "/api"
     assert str(URL("/") / "api") == expected_5
 
-    with pytest.raises(ValueError) as e1:
+    with pytest.raises(ValueError, match="Appending path '/api' starting from slash is forbidden") as e1:
         str(URL("https://dify.ai") / "/api")
     assert str(e1.value) == "Appending path '/api' starting from slash is forbidden"

@@ -1,169 +1,53 @@
-import type {
-  ModelParameterRule,
-  ModelProvider,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { AccessControlTemplateLanguage } from '@/i18n/language'
-import type {
-  CodeBasedExtension,
-  CommonResponse,
-  FileUploadConfigResponse,
-  Member,
-  StructuredOutputRulesRequestBody,
-  StructuredOutputRulesResponse,
-} from '@/models/common'
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { CommonResponse } from '@/models/common'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
+import { resetUser } from '@/app/components/base/amplitude/utils'
+import { clearPageLeaveGuards, confirmPageLeave } from '@/utils/page-leave-guard'
+import { basePath } from '@/utils/var'
 // oxlint-disable-next-line no-restricted-imports
-import { get, post } from './base'
+import { post } from './base'
+import { consoleQuery } from './console'
 
 const NAME_SPACE = 'common'
 
-export const commonQueryKeys = {
-  fileUploadConfig: [NAME_SPACE, 'file-upload-config'] as const,
-  members: [NAME_SPACE, 'members'] as const,
-  filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
-  schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
-  modelProviders: [NAME_SPACE, 'model-providers'] as const,
-  modelProviderDetails: [NAME_SPACE, 'model-provider-details'] as const,
-  defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
-  accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
-  notionConnection: [NAME_SPACE, 'notion-connection'] as const,
-  codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
-  invitationCheck: (params?: { workspace_id?: string; email?: string; token?: string }) =>
-    [
-      NAME_SPACE,
-      'invitation-check',
-      params?.workspace_id ?? '',
-      params?.email ?? '',
-      params?.token ?? '',
-    ] as const,
-  notionBinding: (code?: string | null) => [NAME_SPACE, 'notion-binding', code] as const,
-  modelParameterRules: (provider?: string, model?: string) =>
-    [NAME_SPACE, 'model-parameter-rules', provider, model] as const,
-  langGeniusVersion: (currentVersion?: string | null) =>
-    [NAME_SPACE, 'langgenius-version', currentVersion] as const,
+const commonQueryKeys = {
   forgotPasswordValidity: (token?: string | null) =>
     [NAME_SPACE, 'forgot-password-validity', token] as const,
-  dataSourceIntegrates: [NAME_SPACE, 'data-source-integrates'] as const,
 }
 
-export const useFileUploadConfig = () => {
-  return useQuery<FileUploadConfigResponse>({
-    queryKey: commonQueryKeys.fileUploadConfig,
-    queryFn: () => get<FileUploadConfigResponse>('/files/upload'),
-  })
-}
-
-export const useGenerateStructuredOutputRules = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'generate-structured-output-rules'],
-    mutationFn: (body: StructuredOutputRulesRequestBody) => {
-      return post<StructuredOutputRulesResponse>('/rule-structured-output-generate', { body })
-    },
-  })
-}
-
-export type MailSendResponse = { data: string; result: string }
-export const useSendMail = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'mail-send'],
-    mutationFn: (body: { email: string; language: string }) => {
-      return post<MailSendResponse>('/email-register/send-email', { body })
-    },
-  })
-}
-
-export type MailValidityResponse = { is_valid: boolean; token: string }
-
-export const useMailValidity = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'mail-validity'],
-    mutationFn: (body: { email: string; code: string; token: string }) => {
-      return post<MailValidityResponse>('/email-register/validity', { body })
-    },
-  })
-}
-
-export type MailRegisterResponse = { result: string; data: Record<string, never> }
-
-export const useMailRegister = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'mail-register'],
-    mutationFn: (body: {
-      token: string
-      new_password: string
-      password_confirm: string
-      language?: string
-      timezone?: string
-    }) => {
-      return post<MailRegisterResponse>('/email-register', { body })
-    },
-  })
-}
-
-type MemberResponse = {
-  accounts: Member[] | null
-}
-
-export const useMembers = (language?: AccessControlTemplateLanguage) => {
-  return useQuery<MemberResponse>({
-    queryKey: [...commonQueryKeys.members, language],
-    queryFn: () =>
-      get<MemberResponse>('/workspaces/current/members', {
-        params: {
-          language,
-        },
-      }),
-  })
-}
-
-type FilePreviewResponse = {
-  content: string
-}
-
-export const useFilePreview = (fileID: string) => {
-  return useQuery<FilePreviewResponse>({
-    queryKey: commonQueryKeys.filePreview(fileID),
-    queryFn: () => get<FilePreviewResponse>(`/files/${fileID}/preview`),
-    enabled: !!fileID,
-  })
-}
-
-export type SchemaTypeDefinition = {
-  name: string
-  schema: {
-    properties: Record<string, unknown>
-  }
-}
-
-export const useSchemaTypeDefinitions = () => {
-  return useQuery<SchemaTypeDefinition[]>({
-    queryKey: commonQueryKeys.schemaDefinitions,
-    queryFn: () => get<SchemaTypeDefinition[]>('/spec/schema-definitions'),
-  })
-}
-
-export const useLogout = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'logout'],
-    mutationFn: () => post('/logout'),
-    onSuccess: () => {
-      discardRegistrationSessionState()
-      // Drop all cached queries so the post-logout /signin probe doesn't read
-      // the previous user's profile (the userProfile queryKey is shared with
-      // the (commonLayout) tree, which keeps observing it during React's
-      // concurrent transition — gcTime: 0 is not enough on its own).
-      // Nuclear over targeted: every new user-scoped query would otherwise
-      // need to be remembered here. systemFeatures (user-agnostic) just
-      // refetches once on the way to /signin, which is cheap.
-      queryClient.clear()
-    },
-  })
+export const useLogout = ({ redirectTo = '/signin' }: { redirectTo?: string } = {}) => {
+  return useMutation(
+    consoleQuery.logout.post.mutationOptions({
+      onMutate: () => {
+        // A cancelled native beforeunload prompt would otherwise leave this document
+        // alive after the server has logged out. Obtain consent before ending the session.
+        if (!confirmPageLeave()) throw new Error('Logout cancelled')
+      },
+      onSuccess: () => {
+        // Registration markers and Analytics identity can survive a page reload,
+        // so clear them explicitly after the server has ended the session.
+        discardRegistrationSessionState()
+        resetUser()
+        // Client-side navigation keeps root providers and account-scoped stores alive.
+        // QueryClient.clear() alone is insufficient: atomWithQuery caches observers
+        // that can remain attached to removed Query instances and expose old results
+        // when another account signs in with the same query keys (see #42809).
+        // Replace the document to recreate all stores and observers for the next
+        // session, without maintaining a reset dependency on every account-scoped atom.
+        // Native navigation needs the deployment base path added explicitly; redirectTo
+        // also preserves flow-specific sign-in parameters such as the OAuth return URL.
+        // Consent was obtained before the request. Keep guards on failure, but remove
+        // them on success so the browser cannot cancel the required document reset.
+        clearPageLeaveGuards()
+        window.location.replace(`${basePath}${redirectTo}`)
+      },
+    }),
+  )
 }
 
 type ForgotPasswordValidity = CommonResponse & { is_valid: boolean; email: string; token: string }
+// Not migrated to the console contract: the endpoint requires `email` and `code`, which the
+// token-only reset link flow does not have, so this request cannot succeed as written.
 export const useVerifyForgotPasswordToken = (token?: string | null) => {
   return useQuery<ForgotPasswordValidity>({
     queryKey: commonQueryKeys.forgotPasswordValidity(token),
@@ -172,81 +56,5 @@ export const useVerifyForgotPasswordToken = (token?: string | null) => {
     staleTime: 0,
     gcTime: 0,
     retry: false,
-  })
-}
-
-type OneMoreStepPayload = {
-  invitation_code: string
-  interface_language: string
-  timezone: string
-}
-export const useOneMoreStep = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'one-more-step'],
-    mutationFn: (body: OneMoreStepPayload) => post<CommonResponse>('/account/init', { body }),
-  })
-}
-
-export const modelProviderDetailsQueryOptions = () =>
-  queryOptions({
-    queryKey: commonQueryKeys.modelProviderDetails,
-    queryFn: () => get<{ data: ModelProvider[] }>('/workspaces/current/model-providers'),
-  })
-
-export const useModelProviderDetails = (enabled = true) => {
-  return useQuery({
-    ...modelProviderDetailsQueryOptions(),
-    enabled,
-  })
-}
-
-export const useCodeBasedExtensions = (module: string) => {
-  return useQuery<CodeBasedExtension>({
-    queryKey: commonQueryKeys.codeBasedExtensions(module),
-    queryFn: () => get<CodeBasedExtension>(`/code-based-extension?module=${module}`),
-  })
-}
-
-export const useInvitationCheck = (
-  params?: { workspace_id?: string; email?: string; token?: string },
-  enabled?: boolean,
-) => {
-  return useQuery({
-    queryKey: commonQueryKeys.invitationCheck(params),
-    queryFn: () =>
-      get<{
-        is_valid: boolean
-        data: {
-          workspace_name: string
-          email: string
-          workspace_id: string
-          account_status?: string
-          requires_setup?: boolean
-        }
-        result: string
-      }>('/activate/check', { params }),
-    enabled: enabled ?? !!params?.token,
-    retry: false,
-  })
-}
-
-export const useNotionBinding = (code?: string | null, enabled?: boolean) => {
-  return useQuery({
-    queryKey: commonQueryKeys.notionBinding(code),
-    queryFn: () =>
-      get<{ result: string }>('/oauth/data-source/binding/notion', { params: { code } }),
-    enabled: !!code && (enabled ?? true),
-  })
-}
-
-export const useModelParameterRules = (provider?: string, model?: string, enabled?: boolean) => {
-  return useQuery<{ data: ModelParameterRule[] }>({
-    queryKey: commonQueryKeys.modelParameterRules(provider, model),
-    queryFn: () =>
-      get<{ data: ModelParameterRule[] }>(
-        `/workspaces/current/model-providers/${provider}/models/parameter-rules`,
-        { params: { model }, silent: true },
-      ),
-    enabled: !!provider && !!model && (enabled ?? true),
   })
 }

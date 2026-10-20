@@ -37,6 +37,7 @@ import { rag } from './rag/orpc.gen.ts'
 import { refreshToken } from './refresh-token/orpc.gen.ts'
 import { remoteFiles } from './remote-files/orpc.gen.ts'
 import { resetPassword } from './reset-password/orpc.gen.ts'
+import { resourceAccessTokens } from './resource-access-tokens/orpc.gen.ts'
 import { ruleCodeGenerate } from './rule-code-generate/orpc.gen.ts'
 import { ruleGenerate } from './rule-generate/orpc.gen.ts'
 import { ruleStructuredOutputGenerate } from './rule-structured-output-generate/orpc.gen.ts'
@@ -92,6 +93,7 @@ const communityContract = {
   refreshToken,
   remoteFiles,
   resetPassword,
+  resourceAccessTokens,
   ruleCodeGenerate,
   ruleGenerate,
   ruleStructuredOutputGenerate,

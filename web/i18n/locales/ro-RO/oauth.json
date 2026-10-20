@@ -1,4 +1,8 @@
 {
+  "callback.error": "Autorizarea a eșuat",
+  "callback.errorHint": "Reveniți la pagina anterioară și încercați din nou.",
+  "callback.success": "Autorizare finalizată",
+  "callback.successHint": "Acum puteți închide această filă și reveni la pagina anterioară.",
   "connect": "Conectează la",
   "continue": "Continuați",
   "error.authAppInfoFetchFailed": "Nu s-au putut obține informațiile aplicației pentru autorizare",

@@ -1,4 +1,5 @@
-import type { FetchOptionType, ResponseError } from './fetch'
+import type { FetchOptionType } from './fetch'
+import type { RequestGuard } from './request-guard'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -28,6 +29,7 @@ import type {
   WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import Cookies from 'js-cookie'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
 import { toast } from '@/app/notifications'
@@ -44,7 +46,9 @@ import { isClient } from '@/utils/client'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
+import { httpErrorFromXhr, isHttpErrorStatus, isTransientHttpError } from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
+import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import {
   beginWebAppAuthorizationRecovery,
@@ -55,11 +59,14 @@ import {
 
 const TIME_OUT = 100000
 
+const canRecoverWebAppAuthorization = (guard: RequestGuard | undefined) =>
+  guard?.isActive() !== false
+
 const isWebAppAuthorizationEndpoint = (url: string) =>
   /\/(?:login(?:\/|\?|$)|passport(?:\?|$))/.test(url)
 
 const recoverEnvironmentWebAppAuthorization = (
-  error: { code?: string | number; message?: string; reason?: string },
+  error: { code?: string | number; message?: string; reason?: unknown },
   url?: string,
 ) => {
   const address = resolveWebAppAddress()
@@ -81,7 +88,7 @@ const recoverEnvironmentWebAppAuthorization = (
 }
 
 const handleWebAppAuthorizationError = (
-  error: { code?: string | number; message?: string; reason?: string },
+  error: { code?: string | number; message?: string; reason?: unknown },
   url?: string,
 ) => {
   if (
@@ -150,17 +157,51 @@ const reportStreamResponseError = async (
   }
 }
 
+const handleGuardedStreamResponseError = async (
+  response: Response,
+  guard: RequestGuard | undefined,
+  onError: IOnError | undefined,
+  onCompleted: IOnCompleted | undefined,
+) => {
+  if (!guard) return false
+  const data = await response
+    .clone()
+    .json()
+    .catch(() => undefined)
+  if (!guard.handleError(response.status, data, response) && canRecoverWebAppAuthorization(guard))
+    return false
+  const message =
+    typeof data?.message === 'string' ? data.message : 'The request is no longer active.'
+  if (onError) onError(message, typeof data?.code === 'string' ? data.code : undefined)
+  else onCompleted?.(true, message)
+  return true
+}
+
 const handlePublicStreamResponseError = async (
   response: Response,
   onError: IOnError | undefined,
   onNotifyError: IOnError | undefined,
   silent: boolean | undefined,
+  requestGuard: RequestGuard | undefined,
+  onCompleted: IOnCompleted | undefined,
 ) => {
-  let data: { code?: string; message?: string; reason?: string } | undefined
+  let data: { code?: string; message?: string; reason?: unknown } | undefined
   try {
     data = (await response.clone().json()) as typeof data
   } catch {}
 
+  if (data && requestGuard?.handleError(response.status, data, response)) {
+    const message = data.message || 'Server Error'
+    if (onError) onError(message, data.code)
+    else onCompleted?.(true, message)
+    return
+  }
+  if (!canRecoverWebAppAuthorization(requestGuard)) {
+    const message = data?.message || 'Server Error'
+    if (onError) onError(message, typeof data?.code === 'string' ? data.code : undefined)
+    else onCompleted?.(true, message)
+    return
+  }
   if (data) {
     if (handleWebAppAuthorizationError(data)) return
     if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized') {
@@ -428,8 +469,10 @@ export const handleStream = (
         }
         buffer += decoder.decode(result.value, { stream: true })
         const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
         try {
           lines.forEach((message) => {
+            if (hasError) return
             if (message.startsWith('data: ')) {
               // check if it starts with data:
               try {
@@ -551,7 +594,6 @@ export const handleStream = (
               }
             }
           })
-          buffer = lines[lines.length - 1]!
         } catch (e) {
           onData('', false, {
             conversationId: undefined,
@@ -588,12 +630,19 @@ type UploadResponse = {
   [key: string]: unknown
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const upload = async (
   options: UploadOptions,
   isPublicAPI?: boolean,
   url?: string,
   searchParams?: string,
 ): Promise<UploadResponse> => {
+  const requestGuard = captureRequestGuard(
+    options.url || url || '/files/upload',
+    isPublicAPI,
+    options.method || 'POST',
+  )
+  requestGuard?.beforeRequest()
   const address = resolveWebAppAddress()
   const shareCode = address?.code
   const publicApiPrefix = PUBLIC_API_PREFIX
@@ -625,9 +674,18 @@ export const upload = async (
     xhr.withCredentials = true
     xhr.responseType = 'json'
     xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4) {
-        if (xhr.status === 201) resolve(xhr.response)
+      if (xhr.readyState === 4 && xhr.status !== 0) {
+        if (!isHttpErrorStatus(xhr.status)) resolve(xhr.response)
         else {
+          const error = httpErrorFromXhr(xhr)
+          if (requestGuard?.handleError(xhr.status, xhr.response, error)) {
+            reject(error)
+            return
+          }
+          if (isPublicAPI && !canRecoverWebAppAuthorization(requestGuard)) {
+            reject(new DOMException('The upload is no longer active.', 'AbortError'))
+            return
+          }
           if (
             isPublicAPI &&
             (xhr.status === 401 || xhr.status === 403) &&
@@ -635,15 +693,19 @@ export const upload = async (
             xhr.response !== null
           )
             handleWebAppAuthorizationError(xhr.response)
-          reject(xhr)
+          reject(error)
         }
       }
     }
+    xhr.onerror = () => reject(new TypeError('Failed to fetch'))
+    xhr.onabort = () => reject(new DOMException('The operation was aborted.', 'AbortError'))
+    xhr.ontimeout = () => reject(new DOMException('The operation timed out.', 'TimeoutError'))
     if (mergedOptions.onprogress) xhr.upload.onprogress = mergedOptions.onprogress
     xhr.send(mergedOptions.data)
   })
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const ssePost = async (
   url: string,
   fetchOptions: FetchOptionType,
@@ -689,6 +751,11 @@ export const ssePost = async (
     onUnhandledEvent,
     silent,
   } = otherOptions
+  const requestGuard = captureRequestGuard(url, isPublicAPI, 'POST')
+  if (requestGuard?.isActive() === false) {
+    onCompleted?.(true, 'The request is no longer active.')
+    return
+  }
   const abortController = new AbortController()
 
   // No need to get token from localStorage, cookies will be sent automatically
@@ -711,8 +778,8 @@ export const ssePost = async (
   )
   options.headers = new Headers(options.headers)
 
-  const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
+  const contentType = options.headers.get('Content-Type')
+  if (!contentType) options.headers.set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
@@ -723,11 +790,19 @@ export const ssePost = async (
 
   globalThis
     .fetch(urlWithPrefix, options as RequestInit)
-    .then((res) => {
+    .then(async (res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
+        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
+            void handlePublicStreamResponseError(
+              res,
+              onError,
+              onNotifyError,
+              silent,
+              requestGuard,
+              onCompleted,
+            )
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
@@ -805,6 +880,7 @@ export const ssePost = async (
     })
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const sseGet = async (
   url: string,
   fetchOptions: FetchOptionType,
@@ -850,6 +926,11 @@ export const sseGet = async (
     onUnhandledEvent,
     silent,
   } = otherOptions
+  const requestGuard = captureRequestGuard(url, isPublicAPI, 'GET')
+  if (requestGuard?.isActive() === false) {
+    onCompleted?.(true, 'The request is no longer active.')
+    return
+  }
   const abortController = new AbortController()
 
   const baseOptions = getBaseOptions()
@@ -869,8 +950,8 @@ export const sseGet = async (
   )
   options.headers = new Headers(options.headers)
 
-  const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
+  const contentType = options.headers.get('Content-Type')
+  if (!contentType) options.headers.set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
@@ -878,11 +959,19 @@ export const sseGet = async (
 
   globalThis
     .fetch(urlWithPrefix, options as RequestInit)
-    .then((res) => {
+    .then(async (res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
+        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
+            void handlePublicStreamResponseError(
+              res,
+              onError,
+              onNotifyError,
+              silent,
+              requestGuard,
+              onCompleted,
+            )
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
@@ -978,6 +1067,7 @@ export type GeneratorStreamCallbacks = {
  * positional callbacks through that shared, high-blast-radius path isn't worth
  * it. This helper reuses the same cookie-auth + CSRF + abort setup but
  * only understands the generator's two events: ``plan`` then ``result``.
+ * @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception.
  */
 export const sseGeneratorPost = (
   url: string,
@@ -1007,7 +1097,7 @@ export const sseGeneratorPost = (
   }
 
   globalThis
-    .fetch(urlWithPrefix, options as RequestInit)
+    .fetch(urlWithPrefix, options)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
@@ -1068,30 +1158,43 @@ export const sseGeneratorPost = (
 }
 
 // base request
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
     const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
+    const requestGuard = captureRequestGuard(
+      url,
+      isPublicAPI,
+      otherOptions?.request?.method || (options as RequestInit).method,
+    )
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
     if (err === null) {
       const address = resolveWebAppAddress()
-      if (isPublicAPI && address?.kind === 'environment' && !isWebAppAuthorizationEndpoint(url))
+      if (
+        isPublicAPI &&
+        canRecoverWebAppAuthorization(requestGuard) &&
+        address?.kind === 'environment' &&
+        !isWebAppAuthorizationEndpoint(url)
+      )
         completeWebAppAuthorizationRecovery(address)
       return resp
     }
-    const errResp: Response = err as any
-    if (errResp.status === 401 || (errResp.status === 403 && isPublicAPI)) {
+    if (err instanceof ORPCError && requestGuard?.handleError(err.status, err.data, err))
+      return Promise.reject(err)
+    if (requestGuard?.isActive() === false) return Promise.reject(err)
+    if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
       if (!isClient) return Promise.reject(err)
 
-      const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      if (parseErr) {
-        if (errResp.status === 401) {
+      const errRespData = { code: err.code, message: err.message, reason: err.data?.reason }
+      if (!err.data) {
+        if (err.status === 401) {
           discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
           window.location.href = buildSigninUrlWithRedirect()
         }
         return Promise.reject(err)
       }
-      if (/\/login/.test(url)) return Promise.reject(errRespData)
+      if (/\/login/.test(url)) return Promise.reject(err)
       if (handleWebAppAuthorizationError(errRespData, url)) return Promise.reject(err)
       // special code
       const { code, message } = errRespData
@@ -1099,7 +1202,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (errResp.status === 403) return Promise.reject(err)
+      if (err.status === 403) return Promise.reject(err)
       if (code === 'unauthorized_and_force_logout') {
         // Cookies will be cleared by the backend
         discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
@@ -1126,6 +1229,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // refresh token
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null) return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      // Preserve the transient failure so callers can retry instead of treating the session as ended.
+      if (isTransientHttpError(refreshErr)) return Promise.reject(refreshErr)
       // /device is the device-flow chooser; logged-out is a valid state
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
@@ -1162,11 +1267,13 @@ export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) 
 }
 
 // For public API
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
 // For Marketplace API
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
@@ -1182,22 +1289,14 @@ export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions)
 }
 
 // For Marketplace API
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const postMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return post<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
-}
-
-/**
- * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
- * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
- * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
- * flows such as public APIs, marketplace APIs, streaming, upload, or download.
- */
-export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
 }
 
 /**
@@ -1210,6 +1309,7 @@ export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) 
   return request<T>(url, Object.assign({}, options, { method: 'DELETE' }), otherOptions)
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const delPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return del<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
@@ -1224,6 +1324,7 @@ export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions
   return request<T>(url, Object.assign({}, options, { method: 'PATCH' }), otherOptions)
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const patchPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return patch<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }

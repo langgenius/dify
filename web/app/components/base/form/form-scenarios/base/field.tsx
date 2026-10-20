@@ -5,7 +5,7 @@ import { withForm } from '../..'
 import { BaseFieldType } from './types'
 
 type BaseFieldProps = {
-  initialData?: Record<string, any>
+  initialData?: Record<string, unknown>
   config: BaseConfiguration
 }
 
@@ -38,7 +38,7 @@ const BaseField = ({ initialData, config }: BaseFieldProps) =>
         if (!showConditions.length) return true
         return showConditions.every((condition) => {
           const { variable, value } = condition
-          const fieldValue = fieldValues[variable as keyof typeof fieldValues]
+          const fieldValue = fieldValues[variable]
           return fieldValue === value
         })
       })

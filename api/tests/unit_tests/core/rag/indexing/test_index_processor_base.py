@@ -24,9 +24,14 @@ from models.tools import ToolFile
 from tests.unit_tests.config_override import config_overrides_context
 
 
-def _upload(*, upload_id: str, name: str) -> UploadFile:
+def _upload(
+    *,
+    upload_id: str,
+    name: str,
+    tenant_id: str = "tenant-1",
+) -> UploadFile:
     upload = UploadFile(
-        tenant_id=str(uuid4()),
+        tenant_id=tenant_id,
         storage_type=StorageType.LOCAL,
         key=f"uploads/{name}",
         name=name,
@@ -42,8 +47,8 @@ def _upload(*, upload_id: str, name: str) -> UploadFile:
     return upload
 
 
-def _persist_upload(session: Session, *, upload_id: str, name: str) -> UploadFile:
-    upload = _upload(upload_id=upload_id, name=name)
+def _persist_upload(session: Session, *, upload_id: str, name: str, tenant_id: str = "tenant-1") -> UploadFile:
+    upload = _upload(upload_id=upload_id, name=name, tenant_id=tenant_id)
     session.add(upload)
     return upload
 
@@ -170,7 +175,7 @@ class TestBaseIndexProcessor:
         self, processor: _ForwardingBaseIndexProcessor, unbound_session: Session
     ) -> None:
         document = Document(page_content="no image markdown", metadata={"document_id": "doc-1", "dataset_id": "ds-1"})
-        assert processor._get_content_files(document, session=unbound_session) == []
+        assert processor._get_content_files(document, tenant_id="tenant-1", session=unbound_session) == []
 
     def test_get_content_files_handles_all_sources_and_duplicates(
         self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session
@@ -195,7 +200,12 @@ class TestBaseIndexProcessor:
             patch.object(processor, "_download_tool_file", return_value=tool_upload.id) as mock_tool_download,
             patch.object(processor, "_download_image", return_value=remote_upload.id) as mock_image_download,
         ):
-            files = processor._get_content_files(document, current_user=current_user, session=sqlite_session)
+            files = processor._get_content_files(
+                document,
+                current_user=current_user,
+                tenant_id="tenant-1",
+                session=sqlite_session,
+            )
 
         assert len(files) == 5
         assert all(isinstance(file, AttachmentDocument) for file in files)
@@ -207,6 +217,7 @@ class TestBaseIndexProcessor:
         mock_tool_download.assert_called_once_with(
             "cccccccc-cccc-cccc-cccc-cccccccccccc",
             current_user,
+            tenant_id="tenant-1",
             session=sqlite_session,
         )
         mock_image_download.assert_called_once()
@@ -218,7 +229,12 @@ class TestBaseIndexProcessor:
         images = ["/files/tools/cccccccc-cccc-cccc-cccc-cccccccccccc.png", "https://example.com/remote.png"]
 
         with patch.object(processor, "_extract_markdown_images", return_value=images):
-            files = processor._get_content_files(document, current_user=None, session=unbound_session)
+            files = processor._get_content_files(
+                document,
+                current_user=None,
+                tenant_id="tenant-1",
+                session=unbound_session,
+            )
 
         assert files == []
 
@@ -238,7 +254,9 @@ class TestBaseIndexProcessor:
             patch.object(processor, "_extract_markdown_images", return_value=images),
             patch.object(processor, "_download_image") as mock_image_download,
         ):
-            files = processor._get_content_files(document, current_user=Mock(), session=unbound_session)
+            files = processor._get_content_files(
+                document, current_user=_account(), tenant_id="tenant-1", session=unbound_session
+            )
 
         assert files == []
         mock_image_download.assert_not_called()
@@ -251,22 +269,53 @@ class TestBaseIndexProcessor:
         with (
             patch.object(processor, "_extract_markdown_images", return_value=images),
         ):
-            files = processor._get_content_files(document, session=sqlite_session)
+            files = processor._get_content_files(document, tenant_id="tenant-1", session=sqlite_session)
 
         assert files == []
 
+    def test_get_content_files_ignores_upload_from_another_tenant(
+        self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session
+    ) -> None:
+        upload_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        _persist_upload(sqlite_session, upload_id=upload_id, name="foreign.png", tenant_id="tenant-2")
+        sqlite_session.commit()
+        document = Document(
+            page_content=f"![foreign](/files/{upload_id}/file-preview)",
+            metadata={"document_id": "doc-1", "dataset_id": "ds-1"},
+        )
+
+        files = processor._get_content_files(document, tenant_id="tenant-1", session=sqlite_session)
+
+        assert files == []
+
+    @pytest.mark.parametrize(
+        ("content_disposition", "expected_filename"),
+        [
+            ("attachment; filename=test-image.png", "test-image.png"),
+            ('attachment; filename="test image.png"', "test image.png"),
+            ('attachment; filename="chart%20final.png"', "chart%20final.png"),
+            ("attachment; filename*=UTF-8''%E4%B8%AD%E6%96%87.png", "中文.png"),
+            ("attachment; filename*=UTF-8''chart%20final.png", "chart final.png"),
+            ("attachment; filename*=UTF-8''chart%2520final.png", "chart%20final.png"),
+        ],
+    )
     def test_download_image_success_with_filename_from_content_disposition(
-        self, processor: _ForwardingBaseIndexProcessor, sqlite_engine: Engine
+        self,
+        processor: _ForwardingBaseIndexProcessor,
+        sqlite_engine: Engine,
+        content_disposition: str,
+        expected_filename: str,
     ) -> None:
         response = Mock()
         response.headers = {
             "Content-Length": "4",
-            "content-disposition": "attachment; filename=test-image.png",
+            "content-disposition": content_disposition,
             "content-type": "image/png",
         }
         response.raise_for_status.return_value = None
         response.iter_bytes.return_value = [b"data"]
-        upload_result = _upload(upload_id=str(uuid4()), name="test-image.png")
+        upload_result = _upload(upload_id=str(uuid4()), name=expected_filename)
+        current_user = _account()
 
         with (
             patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response),
@@ -277,10 +326,15 @@ class TestBaseIndexProcessor:
             patch("services.file_service.FileService") as mock_file_service,
         ):
             mock_file_service.return_value.upload_file.return_value = upload_result
-            upload_id = processor._download_image("https://example.com/test.png", current_user=_account())
+            upload_id = processor._download_image("https://example.com/test.png", current_user=current_user)
 
         assert upload_id == upload_result.id
-        mock_file_service.return_value.upload_file.assert_called_once()
+        mock_file_service.return_value.upload_file.assert_called_once_with(
+            filename=expected_filename,
+            content=b"data",
+            mimetype="image/png",
+            user=current_user,
+        )
 
     def test_download_image_validates_size_and_empty_content(self, processor: _ForwardingBaseIndexProcessor) -> None:
         too_large = Mock()
@@ -333,7 +387,15 @@ class TestBaseIndexProcessor:
     def test_download_tool_file_returns_none_when_not_found(
         self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session
     ) -> None:
-        assert processor._download_tool_file(str(uuid4()), current_user=_account(), session=sqlite_session) is None
+        assert (
+            processor._download_tool_file(
+                str(uuid4()),
+                current_user=_account(),
+                tenant_id="tenant-1",
+                session=sqlite_session,
+            )
+            is None
+        )
 
     def test_download_tool_file_uploads_file_when_found(
         self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session, sqlite_engine: Engine
@@ -360,8 +422,39 @@ class TestBaseIndexProcessor:
             patch("services.file_service.FileService") as mock_file_service,
         ):
             mock_file_service.return_value.upload_file.return_value = upload_result
-            result = processor._download_tool_file(tool_file.id, current_user=_account(), session=sqlite_session)
+            result = processor._download_tool_file(
+                tool_file.id,
+                current_user=_account(),
+                tenant_id=tool_file.tenant_id,
+                session=sqlite_session,
+            )
 
         assert result == upload_result.id
         mock_load.assert_called_once_with("k1")
         mock_file_service.return_value.upload_file.assert_called_once()
+
+    def test_download_tool_file_rejects_file_from_another_tenant(
+        self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session
+    ) -> None:
+        tool_file = ToolFile(
+            user_id=str(uuid4()),
+            tenant_id="tenant-2",
+            conversation_id=None,
+            file_key="foreign-key",
+            mimetype="image/png",
+            name="foreign.png",
+            size=4,
+        )
+        sqlite_session.add(tool_file)
+        sqlite_session.commit()
+
+        with patch("core.rag.index_processor.index_processor_base.storage.load_once") as mock_load:
+            result = processor._download_tool_file(
+                tool_file.id,
+                current_user=_account(),
+                tenant_id="tenant-1",
+                session=sqlite_session,
+            )
+
+        assert result is None
+        mock_load.assert_not_called()

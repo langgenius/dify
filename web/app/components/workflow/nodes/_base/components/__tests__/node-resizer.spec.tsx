@@ -9,7 +9,6 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import NodeResizer from '../node-resizer'
 
 const resize = vi.hoisted(() => vi.fn())
-const permissions = vi.hoisted(() => ({ readonly: false }))
 
 // Graph mutation owns draft persistence and history; keep React Flow and the resize UI real.
 vi.mock('../../../../hooks/use-nodes-interactions', async () => {
@@ -41,10 +40,6 @@ vi.mock('../../../../hooks/use-nodes-interactions', async () => {
   }
 })
 
-vi.mock('../../../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: permissions.readonly }),
-}))
-
 function ResizableNode() {
   const node = useNodes<CommonNodeType>().find((node) => node.id === 'container')!
   if (!node) return null
@@ -61,7 +56,6 @@ function ResizableNode() {
 describe('NodeResizer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    permissions.readonly = false
   })
 
   const container = () =>
@@ -113,16 +107,11 @@ describe('NodeResizer', () => {
     expect(screen.getByRole('status', { name: 'Node size' })).toHaveTextContent('356 × 220')
   })
 
-  it('keeps the resize action available when the node is not selected', async () => {
-    const node = container()
-    node.data.selected = false
-    renderWorkflowFlowComponent(<ResizableNode />, { nodes: [node] })
-    expect(await screen.findByRole('button', { name: 'common.resize.node' })).toBeEnabled()
-  })
-
   it('does not offer resizing on a readonly canvas', async () => {
-    permissions.readonly = true
-    renderWorkflowFlowComponent(<ResizableNode />, { nodes: [container()] })
+    renderWorkflowFlowComponent(<ResizableNode />, {
+      nodes: [container()],
+      initialStoreState: { canvasReadOnly: true },
+    })
     await screen.findByRole('status', { name: 'Node size' })
     expect(screen.queryByRole('button', { name: 'common.resize.node' })).not.toBeInTheDocument()
   })

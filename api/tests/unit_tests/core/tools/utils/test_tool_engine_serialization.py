@@ -83,16 +83,16 @@ class TestSafeJsonValue:
         assert result == [[1, 2], [3, 4]]
 
         # Test array with float values
-        test_float_array = np.array([1.5, 2.7, 3.14])
+        test_float_array = np.array([1.5, 2.7, float("3.14")])
         result = safe_json_value(test_float_array)
-        assert result == [1.5, 2.7, 3.14]
+        assert result == [1.5, 2.7, float("3.14")]
 
     def test_dict_conversion(self):
         """Test dictionary conversion using safe_json_dict"""
         test_dict = {
             "string": "value",
             "number": 42,
-            "float": 3.14,
+            "float": float("3.14"),
             "boolean": True,
             "list": [1, 2, 3],
             "nested": {"key": "value"},
@@ -106,7 +106,7 @@ class TestSafeJsonValue:
         test_list = [
             "string",
             42,
-            3.14,
+            float("3.14"),
             True,
             [1, 2, 3],
             {"key": "value"},
@@ -123,27 +123,27 @@ class TestSafeJsonValue:
 
     def test_tuple_conversion(self):
         """Test tuple conversion to list"""
-        test_tuple = (1, "string", 3.14)
+        test_tuple = (1, "string", float("3.14"))
         result = safe_json_value(test_tuple)
         assert isinstance(result, list)
-        assert result == [1, "string", 3.14]
+        assert result == [1, "string", float("3.14")]
 
     def test_set_conversion(self):
         """Test set conversion to list"""
-        test_set = {1, "string", 3.14}
+        test_set = {1, "string", float("3.14")}
         result = safe_json_value(test_set)
         assert isinstance(result, list)
         # Note: set order is not guaranteed, so we check length and content
         assert len(result) == 3
         assert 1 in result
         assert "string" in result
-        assert 3.14 in result
+        assert float("3.14") in result
 
     def test_basic_types_passthrough(self):
         """Test that basic types are passed through unchanged"""
         assert safe_json_value("string") == "string"
         assert safe_json_value(42) == 42
-        assert safe_json_value(3.14) == 3.14
+        assert safe_json_value(float("3.14")) == float("3.14")
         assert safe_json_value(True) is True
         assert safe_json_value(False) is False
         assert safe_json_value(None) is None

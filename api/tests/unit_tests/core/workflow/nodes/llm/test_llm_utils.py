@@ -1,6 +1,7 @@
 from unittest import mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.model_manager import ModelInstance
 from graphon.file import File, FileTransferMethod, FileType
@@ -33,7 +34,9 @@ from graphon.nodes.llm.exc import (
     TemplateTypeNotSupportError,
 )
 from graphon.runtime import VariablePool
+from graphon.template_rendering import TemplateRenderError
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
+from tests.unit_tests.core.model_fixtures import make_model_instance
 
 
 def _build_model_schema(
@@ -53,12 +56,14 @@ def _build_model_schema(
     )
 
 
-def _build_model_instance(*, model_schema: AIModelEntity | None = None) -> mock.MagicMock:
-    model_instance = mock.MagicMock(spec=ModelInstance)
+def _build_model_instance(mocker: MockerFixture, *, model_schema: AIModelEntity | None = None) -> ModelInstance:
+    model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
     model_instance.model_name = "gpt-3.5-turbo"
     model_instance.parameters = {}
-    model_instance.get_model_schema.return_value = model_schema or _build_model_schema(features=[])
-    model_instance.get_llm_num_tokens.return_value = 0
+    mocker.patch.object(
+        model_instance, "get_model_schema", return_value=model_schema or _build_model_schema(features=[])
+    )
+    mocker.patch.object(model_instance, "get_llm_num_tokens", return_value=0)
     return model_instance
 
 
@@ -94,9 +99,8 @@ def variable_pool() -> VariablePool:
 
 def _fetch_prompt_messages_with_mocked_content(content):
     variable_pool = VariablePool.empty()
-    model_instance = mock.MagicMock(spec=ModelInstance)
-    model_schema = mock.MagicMock()
-    model_schema.supports_prompt_content_type.side_effect = lambda content_type: content_type == "text"
+    model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
+    model_schema = _build_model_schema(features=[])
     prompt_template = [
         LLMNodeChatModelMessage(
             text="You are a classifier.",
@@ -132,7 +136,7 @@ def _fetch_prompt_messages_with_mocked_content(content):
             vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
             variable_pool=variable_pool,
             jinja2_variables=[],
-            template_renderer=None,
+            jinja2_template_renderer=None,
         )
 
 
@@ -342,9 +346,9 @@ def test_fetch_prompt_messages_keeps_list_content_when_multiple_supported_items_
     ]
 
 
-def test_fetch_model_schema_raises_when_model_schema_is_missing():
-    model_instance = _build_model_instance()
-    model_instance.get_model_schema.return_value = None
+def test_fetch_model_schema_raises_when_model_schema_is_missing(mocker: MockerFixture):
+    model_instance = _build_model_instance(mocker)
+    mocker.patch.object(model_instance, "get_model_schema", return_value=None)
 
     with pytest.raises(ValueError, match="Model schema not found for gpt-3.5-turbo"):
         llm_utils.fetch_model_schema(model_instance=model_instance)
@@ -430,7 +434,7 @@ def test_handle_list_messages_renders_jinja2_messages():
         jinja2_variables=[VariableSelector(variable="name", value_selector=["input", "name"])],
         variable_pool=variable_pool,
         vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
-        template_renderer=renderer,
+        jinja2_template_renderer=renderer,
     )
 
     assert prompt_messages == [SystemPromptMessage(content=[TextPromptMessageContent(data="Hello Dify")])]
@@ -539,17 +543,17 @@ def test_render_jinja2_message_handles_empty_template_success_and_missing_render
             template="",
             jinja2_variables=variables,
             variable_pool=variable_pool,
-            template_renderer=None,
+            jinja2_template_renderer=None,
         )
         == ""
     )
 
-    with pytest.raises(ValueError, match="template_renderer is required"):
+    with pytest.raises(TemplateRenderError, match="LLM prompts require an injected jinja2_template_renderer"):
         llm_utils.render_jinja2_message(
             template="Hello {{ name }}",
             jinja2_variables=variables,
             variable_pool=variable_pool,
-            template_renderer=None,
+            jinja2_template_renderer=None,
         )
 
     renderer = mock.MagicMock()
@@ -559,7 +563,7 @@ def test_render_jinja2_message_handles_empty_template_success_and_missing_render
             template="Hello {{ name }}",
             jinja2_variables=variables,
             variable_pool=variable_pool,
-            template_renderer=renderer,
+            jinja2_template_renderer=renderer,
         )
         == "Hello Dify"
     )
@@ -589,7 +593,7 @@ def test_handle_completion_template_supports_basic_and_jinja2_templates():
         context="",
         jinja2_variables=[VariableSelector(variable="name", value_selector=["input", "name"])],
         variable_pool=variable_pool,
-        template_renderer=renderer,
+        jinja2_template_renderer=renderer,
     )
 
     assert basic_messages == [
@@ -617,8 +621,9 @@ def test_combine_message_content_with_role_handles_all_supported_roles():
         llm_utils.combine_message_content_with_role(contents=contents, role="custom")  # type: ignore[arg-type]
 
 
-def test_calculate_rest_token_uses_context_size_and_template_alias():
+def test_calculate_rest_token_uses_context_size_and_template_alias(mocker: MockerFixture):
     model_instance = _build_model_instance(
+        mocker,
         model_schema=_build_model_schema(
             model_properties={ModelPropertyKey.CONTEXT_SIZE: 4096},
             parameter_rules=[
@@ -629,10 +634,10 @@ def test_calculate_rest_token_uses_context_size_and_template_alias():
                     type=ParameterType.INT,
                 )
             ],
-        )
+        ),
     )
     model_instance.parameters = {"max_tokens": 512}
-    model_instance.get_llm_num_tokens.return_value = 256
+    mocker.patch.object(model_instance, "get_llm_num_tokens", return_value=256)
 
     assert (
         llm_utils.calculate_rest_token(
@@ -643,8 +648,8 @@ def test_calculate_rest_token_uses_context_size_and_template_alias():
     )
 
 
-def test_handle_memory_chat_mode_returns_empty_without_memory_and_uses_window_when_present():
-    model_instance = _build_model_instance()
+def test_handle_memory_chat_mode_returns_empty_without_memory_and_uses_window_when_present(mocker: MockerFixture):
+    model_instance = _build_model_instance(mocker)
     memory = mock.MagicMock()
     memory.get_history_prompt_messages.return_value = [UserPromptMessage(content="Question")]
 
@@ -669,8 +674,8 @@ def test_handle_memory_chat_mode_returns_empty_without_memory_and_uses_window_wh
     memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=123, message_limit=2)
 
 
-def test_handle_memory_completion_mode_validates_role_prefix_and_formats_history():
-    model_instance = _build_model_instance()
+def test_handle_memory_completion_mode_validates_role_prefix_and_formats_history(mocker: MockerFixture):
+    model_instance = _build_model_instance(mocker)
     memory = mock.MagicMock()
     memory.get_history_prompt_messages.return_value = [
         UserPromptMessage(content="Question"),
@@ -750,8 +755,8 @@ def test_append_file_prompts_merges_with_existing_user_content_or_appends_new_me
     assert prompt_messages[-1] == UserPromptMessage(content=[file_prompt])
 
 
-def test_fetch_prompt_messages_chat_mode_includes_query_memory_and_supported_files():
-    model_instance = _build_model_instance(model_schema=_build_model_schema(features=[ModelFeature.VISION]))
+def test_fetch_prompt_messages_chat_mode_includes_query_memory_and_supported_files(mocker: MockerFixture):
+    model_instance = _build_model_instance(mocker, model_schema=_build_model_schema(features=[ModelFeature.VISION]))
     memory = mock.MagicMock()
     memory.get_history_prompt_messages.return_value = [AssistantPromptMessage(content="history")]
     sys_file = _build_image_file(file_id="sys", related_id="sys-related", remote_url="https://example.com/sys.png")
@@ -813,8 +818,8 @@ def test_fetch_prompt_messages_chat_mode_includes_query_memory_and_supported_fil
     )
 
 
-def test_fetch_prompt_messages_completion_mode_updates_list_content_with_histories_and_query():
-    model_instance = _build_model_instance(model_schema=_build_model_schema(features=[]))
+def test_fetch_prompt_messages_completion_mode_updates_list_content_with_histories_and_query(mocker: MockerFixture):
+    model_instance = _build_model_instance(mocker, model_schema=_build_model_schema(features=[]))
     memory = mock.MagicMock()
     memory.get_history_prompt_messages.return_value = [
         UserPromptMessage(content="previous question"),
@@ -880,8 +885,8 @@ def test_fetch_prompt_messages_completion_mode_updates_list_content_with_histori
     ]
 
 
-def test_fetch_prompt_messages_filters_content_unsupported_by_model_features():
-    model_instance = _build_model_instance(model_schema=_build_model_schema(features=[ModelFeature.DOCUMENT]))
+def test_fetch_prompt_messages_filters_content_unsupported_by_model_features(mocker: MockerFixture):
+    model_instance = _build_model_instance(mocker, model_schema=_build_model_schema(features=[ModelFeature.DOCUMENT]))
     prompt_template = [
         LLMNodeChatModelMessage(
             text="You are a classifier.",
@@ -927,8 +932,8 @@ def test_fetch_prompt_messages_filters_content_unsupported_by_model_features():
     assert prompt_messages == [SystemPromptMessage(content="You are a classifier.")]
 
 
-def test_fetch_prompt_messages_completion_mode_supports_string_content_and_invalid_template_type():
-    model_instance = _build_model_instance(model_schema=_build_model_schema(features=[]))
+def test_fetch_prompt_messages_completion_mode_supports_string_content_and_invalid_template_type(mocker: MockerFixture):
+    model_instance = _build_model_instance(mocker, model_schema=_build_model_schema(features=[]))
 
     with (
         mock.patch(

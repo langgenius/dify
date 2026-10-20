@@ -1,11 +1,12 @@
 import type { FC } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -150,15 +151,15 @@ const BatchAction: FC<IBatchActionProps> = ({
           onOpenChange={(open) => !open && hideDeleteConfirm()}
         >
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              <AlertDialogDescription>
                 {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
               </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
@@ -169,7 +170,7 @@ const BatchAction: FC<IBatchActionProps> = ({
               >
                 {t(($) => $['operation.sure'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       )}

@@ -20,7 +20,7 @@ const storyResources: Resource = {
   'en-US': {
     // Preload the most common namespace to avoid missing keys during initial render;
     // other namespaces will be loaded on demand via resourcesToBackend.
-    common: commonEnUS as unknown as Record<string, unknown>,
+    common: commonEnUS as Record<string, unknown>,
   },
 }
 

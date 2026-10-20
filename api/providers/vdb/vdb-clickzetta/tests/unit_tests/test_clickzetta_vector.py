@@ -238,7 +238,7 @@ def test_factory_initializes_clickzetta_vector(clickzetta_module, monkeypatch: p
     monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_VECTOR_DISTANCE_FUNCTION", "cosine_distance")
 
     with patch.object(clickzetta_module, "ClickzettaVector", return_value="vector") as vector_cls:
-        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result == "vector"
     assert vector_cls.call_args.kwargs["collection_name"] == "collection"

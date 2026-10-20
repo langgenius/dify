@@ -8,7 +8,9 @@ import CustomNode from '../index'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({ 'workflow.nodes.agent.outputRoutes.route': 'Route {{index}}' })
+  return createReactI18nextMock({
+    'workflow.nodes.agent.outputRoutes.route': 'Route {{index}}',
+  })
 })
 
 describe('workflow preview custom node', () => {
@@ -28,7 +30,7 @@ describe('workflow preview custom node', () => {
         title: 'Classifier node',
         desc: '',
         classes: [{ id: 'class-a', name: 'Billing' }],
-      } as never,
+      },
     }
 
     const { container, getByText } = render(<CustomNode {...props} />, {
@@ -62,7 +64,7 @@ describe('workflow preview custom node', () => {
         ],
         timeout: 1,
         timeout_unit: 'hour',
-      } as never,
+      },
     }
 
     const { container, getByText } = render(<CustomNode {...props} />, {

@@ -9,11 +9,11 @@ from graphon.enums import BuiltinNodeTypes
 
 
 class DummyNode:
-    def __init__(self, *, node_id, data, graph_init_params, graph_runtime_state, **kwargs):
+    def __init__(self, *, node_id, data, init_params, runtime_state, **kwargs):
         self.id = node_id
         self.data = data
-        self.graph_init_params = graph_init_params
-        self.graph_runtime_state = graph_runtime_state
+        self.init_params = init_params
+        self.runtime_state = runtime_state
         self.kwargs = kwargs
 
 
@@ -73,21 +73,21 @@ class TestDifyNodeFactory:
         )
 
         return DifyNodeFactory(
-            graph_init_params=SimpleNamespace(run_context=run_context),
-            graph_runtime_state=SimpleNamespace(),
+            init_params=SimpleNamespace(run_context=run_context),
+            runtime_state=SimpleNamespace(),
         )
 
     def test_create_node_unknown_type(self):
         factory = self._factory()
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No class mapping found for node type: unknown"):
             factory.create_node({"id": "node-1", "data": {"type": "unknown"}})
 
     def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory()
         monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", lambda: {})
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No class mapping found for node type: start"):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
     def test_create_node_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch):
@@ -98,7 +98,7 @@ class TestDifyNodeFactory:
         )
         monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "latest")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No latest version class found for node type: start"):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
     def test_create_node_selects_versioned_class(self, monkeypatch: pytest.MonkeyPatch):

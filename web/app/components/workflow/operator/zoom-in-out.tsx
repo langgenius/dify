@@ -10,12 +10,13 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Fragment, memo } from 'react'
+import { Fragment, memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowReadOnly } from '../hooks/use-workflow'
+import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 import TipPopup from './tip-popup'
 
@@ -53,6 +54,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   isCommentMode = false,
 }) => {
   const { t } = useTranslation(['workflow'])
+  const [open, setOpen] = useState(false)
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
   const { zoom } = useViewport()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -150,6 +152,11 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     handleSyncWorkflowDraft()
   }
 
+  function selectZoom(type: ZoomType) {
+    handleZoom(type)
+    setOpen(false)
+  }
+
   return (
     <div
       className={`h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-[13px] shadow-lg backdrop-blur-[5px] hover:bg-state-base-hover ${workflowReadOnly && 'cursor-not-allowed! opacity-50'} `}
@@ -177,7 +184,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
             />
           </button>
         </TipPopup>
-        <DropdownMenu>
+        <DropdownMenu open={open} onOpenChange={setOpen}>
           <DropdownMenuTrigger
             disabled={getWorkflowReadOnly()}
             className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary"
@@ -186,7 +193,16 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
           </DropdownMenuTrigger>
           <DropdownMenuPortal>
             <DropdownMenuPositioner placement="top-start" sideOffset={4} alignOffset={-2}>
-              <DropdownMenuPopup>
+              <DropdownMenuPopup
+                onKeyDown={(event) => {
+                  if (workflowReadOnly) return
+                  handleWorkflowMenuKeyDown(event, [
+                    ['workflow.zoom-to-fit', () => selectZoom(ZoomType.zoomToFit)],
+                    ['workflow.zoom-to-100', () => selectZoom(ZoomType.zoomTo100)],
+                    ['workflow.zoom-to-50', () => selectZoom(ZoomType.zoomTo50)],
+                  ])
+                }}
+              >
                 <div className="w-48 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
                   {zoomOptions.map((options, groupIndex) => (
                     <Fragment key={options[0]!.key}>
@@ -200,7 +216,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                               checked={option.checked}
                               disabled={option.key === ZoomType.toggleUserComments && isCommentMode}
                               closeOnClick
-                              onCheckedChange={() => handleZoom(option.key)}
+                              onCheckedChange={() => selectZoom(option.key)}
                             >
                               <span
                                 aria-hidden
@@ -216,7 +232,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                             <DropdownMenuItem
                               key={option.key}
                               className="justify-between px-3 py-1.5 system-md-regular text-text-secondary"
-                              onClick={() => handleZoom(option.key)}
+                              onClick={() => selectZoom(option.key)}
                             >
                               <div className="flex items-center gap-2">
                                 {option.key === ZoomType.zoomToFit && (

@@ -274,5 +274,12 @@ def test_enabled_output_routes_require_at_least_two_routes(count: int) -> None:
 
 @pytest.mark.parametrize("ids", [[""], ["source"], ["fail-branch"], ["target"], ["same", "same"]])
 def test_output_routes_reject_invalid_handle_identities(ids: list[str]) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for WorkflowNodeJobConfig\\\noutput_routes|1 "
+            "validation error for WorkflowNodeJobConfig\\\noutput_routes\\.routes\\"
+            ".0\\.id)"
+        ),
+    ):
         WorkflowNodeJobConfig.model_validate({"output_routes": {"routes": [{"id": id, "name": ""} for id in ids]}})

@@ -1,10 +1,10 @@
 import { act } from '@testing-library/react'
+import { useStoreApi } from 'reactflow'
 import { createLoopNode, createNode } from '../../__tests__/fixtures'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { useWorkflowOrganize } from '../use-workflow-organize'
 
 const mockSetViewport = vi.hoisted(() => vi.fn())
-const mockSetNodes = vi.hoisted(() => vi.fn())
 const mockHandleSyncWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockSaveStateToHistory = vi.hoisted(() => vi.fn())
 const mockGetLayoutForChildNodes = vi.hoisted(() => vi.fn())
@@ -16,25 +16,13 @@ const runtimeState = vi.hoisted(() => ({
   nodesReadOnly: false,
 }))
 
-vi.mock('reactflow', () => ({
-  Position: {
-    Left: 'left',
-    Right: 'right',
-    Top: 'top',
-    Bottom: 'bottom',
-  },
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: () => runtimeState.nodes,
-      edges: runtimeState.edges,
-      setNodes: mockSetNodes,
-    }),
-    setState: vi.fn(),
-  }),
-  useReactFlow: () => ({
-    setViewport: mockSetViewport,
-  }),
-}))
+vi.mock('reactflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('reactflow')>()
+  return {
+    ...actual,
+    useReactFlow: () => ({ ...actual.useReactFlow(), setViewport: mockSetViewport }),
+  }
+})
 
 vi.mock('../use-workflow', () => ({
   useNodesReadOnly: () => ({
@@ -108,7 +96,10 @@ describe('useWorkflowOrganize', () => {
       ]),
     })
 
-    const { result } = renderWorkflowHook(() => useWorkflowOrganize())
+    const { result } = renderWorkflowFlowHook(
+      () => ({ ...useWorkflowOrganize(), graph: useStoreApi() }),
+      { nodes: runtimeState.nodes },
+    )
 
     await act(async () => {
       await result.current.handleLayout()
@@ -117,12 +108,11 @@ describe('useWorkflowOrganize', () => {
       vi.runAllTimers()
     })
 
-    expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    const nextNodes = mockSetNodes.mock.calls[0]![0]
+    const nextNodes = result.current.graph.getState().getNodes()
     expect(nextNodes.find((node: { id: string }) => node.id === 'loop-node')).toEqual(
       expect.objectContaining({
-        width: expect.any(Number),
-        height: expect.any(Number),
+        width: 440,
+        height: 340,
         position: { x: 10, y: 20 },
       }),
     )
@@ -140,7 +130,10 @@ describe('useWorkflowOrganize', () => {
     runtimeState.nodesReadOnly = true
     runtimeState.nodes = [createNode({ id: 'n1' })]
 
-    const { result } = renderWorkflowHook(() => useWorkflowOrganize())
+    const { result } = renderWorkflowFlowHook(
+      () => ({ ...useWorkflowOrganize(), graph: useStoreApi() }),
+      { nodes: runtimeState.nodes },
+    )
 
     await act(async () => {
       await result.current.handleLayout()
@@ -148,7 +141,9 @@ describe('useWorkflowOrganize', () => {
 
     expect(mockGetLayoutForChildNodes).not.toHaveBeenCalled()
     expect(mockGetLayoutByELK).not.toHaveBeenCalled()
-    expect(mockSetNodes).not.toHaveBeenCalled()
+    expect(result.current.graph.getState().getNodes()).toMatchObject(runtimeState.nodes)
+    expect(mockSaveStateToHistory).not.toHaveBeenCalled()
+    expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockSetViewport).not.toHaveBeenCalled()
   })
 })

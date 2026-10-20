@@ -10,7 +10,7 @@ from models.model import App, AppMode, Conversation, IconType, Message
 
 
 @pytest.fixture(autouse=True)
-def patch_file_helpers(monkeypatch: pytest.MonkeyPatch):
+def patch_file_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Patch file_helpers.get_signed_file_url to a deterministic stub.
     """
@@ -29,7 +29,7 @@ def _wrap_md(url: str) -> str:
     return f"please click [file]({url}) to download."
 
 
-def test_file_preview_valid_replaced():
+def test_file_preview_valid_replaced() -> None:
     """
     Valid file-preview URL must be re-signed:
     - Extract upload_file_id correctly
@@ -44,7 +44,7 @@ def test_file_preview_valid_replaced():
     assert url not in out
 
 
-def test_file_preview_misspelled_not_replaced():
+def test_file_preview_misspelled_not_replaced() -> None:
     """
     Misspelled endpoint 'file-previe?timestamp=' should NOT be rewritten.
     """
@@ -60,7 +60,7 @@ def test_file_preview_misspelled_not_replaced():
     assert out == original
 
 
-def test_image_preview_valid_replaced():
+def test_image_preview_valid_replaced() -> None:
     """
     Valid image-preview URL must be re-signed.
     """
@@ -73,7 +73,7 @@ def test_image_preview_valid_replaced():
     assert url not in out
 
 
-def test_image_preview_misspelled_not_replaced():
+def test_image_preview_misspelled_not_replaced() -> None:
     """
     Misspelled endpoint 'image-previe?timestamp=' should NOT be rewritten.
     """
@@ -170,7 +170,7 @@ def test_message_inputs_resolve_file_tenant_with_caller_session(sqlite_session: 
     # session.scalar.assert_called_once()  # removed: see #40799 conftest note
 
 
-def test_file_url_bare_url_re_signed():
+def test_file_url_bare_url_re_signed() -> None:
     """#40788: bare tool file URL (no markdown wrapping) must be re-signed.
 
     Bare URLs are produced by the agent runtime when the model returns a
@@ -186,7 +186,7 @@ def test_file_url_bare_url_re_signed():
     assert url not in out
 
 
-def test_file_url_backticked_url_re_signed():
+def test_file_url_backticked_url_re_signed() -> None:
     """#40788: backticked tool file URL must be re-signed.
 
     Backticks are used by the runtime to quote file references inline.
@@ -202,7 +202,7 @@ def test_file_url_backticked_url_re_signed():
     assert url not in out
 
 
-def test_file_url_mixed_formats_all_re_signed():
+def test_file_url_mixed_formats_all_re_signed() -> None:
     """#40788: all three URL shapes in the same answer are re-signed.
 
     Sanity check that the three patterns cooperate — bare, backticked,

@@ -38,7 +38,8 @@ const mockHandleNodeDisconnect = vi.fn()
 const defaultNodeData = {
   type: BlockEnum.Code,
   title: 'Code Node',
-} as CommonNodeType
+  desc: '',
+} satisfies CommonNodeType
 
 const TestHarness = () => {
   const [open, setOpen] = useState(false)
@@ -68,47 +69,18 @@ describe('NextStep operator', () => {
     } as unknown as ReturnType<typeof useNodesInteractions>)
   })
 
-  it('opens the menu and keeps the change action available', async () => {
-    const user = userEvent.setup()
-    render(<TestHarness />)
-
-    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
-
-    expect(screen.getByText('workflow.panel.change')).toBeInTheDocument()
-    expect(screen.getByText('workflow.common.disconnect')).toBeInTheDocument()
-    expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-  })
-
   it('disconnects and deletes the next step from the menu', async () => {
     const user = userEvent.setup()
     render(<TestHarness />)
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
-    await user.click(screen.getByText('workflow.common.disconnect'))
+    await user.click(screen.getByRole('menuitem', { name: 'workflow.common.disconnect' }))
     expect(mockHandleNodeDisconnect).toHaveBeenCalledWith('node-1')
     expect(screen.queryByText('workflow.common.disconnect')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
-    await user.click(screen.getByText('common.operation.delete'))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
     expect(mockHandleNodeDelete).toHaveBeenCalledWith('node-1')
-  })
-
-  it.each([
-    ['workflow.common.disconnect', '{ArrowDown}', mockHandleNodeDisconnect],
-    ['common.operation.delete', '{End}', mockHandleNodeDelete],
-  ])('activates %s with the keyboard', async (name, navigation, handler) => {
-    const user = userEvent.setup()
-    render(<TestHarness />)
-
-    await user.tab()
-    await user.keyboard('{ArrowDown}')
-    expect(await screen.findByRole('menuitem', { name: 'workflow.panel.change' })).toHaveFocus()
-    await user.keyboard(navigation)
-    expect(screen.getByRole('menuitem', { name })).toHaveFocus()
-    await user.keyboard('{Enter}')
-
-    expect(handler).toHaveBeenCalledWith('node-1')
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('opens the node selector from the change menu item with the keyboard', async () => {

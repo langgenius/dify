@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createPortal } from 'react-dom'
+import * as ReactDOM from 'react-dom'
 import { render } from 'vitest-browser-react'
 import { Infotip, InfotipContent, InfotipTrigger } from '..'
 
@@ -11,7 +11,7 @@ describe('Infotip composition', () => {
     const screen = await render(
       <button type="button" onClick={parentClick}>
         Parent action
-        {createPortal(
+        {ReactDOM.createPortal(
           <Infotip>
             <InfotipTrigger aria-label="Details" onClick={triggerClick} ref={triggerRef} />
             <InfotipContent aria-label="Details">Explanation</InfotipContent>

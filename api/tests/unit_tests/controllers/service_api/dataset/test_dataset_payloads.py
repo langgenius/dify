@@ -45,15 +45,15 @@ class TestDatasetCreatePayload:
         assert payload.embedding_model_provider == "openai"
 
     def test_payload_name_length_validation_min(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for DatasetCreatePayload\\\nname"):
             DatasetCreatePayload(name="")
 
     def test_payload_name_length_validation_max(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for DatasetCreatePayload\\\nname"):
             DatasetCreatePayload(name="A" * 41)
 
     def test_payload_description_max_length(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for DatasetCreatePayload\\\ndescription"):
             DatasetCreatePayload(name="Dataset", description="A" * 401)
 
     @pytest.mark.parametrize("technique", ["high_quality", "economy"])
@@ -93,9 +93,9 @@ class TestDatasetUpdatePayload:
         assert len(payload.partial_member_list) == 1
 
     def test_payload_name_length_validation(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for DatasetUpdatePayload\\\nname"):
             DatasetUpdatePayload(name="")
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for DatasetUpdatePayload\\\nname"):
             DatasetUpdatePayload(name="A" * 41)
 
 
@@ -133,11 +133,11 @@ class TestTagCreatePayload:
         assert payload.name == "New Tag"
 
     def test_payload_name_length_min(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for TagCreatePayload\\\nname"):
             TagCreatePayload(name="")
 
     def test_payload_name_length_max(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for TagCreatePayload\\\nname"):
             TagCreatePayload(name="A" * 51)
 
     def test_payload_with_unicode_name(self) -> None:
@@ -154,7 +154,7 @@ class TestTagUpdatePayload:
         assert payload.tag_id == "tag_123"
 
     def test_payload_requires_tag_id(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for TagUpdatePayload\\\ntag_id"):
             TagUpdatePayload.model_validate({"name": "Updated Tag"})
 
 
@@ -166,7 +166,7 @@ class TestTagDeletePayload:
         assert payload.tag_id == "tag_to_delete"
 
     def test_payload_requires_tag_id(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for TagDeletePayload\\\ntag_id"):
             TagDeletePayload.model_validate({})
 
 
@@ -179,7 +179,7 @@ class TestTagBindingPayload:
         assert payload.target_id == "dataset_123"
 
     def test_payload_rejects_empty_tag_ids(self) -> None:
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="1 validation error for TagBindingPayload\\\ntag_ids") as exc_info:
             TagBindingPayload(tag_ids=[], target_id="dataset_123")
         assert "Tag IDs is required" in str(exc_info.value)
 
@@ -202,6 +202,9 @@ class TestTagUnbindingPayload:
         assert payload.target_id == "dataset_456"
 
     def test_payload_rejects_empty_tag_ids(self) -> None:
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError,
+            match=("1 validation error for TagUnbindingPayload\\\n  Value error, Tag IDs is required\\."),
+        ) as exc_info:
             TagUnbindingPayload(tag_ids=[], target_id="dataset_456")
         assert "Tag IDs is required" in str(exc_info.value)

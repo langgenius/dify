@@ -4,11 +4,13 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.entities.tool_entities import ApiProviderSchemaType
+from machinery.context import AppRequestContext
 from models.account import Account, Tenant, TenantStatus
 from models.enums import CustomizeTokenStrategy, TagType
 from models.model import App, AppMode, AppModelConfig, IconType, Site, Tag, TagBinding
 from models.tools import ApiToolProvider
 from models.workflow import Workflow, WorkflowKind, WorkflowType
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from services.app_definition_query_service import (
     AppDefinitionSummary,
@@ -74,6 +76,54 @@ def test_get_published_parameter_config_returns_none_for_missing_app(
     repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
 
     assert repository.get_published_parameter_config(_APP_ID) is None
+
+
+@pytest.mark.parametrize(
+    ("mode", "ownership"),
+    [
+        (mode, ownership)
+        for mode in (AppMode.CHAT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)
+        for ownership in ("owned", "foreign_app", "missing", "unset")
+    ]
+    + [(AppMode.WORKFLOW, "foreign_tenant"), (AppMode.ADVANCED_CHAT, "foreign_tenant")],
+)
+def test_parameter_config_readers_enforce_the_same_ownership(
+    sqlite_session_factory: sessionmaker[Session], mode: AppMode, ownership: str
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        app = _persist_app(session, mode=mode)
+        owner_id = _PROVIDER_ID if ownership == "foreign_app" else app.id
+        if mode == AppMode.CHAT:
+            config = AppModelConfig(app_id=owner_id, opening_statement="Owned config")
+            app.app_model_config_id = config.id if ownership != "unset" else None
+        else:
+            config = Workflow(
+                id=_WORKFLOW_ID,
+                tenant_id=_OTHER_TENANT_ID if ownership == "foreign_tenant" else _TENANT_ID,
+                app_id=owner_id,
+                type=WorkflowType.WORKFLOW if mode == AppMode.WORKFLOW else WorkflowType.CHAT,
+                version="1",
+                graph='{"nodes": []}',
+                features='{"opening_statement": "Owned config"}',
+                created_by=_ACCOUNT_ID,
+            )
+            app.workflow_id = config.id if ownership != "unset" else None
+        if ownership != "missing":
+            session.add(config)
+
+    definition = AppDefinitionQueryRepository(session_factory=sqlite_session_factory).get_published_parameter_config(
+        _APP_ID
+    )
+    description = ConsoleAppRepository(session_factory=sqlite_session_factory).describe(
+        AppRequestContext(tenant_id=_TENANT_ID, app_id=_APP_ID), include_config=True
+    )
+
+    assert definition == description.config
+    if ownership == "owned":
+        assert definition is not None
+        assert definition.features_dict["opening_statement"] == "Owned config"
+    else:
+        assert definition is None
 
 
 @pytest.mark.parametrize(

@@ -1,19 +1,18 @@
 import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { OnSelectBlock, ToolWithProvider } from '../types'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import { useEffect, useMemo } from 'react'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-  useInvalidateAllBuiltInTools,
-} from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { useWorkflowStore } from '../store'
-import ToolBrowser from './tool-browser'
+
+const ToolBrowser = dynamic(() => import('./tool-browser'), {
+  loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
+})
 
 function normalizeToolList(list: ToolWithProvider[] | undefined, currentBasePath?: string) {
   if (!list || !currentBasePath) return list
@@ -81,11 +80,23 @@ export function ToolPanel({
   onSelect: OnSelectBlock
   dataSources: RagPipelineDatasourceProviderResponse[]
 }) {
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
-  const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const queryClient = useQueryClient()
   const { data: enableMarketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.enable_marketplace,
@@ -146,7 +157,11 @@ export function ToolPanel({
       featuredPlugins={featuredPlugins}
       featuredLoading={isFeaturedLoading}
       showFeatured={enableMarketplace && !inRAGPipeline}
-      onFeaturedInstallSuccess={invalidateBuiltInTools}
+      onFeaturedInstallSuccess={() =>
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+        })
+      }
     />
   )
 }

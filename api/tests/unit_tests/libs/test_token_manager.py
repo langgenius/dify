@@ -4,7 +4,7 @@ Regression tests for `libs.helper.TokenManager`.
 `TokenManager` is the storage primitive shared by multiple auth flows, so it
 must preserve every metadata field written by the caller. Business-specific
 validation now happens at the callsite boundary (for example,
-`AccountService.get_change_email_data`), not inside `TokenManager`.
+`TokenManagerChangeEmailTokenGateway.read`), not inside `TokenManager`.
 """
 
 import json
@@ -17,7 +17,7 @@ import libs.helper as helper_module
 from libs.helper import TokenManager
 
 
-def _build_fake_redis(storage: dict[str, str]):
+def _build_fake_redis(storage: dict[str, str]) -> SimpleNamespace:
     def store_value(key: str, _ttl: int, value: str) -> bool:
         storage[key] = value
         return True

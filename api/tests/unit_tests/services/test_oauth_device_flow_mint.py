@@ -15,7 +15,7 @@ from services.oauth_device_application_service import OAuthDeviceTokenPersistenc
 from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL, OAuthDeviceTokenRotation
 
 
-@pytest.mark.parametrize("token_type", list(TokenType), ids=lambda t: t.value)
+@pytest.mark.parametrize("token_type", [TokenType.OAUTH_ACCOUNT, TokenType.OAUTH_EXTERNAL_SSO], ids=lambda t: t.value)
 def test_the_issuer_follows_the_subject_binding(token_type: TokenType) -> None:
     tokens = create_autospec(OAuthDeviceTokenPersistence, instance=True)
     tokens.rotate_token.return_value = OAuthDeviceTokenRotation(

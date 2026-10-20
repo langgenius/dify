@@ -10,14 +10,14 @@ from graphon.model_runtime.entities.message_entities import (
 )
 
 
-def test_build_prompt_message_with_prompt_message_contents():
+def test_build_prompt_message_with_prompt_message_contents() -> None:
     prompt = UserPromptMessage(content=[TextPromptMessageContent(data="Hello, World!")])
     assert isinstance(prompt.content, list)
     assert isinstance(prompt.content[0], TextPromptMessageContent)
     assert prompt.content[0].data == "Hello, World!"
 
 
-def test_dump_prompt_message():
+def test_dump_prompt_message() -> None:
     example_url = "https://example.com/image.jpg"
     prompt = UserPromptMessage(
         content=[
@@ -32,7 +32,7 @@ def test_dump_prompt_message():
     assert data["content"][0].get("url") == example_url
 
 
-def test_prompt_messages_to_prompt_for_saving_chat_mode():
+def test_prompt_messages_to_prompt_for_saving_chat_mode() -> None:
     chat_messages = [
         UserPromptMessage(
             content=[
@@ -79,7 +79,7 @@ def test_prompt_messages_to_prompt_for_saving_chat_mode():
     assert prompts[2]["role"] == "tool"
 
 
-def test_prompt_messages_to_prompt_for_saving_completion_mode_with_and_without_files():
+def test_prompt_messages_to_prompt_for_saving_completion_mode_with_and_without_files() -> None:
     completion_message_with_files = UserPromptMessage(
         content=[
             TextPromptMessageContent(data="first "),

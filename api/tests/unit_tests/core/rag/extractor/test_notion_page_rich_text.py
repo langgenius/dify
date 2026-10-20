@@ -18,6 +18,7 @@ def _extractor() -> notion_extractor.NotionExtractor:
         notion_page_type="page",
         tenant_id="tenant",
         notion_access_token="token",
+        notion_token_loader=lambda: "token",
     )
 
 

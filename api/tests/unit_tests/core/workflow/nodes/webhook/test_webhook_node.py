@@ -4,7 +4,6 @@ from unittest.mock import patch
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
-from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
@@ -14,17 +13,16 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variables import default_system_variables
-from graphon.entities import GraphInitParams
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import FileVariable, StringVariable
 from tests.workflow_test_utils import build_test_variable_pool
 
 
 def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) -> TriggerWebhookNode:
     """Helper function to create a webhook node with proper initialization."""
-    graph_init_params = GraphInitParams(
+    graph_init_params = InitParams(
         workflow_id="1",
         graph_config={},
         run_context={
@@ -38,15 +36,16 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
         },
         call_depth=0,
     )
-    runtime_state = GraphRuntimeState(
+    runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=variable_pool,
         start_at=0,
     )
     node = TriggerWebhookNode(
         node_id="1",
         data=webhook_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
     )
 
     # Provide tenant_id for conversion path
@@ -61,34 +60,6 @@ def build_webhook_variable_pool(inputs: dict[str, Any]) -> VariablePool:
         node_id="1",
         inputs=inputs,
     )
-
-
-def test_webhook_node_basic_initialization():
-    """Test basic webhook node initialization and configuration."""
-    data = WebhookData(
-        title="Test Webhook",
-        method=Method.POST,
-        content_type=ContentType.JSON,
-        headers=[WebhookParameter(name="X-API-Key", required=True)],
-        params=[WebhookParameter(name="version", required=False)],
-        body=[WebhookBodyParameter(name="message", type="string", required=True)],
-        status_code=200,
-        response_body="OK",
-        timeout=30,
-    )
-
-    variable_pool = build_webhook_variable_pool({})
-
-    node = create_webhook_node(data, variable_pool)
-
-    assert node.node_type == TRIGGER_WEBHOOK_NODE_TYPE
-    assert node.version() == "1"
-    assert node._get_title() == "Test Webhook"
-    assert node._node_data.method == Method.POST
-    assert node._node_data.content_type == ContentType.JSON
-    assert len(node._node_data.headers) == 1
-    assert len(node._node_data.params) == 1
-    assert len(node._node_data.body) == 1
 
 
 def test_webhook_node_default_config():

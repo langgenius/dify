@@ -81,7 +81,7 @@ class TestDisableSegmentsFromIndexTask:
         db_session_with_containers.commit()
 
         # Set the current tenant for the account
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         return account
 

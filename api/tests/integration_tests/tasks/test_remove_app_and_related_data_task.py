@@ -19,7 +19,6 @@ from tasks.remove_app_and_related_data_task import (
 
 @pytest.fixture
 def app_and_tenant(flask_req_ctx):
-    tenant_id = uuid.uuid4()
     with session_factory.create_session() as session:
         tenant = Tenant(name="test_tenant")
         session.add(tenant)

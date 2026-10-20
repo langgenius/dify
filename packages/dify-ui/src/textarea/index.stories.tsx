@@ -26,19 +26,10 @@ type Story = StoryObj<typeof meta>
 
 export const Basic: Story = {
   render: () => (
-    <div className="w-80">
-      <label
-        htmlFor="workspace-description"
-        className="mb-1 block w-fit py-1 system-sm-medium text-text-secondary"
-      >
-        Workspace description
-      </label>
-      <Textarea
-        id="workspace-description"
-        name="workspaceDescription"
-        placeholder="Describe how this workspace is used..."
-      />
-    </div>
+    <Field name="workspaceDescription" className="w-80">
+      <FieldLabel>Workspace description</FieldLabel>
+      <Textarea placeholder="Describe how this workspace is used..." />
+    </Field>
   ),
 }
 
@@ -110,7 +101,7 @@ export const States: Story = {
   ),
 }
 
-const FormDemo = () => {
+function FormDemo() {
   const [savedDescription, setSavedDescription] = React.useState<string | null>(null)
 
   return (
@@ -153,7 +144,7 @@ export const WithField: Story = {
   render: () => <FormDemo />,
 }
 
-const ControlledDemo = () => {
+function ControlledDemo() {
   const [value, setValue] = React.useState(
     'Summarize customer feedback into actionable product themes.',
   )
@@ -180,7 +171,7 @@ export const Controlled: Story = {
   ),
 }
 
-const CharacterCounterDemo = () => {
+function CharacterCounterDemo() {
   const maxLength = 120
   const [value, setValue] = React.useState(
     'Summarize customer feedback into actionable product themes.',

@@ -1,15 +1,16 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useAtomValue } from 'jotai'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowRunHistory } from '@/service/use-workflow'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
-import { useIsChatMode } from '../hooks/use-workflow'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
 import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { ControlMode, WorkflowRunningStatus } from '../types'
@@ -22,7 +23,7 @@ export type ViewHistoryProps = {
 }
 const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHistoryProps) => {
   const { t } = useTranslation(['common', 'workflow'])
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const [open, setOpen] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleNodesCancelSelected } = useNodesInteractions()
@@ -145,13 +146,13 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                       setControlMode(ControlMode.Hand)
                     }}
                   >
-                    {!isChatMode && interruptedStatuses.includes(item.status) && (
+                    {!isChatflow && interruptedStatuses.includes(item.status) && (
                       <span className="mt-0.5 mr-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
                     )}
-                    {!isChatMode && item.status === WorkflowRunningStatus.Failed && (
+                    {!isChatflow && item.status === WorkflowRunningStatus.Failed && (
                       <span className="mt-0.5 mr-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
                     )}
-                    {!isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
+                    {!isChatflow && item.status === WorkflowRunningStatus.Succeeded && (
                       <span className="mt-0.5 mr-1.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
                     )}
                     <div>
@@ -161,7 +162,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                           item.id === historyWorkflowData?.id && 'text-text-accent',
                         )}
                       >
-                        {`Test ${isChatMode ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at, item.status)}`}
+                        {`Test ${isChatflow ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at, item.status)}`}
                       </div>
                       <div className="flex items-center text-xs leading-4.5 text-text-tertiary">
                         {item.created_by_account?.name} ·

@@ -78,6 +78,7 @@ if (( ${#target_paths[@]} == 0 )); then
   unit_tests_args=(
     "--summary=none"
     "--use-ignore-files=false"
+    "--disable-project-excludes-heuristics=true"
     "--config=$UNIT_TESTS_CONFIG"
   )
   if [[ "${PYREFLY_OUTPUT_FORMAT:-}" == "github" ]]; then
@@ -91,6 +92,7 @@ if (( ${#target_paths[@]} == 0 )); then
   test_containers_args=(
     "--summary=none"
     "--use-ignore-files=false"
+    "--disable-project-excludes-heuristics=true"
     "--config=$TEST_CONTAINERS_CONFIG"
   )
   if [[ "${PYREFLY_OUTPUT_FORMAT:-}" == "github" ]]; then

@@ -1,6 +1,5 @@
 'use client'
 
-import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/components/knowledge-view-switcher'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -16,7 +15,6 @@ import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
 } from '@/app/components/step-by-step-tour/dropdown-menu'
-import { KnowledgeViewSwitcher } from '@/features/new-rag/components/knowledge-view-switcher'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { ServiceApi } from '../extra-info/service-api'
 
@@ -39,7 +37,6 @@ type Props = {
   stepByStepTourCreateMenuHighlightPart?: string
   stepByStepTourCreateMenuOpen?: boolean
   stepByStepTourCreateMenuTarget?: string
-  knowledgeViewSwitcherProps?: KnowledgeViewSwitcherProps
 }
 
 const DatasetListHeader = ({
@@ -61,7 +58,6 @@ const DatasetListHeader = ({
   stepByStepTourCreateMenuHighlightPart,
   stepByStepTourCreateMenuOpen,
   stepByStepTourCreateMenuTarget,
-  knowledgeViewSwitcherProps,
 }: Props) => {
   const { t } = useTranslation(['common', 'dataset'])
   const showCreateMenu = canCreateDataset || canConnectExternalDataset
@@ -76,7 +72,6 @@ const DatasetListHeader = ({
           <h1 className="min-w-0 text-[18px]/[21.6px] font-semibold text-text-primary">
             {t(($) => $.knowledge, { ns: 'dataset' })}
           </h1>
-          {knowledgeViewSwitcherProps && <KnowledgeViewSwitcher {...knowledgeViewSwitcherProps} />}
         </div>
         <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
           {canConnectExternalDataset && (

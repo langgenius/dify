@@ -13,9 +13,10 @@ from sqlalchemy.orm import Session
 
 from app_factory import create_app
 from configs.app_config import DifyConfig
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from models import Account, DifySetup, Tenant, TenantAccountJoin
-from services.account_service import AccountService, RegisterService
+from services.account.contracts import SetupInput
 
 _DEFUALT_TEST_ENV = ".env"
 _DEFAULT_VDB_TEST_ENV = "vdb.env"
@@ -67,7 +68,7 @@ def flask_app() -> Flask:
 
 
 @pytest.fixture(scope="session")
-def setup_account(request) -> Generator[Account, None, None]:
+def setup_account(request) -> Generator[Account]:
     """`dify_setup` completes the setup process for the Dify application.
 
     It creates `Account` and `Tenant`, and inserts a `DifySetup` record into the database.
@@ -78,13 +79,15 @@ def setup_account(request) -> Generator[Account, None, None]:
         rand_suffix = random.randint(int(1e6), int(1e7))  # noqa
         name = f"test-user-{rand_suffix}"
         email = f"{name}@example.com"
-        RegisterService.setup(
-            email=email,
-            name=name,
-            password=secrets.token_hex(16),
-            ip_address="localhost",
-            language="en-US",
-            session=db.session(),
+        application_services().setup.initialize(
+            SetupInput(
+                email=email,
+                name=name,
+                password=secrets.token_hex(16),
+                ip_address="localhost",
+                language="en-US",
+            ),
+            initialization_validated=True,
         )
 
     with _CACHED_APP.test_request_context():
@@ -109,11 +112,11 @@ def flask_req_ctx():
 
 @pytest.fixture
 def auth_header(setup_account) -> dict[str, str]:
-    token = AccountService.get_account_jwt_token(setup_account)
+    token = application_services().accounts.lifecycle.login(setup_account.id, ip_address="127.0.0.1").access_token
     return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
-def test_client() -> Generator[FlaskClient, None, None]:
+def test_client() -> Generator[FlaskClient]:
     with _CACHED_APP.test_client() as client:
         yield client

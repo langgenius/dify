@@ -10,8 +10,17 @@ from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import MagicMock
 
-from core.model_manager import ModelInstance
-from core.workflow.node_runtime import DifyToolNodeRuntime
+from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
+from core.helper.ssrf_proxy import graphon_ssrf_proxy
+from core.workflow.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyPreparedLLM,
+    DifyPromptMessageSerializer,
+    DifyToolFileManager,
+    DifyToolNodeRuntime,
+    build_dify_llm_file_saver,
+    resolve_dify_run_context,
+)
 from core.workflow.nodes.agent import AgentNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -20,20 +29,18 @@ from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompleted
 from graphon.nodes.code import CodeNode
 from graphon.nodes.document_extractor import DocumentExtractorNode
 from graphon.nodes.http_request import HttpRequestNode
+from graphon.nodes.iteration import IterationNode
 from graphon.nodes.llm import LLMNode
-from graphon.nodes.llm.file_saver import LLMFileSaver
-from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
+from graphon.nodes.loop import LoopNode
 from graphon.nodes.parameter_extractor import ParameterExtractorNode
-from graphon.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
 from graphon.nodes.question_classifier import QuestionClassifierNode
 from graphon.nodes.template_transform import TemplateTransformNode
 from graphon.nodes.tool import ToolNode
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
+from tests.unit_tests.core.model_fixtures import make_model_instance
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -58,24 +65,29 @@ class MockNodeMixin:
         node_id: str,
         data: Any,
         *,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
         mock_config: Optional["MockConfig"] = None,
         **kwargs: Any,
     ) -> None:
+        run_context = resolve_dify_run_context(init_params.run_context)
         if isinstance(self, (LLMNode, QuestionClassifierNode, ParameterExtractorNode)):
-            kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
-            kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
-            kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
-            kwargs.setdefault("prompt_message_serializer", MagicMock(spec=PromptMessageSerializerProtocol))
-            # LLM-like nodes now require an http_client; provide a mock by default for tests.
-            kwargs.setdefault("http_client", MagicMock(spec=HttpClientProtocol))
+            kwargs.setdefault("credentials_provider", DifyCredentialsProvider(run_context=run_context))
+            kwargs.setdefault("model_factory", DifyModelFactory(run_context=run_context))
+            kwargs.setdefault(
+                "model_instance", DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-3.5-turbo"))
+            )
+            kwargs.setdefault("prompt_message_serializer", DifyPromptMessageSerializer())
+            # These nodes override _run; their real runtime dependencies remain unused.
+            kwargs.setdefault("http_client", graphon_ssrf_proxy)
 
         if isinstance(self, (LLMNode, QuestionClassifierNode)):
-            kwargs.setdefault("llm_file_saver", MagicMock(spec=LLMFileSaver))
+            kwargs.setdefault(
+                "llm_file_saver", build_dify_llm_file_saver(run_context=run_context, http_client=graphon_ssrf_proxy)
+            )
 
         if isinstance(self, HttpRequestNode):
-            kwargs.setdefault("file_reference_factory", MagicMock(spec=FileReferenceFactoryProtocol))
+            kwargs.setdefault("file_reference_factory", DifyFileReferenceFactory(run_context))
 
         # Ensure TemplateTransformNode receives a renderer now required by constructor
         if isinstance(self, TemplateTransformNode):
@@ -85,8 +97,8 @@ class MockNodeMixin:
         from graphon.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
 
         if isinstance(self, _ToolNode):
-            kwargs.setdefault("tool_file_manager", MagicMock(spec=ToolFileManagerProtocol))
-            kwargs.setdefault("runtime", DifyToolNodeRuntime(graph_init_params.run_context))
+            kwargs.setdefault("tool_file_manager", DifyToolFileManager(run_context))
+            kwargs.setdefault("runtime", DifyToolNodeRuntime(init_params.run_context))
 
         if isinstance(self, AgentNode):
             presentation_provider = MagicMock()
@@ -99,8 +111,8 @@ class MockNodeMixin:
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
             **kwargs,
         )
         self.mock_config = mock_config
@@ -191,10 +203,7 @@ class MockLLMNode(MockNodeMixin, LLMNode):
             words = text.split(" ")
             for i, word in enumerate(words):
                 # Add space before word (except for first word) to reconstruct text properly
-                if i > 0:
-                    chunk = " " + word
-                else:
-                    chunk = word
+                chunk = " " + word if i > 0 else word
 
                 yield StreamChunkEvent(
                     selector=[self._node_id, "text"],
@@ -603,10 +612,6 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
         )
 
 
-from graphon.nodes.iteration import IterationNode
-from graphon.nodes.loop import LoopNode
-
-
 class MockIterationNode(MockNodeMixin, IterationNode):
     """Mock implementation of IterationNode that preserves mock configuration."""
 
@@ -653,7 +658,7 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
         if hasattr(self._node_data, "variables"):
             for variable_selector in self._node_data.variables:
                 variable_name = variable_selector.variable
-                value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+                value = self.runtime_state.variable_pool.get(variable_selector.value_selector)
                 variables[variable_name] = value.to_object() if value else None
 
         # Check if we have custom mock outputs configured
@@ -678,7 +683,7 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs={"output": result_text}
                 )
-        except Exception as e:
+        except Exception:
             # If direct Jinja2 fails, try CodeExecutor as fallback
             try:
                 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage

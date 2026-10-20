@@ -6,7 +6,7 @@ import json
 from collections.abc import Iterator
 from datetime import datetime
 from inspect import unwrap as unwrap_all
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import UUID
 
 import pytest
@@ -17,14 +17,15 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
-    DraftWorkflowRunPayload,
     NodeIdQuery,
     PublishedWorkflowRunPayload,
+    RagPipelineDraftWorkflowRunPayload,
     RagPipelineRecommendedPluginQuery,
     WorkflowListQuery,
     WorkflowUpdatePayload,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, Pipeline
 from models.engine import db
@@ -108,9 +109,9 @@ def database_app() -> Iterator[Flask]:
     db.init_app(app)
 
     with app.app_context():
-        Account.__table__.create(db.engine)
-        WorkflowToolProvider.__table__.create(db.engine)
-        Workflow.__table__.create(db.engine)
+        db.metadata.tables[Account.__tablename__].create(db.engine)
+        db.metadata.tables[WorkflowToolProvider.__tablename__].create(db.engine)
+        db.metadata.tables[Workflow.__tablename__].create(db.engine)
         db.session.add(_account())
         db.session.commit()
 
@@ -235,7 +236,27 @@ def test_draft_rag_pipeline_second_step_parameters_serializes_variables(database
 
 def test_rag_pipeline_recommended_plugins_serializes_known_envelope(database_app: Flask) -> None:
     recommended_plugins = {
-        "installed_recommended_plugins": [{"name": "Dify Extractor", "meta": {"version": "1.0.0"}}],
+        "installed_recommended_plugins": [
+            {
+                "id": "langgenius/dify_extractor/dify_extractor",
+                "author": "langgenius",
+                "name": "langgenius/dify_extractor/dify_extractor",
+                "description": {
+                    "en_US": "Extract text",
+                    "zh_Hans": "Extract text",
+                    "pt_BR": "Extract text",
+                    "ja_JP": "Extract text",
+                },
+                "icon": "/icon.svg",
+                "label": {
+                    "en_US": "Dify Extractor",
+                    "zh_Hans": "Dify Extractor",
+                    "pt_BR": "Dify Extractor",
+                    "ja_JP": "Dify Extractor",
+                },
+                "type": "builtin",
+            }
+        ],
         "uninstalled_recommended_plugins": [{"plugin_id": "langgenius/notion_datasource"}],
     }
     api = module.RagPipelineRecommendedPluginApi()
@@ -387,6 +408,7 @@ def test_rag_pipeline_transform_skips_legacy_acl_when_rbac_is_enabled(sqlite_eng
 def test_rag_pipeline_run_uses_sqlite_session(
     app: Flask,
     sqlite_engine: Engine,
+    pipeline_application: PipelineGenerator,
     api_type: type,
     payload: dict[str, object],
 ) -> None:
@@ -398,11 +420,11 @@ def test_rag_pipeline_run_uses_sqlite_session(
         Session(sqlite_engine) as session,
         app.test_request_context("/", json=payload),
         patch.object(module, "load_rag_pipeline", return_value=pipeline) as load_pipeline,
-        patch.object(module.PipelineGenerateService, "generate", return_value=MagicMock()) as generate,
+        patch.object(module.PipelineGenerateService, "generate", return_value={"event": "done"}) as generate,
         patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
     ):
         req_data = (
-            DraftWorkflowRunPayload.model_validate(payload)
+            RagPipelineDraftWorkflowRunPayload.model_validate(payload)
             if api_type is module.DraftRagPipelineRunApi
             else PublishedWorkflowRunPayload.model_validate(payload)
         )
@@ -411,6 +433,7 @@ def test_rag_pipeline_run_uses_sqlite_session(
     assert response == {"ok": True}
     load_pipeline.assert_called_once_with(session, pipeline.id)
     assert generate.call_args.kwargs["session"] is session
+    assert generate.call_args.kwargs["generator"] is pipeline_application
     assert session.get_bind() is sqlite_engine
 
 
@@ -418,9 +441,10 @@ def test_rag_pipeline_run_uses_sqlite_session(
 def test_rag_pipeline_run_translates_rate_limit(
     app: Flask,
     sqlite_engine: Engine,
+    pipeline_application: PipelineGenerator,
     api_type: type,
 ) -> None:
-    payload = {
+    payload: dict[str, object] = {
         "inputs": {},
         "datasource_type": "x",
         "datasource_info_list": [],
@@ -430,7 +454,7 @@ def test_rag_pipeline_run_translates_rate_limit(
     handler = unwrap_all(api.post)
     pipeline = _pipeline()
     req_data = (
-        DraftWorkflowRunPayload.model_validate(payload)
+        RagPipelineDraftWorkflowRunPayload.model_validate(payload)
         if api_type is module.DraftRagPipelineRunApi
         else PublishedWorkflowRunPayload.model_validate(payload)
     )
@@ -439,7 +463,10 @@ def test_rag_pipeline_run_translates_rate_limit(
         Session(sqlite_engine) as session,
         app.test_request_context("/", json=payload),
         patch.object(module, "load_rag_pipeline", return_value=pipeline),
-        patch.object(module.PipelineGenerateService, "generate", side_effect=InvokeRateLimitError("limit")),
+        patch.object(module.PipelineGenerateService, "generate", side_effect=InvokeRateLimitError("limit")) as generate,
         pytest.raises(InvokeRateLimitHttpError),
     ):
         handler(api, req_data, session, _account(), pipeline.id)
+
+    assert generate.call_args.kwargs["session"] is session
+    assert generate.call_args.kwargs["generator"] is pipeline_application

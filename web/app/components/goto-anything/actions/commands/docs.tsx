@@ -1,39 +1,22 @@
-import type { SlashCommandHandler } from './types'
-import { getI18n } from 'react-i18next'
-import { registerCommands, unregisterCommands } from './command-bus'
-
-type DocDeps = {
-  getDocsHomeUrl: () => string
-}
-
-let getDocsHomeUrl: (() => string) | undefined
-
-const openDocsHome = () => {
-  const url = getDocsHomeUrl?.()
-  if (url) window.open(url, '_blank', 'noopener,noreferrer')
-}
+import type { SlashCommand } from './types'
 
 /**
  * Documentation command - Opens help documentation
  */
-export const docsCommand: SlashCommandHandler<DocDeps> = {
+export const docsCommand: SlashCommand = {
   name: 'docs',
   description: 'Open documentation',
   mode: 'direct',
 
-  // Direct execution function
-  execute: () => {
-    openDocsHome()
-  },
+  execute: (_args, context) => context.openExternal(context.getDocsHomeUrl()),
 
-  search(args: string, locale: string = 'en') {
-    const i18n = getI18n()
+  search(args: string, context) {
     return [
       {
         id: 'doc',
-        title: i18n.t(($) => $['userProfile.helpCenter'], { ns: 'common', lng: locale }),
+        title: context.t(($) => $['userProfile.helpCenter'], { ns: 'common', lng: context.locale }),
         description:
-          i18n.t(($) => $['gotoAnything.actions.docDesc'], { ns: 'app', lng: locale }) ||
+          context.t(($) => $['gotoAnything.actions.docDesc'], { ns: 'app', lng: context.locale }) ||
           'Open help documentation',
         type: 'command' as const,
         icon: (
@@ -41,22 +24,8 @@ export const docsCommand: SlashCommandHandler<DocDeps> = {
             <span aria-hidden className="i-ri-book-open-line size-4 text-text-tertiary" />
           </div>
         ),
-        data: { command: 'navigation.doc', args: {} },
+        data: { command: 'docs', args: {} },
       },
     ]
-  },
-
-  register(deps: DocDeps) {
-    getDocsHomeUrl = deps.getDocsHomeUrl
-    registerCommands({
-      'navigation.doc': async (_args) => {
-        openDocsHome()
-      },
-    })
-  },
-
-  unregister() {
-    getDocsHomeUrl = undefined
-    unregisterCommands(['navigation.doc'])
   },
 }

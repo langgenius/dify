@@ -1,6 +1,7 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { IndexingStatusResponse } from '@/models/datasets'
-import type { InitialDocumentDetail } from '@/models/pipeline'
+import type { DataSourceNotionPage } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,7 +15,7 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -29,14 +30,15 @@ import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { DatasourceType } from '@/models/pipeline'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
-import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import RuleDetail from './rule-detail'
+
+const isNotionPageIcon = (value: unknown): value is DataSourceNotionPage['page_icon'] =>
+  typeof value === 'object' && value !== null && 'type' in value
 
 type EmbeddingProcessProps = {
   datasetId: string
   batchId: string
-  documents?: InitialDocumentDetail[]
+  documents?: PipelineDocument[]
   indexingType?: IndexingType
   retrievalMethod?: RETRIEVE_METHOD
 }
@@ -56,29 +58,34 @@ const EmbeddingProcess = ({
       select: (data) => data.billing.subscription.plan,
     }),
   )
-  const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<IndexingStatusResponse[]>(
+  const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<DocumentStatusResponse[]>(
     [],
   )
   const [shouldPoll, setShouldPoll] = useState(true)
-  const { mutateAsync: fetchIndexingStatus } = useIndexingStatusBatch({ datasetId, batchId })
+  const { mutateAsync: fetchIndexingStatus } = useMutation(
+    consoleQuery.datasets.byDatasetId.batch.byBatch.indexingStatus.get.mutationOptions(),
+  )
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>
 
     const fetchData = async () => {
-      await fetchIndexingStatus(undefined, {
-        onSuccess: (res) => {
-          const indexingStatusDetailList = res.data
-          setIndexingStatusDetail(indexingStatusDetailList)
-          const isCompleted = indexingStatusDetailList.every((indexingStatusDetail) =>
-            ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status),
-          )
-          if (isCompleted) setShouldPoll(false)
+      await fetchIndexingStatus(
+        { params: { dataset_id: datasetId, batch: batchId } },
+        {
+          onSuccess: (res) => {
+            const indexingStatusDetailList = res.data
+            setIndexingStatusDetail(indexingStatusDetailList)
+            const isCompleted = indexingStatusDetailList.every((indexingStatusDetail) =>
+              ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status),
+            )
+            if (isCompleted) setShouldPoll(false)
+          },
+          onSettled: () => {
+            if (shouldPoll) timeoutId = setTimeout(fetchData, 2500)
+          },
         },
-        onSettled: () => {
-          if (shouldPoll) timeoutId = setTimeout(fetchData, 2500)
-        },
-      })
+      )
     }
 
     fetchData()
@@ -90,9 +97,18 @@ const EmbeddingProcess = ({
 
   // get rule
   const firstDocument = documents[0]
-  const { data: ruleDetail } = useProcessRule(firstDocument!.id)
+  const { data: ruleDetail } = useQuery(
+    consoleQuery.datasets.processRule.get.queryOptions({
+      input: { query: { document_id: firstDocument?.id } },
+      enabled: !!firstDocument,
+    }),
+  )
 
-  const invalidDocumentList = useInvalidDocumentList()
+  const queryClient = useQueryClient()
+  const invalidDocumentList = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+    })
   const documentsHref = `/datasets/${datasetId}/documents`
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
@@ -131,7 +147,7 @@ const EmbeddingProcess = ({
     return doc?.name
   }
   const getFileType = (name?: string) => name?.split('.').pop() || 'txt'
-  const getSourcePercent = (detail: IndexingStatusResponse) => {
+  const getSourcePercent = (detail: DocumentStatusResponse) => {
     const completedCount = detail.completed_segments || 0
     const totalCount = detail.total_segments || 0
     if (totalCount === 0) return 0
@@ -145,9 +161,10 @@ const EmbeddingProcess = ({
   const getIcon = (id: string) => {
     const doc = documents.find((document) => document.id === id)
 
-    return doc?.data_source_info.notion_page_icon
+    const icon = doc?.data_source_info?.notion_page_icon
+    return typeof icon === 'string' || isNotionPageIcon(icon) ? icon : undefined
   }
-  const isSourceEmbedding = (detail: IndexingStatusResponse) =>
+  const isSourceEmbedding = (detail: DocumentStatusResponse) =>
     ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(
       detail.indexing_status || '',
     )
@@ -235,7 +252,7 @@ const EmbeddingProcess = ({
                   <Popover>
                     <PopoverTrigger
                       openOnHover
-                      aria-label={indexingStatusDetail.error}
+                      aria-label={indexingStatusDetail.error ?? undefined}
                       className="inline-flex border-0 bg-transparent p-0"
                     >
                       <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />

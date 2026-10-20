@@ -13,7 +13,6 @@ import { useCallback } from 'react'
 import { v4 as uuid4 } from 'uuid'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import { ComparisonOperator, LogicalOperator, MetadataFilteringVariableType } from '../types'
 
 type Params = {
@@ -115,7 +114,7 @@ const useKnowledgeMetadataConfig = ({ id, inputRef, setInputs }: Params) => {
         draft.metadata_model_config = {
           provider: model.provider,
           name: model.modelId,
-          mode: model.mode || AppModeEnum.CHAT,
+          mode: model.mode || 'chat',
           completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
         }
       })

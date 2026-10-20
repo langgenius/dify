@@ -9,7 +9,7 @@ const reasoningChunk = (data: Partial<ReasoningChunkResponse['data']>): Reasonin
 })
 
 describe('useWorkflowReasoning', () => {
-  it('accumulates reasoning deltas per LLM node id', () => {
+  it('accumulates interleaved reasoning deltas independently for each LLM node', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowReasoning(), {
       initialStoreState: {
         workflowRunningData: baseRunningData({ resultText: '' }),
@@ -17,25 +17,12 @@ describe('useWorkflowReasoning', () => {
     })
 
     result.current.handleWorkflowReasoning(reasoningChunk({ reasoning: 'let me ', node_id: 'llm' }))
+    result.current.handleWorkflowReasoning(reasoningChunk({ reasoning: 'other', node_id: 'llm-2' }))
     result.current.handleWorkflowReasoning(reasoningChunk({ reasoning: 'think', node_id: 'llm' }))
 
     const state = store.getState().workflowRunningData!
-    expect(state.reasoningContent).toEqual({ llm: 'let me think' })
+    expect(state.reasoningContent).toEqual({ llm: 'let me think', 'llm-2': 'other' })
     expect(state.reasoningFinished).toBeFalsy()
-  })
-
-  it('keeps reasoning from multiple LLM nodes in separate buckets', () => {
-    const { result, store } = renderWorkflowHook(() => useWorkflowReasoning(), {
-      initialStoreState: { workflowRunningData: baseRunningData({ resultText: '' }) },
-    })
-
-    result.current.handleWorkflowReasoning(reasoningChunk({ reasoning: 'a', node_id: 'llm-1' }))
-    result.current.handleWorkflowReasoning(reasoningChunk({ reasoning: 'b', node_id: 'llm-2' }))
-
-    expect(store.getState().workflowRunningData!.reasoningContent).toEqual({
-      'llm-1': 'a',
-      'llm-2': 'b',
-    })
   })
 
   it('falls back to "_" when the chunk carries no node id', () => {

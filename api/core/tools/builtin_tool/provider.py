@@ -33,7 +33,7 @@ class BuiltinToolProviderController(ToolProviderController[ToolProviderEntity, B
         try:
             provider_yaml = load_yaml_file_cached(yaml_path)
         except Exception as e:
-            raise ToolProviderNotFoundError(f"can not load provider yaml for {provider}: {e}")
+            raise ToolProviderNotFoundError(f"can not load provider yaml for {provider}: {e}") from e
 
         if "credentials_for_provider" in provider_yaml and provider_yaml["credentials_for_provider"] is not None:
             # set credentials name

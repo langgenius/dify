@@ -5,7 +5,7 @@ import type {
   AgentReferencingWorkflowResponse,
   AgentReferencingWorkflowsResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { AgentConfigurePublishResult } from '../../../use-agent-configure-sync'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
@@ -29,7 +29,7 @@ import { AgentVersionRestore } from '../../version-restore'
 import { AgentPublishImpactDetails } from './publish-impact-details'
 import { AgentPublishSuccess } from './publish-success'
 
-const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
+const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies HotkeyChord
 
 type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 
@@ -74,9 +74,9 @@ function getPublishState({
 function PublishShortcut() {
   return (
     <KbdGroup aria-hidden>
-      {PUBLISH_AGENT_HOTKEY.split('+').map((key) => (
+      {formatForDisplay(PUBLISH_AGENT_HOTKEY, { parts: true }).map((key) => (
         <Kbd key={key} color="white">
-          {formatForDisplay(key)}
+          {key}
         </Kbd>
       ))}
     </KbdGroup>
@@ -200,11 +200,16 @@ export function AgentConfigurePublishBar({
   useHotkey(
     PUBLISH_AGENT_HOTKEY,
     (event) => {
+      if (event.defaultPrevented) return
       event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       requestPublish()
     },
     {
       enabled: canPublish && !selectedVersionSnapshot,
+      preventDefault: false,
+      stopPropagation: false,
       ignoreInputs: false,
     },
   )
@@ -385,11 +390,11 @@ function PublishBarActions({
   const publishButtonLabelId = useId()
 
   return (
-    <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4">
+    <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4 max-sm:flex-wrap max-sm:justify-end">
       <div
         role="status"
         aria-label={`${statusLabel}. ${metaLabel}`}
-        className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden"
+        className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden max-sm:basis-full"
       >
         <span className="flex size-4 shrink-0 items-center justify-center">
           <StatusDot size="small" status={dotStatus} />
@@ -459,7 +464,7 @@ function AgentVersionRestoreBar({
   onExitVersions?: () => void
   onRestoreVersion?: (versionId: string) => void
 }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
   const versionLabel =
     version.version_note ||
@@ -469,7 +474,7 @@ function AgentVersionRestoreBar({
       ? null
       : formatTime(
           version.created_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
 
   return (

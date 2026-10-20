@@ -12,6 +12,8 @@ from uuid import uuid4
 import pytest
 from flask import Flask, Response
 from pydantic import ValidationError
+from sqlalchemy import inspect
+from sqlalchemy.orm import Session, sessionmaker
 
 import controllers.mcp.mcp as module
 from models.engine import db
@@ -37,15 +39,16 @@ def app() -> Iterator[Flask]:
             Workflow.__table__,
         ):
             table.create(db.engine)
-        yield app
+        with patch.object(module.session_factory, "get_session_maker", return_value=sessionmaker(db.engine)):
+            yield app
 
 
 @pytest.fixture(autouse=True)
-def mock_mcp_ns():
+def mock_mcp_ns(monkeypatch: pytest.MonkeyPatch):
     fake_ns = types.SimpleNamespace()
     fake_ns.payload = None
     fake_ns.models = {}
-    module.mcp_ns = fake_ns
+    monkeypatch.setattr(module, "mcp_ns", fake_ns)
 
 
 @pytest.fixture
@@ -208,14 +211,15 @@ class TestMCPAppApi:
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError):
-            post_fn("server-1")
+        response = post_fn("server-1")
+        assert response.status_code == 202
+        assert response.data == b""
 
     def test_inactive_server(self):
         fake_payload(
             {
                 "jsonrpc": "2.0",
-                "method": "test",
+                "method": "ping",
                 "id": 1,
                 "params": {},
             }
@@ -229,19 +233,25 @@ class TestMCPAppApi:
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError):
-            post_fn("server-1")
+        response = post_fn("server-1")
+        assert response.status_code == 404
+        assert response.get_json()["error"]["message"] == "Server Not Found"
 
-    def test_invalid_payload(self):
+    def test_invalid_payload(self, mocker):
         fake_payload({"invalid": "data"})
 
         api = module.MCPAppApi()
+        mocker.patch.object(
+            api,
+            "_get_mcp_server_and_app",
+            return_value=(_server(module.AppMCPServerStatus.ACTIVE), _app(module.AppMode.WORKFLOW)),
+        )
         post_fn = unwrap(api.post)
 
         with pytest.raises(ValidationError):
             post_fn("server-1")
 
-    def test_missing_request_id(self):
+    def test_unknown_method_without_request_id_is_ignored(self):
         fake_payload(
             {
                 "jsonrpc": "2.0",
@@ -258,10 +268,11 @@ class TestMCPAppApi:
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError):
-            post_fn("server-1")
+        response = post_fn("server-1")
+        assert response.status_code == 202
+        assert response.data == b""
 
-    def test_server_not_found(self):
+    def test_server_not_found(self, mocker):
         """Test when MCP server doesn't exist"""
         fake_payload(
             {
@@ -277,17 +288,15 @@ class TestMCPAppApi:
         )
 
         api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(
-            side_effect=module.MCPRequestError(module.mcp_types.INVALID_REQUEST, "Server Not Found")
-        )
+        mocker.patch.object(api, "_get_mcp_server_and_app", side_effect=module.MCPServerNotFoundError())
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "Server Not Found" in str(exc_info.value)
+        response = post_fn("server-1")
+        assert response.status_code == 404
+        assert response.get_json()["error"]["message"] == "Server Not Found"
 
-    def test_app_not_found(self):
+    def test_app_not_found(self, mocker):
         """Test when app associated with server doesn't exist"""
         fake_payload(
             {
@@ -303,15 +312,13 @@ class TestMCPAppApi:
         )
 
         api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(
-            side_effect=module.MCPRequestError(module.mcp_types.INVALID_REQUEST, "App Not Found")
-        )
+        mocker.patch.object(api, "_get_mcp_server_and_app", side_effect=module.MCPServerNotFoundError())
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "App Not Found" in str(exc_info.value)
+        response = post_fn("server-1")
+        assert response.status_code == 404
+        assert response.get_json()["error"]["message"] == "Server Not Found"
 
     def test_app_unavailable_no_workflow(self):
         """Test when app has no workflow (ADVANCED_CHAT mode)"""
@@ -469,9 +476,13 @@ class TestMCPAppApi:
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "Invalid MCP request" in str(exc_info.value)
+        response = post_fn("server-1")
+        assert response.status_code == 400
+        assert response.get_json() == {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "error": {"code": module.mcp_types.METHOD_NOT_FOUND, "message": "Method not found"},
+        }
 
     def test_validate_server_status_active(self):
         """Test successful server status validation"""
@@ -548,6 +559,61 @@ def _tools_call_payload() -> dict[str, object]:
         "id": 1,
         "params": {"name": "test_app", "arguments": {"query": "test question"}},
     }
+
+
+def test_execution_reloads_attached_orm_objects_after_identity_preflight(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app_model = _app(module.AppMode.CHAT, with_model_config=True)
+    server = _server(module.AppMCPServerStatus.ACTIVE)
+    db.session.add_all([app_model, server])
+    db.session.commit()
+    api = module.MCPAppApi()
+    lookup = api._get_mcp_server_and_app
+    snapshots: list[tuple[module.AppMCPServer, module.App]] = []
+
+    def observe_lookup(code: str, session: Session) -> tuple[module.AppMCPServer, module.App]:
+        pair = lookup(code, session)
+        snapshots.append(pair)
+        return pair
+
+    def process(
+        _mcp_request: module.mcp_types.ClientRequest | module.mcp_types.ClientNotification,
+        _request_id: int | str | None,
+        fresh_app: module.App,
+        fresh_server: module.AppMCPServer,
+        _form: list[module.VariableEntity],
+        session: Session,
+        _protocol: str,
+    ) -> Response:
+        old_server, old_app = snapshots[0]
+        assert inspect(old_server).detached
+        assert inspect(old_app).detached
+        assert fresh_server is not old_server
+        assert fresh_app is not old_app
+        assert inspect(fresh_server).session is session
+        assert inspect(fresh_app).session is session
+        return Response("ok")
+
+    monkeypatch.setattr(api, "_get_mcp_server_and_app", observe_lookup)
+    monkeypatch.setattr(api, "_process_mcp_message", process)
+    fake_payload({"jsonrpc": "2.0", "method": "ping", "id": 1})
+    with app.test_request_context("/"):
+        response = api.post("server-1")
+    assert response.status_code == 200
+    assert len(snapshots) == 2
+
+
+@pytest.mark.usefixtures("app")
+def test_identity_query_does_not_accept_a_server_bound_to_another_tenants_app() -> None:
+    app_model = _app(module.AppMode.CHAT)
+    server = _server(module.AppMCPServerStatus.ACTIVE)
+    server.tenant_id = str(uuid4())
+    db.session.add_all([app_model, server])
+    db.session.commit()
+    with sessionmaker(db.engine).begin() as session:
+        with pytest.raises(module.MCPServerNotFoundError):
+            module.MCPAppApi()._get_mcp_server_and_app("server-1", session)
 
 
 class TestMCPProtocolVersionNegotiationApi:

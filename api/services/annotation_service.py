@@ -14,6 +14,7 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
 from libs.pagination import paginate_query
+from models.account import Account
 from models.dataset import DatasetCollectionBinding
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.app_ref_service import AnnotationRef, AppRef
@@ -596,6 +597,18 @@ class AppAnnotationService:
         if not annotation:
             return None
         return annotation
+
+    @classmethod
+    def get_annotation_reply_by_id(
+        cls, annotation_id: str, session: Session
+    ) -> tuple[MessageAnnotation, str | None] | None:
+        """Read a reply and its author together, retaining annotations whose account was deleted."""
+        row = session.execute(
+            select(MessageAnnotation, Account.name)
+            .outerjoin(Account, Account.id == MessageAnnotation.account_id)
+            .where(MessageAnnotation.id == annotation_id)
+        ).one_or_none()
+        return (row[0], row[1]) if row is not None else None
 
     @classmethod
     def add_annotation_history(

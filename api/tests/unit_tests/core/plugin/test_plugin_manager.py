@@ -460,7 +460,7 @@ class TestPluginValidation:
     def test_plugin_manifest_invalid_author_format(self):
         """Test that invalid author format raises validation error."""
         # Arrange & Act & Assert: Creating a declaration with invalid author should fail
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for PluginDeclaration\\\nauthor"):
             PluginDeclaration(
                 version="1.0.0",
                 author="invalid author with spaces!@#",  # Invalid author format
@@ -478,7 +478,7 @@ class TestPluginValidation:
     def test_plugin_manifest_invalid_name_format(self):
         """Test that invalid plugin name format raises validation error."""
         # Arrange & Act & Assert: Creating a declaration with invalid name should fail
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for PluginDeclaration\\\nname"):
             PluginDeclaration(
                 version="1.0.0",
                 author="test-author",

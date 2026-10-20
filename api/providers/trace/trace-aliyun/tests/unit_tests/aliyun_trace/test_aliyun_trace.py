@@ -55,8 +55,8 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from tests.unit_tests.core.ops.trace_fixtures import workflow_node_execution
 
 
 class RecordingTraceClient:
@@ -464,7 +464,7 @@ def test_get_workflow_node_executions_builds_repo_and_fetches(
 
 
 def test_build_workflow_node_span_routes_llm_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     trace_info = _make_workflow_trace_info()
     trace_metadata = _make_trace_metadata()
 
@@ -477,7 +477,7 @@ def test_build_workflow_node_span_routes_llm_type(trace_instance: AliyunDataTrac
 def test_build_workflow_node_span_routes_knowledge_retrieval_type(
     trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch
 ):
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     trace_info = _make_workflow_trace_info()
     trace_metadata = _make_trace_metadata()
 
@@ -488,7 +488,7 @@ def test_build_workflow_node_span_routes_knowledge_retrieval_type(
 
 
 def test_build_workflow_node_span_routes_tool_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     trace_info = _make_workflow_trace_info()
     trace_metadata = _make_trace_metadata()
 
@@ -499,7 +499,7 @@ def test_build_workflow_node_span_routes_tool_type(trace_instance: AliyunDataTra
 
 
 def test_build_workflow_node_span_routes_code_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     trace_info = _make_workflow_trace_info()
     trace_metadata = _make_trace_metadata()
 
@@ -512,7 +512,7 @@ def test_build_workflow_node_span_routes_code_type(trace_instance: AliyunDataTra
 def test_build_workflow_node_span_handles_errors(
     trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ):
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     trace_info = _make_workflow_trace_info()
     trace_metadata = _make_trace_metadata()
 
@@ -541,7 +541,7 @@ def test_build_workflow_task_span(trace_instance: AliyunDataTrace, monkeypatch: 
     monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: status)
 
     trace_metadata = _make_trace_metadata(links=[_make_link()])
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "node-id"
     node_execution.title = "title"
     node_execution.node_type = node_type
@@ -573,7 +573,7 @@ def test_http_task_span_uses_request_snapshot(trace_instance: AliyunDataTrace, e
         "Authorization: Bearer ******\r\nContent-Type: application/json\r\n\r\n"
         '{"message":"synthetic 测试"}'
     )
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "00000000-0000-0000-0000-000000000006"
     node_execution.node_type = BuiltinNodeTypes.HTTP_REQUEST
     node_execution.title = "HTTP request"
@@ -625,7 +625,7 @@ def test_http_task_span_uses_request_snapshot(trace_instance: AliyunDataTrace, e
 )
 @pytest.mark.parametrize("inputs", [None, {}, {"fallback": "original input"}])
 def test_http_task_span_falls_back_to_inputs(trace_instance: AliyunDataTrace, process_data, inputs):
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "00000000-0000-0000-0000-000000000006"
     node_execution.node_type = BuiltinNodeTypes.HTTP_REQUEST
     node_execution.title = "HTTP request"
@@ -645,7 +645,7 @@ def test_http_task_span_falls_back_to_inputs(trace_instance: AliyunDataTrace, pr
 
 
 def test_non_http_task_span_ignores_request_snapshot(trace_instance: AliyunDataTrace):
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "00000000-0000-0000-0000-000000000007"
     node_execution.node_type = BuiltinNodeTypes.CODE
     node_execution.title = "Code"
@@ -671,7 +671,7 @@ def test_build_workflow_tool_span(trace_instance: AliyunDataTrace, monkeypatch: 
     monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: status)
 
     trace_metadata = _make_trace_metadata(links=[_make_link()])
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "node-id"
     node_execution.title = "my-tool"
     node_execution.inputs = {"a": 1}
@@ -714,7 +714,7 @@ def test_build_workflow_retrieval_span(trace_instance: AliyunDataTrace, monkeypa
     )
 
     trace_metadata = _make_trace_metadata()
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "node-id"
     node_execution.title = "retrieval"
     node_execution.inputs = {"query": "q"}
@@ -743,7 +743,7 @@ def test_build_workflow_llm_span(trace_instance: AliyunDataTrace, monkeypatch: p
     monkeypatch.setattr(aliyun_trace_module, "format_output_messages", lambda _: "out")
 
     trace_metadata = _make_trace_metadata()
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "node-id"
     node_execution.title = "llm"
     node_execution.inputs = {}
@@ -783,7 +783,7 @@ def test_build_workflow_llm_span_falls_back_to_inputs_on_invoke_failure(
     monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: Status(StatusCode.ERROR, "boom"))
 
     trace_metadata = _make_trace_metadata()
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "node-id"
     node_execution.title = "llm"
     node_execution.process_data = {}
@@ -873,7 +873,7 @@ def _make_agent_outputs() -> dict:
 
 
 def test_build_workflow_node_span_routes_agent_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     trace_info = _make_workflow_trace_info()
     trace_metadata = _make_trace_metadata()
 
@@ -890,7 +890,7 @@ def test_build_workflow_agent_span(trace_instance: AliyunDataTrace, monkeypatch:
     monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: status)
 
     trace_metadata = _make_trace_metadata()
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "node-id"
     node_execution.title = "my-agent"
     node_execution.inputs = {"query": "ping"}
@@ -926,7 +926,7 @@ def test_build_agent_react_spans(trace_instance: AliyunDataTrace, monkeypatch: p
     monkeypatch.setattr(aliyun_trace_module, "generate_span_id", lambda: next(span_ids))
 
     trace_metadata = _make_trace_metadata()
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "node-id"
     node_execution.outputs = _make_agent_outputs()
     node_execution.created_at = _dt()
@@ -972,7 +972,7 @@ def test_build_agent_react_spans(trace_instance: AliyunDataTrace, monkeypatch: p
 
 
 def test_build_agent_react_spans_returns_empty_without_log(trace_instance: AliyunDataTrace):
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "node-id"
     node_execution.outputs = {"text": "t"}
     node_execution.created_at = _dt()
@@ -988,9 +988,9 @@ def test_workflow_trace_adds_react_spans_for_agent_nodes(
     monkeypatch.setattr(aliyun_trace_module, "convert_to_span_id", lambda _, __: 222)
     monkeypatch.setattr(aliyun_trace_module, "create_links_from_trace_id", lambda _: [])
 
-    agent_node = MagicMock(spec=WorkflowNodeExecution)
+    agent_node = workflow_node_execution()
     agent_node.node_type = BuiltinNodeTypes.AGENT
-    code_node = MagicMock(spec=WorkflowNodeExecution)
+    code_node = workflow_node_execution()
     code_node.node_type = BuiltinNodeTypes.CODE
 
     monkeypatch.setattr(trace_instance, "add_workflow_span", MagicMock())
@@ -1018,7 +1018,7 @@ def test_build_workflow_llm_span_records_time_to_first_token(
     monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: Status(StatusCode.OK))
 
     trace_metadata = _make_trace_metadata()
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
     node_execution.id = "node-id"
     node_execution.title = "llm"
     node_execution.inputs = {}

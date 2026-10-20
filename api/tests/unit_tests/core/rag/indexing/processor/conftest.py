@@ -1,5 +1,4 @@
 from contextlib import AbstractContextManager, nullcontext
-from typing import Any
 
 import pytest
 
@@ -10,7 +9,7 @@ class _FakeFlaskApp:
 
 
 class _FakeExecutor:
-    def __init__(self, future: Any) -> None:
+    def __init__(self, future: object) -> None:
         self._future = future
 
     def __enter__(self) -> "_FakeExecutor":
@@ -19,7 +18,7 @@ class _FakeExecutor:
     def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> bool:
         return False
 
-    def submit(self, func: object, preview: object) -> Any:
+    def submit(self, *_args: object) -> object:
         return self._future
 
 

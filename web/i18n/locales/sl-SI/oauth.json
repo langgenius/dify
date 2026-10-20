@@ -1,4 +1,8 @@
 {
+  "callback.error": "Avtorizacija ni uspela",
+  "callback.errorHint": "Vrnite se na prejšnjo stran in poskusite znova.",
+  "callback.success": "Avtorizacija je zaključena",
+  "callback.successHint": "Zdaj lahko zaprete ta zavihek in se vrnete na prejšnjo stran.",
   "connect": "Poveži se z",
   "continue": "Nadaljuj",
   "error.authAppInfoFetchFailed": "Pridobivanje informacij o aplikaciji za avtorizacijo ni uspelo",

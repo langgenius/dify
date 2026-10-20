@@ -1,100 +1,49 @@
-from collections import UserString
-from unittest.mock import MagicMock
+from collections.abc import Mapping
+from typing import cast
 
 import pytest
-from pytest_mock import MockerFixture
 
 from core.app.app_config.easy_ui_based_app.prompt_template.manager import (
     PromptTemplateConfigManager,
 )
-
-# -----------------------------
-# Helpers
-# -----------------------------
-
-
-class DummyEnumValue(UserString):
-    def __init__(self, value):
-        super().__init__(value)
-        self.value = value
+from core.app.app_config.entities import PromptTemplateEntity
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from models.model import AppMode, AppModelConfigDict
 
 
-class DummyPromptType:
-    def __init__(self):
-        self.SIMPLE = DummyEnumValue("simple")
-        self.ADVANCED = DummyEnumValue("advanced")
-
-    def value_of(self, value):
-        for enum_value in self:
-            if enum_value.value == value:
-                return enum_value
-        raise ValueError(f"invalid prompt type value {value}")
-
-    def __iter__(self):
-        return iter([self.SIMPLE, self.ADVANCED])
-
-
-# -----------------------------
-# Convert Tests
-# -----------------------------
+def _app_model_config(config: Mapping[str, object]) -> AppModelConfigDict:
+    """App model configs are JSON loaded from the database; these tests build partial ones."""
+    return cast(AppModelConfigDict, config)
 
 
 class TestPromptTemplateConfigManagerConvert:
-    def test_convert_missing_prompt_type_raises(self):
+    def test_convert_missing_prompt_type_raises(self) -> None:
         with pytest.raises(ValueError, match="prompt_type is required"):
-            PromptTemplateConfigManager.convert({})
+            PromptTemplateConfigManager.convert(_app_model_config({}))
 
-    def test_convert_simple_prompt(self, mocker: MockerFixture):
-        mock_prompt_entity_cls = MagicMock()
-        mock_prompt_entity_cls.PromptType = DummyPromptType()
-
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.prompt_template.manager.PromptTemplateEntity",
-            mock_prompt_entity_cls,
-        )
-
-        mock_prompt_entity_cls.return_value = "simple_entity"
-
+    def test_convert_simple_prompt(self) -> None:
         config = {"prompt_type": "simple", "pre_prompt": "hello"}
 
-        result = PromptTemplateConfigManager.convert(config)
+        result = PromptTemplateConfigManager.convert(_app_model_config(config))
 
-        assert result == "simple_entity"
-        mock_prompt_entity_cls.assert_called_once_with(prompt_type="simple", simple_prompt_template="hello")
-
-    def test_convert_advanced_chat_valid(self, mocker: MockerFixture):
-        mock_prompt_entity_cls = MagicMock()
-        mock_prompt_entity_cls.PromptType = DummyPromptType()
-        mock_prompt_entity_cls.return_value = "advanced_entity"
-
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.prompt_template.manager.PromptTemplateEntity",
-            mock_prompt_entity_cls,
+        assert result == PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE, simple_prompt_template="hello"
         )
 
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.prompt_template.manager.PromptMessageRole.value_of",
-            return_value="role_enum",
-        )
-
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.prompt_template.manager.AdvancedChatMessageEntity",
-            return_value="chat_msg",
-        )
-
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.prompt_template.manager.AdvancedChatPromptTemplateEntity",
-            return_value="chat_template",
-        )
-
+    def test_convert_advanced_chat_valid(self) -> None:
         config = {
             "prompt_type": "advanced",
             "chat_prompt_config": {"prompt": [{"text": "hi", "role": "user"}]},
         }
 
-        result = PromptTemplateConfigManager.convert(config)
+        result = PromptTemplateConfigManager.convert(_app_model_config(config))
 
-        assert result == "advanced_entity"
+        assert result.prompt_type == PromptTemplateEntity.PromptType.ADVANCED
+        assert result.advanced_chat_prompt_template is not None
+        assert len(result.advanced_chat_prompt_template.messages) == 1
+        message = result.advanced_chat_prompt_template.messages[0]
+        assert message.text == "hi"
+        assert message.role == PromptMessageRole.USER
 
     @pytest.mark.parametrize(
         "message",
@@ -103,38 +52,16 @@ class TestPromptTemplateConfigManagerConvert:
             {"text": "hi", "role": 123},
         ],
     )
-    def test_convert_advanced_invalid_message_fields(self, mocker: MockerFixture, message):
-        mock_prompt_entity_cls = MagicMock()
-        mock_prompt_entity_cls.PromptType = DummyPromptType()
-
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.prompt_template.manager.PromptTemplateEntity",
-            mock_prompt_entity_cls,
-        )
-
+    def test_convert_advanced_invalid_message_fields(self, message: dict[str, object]) -> None:
         config = {
             "prompt_type": "advanced",
             "chat_prompt_config": {"prompt": [message]},
         }
 
-        with pytest.raises(ValueError):
-            PromptTemplateConfigManager.convert(config)
+        with pytest.raises(ValueError, match="(?:message role must be a string|message text must be a string)"):
+            PromptTemplateConfigManager.convert(_app_model_config(config))
 
-    def test_convert_advanced_completion_with_roles(self, mocker: MockerFixture):
-        mock_prompt_entity_cls = MagicMock()
-        mock_prompt_entity_cls.PromptType = DummyPromptType()
-        mock_prompt_entity_cls.return_value = "advanced_entity"
-
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.prompt_template.manager.PromptTemplateEntity",
-            mock_prompt_entity_cls,
-        )
-
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.prompt_template.manager.AdvancedCompletionPromptTemplateEntity",
-            return_value="completion_template",
-        )
-
+    def test_convert_advanced_completion_with_roles(self) -> None:
         config = {
             "prompt_type": "advanced",
             "completion_prompt_config": {
@@ -146,9 +73,14 @@ class TestPromptTemplateConfigManagerConvert:
             },
         }
 
-        result = PromptTemplateConfigManager.convert(config)
+        result = PromptTemplateConfigManager.convert(_app_model_config(config))
 
-        assert result == "advanced_entity"
+        assert result.prompt_type == PromptTemplateEntity.PromptType.ADVANCED
+        assert result.advanced_completion_prompt_template is not None
+        assert result.advanced_completion_prompt_template.prompt == "complete"
+        assert result.advanced_completion_prompt_template.role_prefix is not None
+        assert result.advanced_completion_prompt_template.role_prefix.user == "U"
+        assert result.advanced_completion_prompt_template.role_prefix.assistant == "A"
 
 
 # -----------------------------
@@ -157,110 +89,83 @@ class TestPromptTemplateConfigManagerConvert:
 
 
 class TestValidateAndSetDefaults:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.valid_model = {"mode": "chat"}
 
-    def _patch_prompt_type(self, mocker: MockerFixture):
-        mock_prompt_entity_cls = MagicMock()
-        mock_prompt_entity_cls.PromptType = DummyPromptType()
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.prompt_template.manager.PromptTemplateEntity",
-            mock_prompt_entity_cls,
-        )
-        return mock_prompt_entity_cls
-
-    def test_default_prompt_type_set(self, mocker: MockerFixture):
-        self._patch_prompt_type(mocker)
-
+    def test_default_prompt_type_set(self) -> None:
         config = {"model": self.valid_model}
 
-        result, keys = PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
+        result, keys = PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
         assert result["prompt_type"] == "simple"
         assert isinstance(keys, list)
 
-    def test_invalid_prompt_type_raises(self, mocker: MockerFixture):
-        class InvalidEnum(DummyPromptType):
-            def __iter__(self):
-                return iter([DummyEnumValue("valid")])
-
-        mock_prompt_entity_cls = MagicMock()
-        mock_prompt_entity_cls.PromptType = InvalidEnum()
-
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.prompt_template.manager.PromptTemplateEntity",
-            mock_prompt_entity_cls,
-        )
-
+    def test_invalid_prompt_type_raises(self) -> None:
         config = {"prompt_type": "invalid", "model": self.valid_model}
 
-        with pytest.raises(ValueError):
-            PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
+        with pytest.raises(
+            ValueError,
+            match=("prompt_type must be in \\[<PromptType\\.SIMPLE: 'simple'>, <PromptType\\.ADVANCED: 'advanced'>\\]"),
+        ):
+            PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
-    def test_invalid_chat_prompt_config_type(self, mocker: MockerFixture):
-        self._patch_prompt_type(mocker)
-
+    def test_invalid_chat_prompt_config_type(self) -> None:
         config = {
             "prompt_type": "simple",
             "chat_prompt_config": "invalid",
             "model": self.valid_model,
         }
 
-        with pytest.raises(ValueError):
-            PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
+        with pytest.raises(ValueError, match="chat_prompt_config must be of object type"):
+            PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
-    def test_simple_mode_invalid_pre_prompt_type(self, mocker: MockerFixture):
-        self._patch_prompt_type(mocker)
-
+    def test_simple_mode_invalid_pre_prompt_type(self) -> None:
         config = {
             "prompt_type": "simple",
             "pre_prompt": 123,
             "model": self.valid_model,
         }
 
-        with pytest.raises(ValueError):
-            PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
+        with pytest.raises(ValueError, match="pre_prompt must be of string type"):
+            PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
-    def test_advanced_requires_one_config(self, mocker: MockerFixture):
-        self._patch_prompt_type(mocker)
-
+    def test_advanced_requires_one_config(self) -> None:
         config = {
             "prompt_type": "advanced",
-            "chat_prompt_config": {},
-            "completion_prompt_config": {},
+            "chat_prompt_config": dict[str, object](),
+            "completion_prompt_config": dict[str, object](),
             "model": {"mode": "chat"},
         }
 
-        with pytest.raises(ValueError):
-            PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
+        with pytest.raises(
+            ValueError,
+            match=("chat_prompt_config or completion_prompt_config is required when prompt_type is advanced"),
+        ):
+            PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
-    def test_advanced_invalid_model_mode(self, mocker: MockerFixture):
-        self._patch_prompt_type(mocker)
-
+    def test_advanced_invalid_model_mode(self) -> None:
         config = {
             "prompt_type": "advanced",
-            "chat_prompt_config": {"prompt": []},
+            "chat_prompt_config": {"prompt": list[object]()},
             "model": {"mode": "invalid"},
         }
 
-        with pytest.raises(ValueError):
-            PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
+        with pytest.raises(
+            ValueError, match="model\\.mode must be in \\['completion', 'chat'\\] when prompt_type is advanced"
+        ):
+            PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
-    def test_advanced_chat_prompt_length_exceeds(self, mocker: MockerFixture):
-        self._patch_prompt_type(mocker)
-
+    def test_advanced_chat_prompt_length_exceeds(self) -> None:
         config = {
             "prompt_type": "advanced",
-            "chat_prompt_config": {"prompt": [{}] * 11},
+            "chat_prompt_config": {"prompt": [dict[str, object]()] * 11},
             "model": {"mode": "chat"},
         }
 
-        with pytest.raises(ValueError):
-            PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
+        with pytest.raises(ValueError, match="prompt messages must be less than 10"):
+            PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
-    def test_completion_prefix_defaults_set_when_empty(self, mocker: MockerFixture):
-        self._patch_prompt_type(mocker)
-
+    def test_completion_prefix_defaults_set_when_empty(self) -> None:
         config = {
             "prompt_type": "advanced",
             "completion_prompt_config": {
@@ -273,7 +178,7 @@ class TestValidateAndSetDefaults:
             "model": {"mode": "completion"},
         }
 
-        updated, _ = PromptTemplateConfigManager.validate_and_set_defaults("chat", config)
+        updated, _ = PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
         roles = updated["completion_prompt_config"]["conversation_histories_role"]
         assert roles["user_prefix"] == "Human"
@@ -287,12 +192,12 @@ class TestValidateAndSetDefaults:
 
 class TestValidatePostPrompt:
     @pytest.mark.parametrize("value", [None, ""])
-    def test_post_prompt_defaults(self, value):
+    def test_post_prompt_defaults(self, value: str | None) -> None:
         config = {"post_prompt": value}
         result = PromptTemplateConfigManager.validate_post_prompt_and_set_defaults(config)
         assert result["post_prompt"] == ""
 
-    def test_post_prompt_invalid_type(self):
+    def test_post_prompt_invalid_type(self) -> None:
         config = {"post_prompt": 123}
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="post_prompt must be of string type"):
             PromptTemplateConfigManager.validate_post_prompt_and_set_defaults(config)

@@ -6,7 +6,6 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SkillFileMutationCoordinator } from './shared'
 import type { TagComboboxItem } from '@/features/tag-management/components/tag-combobox-item'
-import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -230,11 +229,10 @@ export function SkillTagsEditor({
             }
           >
             <ComboboxTrigger
-              icon={false}
               disabled={!detail || isSavingTags}
               aria-label={t(($) => $['skillManagement.detail.addTag'])}
               className={cn(
-                'h-4.5 w-auto min-w-4.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm p-0 text-text-tertiary hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover',
+                'flex h-4.5 min-w-4.5 items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm text-start whitespace-nowrap text-text-tertiary transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover motion-reduce:transition-none',
                 visibleTags.length === 0 && 'border-dashed px-1.25',
               )}
             >
@@ -248,8 +246,6 @@ export function SkillTagsEditor({
                 <ComboboxPopup className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]">
                   <TagSearchContentView
                     type="skill"
-                    inputValue={tagSearch}
-                    onInputValueChange={setTagSearch}
                     canBindOrUnbindTags
                     canManageTags
                     onOpenTagManagement={() => setShowTagManagement(true)}
@@ -327,7 +323,7 @@ export function SkillReferencesPanel({
           embedded ? 'w-full px-1' : 'w-max',
         )}
       >
-        {t(($) => $['skillManagement.detail.referencedBy_other'], { count: 0 })}
+        {t(($) => $['skillManagement.detail.referencedBy'], { count: 0 })}
       </div>
     )
   }
@@ -461,13 +457,9 @@ export function SkillPublishConfirmPanel({
           {t(($) => $['skillManagement.detail.publishReferencesTitle'])}
         </h2>
         <p className="mt-0.5 px-1 system-xs-regular text-util-colors-warning-warning-600">
-          {t(
-            ($) =>
-              referenceCount === 1
-                ? $['skillManagement.detail.publishReferencesDescription_one']
-                : $['skillManagement.detail.publishReferencesDescription_other'],
-            { count: referenceCount },
-          )}
+          {t(($) => $['skillManagement.detail.publishReferencesDescription'], {
+            count: referenceCount,
+          })}
         </p>
       </div>
       <div className="px-4 py-2">
@@ -506,11 +498,6 @@ function SkillReferenceItem({
   reference: SkillReferenceResponse
 }) {
   const isWorkflowAgent = reference.type === 'workflow_agent_node'
-  const agentIconType = reference.agent_icon_type as AppIconType | null | undefined
-  const agentImageUrl =
-    reference.agent_icon_type === 'image' || reference.agent_icon_type === 'link'
-      ? reference.agent_icon
-      : undefined
 
   if (!isWorkflowAgent) {
     const title = reference.display_name || reference.name
@@ -527,15 +514,16 @@ function SkillReferenceItem({
         <span aria-hidden className="shrink-0">
           <AppIcon
             size="tiny"
-            iconType={agentIconType}
-            icon={reference.agent_icon ?? undefined}
-            background={reference.agent_icon_background}
-            imageUrl={agentImageUrl}
-            innerIcon={
-              agentIconType ? undefined : (
-                <span className="i-ri-robot-2-line size-4 text-util-colors-blue-blue-600" />
-              )
-            }
+            icon={{
+              icon_type: reference.agent_icon_type,
+              icon: reference.agent_icon,
+              icon_url: reference.agent_icon,
+              icon_background: reference.agent_icon_background,
+            }}
+            fallback={{
+              content: <span className="i-ri-robot-2-line size-4 text-util-colors-blue-blue-600" />,
+              background: reference.agent_icon_background,
+            }}
           />
         </span>
         <span
@@ -558,25 +546,22 @@ function SkillReferenceItem({
   }
 
   const workflowName = reference.workflow_name || reference.display_name || reference.name
-  const workflowIconType = reference.workflow_icon_type as AppIconType | null | undefined
-  const workflowImageUrl =
-    reference.workflow_icon_type === 'image' || reference.workflow_icon_type === 'link'
-      ? reference.workflow_icon
-      : undefined
+
   const workflowContent = (
     <>
       <span aria-hidden className="shrink-0">
         <AppIcon
           size="tiny"
-          iconType={workflowIconType}
-          icon={reference.workflow_icon ?? undefined}
-          background={reference.workflow_icon_background}
-          imageUrl={workflowImageUrl}
-          innerIcon={
-            workflowIconType ? undefined : (
-              <span className="i-ri-flow-chart size-4 text-util-colors-blue-blue-600" />
-            )
-          }
+          icon={{
+            icon_type: reference.workflow_icon_type,
+            icon: reference.workflow_icon,
+            icon_url: reference.workflow_icon,
+            icon_background: reference.workflow_icon_background,
+          }}
+          fallback={{
+            content: <span className="i-ri-flow-chart size-4 text-util-colors-blue-blue-600" />,
+            background: reference.workflow_icon_background,
+          }}
         />
       </span>
       <span

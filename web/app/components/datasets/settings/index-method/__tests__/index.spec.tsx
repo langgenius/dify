@@ -54,39 +54,16 @@ describe('IndexMethod', () => {
     ).toHaveValue('25')
   })
 
-  it.each(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'])(
-    'keeps Economy selected while editing keywords with %s',
-    async (key) => {
-      const user = userEvent.setup()
-      render(<Settings />)
-      const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
-      await user.click(input)
-      await user.keyboard(key === 'ArrowLeft' ? '{Home}' : '{End}')
-      await user.keyboard(`{${key}}`)
-
-      expect(
-        screen.getByRole('radio', { name: 'datasetSettings.form.indexMethodEconomy' }),
-      ).toBeChecked()
-      expect(
-        screen.getByRole('radio', { name: 'datasetCreation.stepTwo.qualified' }),
-      ).not.toBeChecked()
-      expect(input).toBeInTheDocument()
-      expect(input).toHaveFocus()
-    },
-  )
-
-  it('uses arrow keys to select one index method without toggling the selected radio off', async () => {
+  it('keeps Economy selected while editing keyword parameters with arrow keys', async () => {
     const user = userEvent.setup()
     render(<Settings />)
-    const economy = screen.getByRole('radio', { name: 'datasetSettings.form.indexMethodEconomy' })
-    const qualified = screen.getByRole('radio', { name: 'datasetCreation.stepTwo.qualified' })
-    economy.focus()
-    await user.keyboard('{ArrowUp}')
-    expect(qualified).toHaveFocus()
-    expect(qualified).toBeChecked()
-    expect(economy).not.toBeChecked()
-    await user.keyboard(' ')
-    expect(qualified).toBeChecked()
+    const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
+    await user.click(input)
+    await user.keyboard('{ArrowRight}{ArrowLeft}{ArrowUp}{ArrowDown}')
+    expect(
+      screen.getByRole('radio', { name: 'datasetSettings.form.indexMethodEconomy' }),
+    ).toBeChecked()
+    expect(input).toHaveFocus()
   })
 
   it('prevents editing keywords or selection while settings are disabled', async () => {
@@ -106,5 +83,8 @@ describe('IndexMethod', () => {
     await user.click(economy)
     expect(economy).not.toBeChecked()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(economy).toHaveAccessibleDescription(
+      /datasetSettings.form.indexMethodChangeToEconomyDisabledTip/,
+    )
   })
 })

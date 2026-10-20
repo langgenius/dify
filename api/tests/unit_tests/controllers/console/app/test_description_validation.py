@@ -30,19 +30,19 @@ class TestDescriptionValidationUnit:
         """Test validation function with invalid descriptions."""
         # 401 characters should fail
         just_over = "x" * 401
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Description cannot exceed 400 characters\\.") as exc_info:
             validate_description_length(just_over)
         assert "Description cannot exceed 400 characters." in str(exc_info.value)
 
         # 500 characters should fail
         way_over = "x" * 500
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Description cannot exceed 400 characters\\.") as exc_info:
             validate_description_length(way_over)
         assert "Description cannot exceed 400 characters." in str(exc_info.value)
 
         # 1000 characters should fail
         very_long = "x" * 1000
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Description cannot exceed 400 characters\\.") as exc_info:
             validate_description_length(very_long)
         assert "Description cannot exceed 400 characters." in str(exc_info.value)
 
@@ -66,7 +66,7 @@ class TestDescriptionValidationUnit:
                 assert validate_description_length(test_desc) == test_desc
             else:
                 # Should raise ValueError
-                with pytest.raises(ValueError):
+                with pytest.raises(ValueError, match="Description cannot exceed 400 characters\\."):
                     validate_description_length(test_desc)
 
     def test_special_characters(self):
@@ -86,7 +86,7 @@ class TestDescriptionValidationUnit:
         if len(mixed_desc) <= 400:
             assert validate_description_length(mixed_desc) == mixed_desc
         elif len(mixed_desc) > 400:
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Description cannot exceed 400 characters\\."):
                 validate_description_length(mixed_desc)
 
     def test_whitespace_handling(self):
@@ -103,5 +103,5 @@ class TestDescriptionValidationUnit:
 
         # Only whitespace over limit
         only_spaces = " " * 401
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Description cannot exceed 400 characters\\."):
             validate_description_length(only_spaces)

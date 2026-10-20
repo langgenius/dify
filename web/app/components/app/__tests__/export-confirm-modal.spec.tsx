@@ -71,28 +71,10 @@ describe('AppExportConfirmModal', () => {
       />,
     )
 
-    await user.click(screen.getByRole('checkbox'))
-    await user.click(screen.getByRole('button', { name: 'app.exportSecret.title' }))
-
-    expect(onConfirm).toHaveBeenCalledWith(true)
-    expect(onClose).toHaveBeenCalledTimes(1)
-  })
-
-  it('should also toggle exportSecrets when the label text is clicked', async () => {
-    const user = userEvent.setup()
-    const onConfirm = vi.fn().mockResolvedValue(true)
-    const onClose = vi.fn()
-
-    render(
-      <AppExportConfirmModal
-        isExporting={false}
-        envList={envList}
-        onConfirm={onConfirm}
-        onClose={onClose}
-      />,
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(
+      'app.exportSecret.description',
     )
-
-    await user.click(screen.getByText('workflow.env.export.checkbox'))
+    await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: 'app.exportSecret.title' }))
 
     expect(onConfirm).toHaveBeenCalledWith(true)
@@ -121,19 +103,5 @@ describe('AppExportConfirmModal', () => {
     await user.keyboard('{Escape}')
     expect(onConfirm).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
-  })
-
-  it('explains that secret values are included in the app package', () => {
-    render(
-      <AppExportConfirmModal
-        isExporting={false}
-        envList={envList}
-        onConfirm={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    )
-    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(
-      'app.exportSecret.description',
-    )
   })
 })

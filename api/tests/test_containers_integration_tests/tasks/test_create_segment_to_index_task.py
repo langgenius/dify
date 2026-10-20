@@ -19,6 +19,7 @@ from extensions.ext_redis import redis_client
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from tasks.create_segment_to_index_task import create_segment_to_index_task
 
 
@@ -99,7 +100,7 @@ class TestCreateSegmentToIndexTask:
         db_session_with_containers.commit()
 
         # Set current tenant for account
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         return account, tenant
 
@@ -227,7 +228,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -555,7 +556,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -649,7 +650,7 @@ class TestCreateSegmentToIndexTask:
         dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
 
         segments = []
-        for i in range(3):
+        for _i in range(3):
             segment = self._create_test_segment(
                 db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
             )
@@ -744,7 +745,7 @@ class TestCreateSegmentToIndexTask:
         # Mock Redis to raise exception in finally block
         with patch.object(redis_client, "delete", side_effect=Exception("Redis connection failed"), autospec=True):
             # Act: Execute the task - Redis failure should not prevent completion
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(Exception, match="Redis connection failed") as exc_info:
                 create_segment_to_index_task(segment.id)
 
             # Verify the exception contains the expected Redis error message
@@ -988,7 +989,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -1064,7 +1065,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -1086,7 +1087,7 @@ class TestCreateSegmentToIndexTask:
 
         # Create multiple segments with different characteristics
         segments = []
-        for i in range(5):
+        for _i in range(5):
             segment = self._create_test_segment(
                 db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
             )

@@ -1,48 +1,12 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import { DuplicateAgentDialog } from '../duplicate-agent-dialog'
 
-const queryDataMock = vi.hoisted(() => vi.fn())
-const mutationMock = vi.hoisted(() => ({
-  isPending: false,
-  mutate: vi.fn(),
-}))
+const mutateRequest = vi.hoisted(() => vi.fn())
 
-vi.mock('@tanstack/react-query', () => ({
-  useMutation: () => mutationMock,
-  useQueryClient: () => ({
-    getQueryData: queryDataMock,
-  }),
-}))
-
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  __esModule: true,
-  default: ({
-    initialEmoji,
-    open,
-  }: {
-    initialEmoji?: { icon: string; background: string }
-    open: boolean
-  }) => (open ? <span>{`${initialEmoji?.icon}:${initialEmoji?.background}`}</span> : null),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        copy: {
-          post: {
-            mutationOptions: vi.fn(() => ({})),
-          },
-        },
-        get: {
-          queryKey: vi.fn(() => ['agent']),
-        },
-      },
-    },
-  },
-}))
+mockEmojiData()
 
 const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial => ({
   description: 'Original description',
@@ -58,11 +22,24 @@ const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial 
   ...overrides,
 })
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.copy.post': mutateRequest,
+    }),
+  }
+})
+
 describe('DuplicateAgentDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mutationMock.isPending = false
-    queryDataMock.mockReturnValue(undefined)
+    mutateRequest.mockReset().mockResolvedValue({
+      ...createAgent({ id: 'agent-copy-1' }),
+      binding: { agent_id: 'roster-agent-1', binding_type: 'roster_agent' },
+    })
   })
 
   it('keeps one form snapshot while open and creates a new session after closing', async () => {
@@ -80,16 +57,24 @@ describe('DuplicateAgentDialog', () => {
 
     rerender(<DuplicateAgentDialog agent={updatedAgent} open onOpenChange={onOpenChange} />)
 
-    let dialog = screen.getByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
+    let dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.duplicateDialog.title' })
     expect(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
     ).toHaveValue('Research Agent copy')
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: /agentV2\.roster\.duplicateForm\.changeIcon.*Research Agent/,
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
+    await waitFor(() =>
+      expect(mutateRequest).toHaveBeenCalledExactlyOnceWith({
+        params: { agent_id: 'agent-1' },
+        body: {
+          name: 'Research Agent copy',
+          description: 'Original description',
+          role: 'Research Assistant',
+          icon_type: 'emoji',
+          icon: '🧸',
+          icon_background: '#F5F3FF',
+        },
       }),
     )
-    expect(screen.getByText('🧸:#F5F3FF')).toBeInTheDocument()
 
     rerender(<DuplicateAgentDialog agent={updatedAgent} open={false} onOpenChange={onOpenChange} />)
     await waitFor(() => {
@@ -97,16 +82,24 @@ describe('DuplicateAgentDialog', () => {
     })
 
     rerender(<DuplicateAgentDialog agent={updatedAgent} open onOpenChange={onOpenChange} />)
-    dialog = screen.getByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
+    dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.duplicateDialog.title' })
     expect(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
     ).toHaveValue('Updated Agent copy')
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: /agentV2\.roster\.duplicateForm\.changeIcon.*Updated Agent/,
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
+    await waitFor(() =>
+      expect(mutateRequest).toHaveBeenLastCalledWith({
+        params: { agent_id: 'agent-1' },
+        body: {
+          name: 'Updated Agent copy',
+          description: 'Original description',
+          role: 'Updated Role',
+          icon_type: 'emoji',
+          icon: '🦊',
+          icon_background: '#FFEDD5',
+        },
       }),
     )
-    expect(screen.getByText('🦊:#FFEDD5')).toBeInTheDocument()
   })
 
   it('starts a new form session when the agent identity changes', async () => {
@@ -124,29 +117,24 @@ describe('DuplicateAgentDialog', () => {
 
     rerender(<DuplicateAgentDialog agent={secondAgent} open onOpenChange={onOpenChange} />)
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.duplicateDialog.title' })
     expect(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
     ).toHaveValue('Second Agent copy')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        params: {
-          agent_id: 'agent-2',
-        },
-        body: {
-          name: 'Second Agent copy',
-          description: 'Second description',
-          role: 'Second Role',
-          icon_type: 'emoji',
-          icon: '🧸',
-          icon_background: '#F5F3FF',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-2',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
+      body: {
+        name: 'Second Agent copy',
+        description: 'Second description',
+        role: 'Second Role',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
+      },
+    })
   })
 })

@@ -29,12 +29,13 @@ from typing import Any, NamedTuple, cast, override
 
 import sqlalchemy as sa
 from pydantic import ValidationError
-from sqlalchemy import and_, delete, func, null, or_, select, tuple_
+from sqlalchemy import and_, delete, func, null, or_, select, tuple_, update
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy.orm import Session, load_only, selectinload, sessionmaker
 
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
 from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
 )
@@ -51,17 +52,25 @@ from graphon.entities.pause_reason import (
 from graphon.entities.pause_reason import (
     PauseReason as GraphonPauseReason,
 )
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from models import Message
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient
-from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import (
+    WorkflowAppLog,
+    WorkflowArchiveLog,
+    WorkflowNodeExecutionModel,
+    WorkflowPause,
+    WorkflowPauseReason,
+    WorkflowRun,
+)
 from repositories.api_workflow_run_repository import (
     APIWorkflowRunRepository,
+    AppWorkflowRunStats,
     RunsWithRelatedCountsDict,
     WorkflowRunCleanupRef,
 )
@@ -92,6 +101,18 @@ class WorkflowRunPauseRecord(NamedTuple):
 
 class _WorkflowRunError(Exception):
     pass
+
+
+class WorkflowRunNotPausedError(_WorkflowRunError):
+    """A concurrent stop or resume has already consumed the paused run."""
+
+
+class WorkflowTaskOwnerMismatchError(_WorkflowRunError):
+    """The scoped task belongs to another initiating user."""
+
+
+class WorkflowPauseStoppedError(_WorkflowRunError):
+    """A requested stop won while the engine was persisting its pause."""
 
 
 _HEX_SHARD_VALUES = {
@@ -380,6 +401,59 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             return {"total": total} | status_counts
 
     @override
+    def get_stats_by_app_ids(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+        created_since: datetime,
+    ) -> dict[str, AppWorkflowRunStats]:
+        if not tenant_id_by_app_id:
+            return {}
+        counts_stmt = (
+            select(WorkflowRun.tenant_id, WorkflowRun.app_id, WorkflowRun.status, func.count(WorkflowRun.id))
+            .where(
+                *self._app_run_conditions(tenant_id_by_app_id, triggered_from),
+                WorkflowRun.created_at >= created_since,
+            )
+            .group_by(WorkflowRun.tenant_id, WorkflowRun.app_id, WorkflowRun.status)
+        )
+        # One LIMIT 1 lookup per app, so each stops at that app's newest run instead of scanning its history.
+        latest_runs = [
+            select(WorkflowRun.app_id, WorkflowRun.created_at)
+            .where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.triggered_from.in_(triggered_from),
+            )
+            .order_by(WorkflowRun.created_at.desc())
+            .limit(1)
+            .subquery()
+            for app_id, tenant_id in tenant_id_by_app_id.items()
+        ]
+        last_stmt = sa.union_all(*(select(latest_run) for latest_run in latest_runs))
+        status_counts: dict[str, dict[WorkflowExecutionStatus, int]] = {}
+        with self._session_maker() as session:
+            for tenant_id, app_id, status, count in session.execute(counts_stmt):
+                # The IN filters match any tenant/app pairing, so keep only each app's own tenant.
+                if tenant_id_by_app_id[app_id] == tenant_id:
+                    status_counts.setdefault(app_id, {})[WorkflowExecutionStatus(status)] = int(count)
+            last_created_at: dict[str, datetime] = dict(session.execute(last_stmt).tuples().all())
+        return {
+            app_id: AppWorkflowRunStats(status_counts=status_counts.get(app_id, {}), last_created_at=created_at)
+            for app_id, created_at in last_created_at.items()
+        }
+
+    @staticmethod
+    def _app_run_conditions(
+        tenant_id_by_app_id: Mapping[str, str], triggered_from: Sequence[WorkflowRunTriggeredFrom]
+    ) -> list[sa.ColumnElement[bool]]:
+        return [
+            WorkflowRun.tenant_id.in_(set(tenant_id_by_app_id.values())),
+            WorkflowRun.app_id.in_(list(tenant_id_by_app_id)),
+            WorkflowRun.triggered_from.in_(triggered_from),
+        ]
+
+    @override
     def get_expired_runs_batch(
         self,
         tenant_id: str,
@@ -654,56 +728,38 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
     ) -> RunsWithRelatedCountsDict:
+        with self._session_maker.begin() as session:
+            return self.delete_runs_with_related_in_session(
+                session,
+                runs,
+                delete_node_executions=delete_node_executions,
+                delete_trigger_logs=delete_trigger_logs,
+            )
+
+    @override
+    def delete_runs_with_related_in_session(
+        self,
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
         if not runs:
-            return {
-                "runs": 0,
-                "node_executions": 0,
-                "offloads": 0,
-                "app_logs": 0,
-                "trigger_logs": 0,
-                "pauses": 0,
-                "pause_reasons": 0,
-            }
+            return self._empty_runs_with_related_counts()
 
-        with self._session_maker() as session:
-            run_ids = [run.id for run in runs]
-            if delete_node_executions:
-                node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
-            else:
-                node_executions_deleted, offloads_deleted = 0, 0
+        runs = list(runs)
 
-            app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
-            app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
+        def delete_node_executions_by_ids(active_session: Session, _run_ids: Sequence[str]) -> tuple[int, int]:
+            if delete_node_executions is None:
+                return 0, 0
+            return delete_node_executions(active_session, runs)
 
-            pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
-            pause_ids = session.scalars(pause_stmt).all()
-            pause_reasons_deleted = 0
-            pauses_deleted = 0
-
-            if pause_ids:
-                pause_reasons_result = session.execute(
-                    delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
-                )
-                pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
-                pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
-                pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
-
-            trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
-
-            runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
-            runs_deleted = cast(CursorResult, runs_result).rowcount or 0
-
-            session.commit()
-
-            return {
-                "runs": runs_deleted,
-                "node_executions": node_executions_deleted,
-                "offloads": offloads_deleted,
-                "app_logs": app_logs_deleted,
-                "trigger_logs": trigger_logs_deleted,
-                "pauses": pauses_deleted,
-                "pause_reasons": pause_reasons_deleted,
-            }
+        return self._delete_runs_with_related_by_ids_in_session(
+            session,
+            [run.id for run in runs],
+            delete_node_executions=delete_node_executions_by_ids if delete_node_executions else None,
+            delete_trigger_logs=delete_trigger_logs,
+        )
 
     @override
     def delete_runs_with_related_by_ids(
@@ -712,48 +768,60 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         delete_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
     ) -> RunsWithRelatedCountsDict:
+        with self._session_maker.begin() as session:
+            return self._delete_runs_with_related_by_ids_in_session(
+                session,
+                run_ids,
+                delete_node_executions=delete_node_executions,
+                delete_trigger_logs=delete_trigger_logs,
+            )
+
+    def _delete_runs_with_related_by_ids_in_session(
+        self,
+        session: Session,
+        run_ids: Sequence[str],
+        delete_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
         if not run_ids:
             return self._empty_runs_with_related_counts()
 
         run_ids = list(run_ids)
-        with self._session_maker() as session:
-            if delete_node_executions:
-                node_executions_deleted, offloads_deleted = delete_node_executions(session, run_ids)
-            else:
-                node_executions_deleted, offloads_deleted = 0, 0
+        if delete_node_executions:
+            node_executions_deleted, offloads_deleted = delete_node_executions(session, run_ids)
+        else:
+            node_executions_deleted, offloads_deleted = 0, 0
 
-            app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
-            app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
+        app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
+        app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
 
-            pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
-            pause_ids = session.scalars(pause_stmt).all()
-            pause_reasons_deleted = 0
-            pauses_deleted = 0
+        pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
+        pause_ids = session.scalars(pause_stmt).all()
+        pause_reasons_deleted = 0
+        pauses_deleted = 0
 
-            if pause_ids:
-                pause_reasons_result = session.execute(
-                    delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
-                )
-                pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
-                pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
-                pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
+        if pause_ids:
+            pause_reasons_result = session.execute(
+                delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
+            )
+            pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
+            pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
+            pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
 
-            trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
+        trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
 
-            runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
-            runs_deleted = cast(CursorResult, runs_result).rowcount or 0
+        runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
+        runs_deleted = cast(CursorResult, runs_result).rowcount or 0
 
-            session.commit()
-
-            return {
-                "runs": runs_deleted,
-                "node_executions": node_executions_deleted,
-                "offloads": offloads_deleted,
-                "app_logs": app_logs_deleted,
-                "trigger_logs": trigger_logs_deleted,
-                "pauses": pauses_deleted,
-                "pause_reasons": pause_reasons_deleted,
-            }
+        return {
+            "runs": runs_deleted,
+            "node_executions": node_executions_deleted,
+            "offloads": offloads_deleted,
+            "app_logs": app_logs_deleted,
+            "trigger_logs": trigger_logs_deleted,
+            "pauses": pauses_deleted,
+            "pause_reasons": pause_reasons_deleted,
+        }
 
     @override
     def get_app_logs_by_run_id(
@@ -1029,88 +1097,102 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             ValueError: If workflow_run_id is invalid or workflow run doesn't exist
             RuntimeError: If workflow is already paused or in invalid state
         """
-        previous_pause_model_query = select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run_id)
-        with self._session_maker() as session, session.begin():
-            # Get the workflow run
-            workflow_run = session.get(WorkflowRun, workflow_run_id)
-            if workflow_run is None:
-                raise ValueError(f"WorkflowRun not found: {workflow_run_id}")
-
-            # Check if workflow is in RUNNING status
-            # TODO(QuantumGhost): It seems that the persistence of `WorkflowRun.status`
-            # happens before the execution of GraphLayer
-            if workflow_run.status not in {WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED}:
-                raise _WorkflowRunError(
-                    f"Only WorkflowRun with RUNNING or PAUSED status can be paused, "
-                    f"workflow_run_id={workflow_run_id}, current_status={workflow_run.status}"
+        # Do not hold a database transaction during object storage upload.
+        # The subsequent run lock checks durable stop intent before publishing pause.
+        state_obj_key = f"workflow-state-{uuid.uuid4()}.json"
+        storage.save(state_obj_key, state.encode())
+        try:
+            previous_pause_model_query = select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run_id)
+            with self._session_maker() as session, session.begin():
+                # Get the workflow run
+                workflow_run = session.scalar(
+                    select(WorkflowRun).where(WorkflowRun.id == workflow_run_id).with_for_update()
                 )
-            #
-            previous_pause = session.scalars(previous_pause_model_query).first()
-            if previous_pause:
-                self._delete_pause_model(session, previous_pause)
-                # we need to flush here to ensure that the old one is actually deleted.
-                session.flush()
+                if workflow_run is None:
+                    raise ValueError(f"WorkflowRun not found: {workflow_run_id}")
 
-            state_obj_key = f"workflow-state-{uuid.uuid4()}.json"
-            storage.save(state_obj_key, state.encode())
-            # Upload the state file
+                if workflow_run.stop_requested_at is not None or workflow_run.status == WorkflowExecutionStatus.STOPPED:
+                    raise WorkflowPauseStoppedError(f"Workflow stopped while persisting pause: {workflow_run_id}")
 
-            # Create the pause record
-            pause_model = WorkflowPause(
-                workflow_id=workflow_run.workflow_id,
-                workflow_run_id=workflow_run.id,
-                state_object_key=state_obj_key,
-            )
-            pause_reason_models = []
-            for reason in pause_reasons:
-                match reason:
-                    case HitlRequired():
-                        pause_reason_model = WorkflowPauseReason(
-                            pause_id=pause_model.id,
-                            type_=PauseReasonType.HITL_REQUIRED,
-                            form_id=default_session_binding.resolve_form_id_from_session_id(
-                                session_id=reason.session_id
-                            ),
-                            node_id=reason.node_id,
-                        )
-                    case HumanInputRequired():
-                        pause_reason_model = WorkflowPauseReason(
-                            pause_id=pause_model.id,
-                            type_=PauseReasonType.HITL_REQUIRED,
-                            form_id=reason.form_id,
-                            node_id=reason.node_id,
-                        )
-                    case SchedulingPause():
-                        pause_reason_model = WorkflowPauseReason(
-                            pause_id=pause_model.id,
-                            type_=reason.TYPE,
-                            message=reason.message,
-                        )
-                    case _:
-                        raise AssertionError(f"unknown reason type: {type(reason)}")
+                # Check if workflow is in RUNNING status
+                # TODO(QuantumGhost): It seems that the persistence of `WorkflowRun.status`
+                # happens before the execution of GraphLayer
+                if workflow_run.status not in {WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED}:
+                    raise _WorkflowRunError(
+                        f"Only WorkflowRun with RUNNING or PAUSED status can be paused, "
+                        f"workflow_run_id={workflow_run_id}, current_status={workflow_run.status}"
+                    )
+                #
+                previous_pause = session.scalars(previous_pause_model_query).first()
+                if previous_pause:
+                    self._delete_pause_model(session, previous_pause)
+                    # we need to flush here to ensure that the old one is actually deleted.
+                    session.flush()
 
-                pause_reason_models.append(pause_reason_model)
+                # Create the pause record
+                pause_model = WorkflowPause(
+                    workflow_id=workflow_run.workflow_id,
+                    workflow_run_id=workflow_run.id,
+                    state_object_key=state_obj_key,
+                )
+                pause_reason_models = []
+                for reason in pause_reasons:
+                    match reason:
+                        case HitlRequired():
+                            pause_reason_model = WorkflowPauseReason(
+                                pause_id=pause_model.id,
+                                type_=PauseReasonType.HITL_REQUIRED,
+                                form_id=default_session_binding.resolve_form_id_from_session_id(
+                                    session_id=reason.session_id
+                                ),
+                                node_id=reason.node_id,
+                            )
+                        case HumanInputRequired():
+                            pause_reason_model = WorkflowPauseReason(
+                                pause_id=pause_model.id,
+                                type_=PauseReasonType.HITL_REQUIRED,
+                                form_id=reason.form_id,
+                                node_id=reason.node_id,
+                            )
+                        case SchedulingPause():
+                            pause_reason_model = WorkflowPauseReason(
+                                pause_id=pause_model.id,
+                                type_=reason.TYPE,
+                                message=reason.message,
+                            )
+                        case _:
+                            raise AssertionError(f"unknown reason type: {type(reason)}")
 
-            # Update workflow run status
-            workflow_run.status = WorkflowExecutionStatus.PAUSED
+                    pause_reason_models.append(pause_reason_model)
 
-            # Save everything in a transaction
-            session.add(pause_model)
-            session.add(workflow_run)
-            session.add_all(pause_reason_models)
+                # Update workflow run status
+                workflow_run.status = WorkflowExecutionStatus.PAUSED
 
-            logger.info("Created workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
+                # Save everything in a transaction
+                session.add(pause_model)
+                session.add(workflow_run)
+                session.add_all(pause_reason_models)
 
-            # NOTE(QuantumGhost): repository callers on the Dify side should only
-            # observe enriched Dify pause reasons. The Graphon-native reason is an
-            # input-only boundary concern while persisting the pause.
-            hydrated_pause_reasons = self._hydrate_pause_reasons(session, pause_reason_models)
+                logger.info("Created workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
 
-            return _PrivateWorkflowPauseEntity(
-                pause_model=pause_model,
-                reason_models=pause_reason_models,
-                pause_reasons=hydrated_pause_reasons,
-            )
+                # NOTE(QuantumGhost): repository callers on the Dify side should only
+                # observe enriched Dify pause reasons. The Graphon-native reason is an
+                # input-only boundary concern while persisting the pause.
+                hydrated_pause_reasons = self._hydrate_pause_reasons(session, pause_reason_models)
+
+                return _PrivateWorkflowPauseEntity(
+                    pause_model=pause_model,
+                    reason_models=pause_reason_models,
+                    pause_reasons=hydrated_pause_reasons,
+                )
+        except Exception:
+            try:
+                storage.delete(state_obj_key)
+            except Exception:
+                logger.exception(
+                    "Failed to clean up unpublished workflow pause state, workflow_run_id=%s", workflow_run_id
+                )
+            raise
 
     def _get_reasons_by_pause_id(self, session: Session, pause_id: str):
         reason_stmt = select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause_id)
@@ -1150,6 +1232,90 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             else:
                 pause_reasons.append(_to_dify_pause_reason(reason))
         return pause_reasons
+
+    @override
+    def bind_workflow_task(self, *, tenant_id: str, app_id: str, workflow_run_id: str, task_id: str) -> None:
+        with self._session_maker() as session, session.begin():
+            session.execute(
+                update(WorkflowRun)
+                .where(
+                    WorkflowRun.id == workflow_run_id,
+                    WorkflowRun.tenant_id == tenant_id,
+                    WorkflowRun.app_id == app_id,
+                    WorkflowRun.task_id.is_(None),
+                )
+                .values(task_id=task_id)
+            )
+
+    def list_legacy_workflow_pauses(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+        after_id: str | None,
+        limit: int,
+    ) -> Sequence[tuple[WorkflowRun, WorkflowPauseEntity]]:
+        """Page admitted legacy snapshots without loading graphs or pause reasons."""
+        # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
+        stmt = (
+            select(WorkflowRun, WorkflowPause)
+            .select_from(WorkflowPause)
+            .join(WorkflowRun, WorkflowRun.id == WorkflowPause.workflow_run_id)
+            .options(
+                load_only(
+                    WorkflowRun.id,
+                    WorkflowRun.tenant_id,
+                    WorkflowRun.app_id,
+                    WorkflowRun.task_id,
+                    WorkflowRun.status,
+                    WorkflowRun.created_by,
+                    WorkflowRun.created_by_role,
+                )
+            )
+            .where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.task_id.is_(None),
+                WorkflowRun.type.in_([WorkflowType.WORKFLOW, WorkflowType.CHAT]),
+                WorkflowRun.status == WorkflowExecutionStatus.PAUSED,
+                WorkflowPause.resumed_at.is_(None),
+            )
+            .order_by(WorkflowPause.id)
+            .limit(limit)
+        )
+        if owner is not None:
+            stmt = stmt.where(WorkflowRun.created_by_role == owner[0], WorkflowRun.created_by == owner[1])
+        if after_id is not None:
+            stmt = stmt.where(WorkflowPause.id > after_id)
+        with self._session_maker() as session:
+            return [
+                (run, _PrivateWorkflowPauseEntity(pause_model=pause, reason_models=(), pause_reasons=()))
+                for run, pause in session.execute(stmt).tuples()
+            ]
+
+    @override
+    def backfill_workflow_pause_task_id(
+        self, *, tenant_id: str, app_id: str, workflow_run_id: str, pause_id: str, task_id: str
+    ) -> bool:
+        current_pause = select(WorkflowPause.workflow_run_id).where(
+            WorkflowPause.id == pause_id,
+            WorkflowPause.workflow_run_id == workflow_run_id,
+            WorkflowPause.resumed_at.is_(None),
+        )
+        with self._session_maker() as session, session.begin():
+            result = session.execute(
+                update(WorkflowRun)
+                .where(
+                    WorkflowRun.id.in_(current_pause),
+                    WorkflowRun.tenant_id == tenant_id,
+                    WorkflowRun.app_id == app_id,
+                    WorkflowRun.status == WorkflowExecutionStatus.PAUSED,
+                    WorkflowRun.task_id.is_(None),
+                )
+                .values(task_id=task_id)
+            )
+            return cast(CursorResult, result).rowcount == 1
 
     @override
     def get_workflow_pause(
@@ -1233,11 +1399,110 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 form_tokens=form_tokens,
             )
 
+    def stop_paused_workflow_task(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+    ) -> WorkflowRun | None:
+        """Terminate an admitted app's paused task and invalidate its pending forms.
+
+        ``owner=None`` preserves app-scoped Workflow API cancellation. Chat
+        callers supply the initiating account or end user. The run lock is also
+        taken by resume, so a stopped run cannot be changed back to running.
+        """
+        stmt = (
+            select(WorkflowRun)
+            .where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.task_id == task_id,
+            )
+            .with_for_update(of=WorkflowRun)
+        )
+        with self._session_maker(expire_on_commit=False) as session, session.begin():
+            workflow_run = session.scalar(stmt)
+            if workflow_run is None:
+                return None
+            if owner is not None and (workflow_run.created_by_role, workflow_run.created_by) != owner:
+                raise WorkflowTaskOwnerMismatchError()
+            if workflow_run.status == WorkflowExecutionStatus.STOPPED and workflow_run.stop_requested_at is not None:
+                # A retry can finish publishing history/SSE if the external
+                # history backend failed after the durable stop committed.
+                return workflow_run
+            if workflow_run.status not in (WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED):
+                return None
+            workflow_run.stop_requested_at = naive_utc_now()
+            if workflow_run.status != WorkflowExecutionStatus.PAUSED:
+                # A resumed attempt may not have recreated its Redis ownership
+                # cache yet. Preserve this durable admission so stop can still
+                # arm its command channel during that handoff.
+                return workflow_run
+            pause = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run.id))
+            workflow_run.status = WorkflowExecutionStatus.STOPPED
+            workflow_run.error = "User requested stop"
+            finished_at = naive_utc_now()
+            workflow_run.finished_at = finished_at
+            session.execute(
+                update(Message)
+                .where(
+                    Message.app_id == app_id,
+                    Message.workflow_run_id == workflow_run.id,
+                    Message.status == MessageStatus.PAUSED,
+                )
+                .values(status=MessageStatus.NORMAL)
+            )
+            # Nested Workflow Tool forms share their root run ID. The admitted
+            # run establishes ownership before these dependent rows are changed.
+            session.execute(
+                update(HumanInputForm)
+                .where(
+                    HumanInputForm.tenant_id == tenant_id,
+                    HumanInputForm.workflow_run_id == workflow_run.id,
+                    HumanInputForm.status == HumanInputFormStatus.WAITING,
+                )
+                .values(status=HumanInputFormStatus.EXPIRED)
+            )
+            unfinished_nodes = session.scalars(
+                select(WorkflowNodeExecutionModel).where(
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run.id,
+                    WorkflowNodeExecutionModel.status.in_(
+                        [
+                            WorkflowNodeExecutionStatus.RUNNING,
+                            WorkflowNodeExecutionStatus.PAUSED,
+                            WorkflowNodeExecutionStatus.RETRY,
+                        ]
+                    ),
+                )
+            )
+            for node in unfinished_nodes:
+                node.status = WorkflowNodeExecutionStatus.FAILED
+                node.error = workflow_run.error
+                node.finished_at = finished_at
+                node.elapsed_time = max((finished_at - node.created_at).total_seconds(), 0.0)
+            state_object_key = pause.state_object_key if pause is not None else None
+            if pause is not None:
+                session.execute(delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause.id))
+                session.delete(pause)
+
+        # Storage is external I/O; a cleanup failure must not undo cancellation.
+        if state_object_key is not None:
+            try:
+                storage.delete(state_object_key)
+            except Exception:
+                logger.exception("Failed to delete stopped workflow state, workflow_run_id=%s", workflow_run.id)
+        return workflow_run
+
     @override
     def resume_workflow_pause(
         self,
         workflow_run_id: str,
         pause_entity: WorkflowPauseEntity,
+        *,
+        before_resume: Callable[[], None] | None = None,
     ) -> WorkflowPauseEntity:
         """
         Resume a paused workflow.
@@ -1259,14 +1524,19 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         with self._session_maker() as session, session.begin():
             # Get the workflow run with pause
-            stmt = select(WorkflowRun).options(selectinload(WorkflowRun.pause)).where(WorkflowRun.id == workflow_run_id)
+            stmt = (
+                select(WorkflowRun)
+                .options(selectinload(WorkflowRun.pause))
+                .where(WorkflowRun.id == workflow_run_id)
+                .with_for_update()
+            )
             workflow_run = session.scalar(stmt)
 
             if workflow_run is None:
                 raise ValueError(f"WorkflowRun not found: {workflow_run_id}")
 
-            if workflow_run.status != WorkflowExecutionStatus.PAUSED:
-                raise _WorkflowRunError(
+            if workflow_run.status != WorkflowExecutionStatus.PAUSED or workflow_run.stop_requested_at is not None:
+                raise WorkflowRunNotPausedError(
                     f"WorkflowRun is not in PAUSED status, workflow_run_id={workflow_run_id}, "
                     f"current_status={workflow_run.status}"
                 )
@@ -1283,6 +1553,12 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             if pause_model.resumed_at is not None:
                 raise _WorkflowRunError(f"Cannot resume an already resumed pause, pause_id={pause_model.id}")
+
+            # Reset the bounded Redis cancellation channels while holding the
+            # run lock: stop must either win this transition or send its signals
+            # after the reset. A duplicate resume must never clear a live stop.
+            if before_resume is not None:
+                before_resume()
 
             pause_reasons = self._get_reasons_by_pause_id(session, pause_model.id)
             hydrated_pause_reasons = self._hydrate_pause_reasons(session, pause_reasons)

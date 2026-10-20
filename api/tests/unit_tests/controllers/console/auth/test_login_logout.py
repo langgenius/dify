@@ -6,6 +6,7 @@ import base64
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from types import SimpleNamespace
+from typing import Never
 
 import pytest
 from flask import Flask
@@ -38,8 +39,8 @@ from controllers.console.error import (
 )
 from enums import DeploymentEdition
 from services import account_errors
+from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
-    AuthTokenPair,
     EmailCodeLoginCommand,
     EmailCodeSendCommand,
     PasswordLoginCommand,
@@ -47,7 +48,7 @@ from services.entities.account_login_entities import (
 )
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
-TOKEN_PAIR = AuthTokenPair(access_token="access-token", refresh_token="refresh-token", csrf_token="csrf-token")
+TOKENS = AccountSessionTokens(access_token="access-token", refresh_token="refresh-token", csrf_token="csrf-token")
 
 
 @dataclass
@@ -69,7 +70,7 @@ class FakeAuthenticationService:
         self.password_commands.append(command)
         self._raise_if_needed()
         return PasswordLoginResult(
-            token_pair=TOKEN_PAIR if self.workspace_found else None,
+            tokens=TOKENS if self.workspace_found else None,
             workspace_found=self.workspace_found,
         )
 
@@ -86,15 +87,15 @@ class FakeAuthenticationService:
         self._raise_if_needed()
         return "email-code-token"
 
-    def login_with_email_code(self, command: EmailCodeLoginCommand) -> AuthTokenPair:
+    def login_with_email_code(self, command: EmailCodeLoginCommand) -> AccountSessionTokens:
         self.email_code_login_commands.append(command)
         self._raise_if_needed()
-        return TOKEN_PAIR
+        return TOKENS
 
-    def refresh(self, refresh_token: str) -> AuthTokenPair:
+    def refresh(self, refresh_token: str) -> AccountSessionTokens:
         self.refresh_tokens.append(refresh_token)
         self._raise_if_needed()
-        return TOKEN_PAIR
+        return TOKENS
 
 
 @pytest.fixture(autouse=True)
@@ -353,34 +354,93 @@ def test_refresh_does_not_require_completed_setup(
 
 
 @pytest.mark.parametrize(
-    ("application_error", "request_error"),
+    ("translate", "application_error", "request_error"),
     [
-        (account_errors.AccountEmailDomainSuspendedError(), EmailDomainSuspendedError),
-        (account_errors.AccountEmailFrozenError(), AccountInFreezeError),
-        (account_errors.LoginRateLimitError(), EmailPasswordLoginLimitError),
-        (account_errors.InvalidLoginCredentialsError(), AuthenticationFailedError),
-        (account_errors.InvalidAccountPasswordError("invalid password"), InvalidAccountPasswordRequestError),
-        (account_errors.LoginAccountBannedError(), AccountBannedError),
-        (account_errors.InvalidLoginInvitationEmailError(), InvalidEmailError),
-        (account_errors.LoginWorkspaceLimitError(), WorkspacesLimitExceeded),
-        (account_errors.LoginWorkspaceCreationNotAllowedError(), NotAllowedCreateWorkspace),
-        (account_errors.LoginSeatLimitError(), SeatsLimitExceeded),
-        (account_errors.AccountNormalizedEmailAlreadyInUseError(), NormalizedEmailAlreadyInUseError),
-        (account_errors.EmailCodeSendIPLimitedError(), EmailSendIpLimitError),
-        (account_errors.EmailCodeSendRateLimitError(5), EmailCodeLoginRateLimitExceededError),
-        (account_errors.HumanVerificationRejectedError(), TurnstileVerificationFailedError),
-        (account_errors.HumanVerificationUnavailableError(), TurnstileServiceUnavailableError),
-        (account_errors.EmailCodeLoginUnavailableError(), EmailCodeLoginServiceUnavailableError),
-        (account_errors.InvalidEmailCodeTokenError(), InvalidTokenError),
-        (account_errors.EmailCodeEmailMismatchError(), InvalidEmailError),
-        (account_errors.InvalidEmailCodeError(), EmailCodeError),
-        (account_errors.AccountNotFoundError(), AccountNotFound),
-        (account_errors.ResetPasswordEmailRateLimitError(1), PasswordResetRateLimitExceededError),
+        (
+            login._raise_account_state_error,
+            account_errors.AccountEmailDomainSuspendedError(),
+            EmailDomainSuspendedError,
+        ),
+        (login._raise_account_state_error, account_errors.AccountEmailFrozenError(), AccountInFreezeError),
+        (login._raise_account_state_error, account_errors.LoginAccountBannedError(), AccountBannedError),
+        (login._raise_password_login_error, account_errors.LoginRateLimitError(), EmailPasswordLoginLimitError),
+        (login._raise_password_login_error, account_errors.InvalidLoginCredentialsError(), AuthenticationFailedError),
+        (
+            login._raise_password_login_error,
+            account_errors.InvalidAccountPasswordError("invalid password"),
+            InvalidAccountPasswordRequestError,
+        ),
+        (login._raise_password_login_error, account_errors.InvalidLoginInvitationEmailError(), InvalidEmailError),
+        (login._raise_password_login_error, account_errors.LoginWorkspaceLimitError(), WorkspacesLimitExceeded),
+        (login._raise_password_login_error, account_errors.AccountNotFoundError(), AccountNotFound),
+        (
+            login._raise_reset_password_email_error,
+            account_errors.ResetPasswordEmailRateLimitError(1),
+            PasswordResetRateLimitExceededError,
+        ),
+        (login._raise_email_code_send_error, account_errors.EmailCodeSendIPLimitedError(), EmailSendIpLimitError),
+        (
+            login._raise_email_code_send_error,
+            account_errors.EmailCodeSendRateLimitError(5),
+            EmailCodeLoginRateLimitExceededError,
+        ),
+        (
+            login._raise_email_code_send_error,
+            account_errors.HumanVerificationRejectedError(),
+            TurnstileVerificationFailedError,
+        ),
+        (
+            login._raise_email_code_send_error,
+            account_errors.HumanVerificationUnavailableError(),
+            TurnstileServiceUnavailableError,
+        ),
+        (
+            login._raise_email_code_send_error,
+            account_errors.EmailCodeLoginUnavailableError(),
+            EmailCodeLoginServiceUnavailableError,
+        ),
+        (login._raise_email_code_login_error, account_errors.InvalidEmailCodeTokenError(), InvalidTokenError),
+        (login._raise_email_code_login_error, account_errors.EmailCodeEmailMismatchError(), InvalidEmailError),
+        (login._raise_email_code_login_error, account_errors.InvalidEmailCodeError(), EmailCodeError),
+        (
+            login._raise_email_code_login_error,
+            account_errors.HumanVerificationRejectedError(),
+            TurnstileVerificationFailedError,
+        ),
+        (
+            login._raise_email_code_login_error,
+            account_errors.EmailCodeLoginUnavailableError(),
+            EmailCodeLoginServiceUnavailableError,
+        ),
+        (login._raise_email_code_login_error, account_errors.AccountNotFoundError(), AccountNotFound),
+        (login._raise_email_code_login_error, account_errors.LoginWorkspaceLimitError(), WorkspacesLimitExceeded),
+        (
+            login._raise_email_code_login_error,
+            account_errors.LoginWorkspaceCreationNotAllowedError(),
+            NotAllowedCreateWorkspace,
+        ),
+        (login._raise_email_code_login_error, account_errors.LoginSeatLimitError(), SeatsLimitExceeded),
+        (
+            login._raise_email_code_login_error,
+            account_errors.AccountNormalizedEmailAlreadyInUseError(),
+            NormalizedEmailAlreadyInUseError,
+        ),
+        # Every flow-specific translator falls back to the shared account-state mapping.
+        (login._raise_email_code_login_error, account_errors.AccountEmailFrozenError(), AccountInFreezeError),
     ],
 )
 def test_maps_application_errors_to_transport_errors(
+    translate: Callable[[account_errors.AccountApplicationError], Never],
     application_error: account_errors.AccountApplicationError,
     request_error: type[Exception],
 ) -> None:
     with pytest.raises(request_error):
-        login._raise_request_error(application_error)
+        translate(application_error)
+
+
+def test_flow_translators_only_map_what_their_flow_raises() -> None:
+    """A reset-password error cannot reach the password login flow, so it passes through unmapped."""
+    error = account_errors.ResetPasswordEmailRateLimitError(1)
+    with pytest.raises(account_errors.ResetPasswordEmailRateLimitError) as raised:
+        login._raise_password_login_error(error)
+    assert raised.value is error

@@ -22,7 +22,7 @@ from ._mode_constants import LISTABLE_MODES, NON_LISTABLE_MODES
 WS_ID = "00000000-0000-0000-0000-000000000001"
 
 
-def test_defaults():
+def test_defaults() -> None:
     q = AppListQuery.model_validate({"workspace_id": WS_ID})
     assert q.workspace_id == WS_ID
     assert q.page == 1
@@ -31,31 +31,31 @@ def test_defaults():
     assert q.name is None
 
 
-def test_workspace_id_required():
+def test_workspace_id_required() -> None:
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({})
 
 
-def test_page_must_be_positive():
+def test_page_must_be_positive() -> None:
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": WS_ID, "page": 0})
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": WS_ID, "page": -1})
 
 
-def test_page_rejects_non_integer_string():
+def test_page_rejects_non_integer_string() -> None:
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": WS_ID, "page": "abc"})
 
 
-def test_limit_must_be_positive():
+def test_limit_must_be_positive() -> None:
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": WS_ID, "limit": 0})
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": WS_ID, "limit": -1})
 
 
-def test_limit_caps_at_max_page_limit():
+def test_limit_caps_at_max_page_limit() -> None:
     # Boundary accepts.
     q = AppListQuery.model_validate({"workspace_id": WS_ID, "limit": MAX_PAGE_LIMIT})
     assert q.limit == MAX_PAGE_LIMIT
@@ -66,32 +66,32 @@ def test_limit_caps_at_max_page_limit():
 
 
 @pytest.mark.parametrize("mode", LISTABLE_MODES)
-def test_mode_accepts_listable_app_types(mode: str):
+def test_mode_accepts_listable_app_types(mode: str) -> None:
     q = AppListQuery.model_validate({"workspace_id": WS_ID, "mode": mode})
     assert q.mode is not None
     assert q.mode.value == mode
 
 
-def test_mode_rejects_unknown_value():
+def test_mode_rejects_unknown_value() -> None:
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": WS_ID, "mode": "not-a-mode"})
 
 
 @pytest.mark.parametrize("mode", NON_LISTABLE_MODES)
-def test_mode_rejects_non_listable_app_modes(mode: str):
+def test_mode_rejects_non_listable_app_modes(mode: str) -> None:
     """rag-pipeline (a knowledge Pipeline), channel (unused) and agent (roster-owned)
     are AppMode members but not standalone listable apps — the `app` face rejects them."""
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": WS_ID, "mode": mode})
 
 
-def test_name_length_capped():
+def test_name_length_capped() -> None:
     AppListQuery.model_validate({"workspace_id": WS_ID, "name": "x" * 200})
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": WS_ID, "name": "x" * 201})
 
 
-def test_all_fields_accept_valid_values():
+def test_all_fields_accept_valid_values() -> None:
     """Pin the happy-path acceptance for every field in one place."""
     q = AppListQuery.model_validate(
         {
@@ -110,6 +110,6 @@ def test_all_fields_accept_valid_values():
     assert q.name == "search"
 
 
-def test_max_page_limit_is_accepted_by_the_app_service():
+def test_max_page_limit_is_accepted_by_the_app_service() -> None:
     # The catalog advertises MAX_PAGE_LIMIT; the service model must not reject it.
     assert AppListParams(limit=MAX_PAGE_LIMIT).limit == MAX_PAGE_LIMIT

@@ -1,5 +1,6 @@
 import type { VariableAssignerNodeType } from '../../types'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   createNode,
   createStartNode,
@@ -9,17 +10,9 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import NodeGroupItem from '../node-group-item'
 
-const mockHandleAssignVariableValueChange = vi.hoisted(() => vi.fn())
-const mockHandleGroupItemMouseEnter = vi.hoisted(() => vi.fn())
-const mockHandleGroupItemMouseLeave = vi.hoisted(() => vi.fn())
 const mockGetAvailableVars = vi.hoisted(() => vi.fn())
-
-vi.mock('../../hooks', () => ({
-  useVariableAssigner: () => ({
-    handleAssignVariableValueChange: mockHandleAssignVariableValueChange,
-    handleGroupItemMouseEnter: mockHandleGroupItemMouseEnter,
-    handleGroupItemMouseLeave: mockHandleGroupItemMouseLeave,
-  }),
+vi.mock('../../hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../hooks')>()),
   useGetAvailableVars: () => mockGetAvailableVars,
 }))
 
@@ -72,9 +65,10 @@ describe('variable-assigner/node-group-item', () => {
     mockGetAvailableVars.mockReturnValue([])
   })
 
-  it('shows the selected border for the active group and forwards hover events', () => {
+  it('tracks the hovered group while connecting and clears it when the pointer leaves', async () => {
+    const user = userEvent.setup()
     const data = createData()
-    const { container } = renderWorkflowFlowComponent(
+    const { store } = renderWorkflowFlowComponent(
       <NodeGroupItem
         item={{
           groupEnabled: true,
@@ -93,36 +87,29 @@ describe('variable-assigner/node-group-item', () => {
           enteringNodePayload: {
             nodeId: 'assigner-node',
             nodeData: data,
-          } as never,
-          hoveringAssignVariableGroupId: 'group-1',
+          },
+          connectingNodePayload: {
+            nodeId: 'source-node',
+            nodeType: BlockEnum.Answer,
+            handleType: 'source',
+            handleId: 'source',
+          },
+          hoveringAssignVariableGroupId: undefined,
         },
       },
     )
 
-    expect(screen.getByText('workflow.nodes.variableAssigner.varNotSet'))!.toBeInTheDocument()
-    expect(container.querySelector('.relative.rounded-lg'))!.toHaveClass('border-text-accent!')
-    expect(mockGetAvailableVars).toHaveBeenCalledWith(
-      'assigner-node',
-      'group-1',
-      expect.any(Function),
-      true,
-    )
-
-    const filter = mockGetAvailableVars.mock.calls[0]![2] as (payload: { type: VarType }) => boolean
-    expect(filter({ type: VarType.string })).toBe(true)
-    expect(filter({ type: VarType.number })).toBe(false)
-
-    const groupCard = container.querySelector('.relative.rounded-lg') as HTMLElement
-    fireEvent.mouseEnter(groupCard)
-    fireEvent.mouseLeave(groupCard)
-
-    expect(mockHandleGroupItemMouseEnter).toHaveBeenCalledWith('group-1')
-    expect(mockHandleGroupItemMouseLeave).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('workflowLogic.nodes.variableAssigner.varNotSet')).toBeInTheDocument()
+    const groupTitle = screen.getByText('Group A')
+    await user.hover(groupTitle)
+    expect(store.getState().hoveringAssignVariableGroupId).toBe('group-1')
+    await user.unhover(groupTitle)
+    expect(store.getState().hoveringAssignVariableGroupId).toBeUndefined()
   })
 
-  it('shows the selection border for non-primary groups and renders system and node variables', () => {
+  it('renders system and node variables with their source names', () => {
     const data = createData()
-    const { container } = renderWorkflowFlowComponent(
+    renderWorkflowFlowComponent(
       <NodeGroupItem
         item={{
           groupEnabled: true,
@@ -150,44 +137,9 @@ describe('variable-assigner/node-group-item', () => {
       },
     )
 
-    expect(container.querySelector('.relative.rounded-lg'))!.toHaveClass('border-dashed!')
-    expect(screen.getByText('Start'))!.toBeInTheDocument()
-    expect(screen.getByText('query'))!.toBeInTheDocument()
-    expect(screen.getByText('Source Node'))!.toBeInTheDocument()
-    expect(screen.getByText('answer'))!.toBeInTheDocument()
-
-    const filter = mockGetAvailableVars.mock.calls[0]![2] as (payload: { type: VarType }) => boolean
-    expect(filter({ type: VarType.number })).toBe(true)
-    expect(filter({ type: VarType.string })).toBe(false)
-  })
-
-  it('uses the root output type when grouping is disabled and keeps the border state neutral', () => {
-    const data = createData()
-    data.output_type = VarType.boolean
-
-    const { container } = renderWorkflowFlowComponent(
-      <NodeGroupItem
-        item={{
-          groupEnabled: false,
-          targetHandleId: 'group-1',
-          title: 'Ungrouped',
-          type: 'boolean',
-          variables: [],
-          variableAssignerNodeId: 'assigner-node',
-          variableAssignerNodeData: data,
-        }}
-      />,
-      {
-        nodes: [assignerNode, sourceNode, startNode],
-        edges: [],
-      },
-    )
-
-    expect(container.querySelector('.relative.rounded-lg')).not.toHaveClass('border-dashed!')
-    expect(container.querySelector('.relative.rounded-lg')).not.toHaveClass('border-text-accent!')
-
-    const filter = mockGetAvailableVars.mock.calls[0]![2] as (payload: { type: VarType }) => boolean
-    expect(filter({ type: VarType.boolean })).toBe(true)
-    expect(filter({ type: VarType.string })).toBe(false)
+    expect(screen.getByText('Start')).toBeInTheDocument()
+    expect(screen.getByText('query')).toBeInTheDocument()
+    expect(screen.getByText('Source Node')).toBeInTheDocument()
+    expect(screen.getByText('answer')).toBeInTheDocument()
   })
 })

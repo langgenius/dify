@@ -546,7 +546,7 @@ class AgentFeatureToggleConfig(AgentFlexibleConfig):
 class AgentTextToSpeechFeatureConfig(AgentFeatureToggleConfig):
     language: str | None = None
     voice: str | None = None
-    autoPlay: str | None = None
+    autoPlay: Literal["enabled", "disabled"] | None = None
 
 
 class AgentSuggestedQuestionsAfterAnswerModelConfig(AgentFlexibleConfig):

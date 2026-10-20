@@ -1,5 +1,3 @@
-import * as amplitude from '@amplitude/analytics-browser'
-import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 import { AMPLITUDE_API_KEY } from '@/config'
 
 export type AmplitudeInitializationOptions = {
@@ -7,6 +5,11 @@ export type AmplitudeInitializationOptions = {
 }
 
 let isAmplitudeInitialized = false
+let amplitude: ReturnType<typeof import('./runtime').initializeAmplitudeSDK> | undefined
+let initialization: Promise<void> | undefined
+let shouldOptOut = true
+
+export const getAmplitudeClient = () => (isAmplitudeInitialized ? amplitude : undefined)
 const initializationListeners = new Set<() => void>()
 
 export const getIsAmplitudeInitialized = () => isAmplitudeInitialized
@@ -20,77 +23,29 @@ const notifyAmplitudeInitialized = () => {
   initializationListeners.forEach((listener) => listener())
 }
 
-// Map URL pathname to English page name for consistent Amplitude tracking
-const getEnglishPageName = (pathname: string): string => {
-  // Remove leading slash and get the first segment
-  const segments = pathname.replace(/^\//, '').split('/')
-  const firstSegment = segments[0] || 'home'
+async function initializeAmplitude(sessionReplaySampleRate: number) {
+  const { initializeAmplitudeSDK } = await import('./runtime')
 
-  const pageNameMap: Record<string, string> = {
-    '': 'Home',
-    apps: 'Studio',
-    agents: 'Agents',
-    datasets: 'Knowledge',
-    explore: 'Explore',
-    tools: 'Tools',
-    account: 'Account',
-    signin: 'Sign In',
-    signup: 'Sign Up',
-  }
+  // Consent or the owning layout may have changed while the chunk was loading.
+  if (shouldOptOut) return
 
-  return pageNameMap[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
-}
-
-// Enrichment plugin to override page title with English name for page view events
-const createPageNameEnrichmentPlugin = (): amplitude.Types.EnrichmentPlugin => {
-  return {
-    name: 'page-name-enrichment',
-    type: 'enrichment',
-    setup: async () => undefined,
-    execute: async (event: amplitude.Types.Event) => {
-      // Only modify page view events
-      if (event.event_type === '[Amplitude] Page Viewed' && event.event_properties) {
-        /* v8 ignore next @preserve */
-        const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
-        event.event_properties['[Amplitude] Page Title'] = getEnglishPageName(pathname)
-      }
-      return event
-    },
-  }
+  amplitude = initializeAmplitudeSDK(AMPLITUDE_API_KEY, sessionReplaySampleRate)
+  isAmplitudeInitialized = true
+  notifyAmplitudeInitialized()
 }
 
 export const ensureAmplitudeInitialized = ({
   sessionReplaySampleRate = 0.5,
-}: AmplitudeInitializationOptions = {}) => {
-  if (!AMPLITUDE_API_KEY || isAmplitudeInitialized) return
+}: AmplitudeInitializationOptions = {}): Promise<void> => {
+  if (!AMPLITUDE_API_KEY || isAmplitudeInitialized || shouldOptOut) return Promise.resolve()
 
-  isAmplitudeInitialized = true
-
-  try {
-    amplitude.init(AMPLITUDE_API_KEY, {
-      defaultTracking: {
-        sessions: true,
-        pageViews: true,
-        formInteractions: true,
-        fileDownloads: true,
-        attribution: true,
-      },
-    })
-
-    amplitude.add(createPageNameEnrichmentPlugin())
-    amplitude.add(
-      sessionReplayPlugin({
-        sampleRate: sessionReplaySampleRate,
-      }),
-    )
-    notifyAmplitudeInitialized()
-  } catch (error) {
-    isAmplitudeInitialized = false
-    throw error
-  }
+  initialization ??= initializeAmplitude(sessionReplaySampleRate).finally(() => {
+    initialization = undefined
+  })
+  return initialization
 }
 
 export const setAmplitudeOptOut = (optOut: boolean) => {
-  if (!AMPLITUDE_API_KEY || !isAmplitudeInitialized) return
-  amplitude.setOptOut(optOut)
+  shouldOptOut = optOut
+  getAmplitudeClient()?.setOptOut(optOut)
 }

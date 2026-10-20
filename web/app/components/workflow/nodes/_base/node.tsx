@@ -1,14 +1,15 @@
 import type { FC, ReactElement } from 'react'
-import type { WorkflowTranslator } from './node-sections'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { cloneElement, memo, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
@@ -50,8 +51,7 @@ type BaseNodeProps = {
 }
 
 const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
-  const { t } = useTranslation(['plugin', 'workflow'])
-  const translateWorkflow: WorkflowTranslator = (selector, options) => t(selector, options)
+  const { t } = useTranslation(['workflow', 'plugin', 'workflowLogic'])
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
 
@@ -62,9 +62,9 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const appId = useStore((s) => s.appId)
+  const appId = useAtomValue(editorAppIdAtom)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
-  const { nodePanelPresence } = useCollaboration(appId as string, canEdit)
+  const { nodePanelPresence } = useCollaboration(appId, canEdit)
   const controlMode = useStore((s) => s.controlMode)
   const isContextMenuTarget = useStore(
     (s) => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id,
@@ -137,9 +137,10 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
 
   const LoopIndex = useMemo(() => {
     const translationKey = getLoopIndexTextKey(data._runningStatus)
-    const text = translationKey
-      ? t(($) => $[translationKey], { ns: 'workflow', count: data._loopIndex })
-      : ''
+    const text =
+      translationKey && data._loopIndex !== undefined
+        ? t(($) => $[translationKey], { ns: 'workflowLogic', count: data._loopIndex })
+        : ''
 
     if (text) {
       return (
@@ -262,7 +263,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
               hasVarValue={hasVarValue}
               isLoading={isLoading}
               loopIndex={LoopIndex}
-              t={translateWorkflow}
+              t={t}
             />
           </div>
         </div>

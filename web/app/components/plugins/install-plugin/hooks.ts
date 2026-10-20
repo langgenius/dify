@@ -1,3 +1,4 @@
+import type { ToastType } from '@langgenius/dify-ui/toast'
 import type { GitHubRepoReleaseResponse } from '../types'
 import { toast } from '@/app/notifications'
 import { uploadGitHub } from '@/service/plugins'
@@ -40,7 +41,7 @@ export const checkForUpdates = (
   currentVersion: string,
 ) => {
   let needUpdate = false
-  const toastProps: { type?: 'success' | 'error' | 'info' | 'warning'; message: string } = {
+  const toastProps: { type: ToastType; message: string } = {
     type: 'info',
     message: 'No new version available',
   }

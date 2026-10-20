@@ -31,7 +31,6 @@ type AnswerProps = {
   config?: ChatConfig
   answerIcon?: ReactNode
   responding?: boolean
-  showPromptLog?: boolean
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   appData?: AppData
@@ -53,7 +52,6 @@ const Answer: FC<AnswerProps> = ({
   config,
   answerIcon,
   responding,
-  showPromptLog,
   chatAnswerContainerInner,
   hideProcessDetail,
   appData,
@@ -195,7 +193,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}
@@ -256,7 +253,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}
@@ -333,7 +329,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}

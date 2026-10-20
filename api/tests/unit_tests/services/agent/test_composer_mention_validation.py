@@ -29,39 +29,39 @@ def _node_job_payload(workflow_prompt: str) -> ComposerSavePayload:
     )
 
 
-def test_soul_prompt_accepts_soul_kinds():
+def test_soul_prompt_accepts_soul_kinds() -> None:
     payload = _soul_payload("Use [§skill:s1§] [§file:f1§] [§tool:p/t§] [§cli_tool:c§] [§knowledge:k1§] [§human:h1§]")
     ComposerConfigValidator.validate_save_payload(payload)
 
 
-def test_soul_prompt_rejects_node_output_mention():
+def test_soul_prompt_rejects_node_output_mention() -> None:
     with pytest.raises(InvalidComposerConfigError, match="mention_kind_not_allowed"):
         ComposerConfigValidator.validate_save_payload(_soul_payload("Read [§node_output:n1.text§]"))
 
 
-def test_soul_prompt_rejects_declared_output_mention():
+def test_soul_prompt_rejects_declared_output_mention() -> None:
     with pytest.raises(InvalidComposerConfigError, match="mention_kind_not_allowed"):
         ComposerConfigValidator.validate_save_payload(_soul_payload("Produce [§output:report§]"))
 
 
-def test_node_job_prompt_accepts_job_kinds():
+def test_node_job_prompt_accepts_job_kinds() -> None:
     payload = _node_job_payload("Read [§node_output:n1.text:START/text§], produce [§output:report§], ask [§human:h1§]")
     ComposerConfigValidator.validate_save_payload(payload)
 
 
 @pytest.mark.parametrize("token", ["[§skill:s1§]", "[§tool:p/t§]", "[§cli_tool:c§]", "[§knowledge:k1§]"])
-def test_node_job_prompt_rejects_soul_only_kinds(token: str):
+def test_node_job_prompt_rejects_soul_only_kinds(token: str) -> None:
     with pytest.raises(InvalidComposerConfigError, match="mention_kind_not_allowed"):
         ComposerConfigValidator.validate_save_payload(_node_job_payload(f"Use {token}"))
 
 
-def test_mention_limit_enforced():
+def test_mention_limit_enforced() -> None:
     prompt = " ".join(f"[§human:h{i}§]" for i in range(201))
     with pytest.raises(InvalidComposerConfigError, match="mention_limit_exceeded"):
         ComposerConfigValidator.validate_save_payload(_soul_payload(prompt))
 
 
-def test_prompt_without_mentions_still_passes():
+def test_prompt_without_mentions_still_passes() -> None:
     ComposerConfigValidator.validate_save_payload(_soul_payload("plain prompt, {{var}} and {{#context#}} untouched"))
 
 
@@ -83,20 +83,20 @@ def _soul_payload_with_human(system_prompt: str) -> ComposerSavePayload:
     )
 
 
-def test_configured_human_without_mention_is_rejected():
+def test_configured_human_without_mention_is_rejected() -> None:
     with pytest.raises(InvalidComposerConfigError, match="human_involvement_not_referenced"):
         ComposerConfigValidator.validate_save_payload(_soul_payload_with_human("no human reference here"))
 
 
-def test_configured_human_referenced_by_id_passes():
+def test_configured_human_referenced_by_id_passes() -> None:
     ComposerConfigValidator.validate_save_payload(_soul_payload_with_human("ask [§human:c-1§] when unsure"))
 
 
-def test_configured_human_referenced_by_email_alias_passes():
+def test_configured_human_referenced_by_email_alias_passes() -> None:
     ComposerConfigValidator.validate_save_payload(_soul_payload_with_human("ask [§human:david@acme.com§]"))
 
 
-def test_node_job_human_must_be_referenced_too():
+def test_node_job_human_must_be_referenced_too() -> None:
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "workflow",
@@ -110,11 +110,12 @@ def test_node_job_human_must_be_referenced_too():
     with pytest.raises(InvalidComposerConfigError, match="human_involvement_not_referenced"):
         ComposerConfigValidator.validate_save_payload(payload)
 
+    assert payload.node_job is not None
     payload.node_job.workflow_prompt = "escalate to [§human:c-2§]"
     ComposerConfigValidator.validate_save_payload(payload)
 
 
-def test_identity_less_human_contact_is_skipped():
+def test_identity_less_human_contact_is_skipped() -> None:
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "agent_app",
@@ -131,25 +132,25 @@ def test_identity_less_human_contact_is_skipped():
 # ── ENG-617: soft findings ───────────────────────────────────────────────────
 
 
-def _findings(payload: ComposerSavePayload, **kwargs):
+def _findings(payload: ComposerSavePayload, **kwargs: set[str] | None) -> dict[str, list[dict[str, object]]]:
     return ComposerConfigValidator.collect_soft_findings(payload, **kwargs)
 
 
-def test_dangling_knowledge_mention_becomes_placeholder_with_label():
+def test_dangling_knowledge_mention_becomes_placeholder_with_label() -> None:
     payload = _soul_payload("ground in [§knowledge:gone-1:旧产品手册§]")
     findings = _findings(payload)
     assert findings["knowledge_retrieval_placeholder"] == [{"id": "gone-1", "placeholder_name": "旧产品手册"}]
     assert findings["warnings"] == []
 
 
-def test_dangling_knowledge_without_label_gets_fallback_name():
+def test_dangling_knowledge_without_label_gets_fallback_name() -> None:
     findings = _findings(_soul_payload("see [§knowledge:deadbeef-cafe§]"))
     assert findings["knowledge_retrieval_placeholder"] == [
         {"id": "deadbeef-cafe", "placeholder_name": "Knowledge deadbeef"}
     ]
 
 
-def test_configured_but_deleted_knowledge_set_surfaces_as_placeholder():
+def test_configured_but_deleted_knowledge_set_surfaces_as_placeholder() -> None:
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "agent_app",
@@ -178,14 +179,14 @@ def test_configured_but_deleted_knowledge_set_surfaces_as_placeholder():
     ]
 
 
-def test_unresolved_non_knowledge_mentions_warn_target_missing():
+def test_unresolved_non_knowledge_mentions_warn_target_missing() -> None:
     findings = _findings(_soul_payload("use [§skill:nope:Ghost Skill§] and [§human:missing§]"))
     codes = [(w["code"], w["kind"]) for w in findings["warnings"]]
     assert ("mention_target_missing", "human") in codes
     assert findings["knowledge_retrieval_placeholder"] == []
 
 
-def test_provider_all_tools_mention_resolves_against_provider_level_entry():
+def test_provider_all_tools_mention_resolves_against_provider_level_entry() -> None:
     # `[§tool:<provider>/*§]` = all tools of that provider; it points at a
     # provider-level config entry (tool_name omitted), so with the entry present
     # it must produce neither hard error nor warning…
@@ -216,7 +217,7 @@ def test_provider_all_tools_mention_resolves_against_provider_level_entry():
     assert [(w["code"], w["kind"]) for w in dangling["warnings"]] == [("mention_target_missing", "tool")]
 
 
-def test_duplicate_cli_tool_ids_rejected():
+def test_duplicate_cli_tool_ids_rejected() -> None:
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "agent_app",
@@ -237,7 +238,7 @@ def test_duplicate_cli_tool_ids_rejected():
         ComposerConfigValidator.validate_save_payload(payload)
 
 
-def test_save_backfills_missing_cli_tool_ids_and_keeps_existing():
+def test_save_backfills_missing_cli_tool_ids_and_keeps_existing() -> None:
     from services.agent.composer_service import _backfill_cli_tool_ids
 
     payload = ComposerSavePayload.model_validate(
@@ -261,13 +262,13 @@ def test_save_backfills_missing_cli_tool_ids_and_keeps_existing():
     assert minted.id != "ct-1"
 
 
-def test_malformed_marker_warns_but_does_not_block():
+def test_malformed_marker_warns_but_does_not_block() -> None:
     payload = _soul_payload("hello [§wat:x:y§] world")
     ComposerConfigValidator.validate_save_payload(payload)  # no hard error
     findings = _findings(payload)
     assert [w["code"] for w in findings["warnings"]] == ["mention_malformed"]
 
 
-def test_clean_prompt_yields_empty_findings():
+def test_clean_prompt_yields_empty_findings() -> None:
     findings = _findings(_soul_payload("plain prompt with {{#context#}} legacy form"))
     assert findings == {"warnings": [], "knowledge_retrieval_placeholder": []}

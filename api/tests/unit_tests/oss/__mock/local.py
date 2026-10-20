@@ -1,5 +1,6 @@
 import os
 import shutil
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
@@ -14,24 +15,24 @@ from tests.unit_tests.oss.__mock.base import (
 
 
 class MockLocalFSClass:
-    def write_bytes(self, data):
+    def write_bytes(self, data: bytes) -> None:
         assert data == get_example_data()
 
-    def read_bytes(self):
+    def read_bytes(self) -> bytes:
         return get_example_data()
 
     @staticmethod
-    def copyfile(src, dst):
+    def copyfile(src: str, dst: str) -> None:
         assert src == os.path.join(get_example_folder(), get_example_filename())
         assert dst == get_example_filepath()
 
     @staticmethod
-    def exists(path):
+    def exists(path: str) -> bool:
         assert path == os.path.join(get_example_folder(), get_example_filename())
         return True
 
     @staticmethod
-    def remove(path):
+    def remove(path: str) -> None:
         assert path == os.path.join(get_example_folder(), get_example_filename())
 
 
@@ -39,7 +40,7 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
 @pytest.fixture
-def setup_local_fs_mock(monkeypatch: pytest.MonkeyPatch):
+def setup_local_fs_mock(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     if MOCK:
         monkeypatch.setattr(Path, "write_bytes", MockLocalFSClass.write_bytes)
         monkeypatch.setattr(Path, "read_bytes", MockLocalFSClass.read_bytes)

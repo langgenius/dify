@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ZoomInOut from '../zoom-in-out'
 
 const { mockZoomIn, mockZoomOut, mockZoomTo, mockFitView, mockViewport } = vi.hoisted(() => ({
@@ -19,25 +20,15 @@ vi.mock('reactflow', () => ({
   useViewport: () => mockViewport,
 }))
 
-const getZoomControls = () => {
-  const label = Array.from(document.querySelectorAll('button')).find((element) => {
-    return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-8.5')
-  })
-  const zoomOutIcon = document.querySelector('.i-ri-zoom-out-line')
-  const zoomInIcon = document.querySelector('.i-ri-zoom-in-line')
+const getZoomControls = () => ({
+  zoomOutTrigger: screen.getByRole('button', { name: 'workflow.operator.zoomOut' }),
+  label: screen.getByRole('button', { name: /^\d+%$/ }),
+  zoomInTrigger: screen.getByRole('button', { name: 'workflow.operator.zoomIn' }),
+})
 
-  if (!label || !zoomOutIcon || !zoomInIcon) throw new Error('Missing zoom controls')
-
-  return {
-    zoomOutTrigger: zoomOutIcon.parentElement as HTMLElement,
-    label,
-    zoomInTrigger: zoomInIcon.parentElement as HTMLElement,
-  }
-}
-
-const openZoomMenu = () => {
-  fireEvent.click(getZoomControls().label)
-  return within(screen.getByRole('menu'))
+const openZoomMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(getZoomControls().label)
+  return within(await screen.findByRole('menu'))
 }
 
 describe('workflow preview zoom controls', () => {
@@ -48,32 +39,35 @@ describe('workflow preview zoom controls', () => {
 
   // The inline controls should call the reactflow zoom handlers when the viewport is within range.
   describe('Inline Controls', () => {
-    it('should zoom out and zoom in when the viewport is within the supported range', () => {
+    it('should zoom out and zoom in when the viewport is within the supported range', async () => {
+      const user = userEvent.setup()
       render(<ZoomInOut />)
 
       const { zoomOutTrigger, zoomInTrigger } = getZoomControls()
 
-      fireEvent.click(zoomOutTrigger)
-      fireEvent.click(zoomInTrigger)
+      await user.click(zoomOutTrigger)
+      await user.click(zoomInTrigger)
 
       expect(mockZoomOut).toHaveBeenCalledTimes(1)
       expect(mockZoomIn).toHaveBeenCalledTimes(1)
     })
 
-    it('should block zooming out when the viewport is already at the minimum scale', () => {
+    it('should block zooming out when the viewport is already at the minimum scale', async () => {
+      const user = userEvent.setup()
       mockViewport.zoom = 0.25
       render(<ZoomInOut />)
 
-      fireEvent.click(getZoomControls().zoomOutTrigger)
+      await user.click(getZoomControls().zoomOutTrigger)
 
       expect(mockZoomOut).not.toHaveBeenCalled()
     })
 
-    it('should block zooming in when the viewport is already at the maximum scale', () => {
+    it('should block zooming in when the viewport is already at the maximum scale', async () => {
+      const user = userEvent.setup()
       mockViewport.zoom = 2
       render(<ZoomInOut />)
 
-      fireEvent.click(getZoomControls().zoomInTrigger)
+      await user.click(getZoomControls().zoomInTrigger)
 
       expect(mockZoomIn).not.toHaveBeenCalled()
     })
@@ -87,23 +81,25 @@ describe('workflow preview zoom controls', () => {
       ['75%', 0.75],
       ['100%', 1],
       ['200%', 2],
-    ])('should zoom to %s when selecting that preset', (label, zoom) => {
+    ])('should zoom to %s when selecting that preset', async (label, zoom) => {
+      const user = userEvent.setup()
       render(<ZoomInOut />)
 
-      const portal = openZoomMenu()
+      const portal = await openZoomMenu(user)
 
-      fireEvent.click(portal.getByText(label))
+      await user.click(portal.getByRole('menuitem', { name: new RegExp(label) }))
 
       expect(mockZoomTo).toHaveBeenCalledWith(zoom)
       expect(mockFitView).not.toHaveBeenCalled()
     })
 
-    it('should fit the viewport when selecting the fit option', () => {
+    it('should fit the viewport when selecting the fit option', async () => {
+      const user = userEvent.setup()
       render(<ZoomInOut />)
 
-      const portal = openZoomMenu()
+      const portal = await openZoomMenu(user)
 
-      fireEvent.click(portal.getByText('workflow.operator.zoomToFit'))
+      await user.click(portal.getByRole('menuitem', { name: /workflow\.operator\.zoomToFit/ }))
 
       expect(mockFitView).toHaveBeenCalledTimes(1)
       expect(mockZoomTo).not.toHaveBeenCalled()

@@ -33,7 +33,7 @@ const SortPlayground = () => {
         value={value}
         items={SORT_ITEMS}
         onSelect={(next) => {
-          setSortBy(next as string)
+          setSortBy(next)
         }}
       />
     </div>

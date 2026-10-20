@@ -8,19 +8,43 @@ export type ConsoleHumanInputFormDefinitionResponse = {
   [key: string]: unknown
 }
 
-export type HumanInputFormSubmitPayload = {
-  action: string
-  form_inputs: {
+export type HumanInputFormSubmittedError = ErrorResponse & {
+  code: 'human_input_form_submitted'
+  status: 412
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
     [key: string]: unknown
   }
+  message: string
+  params?: string
+  status: number
+}
+
+export type HumanInputFormSubmitPayload = {
+  action: string
   inputs: {
-    [key: string]: unknown
+    [key: string]: JsonValue
   }
 }
 
 export type ConsoleHumanInputFormSubmitResponse = {
   [key: string]: unknown
 }
+
+export type InvalidFormDataError = ErrorResponse & {
+  code: 'invalid_form_data'
+  status: 400
+}
+
+export type HumanInputFormExpiredError = ErrorResponse & {
+  code: 'human_input_form_expired'
+  status: 412
+}
+
+export type JsonValue = unknown
 
 export type GetFormHumanInputByFormTokenData = {
   body?: never
@@ -30,6 +54,14 @@ export type GetFormHumanInputByFormTokenData = {
   query?: never
   url: '/form/human_input/{form_token}'
 }
+
+export type GetFormHumanInputByFormTokenErrors = {
+  412: HumanInputFormSubmittedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetFormHumanInputByFormTokenError =
+  GetFormHumanInputByFormTokenErrors[keyof GetFormHumanInputByFormTokenErrors]
 
 export type GetFormHumanInputByFormTokenResponses = {
   200: ConsoleHumanInputFormDefinitionResponse
@@ -46,6 +78,15 @@ export type PostFormHumanInputByFormTokenData = {
   query?: never
   url: '/form/human_input/{form_token}'
 }
+
+export type PostFormHumanInputByFormTokenErrors = {
+  400: InvalidFormDataError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputByFormTokenError =
+  PostFormHumanInputByFormTokenErrors[keyof PostFormHumanInputByFormTokenErrors]
 
 export type PostFormHumanInputByFormTokenResponses = {
   200: ConsoleHumanInputFormSubmitResponse

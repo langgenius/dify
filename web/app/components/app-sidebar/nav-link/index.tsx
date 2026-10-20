@@ -52,6 +52,7 @@ const NavLink = ({
       ? 'flex size-8 items-center justify-center p-1.5'
       : 'flex h-8 items-center rounded-lg pr-1 pl-3',
     'rounded-lg',
+    'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
   )
 
   const renderIcon = () => (

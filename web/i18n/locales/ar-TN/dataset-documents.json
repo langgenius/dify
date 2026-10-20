@@ -257,6 +257,7 @@
   "segment.searchResults_one": "نتيجة",
   "segment.searchResults_other": "نتائج",
   "segment.searchResults_zero": "نتيجة",
+  "segment.statusFilterLabel": "تصفية المقاطع حسب الحالة",
   "segment.summary": "ملخص",
   "segment.summaryPlaceholder": "اكتب ملخصًا موجزًا لاسترجاع أفضل…"
 }

@@ -7,8 +7,10 @@ import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -17,11 +19,9 @@ import {
   extractAgentOutputNames,
   replaceAgentOutputName,
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import {
@@ -79,7 +79,7 @@ function FloatingOutputEditor({
 
   return createPortal(
     <div
-      className="fixed z-50 w-100"
+      className="fixed w-100"
       style={{
         left: position.left,
         top: position.top,
@@ -118,7 +118,7 @@ function FloatingOutputEditor({
 }
 
 export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
-  const { t } = useTranslation(['agentV2', 'workflow'])
+  const { t } = useTranslation(['workflowAgent', 'agentRoster'])
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const inputsRef = useRef(inputs)
   const promptOutputNamesRef = useRefWithInit(extractAgentOutputNames, inputs.agent_task || '')
@@ -136,7 +136,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore((state) => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
-  const configsMap = useHooksStore((state) => state.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
   const [localDeclaredOutputs, setLocalDeclaredOutputs] = useState<DeclaredOutputConfig[] | null>(
     null,
@@ -190,12 +190,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const isAgentBindingPending =
     isInlineAgentPending || isInlineAgentWaitingForCreation || isCreatingInlineAgent
   const canStartFromScratch = inputs.agent_binding?.binding_type !== 'inline_agent'
-  const saveToRosterTarget =
-    configsMap?.flowId &&
-    (configsMap.flowType === FlowType.appFlow || configsMap.flowType === FlowType.snippet)
-      ? { flowId: configsMap.flowId, flowType: configsMap.flowType }
-      : null
-  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent && !!saveToRosterTarget
+  const inlineAgentResource =
+    resource.kind === 'app' || resource.kind === 'snippet' ? resource : null
+  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent && !!inlineAgentResource
   const inlineComposerStateForPanel = inlineAgentQuery.data
   const displayedAgent =
     rosterAgentQuery.data ??
@@ -204,9 +201,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           id: inlineAgentId ?? id,
           name:
             inlineAgent?.name ||
-            t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflow' }),
+            t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflowAgent' }),
           description: inlineAgent?.description,
-          role: t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflow' }),
+          role: t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflowAgent' }),
         }
       : undefined)
 
@@ -340,7 +337,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   )
 
   const handleMakeRosterCopy = useCallback(() => {
-    if (!configsMap?.flowId || !rosterAgentId || isCopyingFromRoster) return
+    if (!rosterAgentId || isCopyingFromRoster) return
 
     const body = {
       source_agent_id: rosterAgentId,
@@ -349,11 +346,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       onSuccess: handleRosterCopySuccess,
     }
 
-    if (configsMap.flowType === FlowType.snippet) {
+    if (resource.kind === 'snippet') {
       copyFromRosterSnippet(
         {
           params: {
-            snippet_id: configsMap.flowId,
+            snippet_id: resource.snippetId,
             node_id: id,
           },
           body,
@@ -363,11 +360,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       return
     }
 
-    if (configsMap.flowType === FlowType.appFlow) {
+    if (resource.kind === 'app') {
       copyFromRosterApp(
         {
           params: {
-            app_id: configsMap.flowId,
+            app_id: resource.appId,
             node_id: id,
           },
           body,
@@ -376,8 +373,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       )
     }
   }, [
-    configsMap?.flowId,
-    configsMap?.flowType,
+    resource,
     copyFromRosterApp,
     copyFromRosterSnippet,
     handleRosterCopySuccess,
@@ -659,7 +655,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           canOpenPanel={!isInlineAgentWaitingForCreation}
           errorMessage={
             isInlineAgentLoadError
-              ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentV2' })
+              ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' })
               : undefined
           }
           isInlineSetup={isInlineAgentReady || isInlineAgentPending}
@@ -673,8 +669,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
               isInlineAgentReady || isInlineAgentPending ? (
                 <WorkflowInlineAgentConfigureWorkspace
                   agentId={inlineAgentId ?? undefined}
-                  flowId={configsMap?.flowId}
-                  flowType={configsMap?.flowType}
+                  resource={inlineAgentResource ?? undefined}
                   inlineComposerState={inlineComposerStateForPanel}
                   nodeId={id}
                   onClose={() => handleAgentPanelOpenChange(false)}
@@ -707,10 +702,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}
           onStartFromScratch={canStartFromScratch ? handleStartFromScratch : undefined}
         />
-        {saveToRosterTarget && inlineAgent && (
+        {inlineAgentResource && inlineAgent && (
           <SaveInlineAgentToRosterDialog
-            flowId={saveToRosterTarget.flowId}
-            flowType={saveToRosterTarget.flowType}
+            resource={inlineAgentResource}
             initialAgent={inlineAgent}
             nodeId={id}
             open={isSaveToRosterDialogOpen}

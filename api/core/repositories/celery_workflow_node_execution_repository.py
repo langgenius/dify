@@ -163,6 +163,11 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             raise
 
     @override
+    def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """`save` already queues the complete inputs, process data, and outputs."""
+        return None
+
+    @override
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
         """Create the Agent v2 caller row before runtime participant allocation."""
 
@@ -178,6 +183,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
+        *,
+        include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve workflow node executions from cache after loading persisted history once.
@@ -189,6 +196,11 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         Returns:
             A sequence of WorkflowNodeExecution instances
         """
+        if include_paused:
+            # Resume hydration must not widen the ordinary runtime cache.
+            return self._sql_repository.get_by_workflow_execution(
+                workflow_execution_id, order_config, include_paused=True
+            )
         try:
             if workflow_execution_id not in self._database_loaded_workflow_executions:
                 try:

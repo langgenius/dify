@@ -6,7 +6,6 @@ from unittest.mock import patch
 import pytest
 from flask import Flask, g, request
 from pydantic_core import ValidationError
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
@@ -48,7 +47,7 @@ from services.entities.model_provider_entities import (
     ProviderResponse,
     SystemConfigurationResponse,
 )
-from services.workspace_service import EffectiveCreditPool
+from services.workspace.contracts import EffectiveCreditPool
 from tests.unit_tests.config_override import config_overrides_context
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
@@ -252,10 +251,9 @@ class TestModelProviderSummaryListApi:
 
 
 class TestModelProviderCreditsApi:
-    def test_get_success(self, unbound_session: Session):
+    def test_get_success(self) -> None:
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
-        session = unbound_session
         credit_pool = EffectiveCreditPool(
             plan="team",
             pool_type="paid",
@@ -265,12 +263,13 @@ class TestModelProviderCreditsApi:
         )
 
         with patch(
-            "controllers.console.workspace.model_providers.WorkspaceService.get_effective_credit_pool",
-            return_value=credit_pool,
-        ) as get_effective_credit_pool:
-            result = method(api, session, "tenant1")
+            "controllers.console.workspace.model_providers.application_services",
+        ) as services:
+            get_effective_credit_pool = services.return_value.workspaces.management.get_effective_credit_pool
+            get_effective_credit_pool.return_value = credit_pool
+            result = method(api, "tenant1")
 
-        get_effective_credit_pool.assert_called_once_with("tenant1", session=session)
+        get_effective_credit_pool.assert_called_once_with("tenant1")
         assert result == {
             "pool_type": "paid",
             "quota_limit": -1,
@@ -282,16 +281,15 @@ class TestModelProviderCreditsApi:
             "next_credit_reset_date": 1775001600,
         }
 
-    def test_get_without_effective_pool(self, unbound_session: Session):
+    def test_get_without_effective_pool(self) -> None:
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
-        session = unbound_session
 
         with patch(
-            "controllers.console.workspace.model_providers.WorkspaceService.get_effective_credit_pool",
-            return_value=EffectiveCreditPool(),
-        ):
-            result = method(api, session, "tenant1")
+            "controllers.console.workspace.model_providers.application_services",
+        ) as services:
+            services.return_value.workspaces.management.get_effective_credit_pool.return_value = EffectiveCreditPool()
+            result = method(api, "tenant1")
 
         assert result == {
             "pool_type": None,
@@ -397,7 +395,7 @@ class TestModelProviderCredentialApi:
                 side_effect=CredentialsValidateFailedError("bad"),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="bad"):
                 method(api, ParserCredentialCreate.model_validate(_payload()), "tenant1", provider="openai")
 
     def test_put_update_success(self, app: Flask):
@@ -559,7 +557,7 @@ class TestModelProviderIconApi:
                 return_value=(None, None),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="icon not found for provider openai, icon_type logo, lang en"):
                 api.get("t1", "openai", "logo", "en")
 
 
@@ -623,7 +621,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="provider name openai is invalid"):
                 method(api, "tenant1", make_account(), provider="openai")
 
     def test_checkout_rejects_non_privileged_role(self, app: Flask):

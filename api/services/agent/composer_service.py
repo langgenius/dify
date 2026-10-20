@@ -35,6 +35,7 @@ from models.agent_config_entities import (
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
+from services.agent.dsl_entities import make_portable_agent_soul
 from services.agent.errors import (
     AgentBuildSandboxNotFoundError,
     AgentModelNotConfiguredError,
@@ -66,7 +67,6 @@ from services.entities.agent_entities import (
 )
 from services.skill_management_service import SkillManagementService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
-from tasks.new_agent_beta_task import register_new_agent_beta_publish_after_commit
 
 # WorkflowAgentNodeBinding.workflow_version tag for the draft workflow row.
 # Mirrors Workflow.version when it is "draft" (see models/workflow.py).
@@ -389,6 +389,32 @@ class AgentComposerService:
         return cls._load_agent_composer_for_agent(session=session, tenant_id=tenant_id, agent=agent)
 
     @classmethod
+    def load_published_agent_composer(cls, *, session: Session, tenant_id: str, agent_id: str) -> dict[str, Any]:
+        """Read public Composer state after the caller admits template access."""
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        if not agent_has_workflow_callable_active_snapshot(session=session, agent=agent):
+            raise AgentVersionNotFoundError()
+        state = cls._load_agent_composer_for_agent(
+            session=session, tenant_id=tenant_id, agent=agent, published_only=True
+        )
+        soul = make_portable_agent_soul(AgentSoulConfig.model_validate(state["agent_soul"]))
+        # Export portability alone does not remove plaintext runtime values.
+        soul.env = type(soul.env)()
+        soul.human = type(soul.human)()
+        soul.sandbox = type(soul.sandbox)()
+        soul.memory = type(soul.memory)()
+        for tool in soul.tools.dify_tools:
+            tool.runtime_parameters = {}
+        for cli_tool in soul.tools.cli_tools:
+            cli_tool.env = type(cli_tool.env)()
+            cli_tool.invoke_metadata = {}
+        state["agent_soul"] = soul.model_dump(mode="json")
+        state["chat_endpoint"] = None
+        if state["active_config_snapshot"] is not None:
+            state["active_config_snapshot"]["created_by"] = None
+        return state
+
+    @classmethod
     def prepare_agent_composer_draft(
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> AgentConfigDraft:
@@ -425,18 +451,25 @@ class AgentComposerService:
         return AgentSoulConfig.model_validate(state["agent_soul"])
 
     @classmethod
-    def _load_agent_composer_for_agent(cls, *, session: Session, tenant_id: str, agent: Agent) -> dict[str, Any]:
+    def _load_agent_composer_for_agent(
+        cls, *, session: Session, tenant_id: str, agent: Agent, published_only: bool = False
+    ) -> dict[str, Any]:
         """Read effective configuration without creating or rebasing persisted drafts.
 
         Stale workflow-only drafts read from the current snapshot. Their draft
         metadata still describes the persisted row; write paths own rebasing.
+        Published-only reads never query drafts or advertise editing capabilities.
         """
-        draft = cls._get_agent_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            draft_type=AgentConfigDraftType.DRAFT,
-            account_id=None,
+        draft = (
+            None
+            if published_only
+            else cls._get_agent_draft(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent.id,
+                draft_type=AgentConfigDraftType.DRAFT,
+                account_id=None,
+            )
         )
         version = cls._get_version_if_present(
             session=session, tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
@@ -455,10 +488,11 @@ class AgentComposerService:
             "variant": ComposerVariant.AGENT_APP.value,
             "agent": cls._serialize_agent(agent),
             "active_config_snapshot": cls._serialize_version(version),
-            "active_config_is_published": bool(agent.active_config_snapshot_id and agent.active_config_is_published),
+            "active_config_is_published": published_only
+            or bool(agent.active_config_snapshot_id and agent.active_config_is_published),
             "draft": cls._serialize_draft(draft),
             "agent_soul": agent_soul,
-            "save_options": [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value],
+            "save_options": [] if published_only else [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value],
             "app_id": agent.app_id,
             "backing_app_id": agent.backing_app_id or agent.app_id,
             "hidden_app_backed": bool(agent.scope == AgentScope.WORKFLOW_ONLY and agent.backing_app_id),
@@ -699,12 +733,6 @@ class AgentComposerService:
             app.enable_api = True
             app.updated_by = account_id
         session.flush()
-        register_new_agent_beta_publish_after_commit(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            snapshot_id=version.id,
-        )
         return {
             "result": "success",
             "publication_kind": "update" if access_was_ready else "first",

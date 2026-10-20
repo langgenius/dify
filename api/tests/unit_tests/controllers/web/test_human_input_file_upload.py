@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 
 import controllers.web.human_input_file_upload as upload_module
 from controllers.common.errors import (
@@ -28,6 +29,7 @@ from controllers.web.human_input_file_upload import (
     InvalidUploadTokenForbiddenError,
     InvalidUploadTokenUnauthorizedError,
 )
+from extensions.ext_application_services import ApplicationServices
 from models import Account
 from models.model import UploadFile
 from services.errors.file import (
@@ -39,6 +41,7 @@ from services.human_input_file_upload_service import (
     HumanInputUploadContext,
     InvalidUploadTokenError,
 )
+from services.human_input_service import FormExpiredError, FormSubmittedError
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
 )
@@ -50,6 +53,7 @@ from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNo
 from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
 from services.remote_file_service import RemoteFileUploadResult
 from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
+from tests.unit_tests.controllers.error_body import raised_error
 from tests.unit_tests.model_factories import make_account, make_upload_file
 
 
@@ -99,7 +103,22 @@ def _remote_upload_file() -> RemoteFileUploadResult:
     )
 
 
-def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: MagicMock) -> None:
+class _FormStateRejectingUploads:
+    """An upload service whose token check fails with one form-state error; counts the uploads that follow."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+        self.uploads = 0
+
+    def validate_upload_token(self, _upload_token: str) -> HumanInputUploadContext:
+        raise self.error
+
+    def upload_local_file(self, **_: object) -> UploadFile:
+        self.uploads += 1
+        raise AssertionError("upload must not run after the token check failed")
+
+
+def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: object) -> None:
     monkeypatch.setattr(
         upload_module,
         "application_services",
@@ -130,6 +149,25 @@ def test_local_upload_requires_authorization_before_reading_files(app: Flask) ->
             HumanInputFileUploadApi().post()
 
 
+@pytest.mark.parametrize("separator", ["\xa0", "\x1c", "\v", "\u2003"])
+def test_non_http_whitespace_cannot_bypass_gateway_upload_identity(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, separator: str
+) -> None:
+    service = MagicMock()
+    _patch_upload_service(monkeypatch, service)
+    with app.test_request_context(
+        "/api/human-input-forms/files",
+        method="POST",
+        headers={"Authorization": f"Bearer{separator}hitl_upload_token-1"},
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(InvalidUploadTokenUnauthorizedError):
+            HumanInputFileUploadApi().post()
+    service.validate_upload_token.assert_not_called()
+    service.upload_local_file.assert_not_called()
+    service.upload_remote_file.assert_not_called()
+
+
 def test_local_upload_delegates_to_human_input_upload_service(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
     context = _upload_context()
@@ -158,6 +196,34 @@ def test_local_upload_delegates_to_human_input_upload_service(monkeypatch: pytes
         content=b"content",
         mimetype="text/plain",
     )
+
+
+@pytest.mark.parametrize(
+    ("error", "code"),
+    [
+        (FormSubmittedError("form-1"), "human_input_form_submitted"),
+        (FormExpiredError("form-1"), "human_input_form_expired"),
+    ],
+)
+def test_upload_reports_the_form_state_before_touching_files(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, error: Exception, code: str
+) -> None:
+    # The token service re-checks the form on every upload; a submitted or expired form answers 412.
+    service = _FormStateRejectingUploads(error)
+    _patch_upload_service(monkeypatch, service)
+
+    with app.test_request_context(
+        "/api/human-input-forms/files",
+        method="POST",
+        headers={"Authorization": "bearer hitl_upload_token-1"},
+        data={"file": (BytesIO(b"content"), "sample.txt")},
+        content_type="multipart/form-data",
+    ):
+        body, status = raised_error(HumanInputFileUploadApi().post)
+
+    assert status == 412
+    assert body["code"] == code
+    assert service.uploads == 0
 
 
 def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
@@ -269,14 +335,16 @@ def test_upload_maps_file_service_errors(
     service_error: Exception,
     http_error: type[Exception],
     remote: bool,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
 ) -> None:
-    service = MagicMock()
-    service.validate_upload_token.return_value = _upload_context()
+    service = account_application_services.human_input_file_uploads
+    mocker.patch.object(service, "validate_upload_token", return_value=_upload_context())
     if remote:
-        service.upload_remote_file.side_effect = service_error
+        mocker.patch.object(service, "upload_remote_file", side_effect=service_error)
         data = {"url": "https://example.com/file.txt"}
     else:
-        service.upload_local_file.side_effect = service_error
+        mocker.patch.object(service, "upload_local_file", side_effect=service_error)
         data = {"file": (BytesIO(b"content"), "sample.txt")}
     _patch_upload_service(monkeypatch, service)
 

@@ -466,11 +466,11 @@ def test_between_sets_window_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_between_requires_both_boundaries(monkeypatch: pytest.MonkeyPatch) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="start_from and end_before must be both set or both omitted\\."):
         create_cleanup(
             monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_from=datetime.datetime.now(), end_before=None
         )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="start_from and end_before must be both set or both omitted\\."):
         create_cleanup(
             monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_from=None, end_before=datetime.datetime.now()
         )
@@ -479,7 +479,7 @@ def test_between_requires_both_boundaries(monkeypatch: pytest.MonkeyPatch) -> No
 def test_between_requires_end_after_start(monkeypatch: pytest.MonkeyPatch) -> None:
     start_from = datetime.datetime(2024, 6, 1, 0, 0, 0)
     end_before = datetime.datetime(2024, 5, 1, 0, 0, 0)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="end_before must be greater than start_from\\."):
         create_cleanup(
             monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_from=start_from, end_before=end_before
         )

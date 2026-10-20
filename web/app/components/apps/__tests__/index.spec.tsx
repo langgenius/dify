@@ -1,103 +1,77 @@
-import type { Import } from '@dify/contracts/api/console/apps/types.gen'
-import type {
-  RecommendedAppDetailResponse,
-  RecommendedAppResponse,
-} from '@dify/contracts/api/console/explore/types.gen'
-import type { QueryClient } from '@tanstack/react-query'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
+import type { trackEvent } from '@/app/components/base/amplitude/utils'
+import type { consoleClient } from '@/service/console'
+import type { marketplaceClient } from '@/service/marketplace'
+import type { fetchMarketplaceTemplateDSL } from '@/service/marketplace-templates'
+import { zAppPagination, zImport } from '@dify/contracts/api/console/apps/zod.gen'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
-import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
 import { consoleQuery } from '@/service/console'
-import {
-  createConsoleQueryClient,
-  renderWithConsoleQuery as render,
-} from '@/test/console/query-data'
+import { marketplaceQuery } from '@/service/marketplace'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createTrialAppDetailFixture } from '@/test/fixtures/app'
+import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { Apps } from '../index'
 
-const { request, toast, checkDependencies, redirect, trackCreateApp, push, replace, search } =
-  vi.hoisted(() => ({
-    request: vi.fn(),
-    toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
-    checkDependencies: vi.fn(),
-    redirect: vi.fn(),
-    trackCreateApp: vi.fn(),
-    push: vi.fn(),
-    replace: vi.fn(),
-    search: { params: new URLSearchParams() },
-  }))
-vi.mock('@/service/base', () => ({ request }))
-vi.mock('@/app/notifications', () => ({ toast }))
-vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
-  usePluginDependencies: () => ({ handleCheckPluginDependencies: checkDependencies }),
+const api = vi.hoisted(() => ({
+  detail: vi.fn<typeof consoleClient.explore.apps.byAppId.get>(),
+  trial: vi.fn<typeof consoleClient.trialApps.byAppId.get>(),
+  import: vi.fn<typeof consoleClient.apps.imports.post>(),
+  confirm: vi.fn<typeof consoleClient.apps.imports.byImportId.confirm.post>(),
+  dependencies: vi.fn<typeof consoleClient.apps.imports.byAppId.checkDependencies.get>(),
+  dsl: vi.fn<typeof fetchMarketplaceTemplateDSL>(),
+  track: vi.fn<typeof trackEvent>(),
+  push: vi.fn(),
+  replace: vi.fn(),
+  params: new URLSearchParams(),
 }))
-vi.mock('@/utils/app-redirection', () => ({ getRedirection: redirect }))
-vi.mock('@/utils/create-app-tracking', () => ({ trackCreateApp }))
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push, replace }),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useRouter: () => ({ push: api.push, replace: api.replace }),
   useParams: () => ({}),
-  useSearchParams: () => search.params,
+  usePathname: () => '/apps',
+  useSearchParams: () => api.params,
 }))
-vi.mock('@/next/dynamic', () => ({
-  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
-    const LazyComponent = React.lazy(loader)
-    return function Dynamic(props: Record<string, unknown>) {
-      return (
-        <React.Suspense fallback={null}>
-          <LazyComponent {...props} />
-        </React.Suspense>
-      )
-    }
-  },
+vi.mock('@/app/components/base/amplitude/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/amplitude/utils')>()),
+  trackEvent: api.track,
 }))
-vi.mock('@/app/education/expire-notice', () => ({ EducationExpireNotice: () => null }))
-vi.mock('../list', async () => {
-  const { default: LearnDify } = await import('@/app/components/explore/learn-dify')
+vi.mock('@/service/marketplace-templates', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/marketplace-templates')>()),
+  fetchMarketplaceTemplateDSL: api.dsl,
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
-    List: ({
-      onCreateLearnDify,
-      onTryLearnDify,
-    }: {
-      onCreateLearnDify: (app: RecommendedAppResponse) => void
-      onTryLearnDify: (app: RecommendedAppResponse) => void
-    }) => (
-      <LearnDify
-        canCreate
-        onCreate={onCreateLearnDify}
-        onTry={onTryLearnDify}
-        dismissible={false}
-      />
-    ),
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.get': async () =>
+        zAppPagination.parse({ data: [], page: 1, limit: 30, total: 0, has_more: false }),
+      'apps.starred.get': async () =>
+        zAppPagination.parse({ data: [], page: 1, limit: 100, total: 0, has_more: false }),
+      'trialApps.byAppId.get': api.trial,
+      'features.get': async () => zGetFeaturesResponse.parse({ apps: { size: 1, limit: 10 } }),
+      'tags.get': async () => [],
+      'workspaces.current.members.get': async () => ({ accounts: [] }),
+      'workspaces.current.toolProviders.get': async () => [],
+      'apps.imports.post': api.import,
+      'apps.imports.byImportId.confirm.post': api.confirm,
+      'apps.imports.byAppId.checkDependencies.get': api.dependencies,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'explore.apps.byAppId.get': api.detail,
+    }),
   }
 })
-// The running preview and marketplace download are separate feature boundaries.
-vi.mock('../../explore/try-app', () => ({
-  default: ({ onCreate, onClose }: { onCreate: () => void; onClose: () => void }) => (
-    <section aria-label="Template preview">
-      <button onClick={onCreate}>Create preview</button>
-      <button onClick={onClose}>Close preview</button>
-    </section>
-  ),
-}))
-vi.mock('../import-from-marketplace-template-modal', () => ({
-  default: ({
-    templateId,
-    onClose,
-    onConfirm,
-  }: {
-    templateId: string
-    onClose: () => void
-    onConfirm: (dsl: string) => void
-  }) => (
-    <section aria-label="Marketplace download">
-      <span>{templateId}</span>
-      <button onClick={onClose}>Close download</button>
-      <button onClick={() => onConfirm('marketplace-dsl')}>Import download</button>
-    </section>
-  ),
-}))
 
-const template: RecommendedAppResponse = {
+const template = {
   app_id: 'canonical-template',
   app: {
     id: 'different-nested-id',
@@ -110,55 +84,59 @@ const template: RecommendedAppResponse = {
   },
   description: 'Catalog description',
   can_trial: true,
-}
-const detail: RecommendedAppDetailResponse = {
+} satisfies RecommendedAppResponse
+const detail = {
   id: 'canonical-template',
   name: 'Sample App',
   mode: 'chat',
   can_trial: true,
   export_data: 'fresh-dsl',
-}
-const completed: Import = {
+} satisfies Awaited<ReturnType<typeof api.detail>>
+const completed = zImport.parse({
   id: 'import-1',
   status: 'completed',
   app_id: 'created-app',
   app_mode: 'chat',
-  permission_keys: ['app.edit'],
-}
-let importResponse: Import
-let detailFails: boolean
-const clients = new Set<QueryClient>()
-const features = zGetFeaturesResponse.parse({ apps: { size: 1, limit: 10 } })
+  permission_keys: ['app.acl.edit'],
+})
+const marketplaceTemplate = {
+  data: {
+    id: 'tpl-42',
+    template_name: 'Marketplace template',
+    overview: 'A useful template',
+    icon: '🤖',
+    icon_background: '#fff',
+    icon_file_key: '',
+    publisher_unique_handle: 'langgenius',
+    usage_count: 12,
+    categories: [],
+  },
+} satisfies Awaited<ReturnType<typeof marketplaceClient.templateDetail>>
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  localStorage.clear()
-  search.params = new URLSearchParams()
-  importResponse = completed
-  detailFails = false
-  request.mockImplementation(async (url: string) => {
-    const path = new URL(url).pathname.replace('/console/api', '') + new URL(url).search
-    if (path === '/explore/apps/canonical-template')
-      return detailFails
-        ? Response.json({ message: 'Unavailable' }, { status: 503 })
-        : Response.json(detail)
-    if (path === '/features') return Response.json(features)
-    if (path === '/apps/imports') return Response.json(importResponse)
-    if (path === '/apps/imports/import-1/confirm') return Response.json(completed)
-    throw new Error(`Unexpected request: ${url}`)
-  })
+  api.params = new URLSearchParams()
+  api.push.mockReset()
+  api.replace.mockReset()
+  api.track.mockReset()
+  api.dsl.mockReset().mockResolvedValue('marketplace-dsl')
+  api.detail.mockReset().mockResolvedValue(detail)
+  api.trial
+    .mockReset()
+    .mockResolvedValue(createTrialAppDetailFixture({ id: template.app_id, name: 'Sample App' }))
+  api.import.mockReset().mockResolvedValue(completed)
+  api.confirm.mockReset().mockResolvedValue(completed)
+  api.dependencies.mockReset().mockResolvedValue({ leaked_dependencies: [] })
+  sessionStorage.clear()
 })
+afterEach(() => act(() => toast.dismiss()))
 
-afterEach(async () => {
-  cleanup()
-  await Promise.all([...clients].map((client) => client.cancelQueries()))
-  for (const client of clients) client.clear()
-  clients.clear()
-})
-
-const setup = ({ cloud = false, permission = true, item = template } = {}) => {
+async function setup({
+  cloud = false,
+  permission = true,
+  item = template,
+}: { cloud?: boolean; permission?: boolean; item?: RecommendedAppResponse } = {}) {
   const queryClient = createConsoleQueryClient()
-  clients.add(queryClient)
+  seedModelProviderQueries(queryClient)
   queryClient.setQueryData(
     consoleQuery.explore.apps.learnDify.get.queryKey({ input: { query: { language: 'en-US' } } }),
     { recommended_apps: [item] },
@@ -169,152 +147,212 @@ const setup = ({ cloud = false, permission = true, item = template } = {}) => {
     }),
     { ...detail, export_data: 'stale-dsl' },
   )
-  return render(<Apps />, {
-    queryClient,
-    workspacePermissionKeys: permission ? ['app.create_and_management'] : [],
-    systemFeatures: { deployment_edition: cloud ? 'CLOUD' : 'COMMUNITY', enable_learn_app: true },
-    features: { apps: { size: 0, limit: 10 } },
-  })
+  queryClient.setQueryData(
+    marketplaceQuery.templateDetail.queryKey({ input: { params: { templateId: 'tpl-42' } } }),
+    marketplaceTemplate,
+  )
+  await act(async () =>
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter hasMemory searchParams={api.params}>
+        <Apps />
+        <AppToastHost timeout={0} />
+      </NuqsTestingAdapter>,
+      {
+        queryClient,
+        workspacePermissionKeys: permission ? ['app.create_and_management'] : [],
+        systemFeatures: {
+          deployment_edition: cloud ? 'CLOUD' : 'COMMUNITY',
+          enable_learn_app: true,
+          rbac_enabled: true,
+          enable_collaboration_mode: false,
+        },
+        features: { apps: { size: 0, limit: 10 } },
+      },
+    ),
+  )
+  return { user: userEvent.setup() }
 }
 const openCreate = async (user: ReturnType<typeof userEvent.setup>, preview = false) => {
-  await user.click(screen.getByRole('button', { name: 'Sample App' }))
-  if (preview) await user.click(await screen.findByRole('button', { name: 'Create preview' }))
-  return screen.findByRole('dialog')
+  await user.click(await screen.findByRole('button', { name: 'Sample App' }))
+  if (preview) {
+    const previewDialog = await screen.findByRole(
+      'dialog',
+      { name: 'Sample App' },
+      { timeout: 5000 },
+    )
+    await user.click(
+      await within(previewDialog).findByRole('button', {
+        name: 'explore.tryApp.createFromSampleApp',
+      }),
+    )
+  }
+  return screen.findByRole('dialog', { name: /^explore.appCustomize.title/ })
 }
 const submit = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+  const form = screen.getByRole('dialog', { name: /^explore.appCustomize.title/ })
+  await user.click(within(form).getByRole('button', { name: /^common.operation.create/ }))
 }
-
-it('imports fresh canonical detail through the real form and import orchestration', async () => {
-  const user = userEvent.setup()
-  setup()
-  await openCreate(user)
-  expect(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder')).toHaveValue('')
-  await submit(user)
-  await waitFor(() => expect(redirect).toHaveBeenCalled())
-  expect(
-    request.mock.calls
-      .map(([url]) => new URL(url).pathname.replace('/console/api', ''))
-      .filter((path) => path !== '/features'),
-  ).toEqual(['/explore/apps/canonical-template', '/apps/imports'])
-  const importRequest = request.mock.calls.find(([url]) =>
-    new URL(url).pathname.endsWith('/apps/imports'),
+const expectCreateEvent = (source: string, templateId = template.app_id) =>
+  expect(api.track).toHaveBeenCalledWith(
+    'create_app',
+    expect.objectContaining({ source, template_id: templateId, app_mode: 'chatflow' }),
   )
-  expect(await importRequest?.[2].request.json()).toMatchObject({
-    yaml_content: 'fresh-dsl',
-    name: 'Sample App',
-    description: '',
+const expectNoCreateEvent = () =>
+  expect(api.track).not.toHaveBeenCalledWith('create_app', expect.anything())
+
+it('imports fresh canonical detail through the real list and form, then checks dependencies and navigates', async () => {
+  const { user } = await setup()
+  const dialog = await openCreate(user)
+  expect(within(dialog).getByPlaceholderText('app.newApp.appDescriptionPlaceholder')).toHaveValue(
+    '',
+  )
+  await submit(user)
+  await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/created-app/configuration'))
+  expect(api.detail).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'canonical-template' } })
+  expect(api.import).toHaveBeenCalledWith({
+    body: expect.objectContaining({
+      yaml_content: 'fresh-dsl',
+      name: 'Sample App',
+      description: '',
+    }),
   })
-  expect(checkDependencies).toHaveBeenCalledWith('created-app')
-  expect(toast.success).toHaveBeenCalledWith('app.newApp.appCreated')
+  expect(api.dependencies).toHaveBeenCalledWith({ params: { app_id: 'created-app' } })
+  expect(await screen.findByText('app.newApp.appCreated')).toBeInTheDocument()
 })
 
-it('tracks successful preview creation and closes the preview', async () => {
-  const user = userEvent.setup()
-  setup({ cloud: true })
+it('keeps a reopened creation form pending until the previous import finishes its dependency check', async () => {
+  let resolveDependencies: (value: Awaited<ReturnType<typeof api.dependencies>>) => void = () => {}
+  api.dependencies.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        resolveDependencies = resolve
+      }),
+  )
+  const { user } = await setup()
+  await openCreate(user)
+  await submit(user)
+  await waitFor(() => expect(api.dependencies).toHaveBeenCalledOnce())
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: /^explore.appCustomize.title/ }),
+    ).not.toBeInTheDocument(),
+  )
+  const reopened = await openCreate(user)
+  const create = within(reopened).getByRole('button', { name: /^common.operation.create/ })
+  expect(create).toHaveAttribute('aria-disabled', 'true')
+  await user.click(create)
+  expect(api.import).toHaveBeenCalledOnce()
+  await act(async () => resolveDependencies({ leaked_dependencies: [] }))
+  await waitFor(() => expect(create).not.toHaveAttribute('aria-disabled', 'true'))
+})
+
+it('tracks creation through the real preview and closes it after submission', async () => {
+  const { user } = await setup({ cloud: true })
   await openCreate(user, true)
   await submit(user)
-  await waitFor(() =>
-    expect(trackCreateApp).toHaveBeenCalledWith({
-      source: 'studio_template_preview',
-      templateId: 'canonical-template',
-      appMode: 'chat',
-    }),
-  )
-  expect(screen.queryByRole('region', { name: 'Template preview' })).not.toBeInTheDocument()
+  await waitFor(() => expectCreateEvent('studio_template_preview'))
+  expect(screen.queryByRole('dialog', { name: 'Sample App' })).not.toBeInTheDocument()
+  expect(api.push).toHaveBeenCalledWith('/app/created-app/configuration')
 })
 
-it('handles detail rejection once without import, navigation, or reopening the submitted modal', async () => {
-  const user = userEvent.setup()
-  detailFails = true
-  setup()
+it('shows a detail error once without importing or navigating, and preserves the submitted form', async () => {
+  api.detail.mockRejectedValue(new Error('Unavailable'))
+  const { user } = await setup()
   await openCreate(user)
   await submit(user)
-  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  const paths = request.mock.calls.map(([url]) => new URL(url).pathname.replace('/console/api', ''))
-  expect(paths.filter((path) => path === '/explore/apps/canonical-template')).toHaveLength(1)
-  expect(paths.some((path) => path.startsWith('/apps/imports'))).toBe(false)
-  expect(toast.error).toHaveBeenCalledOnce()
-  expect(redirect).not.toHaveBeenCalled()
-  expect(trackCreateApp).not.toHaveBeenCalled()
+  expect(await screen.findAllByText('app.newApp.appCreateFailed')).toHaveLength(1)
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: /^explore.appCustomize.title/ }),
+    ).toBeInTheDocument(),
+  )
+  expect(api.detail).toHaveBeenCalledOnce()
+  expect(api.import).not.toHaveBeenCalled()
+  expect(api.push).not.toHaveBeenCalled()
+  expectNoCreateEvent()
 })
 
-it('keeps the pending import confirmation and tracks only after successful confirmation', async () => {
-  const user = userEvent.setup()
-  importResponse = {
-    id: 'import-1',
-    status: 'pending',
-    imported_dsl_version: '0.8.0',
-    current_dsl_version: '0.6.0',
-  }
-  setup({ cloud: true })
+it('waits for version confirmation before importing and tracking preview creation', async () => {
+  api.import.mockResolvedValue(
+    zImport.parse({
+      id: 'import-1',
+      status: 'pending',
+      imported_dsl_version: '0.8.0',
+      current_dsl_version: '0.6.0',
+    }),
+  )
+  const { user } = await setup({ cloud: true })
   await openCreate(user, true)
   await submit(user)
   const dialog = await screen.findByRole('alertdialog')
   expect(within(dialog).getByText('0.8.0')).toBeInTheDocument()
-  expect(trackCreateApp).not.toHaveBeenCalled()
+  expectNoCreateEvent()
+  expect(api.push).not.toHaveBeenCalled()
   await user.click(within(dialog).getByRole('button', { name: 'app.newApp.Confirm' }))
-  await waitFor(() => expect(redirect).toHaveBeenCalled())
-  expect(
-    request.mock.calls
-      .map(([url]) => new URL(url).pathname.replace('/console/api', ''))
-      .filter((path) => path !== '/features'),
-  ).toEqual(['/explore/apps/canonical-template', '/apps/imports', '/apps/imports/import-1/confirm'])
-  expect(trackCreateApp).toHaveBeenCalledWith({
-    source: 'studio_template_preview',
-    templateId: 'canonical-template',
-    appMode: 'chat',
-  })
+  await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/created-app/configuration'))
+  expect(api.confirm).toHaveBeenCalledExactlyOnceWith({ params: { import_id: 'import-1' } })
+  expectCreateEvent('studio_template_preview')
 })
 
-it('reports import failure without tracking or navigating', async () => {
-  const user = userEvent.setup()
-  importResponse = { id: 'import-1', status: 'failed' }
-  setup({ cloud: true })
-  await openCreate(user, true)
-  await submit(user)
-  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
-  expect(redirect).not.toHaveBeenCalled()
-  expect(trackCreateApp).not.toHaveBeenCalled()
-})
+it.each([undefined, 'Missing app data in YAML content'])(
+  'shows import failure (%s) without tracking or navigating',
+  async (error) => {
+    api.import.mockResolvedValue(zImport.parse({ id: 'import-1', status: 'failed', error }))
+    const { user } = await setup({ cloud: true })
+    await openCreate(user, true)
+    await submit(user)
+    expect(await screen.findAllByText('app.newApp.appCreateFailed')).toHaveLength(1)
+    if (error) expect(screen.getByText(error)).toBeInTheDocument()
+    expect(api.push).not.toHaveBeenCalled()
+    expectNoCreateEvent()
+  },
+)
 
-it('keeps nullable template metadata editable through the actual modal', async () => {
-  const user = userEvent.setup()
-  setup({ item: { app_id: 'null-template', app: null, can_trial: false } })
-  await user.click(screen.getByRole('button', { name: '' }))
-  await screen.findByRole('dialog')
-  expect(screen.getByPlaceholderText('app.newApp.appNamePlaceholder')).toHaveValue('')
-  expect(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder')).toHaveValue('')
-  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-  expect(request).not.toHaveBeenCalled()
-})
-
-it('does not allow template creation or marketplace import without permission', async () => {
-  const user = userEvent.setup()
-  search.params = new URLSearchParams('template-id=tpl-42')
-  setup({ permission: false })
-  await user.click(screen.getByRole('button', { name: 'Sample App' }))
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  expect(screen.queryByRole('region', { name: 'Marketplace download' })).not.toBeInTheDocument()
-  expect(request).not.toHaveBeenCalled()
-})
-
-it('preserves marketplace import tracking and removes only its URL parameter', async () => {
-  const user = userEvent.setup()
-  search.params = new URLSearchParams('template-id=tpl-42&category=chat')
-  setup()
-  await user.click(await screen.findByRole('button', { name: 'Import download' }))
-  await waitFor(() =>
-    expect(trackCreateApp).toHaveBeenCalledWith({
-      source: 'external',
-      templateId: 'tpl-42',
-      appMode: 'chat',
-    }),
+it('keeps nullable template metadata editable in the real creation form', async () => {
+  const { user } = await setup({ item: { app_id: 'null-template', app: null, can_trial: false } })
+  await user.click(await screen.findByRole('button', { name: '' }))
+  const dialog = await screen.findByRole('dialog', { name: /^explore.appCustomize.title/ })
+  expect(within(dialog).getByPlaceholderText('app.newApp.appNamePlaceholder')).toHaveValue('')
+  expect(within(dialog).getByPlaceholderText('app.newApp.appDescriptionPlaceholder')).toHaveValue(
+    '',
   )
-  expect(await request.mock.calls[0]![2].request.json()).toEqual({
-    mode: 'yaml-content',
-    yaml_content: 'marketplace-dsl',
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+  expect(api.detail).not.toHaveBeenCalled()
+  expect(api.import).not.toHaveBeenCalled()
+})
+
+it('hides template creation and marketplace import without creation permission', async () => {
+  api.params = new URLSearchParams('template-id=tpl-42')
+  await setup({ permission: false })
+  await waitFor(() =>
+    expect(screen.getByRole('status', { name: '' })).toHaveTextContent('app.filterEmpty.noApps'),
+  )
+  expect(screen.queryByRole('button', { name: 'Sample App' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(api.dsl).not.toHaveBeenCalled()
+  expect(api.import).not.toHaveBeenCalled()
+})
+
+it('imports a real marketplace download, retains attribution, and removes only its URL parameter', async () => {
+  api.params = new URLSearchParams('template-id=tpl-42&category=chat')
+  rememberCreateAppExternalAttribution({
+    searchParams: new URLSearchParams('utm_source=newsletter'),
   })
-  expect(replace).toHaveBeenCalledWith('?category=chat', { scroll: false })
+  const { user } = await setup()
+  const dialog = await screen.findByRole('dialog', { name: 'app.marketplace.template.modalTitle' })
+  expect(within(dialog).getByText('Marketplace template')).toBeInTheDocument()
+  await user.click(
+    within(dialog).getByRole('button', { name: 'app.marketplace.template.importConfirm' }),
+  )
+  await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/created-app/configuration'))
+  expect(api.dsl).toHaveBeenCalledExactlyOnceWith('tpl-42')
+  expect(api.import).toHaveBeenCalledWith({
+    body: { mode: 'yaml-content', yaml_content: 'marketplace-dsl' },
+  })
+  expectCreateEvent('external', 'tpl-42')
+  expect(api.track).toHaveBeenCalledWith(
+    'create_app',
+    expect.objectContaining({ utm_source: 'newsletter' }),
+  )
+  expect(api.replace).toHaveBeenCalledWith('?category=chat', { scroll: false })
 })

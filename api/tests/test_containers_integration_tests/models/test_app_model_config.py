@@ -8,21 +8,21 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from models.model import AppModelConfig
+from models.model import AppModelConfig, load_annotation_reply_config
 
 
 class TestAppModelConfig:
     """Integration tests for AppModelConfig."""
 
-    def test_annotation_reply_dict_disabled_without_setting(self, db_session_with_containers: Session) -> None:
-        """Return disabled annotation reply dict when no AppAnnotationSetting exists."""
+    def test_load_annotation_reply_config_disabled_without_setting(self, db_session_with_containers: Session) -> None:
+        """Return disabled annotation reply config when no AppAnnotationSetting exists."""
         # Arrange
         config = AppModelConfig(app_id=str(uuid4()))
         db_session_with_containers.add(config)
         db_session_with_containers.commit()
 
         # Act
-        result = config.annotation_reply_dict
+        result = load_annotation_reply_config(db_session_with_containers, config.app_id)
 
         # Assert
         assert result == {"enabled": False}

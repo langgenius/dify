@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
@@ -7,6 +5,7 @@ from pytest_mock import MockerFixture
 from core.app.app_config.common.sensitive_word_avoidance.manager import (
     SensitiveWordAvoidanceConfigManager,
 )
+from core.app.app_config.entities import SensitiveWordAvoidanceEntity
 
 
 class TestSensitiveWordAvoidanceConfigManagerConvert:
@@ -28,44 +27,38 @@ class TestSensitiveWordAvoidanceConfigManagerConvert:
         # Assert
         assert result is None
 
-    def test_convert_returns_entity_when_enabled(self, mocker: MockerFixture):
-        # Arrange
-        mock_entity = MagicMock()
-        mocker.patch(
-            "core.app.app_config.common.sensitive_word_avoidance.manager.SensitiveWordAvoidanceEntity",
-            return_value=mock_entity,
-        )
-
+    def test_convert_returns_entity_when_enabled(self):
         config = {
             "sensitive_word_avoidance": {
                 "enabled": True,
-                "type": "mock_type",
+                "type": "keywords",
                 "config": {"key": "value"},
             }
         }
 
-        # Act
         result = SensitiveWordAvoidanceConfigManager.convert(config)
 
-        # Assert
-        assert result == mock_entity
+        assert isinstance(result, SensitiveWordAvoidanceEntity)
+        assert result.type == "keywords"
+        assert result.config == {"key": "value"}
 
-    def test_convert_enabled_without_type_or_config(self, mocker: MockerFixture):
-        # Arrange
-        mock_entity = MagicMock()
-        patched = mocker.patch(
-            "core.app.app_config.common.sensitive_word_avoidance.manager.SensitiveWordAvoidanceEntity",
-            return_value=mock_entity,
-        )
-
+    def test_convert_enabled_without_type_raises(self):
         config = {"sensitive_word_avoidance": {"enabled": True}}
 
-        # Act
+        with pytest.raises(ValidationError) as exc_info:
+            SensitiveWordAvoidanceConfigManager.convert(config)
+
+        assert exc_info.value.errors()[0]["loc"] == ("type",)
+        assert exc_info.value.errors()[0]["type"] == "string_type"
+
+    def test_convert_enabled_without_config_defaults_to_empty(self):
+        config = {"sensitive_word_avoidance": {"enabled": True, "type": "keywords"}}
+
         result = SensitiveWordAvoidanceConfigManager.convert(config)
 
-        # Assert
-        patched.assert_called_once_with(type=None, config={})
-        assert result == mock_entity
+        assert isinstance(result, SensitiveWordAvoidanceEntity)
+        assert result.type == "keywords"
+        assert result.config == {}
 
 
 class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:

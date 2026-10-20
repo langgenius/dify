@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from contextlib import nullcontext
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -91,9 +92,9 @@ class _FakeCurrentApp:
         return _FakeFlaskApp()
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseWithSession:
-    def __init__(self, session: scoped_session[Session]) -> None:
-        self.session = session
+    session: scoped_session[Session]
 
 
 class _UnusedProviderManager(ProviderManager):
@@ -363,7 +364,11 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
             "format_retrieval_documents",
             return_value=records,
         ),
-        patch.object(DocumentSegment, "get_sign_content", lambda segment: segment.content.replace("raw", "signed")),
+        patch.object(
+            single_retriever_module,
+            "sign_segment_content",
+            lambda segment, **_kwargs: segment.content.replace("raw", "signed"),
+        ),
     ):
         result = tool.run(session=sqlite_session, query="hello")
 
@@ -560,7 +565,11 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     fake_current_app = _FakeCurrentApp()
 
     with (
-        patch.object(DocumentSegment, "get_sign_content", lambda segment: segment.content.replace("raw", "signed")),
+        patch.object(
+            multi_retriever_module,
+            "sign_segment_content",
+            lambda segment, **_kwargs: segment.content.replace("raw", "signed"),
+        ),
         patch.object(tool, "_retriever", side_effect=fake_retriever) as retriever_mock,
         patch.object(multi_retriever_module, "current_app", fake_current_app),
         patch.object(multi_retriever_module.threading, "Thread", _ImmediateThread),

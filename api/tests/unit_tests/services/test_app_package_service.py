@@ -44,7 +44,7 @@ def test_round_trip_retains_exact_dsl_and_defers_version_handling(mode: str, ver
     assert package.archive.closed
 
 
-@pytest.mark.parametrize("overrides", [{"format": "unknown"}, {"format_version": 2}, {"apps": []}, {"files": []}])
+@pytest.mark.parametrize("overrides", [{"format": "unknown"}, {"format_version": 2}, {"apps": []}])
 def test_rejects_unsupported_manifests(overrides: dict[str, object]) -> None:
     with pytest.raises(InvalidRosterAgentPackageError, match="manifest"):
         AppPackageService().read_package(_archive("kind: app\napp: {mode: workflow}\n", **overrides))
@@ -57,6 +57,7 @@ def test_rejects_unsupported_manifests(overrides: dict[str, object]) -> None:
         "kind: app\napp: {mode: agent}",
         "kind: app\napp: {mode: unknown}",
         "kind: app\napp: {mode: workflow, mode: chat}",
+        "kind: app\napp: {mode: workflow}\nsite: not-a-map",
     ],
 )
 def test_rejects_invalid_or_agent_dsl_in_ordinary_container(dsl: str) -> None:

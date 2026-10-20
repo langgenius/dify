@@ -88,23 +88,12 @@ class HitTestingTestDataFactory:
         return user
 
     @staticmethod
-    def create_document_mock(
+    def create_document(
         content: str = "Test document content",
         metadata: dict[str, Any] | None = None,
-        **kwargs,
-    ) -> Mock:
-        """
-        Create a mock Document from core.rag.models.document.
-
-        Args:
-            content: Document content/text
-            metadata: Optional metadata dictionary
-            **kwargs: Additional attributes to set on the mock
-
-        Returns:
-            Mock object configured as a Document instance
-        """
-        return Mock(spec=Document, page_content=content, metadata=metadata or {}, **kwargs)
+    ) -> Document:
+        """Create a document; None means that the document has no metadata."""
+        return Document(page_content=content, metadata=metadata if metadata is not None else {})
 
     @staticmethod
     def create_retrieval_record_mock(
@@ -155,8 +144,8 @@ class TestHitTestingServiceRetrieve:
         external_retrieval_model = {}
 
         documents = [
-            HitTestingTestDataFactory.create_document_mock(content="Doc 1"),
-            HitTestingTestDataFactory.create_document_mock(content="Doc 2"),
+            HitTestingTestDataFactory.create_document(content="Doc 1"),
+            HitTestingTestDataFactory.create_document(content="Doc 2"),
         ]
 
         mock_records = [
@@ -212,7 +201,7 @@ class TestHitTestingServiceRetrieve:
         }
         external_retrieval_model = {}
 
-        documents = [HitTestingTestDataFactory.create_document_mock()]
+        documents = [HitTestingTestDataFactory.create_document()]
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
 
         with (
@@ -268,7 +257,7 @@ class TestHitTestingServiceRetrieve:
             None,
         )
 
-        documents = [HitTestingTestDataFactory.create_document_mock()]
+        documents = [HitTestingTestDataFactory.create_document()]
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
 
         with (
@@ -358,7 +347,7 @@ class TestHitTestingServiceRetrieve:
         retrieval_model = None
         external_retrieval_model = {}
 
-        documents = [HitTestingTestDataFactory.create_document_mock()]
+        documents = [HitTestingTestDataFactory.create_document()]
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
 
         with (
@@ -566,8 +555,8 @@ class TestHitTestingServiceCompactRetrieveResponse:
         # Arrange
         query = "test query"
         documents = [
-            HitTestingTestDataFactory.create_document_mock(content="Doc 1"),
-            HitTestingTestDataFactory.create_document_mock(content="Doc 2"),
+            HitTestingTestDataFactory.create_document(content="Doc 1"),
+            HitTestingTestDataFactory.create_document(content="Doc 2"),
         ]
 
         mock_records = [

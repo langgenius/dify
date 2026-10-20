@@ -48,7 +48,7 @@ const BaseForm = ({
 
     return formSchemas.reduce(
       (acc, schema) => {
-        if (schema.default) acc[schema.name] = schema.default
+        if (schema.default !== undefined) acc[schema.name] = schema.default
         return acc
       },
       {} as Record<string, any>,

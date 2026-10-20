@@ -421,7 +421,6 @@ class TestEndUserServiceCreateBatch:
         """Create multiple apps under the same tenant."""
         first_app = factory.create_app_and_account(db_session_with_containers)
         tenant_id = first_app.tenant_id
-        apps = [first_app]
         for _ in range(count - 1):
             app = App(
                 tenant_id=tenant_id,

@@ -99,12 +99,12 @@ def _persist_execution(
 class TestWorkflowNodeExecutionModel:
     """Exercise truncation flags and content restoration using persisted offload rows."""
 
-    def test_process_data_truncated_property_false_when_no_offload_data(self, sqlite_session: Session):
+    def test_process_data_truncated_property_false_when_no_offload_data(self, sqlite_session: Session) -> None:
         execution = _persist_execution(sqlite_session)
 
         assert execution.process_data_truncated is False
 
-    def test_process_data_truncated_property_false_when_no_process_data_file(self, sqlite_session: Session):
+    def test_process_data_truncated_property_false_when_no_process_data_file(self, sqlite_session: Session) -> None:
         execution = _persist_execution(
             sqlite_session,
             offloads=(
@@ -115,7 +115,7 @@ class TestWorkflowNodeExecutionModel:
 
         assert execution.process_data_truncated is False
 
-    def test_process_data_truncated_property_true_when_process_data_file_exists(self, sqlite_session: Session):
+    def test_process_data_truncated_property_true_when_process_data_file_exists(self, sqlite_session: Session) -> None:
         execution = _persist_execution(
             sqlite_session,
             offloads=((ExecutionOffLoadType.PROCESS_DATA, "process-data-file-id"),),
@@ -123,7 +123,7 @@ class TestWorkflowNodeExecutionModel:
 
         assert execution.process_data_truncated is True
 
-    def test_load_full_process_data_with_no_offload_data(self, sqlite_session: Session):
+    def test_load_full_process_data_with_no_offload_data(self, sqlite_session: Session) -> None:
         execution = _persist_execution(sqlite_session)
         storage = Mock()
 
@@ -132,7 +132,7 @@ class TestWorkflowNodeExecutionModel:
         assert result == {"test": "data"}
         storage.load.assert_not_called()
 
-    def test_load_full_process_data_with_no_file(self, sqlite_session: Session):
+    def test_load_full_process_data_with_no_file(self, sqlite_session: Session) -> None:
         execution = _persist_execution(
             sqlite_session,
             offloads=((ExecutionOffLoadType.INPUTS, "inputs-file"),),
@@ -144,7 +144,7 @@ class TestWorkflowNodeExecutionModel:
         assert result == {"test": "data"}
         storage.load.assert_not_called()
 
-    def test_load_full_process_data_with_file(self, sqlite_session: Session):
+    def test_load_full_process_data_with_file(self, sqlite_session: Session) -> None:
         upload_file = _persist_upload_file(sqlite_session)
         execution = _persist_execution(
             sqlite_session,
@@ -160,7 +160,7 @@ class TestWorkflowNodeExecutionModel:
         assert result == full_process_data
         storage.load.assert_called_once_with(upload_file.key)
 
-    def test_consistency_with_inputs_outputs_truncation(self, sqlite_session: Session):
+    def test_consistency_with_inputs_outputs_truncation(self, sqlite_session: Session) -> None:
         execution = _persist_execution(
             sqlite_session,
             offloads=(
@@ -174,7 +174,7 @@ class TestWorkflowNodeExecutionModel:
         assert execution.outputs_truncated is True
         assert execution.process_data_truncated is True
 
-    def test_mixed_truncation_states(self, sqlite_session: Session):
+    def test_mixed_truncation_states(self, sqlite_session: Session) -> None:
         execution = _persist_execution(
             sqlite_session,
             offloads=((ExecutionOffLoadType.PROCESS_DATA, "process-data-file"),),
@@ -184,7 +184,7 @@ class TestWorkflowNodeExecutionModel:
         assert execution.outputs_truncated is False
         assert execution.process_data_truncated is True
 
-    def test_preload_offload_data_and_files_loads_process_data_file(self, sqlite_session: Session):
+    def test_preload_offload_data_and_files_loads_process_data_file(self, sqlite_session: Session) -> None:
         upload_file = _persist_upload_file(sqlite_session)
         execution = _persist_execution(
             sqlite_session,

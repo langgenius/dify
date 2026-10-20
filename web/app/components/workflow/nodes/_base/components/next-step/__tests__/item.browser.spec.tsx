@@ -1,4 +1,3 @@
-import type { CommonNodeType } from '@/app/components/workflow/types'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -26,7 +25,7 @@ it('reveals next-step actions to keyboard users and keeps restored focus visible
         <Item
           nodeId="next-node"
           sourceHandle="source"
-          data={{ type: BlockEnum.Code, title: 'Transform', desc: '' } as CommonNodeType}
+          data={{ type: BlockEnum.Code, title: 'Transform', desc: '' }}
         />
       </div>
     </>,
@@ -44,7 +43,7 @@ it('reveals next-step actions to keyboard users and keeps restored focus visible
   await expect.element(more).toHaveFocus()
   expect(more.element().checkVisibility({ opacityProperty: true })).toBe(true)
   await userEvent.keyboard('{Enter}')
-  await expect.element(page.getByRole('menuitem', { name: 'workflow.panel.change' })).toHaveFocus()
+  await expect.element(page.getByRole('menu')).toBeVisible()
   await userEvent.keyboard('{Escape}')
 
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()

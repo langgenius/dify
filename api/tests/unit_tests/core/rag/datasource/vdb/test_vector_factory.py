@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import sys
 import types
 from datetime import UTC, datetime
@@ -202,6 +203,24 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module, u
     assert [call.kwargs["session"] for call in init_vector.call_args_list] == [unbound_session, unbound_session]
 
 
+@pytest.mark.parametrize("with_session", [True, False])
+def test_vector_with_resolved_type_passes_session(vector_factory_module, unbound_session: Session, with_session: bool):
+    dataset = _dataset()
+    session = unbound_session if with_session else None
+    factory = MagicMock()
+    with (
+        patch.object(vector_factory_module.Vector, "get_vector_factory", return_value=factory),
+        patch.object(vector_factory_module.Vector, "resolve_vector_type") as resolve_vector_type,
+    ):
+        vector = vector_factory_module.Vector(dataset, session=session, vector_type="qdrant")
+
+    resolve_vector_type.assert_not_called()
+    factory.return_value.init_vector.assert_called_once_with(
+        dataset, vector._attributes, vector._embeddings, session=session
+    )
+    assert vector._vector_processor is factory.return_value.init_vector.return_value
+
+
 def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     """``Vector(dataset, session=...)`` must not transitively call ``ModelManager`` during
     construction. The real embedding model should only be materialized on the
@@ -241,14 +260,31 @@ def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_m
     inner_model.embed_documents.assert_called_once_with(["world"])
 
 
+def test_lazy_embeddings_query_cache_hit_skips_model_resolution(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
+    """A cached query vector should not construct ModelManager or a model instance."""
+    proxy = vector_factory_module._LazyEmbeddings(_dataset())
+    cached_vector = [0.1, 0.2]
+    cache_lookup = MagicMock(return_value=cached_vector)
+    for_tenant = MagicMock(side_effect=AssertionError("model resolution must be skipped on cache hit"))
+    monkeypatch.setattr(vector_factory_module.CacheEmbedding, "get_cached_query_embedding", cache_lookup)
+    monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", for_tenant)
+
+    result = proxy.embed_query("hello")
+
+    assert result == cached_vector
+    cache_lookup.assert_called_once_with("openai", "text-embedding-3-small", "hello")
+    for_tenant.assert_not_called()
+    assert proxy._real is None
+
+
 def test_init_vector_prefers_dataset_index_struct(
     vector_factory_module, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ):
     calls = {"vector_type": None, "init_args": None}
 
     class _Factory:
-        def init_vector(self, dataset, attributes, embeddings):
-            calls["init_args"] = (dataset, attributes, embeddings)
+        def init_vector(self, dataset, attributes, embeddings, *, session):
+            calls["init_args"] = (dataset, attributes, embeddings, session)
             return "vector-processor"
 
     monkeypatch.setattr(
@@ -266,7 +302,7 @@ def test_init_vector_prefers_dataset_index_struct(
 
     assert result == "vector-processor"
     assert calls["vector_type"] == vector_factory_module.VectorType.UPSTASH
-    assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings")
+    assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings", unbound_session)
 
 
 def test_init_vector_uses_whitelist_override(
@@ -275,7 +311,7 @@ def test_init_vector_uses_whitelist_override(
     calls = {"vector_type": None}
 
     class _Factory:
-        def init_vector(self, dataset, attributes, embeddings):
+        def init_vector(self, dataset, attributes, embeddings, *, session):
             return "vector-processor"
 
     tenant_id = str(uuid4())
@@ -341,6 +377,28 @@ def test_create_batches_texts_and_skips_empty_input(vector_factory_module):
     vector._vector_processor.create.assert_not_called()
 
 
+def test_create_logs_batch_count_as_progress_denominator(vector_factory_module, caplog):
+    """Progress logs must report the batch count, not a text count with the raw remainder."""
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.side_effect = [
+        [[0.1] for _ in range(1000)],
+        [[0.2] for _ in range(500)],
+    ]
+    vector._vector_processor = MagicMock()
+
+    docs = [Document(page_content=f"doc-{i}", metadata={"doc_id": f"id-{i}"}) for i in range(1500)]
+
+    with caplog.at_level(logging.INFO):
+        vector.create(texts=docs)
+
+    progress = [record.getMessage() for record in caplog.records if "Processing batch" in record.getMessage()]
+    assert progress == [
+        "Processing batch 1/2 (1000 texts)",
+        "Processing batch 2/2 (500 texts)",
+    ]
+
+
 def test_create_skips_empty_text_documents_before_embedding(vector_factory_module):
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
@@ -391,6 +449,7 @@ def test_create_multimodal_filters_missing_uploads(
     vector._embeddings.embed_multimodal_documents.return_value = [[0.1, 0.2]]
     vector._vector_processor = MagicMock()
     vector._session = sqlite_session
+    vector._dataset = Dataset(tenant_id=upload_file.tenant_id, name="dataset", created_by=upload_file.created_by)
     monkeypatch.setattr(vector_factory_module.storage, "load_once", MagicMock(return_value=b"abc"))
 
     docs = [

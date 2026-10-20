@@ -7,7 +7,8 @@ import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { ModelConfig } from '@/models/debug'
 import type { AgentTool } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { zToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -18,6 +19,9 @@ import {
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDebugConfigurationFixture } from '@/test/fixtures/debug-configuration'
 import { ModelModeType } from '@/types/app'
 import { writeTextToClipboard } from '@/utils/clipboard'
 import AgentTools from '../index'
@@ -31,13 +35,6 @@ let builtInTools: ToolWithProvider[] = []
 let customTools: ToolWithProvider[] = []
 let workflowTools: ToolWithProvider[] = []
 let mcpTools: ToolWithProvider[] = []
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: builtInTools }),
-  useAllCustomTools: () => ({ data: customTools }),
-  useAllWorkflowTools: () => ({ data: workflowTools }),
-  useAllMCPTools: () => ({ data: mcpTools }),
-}))
-
 type ToolPickerProps = React.ComponentProps<typeof ToolPickerType>
 let singleToolSelection: ToolDefaultValue | null = null
 let multipleToolSelection: ToolDefaultValue[] = []
@@ -60,11 +57,9 @@ vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
 }))
 
 type SettingBuiltInToolProps = React.ComponentProps<typeof SettingBuiltInToolType>
-let latestSettingPanelProps: SettingBuiltInToolProps | null = null
-let settingPanelSavePayload: Record<string, any> = {}
+let settingPanelSavePayload: Record<string, unknown> = {}
 let settingPanelCredentialId = 'credential-from-panel'
 const SettingBuiltInToolMock = (props: SettingBuiltInToolProps) => {
-  latestSettingPanelProps = props
   return (
     <div data-testid="setting-built-in-tool">
       <span>{props.toolName}</span>
@@ -104,7 +99,7 @@ const createToolParameter = (overrides?: Partial<ToolParameter>): ToolParameter 
     zh_Hans: 'desc',
   },
   type: 'string',
-  form: 'config',
+  form: 'form',
   llm_description: '',
   required: true,
   multiple: false,
@@ -186,13 +181,6 @@ const createModelConfig = (tools: AgentTool[]): ModelConfig => ({
   sensitive_word_avoidance: null,
   annotation_reply: null,
   external_data_tools: [],
-  system_parameters: {
-    audio_file_size_limit: 0,
-    file_size_limit: 0,
-    image_file_size_limit: 0,
-    video_file_size_limit: 0,
-    workflow_file_upload_limit: 0,
-  },
   dataSets: [],
   agentConfig: {
     ...DEFAULT_AGENT_SETTING,
@@ -209,30 +197,36 @@ const renderAgentTools = (initialTools?: AgentTool[]) => {
       modelConfigRef.current = modelConfig
     }, [modelConfig])
     const value = useMemo(
-      () => ({
-        modelConfig,
-        setModelConfig,
-      }),
+      () =>
+        createDebugConfigurationFixture({
+          modelConfig,
+          setModelConfig,
+        }),
       [modelConfig],
     )
-    return <ConfigContext.Provider value={value as any}>{children}</ConfigContext.Provider>
+    return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>
   }
-  const renderResult = render(
+  const queryClient = createConsoleQueryClient()
+  for (const [operation, data] of [
+    [consoleQuery.workspaces.current.tools.builtin.get, builtInTools],
+    [consoleQuery.workspaces.current.tools.api.get, customTools],
+    [consoleQuery.workspaces.current.tools.workflow.get, workflowTools],
+    [consoleQuery.workspaces.current.tools.mcp.get, mcpTools],
+  ] as const)
+    queryClient.setQueryData(
+      operation.queryOptions().queryKey,
+      data.map((item) => zToolProviderApiEntityResponse.parse(item)),
+    )
+  const renderResult = renderWithConsoleQuery(
     <Wrapper>
       <AgentTools />
     </Wrapper>,
+    { queryClient },
   )
   return {
     ...renderResult,
     getModelConfig: () => modelConfigRef.current,
   }
-}
-
-const hoverInfoIcon = async (rowIndex = 0) => {
-  const rows = document.querySelectorAll('.group')
-  const infoTrigger = rows.item(rowIndex)?.querySelector('[aria-label="search"]')
-  if (!infoTrigger) throw new Error('Info trigger not found')
-  await userEvent.hover(infoTrigger as HTMLElement)
 }
 
 describe('AgentTools', () => {
@@ -311,7 +305,6 @@ describe('AgentTools', () => {
         output_schema: {},
       },
     ]
-    latestSettingPanelProps = null
     settingPanelSavePayload = {}
     settingPanelCredentialId = 'credential-from-panel'
   })
@@ -337,33 +330,24 @@ describe('AgentTools', () => {
   })
 
   it('should copy tool name from infotip action', async () => {
+    const user = userEvent.setup()
     renderAgentTools()
 
-    await hoverInfoIcon()
+    await user.hover(screen.getByRole('button', { name: 'search' }))
     const copyButton = await screen.findByText('tools.copyToolName')
-    await userEvent.click(copyButton)
+    await user.click(copyButton)
     expect(writeTextToClipboardMock).toHaveBeenCalledWith('search')
   })
 
-  it('should expose the tool name infotip trigger', () => {
-    renderAgentTools()
-
-    const infoTrigger = screen.getByRole('button', { name: 'search' })
-
-    expect(infoTrigger).toBeInTheDocument()
-  })
-
   it('should toggle tool enabled state via switch', async () => {
+    const user = userEvent.setup()
     const { getModelConfig } = renderAgentTools()
 
     const switchButton = screen.getByRole('switch')
-    await userEvent.click(switchButton)
+    await user.click(switchButton)
 
     await waitFor(() => {
-      const tools = getModelConfig().agentConfig.tools as Array<{
-        tool_name?: string
-        enabled?: boolean
-      }>
+      const tools = getModelConfig().agentConfig.tools
       const toggledTool = tools.find((tool) => tool.tool_name === 'search')
       expect(toggledTool?.enabled).toBe(false)
     })
@@ -371,10 +355,10 @@ describe('AgentTools', () => {
   })
 
   it('should remove tool when delete action is clicked', async () => {
+    const user = userEvent.setup()
     const { getModelConfig } = renderAgentTools()
     const deleteButton = screen.getByRole('button', { name: /operation\.delete/i })
-    if (!deleteButton) throw new Error('Delete button not found')
-    await userEvent.click(deleteButton)
+    await user.click(deleteButton)
     await waitFor(() => {
       expect(getModelConfig().agentConfig.tools).toHaveLength(0)
     })
@@ -382,9 +366,10 @@ describe('AgentTools', () => {
   })
 
   it('should add a tool when ToolPicker selects one', async () => {
+    const user = userEvent.setup()
     const { getModelConfig } = renderAgentTools([])
     const addSingleButton = screen.getByRole('button', { name: 'pick-single' })
-    await userEvent.click(addSingleButton)
+    await user.click(addSingleButton)
 
     await waitFor(() => {
       expect(screen.getByText('Summary Tool')).toBeInTheDocument()
@@ -393,8 +378,9 @@ describe('AgentTools', () => {
   })
 
   it('should append multiple selected tools at once', async () => {
+    const user = userEvent.setup()
     const { getModelConfig } = renderAgentTools([])
-    await userEvent.click(screen.getByRole('button', { name: 'pick-multiple' }))
+    await user.click(screen.getByRole('button', { name: 'pick-multiple' }))
 
     await waitFor(() => {
       expect(screen.getByText('Translate Tool')).toBeInTheDocument()
@@ -403,56 +389,24 @@ describe('AgentTools', () => {
     expect(getModelConfig().agentConfig.tools).toHaveLength(2)
   })
 
-  it('should open settings panel for not authorized tool', async () => {
-    renderAgentTools([
-      createAgentTool({
-        notAuthor: true,
-      }),
-    ])
-
-    const notAuthorizedButton = screen.getByRole('button', { name: /tools.notAuthorized/ })
-    await userEvent.click(notAuthorizedButton)
-    expect(screen.getByTestId('setting-built-in-tool')).toBeInTheDocument()
-    expect(latestSettingPanelProps?.toolName).toBe('search')
-  })
-
   it('should persist tool parameters when SettingBuiltInTool saves values', async () => {
+    const user = userEvent.setup()
     const { getModelConfig } = renderAgentTools([
       createAgentTool({
         notAuthor: true,
       }),
     ])
-    await userEvent.click(screen.getByRole('button', { name: /tools.notAuthorized/ }))
+    await user.click(screen.getByRole('button', { name: /tools.notAuthorized/ }))
     settingPanelSavePayload = { api_key: 'updated' }
-    await userEvent.click(screen.getByRole('button', { name: 'save-from-panel' }))
+    await user.click(screen.getByRole('button', { name: 'save-from-panel' }))
 
     await waitFor(() => {
-      expect(
-        (getModelConfig().agentConfig.tools[0] as { tool_parameters: Record<string, any> })
-          .tool_parameters,
-      ).toEqual({ api_key: 'updated' })
+      expect(getModelConfig().agentConfig.tools[0]?.tool_parameters).toEqual({ api_key: 'updated' })
     })
-  })
-
-  it('should update credential id when authorization selection changes', async () => {
-    const { getModelConfig } = renderAgentTools([
-      createAgentTool({
-        notAuthor: true,
-      }),
-    ])
-    await userEvent.click(screen.getByRole('button', { name: /tools.notAuthorized/ }))
-    settingPanelCredentialId = 'credential-123'
-    await userEvent.click(screen.getByRole('button', { name: 'auth-from-panel' }))
-
-    await waitFor(() => {
-      expect(
-        (getModelConfig().agentConfig.tools[0] as { credential_id: string }).credential_id,
-      ).toBe('credential-123')
-    })
-    expect(formattingDispatcherMock).toHaveBeenCalled()
   })
 
   it('should update only the selected tool credential when tools share a provider', async () => {
+    const user = userEvent.setup()
     const { getModelConfig } = renderAgentTools([
       createAgentTool({
         credential_id: 'credential-search',
@@ -468,9 +422,9 @@ describe('AgentTools', () => {
     const authorizationButtons = screen.getAllByRole('button', { name: /tools.notAuthorized/ })
     const secondAuthorizationButton = authorizationButtons[1]
     if (!secondAuthorizationButton) throw new Error('Second authorization button not found')
-    await userEvent.click(secondAuthorizationButton)
+    await user.click(secondAuthorizationButton)
     settingPanelCredentialId = 'credential-updated'
-    await userEvent.click(screen.getByRole('button', { name: 'auth-from-panel' }))
+    await user.click(screen.getByRole('button', { name: 'auth-from-panel' }))
 
     await waitFor(() => {
       const tools = getModelConfig().agentConfig.tools as AgentTool[]

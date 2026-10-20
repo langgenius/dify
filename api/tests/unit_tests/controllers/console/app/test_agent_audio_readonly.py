@@ -1,9 +1,8 @@
 from collections.abc import Callable, Iterator
-from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
-from flask import Flask, Response
+from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
@@ -21,7 +20,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode
 from services.agent.errors import AgentNotFoundError
-from services.audio_service import AudioService
+from tests.unit_tests.audio_runtime_fixtures import AudioRuntimeObservations
 from tests.unit_tests.model_factories import make_account, make_app
 
 AGENT_ID = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
@@ -65,19 +64,17 @@ def persistence_events(sqlite_engine: Engine) -> Iterator[list[str]]:
 
 @pytest.fixture(params=["voices", "preview"])
 def request_audio(
-    request: pytest.FixtureRequest, app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> tuple[Callable[[], object], Mock]:
+    request: pytest.FixtureRequest, app: Flask, audio_runtime: AudioRuntimeObservations
+) -> tuple[Callable[[], object], AudioRuntimeObservations]:
     if request.param == "voices":
-        provider = Mock(return_value=[{"name": "Echo", "value": "echo"}])
-        monkeypatch.setattr(AudioService, "transcript_tts_voices", provider)
+        audio_runtime.voices = [{"name": "Echo", "value": "echo"}]
 
         def invoke() -> object:
             with app.test_request_context(f"/console/api/agent/{AGENT_ID}/text-to-audio/voices?language=en-US"):
                 return audio.AgentTextToSpeechVoicesApi().get(agent_id=AGENT_ID)
 
     else:
-        provider = Mock(return_value=Response(b"ID3audio", content_type="audio/mpeg"))
-        monkeypatch.setattr(AudioService, "transcript_tts", provider)
+        audio_runtime.tts_result = b"ID3audio"
 
         def invoke() -> object:
             with app.test_request_context(
@@ -85,9 +82,16 @@ def request_audio(
                 method="POST",
                 json={"text": "Preview this voice", "voice": "echo"},
             ):
-                return audio.AgentChatMessageTextApi().post(agent_id=AGENT_ID)
+                response = audio.AgentChatMessageTextApi().post(agent_id=AGENT_ID)
+                assert response is not None
+                try:
+                    assert response.get_data() == b"ID3audio"
+                    assert response.content_type == "audio/mpeg"
+                    return response
+                finally:
+                    response.close()
 
-    return invoke, provider
+    return invoke, audio_runtime
 
 
 def _agent(scope: AgentScope = AgentScope.WORKFLOW_ONLY) -> Agent:
@@ -112,7 +116,7 @@ def _agent(scope: AgentScope = AgentScope.WORKFLOW_ONLY) -> Agent:
 @pytest.mark.parametrize("scope", [AgentScope.ROSTER, AgentScope.WORKFLOW_ONLY])
 def test_audio_uses_existing_runtime_state_without_writes(
     sqlite_session: Session,
-    request_audio: tuple[Callable[[], object], Mock],
+    request_audio: tuple[Callable[[], object], AudioRuntimeObservations],
     persistence_events: list[str],
     scope: AgentScope,
 ) -> None:
@@ -125,14 +129,14 @@ def test_audio_uses_existing_runtime_state_without_writes(
 
     response = invoke()
 
-    provider.assert_called_once()
+    assert len(provider.resolutions) == 1
     assert response is not None
     assert persistence_events == []
 
 
 def test_audio_does_not_materialize_a_missing_workflow_backing_app(
     sqlite_session: Session,
-    request_audio: tuple[Callable[[], object], Mock],
+    request_audio: tuple[Callable[[], object], AudioRuntimeObservations],
     persistence_events: list[str],
 ) -> None:
     agent = _agent()
@@ -146,7 +150,8 @@ def test_audio_does_not_materialize_a_missing_workflow_backing_app(
     with pytest.raises(AgentNotFoundError):
         invoke()
 
-    provider.assert_not_called()
+    assert provider.resolutions == []
+    assert provider.daemon_calls == []
     assert persistence_events == []
     sqlite_session.refresh(agent)
     assert agent.backing_app_id is None
@@ -156,7 +161,7 @@ def test_audio_does_not_materialize_a_missing_workflow_backing_app(
 @pytest.mark.parametrize("foreign_owner", ["agent", "app"])
 def test_audio_scopes_both_agent_and_runtime_app_to_the_current_tenant(
     sqlite_session: Session,
-    request_audio: tuple[Callable[[], object], Mock],
+    request_audio: tuple[Callable[[], object], AudioRuntimeObservations],
     persistence_events: list[str],
     foreign_owner: str,
 ) -> None:
@@ -174,7 +179,8 @@ def test_audio_scopes_both_agent_and_runtime_app_to_the_current_tenant(
     with pytest.raises(AgentNotFoundError):
         invoke()
 
-    provider.assert_not_called()
+    assert provider.resolutions == []
+    assert provider.daemon_calls == []
     assert persistence_events == []
 
 
@@ -191,7 +197,7 @@ def test_audio_scopes_both_agent_and_runtime_app_to_the_current_tenant(
 )
 def test_provider_failures_preserve_error_contract_and_readonly_state(
     sqlite_session: Session,
-    request_audio: tuple[Callable[[], object], Mock],
+    request_audio: tuple[Callable[[], object], AudioRuntimeObservations],
     persistence_events: list[str],
     provider_error: Exception,
     expected_error: type[Exception],
@@ -200,10 +206,10 @@ def test_provider_failures_preserve_error_contract_and_readonly_state(
     sqlite_session.commit()
     persistence_events.clear()
     invoke, provider = request_audio
-    provider.side_effect = provider_error
+    provider.lookup_error = provider_error
 
     with pytest.raises(expected_error):
         invoke()
 
-    provider.assert_called_once()
+    assert len(provider.resolutions) == 1
     assert persistence_events == []

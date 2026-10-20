@@ -75,7 +75,7 @@ class TestWorkflowRunCleanupInit:
 
     def test_equal_start_end_raises(self, mock_repo):
         dt = datetime.datetime(2024, 1, 1)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="end_before must be greater than start_from\\."):
             WorkflowRunCleanup(
                 days=30,
                 batch_size=10,
@@ -89,7 +89,7 @@ class TestWorkflowRunCleanupInit:
             WorkflowRunCleanup(days=30, batch_size=0, workflow_run_repo=mock_repo)
 
     def test_negative_batch_size_raises(self, mock_repo):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="batch_size must be greater than 0\\."):
             WorkflowRunCleanup(days=30, batch_size=-1, workflow_run_repo=mock_repo)
 
     def test_valid_window_init(self, mock_repo, config_overrides):
@@ -407,8 +407,8 @@ class TestTriggerLogMethods:
     def test_delete_trigger_logs(self, cleanup, sqlite_session: Session):
         with patch(
             "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.SQLAlchemyWorkflowTriggerLogRepository"
-        ) as RepoClass:
-            instance = RepoClass.return_value
+        ) as repo_class:
+            instance = repo_class.return_value
             instance.delete_by_run_ids.return_value = 5
             result = cleanup._delete_trigger_logs(sqlite_session, ["r1", "r2"])
         assert result == 5
@@ -417,8 +417,8 @@ class TestTriggerLogMethods:
     def test_count_trigger_logs(self, cleanup, sqlite_session: Session):
         with patch(
             "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.SQLAlchemyWorkflowTriggerLogRepository"
-        ) as RepoClass:
-            instance = RepoClass.return_value
+        ) as repo_class:
+            instance = repo_class.return_value
             instance.count_by_run_ids.return_value = 3
             result = cleanup._count_trigger_logs(sqlite_session, ["r1"])
         assert result == 3

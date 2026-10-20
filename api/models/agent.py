@@ -98,6 +98,18 @@ class AgentConfigRevisionOperation(StrEnum):
     IMPORT_PACKAGE = "import_package"
 
 
+# Revisions that add an entry to an Agent App's user-facing version history.
+# Imported Agent Apps also list the version their package seeded.
+AGENT_APP_VERSION_OPERATIONS = frozenset(
+    {
+        AgentConfigRevisionOperation.PUBLISH_DRAFT,
+        AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+        AgentConfigRevisionOperation.SAVE_TO_ROSTER,
+        AgentConfigRevisionOperation.RESTORE_VERSION,
+    }
+)
+
+
 class AgentConfigDraftType(StrEnum):
     """Editable Agent Soul draft workspace type."""
 

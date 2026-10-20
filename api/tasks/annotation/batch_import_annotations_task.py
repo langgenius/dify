@@ -13,7 +13,7 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
-from services.dataset_service import DatasetCollectionBindingService
+from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
 
@@ -85,9 +85,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                 end_at = time.perf_counter()
                 logger.info(
                     click.style(
-                        "Build index successful for batch import annotation: {} latency: {}".format(
-                            job_id, end_at - start_at
-                        ),
+                        f"Build index successful for batch import annotation: {job_id} latency: {end_at - start_at}",
                         fg="green",
                     )
                 )

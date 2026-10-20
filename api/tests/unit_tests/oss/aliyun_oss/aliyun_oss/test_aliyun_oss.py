@@ -1,3 +1,4 @@
+from typing import override
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +16,8 @@ pytest_plugins = ("tests.unit_tests.oss.__mock.aliyun_oss",)
 
 class TestAliyunOss(BaseStorageTest):
     @pytest.fixture(autouse=True)
-    def setup_method(self, setup_aliyun_oss_mock):
+    @override
+    def setup_method(self, setup_aliyun_oss_mock: None) -> None:
         """Executed before each test method."""
         with patch.object(Auth, "__init__", return_value=None):
             self.storage = AliyunOssStorage()

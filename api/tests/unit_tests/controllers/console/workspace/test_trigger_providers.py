@@ -51,7 +51,8 @@ def test_delete_subscription_uses_sqlite_transaction(flask_sqlite_engine: Engine
     assert provider_session.get_bind() is flask_sqlite_engine
 
 
-def test_delete_subscription_translates_value_error(flask_sqlite_engine: Engine) -> None:
+@pytest.mark.usefixtures("flask_sqlite_engine")
+def test_delete_subscription_translates_value_error() -> None:
     api = TriggerSubscriptionDeleteApi()
     method = unwrap(api.post)
 

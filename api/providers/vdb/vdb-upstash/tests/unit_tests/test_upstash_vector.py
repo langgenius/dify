@@ -176,8 +176,8 @@ def test_upstash_factory_uses_existing_or_generated_collection(upstash_module, m
     monkeypatch.setattr(upstash_module.dify_config, "UPSTASH_VECTOR_TOKEN", "token-123")
 
     with patch.object(upstash_module, "UpstashVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const FileUpload = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation(['appDebug', 'common'])
+  const { t } = useTranslation(['common', 'fileUpload'])
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
   const [modalOpen, setModalOpen] = useState(false)
@@ -53,7 +53,7 @@ const FileUpload = ({ disabled, onChange }: Props) => {
       }
       title={
         <div className="flex items-center">
-          {t(($) => $['feature.imageUpload.title'], { ns: 'appDebug' })}
+          {t(($) => $['feature.imageUpload.title'], { ns: 'fileUpload' })}
           <Badge
             text="LEGACY"
             className="mx-1 shrink-0 border-text-accent-secondary text-text-accent-secondary"
@@ -69,7 +69,7 @@ const FileUpload = ({ disabled, onChange }: Props) => {
       <>
         {!file?.enabled && (
           <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
-            {t(($) => $['feature.imageUpload.description'], { ns: 'appDebug' })}
+            {t(($) => $['feature.imageUpload.description'], { ns: 'fileUpload' })}
           </div>
         )}
         {file?.enabled && (
@@ -78,14 +78,14 @@ const FileUpload = ({ disabled, onChange }: Props) => {
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
                   <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                    {t(($) => $['feature.imageUpload.supportedTypes'], { ns: 'appDebug' })}
+                    {t(($) => $['feature.imageUpload.supportedTypes'], { ns: 'fileUpload' })}
                   </div>
                   <div className="system-xs-regular text-text-secondary">{supportedTypes}</div>
                 </div>
                 <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
                   <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                    {t(($) => $['feature.imageUpload.numberLimit'], { ns: 'appDebug' })}
+                    {t(($) => $['feature.imageUpload.numberLimit'], { ns: 'fileUpload' })}
                   </div>
                   <div className="system-xs-regular text-text-secondary">{file?.number_limits}</div>
                 </div>

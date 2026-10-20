@@ -12,10 +12,46 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account, CreatorUserRole, EndUser, Tenant, WorkflowRun
 from models.enums import EndUserType, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
+from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
 
 TABLES = (WorkflowRun,)
 
 RESOURCE_TENANT_ID = "resource-tenant-id"
+
+
+def test_save_preserves_accumulated_duration_without_double_counting(
+    sqlite_session_factory: sessionmaker[Session], account: Account, sample_workflow_execution: WorkflowExecution
+) -> None:
+    repository = SQLAlchemyWorkflowExecutionRepository(
+        session_factory=sqlite_session_factory,
+        tenant_id=RESOURCE_TENANT_ID,
+        user=account,
+        app_id="app-1",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+    )
+    execution = TimedWorkflowExecution(
+        **(sample_workflow_execution.model_dump() | {"finished_at": None, "status": WorkflowExecutionStatus.RUNNING}),
+        accumulated_elapsed_time=5.0,
+    )
+    original_started_at = execution.started_at
+
+    for status, duration in [
+        (WorkflowExecutionStatus.RUNNING, 5.0),
+        (WorkflowExecutionStatus.PAUSED, 7.0),
+        (WorkflowExecutionStatus.SUCCEEDED, 9.0),
+    ]:
+        execution.status = status
+        execution.accumulated_elapsed_time = duration
+        if status == WorkflowExecutionStatus.SUCCEEDED:
+            execution.finished_at = datetime(2027, 1, 1, tzinfo=UTC)
+        repository.save(execution)
+        repository.save(execution)
+        with sqlite_session_factory() as session:
+            stored = session.get(WorkflowRun, execution.id_)
+            assert stored is not None
+            assert stored.elapsed_time == duration
+            assert stored.created_at == original_started_at.replace(tzinfo=None)
+            assert repository._to_domain_model(stored).elapsed_time == duration
 
 
 def _make_account(*, tenant_id: str | None = None) -> Account:

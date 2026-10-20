@@ -1,7 +1,6 @@
 'use client'
 import type { SimpleDetail } from '../../../store'
 import type { SchemaItem } from '../components/modal-steps'
-import type { PluginTriggerTranslate } from './use-common-modal-state.helpers'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type {
   TriggerLogEntity,
@@ -108,10 +107,6 @@ export const useCommonModalState = ({
   onClose,
 }: UseCommonModalStateParams): UseCommonModalStateReturn => {
   const { t } = useTranslation(['pluginTrigger'])
-  const translatePluginTriggerKey = useCallback<PluginTriggerTranslate>(
-    (selector, options) => t(selector, options),
-    [t],
-  )
   const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 
@@ -168,9 +163,9 @@ export const useCommonModalState = ({
             properties,
           },
           {
-            onError: async (error: unknown) => {
+            onError: (error: unknown) => {
               const errorMessage =
-                (await parsePluginErrorMessage(error)) ||
+                parsePluginErrorMessage(error) ||
                 t(($) => $['modal.errors.updateFailed'], { ns: 'pluginTrigger' })
               console.error('Failed to update subscription builder:', error)
               toast.error(errorMessage)
@@ -187,7 +182,7 @@ export const useCommonModalState = ({
     provider: detail?.provider,
     subscriptionBuilder,
     setSubscriptionBuilder,
-    t: translatePluginTriggerKey,
+    t,
   })
 
   // Cleanup debounced function
@@ -201,7 +196,7 @@ export const useCommonModalState = ({
     endpoint: subscriptionBuilder?.endpoint,
     isConfigurationStep: currentStep === ApiKeyStep.Configuration,
     subscriptionFormRef,
-    t: translatePluginTriggerKey,
+    t,
   })
 
   // Handle manual properties change
@@ -262,9 +257,9 @@ export const useCommonModalState = ({
           toast.success(t(($) => $['modal.apiKey.verify.success'], { ns: 'pluginTrigger' }))
           setCurrentStep(ApiKeyStep.Configuration)
         },
-        onError: async (error: unknown) => {
+        onError: (error: unknown) => {
           const errorMessage =
-            (await parsePluginErrorMessage(error)) ||
+            parsePluginErrorMessage(error) ||
             t(($) => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
           apiKeyCredentialsFormRef.current?.setFields([
             {
@@ -299,13 +294,12 @@ export const useCommonModalState = ({
 
     buildSubscription(params, {
       onSuccess: () => {
-        toast.success(t(($) => $['subscription.createSuccess'], { ns: 'pluginTrigger' }))
         onClose()
         refetch?.()
       },
-      onError: async (error: unknown) => {
+      onError: (error: unknown) => {
         const errorMessage =
-          (await parsePluginErrorMessage(error)) ||
+          parsePluginErrorMessage(error) ||
           t(($) => $['subscription.createFailed'], { ns: 'pluginTrigger' })
         toast.error(errorMessage)
       },
@@ -334,9 +328,9 @@ export const useCommonModalState = ({
       isVerifyStep: currentStep === ApiKeyStep.Verify,
       isVerifyingCredentials,
       isBuilding,
-      t: translatePluginTriggerKey,
+      t,
     })
-  }, [currentStep, isVerifyingCredentials, isBuilding, translatePluginTriggerKey])
+  }, [currentStep, isVerifyingCredentials, isBuilding, t])
 
   return {
     currentStep,

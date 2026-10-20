@@ -7,6 +7,7 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 from werkzeug.exceptions import ServiceUnavailable
+from werkzeug.routing import Rule
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi.oauth_device_sso import (
@@ -30,46 +31,46 @@ def openapi_app() -> Flask:
     return app
 
 
-def _rule(app: Flask, path: str):
+def _rule(app: Flask, path: str) -> Rule:
     return next(r for r in app.url_map.iter_rules() if r.rule == path)
 
 
-def test_sso_initiate_registered(openapi_app: Flask):
+def test_sso_initiate_registered(openapi_app: Flask) -> None:
     rules = {r.rule for r in openapi_app.url_map.iter_rules()}
     assert "/openapi/v1/oauth/device/sso-initiate" in rules
 
 
-def test_sso_complete_registered(openapi_app: Flask):
+def test_sso_complete_registered(openapi_app: Flask) -> None:
     rules = {r.rule for r in openapi_app.url_map.iter_rules()}
     assert "/openapi/v1/oauth/device/sso-complete" in rules
 
 
-def test_approval_context_registered(openapi_app: Flask):
+def test_approval_context_registered(openapi_app: Flask) -> None:
     rules = {r.rule for r in openapi_app.url_map.iter_rules()}
     assert "/openapi/v1/oauth/device/approval-context" in rules
 
 
-def test_approve_external_registered(openapi_app: Flask):
+def test_approve_external_registered(openapi_app: Flask) -> None:
     rules = {r.rule for r in openapi_app.url_map.iter_rules()}
     assert "/openapi/v1/oauth/device/approve-external" in rules
 
 
-def test_sso_initiate_dispatches_to_function(openapi_app: Flask):
+def test_sso_initiate_dispatches_to_function(openapi_app: Flask) -> None:
     rule = _rule(openapi_app, "/openapi/v1/oauth/device/sso-initiate")
     assert openapi_app.view_functions[rule.endpoint] is sso_initiate
 
 
-def test_sso_complete_dispatches_to_function(openapi_app: Flask):
+def test_sso_complete_dispatches_to_function(openapi_app: Flask) -> None:
     rule = _rule(openapi_app, "/openapi/v1/oauth/device/sso-complete")
     assert openapi_app.view_functions[rule.endpoint] is sso_complete
 
 
-def test_approval_context_dispatches_to_function(openapi_app: Flask):
+def test_approval_context_dispatches_to_function(openapi_app: Flask) -> None:
     rule = _rule(openapi_app, "/openapi/v1/oauth/device/approval-context")
     assert openapi_app.view_functions[rule.endpoint] is approval_context
 
 
-def test_approve_external_dispatches_to_function(openapi_app: Flask):
+def test_approve_external_dispatches_to_function(openapi_app: Flask) -> None:
     rule = _rule(openapi_app, "/openapi/v1/oauth/device/approve-external")
     assert openapi_app.view_functions[rule.endpoint] is approve_external
 
@@ -84,7 +85,7 @@ def test_unknown_external_approval_outcome_is_retryable() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_device_error_redirect_builds_relative_location():
+def test_device_error_redirect_builds_relative_location() -> None:
     from controllers.openapi import oauth_device_sso
 
     app = Flask(__name__)
@@ -97,7 +98,7 @@ def test_device_error_redirect_builds_relative_location():
     assert "user_code=ABCD-1234" in loc
 
 
-def test_device_error_redirect_clamps_unknown_code():
+def test_device_error_redirect_clamps_unknown_code() -> None:
     from controllers.openapi import oauth_device_sso
 
     app = Flask(__name__)
@@ -106,7 +107,7 @@ def test_device_error_redirect_clamps_unknown_code():
     assert "sso_error=sso_failed" in resp.headers["Location"]
 
 
-def test_device_error_redirect_keeps_email_special_case():
+def test_device_error_redirect_keeps_email_special_case() -> None:
     from controllers.openapi import oauth_device_sso
 
     app = Flask(__name__)
@@ -115,7 +116,7 @@ def test_device_error_redirect_keeps_email_special_case():
     assert "sso_error=email_belongs_to_dify_account" in resp.headers["Location"]
 
 
-def test_device_error_redirect_omits_empty_user_code():
+def test_device_error_redirect_omits_empty_user_code() -> None:
     from controllers.openapi import oauth_device_sso
 
     app = Flask(__name__)
@@ -124,7 +125,7 @@ def test_device_error_redirect_omits_empty_user_code():
     assert "user_code=" not in resp.headers["Location"]
 
 
-def test_device_error_redirect_drops_malformed_user_code():
+def test_device_error_redirect_drops_malformed_user_code() -> None:
     from controllers.openapi import oauth_device_sso
 
     app = Flask(__name__)
@@ -142,7 +143,9 @@ def test_device_error_redirect_drops_malformed_user_code():
 
 
 class _CompletionService:
-    def complete_sso(self, _context, *, inbound_error, inbound_user_code, assertion):
+    def complete_sso(
+        self, _context: object, *, inbound_error: str | None, inbound_user_code: str | None, assertion: str | None
+    ) -> DeviceSSOCompletion:
         _ = assertion
         if inbound_error:
             return DeviceSSOCompletion(error_code=inbound_error, user_code=inbound_user_code)
@@ -179,7 +182,7 @@ def admitted_sso(monkeypatch: pytest.MonkeyPatch) -> None:
     _install_application_services(monkeypatch, valid_enterprise_license=True)
 
 
-def test_sso_complete_relays_inbound_sso_error(openapi_app, admitted_sso):
+def test_sso_complete_relays_inbound_sso_error(openapi_app: Flask, admitted_sso: None) -> None:
     _ = admitted_sso
     client = openapi_app.test_client()
     resp = client.get(
@@ -193,7 +196,7 @@ def test_sso_complete_relays_inbound_sso_error(openapi_app, admitted_sso):
     assert "user_code=ABCD-1234" in loc
 
 
-def test_sso_complete_missing_assertion_redirects_generic(openapi_app, admitted_sso):
+def test_sso_complete_missing_assertion_redirects_generic(openapi_app: Flask, admitted_sso: None) -> None:
     _ = admitted_sso
     client = openapi_app.test_client()
     resp = client.get("/openapi/v1/oauth/device/sso-complete", follow_redirects=False)
@@ -201,7 +204,7 @@ def test_sso_complete_missing_assertion_redirects_generic(openapi_app, admitted_
     assert "sso_error=sso_failed" in resp.headers["Location"]
 
 
-def test_sso_admission_rejects_inactive_license(openapi_app, monkeypatch: pytest.MonkeyPatch):
+def test_sso_admission_rejects_inactive_license(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     _install_application_services(monkeypatch, valid_enterprise_license=False)
 
     response = openapi_app.test_client().get("/openapi/v1/oauth/device/sso-complete")

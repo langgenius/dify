@@ -1,26 +1,32 @@
 import type { DataSourceNodeType } from '../types'
-import { render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useNodePluginInstallation } from '../../../hooks/use-node-plugin-installation'
+import { consoleQuery } from '@/service/console'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import Node from '../node'
 
-const mockInstallPluginButton = vi.hoisted(() =>
-  vi.fn(({ uniqueIdentifier }: { uniqueIdentifier: string }) => (
-    <button type="button">{uniqueIdentifier}</button>
-  )),
-)
-
-vi.mock('../../../hooks/use-node-plugin-installation', () => ({
-  useNodePluginInstallation: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  permissions: ['plugin.install'] as string[],
+  install: vi.fn(),
+  refetch: vi.fn(),
+  reset: vi.fn(),
+}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({ workspacePermissionKeys: mocks.permissions }))
+})
+vi.mock('@/service/use-plugins', () => ({
+  useCheckInstalled: () => ({ data: { plugins: [] }, isLoading: false, refetch: mocks.refetch }),
+  useInstallPackageFromMarketPlace: () => ({
+    mutate: mocks.install,
+    isPending: false,
+    reset: mocks.reset,
+  }),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button', () => ({
-  InstallPluginButton: mockInstallPluginButton,
-}))
-
-const mockUseNodePluginInstallation = vi.mocked(useNodePluginInstallation)
-
-const createNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType => ({
+const data: DataSourceNodeType = {
   title: 'Datasource',
   desc: '',
   type: BlockEnum.DataSource,
@@ -32,50 +38,42 @@ const createNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSource
   datasource_parameters: {},
   datasource_configurations: {},
   plugin_unique_identifier: 'plugin-id@1.0.0',
-  ...overrides,
+}
+
+beforeEach(() => {
+  mocks.permissions = ['plugin.install']
+  mocks.refetch.mockReset().mockResolvedValue({ data: { plugins: [] } })
+  mocks.install.mockReset().mockImplementation((_id, options) => {
+    void options.onSuccess({ all_installed: true })
+  })
 })
 
-describe('DataSourceNode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseNodePluginInstallation.mockReturnValue({
-      isChecking: false,
-      isMissing: false,
-      uniqueIdentifier: undefined,
-      canInstall: false,
-      onInstallSuccess: vi.fn(),
-      shouldDim: false,
-    })
+it('installs the missing datasource package and invalidates the datasource catalog on success', async () => {
+  const user = userEvent.setup()
+  const queryClient = createAccountProfileQueryClient()
+  const catalogKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
+  queryClient.setQueryData(catalogKey, [])
+  renderWorkflowComponent(<Node id="data-source-node" data={data} />, {
+    queryClient,
+    initialStoreState: { dataSourceList: [] },
   })
 
-  // The node should only expose install affordances when the backing plugin is missing and installable.
-  describe('Plugin Installation', () => {
-    it('should render the install button when the datasource plugin is missing', () => {
-      mockUseNodePluginInstallation.mockReturnValue({
-        isChecking: false,
-        isMissing: true,
-        uniqueIdentifier: 'plugin-id@1.0.0',
-        canInstall: true,
-        onInstallSuccess: vi.fn(),
-        shouldDim: true,
-      })
+  await user.click(
+    screen.getByRole('button', {
+      name: 'workflowAgent.nodes.agent.pluginInstaller.install',
+    }),
+  )
 
-      render(<Node id="data-source-node" data={createNodeData()} />)
+  expect(mocks.install).toHaveBeenCalledWith('plugin-id@1.0.0', expect.any(Object))
+  await waitFor(() => expect(queryClient.getQueryState(catalogKey)?.isInvalidated).toBe(true))
+  expect(mocks.refetch).toHaveBeenCalledOnce()
+})
 
-      expect(screen.getByRole('button', { name: 'plugin-id@1.0.0' })).toBeInTheDocument()
-      expect(mockInstallPluginButton).toHaveBeenCalledWith(
-        expect.objectContaining({
-          uniqueIdentifier: 'plugin-id@1.0.0',
-          extraIdentifiers: ['plugin-id', 'file'],
-        }),
-        undefined,
-      )
-    })
-
-    it('should render nothing when installation is unavailable', () => {
-      const { container } = render(<Node id="data-source-node" data={createNodeData()} />)
-
-      expect(container).toBeEmptyDOMElement()
-    })
+it('does not offer installation without workspace install permission', () => {
+  mocks.permissions = []
+  renderWorkflowComponent(<Node id="data-source-node" data={data} />, {
+    initialStoreState: { dataSourceList: [] },
   })
+  expect(screen.queryByRole('button', { name: /pluginInstaller.install/ })).not.toBeInTheDocument()
+  expect(mocks.install).not.toHaveBeenCalled()
 })

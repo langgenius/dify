@@ -87,7 +87,7 @@ class TraceClient:
                 return False
         except httpx.RequestError as e:
             logger.warning("AliyunTrace API check failed", exc_info=True)
-            raise ValueError(f"AliyunTrace API check failed: {str(e)}")
+            raise ValueError(f"AliyunTrace API check failed: {str(e)}") from e
 
     def get_project_url(self) -> str:
         return "https://arms.console.aliyun.com/#/llm"

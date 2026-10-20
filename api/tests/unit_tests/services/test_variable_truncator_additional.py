@@ -1,5 +1,3 @@
-from typing import Any
-
 import pytest
 
 from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
@@ -57,7 +55,7 @@ class TestVariableTruncatorAdditionalBehavior:
     )
     def test_json_value_needs_truncation_should_match_expected_rules(
         self,
-        value: Any,
+        value: object,
         expected: bool,
     ) -> None:
         result = VariableTruncator._json_value_needs_truncation(value)

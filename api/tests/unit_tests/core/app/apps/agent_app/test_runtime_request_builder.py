@@ -6,13 +6,14 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
-from agenton.layers import LifecycleState
-from dify_agent.layers.config import DifyConfigSkillConfig
+from dify_agent.layers.config import DifyConfigLayerConfig, DifyConfigSkillConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
-from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
+from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
+from dify_agent.protocol.snapshot import SessionSnapshot
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -23,7 +24,6 @@ from clients.agent_backend import (
     AgentBackendRunRequestBuilder,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
-from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequestBuilder,
@@ -90,7 +90,6 @@ class TestBuildForAgentApp:
         ]
         assert "workflow_node_job_prompt" not in names
         # Agent App keeps layers alive across turns by default.
-        assert request.on_exit.default.value == "suspend"
 
     def test_blank_user_prompt_rejected(self):
         with pytest.raises(ValueError, match="must not be blank"):
@@ -171,7 +170,7 @@ def _ctx(
     *,
     query: str = "hello",
     agent_config_version_kind: str = "snapshot",
-    session_snapshot: CompositorSessionSnapshot | None = None,
+    session_snapshot: SessionSnapshot | None = None,
     files: tuple[File, ...] = (),
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
 ) -> AgentAppRuntimeBuildContext:
@@ -238,13 +237,8 @@ def _document_file() -> File:
     )
 
 
-def _snapshot_for_layer_names(layer_names: list[str]) -> CompositorSessionSnapshot:
-    return CompositorSessionSnapshot(
-        layers=[
-            LayerSessionSnapshot(name=name, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
-            for name in layer_names
-        ]
-    )
+def _snapshot_for_layer_names(layer_names: list[str]) -> SessionSnapshot:
+    return SessionSnapshot(layers={name: {} for name in layer_names})
 
 
 class TestAgentAppRuntimeRequestBuilder:
@@ -269,18 +263,17 @@ class TestAgentAppRuntimeRequestBuilder:
         ]
         # plugin_id / provider normalized for plugin-daemon transport.
         llm = next(layer for layer in req.composition.layers if layer.name == "llm")
-        assert llm.config.plugin_id == "langgenius/openai"
-        assert llm.config.model_provider == "openai"
-        assert llm.config.context_window_tokens == 32_768
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).plugin_id == "langgenius/openai"
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).model_provider == "openai"
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).context_window_tokens == 32_768
         assert model_context_window_calls == [(context.dify_context, "langgenius/openai/openai", "gpt-4o-mini")]
         # execution context carries conversation + agent_app invoke source.
         exec_ctx = next(layer for layer in req.composition.layers if layer.name == "execution_context")
-        assert exec_ctx.config.conversation_id == "conv-1"
+        assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).conversation_id == "conv-1"
         # Real Dify access context forwarded; agent run mode in agent_mode.
-        assert exec_ctx.config.user_from == "end-user"
-        assert exec_ctx.config.invoke_from == "web-app"
-        assert exec_ctx.config.agent_mode == "agent_app"
-        assert req.on_exit.default.value == "suspend"
+        assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).user_from == "end-user"
+        assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).invoke_from == "web-app"
+        assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).agent_mode == "agent_app"
         # LLM credentials are resolved by API and never enter the Agent request.
         assert "credentials" not in result.redacted_request["composition"]["layers"][-1]["config"]
         assert result.metadata["conversation_id"] == "conv-1"
@@ -418,7 +411,7 @@ class TestAgentAppRuntimeRequestBuilder:
         ("previous_prompt", "current_prompt"),
         [("", "You are Iris."), ("You are Iris.", "")],
     )
-    def test_build_rejects_session_snapshot_after_layer_topology_changes(
+    def test_build_preserves_snapshot_when_optional_prompt_modules_change(
         self,
         previous_prompt: str,
         current_prompt: str,
@@ -433,18 +426,9 @@ class TestAgentAppRuntimeRequestBuilder:
         current_soul = _soul_with_model()
         current_soul.prompt.system_prompt = current_prompt
 
-        with pytest.raises(AgentSessionSnapshotIncompatibleError) as exc_info:
-            builder.build(
-                _ctx(
-                    current_soul,
-                    agent_config_version_kind="draft",
-                    session_snapshot=snapshot,
-                )
-            )
-
-        assert exc_info.value.error_code == "agent_session_configuration_changed"
-        assert exc_info.value.status_code == 409
-        assert "Start a new conversation" in str(exc_info.value)
+        result = builder.build(_ctx(current_soul, agent_config_version_kind="draft", session_snapshot=snapshot))
+        assert result.request.session_snapshot is snapshot
+        assert ("agent_soul_prompt" in {s.name for s in result.request.composition.layers}) == bool(current_prompt)
 
     def test_build_reuses_session_snapshot_when_config_changes_without_changing_layers(self) -> None:
         builder = AgentAppRuntimeRequestBuilder(
@@ -473,9 +457,9 @@ class TestAgentAppRuntimeRequestBuilder:
         result = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="build_draft"))
 
         prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-        assert prompt_layer.config.prefix != _soul_with_model().prompt
-        assert prompt_layer.config.prefix.startswith("You are running in build mode.")
-        assert "```text\nYou are Iris.\n```" in prompt_layer.config.prefix
+        assert PromptConfig.model_validate(prompt_layer.config).prefix != _soul_with_model().prompt
+        assert PromptConfig.model_validate(prompt_layer.config).prefix.startswith("You are running in build mode.")
+        assert "```text\nYou are Iris.\n```" in PromptConfig.model_validate(prompt_layer.config).prefix
 
     def test_build_propagates_draft_version_kind_without_wrapping_prompt(self):
         builder = AgentAppRuntimeRequestBuilder(
@@ -490,9 +474,12 @@ class TestAgentAppRuntimeRequestBuilder:
         )
         config_layer = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
 
-        assert prompt_layer.config.prefix == "You are Iris."
-        assert execution_context.config.agent_config_version_kind == "draft"
-        assert config_layer.config.config_version.kind == "draft"
+        assert PromptConfig.model_validate(prompt_layer.config).prefix == "You are Iris."
+        assert (
+            DifyExecutionContextLayerConfig.model_validate(execution_context.config).agent_config_version_kind
+            == "draft"
+        )
+        assert DifyConfigLayerConfig.model_validate(config_layer.config).config_version.kind == "draft"
 
     def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_draft(self):
         soul = _soul_with_model()
@@ -565,8 +552,8 @@ class TestAgentAppRuntimeRequestBuilder:
         result = builder.build(_ctx(soul))
 
         llm = next(layer for layer in result.request.composition.layers if layer.name == "llm")
-        assert llm.config.plugin_id == "langgenius/openai"
-        assert llm.config.model_provider == "openai"
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).plugin_id == "langgenius/openai"
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).model_provider == "openai"
 
     def test_build_normalizes_legacy_three_segment_model_plugin_id(self):
         soul = _soul_with_model()
@@ -578,8 +565,8 @@ class TestAgentAppRuntimeRequestBuilder:
         result = builder.build(_ctx(soul))
 
         llm = next(layer for layer in result.request.composition.layers if layer.name == "llm")
-        assert llm.config.plugin_id == "langgenius/openai"
-        assert llm.config.model_provider == "openai"
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).plugin_id == "langgenius/openai"
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).model_provider == "openai"
 
     def test_build_maps_agent_soul_knowledge_to_knowledge_layer(self):
         soul = AgentSoulConfig.model_validate(
@@ -613,9 +600,10 @@ class TestAgentAppRuntimeRequestBuilder:
         result = builder.build(_ctx(soul))
 
         knowledge = next(layer for layer in result.request.composition.layers if layer.name == "knowledge")
-        assert knowledge.type == "dify.knowledge_base"
-        assert knowledge.deps == {"execution_context": "execution_context"}
-        dumped_config = knowledge.config.model_dump(mode="json", by_alias=True)
+        assert knowledge.config["execution_context"] == "execution_context"
+        dumped_config = DifyKnowledgeBaseLayerConfig.model_validate(knowledge.config).model_dump(
+            mode="json", by_alias=True
+        )
         knowledge_set = dumped_config["sets"][0]
         assert [dataset["id"] for dataset in knowledge_set["datasets"]] == ["dataset-1", "dataset-2"]
         assert knowledge_set["query"] == {"mode": "generated_query", "value": None}
@@ -693,18 +681,21 @@ class TestAgentAppConfigLayer:
         result = builder.build(_ctx(_soul_with_model_and_skill()))
 
         config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
-        assert config.type == "dify.config"
-        assert config.deps == {"shell": DIFY_SHELL_LAYER_ID}
-        assert config.config.agent_id == "agent-1"
-        assert config.config.config_version is not None
-        assert config.config.config_version.id == "snap-1"
-        assert config.config.config_version.kind == "snapshot"
-        assert config.config.config_version.writable is False
-        assert [skill.name for skill in config.config.skills] == ["tender-analyzer"]
-        assert [file_ref.name for file_ref in config.config.files] == ["sample.pdf"]
-        assert config.config.note == "Read the proposal first."
-        assert config.config.mentioned_skill_names == ["tender-analyzer"]
-        assert config.config.mentioned_file_names == []
+        assert config.config["shell"] == DIFY_SHELL_LAYER_ID
+        assert DifyConfigLayerConfig.model_validate(config.config).agent_id == "agent-1"
+        assert DifyConfigLayerConfig.model_validate(config.config).config_version is not None
+        assert DifyConfigLayerConfig.model_validate(config.config).config_version.id == "snap-1"
+        assert DifyConfigLayerConfig.model_validate(config.config).config_version.kind == "snapshot"
+        assert DifyConfigLayerConfig.model_validate(config.config).config_version.writable is False
+        assert [skill.name for skill in DifyConfigLayerConfig.model_validate(config.config).skills] == [
+            "tender-analyzer"
+        ]
+        assert [file_ref.name for file_ref in DifyConfigLayerConfig.model_validate(config.config).files] == [
+            "sample.pdf"
+        ]
+        assert DifyConfigLayerConfig.model_validate(config.config).note == "Read the proposal first."
+        assert DifyConfigLayerConfig.model_validate(config.config).mentioned_skill_names == ["tender-analyzer"]
+        assert DifyConfigLayerConfig.model_validate(config.config).mentioned_file_names == []
         # shell enters first; config uses that shell to materialize mentioned targets.
         names = [layer.name for layer in result.request.composition.layers]
         assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 2
@@ -719,7 +710,8 @@ class TestAgentAppConfigLayer:
         result = builder.build(_ctx(_soul_with_model()))
 
         layers = {layer.name: layer for layer in result.request.composition.layers}
-        assert layers[DIFY_CONFIG_LAYER_ID].config.model_dump(mode="json") == {
+        assert DifyConfigLayerConfig.model_validate(layers[DIFY_CONFIG_LAYER_ID].config).model_dump(mode="json") == {
+            "shell": "shell",
             "agent_id": "agent-1",
             "config_version": {"id": "snap-1", "kind": "snapshot", "writable": False},
             "skills": [],
@@ -729,10 +721,8 @@ class TestAgentAppConfigLayer:
             "mentioned_skill_names": [],
             "mentioned_file_names": [],
         }
-        assert layers[DIFY_SHELL_LAYER_ID].deps == {
-            "execution_context": "execution_context",
-            "runtime": "runtime",
-        }
+        assert layers[DIFY_SHELL_LAYER_ID].config["execution_context"] == "execution_context"
+        assert layers[DIFY_SHELL_LAYER_ID].config["runtime"] == "runtime"
 
     def test_config_layer_for_build_draft_marks_config_writable(self):
         builder = AgentAppRuntimeRequestBuilder(
@@ -742,7 +732,8 @@ class TestAgentAppConfigLayer:
         result = builder.build(_ctx(_soul_with_model_and_skill(), agent_config_version_kind="build_draft"))
 
         config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
-        assert config.config.model_dump(mode="json") == {
+        assert DifyConfigLayerConfig.model_validate(config.config).model_dump(mode="json") == {
+            "shell": "shell",
             "agent_id": "agent-1",
             "config_version": {"id": "snap-1", "kind": "build_draft", "writable": True},
             "skills": [
@@ -781,10 +772,12 @@ class TestAgentAppConfigLayer:
         result = builder.build(_ctx(soul))
 
         config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
-        assert [skill.name for skill in config.config.skills] == ["workspace-skill"]
-        assert config.config.mentioned_skill_names == ["workspace-skill"]
+        assert [skill.name for skill in DifyConfigLayerConfig.model_validate(config.config).skills] == [
+            "workspace-skill"
+        ]
+        assert DifyConfigLayerConfig.model_validate(config.config).mentioned_skill_names == ["workspace-skill"]
         prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-        assert prompt_layer.config.prefix == "Use workspace-skill."
+        assert PromptConfig.model_validate(prompt_layer.config).prefix == "Use workspace-skill."
 
     @pytest.mark.parametrize(
         ("system_prompt", "expected_prefix"),
@@ -813,8 +806,8 @@ class TestAgentAppConfigLayer:
         result = builder.build(_ctx(soul))
 
         prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-        assert prompt_layer.config.prefix == expected_prefix
-        assert "[§" not in prompt_layer.config.prefix
+        assert PromptConfig.model_validate(prompt_layer.config).prefix == expected_prefix
+        assert "[§" not in PromptConfig.model_validate(prompt_layer.config).prefix
 
     def test_agent_app_runtime_missing_config_mentions_fall_back_without_marker_leak(
         self,
@@ -830,8 +823,10 @@ class TestAgentAppConfigLayer:
         result = builder.build(_ctx(soul))
 
         prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-        assert prompt_layer.config.prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
-        assert "[§" not in prompt_layer.config.prefix
+        assert (
+            PromptConfig.model_validate(prompt_layer.config).prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
+        )
+        assert "[§" not in PromptConfig.model_validate(prompt_layer.config).prefix
         assert [warning["code"] for warning in result.metadata["runtime_support"]["unsupported_runtime_warnings"]] == [
             "mention_target_missing",
             "mention_target_missing",

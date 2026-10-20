@@ -181,7 +181,7 @@ class PluginModelClient(BasePluginClient):
         stop: list[str] | None = None,
         stream: bool = True,
         app_id: str | None = None,
-    ) -> Generator[LLMResultChunk, None, None]:
+    ) -> Generator[LLMResultChunk]:
         """
         Invoke llm
         """
@@ -215,7 +215,7 @@ class PluginModelClient(BasePluginClient):
         try:
             yield from response
         except PluginDaemonInnerError as e:
-            raise ValueError(e.message + str(e.code))
+            raise ValueError(e.message + str(e.code)) from e
 
     def start_llm_polling(
         self,
@@ -582,7 +582,7 @@ class PluginModelClient(BasePluginClient):
         credentials: dict[str, Any],
         content_text: str,
         voice: str,
-    ) -> Generator[TTSAudioChunk, None, None]:
+    ) -> Generator[TTSAudioChunk]:
         """
         Invoke tts
         """
@@ -615,7 +615,7 @@ class PluginModelClient(BasePluginClient):
                 hex_str = result.result
                 yield TTSAudioChunk(binascii.unhexlify(hex_str), mime_type=result.mime_type)
         except PluginDaemonInnerError as e:
-            raise ValueError(e.message + str(e.code))
+            raise ValueError(e.message + str(e.code)) from e
 
     def get_tts_model_voices(
         self,

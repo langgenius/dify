@@ -26,8 +26,10 @@ from tests.unit_tests.model_factories import make_tenant
 
 
 def _invoke_reset() -> int:
+    callback = commands.reset_encrypt_key_pair.callback
+    assert callback is not None
     try:
-        commands.reset_encrypt_key_pair.callback()
+        callback()
     except SystemExit as e:
         return int(e.code or 0)
     return 0
@@ -87,7 +89,7 @@ def _bind_command_to_sqlite(monkeypatch: pytest.MonkeyPatch, session: Session) -
     monkeypatch.setattr(system_commands, "db", SimpleNamespace(engine=session.get_bind()))
 
 
-def test_reset_aborts_when_not_self_hosted(monkeypatch, capsys):
+def test_reset_aborts_when_not_self_hosted(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     exit_code = _invoke_reset()
@@ -128,8 +130,12 @@ def test_reset_purges_provider_and_tool_tables_for_each_tenant(
     assert TENANT_ID in captured.out
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(Tenant, TENANT_ID).encrypt_public_key == f"new-key-{TENANT_ID}"
-    assert sqlite_session.get(Tenant, OTHER_TENANT_ID).encrypt_public_key == f"new-key-{OTHER_TENANT_ID}"
+    tenant_after = sqlite_session.get(Tenant, TENANT_ID)
+    other_tenant_after = sqlite_session.get(Tenant, OTHER_TENANT_ID)
+    assert tenant_after is not None
+    assert other_tenant_after is not None
+    assert tenant_after.encrypt_public_key == f"new-key-{TENANT_ID}"
+    assert other_tenant_after.encrypt_public_key == f"new-key-{OTHER_TENANT_ID}"
     assert sqlite_session.scalars(select(Provider).where(Provider.provider_type == ProviderType.CUSTOM)).all() == []
     assert sqlite_session.scalars(select(ProviderModel)).all() == []
     assert sqlite_session.scalars(select(BuiltinToolProvider)).all() == []

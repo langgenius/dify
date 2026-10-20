@@ -17,14 +17,15 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
-import { useModelParameterRules } from '@/service/use-common'
 import { ModelStatusEnum } from '../declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
 import { ModelSelector, SplitModelSelector } from '../model-selector'
+import { modelParameterRulesQueryOptions } from '../utils'
 import { ModelSettingsTrigger } from './model-settings-trigger'
 import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
@@ -89,16 +90,14 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   modelPredicate,
   modelSuggestionPredicate,
 }) => {
-  const { t } = useTranslation(['appDebug', 'common'])
+  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const [open, setOpen] = useState(false)
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
   const canFetchParameterRules =
     !!currentProvider && currentModel?.status === ModelStatusEnum.active
-  const { data: parameterRulesData, isLoading } = useModelParameterRules(
-    provider,
-    modelId,
-    canFetchParameterRules,
+  const { data: parameterRulesData, isLoading } = useQuery(
+    modelParameterRulesQueryOptions({ provider, model: modelId, enabled: canFetchParameterRules }),
   )
   const isRulesLoading = canFetchParameterRules && !!provider && !!modelId && isLoading
   const selectableModelList = modelList ?? activeTextGenerationModelList
@@ -202,7 +201,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       >
         <div className="relative px-3 pt-3.5 pb-1">
           <PopoverTitle className="pr-8 pl-1 system-xl-semibold text-text-primary">
-            {t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
+            {t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })}
           </PopoverTitle>
           <PopoverClose
             render={
@@ -239,7 +238,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             >
               <div className="flex items-center gap-1">
                 <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">
-                  {t(($) => $['modelProvider.parameters'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.parameters'], { ns: 'modelProvider' })}
                 </div>
                 {PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                   <PresetsParameter

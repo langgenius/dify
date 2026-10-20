@@ -3,10 +3,7 @@ import urllib.parse
 
 def decode_remote_url(url: str, query_string: bytes | str = b"") -> str:
     decoded_url = urllib.parse.unquote(url)
-    if isinstance(query_string, bytes):
-        raw_query = query_string.decode()
-    else:
-        raw_query = query_string
+    raw_query = query_string.decode() if isinstance(query_string, bytes) else query_string
     if not raw_query:
         return decoded_url
 

@@ -124,7 +124,7 @@ def process_trace_tasks(self, file_info):
                 logger.exception("Failed to schedule trace dispatch retry, app_id: %s", app_id)
                 failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
                 redis_client.incr(failed_key)
-    except Exception as e:
+    except Exception:
         logger.exception("Processing trace tasks failed, app_id: %s", app_id)
         failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
         redis_client.incr(failed_key)

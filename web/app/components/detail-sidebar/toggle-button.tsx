@@ -6,8 +6,6 @@ import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import { DETAIL_SIDEBAR_TOGGLE_HOTKEY } from './hotkeys'
 
-const detailSidebarToggleShortcutKeys = DETAIL_SIDEBAR_TOGGLE_HOTKEY.split('+')
-
 type DetailSidebarToggleButtonProps = {
   expand: boolean
   onToggle: () => void
@@ -45,8 +43,8 @@ export function DetailSidebarToggleButton({
       <TooltipContent placement="right" className="flex items-center gap-1">
         <span className="px-0.5">{label}</span>
         <KbdGroup>
-          {detailSidebarToggleShortcutKeys.map((key) => (
-            <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+          {formatForDisplay(DETAIL_SIDEBAR_TOGGLE_HOTKEY, { parts: true }).map((key) => (
+            <Kbd key={key}>{key}</Kbd>
           ))}
         </KbdGroup>
       </TooltipContent>

@@ -447,14 +447,14 @@ class OpikDataTrace(BaseTraceInstance):
             logger.debug("Opik Trace created successfully")
             return trace
         except Exception as e:
-            raise ValueError(f"Opik Failed to create trace: {str(e)}")
+            raise ValueError(f"Opik Failed to create trace: {str(e)}") from e
 
     def add_span(self, opik_span_data: dict[str, Any]):
         try:
             self.opik_client.span(**opik_span_data)
             logger.debug("Opik Span created successfully")
         except Exception as e:
-            raise ValueError(f"Opik Failed to create span: {str(e)}")
+            raise ValueError(f"Opik Failed to create span: {str(e)}") from e
 
     def api_check(self):
         try:
@@ -462,11 +462,11 @@ class OpikDataTrace(BaseTraceInstance):
             return True
         except Exception as e:
             logger.info("Opik API check failed: %s", str(e), exc_info=True)
-            raise ValueError(f"Opik API check failed: {str(e)}")
+            raise ValueError(f"Opik API check failed: {str(e)}") from e
 
     def get_project_url(self):
         try:
             return self.opik_client.get_project_url(project_name=self.project)
         except Exception as e:
             logger.info("Opik get run url failed: %s", str(e), exc_info=True)
-            raise ValueError(f"Opik get run url failed: {str(e)}")
+            raise ValueError(f"Opik get run url failed: {str(e)}") from e

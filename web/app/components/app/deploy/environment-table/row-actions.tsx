@@ -1,7 +1,8 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { DeploymentDialogRequest, OpenDeploymentDialog } from '../types'
 import type { EnvironmentDeploymentAction } from '../utils/environment-deployment'
 import type { DeploymentVersion } from '../utils/version'
-import type { UndeployHandler } from './types'
+import type { OpenUndeployDialog } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -12,12 +13,11 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Fragment, useCallback, useState } from 'react'
+import { Fragment, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
-import { toast } from '@/app/notifications'
 import { getEnvironmentDeploymentActions } from '../utils/environment-deployment'
-import { UndeployConfirmDialog } from './undeploy-confirm-dialog'
+import { toDeploymentVersion } from '../utils/version'
 
 function rowActionLabel(
   action: EnvironmentDeploymentAction,
@@ -53,145 +53,138 @@ const ROW_ACTION_ICON_CLASS_NAMES: Record<EnvironmentDeploymentAction['kind'], s
   undeploy: 'i-ri-logout-circle-r-line',
 }
 
+function deploymentDialogRequest(
+  action: EnvironmentDeploymentAction,
+  row: EnvironmentDeployment,
+  latestVersion: DeploymentVersion | undefined,
+  defaultVersionName: string,
+): DeploymentDialogRequest | undefined {
+  const request = {
+    currentVersionId: row.deployment?.current_version?.id,
+    environment: row.environment.display_name,
+    environmentId: row.environment.id,
+  }
+
+  switch (action.kind) {
+    case 'changeVersion':
+      return { ...request, kind: 'changeVersion' }
+    case 'deployLatest':
+      return latestVersion
+        ? { ...request, initialVersion: latestVersion, kind: 'deployLatest' }
+        : undefined
+    case 'redeploy':
+    case 'retry': {
+      const version =
+        row.deployment?.latest_operation?.target_version ?? row.deployment?.current_version
+      return version
+        ? {
+            ...request,
+            initialVersion: toDeploymentVersion(version, defaultVersionName),
+            kind: 'redeploy',
+          }
+        : { ...request, kind: 'changeVersion' }
+    }
+    case 'undeploy':
+      return undefined
+  }
+}
+
 export function EnvironmentRowActions({
   latestVersion,
   row,
-  onChangeVersion,
-  onDeployLatest,
-  onRedeploy,
-  onUndeploy,
+  onOpenDeployment,
+  onOpenUndeploy,
 }: {
   latestVersion?: DeploymentVersion
   row: EnvironmentDeployment
-  onChangeVersion: (deployment: EnvironmentDeployment) => void
-  onDeployLatest: (deployment: EnvironmentDeployment, version: DeploymentVersion) => void
-  onRedeploy: (deployment: EnvironmentDeployment) => void
-  onUndeploy: UndeployHandler
+  onOpenDeployment: OpenDeploymentDialog
+  onOpenUndeploy: OpenUndeployDialog
 }) {
   const { t } = useTranslation(['deployments'])
-  const { t: tWorkflow } = useTranslation(['workflow'])
-  const defaultVersionName = tWorkflow(($) => $['versionHistory.defaultName'])
-  const currentVersionName = getWorkflowVersionName(
-    row.deployment?.current_version,
-    defaultVersionName,
-  )
-  const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
-  const [isUndeploying, setIsUndeploying] = useState(false)
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
+  const defaultVersionName = tWorkflow(($) => $['versionHistory.defaultName'], {
+    ns: 'workflowHistory',
+  })
+  const primaryTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null)
   const actions = getEnvironmentDeploymentActions(row, {
     deployLatestDisabled: !latestVersion,
   })
+  const handleAction = (
+    action: EnvironmentDeploymentAction,
+    returnFocusElement: HTMLElement | null,
+  ) => {
+    if (action.kind === 'undeploy') {
+      onOpenUndeploy(row, returnFocusElement)
+      return
+    }
+    const request = deploymentDialogRequest(action, row, latestVersion, defaultVersionName)
+    if (request) onOpenDeployment(request, returnFocusElement)
+  }
   const primaryAction = actions[0]
   const moreActions = actions.slice(1)
-
-  const handleAction = useCallback(
-    (action: EnvironmentDeploymentAction) => {
-      if (action.disabled) return
-
-      switch (action.kind) {
-        case 'changeVersion':
-          onChangeVersion(row)
-          break
-        case 'deployLatest': {
-          if (!latestVersion) {
-            toast.error(t(($) => $['studio.latestVersionLoadFailed']))
-            return
-          }
-
-          onDeployLatest(row, latestVersion)
-          break
-        }
-        case 'redeploy':
-        case 'retry':
-          onRedeploy(row)
-          break
-        case 'undeploy':
-          setShowUndeployConfirm(true)
-          break
-      }
-    },
-    [latestVersion, onChangeVersion, onDeployLatest, onRedeploy, row, t],
-  )
-
-  const handleUndeploy = useCallback(async () => {
-    if (isUndeploying) return
-
-    setIsUndeploying(true)
-    try {
-      await onUndeploy(row)
-      setShowUndeployConfirm(false)
-    } catch {
-      // The request layer reports the error; keep the dialog open so the user can retry.
-    } finally {
-      setIsUndeploying(false)
-    }
-  }, [isUndeploying, onUndeploy, row])
 
   if (!primaryAction) return null
 
   return (
-    <>
-      <div className="flex items-center justify-end gap-1">
-        <Button
-          size="small"
-          variant="secondary"
-          disabled={primaryAction.disabled}
-          onClick={() => handleAction(primaryAction)}
-          className="min-w-0 gap-1 px-2"
-        >
-          <span
-            aria-hidden
-            className={cn(ROW_ACTION_ICON_CLASS_NAMES[primaryAction.kind], 'size-3.5 shrink-0')}
-          />
-          <span className="truncate">
-            {rowActionLabel(primaryAction, row, t, defaultVersionName)}
-          </span>
-        </Button>
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger
-            render={
-              <IconButton
-                size="md"
-                variant="secondary"
-                aria-label={`${row.environment.display_name} · ${t(($) => $['deployTab.moreActions'])}`}
-                className="shrink-0"
+    <div className="flex items-center justify-end gap-1">
+      <Button
+        ref={primaryTriggerRef}
+        size="small"
+        variant="secondary"
+        disabled={primaryAction.disabled}
+        focusableWhenDisabled
+        className="min-w-0 gap-1 px-2"
+        onClick={() => handleAction(primaryAction, primaryTriggerRef.current)}
+      >
+        <span
+          aria-hidden
+          className={cn(ROW_ACTION_ICON_CLASS_NAMES[primaryAction.kind], 'size-3.5 shrink-0')}
+        />
+        <span className="truncate">
+          {rowActionLabel(primaryAction, row, t, defaultVersionName)}
+        </span>
+      </Button>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger
+          render={
+            <IconButton
+              ref={menuTriggerRef}
+              size="md"
+              variant="secondary"
+              aria-label={`${row.environment.display_name} · ${t(($) => $['deployTab.moreActions'])}`}
+              className="shrink-0"
+            >
+              <span aria-hidden className="i-ri-more-fill size-4" />
+            </IconButton>
+          }
+        />
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
+          {moreActions.map((action, index) => (
+            <Fragment key={action.kind}>
+              {action.kind === 'undeploy' && index > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuItem
+                disabled={action.disabled}
+                className="gap-2 px-2"
+                onClick={() => {
+                  handleAction(action, menuTriggerRef.current)
+                }}
               >
-                <span aria-hidden className="i-ri-more-fill size-4" />
-              </IconButton>
-            }
-          />
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
-            {moreActions.map((action, index) => (
-              <Fragment key={action.kind}>
-                {action.kind === 'undeploy' && index > 0 && <DropdownMenuSeparator />}
-                <DropdownMenuItem
-                  disabled={action.disabled}
-                  className="gap-2 px-2"
-                  onClick={() => handleAction(action)}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      ROW_ACTION_ICON_CLASS_NAMES[action.kind],
-                      'size-4 shrink-0 text-text-secondary',
-                    )}
-                  />
-                  <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
-                    {rowActionLabel(action, row, t, defaultVersionName)}
-                  </span>
-                </DropdownMenuItem>
-              </Fragment>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <UndeployConfirmDialog
-        environmentName={row.environment.display_name}
-        isPending={isUndeploying}
-        open={showUndeployConfirm}
-        versionName={currentVersionName}
-        onConfirm={handleUndeploy}
-        onOpenChange={setShowUndeployConfirm}
-      />
-    </>
+                <span
+                  aria-hidden
+                  className={cn(
+                    ROW_ACTION_ICON_CLASS_NAMES[action.kind],
+                    'size-4 shrink-0 text-text-secondary',
+                  )}
+                />
+                <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
+                  {rowActionLabel(action, row, t, defaultVersionName)}
+                </span>
+              </DropdownMenuItem>
+            </Fragment>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }

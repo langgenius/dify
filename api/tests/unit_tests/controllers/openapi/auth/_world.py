@@ -65,13 +65,15 @@ def sso_subject(**overrides: object) -> ExternalSsoSubject:
     return ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO, **overrides))
 
 
-def make_app(*, app_id: str = APP_ID, tenant_id: str = TENANT_ID, enable_api: bool = True) -> App:
+def make_app(
+    *, app_id: str = APP_ID, tenant_id: str = TENANT_ID, enable_api: bool = True, mode: AppMode = AppMode.CHAT
+) -> App:
     return App(
         id=app_id,
         tenant_id=tenant_id,
         name="OpenAPI app",
         description="",
-        mode=AppMode.CHAT,
+        mode=mode,
         icon_type=IconType.EMOJI,
         icon="robot",
         icon_background="#FFFFFF",

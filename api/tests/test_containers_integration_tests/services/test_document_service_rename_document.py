@@ -13,7 +13,7 @@ from models import Account
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
-from services.dataset_service import DocumentService
+from services.knowledge.dataset_service import DocumentService
 
 FIXED_UPLOAD_CREATED_AT = datetime.datetime(2024, 1, 1, 0, 0, 0)
 
@@ -21,7 +21,9 @@ FIXED_UPLOAD_CREATED_AT = datetime.datetime(2024, 1, 1, 0, 0, 0)
 @pytest.fixture
 def mock_env():
     """Patch only non-SQL dependency used by rename_document: current_user context."""
-    with patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as current_user:
+    with patch(
+        "services.knowledge.dataset_service.current_user", create_autospec(Account, instance=True)
+    ) as current_user:
         current_user.current_tenant_id = str(uuid4())
         current_user.id = str(uuid4())
         yield {"current_user": current_user}

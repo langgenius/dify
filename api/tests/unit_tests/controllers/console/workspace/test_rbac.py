@@ -1,170 +1,45 @@
-"""Controller tests for ``controllers.console.workspace.rbac``.
-
-The controllers here are thin: almost every non-trivial behaviour lives in
-``services.enterprise.rbac_service`` (covered by its own suite). These tests
-therefore focus on the Flask-layer concerns the service layer cannot exercise:
-
-* ``_current_ids`` raises 404 when the session has no tenant.
-* The pydantic request models accept / reject bodies as expected.
-
-We explicitly avoid "happy-path" integration tests through the full
-decorator stack — those belong in e2e tests where a real Dify session is
-available — to keep this suite fast and resilient to ancillary auth wiring
-changes.
-"""
-
-from __future__ import annotations
+"""RBAC transport tests use real services, SQLite and an explicit Enterprise transport fake."""
 
 import inspect
-from unittest.mock import patch
+from collections.abc import Callable
+from uuid import UUID
 
 import pytest
 from flask import Flask
+from flask_restx import Resource
 from pydantic import ValidationError
-from werkzeug.exceptions import Forbidden, NotFound
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden
 
-from configs import dify_config
-from controllers.console.workspace import rbac as rbac_mod
-from controllers.console.workspace.rbac import _RolesListQuery
+from controllers.common.errors import InvalidArgumentError
+from controllers.common.rbac import rbac_language
+from controllers.console import flask_admission, wraps
+from controllers.console.workspace.rbac import members, policies, roles, schemas
 from enums import DeploymentEdition
-from models import Account
-from tests.unit_tests.model_factories import make_account
+from enums.account import TenantAccountRole
+from libs.external_api import ExternalApi
+from libs.login import AccountWithTenant
+from machinery.context import RequestContext
+from models.account import Account, AccountStatus, TenantAccountJoin
+from services.rbac import contracts as dto
+from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.unit_tests.rbac_fakes import RBACDomain, build_rbac_domain
+
+CONTEXT = RequestContext("request", "trace", "actor", "tenant")
 
 
 @pytest.fixture
-def app():
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
-
-
-@pytest.fixture(autouse=True)
-def _rbac_config(config_overrides) -> None:
-    config_overrides(
-        DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE,
-        RBAC_ENABLED=True,
-        LOGIN_DISABLED=True,
-    )
-
-
-def _account() -> Account:
-    return make_account(account_id="acct-1", name="RBAC User", email="rbac@example.com")
-
-
-class TestCurrentIds:
-    def test_rejects_missing_tenant(self):
-        with patch("controllers.console.workspace.rbac.current_account_with_tenant") as mock_user:
-            mock_user.return_value = (_account(), None)
-            with pytest.raises(NotFound):
-                rbac_mod._current_ids()
-
-    def test_returns_tuple(self):
-        with patch("controllers.console.workspace.rbac.current_account_with_tenant") as mock_user:
-            mock_user.return_value = (_account(), "tenant-1")
-            assert rbac_mod._current_ids() == ("tenant-1", "acct-1")
-
-
-class TestMyPermissions:
-    def test_returns_app_deploy_permission(self, app):
-        permissions = rbac_mod.svc.MyPermissionsResponse(
-            app=rbac_mod.svc.ResourcePermissionSnapshot(
-                default_permission_keys=["app.acl.deploy"],
-            )
-        )
-        with (
-            app.test_request_context("/workspaces/current/rbac/my-permissions"),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch(
-                "controllers.console.workspace.rbac.svc.RBACService.MyPermissions.get",
-                return_value=permissions,
-            ) as mock_get,
-        ):
-            response = inspect.unwrap(rbac_mod.RBACMyPermissionsApi.get)(rbac_mod.RBACMyPermissionsApi())
-
-        assert response["app"]["default_permission_keys"] == ["app.acl.deploy"]
-        mock_get.assert_called_once()
-
-    def test_forwards_agent_id_query_param(self, app):
-        permissions = rbac_mod.svc.MyPermissionsResponse(
-            agent=rbac_mod.svc.ResourcePermissionSnapshot(
-                default_permission_keys=["agent.acl.preview"],
-            )
-        )
-        with (
-            app.test_request_context("/workspaces/current/rbac/my-permissions?agent_id=agent-1"),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch(
-                "controllers.console.workspace.rbac.svc.RBACService.MyPermissions.get",
-                return_value=permissions,
-            ) as mock_get,
-        ):
-            response = inspect.unwrap(rbac_mod.RBACMyPermissionsApi.get)(rbac_mod.RBACMyPermissionsApi())
-
-        assert mock_get.call_args.kwargs["agent_id"] == "agent-1"
-        assert response["agent"]["default_permission_keys"] == ["agent.acl.preview"]
-
-
-class TestAccessMatrixAccountNames:
-    def test_hydrates_missing_account_names(self):
-        items = [
-            rbac_mod.svc.AccessMatrixItem(
-                accounts=[
-                    {"account_id": "acct-1", "account_name": "Alice", "binding_id": "binding-1"},
-                    {"account_id": "acct-2", "account_name": "", "binding_id": "binding-2"},
-                ]
-            )
-        ]
-
-        with patch(
-            "controllers.console.workspace.rbac._account_names_by_ids",
-            return_value={"acct-2": {"name": "Bob", "avatar": "ava"}},
-        ) as mock_names:
-            rbac_mod._hydrate_access_matrix_account_names(items)
-
-        mock_names.assert_called_once_with(["acct-2"])
-        assert items[0].accounts[0].account_id == "acct-1"
-        assert items[0].accounts[0].account_name == "Alice"
-        assert items[0].accounts[1].account_id == "acct-2"
-        assert items[0].accounts[1].account_name == "Bob"
-        assert items[0].accounts[1].avatar == "ava"
-
-    def test_hydrates_resource_user_account_names(self):
-        items = [
-            rbac_mod.svc.ResourceUserAccessPolicies(
-                account={"account_id": "acct-1", "account_name": ""},
-                roles=[],
-                access_policies=[],
-            )
-        ]
-
-        with patch(
-            "controllers.console.workspace.rbac._account_names_by_ids",
-            return_value={"acct-1": {"name": "Alice", "avatar": ""}},
-        ):
-            rbac_mod._hydrate_resource_user_account_names(items)
-
-        assert items[0].account.account_name == "Alice"
-
-    def test_moves_resource_maintainer_to_first_position(self):
-        items = [
-            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-2"}),
-            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-maintainer"}),
-            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-3"}),
-        ]
-
-        rbac_mod._move_resource_maintainer_first(items, "acct-maintainer")
-
-        assert [item.account.account_id for item in items] == ["acct-maintainer", "acct-2", "acct-3"]
-
-    def test_keeps_resource_user_order_when_maintainer_is_not_on_page(self):
-        items = [
-            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-2"}),
-            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-3"}),
-        ]
-
-        rbac_mod._move_resource_maintainer_first(items, "acct-maintainer")
-
-        assert [item.account.account_id for item in items] == ["acct-2", "acct-3"]
+def domain(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+) -> RBACDomain:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, RBAC_ENABLED=True, LOGIN_DISABLED=True)
+    domain = build_rbac_domain(sqlite_session_factory, monkeypatch)
+    for module in (roles, policies, members):
+        monkeypatch.setattr(module, "application_services", lambda: domain)
+    return domain
 
 
 class TestPydanticModels:
@@ -173,12 +48,12 @@ class TestPydanticModels:
     missing required fields) — trivial `str` fields are not worth asserting.
     """
 
-    def test_role_upsert_requires_name(self):
+    def test_role_upsert_requires_name(self) -> None:
         with pytest.raises(ValidationError):
-            rbac_mod._RoleUpsertRequest.model_validate({})
+            schemas._RoleUpsertRequest.model_validate({})
 
-    def test_role_upsert_to_mutation_preserves_fields(self):
-        payload = rbac_mod._RoleUpsertRequest.model_validate(
+    def test_role_upsert_to_mutation_preserves_fields(self) -> None:
+        payload = schemas._RoleUpsertRequest.model_validate(
             {
                 "name": "Owner",
                 "description": "full access",
@@ -189,8 +64,8 @@ class TestPydanticModels:
         assert mutation.description == "full access"
         assert mutation.permission_keys == ["workspace.member.manage"]
 
-    def test_access_policy_create_parses_resource_type_enum(self):
-        parsed = rbac_mod._AccessPolicyCreateRequest.model_validate(
+    def test_access_policy_create_parses_resource_type_enum(self) -> None:
+        parsed = schemas._AccessPolicyCreateRequest.model_validate(
             {
                 "name": "Full access",
                 "resource_type": "app",
@@ -198,262 +73,199 @@ class TestPydanticModels:
                 "permission_keys": [],
             }
         )
-        assert parsed.resource_type is rbac_mod.svc.RBACResourceType.APP
+        assert parsed.resource_type is dto.RBACResourceType.APP
 
-    def test_access_policy_create_rejects_unknown_resource_type(self):
+    def test_access_policy_create_rejects_unknown_resource_type(self) -> None:
         with pytest.raises(ValidationError):
-            rbac_mod._AccessPolicyCreateRequest.model_validate({"name": "bad", "resource_type": "unknown"})
+            schemas._AccessPolicyCreateRequest.model_validate({"name": "bad", "resource_type": "unknown"})
 
-    def test_resource_access_scope_requires_automatic_include_workspace_members(self):
+    def test_resource_access_scope_requires_automatic_include_workspace_members(self) -> None:
         with pytest.raises(ValidationError):
-            rbac_mod._ResourceAccessScopeRequest.model_validate({})
+            schemas._ResourceAccessScopeRequest.model_validate({})
 
-    def test_resource_access_scope_accepts_automatic_include_workspace_members(self):
-        parsed = rbac_mod._ResourceAccessScopeRequest.model_validate({"automatic_include_workspace_members": True})
+    def test_resource_access_scope_accepts_automatic_include_workspace_members(self) -> None:
+        parsed = schemas._ResourceAccessScopeRequest.model_validate({"automatic_include_workspace_members": True})
         assert parsed.automatic_include_workspace_members is True
 
-    def test_replace_bindings_keeps_role_binding_contract(self):
-        parsed = rbac_mod._ReplaceBindingsRequest.model_validate({"role_ids": None})
+    def test_replace_bindings_keeps_role_binding_contract(self) -> None:
+        parsed = schemas._ReplaceBindingsRequest.model_validate({"role_ids": None})
         assert parsed.role_ids == []
 
-    def test_replace_member_roles_coerce_null_list(self):
-        parsed = rbac_mod._ReplaceMemberRolesRequest.model_validate({"role_ids": None})
+    def test_replace_member_roles_coerce_null_list(self) -> None:
+        parsed = schemas._ReplaceMemberRolesRequest.model_validate({"role_ids": None})
         assert parsed.role_ids == []
 
-    def test_pagination_query_accepts_page_and_limit_aliases(self):
-        parsed = rbac_mod._PaginationQuery.model_validate({"page": 3, "limit": 25, "reverse": True})
+    def test_pagination_query_accepts_page_and_limit_aliases(self) -> None:
+        parsed = schemas._PaginationQuery.model_validate({"page": 3, "limit": 25, "reverse": True})
         assert parsed.page_number == 3
         assert parsed.results_per_page == 25
         assert parsed.reverse is True
 
-    def test_pagination_query_accepts_legacy_inner_names(self):
-        parsed = rbac_mod._PaginationQuery.model_validate({"page_number": 4, "results_per_page": 30, "reverse": False})
+    def test_pagination_query_accepts_legacy_inner_names(self) -> None:
+        parsed = schemas._PaginationQuery.model_validate({"page_number": 4, "results_per_page": 30, "reverse": False})
         assert parsed.page_number == 4
         assert parsed.results_per_page == 30
         assert parsed.reverse is False
 
 
-class TestPaginationMapping:
-    def test_roles_get_returns_legacy_compatible_roles_when_rbac_disabled(self, app, config_overrides):
-        config_overrides(RBAC_ENABLED=False)
-        with (
-            app.test_request_context("/workspaces/current/rbac/roles?page=1&limit=2&include_owner=1"),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
-        ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(
-                rbac_mod.RBACRolesApi(),
-                _RolesListQuery.model_validate({"page": 1, "limit": 2, "include_owner": 1}),
-            )
-
-        owner_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"]
-        valid_owner_permission_keys = []
-        for permission_key in owner_permission_keys:
-            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD and "billing" in permission_key:
-                continue
-            valid_owner_permission_keys.append(permission_key)
-
-        admin_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["admin"]
-        valid_admin_permission_keys = []
-        for permission_key in admin_permission_keys:
-            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD and "billing" in permission_key:
-                continue
-            valid_admin_permission_keys.append(permission_key)
-
-        assert response["data"] == [
-            {
-                "id": "owner",
-                "tenant_id": "",
-                "type": "workspace",
-                "category": "global_system_default",
-                "name": "owner",
-                "description": "",
-                "is_builtin": True,
-                "permission_keys": valid_owner_permission_keys,
-                "role_tag": "owner",
-            },
-            {
-                "id": "admin",
-                "tenant_id": "",
-                "type": "workspace",
-                "category": "global_system_default",
-                "name": "admin",
-                "description": "",
-                "is_builtin": True,
-                "permission_keys": valid_admin_permission_keys,
-                "role_tag": "",
-            },
-        ]
-        assert response["pagination"] == {
-            "total_count": 4,
-            "per_page": 2,
-            "current_page": 1,
-            "total_pages": 2,
-        }
-        mock_list.assert_not_called()
-
-    def test_roles_get_filters_out_owner_when_include_owner_is_zero(self, app, config_overrides):
-        config_overrides(RBAC_ENABLED=False)
-        with (
-            app.test_request_context("/workspaces/current/rbac/roles?include_owner=0"),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
-        ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
-
-        names = [r["name"] for r in response["data"]]
-        assert "owner" not in names
-
-    def test_roles_get_keeps_owner_when_include_owner_is_one(self, app, config_overrides):
-        config_overrides(RBAC_ENABLED=False)
-        with (
-            app.test_request_context("/workspaces/current/rbac/roles?include_owner=1"),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
-        ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(
-                rbac_mod.RBACRolesApi(),
-                _RolesListQuery.model_validate({"include_owner": 1}),
-            )
-
-        names = [r["name"] for r in response["data"]]
-        assert "owner" in names
-
-    def test_roles_get_filters_out_owner_by_default(self, app, config_overrides):
-        config_overrides(RBAC_ENABLED=False)
-        with (
-            app.test_request_context("/workspaces/current/rbac/roles"),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
-        ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
-
-        names = [r["name"] for r in response["data"]]
-        assert "owner" not in names
-
-    def test_roles_get_forwards_outer_pagination_params(self, app):
-        with (
-            app.test_request_context("/workspaces/current/rbac/roles?page=2&limit=50&reverse=true&include_owner=1"),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
-            patch("controllers.console.workspace.rbac._dump", return_value={}),
-        ):
-            inspect.unwrap(rbac_mod.RBACRolesApi.get)(
-                rbac_mod.RBACRolesApi(),
-                _RolesListQuery.model_validate({"page": 2, "limit": 50, "reverse": True, "include_owner": 1}),
-            )
-
-        _, kwargs = mock_list.call_args
-        options = kwargs["options"]
-        assert options.page_number == 2
-        assert options.results_per_page == 50
-        assert options.reverse is True
+def test_role_query_aliases_and_context_are_forwarded(app: Flask, domain: RBACDomain) -> None:
+    domain.transport.response = {"data": []}
+    with app.test_request_context("/?page=2&limit=25&reverse=true&include_owner=1&language=ZH"):
+        result = inspect.unwrap(roles.RBACRolesApi.get)(roles.RBACRolesApi(), CONTEXT)
+    assert result == {"data": [], "pagination": None}
+    sent = domain.transport.only_request
+    assert (sent.tenant_id, sent.account_id) == ("tenant", "actor")
+    assert sent.params == {
+        "page_number": 2,
+        "results_per_page": 25,
+        "reverse": "true",
+        "include_owner": 1,
+        "language": "zh",
+        "biiling_enabled": True,
+        "dataset_operator_enabled": False,
+    }
 
 
-class TestPaginationForwarding:
-    def test_access_policies_get_forwards_outer_pagination_params(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/access-policies?resource_type=app&page=3&limit=25&reverse=false"
-            ),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.list") as mock_list,
-            patch("controllers.console.workspace.rbac._dump", return_value={}),
-        ):
-            inspect.unwrap(rbac_mod.RBACAccessPoliciesApi.get)(rbac_mod.RBACAccessPoliciesApi())
-
-        _, kwargs = mock_list.call_args
-        assert kwargs["resource_type"] == "app"
-        options = kwargs["options"]
-        assert options.page_number == 3
-        assert options.results_per_page == 25
-        assert options.reverse is False
+def test_invalid_pagination_does_not_reach_application(app: Flask, domain: RBACDomain) -> None:
+    with app.test_request_context("/?page=0"), pytest.raises(ValidationError):
+        inspect.unwrap(roles.RBACRolesApi.get)(roles.RBACRolesApi(), CONTEXT)
+    assert not domain.transport.requests
 
 
-class TestAccessPolicyBindingLockUnlock:
-    def test_lock_forwards_binding_id(self, app):
-        with (
-            app.test_request_context("/workspaces/current/rbac/access-policy-bindings/binding-1/lock", method="PUT"),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicyBindings.lock") as mock_lock,
-            patch("controllers.console.workspace.rbac._dump", return_value={}),
-        ):
-            inspect.unwrap(rbac_mod.RBACAccessPolicyBindingLockApi.put)(
-                rbac_mod.RBACAccessPolicyBindingLockApi(), "binding-1"
-            )
+@pytest.mark.parametrize(
+    ("member_id", "role_ids", "message"),
+    [
+        ("missing", ["editor"], "Member not in tenant."),
+        ("foreign", ["editor"], "Member not in tenant."),
+        ("member", [], "Workspace member role update requires exactly one role."),
+        ("member", ["unknown"], ""),
+        ("member", ["dataset_operator"], ""),
+        ("actor", ["owner"], "Cannot operate self."),
+        ("member", ["normal"], "The provided role is already assigned to the member."),
+    ],
+)
+def test_member_role_errors_keep_invalid_param_contract(
+    domain: RBACDomain,
+    config_overrides: Callable[..., None],
+    member_id: str,
+    role_ids: list[str],
+    message: str,
+) -> None:
+    config_overrides(RBAC_ENABLED=False, DATASET_OPERATOR_ENABLED=False)
+    with domain.sessions.begin() as session:
+        session.add(make_tenant(tenant_id="tenant"))
+        for account_id in ("actor", "member", "foreign"):
+            session.add(make_account(account_id=account_id, email=f"{account_id}@example.com"))
+        session.add_all(
+            [
+                TenantAccountJoin(tenant_id="tenant", account_id="actor", role=TenantAccountRole.OWNER),
+                TenantAccountJoin(tenant_id="tenant", account_id="member", role=TenantAccountRole.NORMAL),
+            ]
+        )
+    error_app = Flask(__name__)
+    api = ExternalApi(error_app)
 
-        mock_lock.assert_called_once_with("tenant-1", "acct-1", "binding-1")
+    class MemberRoleEndpoint(Resource):
+        def put(self, member_id: str) -> dict[str, object]:
+            return inspect.unwrap(members.RBACMemberRolesApi.put)(members.RBACMemberRolesApi(), CONTEXT, member_id)
 
-    def test_unlock_forwards_binding_id(self, app):
-        with (
-            app.test_request_context("/workspaces/current/rbac/access-policy-bindings/binding-1/unlock", method="PUT"),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicyBindings.unlock") as mock_unlock,
-            patch("controllers.console.workspace.rbac._dump", return_value={}),
-        ):
-            inspect.unwrap(rbac_mod.RBACAccessPolicyBindingUnlockApi.put)(
-                rbac_mod.RBACAccessPolicyBindingUnlockApi(), "binding-1"
-            )
-
-        mock_unlock.assert_called_once_with("tenant-1", "acct-1", "binding-1")
-
-
-class TestRoleCopy:
-    def test_role_copy_forwards_path_id(self, app):
-        with (
-            app.test_request_context("/workspaces/current/rbac/roles/role-1/copy", method="POST", json={}),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.copy") as mock_copy,
-            patch("controllers.console.workspace.rbac._dump", return_value={}),
-        ):
-            inspect.unwrap(rbac_mod.RBACRoleCopyApi.post)(rbac_mod.RBACRoleCopyApi(), "role-1")
-
-        mock_copy.assert_called_once_with("tenant-1", "acct-1", "role-1", copy_member=True)
-
-
-class TestWorkspaceRbacGuards:
-    def test_role_create_requires_workspace_role_manage(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/roles",
-                method="POST",
-                json={"name": "test_role", "permission_keys": []},
-            ),
-            patch(
-                "controllers.common.wraps.current_account_with_tenant",
-                return_value=(_account(), "tenant-1"),
-            ),
-            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=False),
-            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.create") as mock_create,
-        ):
-            with pytest.raises(Forbidden):
-                rbac_mod.RBACRolesApi().post()
-
-        mock_create.assert_not_called()
-
-    def test_access_policy_create_requires_workspace_role_manage(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/access-policies",
-                method="POST",
-                json={"name": "full_access", "resource_type": "app", "permission_keys": []},
-            ),
-            patch(
-                "controllers.common.wraps.current_account_with_tenant",
-                return_value=(_account(), "tenant-1"),
-            ),
-            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=False),
-            patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,
-        ):
-            with pytest.raises(Forbidden):
-                rbac_mod.RBACAccessPoliciesApi().post()
-
-        mock_create.assert_not_called()
+    api.add_resource(MemberRoleEndpoint, "/members/<member_id>/rbac-roles")
+    response = error_app.test_client().put(f"/members/{member_id}/rbac-roles", json={"role_ids": role_ids})
+    assert response.status_code == 400
+    assert response.get_json() == {"code": "invalid_param", "message": message, "status": 400}
+    assert not domain.transport.requests
 
 
-class TestDumpHelper:
-    def test_dump_returns_plain_dict(self):
-        role = rbac_mod.svc.RBACRole(id="role-1", type="workspace", name="Owner")
-        dumped = rbac_mod._dump(role)
-        assert isinstance(dumped, dict)
-        assert "role_id" not in dumped
+@pytest.mark.parametrize(
+    ("member_id", "role", "error"),
+    [("actor", "owner", InvalidArgumentError), ("member", "owner", Forbidden), ("owner", "normal", Forbidden)],
+)
+def test_member_role_endpoint_rejects_privilege_escalation(
+    app: Flask,
+    domain: RBACDomain,
+    config_overrides: Callable[..., None],
+    member_id: str,
+    role: str,
+    error: type[Exception],
+) -> None:
+    config_overrides(RBAC_ENABLED=False)
+    original = {"actor": TenantAccountRole.NORMAL, "owner": TenantAccountRole.OWNER, "member": TenantAccountRole.NORMAL}
+    with domain.sessions.begin() as session:
+        session.add(make_tenant(tenant_id="tenant"))
+        for account_id, assigned_role in original.items():
+            session.add(make_account(account_id=account_id, email=f"{account_id}@example.com"))
+            session.add(TenantAccountJoin(tenant_id="tenant", account_id=account_id, role=assigned_role))
+    with app.test_request_context("/", method="PUT", json={"role_ids": [role]}), pytest.raises(error):
+        inspect.unwrap(members.RBACMemberRolesApi.put)(members.RBACMemberRolesApi(), CONTEXT, member_id)
+    with domain.sessions() as session:
+        assigned = dict(session.execute(select(TenantAccountJoin.account_id, TenantAccountJoin.role)).tuples().all())
+    assert assigned == original
+    assert not domain.transport.requests
+
+
+def test_role_copy_normalizes_uuid_and_applies_payload_default(app: Flask, domain: RBACDomain) -> None:
+    role_id = UUID("00000000-0000-0000-0000-000000000001")
+    domain.transport.response = {"id": "copy", "type": "workspace", "name": "Copy"}
+    with app.test_request_context("/", method="POST", json={}):
+        result, status = inspect.unwrap(roles.RBACRoleCopyApi.post)(roles.RBACRoleCopyApi(), CONTEXT, role_id)
+    assert status == 201
+    assert result["id"] == "copy"
+    assert domain.transport.only_request.params == {"id": str(role_id)}
+    assert domain.transport.only_request.json == {"copy_member": True}
+
+
+def test_policy_query_and_permissions_keep_resource_selectors(app: Flask, domain: RBACDomain) -> None:
+    domain.transport.response = {"data": []}
+    with app.test_request_context("/?resource_type=agent&page=3&limit=25&reverse=false"):
+        inspect.unwrap(policies.RBACAccessPoliciesApi.get)(policies.RBACAccessPoliciesApi(), CONTEXT)
+    assert domain.transport.only_request.params == {
+        "resource_type": "agent",
+        "page_number": 3,
+        "results_per_page": 25,
+        "reverse": "false",
+    }
+    domain.transport.requests.clear()
+    domain.transport.response = {"agent": {"default_permission_keys": ["agent.acl.preview"]}}
+    with app.test_request_context("/?agent_id=agent-1"):
+        result = inspect.unwrap(members.RBACMyPermissionsApi.get)(members.RBACMyPermissionsApi(), CONTEXT)
+    assert result["agent"]["default_permission_keys"] == ["agent.acl.preview"]
+    assert domain.transport.only_request.params == {"agent_id": "agent-1"}
+
+
+@pytest.mark.parametrize(
+    "controller", [policies.RBACAccessPolicyBindingLockApi, policies.RBACAccessPolicyBindingUnlockApi]
+)
+def test_policy_binding_state_serialization(
+    app: Flask,
+    domain: RBACDomain,
+    controller: type[policies.RBACAccessPolicyBindingLockApi] | type[policies.RBACAccessPolicyBindingUnlockApi],
+) -> None:
+    locked = controller is policies.RBACAccessPolicyBindingLockApi
+    domain.transport.response = {"binding_id": "binding", "is_locked": locked}
+    with app.test_request_context("/", method="PUT"):
+        result = inspect.unwrap(controller.put)(controller(), CONTEXT, "binding")
+    assert result == {"binding_id": "binding", "is_locked": locked}
+    assert domain.transport.only_request.json == {"binding_id": "binding"}
+
+
+@pytest.mark.parametrize("controller", [roles.RBACRolesApi, policies.RBACAccessPoliciesApi])
+def test_role_administration_denied_before_application(
+    app: Flask,
+    domain: RBACDomain,
+    controller: type[roles.RBACRolesApi] | type[policies.RBACAccessPoliciesApi],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
+    identity = AccountWithTenant(account, "tenant")
+    monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
+    monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: identity)
+    domain.transport.response = {"allowed": False}
+    with app.test_request_context("/", method="POST", json={}), pytest.raises(Forbidden):
+        controller().post()
+    assert domain.transport.only_request.endpoint == "/rbac/check-access"
+
+
+@pytest.mark.parametrize(("value", "expected"), [(" EN ", "en"), ("ja", "ja"), ("zh", "zh"), ("fr", None), ("", None)])
+def test_language_normalization_is_owned_by_transport(app: Flask, value: str, expected: str | None) -> None:
+    with app.test_request_context(query_string={"language": value}):
+        assert rbac_language() == expected

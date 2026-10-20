@@ -99,7 +99,7 @@ class WorkflowToolManageService:
             WorkflowToolProviderController.from_db(workflow_tool_provider)
         except Exception as e:
             logger.warning(e, exc_info=True)
-            raise ValueError(str(e))
+            raise ValueError(str(e)) from e
 
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             _session.add(workflow_tool_provider)
@@ -209,7 +209,7 @@ class WorkflowToolManageService:
             try:
                 WorkflowToolProviderController.from_db(workflow_tool_provider)
             except Exception as e:
-                raise ValueError(str(e))
+                raise ValueError(str(e)) from e
 
             if labels is not None:
                 ToolLabelManager.update_tool_labels(

@@ -1,6 +1,8 @@
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
+from core.entities.provider_entities import CustomProviderConfiguration
+from core.model_manager import ModelInstance
+from core.plugin.impl.model_runtime_factory import PluginModelAssembly
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
@@ -12,45 +14,48 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
+from tests.unit_tests.core.model_fixtures import make_model_config
 
 
 def test_fetch_model_reuses_single_model_assembly():
-    provider_configuration = SimpleNamespace(
-        get_current_credentials=Mock(return_value={"api_key": "x"}),
-        provider=SimpleNamespace(provider="openai"),
+    config = make_model_config(provider="openai", model="gpt-4o-mini", mode="chat")
+    provider_model_bundle = config.provider_model_bundle
+    provider_model_bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(
+        credentials={"api_key": "x"}
     )
-    model_type_instance = SimpleNamespace(get_model_schema=Mock(return_value="schema"))
-    provider_model_bundle = SimpleNamespace(
-        configuration=provider_configuration,
-        model_type_instance=model_type_instance,
-    )
-    model_instance = Mock()
-    assembly = SimpleNamespace(
-        provider_manager=Mock(),
-        model_manager=Mock(),
-    )
-    assembly.provider_manager.get_provider_model_bundle.return_value = provider_model_bundle
-    assembly.model_manager.get_model_instance.return_value = model_instance
+    assembly = PluginModelAssembly(tenant_id="tenant-1", user_id="user-1")
 
-    with patch(
-        "core.workflow.nodes.agent.runtime_support.create_plugin_model_assembly",
-        return_value=assembly,
-    ) as mock_assembly:
+    with (
+        patch(
+            "core.workflow.nodes.agent.runtime_support.create_plugin_model_assembly",
+            return_value=assembly,
+        ) as mock_assembly,
+        patch.object(
+            assembly.provider_manager, "get_provider_model_bundle", return_value=provider_model_bundle
+        ) as get_bundle,
+        patch.object(
+            assembly.model_manager, "get_model_instance", wraps=assembly.model_manager.get_model_instance
+        ) as get_instance,
+        patch.object(provider_model_bundle.model_type_instance, "get_model_schema", return_value=config.model_schema),
+    ):
         resolved_instance, resolved_schema = AgentRuntimeSupport().fetch_model(
             tenant_id="tenant-1",
             user_id="user-1",
             value={"provider": "openai", "model": "gpt-4o-mini", "model_type": "llm"},
         )
 
-    assert resolved_instance is model_instance
-    assert resolved_schema == "schema"
+    assert isinstance(resolved_instance, ModelInstance)
+    assert resolved_instance.model_name == "gpt-4o-mini"
+    assert resolved_instance.credentials == {"api_key": "x"}
+    assert resolved_schema is config.model_schema
     mock_assembly.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
-    assembly.provider_manager.get_provider_model_bundle.assert_called_once_with(
+    assert get_bundle.call_count == 2
+    get_bundle.assert_called_with(
         tenant_id="tenant-1",
         provider="openai",
         model_type=ModelType.LLM,
     )
-    assembly.model_manager.get_model_instance.assert_called_once_with(
+    get_instance.assert_called_once_with(
         tenant_id="tenant-1",
         provider="openai",
         model_type=ModelType.LLM,

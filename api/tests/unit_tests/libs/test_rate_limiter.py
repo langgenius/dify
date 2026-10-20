@@ -1,7 +1,9 @@
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
 
+from extensions.ext_redis import RedisClientWrapper
 from libs import helper as helper_module
 
 
@@ -13,7 +15,7 @@ class _FakeRedis:
     def zadd(self, key: str, mapping: dict[str, float]) -> int:
         zset = self._zsets.setdefault(key, {})
         for member, score in mapping.items():
-            zset[str(member)] = float(score)
+            zset[member] = float(score)
         return len(mapping)
 
     def zremrangebyscore(self, key: str, min_score: str | float, max_score: str | float) -> int:
@@ -33,7 +35,7 @@ class _FakeRedis:
         return True
 
 
-def test_rate_limiter_counts_attempts_within_same_second(monkeypatch: pytest.MonkeyPatch):
+def test_rate_limiter_counts_attempts_within_same_second(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_redis = _FakeRedis()
     monkeypatch.setattr(helper_module.time, "time", lambda: 1000)
 
@@ -41,7 +43,7 @@ def test_rate_limiter_counts_attempts_within_same_second(monkeypatch: pytest.Mon
         prefix="test_rate_limit",
         max_attempts=2,
         time_window=60,
-        redis_client=fake_redis,
+        redis_client=cast(helper_module._RateLimiterRedisClient, fake_redis),
     )
 
     limiter.increment_rate_limit("203.0.113.10")
@@ -50,7 +52,7 @@ def test_rate_limiter_counts_attempts_within_same_second(monkeypatch: pytest.Mon
     assert limiter.is_rate_limited("203.0.113.10") is True
 
 
-def test_rate_limiter_uses_injected_redis(monkeypatch: pytest.MonkeyPatch):
+def test_rate_limiter_uses_injected_redis(monkeypatch: pytest.MonkeyPatch) -> None:
     redis_client = MagicMock()
     redis_client.zcard.return_value = 1
     monkeypatch.setattr(helper_module.time, "time", lambda: 1000)
@@ -68,3 +70,60 @@ def test_rate_limiter_uses_injected_redis(monkeypatch: pytest.MonkeyPatch):
     assert redis_client.zadd.called is True
     assert redis_client.zremrangebyscore.called is True
     assert redis_client.zcard.called is True
+
+
+@pytest.mark.parametrize("acquired", [True, False])
+def test_reservation_uses_one_atomic_command_and_keeps_successful_slots(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch, acquired: bool
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = int(acquired)
+    monkeypatch.setattr(helper_module.time, "time", lambda: 1000)
+    limiter = helper_module.RateLimiter(
+        prefix="reset", max_attempts=1, time_window=60, member_factory=lambda: "reservation", redis_client=redis
+    )
+
+    with limiter.reserve("user@example.com") as allowed:
+        assert allowed is acquired
+
+    assert commands.call_count == 1
+    assert commands.call_args.args[0] == "EVALSHA"
+    assert commands.call_args.args[2:] == (1, "reset:user@example.com", 1000, 60, 1, "reservation")
+
+
+@pytest.mark.parametrize("acquired", [True, False])
+def test_failed_reservation_releases_only_its_own_slot(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], acquired: bool
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = int(acquired)
+    limiter = helper_module.RateLimiter(
+        prefix="reset", max_attempts=1, time_window=60, member_factory=lambda: "reservation", redis_client=redis
+    )
+
+    with pytest.raises(RuntimeError, match="delivery failed"), limiter.reserve("user@example.com"):
+        raise RuntimeError("delivery failed")
+
+    assert commands.call_count == (2 if acquired else 1)
+    if acquired:
+        assert commands.call_args.args == ("ZREM", "reset:user@example.com", "reservation")
+
+
+def test_reservation_cleanup_does_not_hide_delivery_error(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [1, ConnectionError("redis unavailable")]
+    limiter = helper_module.RateLimiter(prefix="reset", max_attempts=1, time_window=60, redis_client=redis)
+
+    with pytest.raises(RuntimeError, match="delivery failed"), limiter.reserve("user@example.com"):
+        raise RuntimeError("delivery failed")
+
+
+def test_reservation_redis_failure_stops_the_operation(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = ConnectionError("redis unavailable")
+    limiter = helper_module.RateLimiter(prefix="reset", max_attempts=1, time_window=60, redis_client=redis)
+
+    with pytest.raises(ConnectionError, match="redis unavailable"), limiter.reserve("user@example.com"):
+        pytest.fail("Operation must not run without acquiring a slot")

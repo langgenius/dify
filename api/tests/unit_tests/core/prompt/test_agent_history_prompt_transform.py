@@ -1,27 +1,24 @@
 from unittest.mock import MagicMock
 
-from core.app.entities.app_invoke_entities import (
-    ModelConfigWithCredentialsEntity,
-)
-from core.entities.provider_configuration import ProviderModelBundle
-from core.memory.token_buffer_memory import TokenBufferMemory
+from pytest_mock import MockerFixture
+
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    PromptMessage,
     SystemPromptMessage,
     ToolPromptMessage,
     UserPromptMessage,
 )
-from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from models.model import Conversation
+from tests.unit_tests.core.model_fixtures import make_model_config, make_token_buffer_memory
 
 
-def test_get_prompt():
-    prompt_messages = [
+def test_get_prompt(mocker: MockerFixture) -> None:
+    prompt_messages: list[PromptMessage] = [
         SystemPromptMessage(content="System Template"),
         UserPromptMessage(content="User Query"),
     ]
-    history_messages = [
+    history_messages: list[PromptMessage] = [
         SystemPromptMessage(content="System Prompt 1"),
         UserPromptMessage(content="User Prompt 1"),
         AssistantPromptMessage(content="Assistant Thought 1"),
@@ -37,24 +34,19 @@ def test_get_prompt():
     ]
 
     # use message number instead of token for testing
-    def side_effect_get_num_tokens(*args):
-        return len(args[2])
+    def side_effect_get_num_tokens(*args: object) -> int:
+        prompt_messages = args[2]
+        assert isinstance(prompt_messages, list)
+        return len(prompt_messages)
 
-    large_language_model_mock = MagicMock(spec=LargeLanguageModel)
-    large_language_model_mock.get_num_tokens = MagicMock(side_effect=side_effect_get_num_tokens)
-
-    provider_model_bundle_mock = MagicMock(spec=ProviderModelBundle)
-    provider_model_bundle_mock.model_type_instance = large_language_model_mock
-
-    model_config_mock = MagicMock(spec=ModelConfigWithCredentialsEntity)
-    model_config_mock.model = "openai"
-    model_config_mock.credentials = {}
-    model_config_mock.provider_model_bundle = provider_model_bundle_mock
-
-    memory = TokenBufferMemory(conversation=Conversation(), model_instance=model_config_mock)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
+    mocker.patch.object(
+        model_config.provider_model_bundle.model_type_instance, "get_num_tokens", side_effect=side_effect_get_num_tokens
+    )
+    memory = make_token_buffer_memory(model_config)
 
     transform = AgentHistoryPromptTransform(
-        model_config=model_config_mock,
+        model_config=model_config,
         prompt_messages=prompt_messages,
         history_messages=history_messages,
         memory=memory,

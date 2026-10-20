@@ -9,7 +9,7 @@ export function getInitOptions(requiredNamespaces: readonly Namespace[] = namesp
     load: 'currentOnly',
     fallbackLng: defaultLocale,
     partialBundledLanguages: true,
-    defaultNS: requiredNamespaces.includes(defaultNS) ? defaultNS : 'common',
+    defaultNS,
     enableSelector: 'optimize',
     keySeparator: false,
     ns: [...requiredNamespaces],

@@ -41,6 +41,7 @@ from models.enums import (
     SegmentStatus,
 )
 from models.model import UploadFile
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from tasks.clean_dataset_task import clean_dataset_task
 
 
@@ -159,9 +160,9 @@ class TestCleanDatasetTask:
             index_struct='{"type": "paragraph"}',
             collection_binding_id=str(uuid.uuid4()),
             created_by=account.id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
+        dataset.created_at = datetime.now()
+        dataset.updated_at = datetime.now()
 
         db_session_with_containers.add(dataset)
         db_session_with_containers.commit()
@@ -295,7 +296,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
         )
 
         # Verify results
@@ -363,7 +364,7 @@ class TestCleanDatasetTask:
 
         # Create multiple documents
         documents = []
-        for i in range(3):
+        for _i in range(3):
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
             documents.append(document)
 
@@ -419,7 +420,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
         )
 
         # Verify results
@@ -479,7 +480,7 @@ class TestCleanDatasetTask:
 
         # Create a document and segment
         document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+        self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
 
         # Execute the task with invalid doc_form values
         test_cases = [None, "", "   ", "\t\n"]
@@ -515,65 +516,50 @@ class TestCleanDatasetTask:
 
             # Recreate data for next test case
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-            segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+            self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
 
         # Verify that IndexProcessorFactory was called with default type
         mock_factory = mock_external_service_dependencies["index_processor_factory"]
         # Should be called 4 times (once for each test case)
         assert mock_factory.call_count == 4
 
-    def test_clean_dataset_task_error_handling_and_rollback(
+    def test_index_cleanup_failure_preserves_documents_and_segments(
         self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test error handling and rollback mechanism when database operations fail.
-
-        This test verifies that the task can properly:
-        1. Handle database operation failures gracefully
-        2. Rollback database session to prevent dirty state
-        3. Continue cleanup operations even if some parts fail
-        4. Log appropriate error messages
-        5. Maintain database session integrity
-        """
+    ) -> None:
+        """An incomplete index cleanup must preserve its dependent records for retry."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
         document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+        self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
 
         # Mock IndexProcessorFactory to raise an exception
         mock_index_processor = mock_external_service_dependencies["index_processor"]
-        mock_index_processor.clean.side_effect = Exception("Vector database cleanup failed")
+        mock_index_processor.clean.side_effect = RuntimeError("Vector database cleanup failed")
 
-        # Execute the task - it should handle the exception gracefully
-        clean_dataset_task(
-            dataset_id=dataset.id,
-            tenant_id=tenant.id,
-            indexing_technique=dataset.indexing_technique,
-            index_struct=dataset.index_struct,
-            collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
-        )
+        # A direct call propagates the original exception instead of publishing a retry.
+        with pytest.raises(RuntimeError, match="Vector database cleanup failed"):
+            clean_dataset_task(
+                dataset_id=dataset.id,
+                tenant_id=tenant.id,
+                indexing_technique=dataset.indexing_technique,
+                index_struct=dataset.index_struct,
+                collection_binding_id=dataset.collection_binding_id,
+                doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+            )
 
-        # Verify results - even with vector cleanup failure, documents and segments should be deleted
-
-        # Check that documents were still deleted despite vector cleanup failure
         remaining_documents = db_session_with_containers.scalars(
             select(Document).where(Document.dataset_id == dataset.id)
         ).all()
-        assert len(remaining_documents) == 0
+        assert len(remaining_documents) == 1
 
-        # Check that segments were still deleted despite vector cleanup failure
         remaining_segments = db_session_with_containers.scalars(
             select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
         ).all()
-        assert len(remaining_segments) == 0
+        assert len(remaining_segments) == 1
 
-        # Verify that index processor was called and failed
         mock_index_processor.clean.assert_called_once()
-
-        # Verify that the task continued with cleanup despite the error
-        # This demonstrates the resilience of the cleanup process
+        mock_external_service_dependencies["storage"].delete.assert_not_called()
 
     def test_clean_dataset_task_with_image_file_references(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -638,7 +624,7 @@ class TestCleanDatasetTask:
                 indexing_technique=dataset.indexing_technique,
                 index_struct=dataset.index_struct,
                 collection_binding_id=dataset.collection_binding_id,
-                doc_form=dataset.get_doc_form(session=db_session_with_containers),
+                doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
             )
 
         # Verify results
@@ -692,12 +678,12 @@ class TestCleanDatasetTask:
         upload_file_ids = []
 
         # Create 50 documents with segments and upload files
-        for i in range(50):
+        for _i in range(50):
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
             documents.append(document)
 
             # Create 3 segments per document
-            for j in range(3):
+            for _j in range(3):
                 segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
                 segments.append(segment)
 
@@ -751,7 +737,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
         )
 
         end_time = time.time()
@@ -808,73 +794,53 @@ class TestCleanDatasetTask:
         print(f"Total cleanup time: {cleanup_duration:.3f} seconds")
         print(f"Average time per document: {cleanup_duration / len(documents):.3f} seconds")
 
-    def test_clean_dataset_task_storage_exception_handling(
+    def test_source_storage_failure_preserves_upload_file_and_document(
         self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test dataset cleanup when storage operations fail.
-
-        This test verifies that the task can properly:
-        1. Handle storage deletion failures gracefully
-        2. Continue cleanup process despite storage errors
-        3. Log appropriate error messages for storage failures
-        4. Maintain database consistency even with storage issues
-        5. Provide meaningful error reporting
-        """
+    ) -> None:
+        """Keep source storage keys and documents available for a cleanup retry."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
         document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+        self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
         upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+        upload_file_id = upload_file.id
+        upload_file_key = upload_file.key
+        document_id = document.id
 
         # Update document with file reference
         import json
 
-        document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
+        document.data_source_info = json.dumps({"upload_file_id": upload_file_id})
         db_session_with_containers.commit()
 
         # Mock storage to raise exceptions
         mock_storage = mock_external_service_dependencies["storage"]
-        mock_storage.delete.side_effect = Exception("Storage service unavailable")
+        mock_storage.delete.side_effect = RuntimeError("Storage service unavailable")
 
-        # Execute the task - it should handle storage failures gracefully
-        clean_dataset_task(
-            dataset_id=dataset.id,
-            tenant_id=tenant.id,
-            indexing_technique=dataset.indexing_technique,
-            index_struct=dataset.index_struct,
-            collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
-        )
+        with pytest.raises(RuntimeError, match="Storage service unavailable"):
+            clean_dataset_task(
+                dataset_id=dataset.id,
+                tenant_id=tenant.id,
+                indexing_technique=dataset.indexing_technique,
+                index_struct=dataset.index_struct,
+                collection_binding_id=dataset.collection_binding_id,
+                doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+            )
 
-        # Verify results
-        # Note: When storage operations fail, database deletions may be rolled back by implementation.
-        # This test focuses on ensuring the task handles the exception and continues execution/logging.
+        db_session_with_containers.expire_all()
+        remaining_file = db_session_with_containers.get(UploadFile, upload_file_id)
+        assert remaining_file is not None
+        assert remaining_file.key == upload_file_key
+        remaining_document = db_session_with_containers.get(Document, document_id)
+        assert remaining_document is not None
+        assert remaining_document.data_source_info_dict == {"upload_file_id": upload_file_id}
 
-        # Check that upload file was still deleted from database despite storage failure
-        # Note: When storage operations fail, the upload file may not be deleted
-        # This demonstrates that the cleanup process continues even with storage errors
-        remaining_files = db_session_with_containers.scalars(
-            select(UploadFile).where(UploadFile.id == upload_file.id)
-        ).all()
-        # The upload file should still be deleted from the database even if storage cleanup fails
-        # However, this depends on the specific implementation of clean_dataset_task
-        if len(remaining_files) > 0:
-            print(f"Warning: Upload file {upload_file.id} was not deleted despite storage failure")
-            print("This demonstrates that the cleanup process continues even with storage errors")
-        # We don't assert here as the behavior depends on the specific implementation
-
-        # Verify that storage.delete was called
-        mock_storage.delete.assert_called_once()
+        mock_storage.delete.assert_called_once_with(upload_file_key)
 
         # Verify that index processor was called successfully
         mock_index_processor = mock_external_service_dependencies["index_processor"]
         mock_index_processor.clean.assert_called_once()
-
-        # This test demonstrates that the cleanup process continues
-        # even when external storage operations fail, ensuring data
-        # consistency in the database
 
     def test_clean_dataset_task_edge_cases_and_boundary_conditions(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -905,9 +871,9 @@ class TestCleanDatasetTask:
             index_struct='{"type": "paragraph", "max_length": 10000}',
             collection_binding_id=str(uuid.uuid4()),
             created_by=account.id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
+        dataset.created_at = datetime.now()
+        dataset.updated_at = datetime.now()
 
         db_session_with_containers.add(dataset)
         db_session_with_containers.commit()
@@ -999,7 +965,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.get_doc_form(session=db_session_with_containers),
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
         )
 
         # Verify results

@@ -6,6 +6,7 @@ from typing import Concatenate
 
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_application_services import application_services
+from libs.external_api import document_errors
 from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
 
 
@@ -23,4 +24,4 @@ def get_preview_app[T, **P, R](
             raise AppNotFoundError() from error
         return view(self, app, *args, **kwargs)
 
-    return decorated
+    return document_errors(decorated, AppNotFoundError)

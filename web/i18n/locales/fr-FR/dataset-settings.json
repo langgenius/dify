@@ -1,5 +1,6 @@
 {
   "desc": "Ici, vous pouvez modifier les propriétés et les méthodes de fonctionnement de la Connaissance.",
+  "form.changeIcon": "Modifier l’icône de la base de connaissances",
   "form.chunkStructure.description": "sur la structure des morceaux.",
   "form.chunkStructure.learnMore": "Pour en savoir plus",
   "form.chunkStructure.title": "Structure de morceaux",
@@ -43,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Lorsque le modèle d'intégration prend en charge le multimodal, veuillez sélectionner un modèle de réévaluation multimodal pour de meilleures performances.",
   "form.retrievalSetting.title": "Paramètre de récupération",
   "form.save": "Enregistrer",
-  "form.searchModel": "Rechercher un modèle",
   "form.summaryAutoGen": "Génération Auto de Résumé",
   "form.summaryAutoGenEnableTip": "Une fois activé, les résumés seront générés automatiquement pour les documents nouvellement ajoutés. Les documents existants peuvent toujours être résumés manuellement.",
   "form.summaryAutoGenTip": "Les résumés sont générés automatiquement pour les documents nouvellement ajoutés. Les documents existants peuvent toujours être résumés manuellement.",

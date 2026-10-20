@@ -1,5 +1,3 @@
-from typing import override
-
 """Unit tests for Weaviate vector database implementation.
 
 Focuses on verifying that doc_type is properly handled in:
@@ -13,6 +11,7 @@ import datetime
 import json
 import unittest
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -893,7 +892,7 @@ class TestWeaviateVectorFactory(unittest.TestCase):
             patch("dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector") as mock_vector,
         ):
             factory = weaviate_vector_module.WeaviateVectorFactory()
-            result = factory.init_vector(dataset, attributes, MagicMock())
+            result = factory.init_vector(dataset, attributes, MagicMock(), session=None)
 
         assert result == "vector"
         config = mock_vector.call_args.kwargs["config"]
@@ -922,7 +921,7 @@ class TestWeaviateVectorFactory(unittest.TestCase):
             patch("dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector") as mock_vector,
         ):
             factory = weaviate_vector_module.WeaviateVectorFactory()
-            result = factory.init_vector(dataset, attributes, MagicMock())
+            result = factory.init_vector(dataset, attributes, MagicMock(), session=None)
 
         assert result == "vector"
         assert mock_vector.call_args.kwargs["collection_name"] == "GeneratedCollection_Node"

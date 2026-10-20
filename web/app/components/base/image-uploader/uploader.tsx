@@ -30,8 +30,8 @@ const Uploader: FC<UploaderProps> = ({ children, onUpload, closePopover, limit, 
   }
 
   return (
-    <div
-      className="relative"
+    <label
+      className="relative block"
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
@@ -45,7 +45,7 @@ const Uploader: FC<UploaderProps> = ({ children, onUpload, closePopover, limit, 
         onChange={handleChange}
         disabled={disabled}
       />
-    </div>
+    </label>
   )
 }
 

@@ -74,7 +74,7 @@ class TestWorkflowDraftVariableFields:
         draft_var.file_id = str(uuid.uuid4())
         draft_var.variable_file = None
         with pytest.raises(AssertionError):
-            result = _serialize_full_content(draft_var)
+            _serialize_full_content(draft_var)
 
     def test_conversation_variable(self):
         conv_var = WorkflowDraftVariable.new_conversation_variable(

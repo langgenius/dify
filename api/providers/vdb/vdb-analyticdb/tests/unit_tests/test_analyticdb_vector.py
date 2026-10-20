@@ -100,7 +100,7 @@ def test_factory_builds_openapi_config_when_host_is_missing(monkeypatch: pytest.
     monkeypatch.setattr(analyticdb_module.dify_config, "ANALYTICDB_NAMESPACE_PASSWORD", "ns-password")
 
     with patch.object(analyticdb_module, "AnalyticdbVector", return_value="vector") as vector_cls:
-        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result == "vector"
     args = vector_cls.call_args.args
@@ -123,7 +123,7 @@ def test_factory_builds_sql_config_when_host_is_present(monkeypatch: pytest.Monk
     monkeypatch.setattr(analyticdb_module.dify_config, "ANALYTICDB_NAMESPACE", "dify")
 
     with patch.object(analyticdb_module, "AnalyticdbVector", return_value="vector") as vector_cls:
-        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result == "vector"
     args = vector_cls.call_args.args

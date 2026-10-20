@@ -66,15 +66,19 @@ def test_transform_result_validates_nested_values_and_limits() -> None:
         "string_array_validator": [1],
         "object_validator": {"result": "1", "depth": {"depth": {"depth": "1"}}},
     }
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Output string_validator must be a string, got int instead\\."):
         node._transform_result(wrong_types, outputs)
 
     overlong = valid | {"string_validator": "1" * (dify_config.CODE_MAX_STRING_LENGTH + 1)}
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=("The length of output variable `string_validator` must be less than 400000 characters")
+    ):
         node._transform_result(overlong, outputs)
 
     oversized_array = valid | {"number_array_validator": [1, 2, 3, 3.333] * 2000}
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=("The length of output variable `number_array_validator` must be less than 1000 elements\\.")
+    ):
         node._transform_result(oversized_array, outputs)
 
 
@@ -83,7 +87,9 @@ def test_transform_result_validates_object_arrays() -> None:
     outputs = {"object_list": CodeNodeData.Output(type="array[object]")}
     node._transform_result({"object_list": [{"result": 1}, {"result": [1, 2, 3]}]}, outputs)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=("Output object_list\\[1\\] is not an object, got <class 'int'> instead at index 1\\.")
+    ):
         node._transform_result({"object_list": [{"result": 1}, 1]}, outputs)
 
 

@@ -19,10 +19,11 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import dynamic from 'next/dynamic'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
-import dynamic from '@/next/dynamic'
+import { environmentVariableFieldId } from './utils/field-id'
 import { resolveEnvironmentVariableSelection } from './utils/workflow-deployment-input'
 
 const LLMEnvironmentVariableValueField = dynamic(
@@ -50,11 +51,13 @@ function displayEnvironmentVariableValue(value: unknown) {
 
 export const EnvironmentVariableField = memo(
   ({
+    error,
     slot,
     workflowId,
     getInitialSelection,
     onChange,
   }: {
+    error?: string
     slot: EnvironmentVariableSlot
     workflowId: string
     getInitialSelection: (
@@ -93,8 +96,12 @@ export const EnvironmentVariableField = memo(
         : slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
           ? t(($) => $['deployDrawer.envVarType.secret'])
           : t(($) => $['deployDrawer.envVarType.string'])
-    const inputId = `deployment-env-${encodeURIComponent(workflowId)}-${encodeURIComponent(slot.key)}`
+    const inputId = environmentVariableFieldId(workflowId, slot.key)
     const labelId = `${inputId}-label`
+    const descriptionId = `${inputId}-description`
+    const errorId = `${inputId}-error`
+    const describedBy =
+      [slot.description && descriptionId, error && errorId].filter(Boolean).join(' ') || undefined
     const editable = source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
     const inputType =
       editable && slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
@@ -136,7 +143,8 @@ export const EnvironmentVariableField = memo(
     }
 
     return (
-      <div className="flex flex-col gap-1">
+      <fieldset className="flex min-w-0 flex-col gap-1">
+        <legend className="sr-only">{slot.key}</legend>
         <div className="flex min-w-0 items-center gap-2">
           <div className="flex min-w-0 grow items-center gap-1">
             <span
@@ -148,7 +156,11 @@ export const EnvironmentVariableField = memo(
                 {slot.key}
               </span>
             ) : (
-              <label htmlFor={inputId} className="truncate system-sm-medium text-text-primary">
+              <label
+                id={labelId}
+                htmlFor={inputId}
+                className="truncate system-sm-medium text-text-primary"
+              >
                 {slot.key}
               </label>
             )}
@@ -189,7 +201,14 @@ export const EnvironmentVariableField = memo(
           </Select>
         </div>
         {isLLM ? (
-          <div role="group" aria-labelledby={labelId} className="flex w-full min-w-0">
+          <div
+            id={inputId}
+            tabIndex={-1}
+            role="group"
+            aria-labelledby={labelId}
+            aria-describedby={describedBy}
+            className="flex w-full min-w-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
             <LLMEnvironmentVariableValueField
               disabled={!editable}
               requiredMode={requiredLLMMode}
@@ -205,6 +224,9 @@ export const EnvironmentVariableField = memo(
         ) : (
           <Input
             id={inputId}
+            aria-describedby={describedBy}
+            aria-invalid={Boolean(error)}
+            step={inputType === 'number' ? 'any' : undefined}
             type={inputType}
             value={editable && typeof customValue === 'string' ? customValue : ''}
             placeholder={placeholder}
@@ -219,9 +241,16 @@ export const EnvironmentVariableField = memo(
           />
         )}
         {slot.description && (
-          <p className="system-xs-regular text-text-tertiary">{slot.description}</p>
+          <p id={descriptionId} className="system-xs-regular text-text-tertiary">
+            {slot.description}
+          </p>
         )}
-      </div>
+        {error && (
+          <p id={errorId} role="alert" className="system-xs-regular text-text-destructive">
+            {error}
+          </p>
+        )}
+      </fieldset>
     )
   },
 )

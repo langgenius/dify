@@ -1,6 +1,7 @@
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { CommonEdgeType } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Popover,
   PopoverClose,
@@ -14,7 +15,6 @@ import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { useHooksStore } from '../../hooks-store/store'
 import { useChecklist } from '../../hooks/use-checklist'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useStore } from '../../store'
@@ -32,8 +32,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
   const [open, setOpen] = useState(false)
   const edges = useEdges<CommonEdgeType>()
   const nodes = useNodes()
-  const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const needWarningNodes = useChecklist(nodes, edges, { flowType })
+  const needWarningNodes = useChecklist(nodes, edges)
   const { handleNodeSelect } = useNodesInteractions()
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const checklistLabel = t(($) => $['panel.checklist'], { ns: 'workflow' })
@@ -108,11 +107,16 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                 </PopoverTitle>
               </div>
               <PopoverClose
-                className="-mt-0.5 -mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg"
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              >
-                <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-              </PopoverClose>
+                render={
+                  <IconButton
+                    size="lg"
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    className="-mt-1 -mr-1 shrink-0"
+                  >
+                    <span className="i-ri-close-line size-4" aria-hidden="true" />
+                  </IconButton>
+                }
+              />
             </div>
             {needWarningNodes.length > 0 && (
               <PopoverDescription className="px-1 text-xs/4 text-text-tertiary">

@@ -1,20 +1,22 @@
-import type { UseMutateAsyncFunction } from '@tanstack/react-query'
+import type {
+  DatasetQueryContentResponse,
+  ExternalHitTestingResponse,
+  HitTestingResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { UseMutateFunction } from '@tanstack/react-query'
 import type { ChangeEvent } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type {
   Attachment,
   ExternalKnowledgeBaseHitTestingRequest,
-  ExternalKnowledgeBaseHitTestingResponse,
   HitTestingRequest,
-  HitTestingResponse,
-  Query,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiEqualizer2Line, RiPlayCircleLine } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
@@ -27,19 +29,19 @@ import Textarea from './textarea'
 type QueryInputProps = {
   onUpdateList: () => void
   setHitResult: (res: HitTestingResponse) => void
-  setExternalHitResult: (res: ExternalKnowledgeBaseHitTestingResponse) => void
+  setExternalHitResult: (res: ExternalHitTestingResponse) => void
   loading: boolean
-  queries: Query[]
-  setQueries: (v: Query[]) => void
+  queries: DatasetQueryContentResponse[]
+  setQueries: (v: DatasetQueryContentResponse[]) => void
   isExternal?: boolean
   onClickRetrievalMethod: () => void
   retrievalConfig: RetrievalConfig
   isEconomy: boolean
   canRunRetrievalRecall?: boolean
   onSubmit?: () => void
-  hitTestingMutation: UseMutateAsyncFunction<HitTestingResponse, Error, HitTestingRequest, unknown>
-  externalKnowledgeBaseHitTestingMutation: UseMutateAsyncFunction<
-    ExternalKnowledgeBaseHitTestingResponse,
+  hitTestingMutation: UseMutateFunction<HitTestingResponse, Error, HitTestingRequest, unknown>
+  externalKnowledgeBaseHitTestingMutation: UseMutateFunction<
+    ExternalHitTestingResponse,
     Error,
     ExternalKnowledgeBaseHitTestingRequest,
     unknown
@@ -63,6 +65,10 @@ const QueryInput = ({
   externalKnowledgeBaseHitTestingMutation,
 }: QueryInputProps) => {
   const { t } = useTranslation(['dataset', 'datasetHitTesting'])
+  const textareaId = useId()
+  // Text inputs match :focus-visible even after a pointer click. Keep pointer
+  // focus quiet until blur, including when the visible label focuses the field.
+  const [showQueryFocusRing, setShowQueryFocusRing] = useState(true)
   const isMultimodal = useDatasetDetailContextWithSelector((s) => !!s.dataset?.is_multimodal)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [externalRetrievalSettings, setExternalRetrievalSettings] = useState({
@@ -97,6 +103,12 @@ const QueryInput = ({
   const isAllUploaded = useMemo(() => {
     return images.every((image) => !!image.uploadedId)
   }, [images])
+
+  const isSubmitDisabled =
+    !canRunRetrievalRecall ||
+    (text.length === 0 && images.length === 0) ||
+    text.length > 200 ||
+    (images.length > 0 && !isAllUploaded)
 
   const handleSaveExternalRetrievalSettings = useCallback(
     (data: { top_k: number; score_threshold: number; score_threshold_enabled: boolean }) => {
@@ -147,10 +159,10 @@ const QueryInput = ({
     [queries, setQueries],
   )
 
-  const onSubmit = useCallback(async () => {
-    if (!canRunRetrievalRecall) return
+  const onSubmit = useCallback(() => {
+    if (isSubmitDisabled || loading) return
 
-    await hitTestingMutation(
+    hitTestingMutation(
       {
         query: text,
         attachment_ids: images.map((image) => image.uploadedId),
@@ -168,7 +180,8 @@ const QueryInput = ({
       },
     )
   }, [
-    canRunRetrievalRecall,
+    isSubmitDisabled,
+    loading,
     text,
     retrievalConfig,
     isEconomy,
@@ -179,10 +192,10 @@ const QueryInput = ({
     setHitResult,
   ])
 
-  const externalRetrievalTestingOnSubmit = useCallback(async () => {
-    if (!canRunRetrievalRecall) return
+  const externalRetrievalTestingOnSubmit = useCallback(() => {
+    if (isSubmitDisabled || loading) return
 
-    await externalKnowledgeBaseHitTestingMutation(
+    externalKnowledgeBaseHitTestingMutation(
       {
         query: text,
         external_retrieval_model: {
@@ -199,7 +212,8 @@ const QueryInput = ({
       },
     )
   }, [
-    canRunRetrievalRecall,
+    isSubmitDisabled,
+    loading,
     text,
     externalRetrievalSettings,
     externalKnowledgeBaseHitTestingMutation,
@@ -216,37 +230,31 @@ const QueryInput = ({
     />
   )
   const TextAreaComp = useMemo(() => {
-    return <Textarea text={text} handleTextChange={handleTextChange} />
-  }, [text, handleTextChange])
+    return (
+      <Textarea
+        id={textareaId}
+        text={text}
+        handleTextChange={handleTextChange}
+        showFocusRing={showQueryFocusRing}
+        onPointerDown={() => setShowQueryFocusRing(false)}
+        onBlur={() => setShowQueryFocusRing(true)}
+      />
+    )
+  }, [textareaId, text, handleTextChange, showQueryFocusRing])
   const ActionButtonComp = useMemo(() => {
     return (
       <Button
-        onClick={isExternal ? externalRetrievalTestingOnSubmit : onSubmit}
+        type="submit"
         variant="primary"
         loading={loading}
-        disabled={
-          !canRunRetrievalRecall ||
-          (text.length === 0 && images.length === 0) ||
-          text.length > 200 ||
-          (images.length > 0 && !isAllUploaded)
-        }
+        disabled={isSubmitDisabled}
         className="w-22"
       >
         <RiPlayCircleLine className="size-4" />
         {t(($) => $['input.testing'], { ns: 'datasetHitTesting' })}
       </Button>
     )
-  }, [
-    isExternal,
-    externalRetrievalTestingOnSubmit,
-    onSubmit,
-    canRunRetrievalRecall,
-    text,
-    loading,
-    t,
-    images,
-    isAllUploaded,
-  ])
+  }, [isSubmitDisabled, loading, t])
 
   return (
     <div
@@ -256,11 +264,19 @@ const QueryInput = ({
     >
       <div className="flex h-full flex-col overflow-hidden rounded-[10px] bg-background-section-burn">
         <div className="relative flex shrink-0 items-center justify-between p-1.5 pb-1 pl-3">
-          <span className="system-sm-semibold-uppercase text-text-secondary">
+          <label
+            htmlFor={textareaId}
+            className="system-sm-semibold-uppercase text-text-secondary"
+            onClickCapture={(event) => {
+              // Label mousedown can blur the field before its native click focuses it again.
+              if (event.detail > 0) setShowQueryFocusRing(false)
+            }}
+          >
             {t(($) => $['input.title'], { ns: 'datasetHitTesting' })}
-          </span>
+          </label>
           {isExternal ? (
             <Button
+              type="button"
               variant="secondary"
               size="small"
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
@@ -273,16 +289,22 @@ const QueryInput = ({
               </div>
             </Button>
           ) : (
-            <div
+            <Button
+              type="button"
+              variant="secondary"
+              size="small"
               onClick={onClickRetrievalMethod}
-              className="flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg border-[0.5px] border-components-button-secondary-bg bg-components-button-secondary-bg px-1.5 shadow-xs backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover"
+              className="h-7 px-1.5 backdrop-blur-[5px]"
             >
               {icon}
-              <div className="text-xs font-medium text-text-secondary uppercase">
+              <span className="text-xs font-medium text-text-secondary uppercase">
                 {t(($) => $[`retrieval.${retrievalMethod}.title`], { ns: 'dataset' })}
-              </div>
-              <RiEqualizer2Line className="size-4 text-components-menu-item-text"></RiEqualizer2Line>
-            </div>
+              </span>
+              <RiEqualizer2Line
+                aria-hidden="true"
+                className="size-4 text-components-menu-item-text"
+              />
+            </Button>
           )}
           {isSettingsOpen && (
             <ModifyExternalRetrievalModal
@@ -294,15 +316,23 @@ const QueryInput = ({
             />
           )}
         </div>
-        <ImageUploaderInRetrievalTesting
-          textArea={TextAreaComp}
-          actionButton={ActionButtonComp}
-          onChange={handleImageChange}
-          value={images}
-          showUploader={isMultimodal}
-          className="grow"
-          actionAreaClassName="px-4 py-2 shrink-0 bg-background-default"
-        />
+        <form
+          className="flex min-h-0 grow flex-col"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void (isExternal ? externalRetrievalTestingOnSubmit() : onSubmit())
+          }}
+        >
+          <ImageUploaderInRetrievalTesting
+            textArea={TextAreaComp}
+            actionButton={ActionButtonComp}
+            onChange={handleImageChange}
+            value={images}
+            showUploader={isMultimodal}
+            className="grow"
+            actionAreaClassName="px-4 py-2 shrink-0 bg-background-default"
+          />
+        </form>
       </div>
     </div>
   )

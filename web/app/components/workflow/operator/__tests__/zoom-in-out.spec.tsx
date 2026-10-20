@@ -1,7 +1,9 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import ZoomInOut from '../zoom-in-out'
 
 const {
@@ -29,7 +31,8 @@ const {
 let workflowReadOnly = false
 let collaborationEnabled = true
 
-vi.mock('reactflow', () => ({
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
   useReactFlow: () => ({
     zoomIn: mockZoomIn,
     zoomOut: mockZoomOut,
@@ -50,42 +53,21 @@ vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
   }
 })
 
-vi.mock('../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useWorkflowReadOnly: () => ({
-      workflowReadOnly,
-      getWorkflowReadOnly: () => workflowReadOnly,
-    }),
-  }
-})
-
-vi.mock('../tip-popup', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}))
-
-const renderZoomInOut = (ui: React.ReactElement = <ZoomInOut />) =>
-  renderWithConsoleQuery(ui, {
+const renderZoomInOut = (ui: React.ReactElement = <ZoomInOut />) => {
+  const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { enable_collaboration_mode: collaborationEnabled },
   })
-
-const getZoomControls = () => {
-  const label = Array.from(document.querySelectorAll('button')).find((element) => {
-    return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-8.5')
+  return renderWorkflowComponent(ui, {
+    queryClient,
+    initialStoreState: { canvasReadOnly: workflowReadOnly },
   })
-  const zoomOutIcon = document.querySelector('.i-ri-zoom-out-line')
-  const zoomInIcon = document.querySelector('.i-ri-zoom-in-line')
-
-  if (!label || !zoomOutIcon || !zoomInIcon) throw new Error('Missing zoom controls')
-
-  return {
-    zoomOutTrigger: zoomOutIcon.parentElement as HTMLElement,
-    label,
-    zoomInTrigger: zoomInIcon.parentElement as HTMLElement,
-  }
 }
+
+const getZoomControls = () => ({
+  label: screen.getByRole('button', { name: /^\d+%$/ }),
+  zoomOutTrigger: screen.getByRole('button', { name: 'workflow.operator.zoomOut' }),
+  zoomInTrigger: screen.getByRole('button', { name: 'workflow.operator.zoomIn' }),
+})
 
 const openZoomMenu = () => {
   fireEvent.click(getZoomControls().label)
@@ -98,6 +80,25 @@ describe('workflow zoom controls', () => {
     mockViewport.zoom = 1
     workflowReadOnly = false
     collaborationEnabled = true
+  })
+
+  it.each([
+    { key: '1', modifier: 'Mod', zoom: undefined },
+    { key: '1', modifier: 'Shift', zoom: 1 },
+    { key: '5', modifier: 'Shift', zoom: 0.5 },
+  ])('applies $modifier+$key from the focused zoom menu', async ({ key, modifier, zoom }) => {
+    const user = userEvent.setup()
+    renderZoomInOut()
+    await user.click(screen.getByRole('button', { name: '100%' }))
+    const item = screen.getByRole('menuitem', { name: '200%' })
+    act(() => item.focus())
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    const heldKey = modifier === 'Mod' ? mod : modifier
+    await user.keyboard(`{${heldKey}>}${key}{/${heldKey}}`)
+    if (zoom === undefined) expect(mockFitView).toHaveBeenCalledTimes(1)
+    else expect(mockZoomTo).toHaveBeenCalledExactlyOnceWith(zoom)
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('zooms out and zooms in when the viewport is within the supported range', () => {

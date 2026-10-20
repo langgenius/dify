@@ -19,7 +19,13 @@ def _mock_service() -> MagicMock:
     return service
 
 
-def test_absolute_mode_calls_from_time_range():
+def _invoke_clean_expired_messages(**kwargs: object) -> None:
+    callback = clean_expired_messages.callback
+    assert callback is not None
+    callback(**kwargs)
+
+
+def test_absolute_mode_calls_from_time_range() -> None:
     policy = object()
     service = _mock_service()
     start_from = datetime.datetime(2024, 1, 1, 0, 0, 0)
@@ -30,7 +36,7 @@ def test_absolute_mode_calls_from_time_range():
         patch("commands.retention.MessagesCleanService.from_time_range", return_value=service) as mock_from_time_range,
         patch("commands.retention.MessagesCleanService.from_days") as mock_from_days,
     ):
-        clean_expired_messages.callback(
+        _invoke_clean_expired_messages(
             batch_size=200,
             graceful_period=21,
             start_from=start_from,
@@ -51,7 +57,7 @@ def test_absolute_mode_calls_from_time_range():
     mock_from_days.assert_not_called()
 
 
-def test_relative_mode_before_days_only_calls_from_days():
+def test_relative_mode_before_days_only_calls_from_days() -> None:
     policy = object()
     service = _mock_service()
 
@@ -60,7 +66,7 @@ def test_relative_mode_before_days_only_calls_from_days():
         patch("commands.retention.MessagesCleanService.from_days", return_value=service) as mock_from_days,
         patch("commands.retention.MessagesCleanService.from_time_range") as mock_from_time_range,
     ):
-        clean_expired_messages.callback(
+        _invoke_clean_expired_messages(
             batch_size=500,
             graceful_period=14,
             start_from=None,
@@ -80,7 +86,7 @@ def test_relative_mode_before_days_only_calls_from_days():
     mock_from_time_range.assert_not_called()
 
 
-def test_relative_mode_with_from_days_ago_calls_from_time_range():
+def test_relative_mode_with_from_days_ago_calls_from_time_range() -> None:
     policy = object()
     service = _mock_service()
     fixed_now = datetime.datetime(2024, 8, 20, 12, 0, 0)
@@ -91,7 +97,7 @@ def test_relative_mode_with_from_days_ago_calls_from_time_range():
         patch("commands.retention.MessagesCleanService.from_days") as mock_from_days,
         patch("commands.retention.naive_utc_now", return_value=fixed_now),
     ):
-        clean_expired_messages.callback(
+        _invoke_clean_expired_messages(
             batch_size=1000,
             graceful_period=21,
             start_from=None,
@@ -171,9 +177,9 @@ def test_relative_mode_with_from_days_ago_calls_from_time_range():
         ),
     ],
 )
-def test_invalid_inputs_raise_usage_error(kwargs: dict, message: str):
+def test_invalid_inputs_raise_usage_error(kwargs: dict[str, object], message: str) -> None:
     with pytest.raises(click.UsageError, match=re.escape(message)):
-        clean_expired_messages.callback(
+        _invoke_clean_expired_messages(
             batch_size=1000,
             graceful_period=21,
             start_from=kwargs["start_from"],

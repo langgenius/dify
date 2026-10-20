@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast, override
+from typing import TYPE_CHECKING, Any, cast, override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -33,6 +34,9 @@ from models.model import App, EndUser
 from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
 
@@ -55,6 +59,7 @@ class WorkflowTool(Tool):
         entity: ToolEntity,
         runtime: ToolRuntime,
         label: str = "Workflow",
+        execution_driver: WorkflowRunDriver | None = None,
     ):
         self.workflow_app_id = workflow_app_id
         self.workflow_as_tool_id = workflow_as_tool_id
@@ -62,6 +67,7 @@ class WorkflowTool(Tool):
         self.workflow_entities = workflow_entities
         self.workflow_call_depth = workflow_call_depth
         self.label = label
+        self.execution_driver = execution_driver
         self._latest_usage = LLMUsage.empty_usage()
         self._parent_trace_context = None
         self._trace_session_id = None
@@ -86,7 +92,7 @@ class WorkflowTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         invoke the tool
         """
@@ -98,7 +104,9 @@ class WorkflowTool(Tool):
 
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
-        generator = WorkflowAppGenerator()
+        if self.execution_driver is None:
+            raise ToolInvokeError("Workflow execution driver is required")
+        generator = WorkflowAppGenerator(execution_driver=self.execution_driver)
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
 
@@ -170,10 +178,8 @@ class WorkflowTool(Tool):
 
         usage_metadata: dict[str, Any] = {}
         if total_tokens is not None:
-            try:
+            with contextlib.suppress(TypeError, ValueError):
                 usage_metadata["total_tokens"] = int(str(total_tokens))
-            except (TypeError, ValueError):
-                pass
         if total_price is not None:
             usage_metadata["total_price"] = str(total_price)
         currency = data.get("currency")
@@ -227,6 +233,7 @@ class WorkflowTool(Tool):
             workflow_call_depth=self.workflow_call_depth,
             version=self.version,
             label=self.label,
+            execution_driver=self.execution_driver,
         )
         forked._parent_trace_context = self._parent_trace_context.model_copy() if self._parent_trace_context else None
         forked._trace_session_id = self._trace_session_id

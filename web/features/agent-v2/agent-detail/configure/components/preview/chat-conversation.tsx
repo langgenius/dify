@@ -10,9 +10,10 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import type { Inputs } from '@/models/debug'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import { useCallback, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
@@ -21,8 +22,8 @@ import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/cha
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import dynamic from '@/next/dynamic'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
 import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
@@ -340,7 +341,12 @@ export function AgentPreviewChatConversation({
       onStopResponding={doStopResponding}
       noChatInput
       showRegenerate
-      questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
+      questionIcon={
+        <Avatar size="xl" role="img" aria-label={userProfile.name}>
+          <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+        </Avatar>
+      }
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}

@@ -23,7 +23,17 @@ def test_validate_export_filename_accepts_relative_path():
     ],
 )
 def test_validate_export_filename_rejects_invalid_values(filename: str):
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:\\-\\-filename is too long; max length is 1024\\.|\\-\\-filename "
+            "must be a relative path; absolute paths are not allowed\\.|"
+            "\\-\\-filename must not contain '\\.' or '\\.\\.' path segments\\.|"
+            "\\-\\-filename must not contain control characters or NUL\\.|"
+            "\\-\\-filename must not include \\.jsonl\\.gz/\\.jsonl/\\.gz suffix; "
+            "pass base filename only\\.)"
+        ),
+    ):
         AppMessageExportService.validate_export_filename(filename)
 
 

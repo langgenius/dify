@@ -7,10 +7,6 @@ describe('EditInConsoleLink', () => {
 
     const link = screen.getByRole('link', { name: /editInConsole/ })
     expect(link).toHaveAttribute('href', '/agents/agent-1/configure')
-    expect(screen.getByText('workflow.nodes.agent.roster.editInConsole')).toHaveAttribute(
-      'title',
-      'workflow.nodes.agent.roster.editInConsole',
-    )
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })

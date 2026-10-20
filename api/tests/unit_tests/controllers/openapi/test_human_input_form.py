@@ -20,7 +20,10 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from jsonschema import Draft202012Validator
 
+from controllers.openapi import bp as openapi_bp
+from controllers.openapi._catalog import build_catalog
 from controllers.openapi._contract import op_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, OpenApiFormSubmitPayload
@@ -33,6 +36,7 @@ from controllers.openapi.human_input_form import (
     OpenApiWorkflowHumanInputFormSubmitApi,
     with_form_hints,
 )
+from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.workflow.nodes.human_input import ParagraphInputConfig, UserActionConfig
 from models.account import Account
@@ -72,13 +76,19 @@ def _mock_service(monkeypatch: pytest.MonkeyPatch, form) -> Mock:
     return service_mock
 
 
-def _make_form(app_id: str = "app-1", recipient_type=RecipientType.STANDALONE_WEB_APP) -> SimpleNamespace:
-    return SimpleNamespace(
+def _make_form(
+    app_id: str = "app-1",
+    recipient_type: RecipientType = RecipientType.STANDALONE_WEB_APP,
+    workflow_run_id: str | None = None,
+) -> SimpleNamespace:
+    form = SimpleNamespace(
         app_id=app_id,
         tenant_id="tenant-1",
         recipient_type=recipient_type,
         expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
     )
+    form.workflow_run_id = workflow_run_id
+    return form
 
 
 def _make_account(account_id: str = "acct-1") -> Account:
@@ -209,6 +219,46 @@ class TestOpenApiHumanInputFormPost:
         assert result == FormSubmitResponse()
 
 
+class TestSubmitFollowRunHint:
+    def _submit(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, *, workflow_run_id: str | None
+    ) -> FormSubmitResponse:
+        _mock_service(monkeypatch, _make_form(workflow_run_id=workflow_run_id))
+        api = OpenApiWorkflowHumanInputFormSubmitApi()
+        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1:submit", method="POST"):
+            return api.post.__handler__(
+                api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
+                app_id="app-1",
+                form_token="tok-1",
+                body=OpenApiFormSubmitPayload(action="approve", inputs={}),
+            )
+
+    def test_hints_following_the_run_the_form_paused(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        result = self._submit(app, monkeypatch, workflow_run_id="run-9")
+
+        [hint] = result.hints
+        assert hint.op == op_of(OpenApiWorkflowEventsApi.get) == "get.run.event"
+        assert hint.input == {
+            "app_id": "app-1",
+            "task_id": "run-9",
+            "include_state_snapshot": True,
+            "continue_on_pause": False,
+        }
+
+    def test_hint_input_passes_the_events_op_input_schema(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        [hint] = self._submit(app, monkeypatch, workflow_run_id="run-9").hints
+
+        catalog_app = Flask(__name__)
+        catalog_app.register_blueprint(openapi_bp)
+        schema = build_catalog(catalog_app)["ops"][hint.op]["input"]
+        validator = Draft202012Validator({**schema, "additionalProperties": False})
+        assert [err.message for err in validator.iter_errors(hint.input)] == []
+
+    def test_no_hint_without_a_run(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        assert self._submit(app, monkeypatch, workflow_run_id=None).hints == []
+
+
 @pytest.mark.parametrize(
     "view",
     [OpenApiWorkflowHumanInputFormApi.get, OpenApiWorkflowHumanInputFormSubmitApi.post],
@@ -281,7 +331,7 @@ class TestFormHints:
         [out] = list(with_form_hints(iter([f"data: {json.dumps(event)}\n\n"]), app_id="a1"))
         body = json.loads(out[len("data: ") :])
         op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
-        assert op == "run.form.submit"
+        assert op == "submit.run.form"
         assert body["hints"] == [
             {
                 "summary": "批准",

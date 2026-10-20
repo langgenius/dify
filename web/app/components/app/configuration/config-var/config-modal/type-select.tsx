@@ -103,7 +103,7 @@ const TypeSelector: FC<Props> = ({
                   className="h-9 justify-between px-2 text-text-secondary"
                   title={item.name}
                 >
-                  <SelectItemText className="flex items-center space-x-2 px-0">
+                  <SelectItemText className="flex items-center space-x-2">
                     <InputVarTypeIcon
                       type={item.value}
                       className="size-4 shrink-0 text-text-secondary"

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -40,4 +42,9 @@ class ArchiveStorageConfig(BaseSettings):
     ARCHIVE_STORAGE_REGION: str = Field(
         description="Region for storage (use 'auto' if the provider supports it)",
         default="auto",
+    )
+
+    ARCHIVE_STORAGE_ADDRESS_STYLE: Literal["path", "virtual", "auto"] = Field(
+        description="S3 addressing style for archive storage: 'path' (default), 'virtual' (virtual-hosted), or 'auto'",
+        default="path",
     )

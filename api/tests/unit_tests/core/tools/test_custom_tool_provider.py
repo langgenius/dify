@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -70,9 +69,9 @@ def _persist_provider(session: Session, *, tenant_id: str, name: str = "provider
     return provider
 
 
-def test_api_tool_provider_from_db_and_parse_tool_bundle() -> None:
+def test_api_tool_provider_from_db_and_parse_tool_bundle(sqlite_session: Session) -> None:
     controller = ApiToolProviderController.from_db(
-        _db_provider(), ApiProviderAuthType.API_KEY_HEADER, session=MagicMock()
+        _db_provider(), ApiProviderAuthType.API_KEY_HEADER, session=sqlite_session
     )
     assert controller.provider_type == ToolProviderType.API
     assert any(c.name == "api_key_value" for c in controller.entity.credentials_schema)
@@ -82,20 +81,22 @@ def test_api_tool_provider_from_db_and_parse_tool_bundle() -> None:
     assert tool.entity.identity.provider == "provider-id"
 
 
-def test_api_tool_provider_from_db_query_auth_and_none_auth() -> None:
+def test_api_tool_provider_from_db_query_auth_and_none_auth(sqlite_session: Session) -> None:
     query_controller = ApiToolProviderController.from_db(
-        _db_provider(), ApiProviderAuthType.API_KEY_QUERY, session=MagicMock()
+        _db_provider(), ApiProviderAuthType.API_KEY_QUERY, session=sqlite_session
     )
     assert any(c.name == "api_key_query_param" for c in query_controller.entity.credentials_schema)
 
-    none_controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE, session=MagicMock())
+    none_controller = ApiToolProviderController.from_db(
+        _db_provider(), ApiProviderAuthType.NONE, session=sqlite_session
+    )
     assert [c.name for c in none_controller.entity.credentials_schema] == ["auth_type"]
 
 
 def test_api_tool_provider_load_get_tools_and_get_tool(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE, session=MagicMock())
+    controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE, session=sqlite_session)
     loaded = controller.load_bundled_tools(_db_provider().tools)
     assert len(loaded) == 1
 

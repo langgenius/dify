@@ -1,5 +1,8 @@
+import inspect
 import json
-from unittest.mock import MagicMock, patch
+from collections.abc import Iterator
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 
@@ -16,6 +19,7 @@ from core.llm_generator.output_parser.structured_output import (
     remove_additional_properties,
 )
 from core.model_manager import ModelInstance
+from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
@@ -29,7 +33,35 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule, ParameterType
+from graphon.model_runtime.entities.model_entities import (
+    AIModelEntity,
+    FetchFrom,
+    ModelFeature,
+    ModelType,
+    ParameterRule,
+    ParameterType,
+)
+
+
+def make_model_schema(model: str) -> AIModelEntity:
+    return AIModelEntity(
+        model=model,
+        label=I18nObject(en_US=model),
+        model_type=ModelType.LLM,
+        fetch_from=FetchFrom.PREDEFINED_MODEL,
+        model_properties={},
+    )
+
+
+class _ModelInstance(ModelInstance):
+    """Return a configured response while checking the invocation contract."""
+
+    def __init__(self, response: LLMResult | Iterator[LLMResultChunk | SimpleNamespace]) -> None:
+        self.response = response
+
+    def invoke_llm(self, **kwargs: object):
+        inspect.signature(ModelInstance.invoke_llm).bind(self, **kwargs)
+        return self.response
 
 
 class TestStructuredOutput:
@@ -109,6 +141,66 @@ class TestStructuredOutput:
             with pytest.raises(OutputParserError):
                 _parse_structured_output(text)
 
+    def test_parse_structured_output_ignores_json_in_reasoning_block(self):
+        # Providers concatenate the reasoning block ahead of the answer, so a JSON object inside
+        # <think> must not be taken as the structured output.
+        text = '<think>\nthinking out loud\n{"think": "start"}\n</think>\n{"type": "user_input", "content": "hi"}'
+        assert _parse_structured_output(text) == {"type": "user_input", "content": "hi"}
+
+    def test_parse_structured_output_prefers_answer_over_reasoning_of_same_shape(self):
+        text = '<think>{"type": "draft", "content": "guess"}</think>{"type": "user_input", "content": "final"}'
+        assert _parse_structured_output(text) == {"type": "user_input", "content": "final"}
+
+    def test_parse_structured_output_ignores_reasoning_block_with_attributes(self):
+        text = '<Think duration="2s">{"think": "start"}</think>{"type": "user_input"}'
+        assert _parse_structured_output(text) == {"type": "user_input"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_inside_answer(self):
+        text = '{"content": "<think>quoted, not reasoning</think>"}'
+        assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_in_fenced_answer(self):
+        # Not strictly valid JSON, so it goes through the repair path, and the tags are still part
+        # of the answer rather than reasoning.
+        text = '```json\n{"content": "<think>quoted, not reasoning</think>"}\n```'
+        assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_in_repaired_list(self):
+        # Repairs into several candidates, and the first one is already the answer: a response that
+        # does not open with a reasoning block keeps its literal tags.
+        text = '{"content": "<think>quoted, not reasoning</think>"}\n{"extra": 1}'
+        assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_after_reasoning_block(self):
+        text = '<think>reasoning without json</think>{"content": "<think>x</think>"}\n{"extra": 1}'
+        assert _parse_structured_output(text) == {"content": "<think>x</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_after_empty_reasoning_block(self):
+        # The deepseek-r1 '<think>\n\n</think>\n' prefix the repair fallback already knew about.
+        text = '<think>\n\n</think>\n{"content": "<think>x</think>"}\n{"extra": 1}'
+        assert _parse_structured_output(text) == {"content": "<think>x</think>"}
+
+    @pytest.mark.parametrize("reasoning", ['{"key": "value"}', '{"key": "value"}\n{"other": 1}'])
+    def test_parse_structured_output_unclosed_reasoning_block(self, reasoning: str):
+        # A truncated answer keeps whatever the repair fallback made of it before.
+        text = f"<think>{reasoning}"
+        assert _parse_structured_output(text) == {"key": "value"}
+
+    @pytest.mark.parametrize("reasoning", ['{"key": "value"}', '{"key": "value"}\n{"other": 1}'])
+    def test_parse_structured_output_reasoning_only_output(self, reasoning: str):
+        # Nothing but reasoning: there is no answer to prefer, so the old result stands.
+        text = f"<think>{reasoning}</think>"
+        assert _parse_structured_output(text) == {"key": "value"}
+
+    def test_parse_structured_output_keeps_candidates_when_answer_cannot_be_repaired(self):
+        # Repairing the answer produces a scalar, so retain the original object candidates.
+        text = '<think>{"key": "value"}\n{"other": 1}</think>not json'
+        assert _parse_structured_output(text) == {"key": "value"}
+
+    def test_parse_structured_output_skips_consecutive_reasoning_blocks(self):
+        text = ' \n<Think>{"draft": 1}</THINK>\n<think>{"draft": 2}</think>\n{"answer": "final"}'
+        assert _parse_structured_output(text) == {"answer": "final"}
+
     def test_set_response_format(self):
         # Test JSON
         params = {}
@@ -140,8 +232,7 @@ class TestStructuredOutput:
 
     def test_handle_native_json_schema(self):
         provider = "openai"
-        model_schema = MagicMock(spec=AIModelEntity)
-        model_schema.model = "gpt-4"
+        model_schema = make_model_schema("gpt-4")
         structured_output_schema = {"type": "object"}
         model_parameters = {}
         rules = [
@@ -164,8 +255,7 @@ class TestStructuredOutput:
 
     def test_handle_native_json_schema_no_format_rule(self):
         provider = "openai"
-        model_schema = MagicMock(spec=AIModelEntity)
-        model_schema.model = "gpt-4"
+        model_schema = make_model_schema("gpt-4")
         structured_output_schema = {"type": "object"}
         model_parameters = {}
         rules = []
@@ -204,32 +294,29 @@ class TestStructuredOutput:
         assert isinstance(result[1], UserPromptMessage)
 
     def test_prepare_schema_for_model_gemini(self):
-        model_schema = MagicMock(spec=AIModelEntity)
-        model_schema.model = "gemini-1.5-pro"
+        model_schema = make_model_schema("gemini-1.5-pro")
         schema = {"type": "object", "additionalProperties": False}
 
         result = _prepare_schema_for_model("google", model_schema, schema)
         assert "additionalProperties" not in result
 
     def test_prepare_schema_for_model_ollama(self):
-        model_schema = MagicMock(spec=AIModelEntity)
-        model_schema.model = "llama3"
+        model_schema = make_model_schema("llama3")
         schema = {"type": "object"}
 
         result = _prepare_schema_for_model("ollama", model_schema, schema)
         assert result == schema
 
     def test_prepare_schema_for_model_default(self):
-        model_schema = MagicMock(spec=AIModelEntity)
-        model_schema.model = "gpt-4"
+        model_schema = make_model_schema("gpt-4")
         schema = {"type": "object"}
 
         result = _prepare_schema_for_model("openai", model_schema, schema)
         assert result == {"schema": schema, "name": "llm_response"}
 
     def test_invoke_llm_with_structured_output_no_stream_native(self):
-        model_schema = MagicMock(spec=AIModelEntity)
-        model_schema.support_structure_output = True
+        model_schema = make_model_schema("gpt-4")
+        model_schema.features = [ModelFeature.STRUCTURED_OUTPUT]
         model_schema.parameter_rules = [
             ParameterRule(
                 name="response_format",
@@ -241,15 +328,15 @@ class TestStructuredOutput:
         ]
         model_schema.model = "gpt-4o"
 
-        model_instance = MagicMock(spec=ModelInstance)
-        mock_result = MagicMock(spec=LLMResult)
-        mock_result.message = AssistantPromptMessage(content='{"result": "success"}')
-        mock_result.model = "gpt-4o"
-        mock_result.usage = LLMUsage.empty_usage()
-        mock_result.system_fingerprint = "fp_native"
-        mock_result.prompt_messages = [UserPromptMessage(content="hi")]
+        llm_response = LLMResult(
+            model="gpt-4o",
+            message=AssistantPromptMessage(content='{"result": "success"}'),
+            usage=LLMUsage.empty_usage(),
+            system_fingerprint="fp_native",
+            prompt_messages=[UserPromptMessage(content="hi")],
+        )
 
-        model_instance.invoke_llm.return_value = mock_result
+        model_instance = _ModelInstance(llm_response)
 
         result = invoke_llm_with_structured_output(
             provider="openai",
@@ -265,8 +352,8 @@ class TestStructuredOutput:
         assert result.system_fingerprint == "fp_native"
 
     def test_invoke_llm_with_structured_output_no_stream_prompt_based(self):
-        model_schema = MagicMock(spec=AIModelEntity)
-        model_schema.support_structure_output = False
+        model_schema = make_model_schema("gpt-4")
+        model_schema.features = []
         model_schema.parameter_rules = [
             ParameterRule(
                 name="response_format",
@@ -278,15 +365,15 @@ class TestStructuredOutput:
         ]
         model_schema.model = "claude-3"
 
-        model_instance = MagicMock(spec=ModelInstance)
-        mock_result = MagicMock(spec=LLMResult)
-        mock_result.message = AssistantPromptMessage(content='{"result": "success"}')
-        mock_result.model = "claude-3"
-        mock_result.usage = LLMUsage.empty_usage()
-        mock_result.system_fingerprint = "fp_prompt"
-        mock_result.prompt_messages = []
+        llm_response = LLMResult(
+            model="claude-3",
+            message=AssistantPromptMessage(content='{"result": "success"}'),
+            usage=LLMUsage.empty_usage(),
+            system_fingerprint="fp_prompt",
+            prompt_messages=[],
+        )
 
-        model_instance.invoke_llm.return_value = mock_result
+        model_instance = _ModelInstance(llm_response)
 
         result = invoke_llm_with_structured_output(
             provider="anthropic",
@@ -302,15 +389,17 @@ class TestStructuredOutput:
         assert result.system_fingerprint == "fp_prompt"
 
     def test_invoke_llm_with_structured_output_no_string_error(self):
-        model_schema = MagicMock(spec=AIModelEntity)
-        model_schema.support_structure_output = False
+        model_schema = make_model_schema("gpt-4")
+        model_schema.features = []
         model_schema.parameter_rules = []
 
-        model_instance = MagicMock(spec=ModelInstance)
-        mock_result = MagicMock(spec=LLMResult)
-        mock_result.message = AssistantPromptMessage(content=[TextPromptMessageContent(data="not a string")])
+        llm_response = LLMResult(
+            model=model_schema.model,
+            message=AssistantPromptMessage(content=[TextPromptMessageContent(data="not a string")]),
+            usage=LLMUsage.empty_usage(),
+        )
 
-        model_instance.invoke_llm.return_value = mock_result
+        model_instance = _ModelInstance(llm_response)
 
         with pytest.raises(OutputParserError) as excinfo:
             invoke_llm_with_structured_output(
@@ -324,42 +413,41 @@ class TestStructuredOutput:
         assert "Failed to parse structured output, LLM result is not a string" in str(excinfo.value)
 
     def test_invoke_llm_with_structured_output_stream(self):
-        model_schema = MagicMock(spec=AIModelEntity)
-        model_schema.support_structure_output = False
+        model_schema = make_model_schema("gpt-4")
+        model_schema.features = []
         model_schema.parameter_rules = []
         model_schema.model = "gpt-4"
 
-        model_instance = MagicMock(spec=ModelInstance)
-
-        # Mock chunks
-        chunk1 = MagicMock(spec=LLMResultChunk)
-        chunk1.delta = LLMResultChunkDelta(
-            index=0, message=AssistantPromptMessage(content='{"key": '), usage=LLMUsage.empty_usage()
-        )
-        chunk1.prompt_messages = [UserPromptMessage(content="hi")]
-        chunk1.system_fingerprint = "fp1"
-
-        chunk2 = MagicMock(spec=LLMResultChunk)
-        chunk2.delta = LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content='"value"}'))
-        chunk2.prompt_messages = [UserPromptMessage(content="hi")]
-        chunk2.system_fingerprint = "fp1"
-
-        chunk3 = MagicMock(spec=LLMResultChunk)
-        chunk3.delta = LLMResultChunkDelta(
-            index=0,
-            message=AssistantPromptMessage(
-                content=[
-                    TextPromptMessageContent(data=" "),
-                ]
+        # Model chunks carry validated deltas and stream metadata.
+        chunk1 = LLMResultChunk(
+            model=model_schema.model,
+            delta=LLMResultChunkDelta(
+                index=0, message=AssistantPromptMessage(content='{"key": '), usage=LLMUsage.empty_usage()
             ),
+            prompt_messages=[UserPromptMessage(content="hi")],
+            system_fingerprint="fp1",
         )
-        chunk3.prompt_messages = [UserPromptMessage(content="hi")]
-        chunk3.system_fingerprint = "fp1"
 
-        event4 = MagicMock()
-        event4.delta = LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=""))
+        chunk2 = LLMResultChunk(
+            model=model_schema.model,
+            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content='"value"}')),
+            prompt_messages=[UserPromptMessage(content="hi")],
+            system_fingerprint="fp1",
+        )
 
-        model_instance.invoke_llm.return_value = [chunk1, chunk2, chunk3, event4]
+        chunk3 = LLMResultChunk(
+            model=model_schema.model,
+            delta=LLMResultChunkDelta(
+                index=0, message=AssistantPromptMessage(content=[TextPromptMessageContent(data=" ")])
+            ),
+            prompt_messages=[UserPromptMessage(content="hi")],
+            system_fingerprint="fp1",
+        )
+
+        # Preserve coverage for a delta-bearing event that is not an LLMResultChunk.
+        event4 = SimpleNamespace(delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="")))
+
+        model_instance = _ModelInstance(iter([chunk1, chunk2, chunk3, event4]))
 
         generator = invoke_llm_with_structured_output(
             provider="openai",
@@ -376,14 +464,45 @@ class TestStructuredOutput:
         assert chunks[-1].system_fingerprint == "fp1"
         assert chunks[-1].prompt_messages == [UserPromptMessage(content="hi")]
 
-    def test_invoke_llm_with_structured_output_stream_no_id_events(self):
-        model_schema = MagicMock(spec=AIModelEntity)
-        model_schema.support_structure_output = False
+    def test_invoke_llm_with_structured_output_stream_reasoning_block(self):
+        model_schema = make_model_schema("gpt-4")
+        model_schema.features = []
         model_schema.parameter_rules = []
         model_schema.model = "gpt-4"
 
-        model_instance = MagicMock(spec=ModelInstance)
-        model_instance.invoke_llm.return_value = []
+        # The reasoning block spans several deltas, so the tags only pair up once accumulated.
+        deltas = ['<think>{"think": ', '"start"}</think>', '{"type": "user_input",', ' "content": "hi"}']
+        chunks_in = [
+            LLMResultChunk(
+                model=model_schema.model,
+                delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=delta)),
+                prompt_messages=[UserPromptMessage(content="hi")],
+                system_fingerprint="fp1",
+            )
+            for delta in deltas
+        ]
+
+        generator = invoke_llm_with_structured_output(
+            provider="openai",
+            model_schema=model_schema,
+            model_instance=_ModelInstance(iter(chunks_in)),
+            prompt_messages=[UserPromptMessage(content="hi")],
+            json_schema={},
+            stream=True,
+        )
+
+        chunks = list(generator)
+        assert chunks[-1].structured_output == {"type": "user_input", "content": "hi"}
+        # The streamed text itself is untouched, so the reasoning still reaches the UI.
+        assert "".join(str(chunk.delta.message.content) for chunk in chunks[:-1]) == "".join(deltas)
+
+    def test_invoke_llm_with_structured_output_stream_no_id_events(self):
+        model_schema = make_model_schema("gpt-4")
+        model_schema.features = []
+        model_schema.parameter_rules = []
+        model_schema.model = "gpt-4"
+
+        model_instance = _ModelInstance(iter([]))
 
         generator = invoke_llm_with_structured_output(
             provider="openai",

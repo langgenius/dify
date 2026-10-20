@@ -1,53 +1,38 @@
-import type { StorageMode, Store } from './store'
-import type { TokenStore } from './token-store'
-import { join } from 'node:path'
-import { resolveCacheDir, resolveConfigDir } from './dir'
-import { YamlStore } from './store'
+import type { StorageMode } from './store'
+import type { TokensFile, TokenStore } from './token-store'
+import { getEnv, platform } from '@/sys'
 import { FileTokenStore, KeychainTokenStore } from './token-store'
 
-export const CACHE_APP_INFO = 'app-info'
-export const CACHE_NUDGE = 'nudge'
-export const CACHE_COMPAT = 'compat'
-const HOSTS_FILE = 'hosts.yml'
-const TOKENS_FILE = 'tokens.yml'
-export const CONFIG_FILE_NAME = 'config.yml'
-
 const KEYRING_SERVICE = 'difyctl'
-
-function getStore(filePath: string): YamlStore {
-  return new YamlStore(filePath)
-}
-
-export function cachePath(cacheDir: string, name: string): string {
-  return join(cacheDir, `${name}.yml`)
-}
-
-export function getConfigurationStore(): YamlStore {
-  return getStore(join(resolveConfigDir(), CONFIG_FILE_NAME))
-}
-
-export function getCache(cacheName: string): Store {
-  return getStore(cachePath(resolveCacheDir(), cacheName))
-}
-
-export function getHostStore(): YamlStore {
-  return getStore(join(resolveConfigDir(), HOSTS_FILE))
-}
+const LINUX = 'linux'
+const DBUS_SESSION = 'DBUS_SESSION_BUS_ADDRESS'
 
 const PROBE_HOST = '__difyctl_probe__'
 const PROBE_EMAIL = '__difyctl_probe__'
 const PROBE_VALUE = 'probe-v1'
 
 export type GetTokenStoreOptions = {
+  readonly file: TokensFile
   readonly factory?: {
     readonly keyring?: () => TokenStore
     readonly file?: () => TokenStore
   }
 }
 
+export type DetectTokenStoreOptions = GetTokenStoreOptions & {
+  readonly skipKeyring?: boolean
+}
+
+/**
+ * Without a DBus session, the Linux keyring falls back to the kernel keyutils
+ * store: the probe round-trips, but the token is gone when the session ends.
+ */
+export function keyringDurable(): boolean {
+  return platform() !== LINUX || Boolean(getEnv(DBUS_SESSION))
+}
+
 const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => TokenStore> = {
-  file: (opts) =>
-    opts.factory?.file?.() ?? new FileTokenStore(join(resolveConfigDir(), TOKENS_FILE)),
+  file: (opts) => opts.factory?.file?.() ?? new FileTokenStore(opts.file),
   keychain: (opts) => opts.factory?.keyring?.() ?? new KeychainTokenStore(KEYRING_SERVICE),
 }
 
@@ -57,11 +42,9 @@ const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => T
  * only where a credential is about to be written anyway (login).
  */
 export async function detectTokenStore(
-  opts: GetTokenStoreOptions = {},
+  opts: DetectTokenStoreOptions,
 ): Promise<{ store: TokenStore; mode: StorageMode }> {
-  // DIFY_E2E_NO_KEYRING=1 forces file-based storage in E2E tests to avoid
-  // macOS keychain UI prompts blocking child processes spawned by vitest.
-  if (process.env.DIFY_E2E_NO_KEYRING === '1')
+  if (opts.skipKeyring === true || !keyringDurable())
     return { store: TOKEN_STORE_OPENERS.file(opts), mode: 'file' }
   try {
     const k = TOKEN_STORE_OPENERS.keychain(opts)
@@ -82,6 +65,6 @@ export async function detectTokenStore(
 /**
  * Construct the credential backend the registry already recorded at login.
  */
-export function getTokenStore(mode: StorageMode, opts: GetTokenStoreOptions = {}): TokenStore {
+export function getTokenStore(mode: StorageMode, opts: GetTokenStoreOptions): TokenStore {
   return TOKEN_STORE_OPENERS[mode](opts)
 }

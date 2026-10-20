@@ -86,8 +86,13 @@ class _ExternalIO:
 
 
 @dataclass(frozen=True)
+class _TrialAppServices:
+    access: TrialAppAccessService
+
+
+@dataclass(frozen=True)
 class _ApplicationServices:
-    trial_app_access: TrialAppAccessService
+    trial_apps: _TrialAppServices
     recommended_app_queries: _Features
     files: FileService
     remote_files: RemoteFileService
@@ -162,7 +167,9 @@ def harness(
     io = _ExternalIO(sessions)
     files = FileService(session_factory=sqlite_session_factory)
     services = _ApplicationServices(
-        trial_app_access=TrialAppAccessService(apps=TrialAppRepository(session_factory=repository_factory)),
+        trial_apps=_TrialAppServices(
+            access=TrialAppAccessService(apps=TrialAppRepository(session_factory=repository_factory))
+        ),
         recommended_app_queries=features,
         files=files,
         remote_files=RemoteFileService(files=files),

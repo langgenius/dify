@@ -1,192 +1,99 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import JsonImporter from '../json-importer'
+import { MittProvider, useMittContext, VisualEditorContext } from '../visual-editor/context'
+import { createVisualEditorStore } from '../visual-editor/store'
 
-const mockEmit = vi.fn()
-const mockCheckJsonDepth = vi.fn()
-const visualEditorState = {
-  advancedEditing: false,
-  isAddingNewField: false,
-}
-vi.mock('../visual-editor/context', () => ({
-  useMittContext: () => ({
-    emit: mockEmit,
-  }),
-}))
-
-vi.mock('../visual-editor/store', () => ({
-  useVisualEditorStore: (selector: (state: typeof visualEditorState) => unknown) =>
-    selector(visualEditorState),
-}))
-
-vi.mock('../../../utils', () => ({
-  checkJsonDepth: (...args: unknown[]) => mockCheckJsonDepth(...args),
-}))
-
+// Monaco editing is outside this test; parsing, depth validation and editor state remain real.
 vi.mock('../code-editor', () => ({
   default: ({ value, onUpdate }: { value: string; onUpdate: (value: string) => void }) => (
-    <textarea aria-label="json-editor" value={value} onChange={(e) => onUpdate(e.target.value)} />
+    <textarea
+      aria-label="JSON input"
+      value={value}
+      onChange={(event) => onUpdate(event.target.value)}
+    />
   ),
 }))
 
-vi.mock('../error-message', () => ({
-  default: ({ message }: { message: string }) => <div data-testid="error-message">{message}</div>,
-}))
-
-describe('JsonImporter', () => {
-  const mockOnSubmit = vi.fn()
-  const mockUpdateBtnWidth = vi.fn()
-  const throwUnknown = (error: unknown): never => {
-    throw error
+function setup() {
+  const store = createVisualEditorStore()
+  const onSubmit = vi.fn()
+  const onQuitEditing = vi.fn()
+  function Subscriber() {
+    useMittContext().useSubscribe('quitEditing', onQuitEditing)
+    return null
   }
+  render(
+    <VisualEditorContext value={store}>
+      <MittProvider>
+        <Subscriber />
+        <JsonImporter onSubmit={onSubmit} updateBtnWidth={vi.fn()} />
+      </MittProvider>
+    </VisualEditorContext>,
+  )
+  return { store, onSubmit, onQuitEditing, user: userEvent.setup() }
+}
+const importButton = () => screen.getByRole('button', { name: /nodes.llm.jsonSchema.import/ })
+const submitButton = () => screen.getByRole('button', { name: /operation.submit/ })
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    visualEditorState.advancedEditing = false
-    visualEditorState.isAddingNewField = false
-    mockCheckJsonDepth.mockReturnValue(1)
-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
-      width: 88,
-      height: 32,
-      top: 0,
-      right: 0,
-      bottom: 0,
-      left: 0,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
-    } as DOMRect)
-  })
+it.each(['advancedEditing', 'isAddingNewField'] as const)(
+  'notifies actual editor subscribers when opening after %s changes',
+  async (flag) => {
+    const { store, user, onQuitEditing } = setup()
+    await user.click(importButton())
+    expect(onQuitEditing).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /operation.cancel/ }))
+    act(() => store.setState({ [flag]: true }))
+    await user.click(importButton())
+    expect(onQuitEditing).toHaveBeenCalledExactlyOnceWith({})
+  },
+)
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
+it.each(['[]', '42'])('rejects non-object JSON %s', async (value) => {
+  const { user, onSubmit } = setup()
+  await user.click(importButton())
+  await user.click(screen.getByRole('textbox', { name: 'JSON input' }))
+  await user.paste(value)
+  await user.click(submitButton())
+  expect(
+    screen.getByText('Root must be an object, not an array or primitive value.'),
+  ).toBeInTheDocument()
+  expect(onSubmit).not.toHaveBeenCalled()
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+})
 
-  it('measures the trigger width and opens the importer without quitting editing by default', async () => {
-    const user = userEvent.setup()
+it('rejects objects exceeding the real depth limit and accepts a corrected object', async () => {
+  const { user, onSubmit } = setup()
+  let nested: Record<string, unknown> = { leaf: 'value' }
+  for (let level = 0; level < JSON_SCHEMA_MAX_DEPTH; level++) nested = { nested }
+  await user.click(importButton())
+  const input = screen.getByRole('textbox', { name: 'JSON input' })
+  await user.click(input)
+  await user.paste(JSON.stringify(nested))
+  await user.click(submitButton())
+  expect(
+    screen.getByText(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`),
+  ).toBeInTheDocument()
+  expect(onSubmit).not.toHaveBeenCalled()
+  await user.clear(input)
+  await user.paste('{"foo":"bar"}')
+  await user.click(submitButton())
+  expect(onSubmit).toHaveBeenCalledExactlyOnceWith({ foo: 'bar' })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
 
-    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
-
-    expect(mockUpdateBtnWidth).toHaveBeenCalledWith(88)
-
-    await user.click(
-      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
-    )
-
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(mockEmit).not.toHaveBeenCalled()
-  })
-
-  it('emits quitEditing when opening while advanced editing is active', async () => {
-    visualEditorState.advancedEditing = true
-    const user = userEvent.setup()
-
-    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
-
-    await user.click(
-      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
-    )
-
-    expect(mockEmit).toHaveBeenCalledWith('quitEditing', {})
-  })
-
-  it('shows a parse error when the root value is not an object', async () => {
-    const user = userEvent.setup()
-
-    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
-
-    await user.click(
-      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
-    )
-    fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '[]' } })
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
-
-    expect(screen.getByTestId('error-message')).toHaveTextContent(
-      'Root must be an object, not an array or primitive value.',
-    )
-    expect(mockOnSubmit).not.toHaveBeenCalled()
-  })
-
-  it('shows a depth error when the schema exceeds the configured maximum', async () => {
-    mockCheckJsonDepth.mockReturnValue(JSON_SCHEMA_MAX_DEPTH + 1)
-    const user = userEvent.setup()
-
-    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
-
-    await user.click(
-      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
-    )
-    fireEvent.change(screen.getByLabelText('json-editor'), {
-      target: { value: '{"foo":{"bar":1}}' },
-    })
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
-
-    expect(screen.getByTestId('error-message')).toHaveTextContent(
-      `Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`,
-    )
-    expect(mockOnSubmit).not.toHaveBeenCalled()
-  })
-
-  it('shows the parser error when JSON.parse throws an Error', async () => {
-    const user = userEvent.setup()
-    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
-
-    await user.click(
-      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
-    )
-    fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":1}' } })
-    const parseSpy = vi.spyOn(JSON, 'parse').mockImplementation(() => {
-      throw new Error('Malformed JSON payload')
-    })
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
-
-    expect(screen.getByTestId('error-message')).toHaveTextContent('Malformed JSON payload')
-    expect(mockOnSubmit).not.toHaveBeenCalled()
-
-    parseSpy.mockRestore()
-  })
-
-  it('falls back to the default invalid JSON message when JSON.parse throws a non-Error value', async () => {
-    const user = userEvent.setup()
-    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
-
-    await user.click(
-      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
-    )
-    fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":1}' } })
-    const parseSpy = vi
-      .spyOn(JSON, 'parse')
-      .mockImplementation(() => throwUnknown(Object.create(null)))
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
-
-    expect(screen.getByTestId('error-message')).toHaveTextContent('Invalid JSON')
-    expect(mockOnSubmit).not.toHaveBeenCalled()
-
-    parseSpy.mockRestore()
-  })
-
-  it('submits valid JSON and closes the popover from footer actions', async () => {
-    const user = userEvent.setup()
-
-    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
-
-    await user.click(
-      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
-    )
-    fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":"bar"}' } })
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
-
-    expect(mockOnSubmit).toHaveBeenCalledWith({ foo: 'bar' })
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
-    )
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }))
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
+it('reports malformed JSON and allows correction without replacing JSON.parse', async () => {
+  const { user, onSubmit } = setup()
+  await user.click(importButton())
+  const input = screen.getByRole('textbox', { name: 'JSON input' })
+  await user.clear(input)
+  await user.paste('{bad')
+  await user.click(submitButton())
+  expect(screen.getByText(/Expected property name|JSON at position/)).toBeInTheDocument()
+  expect(onSubmit).not.toHaveBeenCalled()
+  await user.clear(input)
+  await user.paste('{"count":2}')
+  await user.click(submitButton())
+  expect(onSubmit).toHaveBeenCalledExactlyOnceWith({ count: 2 })
 })

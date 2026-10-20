@@ -21,11 +21,13 @@ def openapi_app() -> Flask:
     return app
 
 
-def test_openapi_route_registered(openapi_app: Flask):
+def test_openapi_route_registered(openapi_app: Flask) -> None:
     rules = {r.rule for r in openapi_app.url_map.iter_rules()}
     assert "/openapi/v1/oauth/device/token" in rules
 
 
-def test_route_dispatches_to_class(openapi_app: Flask):
+def test_route_dispatches_to_class(openapi_app: Flask) -> None:
     rule = next(r for r in openapi_app.url_map.iter_rules() if r.rule == "/openapi/v1/oauth/device/token")
-    assert openapi_app.view_functions[rule.endpoint].view_class is OAuthDeviceTokenApi
+    view = openapi_app.view_functions[rule.endpoint]
+    assert hasattr(view, "view_class")
+    assert view.view_class is OAuthDeviceTokenApi

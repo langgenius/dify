@@ -2,7 +2,10 @@ import DatasetUpdateForm from '@/app/components/datasets/create'
 import { getRouteMetadata } from '@/app/route-metadata'
 
 export function generateMetadata() {
-  return getRouteMetadata('common', ($) => $['stepByStepTour.guides.knowledge.empty.create.title'])
+  return getRouteMetadata(
+    'onboarding',
+    ($) => $['stepByStepTour.guides.knowledge.empty.create.title'],
+  )
 }
 
 const DatasetCreation = () => {

@@ -1,20 +1,24 @@
 import type { CredentialSlot } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
+import type { DeploymentFieldError } from './utils/field-id'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CredentialField } from './credential-field'
 import { SectionHeading } from './section-heading'
+import { credentialFieldId } from './utils/field-id'
 import { credentialSlotKey, defaultCredentialId } from './utils/workflow-deployment-input'
 
 const CredentialConfigurationField = memo(
   ({
+    error,
     onChange,
     paths,
     slot,
     slotKey,
     value,
   }: {
+    error?: string
     onChange: DeploymentConfigurationValuesController['setCredential']
     paths?: NonNullable<CredentialSlot['workflow_as_tool_dependency']>['paths']
     slot: CredentialSlot
@@ -23,6 +27,7 @@ const CredentialConfigurationField = memo(
   }) => {
     return (
       <CredentialField
+        error={error}
         paths={paths}
         slot={slot}
         value={value}
@@ -37,16 +42,18 @@ export const CredentialsSection = memo(
   ({
     credentialSlots,
     credentials,
+    fieldError,
     horizontalPaddingClassName,
     onChange,
   }: {
     credentialSlots: CredentialSlot[]
     credentials: DeploymentConfigurationValuesController['credentials']
+    fieldError?: DeploymentFieldError
     horizontalPaddingClassName: string
     onChange: DeploymentConfigurationValuesController['setCredential']
   }) => {
     const { t } = useTranslation(['deployments'])
-    const { t: tWorkflow } = useTranslation(['workflow'])
+    const { t: tWorkflow } = useTranslation(['navigation'])
     const appCredentialSlots = credentialSlots.filter((slot) => !slot.workflow_as_tool_dependency)
     const subworkflowCredentialSlots = credentialSlots.filter(
       (slot) => slot.workflow_as_tool_dependency,
@@ -65,6 +72,9 @@ export const CredentialsSection = memo(
 
           return (
             <CredentialConfigurationField
+              error={
+                fieldError?.fieldId === credentialFieldId(slot) ? fieldError.message : undefined
+              }
               key={slotKey}
               slot={slot}
               slotKey={slotKey}
@@ -77,7 +87,8 @@ export const CredentialsSection = memo(
           <>
             <div className="flex min-w-0 items-center gap-2 pt-2">
               <span className="shrink-0 system-xs-medium-uppercase text-text-tertiary">
-                {t(($) => $['studio.precheck.from'])} {tWorkflow(($) => $['common.workflowAsTool'])}
+                {t(($) => $['studio.precheck.from'])}{' '}
+                {tWorkflow(($) => $['common.workflowAsTool'], { ns: 'navigation' })}
               </span>
               <span
                 aria-hidden
@@ -89,6 +100,9 @@ export const CredentialsSection = memo(
 
               return (
                 <CredentialConfigurationField
+                  error={
+                    fieldError?.fieldId === credentialFieldId(slot) ? fieldError.message : undefined
+                  }
                   key={slotKey}
                   paths={slot.workflow_as_tool_dependency?.paths}
                   slot={slot}

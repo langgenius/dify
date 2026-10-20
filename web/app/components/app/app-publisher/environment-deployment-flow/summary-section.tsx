@@ -34,7 +34,7 @@ export function PublisherEnvironmentSummarySection({
   onGoToPublish: () => void
   onShowAllVersions: () => void
 }) {
-  const { t } = useTranslation(['deployments', 'workflow'])
+  const { t } = useTranslation(['deployments', 'workflow', 'workflowHistory'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const deploymentState = deployment?.deployment
   const deployedVersion = deploymentState?.current_version
@@ -46,22 +46,17 @@ export function PublisherEnvironmentSummarySection({
   const deployingVersionName = deployingVersion
     ? getWorkflowVersionName(
         deployingVersion,
-        t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+        t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
       )
     : undefined
   const versionsBehind = deploymentState?.versions_behind
   const versionsBehindLabel =
     versionsBehind === undefined
       ? undefined
-      : versionsBehind === 1
-        ? t(($) => $['studio.versionsBehind_one'], {
-            ns: 'deployments',
-            count: versionsBehind,
-          })
-        : t(($) => $['studio.versionsBehind_other'], {
-            ns: 'deployments',
-            count: versionsBehind,
-          })
+      : t(($) => $['studio.versionsBehind'], {
+          ns: 'deployments',
+          count: versionsBehind,
+        })
   const isLatestVersion = Boolean(
     deployedVersion &&
     (latestVersion
@@ -137,7 +132,7 @@ export function PublisherEnvironmentSummarySection({
             <span className="truncate system-sm-semibold text-text-secondary">
               {getWorkflowVersionName(
                 deployedVersion,
-                t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
               )}
             </span>
             {versionsBehindLabel && !isLatestVersion && (

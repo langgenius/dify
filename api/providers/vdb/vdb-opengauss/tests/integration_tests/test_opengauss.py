@@ -26,7 +26,7 @@ class OpenGaussTest(AbstractVectorTest):
                     max_connection=5,
                 )
                 break
-            except psycopg2.OperationalError as e:
+            except psycopg2.OperationalError:
                 retry_count += 1
                 if retry_count < max_retries:
                     time.sleep(retry_delay)

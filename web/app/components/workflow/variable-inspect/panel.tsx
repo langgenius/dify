@@ -27,7 +27,7 @@ export type currentVarType = {
 }
 
 const Panel: FC = () => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflowDebug'])
 
   const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
@@ -173,7 +173,7 @@ const Panel: FC = () => {
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
           <div className="system-sm-semibold-uppercase text-text-primary">
-            {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+            {t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
           </div>
           <IconButton
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -194,7 +194,7 @@ const Panel: FC = () => {
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
           <div className="system-sm-semibold-uppercase text-text-primary">
-            {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+            {t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
           </div>
           <IconButton
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}

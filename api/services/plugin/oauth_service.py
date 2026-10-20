@@ -1,5 +1,7 @@
 import json
 import uuid
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any
 
 from core.plugin.impl.base import BasePluginClient
@@ -17,7 +19,7 @@ class OAuthProxyService(BasePluginClient):
         tenant_id: str,
         plugin_id: str,
         provider: str,
-        extra_data: dict[str, Any] = {},
+        extra_data: Mapping[str, Any] = MappingProxyType({}),
         credential_id: str | None = None,
     ):
         """

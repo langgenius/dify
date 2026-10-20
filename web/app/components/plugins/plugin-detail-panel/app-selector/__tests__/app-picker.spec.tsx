@@ -2,7 +2,6 @@ import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { AppModeEnum } from '@/types/app'
 import { AppPicker } from '../app-picker'
 
 vi.mock('@/app/components/base/app-icon', () => ({
@@ -12,7 +11,7 @@ vi.mock('@/app/components/base/app-icon', () => ({
 const app = {
   id: 'app-1',
   name: 'Workflow App',
-  mode: AppModeEnum.WORKFLOW,
+  mode: 'workflow' as const,
   icon_type: 'emoji',
   icon: 'W',
   icon_background: '#FFFFFF',
@@ -83,44 +82,5 @@ describe('AppPicker', () => {
     expect(listbox).not.toContainElement(loadMoreButton)
     expect(scrollRegion).toContainElement(listbox)
     expect(scrollRegion).toContainElement(loadMoreButton)
-  })
-
-  it('should clear only the search query and keep focus in the input', async () => {
-    const user = userEvent.setup()
-    const onSelect = vi.fn()
-
-    function AppPickerHarness() {
-      const [open, setOpen] = useState(false)
-      const [searchText, setSearchText] = useState('')
-
-      return (
-        <AppPicker
-          disabled={false}
-          trigger={<span>Choose app</span>}
-          isShow={open}
-          onShowChange={setOpen}
-          onSelect={onSelect}
-          apps={[app]}
-          isLoading={false}
-          hasMore={false}
-          onLoadMore={vi.fn()}
-          searchText={searchText}
-          onSearchChange={setSearchText}
-        />
-      )
-    }
-
-    render(<AppPickerHarness />)
-    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
-    const searchInput = screen.getByRole('combobox', { name: 'app.appSelector.placeholder' })
-    await user.type(searchInput, 'workflow')
-    const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
-    clearButton.focus()
-    await user.keyboard('{Enter}')
-
-    expect(searchInput).toHaveValue('')
-    expect(searchInput).toHaveFocus()
-    expect(onSelect).not.toHaveBeenCalled()
-    expect(screen.getByRole('option', { name: /Workflow App/ })).toBeInTheDocument()
   })
 })

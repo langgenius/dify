@@ -5,12 +5,13 @@ from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DocumentRef
 from tasks.duplicate_document_indexing_task import (
     _duplicate_document_indexing_task,  # Core function
     _duplicate_document_indexing_task_with_tenant_queue,  # Tenant queue wrapper function
@@ -37,7 +38,9 @@ class TestDuplicateDocumentIndexingTasks:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.duplicate_document_indexing_task.IndexingRunner", autospec=True) as mock_indexing_runner,
+            patch(
+                "tasks.duplicate_document_indexing_task.build_document_indexing_service", autospec=True
+            ) as mock_indexing_runner,
             patch("tasks.duplicate_document_indexing_task.FeatureService", autospec=True) as mock_feature_service,
             patch(
                 "tasks.duplicate_document_indexing_task.IndexProcessorFactory", autospec=True
@@ -62,7 +65,7 @@ class TestDuplicateDocumentIndexingTasks:
                 "index_processor": mock_processor,
             }
 
-    def _runner_documents_arg(self, mock_external_service_dependencies) -> list[Document]:
+    def _runner_documents_arg(self, mock_external_service_dependencies) -> list[DocumentRef]:
         """Return the document batch passed to the runner."""
         return mock_external_service_dependencies["indexing_runner_instance"].run.call_args.args[0]
 
@@ -311,7 +314,7 @@ class TestDuplicateDocumentIndexingTasks:
         This test verifies:
         - Proper dataset retrieval from database
         - Correct document processing and status updates
-        - IndexingRunner integration
+        - build_document_indexing_service integration
         - Database state updates
         """
         # Arrange: Create test data
@@ -469,10 +472,10 @@ class TestDuplicateDocumentIndexingTasks:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test handling of IndexingRunner exceptions.
+        Test handling of build_document_indexing_service exceptions.
 
         This test verifies:
-        - Exceptions from IndexingRunner are properly caught
+        - Exceptions from build_document_indexing_service are properly caught
         - Task completes without raising exceptions
         - Database session is properly closed
         - Error logging occurs
@@ -483,7 +486,7 @@ class TestDuplicateDocumentIndexingTasks:
         )
         document_ids = [doc.id for doc in documents]
 
-        # Mock IndexingRunner to raise an exception
+        # Mock build_document_indexing_service to raise an exception
         mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = Exception(
             "Indexing runner failed"
         )
@@ -630,7 +633,7 @@ class TestDuplicateDocumentIndexingTasks:
         # Act: Execute the task with empty document list
         _duplicate_document_indexing_task(dataset.id, document_ids)
 
-        # Assert: Verify IndexingRunner was called with empty list
+        # Assert: Verify build_document_indexing_service was called with empty list
         # Note: The actual implementation does call run([]) with an empty list.
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
@@ -840,7 +843,7 @@ class TestDuplicateDocumentIndexingTasks:
     def test_duplicate_document_indexing_runner_error(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """Test duplicate document indexing when IndexingRunner raises an error."""
+        """Test duplicate document indexing when build_document_indexing_service raises an error."""
         self._test_duplicate_document_indexing_task_indexing_runner_exception(
             db_session_with_containers, mock_external_service_dependencies
         )

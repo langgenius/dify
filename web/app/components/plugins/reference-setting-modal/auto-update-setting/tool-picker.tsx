@@ -8,7 +8,7 @@ import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/constants'
 import { PluginSource } from '../../types'
@@ -117,21 +117,22 @@ const ToolPicker: FC<Props> = ({
         <div className="relative min-h-20 w-108 max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs">
           <div className="flex flex-col overflow-hidden rounded-t-lg border-b border-divider-subtle bg-background-section-burn">
             <div className="bg-components-panel-bg p-2">
-              <SearchBox
-                search={query}
-                onSearchChange={setQuery}
+              <PluginSearchInput
+                value={query}
+                onValueChange={setQuery}
                 tags={tags}
                 onTagsChange={setTags}
                 placeholder={t(($) => $.searchTools, { ns: 'plugin' })!}
-                inputClassName="w-full"
               />
             </div>
             <div className="flex items-center justify-between bg-components-panel-bg px-3 pb-2">
               <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
                 {tabs.map((tab) => (
-                  <div
+                  <button
+                    type="button"
+                    aria-pressed={effectivePluginType === tab.key}
                     className={cn(
-                      'flex h-6 shrink-0 cursor-pointer items-center rounded-md px-2 system-xs-medium text-text-tertiary hover:bg-state-base-hover',
+                      'flex h-6 shrink-0 cursor-pointer items-center rounded-md px-2 system-xs-medium text-text-tertiary hover:bg-state-base-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid',
                       effectivePluginType === tab.key &&
                         'bg-state-base-hover-alt system-xs-semibold text-text-primary',
                     )}
@@ -139,7 +140,7 @@ const ToolPicker: FC<Props> = ({
                     onClick={() => setPluginType(tab.key)}
                   >
                     {tab.name}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

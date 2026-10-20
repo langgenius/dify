@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from unittest.mock import patch
 
 import pytest
@@ -12,11 +12,11 @@ from sqlalchemy.orm import Session
 from constants.oauth_bearer import TokenType
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import PathParam, load_app
-from controllers.openapi.auth.requirements import ResolveCaller
+from controllers.openapi.auth.requirements import Requirement, ResolveCaller
 from controllers.openapi.auth.subjects import subject_from_auth
 from libs.oauth_bearer import AuthContext
 from models import Account, Tenant
-from services.account_service import AccountService, TenantService
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 _CLIENT_ID = "integration-cli"
@@ -37,14 +37,14 @@ def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
     """
 
     # Depend on db_session_with_containers so the app context / DB session is
-    # active for the real AccountService/TenantService calls below.
+    # active for the composed account and workspace services below.
     assert db_session_with_containers is not None
 
     def _make(*, with_owner_tenant: bool = True) -> Account:
         fake = Faker()
-        with patch("services.account_service.SystemFeatureService") as mock_feature_service:
+        with patch("services.account.login_adapters.SystemFeatureService") as mock_feature_service:
             mock_feature_service.is_registration_allowed.return_value = True
-            account = AccountService.create_account(
+            account = account_fixtures.create_account(
                 email=fake.email(),
                 name=fake.name(),
                 interface_language="en-US",
@@ -52,7 +52,7 @@ def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
                 session=db_session_with_containers,
             )
             if with_owner_tenant:
-                TenantService.create_owner_tenant_if_not_exist(
+                account_fixtures.create_owner_workspace(
                     account, name=fake.company(), session=db_session_with_containers
                 )
         return account
@@ -64,10 +64,10 @@ def add_tenant_for_account(
     account: Account, *, session: Session, role: str = "normal", name: str = "Second WS"
 ) -> Tenant:
     """Create an additional tenant and join ``account`` to it (real service calls)."""
-    with patch("services.account_service.SystemFeatureService") as mock_feature_service:
+    with patch("services.account.login_adapters.SystemFeatureService") as mock_feature_service:
         mock_feature_service.is_workspace_creation_allowed.return_value = True
-        tenant = TenantService.create_tenant(name=name, session=session)
-    TenantService.create_tenant_member(tenant, account, session, role=role)
+        tenant = account_fixtures.create_workspace(name=name, session=session)
+    account_fixtures.join_workspace(tenant, account, session, role=role)
     return tenant
 
 
@@ -95,6 +95,7 @@ def context_for(
     session: Session,
     view_args: dict[str, str] | None = None,
     token_id: uuid.UUID | None = None,
+    requirements: Sequence[Requirement] = (),
 ) -> Context:
     """Build the ``Context`` a handler is given after the pipeline ran.
 
@@ -105,17 +106,16 @@ def context_for(
     ``token_id`` only matters to the ``/account/sessions*`` family, which reads
     it back off the subject.
 
-    It runs ``ResolveCaller`` itself — the requirement every pipeline fixes
-    last — rather than the wider set a route's own requirements would ask for,
-    so a handler sees exactly what the thinnest pipeline would give it. On a
-    route carrying ``<app_id>`` that thinnest pipeline is ``CheckAppApiEnabled``,
-    which loads the app; handlers read ``ctx.app`` and never load it themselves,
-    so the helper loads it through the same loader. Running the real pieces is
-    what keeps this CI-only helper from drifting away from the pipeline it
-    stands in for.
+    Pass the route's context-loading requirements, such as
+    ``CheckWorkspaceMember``, to bind the caller to its requested workspace.
+    They run alongside the pipeline's fixed ``ResolveCaller`` in rank order;
+    the caller is freshly loaded and does not inherit ``account.current_tenant``.
+    App routes also load their app, as ``CheckAppApiEnabled`` does before the
+    handler runs. Authorization itself is covered by the auth-layer tests.
     """
     ctx = Context(subject_from_auth(_account_auth(account, token_id=token_id)), session, view_args or {})
     if PathParam.APP_ID in ctx.view_args:
         load_app(ctx)
-    ResolveCaller().run(ctx.subject, ctx, session)
+    for requirement in sorted((*requirements, ResolveCaller()), key=lambda item: item.rank):
+        requirement.run(ctx.subject, ctx, session)
     return ctx

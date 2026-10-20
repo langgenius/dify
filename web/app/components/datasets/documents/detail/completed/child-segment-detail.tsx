@@ -1,5 +1,6 @@
+import type { ChildChunkResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ChildChunkDetail, ChunkingMode } from '@/models/datasets'
+import type { ChunkingMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remixicon/react'
@@ -18,7 +19,7 @@ import { useSegmentListContext } from './index'
 
 type IChildSegmentDetailProps = {
   chunkId: string
-  childChunkInfo?: Partial<ChildChunkDetail> & { id: string }
+  childChunkInfo?: Partial<ChildChunkResponse> & { id: string }
   onUpdate: (segmentId: string, childChunkId: string, content: string) => void
   onCancel: () => void
   docForm: ChunkingMode
@@ -34,6 +35,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   onCancel,
   docForm,
 }) => {
+  const editorRef = React.useRef<HTMLDivElement>(null)
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const canEdit = useDocumentContext((s) => s.canEdit)
   const [content, setContent] = useState(childChunkInfo?.content || '')
@@ -69,7 +71,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   }, [childChunkInfo?.updated_at])
 
   return (
-    <div className="flex h-full flex-col">
+    <div ref={editorRef} className="flex h-full flex-col">
       <div
         className={cn(
           'flex items-center justify-between',
@@ -97,6 +99,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
           {canEdit && fullScreen && (
             <>
               <ActionButtons
+                target={editorRef}
                 handleCancel={handleCancel}
                 handleSave={handleSave}
                 loading={loading}
@@ -153,6 +156,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
       {canEdit && !fullScreen && (
         <div className="flex items-center justify-end border-t border-t-divider-subtle p-4 pt-3">
           <ActionButtons
+            target={editorRef}
             handleCancel={handleCancel}
             handleSave={handleSave}
             loading={loading}

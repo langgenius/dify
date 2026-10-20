@@ -16,7 +16,7 @@ import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useStore } from '../store'
 
 const VariableInspectTrigger: FC = () => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowDebug'])
   const { eventEmitter } = useEventEmitterContextContext()
 
   const showVariableInspectPanel = useStore((s) => s.showVariableInspectPanel)
@@ -82,7 +82,7 @@ const VariableInspectTrigger: FC = () => {
             setShowVariableInspectPanel(true)
           }}
         >
-          {t(($) => $['debug.variableInspect.trigger.normal'], { ns: 'workflow' })}
+          {t(($) => $['debug.variableInspect.trigger.normal'], { ns: 'workflowDebug' })}
         </Button>
       )}
       {!isRunning && currentVars.length > 0 && (
@@ -101,7 +101,7 @@ const VariableInspectTrigger: FC = () => {
               setShowVariableInspectPanel(true)
             }}
           >
-            {t(($) => $['debug.variableInspect.trigger.cached'], { ns: 'workflow' })}
+            {t(($) => $['debug.variableInspect.trigger.cached'], { ns: 'workflowDebug' })}
           </Button>
           <Button
             size="small"
@@ -117,7 +117,7 @@ const VariableInspectTrigger: FC = () => {
               handleClearAll()
             }}
           >
-            {t(($) => $['debug.variableInspect.trigger.clear'], { ns: 'workflow' })}
+            {t(($) => $['debug.variableInspect.trigger.clear'], { ns: 'workflowDebug' })}
           </Button>
         </>
       )}
@@ -131,7 +131,7 @@ const VariableInspectTrigger: FC = () => {
           >
             <RiLoader2Line aria-hidden="true" className="size-4 shrink-0 animate-spin" />
             <span className="text-text-accent">
-              {t(($) => $['debug.variableInspect.trigger.running'], { ns: 'workflow' })}
+              {t(($) => $['debug.variableInspect.trigger.running'], { ns: 'workflowDebug' })}
             </span>
           </Button>
           {isPreviewRunning && (
@@ -140,7 +140,7 @@ const VariableInspectTrigger: FC = () => {
                 render={
                   <IconButton
                     aria-label={t(($) => $['debug.variableInspect.trigger.stop'], {
-                      ns: 'workflow',
+                      ns: 'workflowDebug',
                     })}
                     className="flex h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
                     onClick={handleStop}
@@ -153,7 +153,7 @@ const VariableInspectTrigger: FC = () => {
                 }
               />
               <TooltipContent>
-                {t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
+                {t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })}
               </TooltipContent>
             </Tooltip>
           )}

@@ -13,7 +13,7 @@ import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/con
 import { consoleQuery } from '@/service/console'
 
 export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
-  const { t } = useTranslation(['common', 'permission'])
+  const { t } = useTranslation(['common', 'permission', 'navigation'])
   const language = getAccessControlTemplateLanguage(useLocale())
   const { agentQuery, canAccessConfig } = useAgentPermissions(agentId)
   const [page, setPage] = useState(1)
@@ -102,7 +102,7 @@ export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background-default-subtle">
       <header className="flex min-h-15.5 shrink-0 flex-col justify-center px-6 py-3">
         <h1 className="system-xl-semibold text-text-primary">
-          {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+          {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
         </h1>
         <p className="mt-0.5 system-sm-regular text-text-tertiary">
           {t(($) => $['accessRule.agentDescription'], { ns: 'permission' })}

@@ -1,9 +1,21 @@
+class AppDiscoveryNotFoundError(Exception):
+    pass
+
+
+class PermittedAppsUnavailableError(Exception):
+    pass
+
+
 class MoreLikeThisDisabledError(Exception):
     pass
 
 
 class WorkflowHashNotEqualError(Exception):
     pass
+
+
+class DraftChangedError(Exception):
+    """The draft no longer matches the export an overwrite is based on."""
 
 
 class IsDraftWorkflowError(Exception):

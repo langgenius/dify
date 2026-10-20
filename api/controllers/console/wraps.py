@@ -5,10 +5,11 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, Concatenate, Protocol, cast, overload
 
+import httpx
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
-from werkzeug.exceptions import Forbidden, UnprocessableEntity
+from werkzeug.exceptions import Forbidden, ServiceUnavailable, UnprocessableEntity
 
 from configs import dify_config
 from controllers.common.rbac import RBACPermission, RBACResourceScope
@@ -25,7 +26,7 @@ from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
-from services.billing_service import BillingService
+from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.entities.feature_entities import LicenseStatus
 from services.feature_service import FeatureService
 from services.operation_service import OperationService, UtmInfo
@@ -158,15 +159,35 @@ def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
+def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
+    """Return whether a Cloud workspace has a paid subscription.
+
+    Keep this predicate shared with the mutation decorator so read endpoints can
+    expose an entitlement flag without rejecting Sandbox workspaces that need to
+    render an upgrade state.
+    """
+
+    try:
+        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+    except (
+        _BillingHTTPStatusError,
+        httpx.RequestError,
+        json.JSONDecodeError,
+        UnicodeDecodeError,
+        ValidationError,
+    ) as exc:
+        raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
+    return billing_info["subscription"]["plan"] in (
+        CloudPlan.PROFESSIONAL,
+        CloudPlan.TEAM,
+    )
+
+
 def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         _, current_tenant_id = current_account_with_tenant()
-        billing_info = BillingService.get_info(current_tenant_id, exclude_vector_space=True)
-        if billing_info["subscription"]["plan"] not in (
-            CloudPlan.PROFESSIONAL,
-            CloudPlan.TEAM,
-        ):
+        if not is_cloud_edition_billing_paid_plan(current_tenant_id):
             abort(403, "This feature requires a paid plan.")
         return view(*args, **kwargs)
 
@@ -402,7 +423,6 @@ def knowledge_pipeline_publish_enabled[**P, R](view: Callable[P, R]) -> Callable
 def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
-
         from libs.login import current_user
 
         if not dify_config.RBAC_ENABLED:
@@ -419,7 +439,6 @@ def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
 def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
-
         from libs.login import current_user
 
         if not dify_config.RBAC_ENABLED:
@@ -651,6 +670,10 @@ def with_current_user_id[T, **P, R](
 def validate_request[M: BaseModel](model: type[M]) -> M:
     """Parse and validate the current request without exposing submitted values."""
 
+    # TODO: Standardize request parsing and structured validation errors after
+    # auditing callers. Malformed or falsy JSON currently becomes {}, allowing
+    # optional payloads to succeed as no-ops; validation details currently travel
+    # as a JSON string in the error message.
     if request.method == "GET":
         raw = request.args.to_dict(flat=True)
     elif request.method == "DELETE":

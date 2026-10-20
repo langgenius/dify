@@ -798,6 +798,4 @@ def _is_passing(result: Mapping[str, Any]) -> bool:
     """A check-result row is "passing" when its ``status`` is the ready/passed
     sentinel emitted by the type-checker / output-check executor."""
     status = result.get("status")
-    if status in {"ready", "passed", "not_produced"}:
-        return True
-    return False
+    return status in {"ready", "passed", "not_produced"}

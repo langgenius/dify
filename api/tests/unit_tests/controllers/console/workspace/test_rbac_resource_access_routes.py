@@ -9,29 +9,31 @@ methods) and which inner-API client each handler reaches for.
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable, Generator
-from unittest.mock import MagicMock, patch
+from collections.abc import Callable
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console import console_ns
-from controllers.console.workspace import rbac as rbac_mod
+from controllers.console.workspace.rbac import resources as rbac_mod
 from enums import DeploymentEdition
-from services.enterprise import rbac_service as svc
+from machinery.context import RequestContext
+from services.rbac import contracts as rbac_contracts
+from tests.unit_tests.rbac_fakes import Initialization, RBACDomain, build_rbac_domain
 
 RESOURCE_ID = {
-    svc.RBACResourceType.APP: "app-1",
-    svc.RBACResourceType.DATASET: "dataset-1",
-    svc.RBACResourceType.AGENT: "agent-1",
+    rbac_contracts.RBACResourceType.APP: "app-1",
+    rbac_contracts.RBACResourceType.DATASET: "dataset-1",
+    rbac_contracts.RBACResourceType.AGENT: "agent-1",
 }
 
 # The URL segment and path parameter of each resource kind, spelled out here instead of read
 # back from the same enum the controller builds its URLs from, so a rename fails this test.
 RESOURCE_URL_PARTS = {
-    svc.RBACResourceType.APP: ("apps", "app_id"),
-    svc.RBACResourceType.DATASET: ("datasets", "dataset_id"),
-    svc.RBACResourceType.AGENT: ("agents", "agent_id"),
+    rbac_contracts.RBACResourceType.APP: ("apps", "app_id"),
+    rbac_contracts.RBACResourceType.DATASET: ("datasets", "dataset_id"),
+    rbac_contracts.RBACResourceType.AGENT: ("agents", "agent_id"),
 }
 
 
@@ -72,12 +74,6 @@ def apis(spec: rbac_mod._ResourceAccessRoutes) -> rbac_mod._ResourceAccessApis:
 @pytest.fixture
 def resource_id(spec: rbac_mod._ResourceAccessRoutes) -> str:
     return RESOURCE_ID[spec.resource_type]
-
-
-@pytest.fixture(autouse=True)
-def _patched_current_ids() -> Generator[None]:
-    with patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")):
-        yield
 
 
 def _expected_routes(spec: rbac_mod._ResourceAccessRoutes) -> dict[str, tuple[str, set[str]]]:
@@ -133,35 +129,44 @@ def test_every_resource_kind_registers_the_same_twelve_routes(spec: rbac_mod._Re
         assert set(resource.methods or ()) == methods
 
 
-@pytest.mark.parametrize("automatic_include_workspace_members", [True, False])
-def test_whitelist_put_queues_the_seed_task_only_when_auto_including(
+@pytest.fixture
+def domain(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> RBACDomain:
+    domain = build_rbac_domain(sqlite_session_factory, monkeypatch)
+    monkeypatch.setattr(rbac_mod, "application_services", lambda: domain)
+    return domain
+
+
+def test_resource_route_forwards_context_kind_and_language(
     app: Flask,
     apis: rbac_mod._ResourceAccessApis,
     spec: rbac_mod._ResourceAccessRoutes,
     resource_id: str,
-    automatic_include_workspace_members: bool,
+    domain: RBACDomain,
 ) -> None:
-    replace = MagicMock(
-        return_value=svc.ResourceWhitelist(
-            automatic_include_workspace_members=automatic_include_workspace_members,
+    domain.transport.response = {"items": []}
+    context = RequestContext("request", "trace", "actor", "tenant")
+    with app.test_request_context("/?language=ja"):
+        result = inspect.unwrap(vars(apis.matrix)["get"])(apis.matrix(), context, **{_id_param(spec): resource_id})
+    assert result["items"] == []
+    sent = domain.transport.only_request
+    assert (sent.tenant_id, sent.account_id) == ("tenant", "actor")
+    assert sent.endpoint == f"/rbac/{_segment(spec)}/access-policy"
+    assert sent.params == {_id_param(spec): resource_id, "language": "ja"}
+
+
+def test_resource_whitelist_parses_body_and_returns_response(
+    app: Flask,
+    apis: rbac_mod._ResourceAccessApis,
+    spec: rbac_mod._ResourceAccessRoutes,
+    resource_id: str,
+    domain: RBACDomain,
+) -> None:
+    domain.transport.response = {"account_ids": ["member"]}
+    context = RequestContext("request", "trace", "actor", "tenant")
+    with app.test_request_context("/", method="PUT", json={"automatic_include_workspace_members": True}):
+        result = inspect.unwrap(vars(apis.whitelist)["put"])(
+            apis.whitelist(), context, **{_id_param(spec): resource_id}
         )
-    )
-    with (
-        app.test_request_context(
-            f"/{_segment(spec)}/{resource_id}/whitelist",
-            method="PUT",
-            json={"automatic_include_workspace_members": automatic_include_workspace_members},
-        ),
-        patch.object(spec.access, "replace_whitelist", replace),
-        patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as seed_task,
-    ):
-        inspect.unwrap(vars(apis.whitelist)["put"])(apis.whitelist(), **{_id_param(spec): resource_id})
-
-    tenant_id, actor_id, target_id, payload = replace.call_args.args
-    assert (tenant_id, actor_id, target_id) == ("tenant-1", "acct-actor", resource_id)
-    assert payload.automatic_include_workspace_members is automatic_include_workspace_members
-
-    if automatic_include_workspace_members:
-        seed_task.delay.assert_called_once_with("tenant-1", "acct-actor", **{_id_param(spec): resource_id})
-    else:
-        seed_task.delay.assert_not_called()
+    assert result == {"account_ids": ["member"]}
+    assert domain.transport.only_request.json == {"automatic_include_workspace_members": True}
+    assert domain.tasks.queued == [Initialization("tenant", "actor", {_id_param(spec): resource_id})]

@@ -95,9 +95,34 @@ def test_human_input_preview_delegates_to_service(
 
     preview_payload = {
         "form_id": "node-42",
+        "node_id": "node-42",
+        "node_title": "Human input",
         "form_content": "<div>example</div>",
-        "inputs": [{"name": "topic"}],
-        "actions": [{"id": "continue"}],
+        "inputs": [
+            {"type": "paragraph", "output_variable_name": "topic", "default": None},
+            {
+                "type": "select",
+                "output_variable_name": "choice",
+                "option_source": {"type": "constant", "selector": list[str](), "value": ["one", "two"]},
+            },
+            {
+                "type": "file",
+                "output_variable_name": "attachment",
+                "allowed_file_types": ["document"],
+                "allowed_file_extensions": list[str](),
+                "allowed_file_upload_methods": ["local_file", "remote_url"],
+            },
+            {
+                "type": "file-list",
+                "output_variable_name": "attachments",
+                "allowed_file_types": ["image"],
+                "allowed_file_extensions": list[str](),
+                "allowed_file_upload_methods": ["local_file"],
+                "number_limits": 0,
+            },
+        ],
+        "actions": [{"id": "continue", "title": "Continue", "button_style": "default"}],
+        "resolved_default_values": {"topic": ""},
     }
     service_instance = MagicMock()
     service_instance.get_human_input_form_preview.return_value = preview_payload
@@ -106,7 +131,12 @@ def test_human_input_preview_delegates_to_service(
     with app.test_request_context(case.path, method="POST", json={"inputs": {"topic": "tech"}}):
         response = case.resource_cls().post(app_id=app_model.id, node_id="node-42")
 
-    assert response == preview_payload
+    assert response == {
+        **preview_payload,
+        "display_in_ui": None,
+        "form_token": None,
+        "expiration_time": None,
+    }
     service_instance.get_human_input_form_preview.assert_called_once_with(
         app_model=app_model,
         account=account,
@@ -231,7 +261,7 @@ def test_human_input_delivery_test_maps_validation_error(app: Flask, monkeypatch
         method="POST",
         json={"delivery_method_id": "bad"},
     ):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="bad delivery method"):
             workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
 
 

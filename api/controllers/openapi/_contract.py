@@ -26,13 +26,13 @@ from pydantic import BaseModel, ValidationError
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody
-from controllers.openapi._hints import next_page_hint
+from controllers.openapi._hints import next_page_hint, page_after
 from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Example, Kind
+from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, EndpointSpec, Example, Kind
 from enums import DeploymentEdition
 
 __all__ = ["Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
@@ -41,21 +41,23 @@ _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
 
 
 def paginated(op: str) -> Callable:
-    """Fill the ``Next page`` hint on a bare ``PaginationEnvelope`` result (one with no hints
-    of its own). Sits inside ``accepts`` so it sees the validated ``query`` and the path
-    kwargs the hint echoes; only this layer knows both those and the op id.
+    """Add the ``Next page`` hint to a ``PaginationEnvelope`` result, unless the view already
+    built one for this op. Sits inside ``accepts`` so it sees the validated ``query`` and the
+    path kwargs the hint echoes; only this layer knows both those and the op id.
     """
 
     def decorator(view: Callable) -> Callable:
         @wraps(view)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = view(*args, **kwargs)
-            if not isinstance(result, PaginationEnvelope) or result.hints:
+            if not isinstance(result, PaginationEnvelope) or any(h.op == op for h in result.hints):
                 return result
             path_args = {name: value for name, value in kwargs.items() if name not in _INJECTED_KWARGS}
-            hint = next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), envelope=result)
-            if hint is not None:
-                result.hints = [hint]
+            page = page_after(page=result.page, limit=result.limit, has_more=result.has_more)
+            result.hints = [
+                *result.hints,
+                *next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), page=page),
+            ]
             return result
 
         return wrapper
@@ -109,10 +111,10 @@ def returns(code: int, model: type[BaseModel], description: str | None = None) -
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = view(*args, **kwargs)
             if isinstance(result, BaseModel):
-                return result.model_dump(mode="json"), code
+                return result.model_dump(mode="json", by_alias=True), code
             if isinstance(result, tuple) and result and isinstance(result[0], BaseModel):
                 payload, *rest = result
-                return (payload.model_dump(mode="json"), *rest)
+                return (payload.model_dump(mode="json", by_alias=True), *rest)
             return result
 
         openapi_ns.response(code, description or model.__name__, openapi_ns.models[model.__name__])(wrapper)
@@ -154,6 +156,7 @@ def endpoint(
     body: type[BaseModel] | None = None,
     returns: ReturnSpec | Sequence[ReturnSpec] | None = None,
     edition: frozenset[DeploymentEdition] | None = None,
+    context: AdmissionContext | None = "orm",
     internal: bool = False,
     deprecated: bool = False,
     examples: Sequence[Example] = (),
@@ -162,6 +165,17 @@ def endpoint(
     serialisation — auth, then ``accepts``, then ``returns``. Exposes
     ``view.__handler__`` (the bare handler) and ``view.__spec__`` (the exact
     `EndpointSpec` instance the router runs).
+
+    ``context`` selects the handler's ``ctx`` argument and admission Session lifetime:
+
+    - ``"orm"`` (default): the authentication Context with ORM objects and an open Session.
+    - ``"workspace"``: a RequestContext with account and workspace identity.
+    - ``"app"``: an AppRequestContext with tenant and app identity.
+    - ``None``: no ``ctx`` argument; admission requirements still run.
+
+    For ``"workspace"``, ``"app"`` and ``None``, the pipeline commits and closes
+    the admission Session after preparing the arguments and before calling the
+    handler. Services called by these handlers own their persistence Sessions.
 
     ``returns`` takes one ``(code, model, description)`` or several; a route
     that stacked N ``@returns`` today declares them here in the same top-to-bottom
@@ -181,6 +195,7 @@ def endpoint(
     spec = EndpointSpec(
         requirements=requirements,
         edition=edition,
+        context=context,
         catalog=CatalogMeta(
             op=op,
             kind=kind,
@@ -195,7 +210,7 @@ def endpoint(
     return_specs = _normalize_returns(returns)
 
     def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
-        if "ctx" not in inspect.signature(view).parameters:
+        if context is not None and "ctx" not in inspect.signature(view).parameters:
             raise TypeError(f"{view.__qualname__} must declare a 'ctx' parameter")
 
         decorated = view

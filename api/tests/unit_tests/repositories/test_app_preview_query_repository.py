@@ -73,19 +73,18 @@ def _add_site(session: Session, *, app_id: str, title: str) -> None:
 
 
 def _add_dataset(session: Session, *, dataset_id: str, tenant_id: str) -> None:
-    session.add(
-        Dataset(
-            id=dataset_id,
-            tenant_id=tenant_id,
-            name="Knowledge",
-            description="Knowledge description",
-            permission="only_me",
-            data_source_type="upload_file",
-            indexing_technique="high_quality",
-            created_by=_CREATOR_ID,
-            created_at=_CREATED_AT,
-        )
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Knowledge",
+        description="Knowledge description",
+        permission="only_me",
+        data_source_type="upload_file",
+        indexing_technique="high_quality",
+        created_by=_CREATOR_ID,
     )
+    dataset.created_at = _CREATED_AT
+    session.add(dataset)
 
 
 @pytest.fixture

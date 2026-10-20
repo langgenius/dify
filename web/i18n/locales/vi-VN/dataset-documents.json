@@ -257,6 +257,7 @@
   "segment.searchResults_one": "KẾT QUẢ",
   "segment.searchResults_other": "KẾT QUẢ",
   "segment.searchResults_zero": "KẾT QUẢ",
+  "segment.statusFilterLabel": "Lọc phân đoạn theo trạng thái",
   "segment.summary": "TÓM TẮT",
   "segment.summaryPlaceholder": "Viết tóm tắt ngắn gọn để tìm kiếm tốt hơn…"
 }

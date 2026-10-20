@@ -335,6 +335,14 @@ class TestTenantRelationshipIntegrity:
         # Assert
         assert tenant_id_none is None
 
+    def test_current_tenant_is_read_only(self):
+        """current_tenant has no setter, so tenant switching cannot open a hidden session."""
+        account = Account(name="Test User", email="test@example.com")
+        tenant = Tenant(name="Test Tenant")
+
+        with pytest.raises(AttributeError):
+            account.current_tenant = tenant  # type: ignore[misc]
+
     @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
     def test_set_current_tenant_with_session_uses_caller_session(self, sqlite_session: Session):
         account = Account(name="Test User", email="test@example.com")
@@ -640,7 +648,6 @@ class TestTenantModel:
         """Test custom_config_dict property getter."""
         # Arrange
         tenant = Tenant(name="Test Workspace")
-        config = {"feature1": True, "feature2": "value"}
         tenant.custom_config = '{"feature1": true, "feature2": "value"}'
 
         # Act

@@ -12,7 +12,7 @@ export const DELETE_CONTEXT_BLOCK_COMMAND = createCommand('DELETE_CONTEXT_BLOCK_
 export type Dataset = {
   id: string
   name: string
-  type: string
+  type: string | null
 }
 
 const ContextBlock = memo(

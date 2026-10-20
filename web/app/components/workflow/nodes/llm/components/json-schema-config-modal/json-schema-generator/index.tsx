@@ -1,16 +1,17 @@
-import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAutoGenModel } from '@/app/components/app/configuration/config/auto-gen-model-storage'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
 import useTheme from '@/hooks/use-theme'
-import { useGenerateStructuredOutputRules } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { ModelModeType, Theme } from '@/types/app'
 import { useMittContext } from '../visual-editor/context'
 import { useVisualEditorStore } from '../visual-editor/store'
@@ -37,7 +38,8 @@ const createEmptyModel = (): Model => ({
   completion_params: {} as CompletionParams,
 })
 
-const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisOffset }) => {
+export function JsonSchemaGenerator({ onApply, crossAxisOffset }: JsonSchemaGeneratorProps) {
+  const { t } = useTranslation(['workflowModels'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<GeneratorView>(GENERATOR_VIEWS.promptEditor)
   const [model, setModel] = useAutoGenModel()
@@ -99,13 +101,19 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
     [resolvedModel, setModel],
   )
 
-  const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } =
-    useGenerateStructuredOutputRules()
+  const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } = useMutation(
+    consoleQuery.ruleStructuredOutputGenerate.post.mutationOptions(),
+  )
 
   const generateSchema = useCallback(async () => {
     const { output, error } = await generateStructuredOutputRules({
-      instruction,
-      model_config: resolvedModel,
+      body: {
+        instruction,
+        model_config: {
+          ...resolvedModel,
+          mode: resolvedModel.mode === 'completion' ? 'completion' : 'chat',
+        },
+      },
     })
     if (error) {
       toast.error(error)
@@ -144,6 +152,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
         render={
           <button
             type="button"
+            aria-label={t(($) => $['nodes.llm.jsonSchema.generateJsonSchema'])}
             onClick={handleTrigger}
             className="flex size-6 items-center justify-center rounded-md p-0.5 hover:bg-state-accent-hover data-popup-open:bg-state-accent-active data-popup-open:hover:bg-state-accent-hover"
           >
@@ -182,5 +191,3 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
     </Popover>
   )
 }
-
-export default JsonSchemaGenerator

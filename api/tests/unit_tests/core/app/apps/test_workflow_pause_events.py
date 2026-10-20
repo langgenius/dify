@@ -6,10 +6,11 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.common import workflow_response_converter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
 from core.workflow.nodes.human_input.entities import (
@@ -21,13 +22,15 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
+from graphon.engine_events import GraphRunPausedEvent
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HitlRequired
-from graphon.graph_events import GraphRunPausedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.model import AppMode
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.core.app.apps.test_workflow_app_runner_core import _workflow_entry
 
 
 class _RecordingWorkflowAppRunner(WorkflowAppRunner):
@@ -37,10 +40,6 @@ class _RecordingWorkflowAppRunner(WorkflowAppRunner):
 
     def _publish_event(self, event):
         self.published_events.append(event)
-
-
-class _FakeRuntimeState:
-    variable_pool = object()
 
 
 @pytest.fixture
@@ -115,24 +114,23 @@ def _build_runner():
         workflow=workflow,
         system_user_id="sys-user",
         root_node_id=None,
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
         graph_engine_layers=(),
         graph_runtime_state=None,
     )
 
 
-def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("source_node_id", ["node-human", "nested-human"])
+def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(
+    monkeypatch: pytest.MonkeyPatch, source_node_id: str
+):
     runner = _build_runner()
     graph_reason = HitlRequired(
         session_id="form-1",
-        node_id="node-human",
+        node_id=source_node_id,
         node_title="Human Step",
     )
     event = GraphRunPausedEvent(reasons=[graph_reason], outputs={"foo": "bar"})
-    workflow_entry = SimpleNamespace(
-        graph_engine=SimpleNamespace(graph_runtime_state=_FakeRuntimeState()),
-    )
+    workflow_entry = _workflow_entry(runner)
 
     enriched_reason = HumanInputRequired(
         form_id="form-1",
@@ -142,13 +140,9 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
         node_id="node-human",
         node_title="Human Step",
     )
-    monkeypatch.setattr(
-        "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
-        lambda **_: [enriched_reason],
-    )
     monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", MagicMock())
 
-    runner._handle_event(workflow_entry, event)
+    runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
 
     assert len(runner.published_events) == 1
     queue_event = runner.published_events[0]
@@ -156,14 +150,21 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
     assert queue_event.reasons == [enriched_reason]
     assert queue_event.outputs == {"foo": "bar"}
     assert queue_event.paused_nodes == ["node-human"]
+    assert graph_reason.node_id == source_node_id
 
 
-def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
-    application_generate_entity = SimpleNamespace(
+def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API) -> WorkflowResponseConverter:
+    application_generate_entity = WorkflowAppGenerateEntity(
+        task_id="task",
+        workflow_execution_id="run-id",
+        user_id="user",
+        stream=True,
         inputs={},
         files=[],
         invoke_from=invoke_from,
-        app_config=SimpleNamespace(app_id="app-id", tenant_id="tenant-id"),
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app-id", tenant_id="tenant-id", workflow_id="workflow-id", app_mode=AppMode.WORKFLOW
+        ),
     )
     system_variables = build_system_variables(
         user_id="user",
@@ -216,7 +217,7 @@ def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_session: S
         paused_nodes=["node-id"],
     )
 
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     responses = converter.workflow_pause_to_stream_response(
         event=queue_event,
         task_id="task",
@@ -272,7 +273,7 @@ def _build_paused_human_input_response(
         paused_nodes=["node-id"],
     )
 
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     responses = converter.workflow_pause_to_stream_response(
         event=queue_event,
         task_id="task",
@@ -365,7 +366,7 @@ def test_queue_workflow_paused_event_resolves_variable_select_options(sqlite_pau
         paused_nodes=["node-id"],
     )
 
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.variable_pool.add(("start", "options"), ["approve", "reject"])
     responses = converter.workflow_pause_to_stream_response(
         event=queue_event,

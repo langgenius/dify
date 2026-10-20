@@ -98,14 +98,14 @@ const TEXT_LABEL_KEYS = {
 } as const satisfies Partial<Record<CardVariant, string>>
 
 function TextLabel({ variant }: { variant: CardVariant }) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
   const isDestructive = isDestructiveVariant(variant)
   const labelKey = TEXT_LABEL_KEYS[variant as keyof typeof TEXT_LABEL_KEYS]
 
   return (
     <>
       <span className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}>
-        {t(($) => $[labelKey], { ns: 'common' })}
+        {t(($) => $[labelKey], { ns: 'modelProvider' })}
       </span>
       {variant === 'credits-fallback' && (
         <span

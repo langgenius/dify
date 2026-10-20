@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
-import { FIXTURE_COMPAT, FIXTURE_TARGET_IDS, pkgManifestEnv } from '../test/fixtures/pkg-manifest'
+import { FIXTURE_TARGET_IDS, pkgManifestEnv } from '../test/fixtures/pkg-manifest'
 
 const SCRIPT = fileURLToPath(new URL('./release-r2-edge.mjs', import.meta.url))
 
@@ -50,7 +50,6 @@ type ManifestJson = {
   version: string
   commit: string
   buildDate: string
-  compat: { minDify: string; maxDify: string }
   baseUrl: string
   targets: Record<(typeof FIXTURE_TARGET_IDS)[number], { asset: string; sha256: string }>
 }
@@ -109,11 +108,6 @@ describe('release-r2-edge manifest', () => {
     expect(json.commit).toBe('abc1234')
     expect(json.buildDate).toBe('2026-06-14T12:00:00Z')
     expect(json.baseUrl).toBe(BASE_URL)
-  })
-
-  it('carries the compat window from package.json', () => {
-    const { json } = buildManifest()
-    expect(json.compat).toEqual(FIXTURE_COMPAT)
   })
 
   it('lists all 5 targets with asset name + sha256 from the checksums file', () => {

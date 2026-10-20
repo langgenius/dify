@@ -37,14 +37,14 @@ from dify_trace_aliyun.utils import (
     map_gen_ai_tool_type,
     serialize_json_data,
 )
-from opentelemetry.trace import Link, StatusCode
+from opentelemetry.trace import Link, SpanContext, StatusCode
 from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
-from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionStatus
 from models import EndUser
 from models.enums import EndUserType
+from tests.unit_tests.core.ops.trace_fixtures import workflow_node_execution
 
 
 def test_get_user_id_from_message_data_no_end_user(monkeypatch: pytest.MonkeyPatch):
@@ -105,7 +105,7 @@ def test_create_status_from_error():
 
 
 def test_get_workflow_node_status():
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution = workflow_node_execution()
 
     # SUCCEEDED
     node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
@@ -134,10 +134,10 @@ def test_get_workflow_node_status():
 
 def test_create_links_from_trace_id(monkeypatch: pytest.MonkeyPatch):
     # Mock create_link
-    mock_link = MagicMock(spec=Link)
+    link = Link(SpanContext(trace_id=1, span_id=2, is_remote=False))
     import dify_trace_aliyun.data_exporter.traceclient
 
-    monkeypatch.setattr(dify_trace_aliyun.data_exporter.traceclient, "create_link", lambda trace_id_str: mock_link)
+    monkeypatch.setattr(dify_trace_aliyun.data_exporter.traceclient, "create_link", lambda trace_id_str: link)
 
     # Trace ID None
     assert create_links_from_trace_id(None) == []
@@ -145,17 +145,15 @@ def test_create_links_from_trace_id(monkeypatch: pytest.MonkeyPatch):
     # Trace ID Present
     links = create_links_from_trace_id("trace_id")
     assert len(links) == 1
-    assert links[0] == mock_link
+    assert links[0] == link
 
 
 def test_extract_retrieval_documents():
-    doc1 = MagicMock(spec=Document)
-    doc1.page_content = "content1"
-    doc1.metadata = {"dataset_id": "ds1", "doc_id": "di1", "document_id": "dd1", "score": 0.9}
-
-    doc2 = MagicMock(spec=Document)
-    doc2.page_content = "content2"
-    doc2.metadata = {"dataset_id": "ds2"}  # Missing some keys
+    doc1 = Document(
+        page_content="content1",
+        metadata={"dataset_id": "ds1", "doc_id": "di1", "document_id": "dd1", "score": 0.9},
+    )
+    doc2 = Document(page_content="content2", metadata={"dataset_id": "ds2"})  # Missing some keys
 
     documents = [doc1, doc2]
     extracted = extract_retrieval_documents(documents)

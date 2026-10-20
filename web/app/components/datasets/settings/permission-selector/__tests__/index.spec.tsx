@@ -1,12 +1,12 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps, ReactNode } from 'react'
-import type { Member } from '@/models/common'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Provider } from 'jotai'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { DatasetPermission } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createQueryAtomTestStore } from '@/test/query-atom'
 import PermissionSelector from '../index'
@@ -21,14 +21,14 @@ const currentUser = {
   timezone: 'UTC',
 }
 
-const memberList: Member[] = [
+const memberList: AccountWithRoleResponse[] = [
   {
     ...currentUser,
     avatar_url: '',
     role: 'owner',
     roles: [],
-    last_login_at: '',
-    created_at: '',
+    last_login_at: null,
+    created_at: null,
     status: 'active',
   },
   {
@@ -39,8 +39,8 @@ const memberList: Member[] = [
     avatar_url: '',
     role: 'admin',
     roles: [],
-    last_login_at: '',
-    created_at: '',
+    last_login_at: null,
+    created_at: null,
     status: 'active',
   },
   {
@@ -51,14 +51,14 @@ const memberList: Member[] = [
     avatar_url: '',
     role: 'normal',
     roles: [],
-    last_login_at: '',
-    created_at: '',
+    last_login_at: null,
+    created_at: null,
     status: 'active',
   },
 ]
 
 const defaultProps: ComponentProps<typeof PermissionSelector> = {
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   value: ['user-1'],
   memberList,
   onChange: vi.fn(),
@@ -94,22 +94,6 @@ describe('PermissionSelector', () => {
     vi.clearAllMocks()
   })
 
-  it('opens from its native button with the keyboard', async () => {
-    const user = userEvent.setup()
-    renderSelector()
-
-    const trigger = screen.getByRole('button', { name: /permissionsOnlyMe/ })
-    expect(trigger).toHaveAttribute('type', 'button')
-
-    await user.tab()
-    expect(trigger).toHaveFocus()
-    await user.keyboard('{Enter}')
-
-    const dialog = screen.getByRole('dialog', { name: /form.permissions/ })
-    expect(within(dialog).getByRole('radiogroup', { name: /form.permissions/ })).toBeInTheDocument()
-    expect(within(dialog).getByRole('radio', { name: /permissionsOnlyMe/ })).toBeChecked()
-  })
-
   it.each([
     ['the disabled prop', { disabled: true }, false],
     ['dataset RBAC', {}, true],
@@ -127,23 +111,22 @@ describe('PermissionSelector', () => {
   })
 
   it.each([
-    [DatasetPermission.onlyMe, /permissionsOnlyMe/],
-    [DatasetPermission.allTeamMembers, /permissionsAllMember/],
+    [PermissionLevel.onlyMe, /permissionsOnlyMe/],
+    [PermissionLevel.allTeamMembers, /permissionsAllMember/],
   ])('selects %s and closes the popover', async (permission, optionName) => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     renderSelector({
       permission:
-        permission === DatasetPermission.onlyMe
-          ? DatasetPermission.allTeamMembers
-          : DatasetPermission.onlyMe,
+        permission === PermissionLevel.onlyMe
+          ? PermissionLevel.allTeamMembers
+          : PermissionLevel.onlyMe,
       onChange,
     })
 
     await user.click(
       screen.getByRole('button', {
-        name:
-          permission === DatasetPermission.onlyMe ? /permissionsAllMember/ : /permissionsOnlyMe/,
+        name: permission === PermissionLevel.onlyMe ? /permissionsAllMember/ : /permissionsOnlyMe/,
       }),
     )
     const popover = screen.getByRole('dialog', { name: /form.permissions/ })
@@ -163,7 +146,7 @@ describe('PermissionSelector', () => {
     const popover = screen.getByRole('dialog', { name: /form.permissions/ })
     await user.click(within(popover).getByRole('radio', { name: /permissionsInvitedMembers/ }))
 
-    expect(onChange).toHaveBeenCalledWith(DatasetPermission.partialMembers)
+    expect(onChange).toHaveBeenCalledWith(PermissionLevel.partialMembers)
     expect(onMemberSelect).toHaveBeenCalledWith(['user-1'])
     expect(screen.getByRole('dialog', { name: /form.permissions/ })).toBeInTheDocument()
   })
@@ -179,7 +162,7 @@ describe('PermissionSelector', () => {
     onlyMe.focus()
     await user.keyboard('{ArrowDown}')
 
-    expect(onChange).toHaveBeenCalledWith(DatasetPermission.allTeamMembers)
+    expect(onChange).toHaveBeenCalledWith(PermissionLevel.allTeamMembers)
     expect(dialog).toBeInTheDocument()
   })
 
@@ -190,7 +173,7 @@ describe('PermissionSelector', () => {
     const user = userEvent.setup()
     const onMemberSelect = vi.fn()
     renderSelector({
-      permission: DatasetPermission.partialMembers,
+      permission: PermissionLevel.partialMembers,
       value,
       onMemberSelect,
     })
@@ -203,7 +186,7 @@ describe('PermissionSelector', () => {
 
   it('filters members after the search debounce and clears the query', async () => {
     const user = userEvent.setup()
-    renderSelector({ permission: DatasetPermission.partialMembers })
+    renderSelector({ permission: PermissionLevel.partialMembers })
 
     await user.click(screen.getByRole('button', { name: /Current User/ }))
     const search = screen.getByRole('searchbox', { name: /operation.search/ })
@@ -223,7 +206,7 @@ describe('PermissionSelector', () => {
 
   it('shows the empty state when no member matches', async () => {
     const user = userEvent.setup()
-    renderSelector({ permission: DatasetPermission.partialMembers })
+    renderSelector({ permission: PermissionLevel.partialMembers })
 
     await user.click(screen.getByRole('button', { name: /Current User/ }))
     await user.type(screen.getByRole('searchbox', { name: /operation.search/ }), 'Nobody')

@@ -8,6 +8,7 @@ import type { BuilderChatMessage, SkillBuilderAttachment, SkillBuilderModel } fr
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +21,6 @@ import { useDefaultModel } from '@/app/components/header/account-setting/model-p
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { toast } from '@/app/notifications'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
 import { sendSkillAssistMessage, uploadSkillFile } from '../client'
 import { SkillBuilderGridTexture } from './builder-grid-texture'
@@ -76,7 +76,7 @@ function BuilderModelSelector({
   selectedModel: SkillBuilderModel | undefined
   onSelect: (model: SkillBuilderModel) => void
 }) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <div className="flex w-fit max-w-full min-w-0 items-center gap-px">
@@ -116,7 +116,7 @@ function BuilderModelSelector({
           trigger={
             <button
               type="button"
-              aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
+              aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })}
               className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
@@ -336,6 +336,7 @@ export function SkillBuilderPanel({
   const thinkingElapsedSecondsRef = useRef(0)
   const isSendingRef = useRef(false)
   const isComposingRef = useRef(false)
+  const compositionEndTimerRef = useRef<number | undefined>(undefined)
   const detailRef = useRef(detail)
   const selectedFileRef = useRef(selectedFile)
   const assistAbortControllerRef = useRef<AbortController | null>(null)
@@ -439,6 +440,7 @@ export function SkillBuilderPanel({
 
   useEffect(() => {
     return () => {
+      window.clearTimeout(compositionEndTimerRef.current)
       assistAbortControllerRef.current?.abort()
       attachmentUploadGenerationRef.current += 1
     }
@@ -487,12 +489,14 @@ export function SkillBuilderPanel({
   }
 
   const handleCompositionStart = () => {
+    window.clearTimeout(compositionEndTimerRef.current)
     isComposingRef.current = true
   }
 
   const handleCompositionEnd = () => {
     // Safari can fire compositionend before the Enter keydown that confirms the composition.
-    window.setTimeout(() => {
+    window.clearTimeout(compositionEndTimerRef.current)
+    compositionEndTimerRef.current = window.setTimeout(() => {
       isComposingRef.current = false
     }, 50)
   }

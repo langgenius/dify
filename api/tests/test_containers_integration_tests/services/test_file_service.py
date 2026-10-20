@@ -91,7 +91,7 @@ class TestFileService:
         db_session_with_containers.commit()
 
         # Set current tenant for account
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         return account
 
@@ -163,7 +163,7 @@ class TestFileService:
         """
         Test successful file upload with valid parameters.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         filename = "test_document.pdf"
@@ -198,7 +198,7 @@ class TestFileService:
         """
         Test file upload with end user instead of account.
         """
-        fake = Faker()
+
         end_user = self._create_test_end_user(db_session_with_containers, mock_external_service_dependencies)
 
         filename = "test_image.jpg"
@@ -222,7 +222,7 @@ class TestFileService:
         """
         Test file upload with datasets source parameter.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         filename = "test_document.pdf"
@@ -247,7 +247,7 @@ class TestFileService:
         """
         Test file upload with invalid filename characters.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         filename = "test/file<name>.txt"
@@ -289,7 +289,7 @@ class TestFileService:
         """
         Test file upload with filename that exceeds length limit.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a filename longer than 200 characters
@@ -319,7 +319,7 @@ class TestFileService:
         """
         Test file upload for datasets with unsupported file type.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         filename = "test_image.jpg"
@@ -341,7 +341,7 @@ class TestFileService:
         """
         Test file upload with file size exceeding limit.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         filename = "large_image.jpg"
@@ -501,7 +501,7 @@ class TestFileService:
         """
         Test successful file preview generation.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
         upload_file = self._create_test_upload_file(
             db_session_with_containers, mock_external_service_dependencies, account
@@ -535,7 +535,7 @@ class TestFileService:
         """
         Test file preview with unsupported file type.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
         upload_file = self._create_test_upload_file(
             db_session_with_containers, mock_external_service_dependencies, account
@@ -555,7 +555,7 @@ class TestFileService:
         """
         Test file preview with text that exceeds preview limit.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
         upload_file = self._create_test_upload_file(
             db_session_with_containers, mock_external_service_dependencies, account
@@ -582,7 +582,7 @@ class TestFileService:
         """
         Test file upload with empty content.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         filename = "empty.txt"
@@ -605,7 +605,7 @@ class TestFileService:
         """
         Test file upload with special characters in filename (but valid ones).
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         filename = "test-file_with_underscores_and.dots.txt"
@@ -628,7 +628,7 @@ class TestFileService:
         """
         Test file upload with different case extensions.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         filename = "test.PDF"
@@ -698,7 +698,7 @@ class TestFileService:
         """
         Test file upload with source URL that gets overridden by signed URL.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         filename = "test.pdf"
@@ -737,7 +737,7 @@ class TestFileService:
         """
         Test file upload with blocked extension.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock blacklist configuration by patching the inner field
@@ -760,7 +760,7 @@ class TestFileService:
         """
         Test file upload with blocked extension (case insensitive).
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock blacklist configuration by patching the inner field
@@ -784,7 +784,7 @@ class TestFileService:
         """
         Test file upload with extension not in blacklist.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock blacklist configuration by patching the inner field
@@ -810,7 +810,7 @@ class TestFileService:
         """
         Test file upload with empty blacklist (default behavior).
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock empty blacklist configuration by patching the inner field
@@ -836,7 +836,7 @@ class TestFileService:
         """
         Test file upload with multiple blocked extensions.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock blacklist with multiple extensions by patching the inner field
@@ -861,7 +861,7 @@ class TestFileService:
         """
         Test file upload with no extension when blacklist is configured.
         """
-        fake = Faker()
+
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock blacklist configuration by patching the inner field

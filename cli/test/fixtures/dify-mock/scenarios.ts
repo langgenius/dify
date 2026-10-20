@@ -1,24 +1,28 @@
 export type Scenario =
   | 'happy'
+  | 'resource-token'
   | 'sso'
   | 'no-email'
   | 'denied'
   | 'expired'
   | 'auth-expired'
+  | 'forbidden'
   | 'rate-limited'
   | 'server-5xx'
   | 'slow-down'
   | 'stream-error'
+  | 'slow-stream'
+  | 'broken-stream'
   | 'hitl-pause'
   | 'hitl-resume'
-  | 'server-version-empty'
-  | 'server-version-unsupported'
-  | 'run-422-stale'
-  | 'workflow-think'
-  | 'chat-reasoning'
-  | 'workflow-reasoning'
+  | 'catalog-changed'
+  | 'no-catalog'
+  | 'workspaces-malformed'
+  | 'always-stale'
   | 'import-pending'
   | 'import-failed'
+  | 'no-device-flow'
+  | 'bad-verification-uri'
 
 export type AccountFixture = {
   id: string
@@ -33,7 +37,6 @@ export type WorkspaceFixture = {
   name: string
   role: string
   status: string
-  is_current: boolean
 }
 
 export type AppFixture = {
@@ -69,30 +72,28 @@ export const ACCOUNT: AccountFixture = {
   email: 'tester@dify.ai',
   name: 'Test Tester',
   is_external: false,
-  current_workspace_id: '550e8400-e29b-41d4-a716-446655440000',
+  current_workspace_id: 'ws-1',
 }
 
 export const WORKSPACES: WorkspaceFixture[] = [
   {
-    id: '550e8400-e29b-41d4-a716-446655440000',
+    id: 'ws-1',
     name: 'Default',
     role: 'owner',
     status: 'normal',
-    is_current: true,
   },
   {
-    id: '550e8400-e29b-41d4-a716-446655440001',
+    id: 'ws-2',
     name: 'Other',
     role: 'normal',
     status: 'normal',
-    is_current: false,
   },
 ]
 
 export const APPS: AppFixture[] = [
   {
     id: 'app-1',
-    workspace_id: '550e8400-e29b-41d4-a716-446655440000',
+    workspace_id: 'ws-1',
     workspace_name: 'Default',
     name: 'Greeter',
     mode: 'chat',
@@ -115,7 +116,7 @@ export const APPS: AppFixture[] = [
   },
   {
     id: 'app-4',
-    workspace_id: '550e8400-e29b-41d4-a716-446655440001',
+    workspace_id: 'ws-2',
     workspace_name: 'Other',
     name: 'Researcher',
     mode: 'agent-chat',
@@ -130,7 +131,7 @@ export const APPS: AppFixture[] = [
   },
   {
     id: 'app-2',
-    workspace_id: '550e8400-e29b-41d4-a716-446655440000',
+    workspace_id: 'ws-1',
     workspace_name: 'Default',
     name: 'Workflow',
     mode: 'workflow',
@@ -144,7 +145,7 @@ export const APPS: AppFixture[] = [
   },
   {
     id: 'app-3',
-    workspace_id: '550e8400-e29b-41d4-a716-446655440001',
+    workspace_id: 'ws-2',
     workspace_name: 'Other',
     name: 'OtherWS Bot',
     mode: 'chat',

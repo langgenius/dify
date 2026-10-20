@@ -260,7 +260,7 @@ class TestFeatureService:
         - Return value correctness and structure
         """
         # Arrange: Setup test data with proper config
-        tenant_id = self._create_test_tenant_id()
+        self._create_test_tenant_id()
 
         with patch("services.system_feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE

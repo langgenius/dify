@@ -1,21 +1,22 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
-    DatasourceEntity,
-    DatasourceIdentity,
+    DatasourceMessage,
     DatasourceProviderType,
     OnlineDriveBrowseFilesRequest,
+    OnlineDriveBrowseFilesResponse,
     OnlineDriveDownloadFileRequest,
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
+from tests.unit_tests.core.datasource.factories import datasource_entity
 
 
 class TestOnlineDriveDatasourcePlugin:
-    def test_init(self):
+    def test_init(self) -> None:
         # Arrange
-        entity = MagicMock(spec=DatasourceEntity)
-        runtime = MagicMock(spec=DatasourceRuntime)
+        entity = datasource_entity("test_name")
+        runtime = DatasourceRuntime(tenant_id="test_tenant")
         tenant_id = "test_tenant"
         icon = "test_icon"
         plugin_unique_identifier = "test_plugin_id"
@@ -36,15 +37,12 @@ class TestOnlineDriveDatasourcePlugin:
         assert plugin.icon == icon
         assert plugin.plugin_unique_identifier == plugin_unique_identifier
 
-    def test_online_drive_browse_files(self):
+    def test_online_drive_browse_files(self) -> None:
         # Arrange
-        entity = MagicMock(spec=DatasourceEntity)
-        identity = MagicMock(spec=DatasourceIdentity)
-        entity.identity = identity
-        identity.provider = "test_provider"
-        identity.name = "test_name"
+        entity = datasource_entity("test_name")
+        entity.identity.provider = "test_provider"
 
-        runtime = MagicMock(spec=DatasourceRuntime)
+        runtime = DatasourceRuntime(tenant_id="test_tenant")
         runtime.credentials = {"token": "test_token"}
 
         tenant_id = "test_tenant"
@@ -60,20 +58,22 @@ class TestOnlineDriveDatasourcePlugin:
         )
 
         user_id = "test_user"
-        request = MagicMock(spec=OnlineDriveBrowseFilesRequest)
+        request = OnlineDriveBrowseFilesRequest(prefix="folder-1")
         provider_type = "test_type"
 
-        mock_generator = MagicMock()
+        messages = [OnlineDriveBrowseFilesResponse(result=[])]
+        response_stream = (message for message in messages)
 
-        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as MockManager:
-            mock_manager_instance = MockManager.return_value
-            mock_manager_instance.online_drive_browse_files.return_value = mock_generator
+        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as mock_manager:
+            mock_manager_instance = mock_manager.return_value
+            mock_manager_instance.online_drive_browse_files.return_value = response_stream
 
             # Act
             result = plugin.online_drive_browse_files(user_id=user_id, request=request, provider_type=provider_type)
 
             # Assert
-            assert result == mock_generator
+            assert result is response_stream
+            assert list(result) == messages
             mock_manager_instance.online_drive_browse_files.assert_called_once_with(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -84,15 +84,12 @@ class TestOnlineDriveDatasourcePlugin:
                 provider_type=provider_type,
             )
 
-    def test_online_drive_download_file(self):
+    def test_online_drive_download_file(self) -> None:
         # Arrange
-        entity = MagicMock(spec=DatasourceEntity)
-        identity = MagicMock(spec=DatasourceIdentity)
-        entity.identity = identity
-        identity.provider = "test_provider"
-        identity.name = "test_name"
+        entity = datasource_entity("test_name")
+        entity.identity.provider = "test_provider"
 
-        runtime = MagicMock(spec=DatasourceRuntime)
+        runtime = DatasourceRuntime(tenant_id="test_tenant")
         runtime.credentials = {"token": "test_token"}
 
         tenant_id = "test_tenant"
@@ -108,20 +105,22 @@ class TestOnlineDriveDatasourcePlugin:
         )
 
         user_id = "test_user"
-        request = MagicMock(spec=OnlineDriveDownloadFileRequest)
+        request = OnlineDriveDownloadFileRequest(id="file-1")
         provider_type = "test_type"
 
-        mock_generator = MagicMock()
+        messages = [DatasourceMessage(type="text", message=DatasourceMessage.TextMessage(text="document content"))]
+        response_stream = (message for message in messages)
 
-        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as MockManager:
-            mock_manager_instance = MockManager.return_value
-            mock_manager_instance.online_drive_download_file.return_value = mock_generator
+        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as mock_manager:
+            mock_manager_instance = mock_manager.return_value
+            mock_manager_instance.online_drive_download_file.return_value = response_stream
 
             # Act
             result = plugin.online_drive_download_file(user_id=user_id, request=request, provider_type=provider_type)
 
             # Assert
-            assert result == mock_generator
+            assert result is response_stream
+            assert list(result) == messages
             mock_manager_instance.online_drive_download_file.assert_called_once_with(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -132,10 +131,10 @@ class TestOnlineDriveDatasourcePlugin:
                 provider_type=provider_type,
             )
 
-    def test_datasource_provider_type(self):
+    def test_datasource_provider_type(self) -> None:
         # Arrange
-        entity = MagicMock(spec=DatasourceEntity)
-        runtime = MagicMock(spec=DatasourceRuntime)
+        entity = datasource_entity("test_name")
+        runtime = DatasourceRuntime(tenant_id="test_tenant")
         plugin = OnlineDriveDatasourcePlugin(
             entity=entity, runtime=runtime, tenant_id="test", icon="test", plugin_unique_identifier="test"
         )

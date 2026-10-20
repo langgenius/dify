@@ -6,6 +6,23 @@ import { VarInInspectType } from '@/types/workflow'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '../../types'
 import Right from '../right'
+const createVariable = (overrides: Partial<VarInInspect> = {}): VarInInspect => ({
+  id: 'var-1',
+  type: VarInInspectType.node,
+  name: 'result',
+  description: '',
+  selector: ['node-1', 'result'],
+  value_type: VarType.string,
+  value: 'value',
+  edited: false,
+  visible: true,
+  is_truncated: false,
+  full_content: {
+    size_bytes: 0,
+    download_url: '',
+  },
+  ...overrides,
+})
 
 const { mockResetConversationVar, mockResetToLastRunVar } = vi.hoisted(() => ({
   mockResetConversationVar: vi.fn(),
@@ -29,45 +46,6 @@ vi.mock('../../hooks/use-nodes-interactions', () => ({
 vi.mock('../../hooks/use-tool-icon', () => ({
   useToolIcon: () => '',
 }))
-
-vi.mock('../../hooks-store', () => ({
-  useHooksStore: <T,>(selector: (state: { configsMap?: { flowId: string } }) => T) =>
-    selector({ configsMap: { flowId: 'flow-1' } }),
-}))
-
-vi.mock('../../nodes/_base/hooks/use-node-crud', () => ({
-  default: () => ({ setInputs: vi.fn() }),
-}))
-
-vi.mock('../../nodes/_base/hooks/use-node-info', () => ({
-  default: () => ({ node: undefined }),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({ eventEmitter: undefined }),
-}))
-
-vi.mock('../value-content', () => ({
-  default: () => <div>Value</div>,
-}))
-
-const createVariable = (overrides: Partial<VarInInspect> = {}): VarInInspect => ({
-  id: 'var-1',
-  type: VarInInspectType.node,
-  name: 'result',
-  description: '',
-  selector: ['node-1', 'result'],
-  value_type: VarType.string,
-  value: 'value',
-  edited: false,
-  visible: true,
-  is_truncated: false,
-  full_content: {
-    size_bytes: 0,
-    download_url: '',
-  },
-  ...overrides,
-})
 
 const createCurrentNodeVar = (overrides: Partial<VarInInspect> = {}): currentVarType => ({
   nodeId: 'node-1',
@@ -109,7 +87,9 @@ describe('VariableInspect Right', () => {
     const user = userEvent.setup()
     const { handleOpenMenu } = renderRight(createCurrentNodeVar(), { bottomPanelWidth: 400 })
 
-    await user.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.title' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.title' }),
+    )
 
     expect(handleOpenMenu).toHaveBeenCalledTimes(1)
   })
@@ -126,7 +106,7 @@ describe('VariableInspect Right', () => {
     )
 
     expect(
-      screen.getByRole('link', { name: 'workflow.debug.variableInspect.exportToolTip' }),
+      screen.getByRole('link', { name: 'workflowDebug.debug.variableInspect.exportToolTip' }),
     ).toHaveAttribute('href', 'https://example.com/result.txt')
   })
 
@@ -135,7 +115,9 @@ describe('VariableInspect Right', () => {
 
     renderRight(createCurrentNodeVar({ edited: true }))
 
-    await user.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.reset' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.reset' }),
+    )
 
     expect(mockResetToLastRunVar).toHaveBeenCalledWith('node-1', 'var-1')
   })
@@ -152,7 +134,7 @@ describe('VariableInspect Right', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.debug.variableInspect.resetConversationVar',
+        name: 'workflowDebug.debug.variableInspect.resetConversationVar',
       }),
     )
 

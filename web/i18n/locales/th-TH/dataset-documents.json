@@ -257,6 +257,7 @@
   "segment.searchResults_one": "ผล",
   "segment.searchResults_other": "ผลลัพธ์",
   "segment.searchResults_zero": "ผล",
+  "segment.statusFilterLabel": "กรองส่วนตามสถานะ",
   "segment.summary": "สรุป",
   "segment.summaryPlaceholder": "เขียนสรุปสั้นๆ เพื่อการค้นหาที่ดีขึ้น…"
 }
