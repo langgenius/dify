@@ -277,7 +277,7 @@ describe('ProviderConfigModal', () => {
       const callbacks = renderProviderConfigModal({ type: 'langfuse' })
 
       await user.type(
-        screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+        screen.getByLabelText('app.tracing.configProvider.secretKey', { exact: false }),
         'secret-key',
       )
       await user.type(
@@ -304,6 +304,29 @@ describe('ProviderConfigModal', () => {
           payload: validConfigs[provider],
         })
 
+        const credentialLabels = {
+          arize: ['API Key'],
+          phoenix: ['API Key'],
+          langsmith: ['API Key'],
+          langfuse: ['app.tracing.configProvider.secretKey'],
+          opik: ['API Key'],
+          weave: ['API Key'],
+          aliyun: ['License Key'],
+          mlflow: ['app.tracing.configProvider.password'],
+          databricks: [
+            'app.tracing.configProvider.clientSecret',
+            'app.tracing.configProvider.personalAccessToken',
+          ],
+          tencent: ['Token'],
+        } satisfies Record<ConfigurableTracingProvider, string[]>
+        for (const label of credentialLabels[provider]) {
+          const credential = screen.getByLabelText(label, { exact: false })
+          expect(credential).toHaveAttribute('type', 'password')
+          expect(credential).toHaveAttribute('autocomplete', 'off')
+          expect(credential).toHaveAttribute('autocapitalize', 'none')
+          expect(credential).toHaveAttribute('spellcheck', 'false')
+        }
+
         const edits = {
           arize: ['Space ID', 'space_id', 'new-space'],
           phoenix: ['app.tracing.configProvider.project', 'project', 'new-project'],
@@ -317,7 +340,7 @@ describe('ProviderConfigModal', () => {
           tencent: ['Service Name', 'service_name', 'new-service'],
         } satisfies Record<ConfigurableTracingProvider, [string, string, string]>
         const [label, key, value] = edits[provider]
-        const input = screen.getByRole('textbox', { name: label })
+        const input = screen.getByLabelText(label, { exact: false })
         await user.clear(input)
         await user.type(input, value)
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -387,6 +410,9 @@ describe('ProviderConfigModal', () => {
         await user.click(save)
         await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
         for (const input of screen.getAllByRole('textbox')) expect(input).toBeDisabled()
+        expect(
+          screen.getByLabelText('app.tracing.configProvider.secretKey', { exact: false }),
+        ).toBeDisabled()
         await user.type(host, '/unsaved')
         expect(host).toHaveValue('https://draft.langfuse.com')
         await user.click(save)
@@ -395,6 +421,9 @@ describe('ProviderConfigModal', () => {
 
         await waitFor(() => expect(save).not.toHaveAttribute('aria-disabled', 'true'))
         for (const input of screen.getAllByRole('textbox')) expect(input).toBeEnabled()
+        expect(
+          screen.getByLabelText('app.tracing.configProvider.secretKey', { exact: false }),
+        ).toBeEnabled()
         expect(host).toHaveValue('https://draft.langfuse.com')
         expect(screen.getByRole('alert')).toHaveTextContent('Config rejected')
         expect(request.mock.calls[0]![2]).toMatchObject({ silent: true })
@@ -427,7 +456,7 @@ describe('ProviderConfigModal', () => {
           type: provider,
           payload: { ...validConfigs[provider], [key]: value },
         })
-        const field = screen.getByRole('textbox', { name: label })
+        const field = screen.getByLabelText(label, { exact: false })
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
         expect(request).not.toHaveBeenCalled()
@@ -461,7 +490,7 @@ describe('ProviderConfigModal', () => {
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
         expect(request).not.toHaveBeenCalled()
-        const field = screen.getByRole('textbox', { name: missingField })
+        const field = screen.getByLabelText(missingField, { exact: false })
         expect(field).toBeInvalid()
         expect(field).toHaveFocus()
         expect(field).toHaveAccessibleDescription()
@@ -563,7 +592,7 @@ it.each(['app', 'agent'] as const)(
     expect(endpoint).toHaveValue('')
     expect(endpoint).toHaveAccessibleDescription('app.tracing.tencent.endpointHelp')
     expect(service).toHaveAccessibleDescription('app.tracing.tencent.serviceNameHelp')
-    await user.type(screen.getByRole('textbox', { name: 'Token' }), 'synthetic-token')
+    await user.type(screen.getByLabelText('Token', { exact: false }), 'synthetic-token')
     await user.type(endpoint, 'https://ap-guangzhou.apm.tencentcs.com:4320')
     await user.type(service, 'dify_app')
     await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
