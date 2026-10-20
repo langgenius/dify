@@ -255,7 +255,7 @@ function ModelSelectorTrigger({
     </Tooltip>
   )
 
-  if (!showClear) return trigger
+  if (!onClear) return trigger
 
   return (
     <div
@@ -265,19 +265,21 @@ function ModelSelectorTrigger({
       )}
     >
       {trigger}
-      <IconButton
-        aria-label={clearLabel ?? t(($) => $['operation.reset'], { ns: 'common' })}
-        size="sm"
-        disabled={isDisabled}
-        onClick={onClear}
-        className={cn(
-          'pointer-events-none absolute top-1/2 -translate-y-1/2 opacity-0 group-focus-within/model-selector-clearable:pointer-events-auto group-focus-within/model-selector-clearable:opacity-100 group-hover/model-selector-clearable:pointer-events-auto group-hover/model-selector-clearable:opacity-100',
-          'text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset',
-          shape === 'split' ? 'right-1' : size === 'small' ? 'right-4.5' : 'right-5',
-        )}
-      >
-        <span aria-hidden="true" className="i-ri-close-circle-fill size-4" />
-      </IconButton>
+      {showClear && (
+        <IconButton
+          aria-label={clearLabel ?? t(($) => $['operation.reset'], { ns: 'common' })}
+          size="sm"
+          disabled={isDisabled}
+          onClick={onClear}
+          className={cn(
+            'pointer-events-none absolute top-1/2 -translate-y-1/2 opacity-0 group-focus-within/model-selector-clearable:pointer-events-auto group-focus-within/model-selector-clearable:opacity-100 group-hover/model-selector-clearable:pointer-events-auto group-hover/model-selector-clearable:opacity-100',
+            'text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset',
+            shape === 'split' ? 'right-1' : size === 'small' ? 'right-4.5' : 'right-5',
+          )}
+        >
+          <span aria-hidden="true" className="i-ri-close-circle-fill size-4" />
+        </IconButton>
+      )}
     </div>
   )
 }

@@ -300,6 +300,7 @@ function SystemModelSession({
             setClearConfirmation({ modelType, labelKey, open: true })
             return
           }
+          modelTriggersRef.current[modelType]?.focus()
           handleChangeDefaultModel(modelType, undefined)
         }
       : undefined,
