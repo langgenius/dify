@@ -20,6 +20,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
 import models.workflow as workflow_models
 import services
+import services.rag_pipeline.rag_pipeline as rag_pipeline_service
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as workflow_controller
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
@@ -83,6 +84,7 @@ def sqlite_database(
     database = SQLiteDatabase(engine=sqlite_engine, session=database_session)
     monkeypatch.setattr(workflow_controller, "db", database)
     monkeypatch.setattr(workflow_models, "db", database)
+    monkeypatch.setattr(rag_pipeline_service, "db", database)
 
     with database_session() as session:
         default_author = Account(name="Default Author", email="default-author@example.com")
@@ -495,19 +497,20 @@ class TestDraftNodeRun:
 
 
 class TestPublishedPipelineApis:
-    def test_get_published_workflow_preserves_response_fields(self, app: Flask, workflow_author: Account) -> None:
-        pipeline = make_pipeline(is_published=True)
-        workflow = make_workflow(created_by=workflow_author.id)
-        service = MagicMock()
-        service.get_published_workflow.return_value = workflow
+    def test_get_published_workflow_preserves_response_fields(
+        self, app: Flask, workflow_author: Account, sqlite_database: scoped_session[Session]
+    ) -> None:
+        workflow = make_workflow(id=str(uuid4()), created_by=workflow_author.id)
+        sqlite_database.add(workflow)
+        sqlite_database.commit()
+        pipeline = make_pipeline(
+            id=workflow.app_id,
+            tenant_id=workflow.tenant_id,
+            workflow_id=workflow.id,
+            is_published=True,
+        )
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
-                return_value=service,
-            ),
-        ):
+        with app.test_request_context("/"):
             result = unwrap(PublishedRagPipelineApi.get)(PublishedRagPipelineApi(), pipeline)
 
         assert result["id"] == workflow.id
@@ -517,17 +520,14 @@ class TestPublishedPipelineApis:
 
     @pytest.mark.parametrize("is_published", [False, True])
     def test_get_without_published_workflow_returns_null(self, app: Flask, is_published: bool) -> None:
-        pipeline = make_pipeline(is_published=is_published)
-        service = MagicMock()
-        service.get_published_workflow.return_value = None
+        pipeline = make_pipeline(
+            id=DEFAULT_WORKFLOW_APP_ID,
+            tenant_id=DEFAULT_WORKFLOW_TENANT_ID,
+            workflow_id=str(uuid4()),
+            is_published=is_published,
+        )
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
-                return_value=service,
-            ),
-        ):
+        with app.test_request_context("/"):
             result = unwrap(PublishedRagPipelineApi.get)(PublishedRagPipelineApi(), pipeline)
 
         assert result is None
