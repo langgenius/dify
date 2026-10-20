@@ -30,7 +30,7 @@ export function KnowledgeUpgradeDialog({
   onCancel: () => void
   onStarted: (dataset: DatasetCardItem, job: KnowledgeFsUpgradeJobResponse) => void
 }) {
-  const { t } = useTranslation(['knowledgeUpgrade'])
+  const { t } = useTranslation(['knowledgeUpgrade', 'knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
   const cancelRef = useRef<HTMLButtonElement>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
@@ -103,6 +103,14 @@ export function KnowledgeUpgradeDialog({
                 />
               </li>
             </ul>
+            <a
+              href="https://docs.dify.ai/en/guides/knowledge-base"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-block text-text-accent underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+            >
+              {t(($) => $.learnMore, { ns: 'knowledgeSpace' })}
+            </a>
             {(discoveryQuery.isError || startMutation.isError) && (
               <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
                 {t(($) => $['upgrade.startFailed'], { ns: 'knowledgeUpgrade' })}

@@ -141,35 +141,6 @@ describe('OperationsDropdown', () => {
   })
 
   describe('User Interactions', () => {
-    it('exposes upgrade and its help as separate keyboard-addressable menu items', async () => {
-      const user = userEvent.setup()
-
-      render(
-        <KnowledgeUpgradeProvider onUpgradeStarted={vi.fn()}>
-          <OperationsDropdown {...defaultProps} />
-        </KnowledgeUpgradeProvider>,
-      )
-
-      await user.click(screen.getByLabelText('Dataset operations'))
-
-      const upgradeItem = await screen.findByRole('menuitem', {
-        name: 'knowledgeUpgrade.upgrade.menuLabel',
-      })
-      const guideItem = screen.getByRole('menuitem', {
-        name: 'knowledgeUpgrade.upgrade.guideTitle',
-      })
-      expect(upgradeItem).not.toContainElement(guideItem)
-
-      await user.click(guideItem)
-      expect(
-        await screen.findByText('knowledgeUpgrade.upgrade.guideDescription'),
-      ).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: 'knowledgeSpace.learnMore' })).toHaveAttribute(
-        'href',
-        'https://docs.dify.ai/en/guides/knowledge-base',
-      )
-    })
-
     it('opens the knowledge upgrade confirmation from an editable legacy card', async () => {
       const user = userEvent.setup()
 
@@ -180,9 +151,17 @@ describe('OperationsDropdown', () => {
       )
 
       await user.click(screen.getByLabelText('Dataset operations'))
-      await user.click(
-        await screen.findByRole('menuitem', { name: 'knowledgeUpgrade.upgrade.menuLabel' }),
-      )
+      const upgradeItem = await screen.findByRole('menuitem', {
+        name: 'knowledgeUpgrade.upgrade.menuLabel',
+      })
+      expect(upgradeItem).not.toHaveAttribute('aria-haspopup')
+      expect(screen.getAllByRole('menu')).toHaveLength(1)
+      expect(
+        screen.queryByRole('menuitem', {
+          name: 'knowledgeUpgrade.upgrade.guideTitle',
+        }),
+      ).not.toBeInTheDocument()
+      await user.click(upgradeItem)
 
       expect(
         await screen.findByRole('alertdialog', {

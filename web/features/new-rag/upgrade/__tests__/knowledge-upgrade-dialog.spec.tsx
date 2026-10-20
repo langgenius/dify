@@ -75,6 +75,27 @@ describe('KnowledgeUpgradeDialog', () => {
     })
   })
 
+  it('offers upgrade details and documentation before requiring an explicit confirmation', async () => {
+    const user = userEvent.setup()
+    const onCancel = vi.fn()
+    render(<KnowledgeUpgradeDialog dataset={dataset} onCancel={onCancel} onStarted={vi.fn()} />, {
+      wrapper: createWrapper(),
+    })
+
+    expect(screen.getByText('knowledgeUpgrade.upgrade.dialogDuration')).toBeVisible()
+    expect(screen.getByText('knowledgeUpgrade.upgrade.dialogLinkedApps')).toBeVisible()
+    const learnMore = screen.getByRole('link', { name: 'knowledgeSpace.learnMore' })
+    expect(learnMore).toHaveAttribute('href', 'https://docs.dify.ai/en/guides/knowledge-base')
+    expect(learnMore).toHaveAttribute('target', '_blank')
+    const startButton = screen.getByRole('button', { name: 'knowledgeUpgrade.upgrade.start' })
+    await waitFor(() => expect(startButton).toBeEnabled())
+    expect(startUpgradeMock).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(startUpgradeMock).not.toHaveBeenCalled()
+  })
+
   it('reuses the idempotency key when the same upgrade intent is retried', async () => {
     startUpgradeMock.mockRejectedValueOnce(new Error('response lost')).mockResolvedValueOnce(job)
     const onStarted = vi.fn()
