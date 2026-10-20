@@ -158,33 +158,36 @@ Explain the concrete reason after `--`: which external contract, lifecycle, or r
 
 ### Handwritten HTTP Calls
 
-`dify/no-handwritten-api` runs on Web production JavaScript and TypeScript,
-including service and feature clients. It reports calls to:
+Web production code uses native Oxlint rules to discourage new handwritten requests:
 
-- Global `fetch` and `XMLHttpRequest`, including `window`, `globalThis`, and `self` access.
-- Request helpers from `web/service/base.ts` and `web/service/fetch.ts`, including
-  public, marketplace, upload, streaming, and keepalive helpers.
-- Common HTTP clients such as `ky`, `axios`, `ofetch`, and `undici`.
+- `typescript/no-deprecated` rejects references to deprecated APIs. Legacy base/fetch
+  transport entry points carry `@deprecated`; generated `consoleClient`, `consoleQuery`,
+  and marketplace clients remain allowed, including direct calls from UI components.
+- `no-restricted-globals` and `no-restricted-properties` reject direct global
+  `fetch` / `XMLHttpRequest` references, including `window`, `globalThis`, `global`,
+  and `self` property access.
+- `no-restricted-imports` rejects new value imports from common HTTP packages
+  (including Ky, Axios, Undici and Node http/https). Type-only imports remain allowed.
+  Existing legacy-service and localStorage import/access restrictions remain active.
 
-The rule follows named/namespace imports, relative module paths, static member
-access, local aliases, object destructuring, bound functions, and client factories.
-It checks each call, so adding another request through an existing import still
-increases the violation count. Direct transport re-exports are also checked.
-Generated `consoleClient`, `consoleQuery`, and marketplace clients remain allowed,
-including direct calls from UI code; this rule does not enforce Query ownership.
+Tests, mocks, stories, test infrastructure, and maintenance scripts are excluded
+from these new rules. There is no custom API rule or data-flow tracker.
 
-Existing calls are recorded in `oxlint-suppressions.json`, including the generated
-clients' transport implementations. No production file or service directory is
-exempted from this rule. The baseline is a per-file count, not permission to add new
-endpoints: prune it when migrating existing calls and do not raise it for new work.
-Like other bulk suppressions, it cannot distinguish replacing one old call with
-another while keeping the same count.
+Existing findings are recorded in `oxlint-suppressions.json`. These are counts of
+references/imports, not endpoints awaiting migration: they include transport internals,
+assets, special transports, and unrelated deprecated APIs reported by `no-deprecated`.
+Prune counts when removing existing findings; do not raise them for new work.
+For a necessary new special transport, use a scoped `oxlint-disable-next-line`
+for the applicable native rule with a concrete contract reason.
 
-Tests, mocks, stories, test infrastructure, and maintenance scripts are outside this
-production rule. For a necessary new binary, streaming, third-party asset, or transport
-implementation, use a scoped `oxlint-disable-next-line dify/no-handwritten-api`
-with the concrete contract reason. The existing restrictions on importing
-`service/base` and `service/fetch` remain active independently.
+The simpler native checks intentionally accept gaps: for a deprecated arrow-function
+helper, current Oxlint reports `const saved = get` at assignment but does not propagate
+deprecation to later `saved()` calls. Adding calls through an existing alias,
+HTTP-client import, or XHR instance may therefore pass its existing baseline.
+Dynamic property access and indirect loading also require review. A per-file count
+cannot detect replacing one old use with another at the same count. Do not treat
+passing lint as proof that all requests use generated contracts. This rule set
+does not enforce Query ownership.
 
 ### Translation Function Types
 
