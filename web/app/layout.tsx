@@ -72,12 +72,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dehydratedState = errorDocument ? undefined : dehydrateSystemFeatures()
 
   return (
-    <html lang={locale} className={errorDocument ? 'h-full' : undefined} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>{!errorDocument && <ReactScanLoader />}</head>
-      <body
-        className={errorDocument ? 'h-full bg-background-body' : 'bg-background-body'}
-        {...datasetMap}
-      >
+      <body className="bg-background-body" {...datasetMap}>
         {!errorDocument && <CloudAnalytics />}
         <div className="isolate">
           <JotaiProvider>
