@@ -172,11 +172,6 @@ const ModelProviderPage = ({
       <SystemModelSelector
         className={className}
         notConfigured={showWarning}
-        textGenerationDefaultModel={textGenerationDefaultModel}
-        embeddingsDefaultModel={embeddingsDefaultModel}
-        rerankDefaultModel={rerankDefaultModel}
-        speech2textDefaultModel={speech2textDefaultModel}
-        ttsDefaultModel={ttsDefaultModel}
         isLoading={isDefaultModelLoading}
         hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
         onOpenMarketplace={onOpenMarketplace}
@@ -224,28 +219,36 @@ const ModelProviderPage = ({
         onValueChange={onSearchTextChange ?? noop}
       />
       <div className="flex shrink-0 items-center justify-end gap-2">
-        {showWarning ? (
-          <div className="relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 pr-1 pl-2.5 shadow-xs backdrop-blur-[5px]">
-            <div className="pointer-events-none absolute -inset-px bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
-            <div className="relative flex shrink-0 items-center gap-1">
-              <span
-                aria-hidden
-                className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
-              />
-              <span
-                className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary"
-                title={t(($) => $[warningTextKey], { ns: 'modelProvider' })}
-              >
-                {t(($) => $[warningTextKey], { ns: 'modelProvider' })}
-              </span>
-            </div>
-            <div className="relative shrink-0">
-              {systemModelSelector('h-6 px-1.5 text-xs font-medium')}
-            </div>
+        <div
+          className={
+            showWarning
+              ? 'relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 pr-1 pl-2.5 shadow-xs backdrop-blur-[5px]'
+              : 'contents'
+          }
+        >
+          {showWarning && (
+            <>
+              <div className="pointer-events-none absolute -inset-px bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
+              <div className="relative flex shrink-0 items-center gap-1">
+                <span
+                  aria-hidden
+                  className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+                />
+                <span
+                  className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary"
+                  title={t(($) => $[warningTextKey], { ns: 'modelProvider' })}
+                >
+                  {t(($) => $[warningTextKey], { ns: 'modelProvider' })}
+                </span>
+              </div>
+            </>
+          )}
+          <div className={showWarning ? 'relative shrink-0' : 'contents'}>
+            {systemModelSelector(
+              showWarning ? 'h-6 px-1.5 text-xs font-medium' : 'h-8 px-3 system-sm-medium',
+            )}
           </div>
-        ) : (
-          systemModelSelector('h-8 px-3 system-sm-medium')
-        )}
+        </div>
         {canSetPluginPreferences && <UpdateSettingDialog category={PluginCategoryEnum.model} />}
       </div>
     </div>

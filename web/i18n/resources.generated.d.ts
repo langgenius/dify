@@ -3187,6 +3187,8 @@ export default interface Resources {
     'modelProvider.card.usageLabel': 'Usage'
     'modelProvider.card.usagePriority': 'Usage Priority'
     'modelProvider.card.usagePriorityTip': 'Set which resource to use first when running models.'
+    'modelProvider.clearDefaultModel.description': 'This change takes effect when you save. Workflows that rely on this default model may then fail.'
+    'modelProvider.clearDefaultModel.title': 'Clear {{modelType}}?'
     'modelProvider.configureTip': 'Set up api-key or add model to use'
     'modelProvider.confirmDelete': 'Confirm deletion?'
     'modelProvider.defaultConfig': 'Default Config'
