@@ -1,14 +1,10 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
-import type { DropdownMenuActions } from '@langgenius/dify-ui/dropdown-menu'
-import type { DeploymentDialogPayload, DeploymentDialogRequest } from '../types'
+import type { DeploymentDialogRequest, OpenDeploymentDialog } from '../types'
 import type { EnvironmentDeploymentAction } from '../utils/environment-deployment'
 import type { DeploymentVersion } from '../utils/version'
-import type { UndeployDialogPayload } from './types'
-import { AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
+import type { OpenUndeployDialog } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Fragment, useMemo, useRef } from 'react'
+import { Fragment, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { getEnvironmentDeploymentActions } from '../utils/environment-deployment'
@@ -96,11 +92,13 @@ function deploymentDialogRequest(
 export function EnvironmentRowActions({
   latestVersion,
   row,
-  undeployDialogHandle,
+  onOpenDeployment,
+  onOpenUndeploy,
 }: {
   latestVersion?: DeploymentVersion
   row: EnvironmentDeployment
-  undeployDialogHandle: AlertDialogHandle<UndeployDialogPayload>
+  onOpenDeployment: OpenDeploymentDialog
+  onOpenUndeploy: OpenUndeployDialog
 }) {
   const { t } = useTranslation(['deployments'])
   const { t: tWorkflow } = useTranslation(['workflowHistory'])
@@ -109,31 +107,20 @@ export function EnvironmentRowActions({
   })
   const primaryTriggerRef = useRef<HTMLButtonElement | null>(null)
   const menuTriggerRef = useRef<HTMLButtonElement | null>(null)
-  const menuActionsRef = useRef<DropdownMenuActions | null>(null)
-  // Keep Trigger payloads stable while the Dialog Root rerenders its child function.
-  const actions = useMemo(
-    () =>
-      getEnvironmentDeploymentActions(row, {
-        deployLatestDisabled: !latestVersion,
-      }).map((action, index) => {
-        const request = deploymentDialogRequest(action, row, latestVersion, defaultVersionName)
-        return {
-          ...action,
-          dialogPayload: request
-            ? ({
-                menuActionsRef: index === 0 ? undefined : menuActionsRef,
-                request,
-                returnFocusRef: index === 0 ? primaryTriggerRef : menuTriggerRef,
-              } satisfies DeploymentDialogPayload)
-            : undefined,
-        }
-      }),
-    [defaultVersionName, latestVersion, row],
-  )
-  const undeployPayload = useMemo<UndeployDialogPayload>(
-    () => ({ deployment: row, menuActionsRef, returnFocusRef: menuTriggerRef }),
-    [row],
-  )
+  const actions = getEnvironmentDeploymentActions(row, {
+    deployLatestDisabled: !latestVersion,
+  })
+  const handleAction = (
+    action: EnvironmentDeploymentAction,
+    returnFocusElement: HTMLElement | null,
+  ) => {
+    if (action.kind === 'undeploy') {
+      onOpenUndeploy(row, returnFocusElement)
+      return
+    }
+    const request = deploymentDialogRequest(action, row, latestVersion, defaultVersionName)
+    if (request) onOpenDeployment(request, returnFocusElement)
+  }
   const primaryAction = actions[0]
   const moreActions = actions.slice(1)
 
@@ -141,19 +128,14 @@ export function EnvironmentRowActions({
 
   return (
     <div className="flex items-center justify-end gap-1">
-      <DialogTrigger<DeploymentDialogPayload>
+      <Button
+        ref={primaryTriggerRef}
+        size="small"
+        variant="secondary"
         disabled={primaryAction.disabled}
-        payload={primaryAction.dialogPayload}
-        render={
-          <Button
-            ref={primaryTriggerRef}
-            size="small"
-            variant="secondary"
-            disabled={primaryAction.disabled}
-            focusableWhenDisabled
-            className="min-w-0 gap-1 px-2"
-          />
-        }
+        focusableWhenDisabled
+        className="min-w-0 gap-1 px-2"
+        onClick={() => handleAction(primaryAction, primaryTriggerRef.current)}
       >
         <span
           aria-hidden
@@ -162,8 +144,8 @@ export function EnvironmentRowActions({
         <span className="truncate">
           {rowActionLabel(primaryAction, row, t, defaultVersionName)}
         </span>
-      </DialogTrigger>
-      <DropdownMenu actionsRef={menuActionsRef} modal={false}>
+      </Button>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger
           render={
             <IconButton
@@ -182,27 +164,11 @@ export function EnvironmentRowActions({
             <Fragment key={action.kind}>
               {action.kind === 'undeploy' && index > 0 && <DropdownMenuSeparator />}
               <DropdownMenuItem
-                closeOnClick={false}
                 disabled={action.disabled}
                 className="gap-2 px-2"
-                render={
-                  action.kind === 'undeploy' ? (
-                    <AlertDialogTrigger<UndeployDialogPayload>
-                      handle={undeployDialogHandle}
-                      nativeButton={false}
-                      disabled={action.disabled}
-                      payload={undeployPayload}
-                      render={<div />}
-                    />
-                  ) : (
-                    <DialogTrigger<DeploymentDialogPayload>
-                      nativeButton={false}
-                      disabled={action.disabled}
-                      payload={action.dialogPayload}
-                      render={<div />}
-                    />
-                  )
-                }
+                onClick={() => {
+                  handleAction(action, menuTriggerRef.current)
+                }}
               >
                 <span
                   aria-hidden

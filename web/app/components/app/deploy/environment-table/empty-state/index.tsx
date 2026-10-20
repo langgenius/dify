@@ -1,5 +1,6 @@
 'use client'
 
+import type { OpenDeploymentDialog } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentDeployMenu } from '../deploy-menu'
@@ -8,6 +9,7 @@ import { EmptyTableSkeleton } from './skeleton'
 type EnvironmentTableEmptyProps =
   | {
       state: 'empty'
+      onOpenDeployment: OpenDeploymentDialog
     }
   | {
       state: 'error'
@@ -47,7 +49,7 @@ export function EnvironmentTableEmpty(props: EnvironmentTableEmptyProps) {
               {tCommon(($) => $['operation.retry'])}
             </Button>
           ) : (
-            <EnvironmentDeployMenu appearance="empty" />
+            <EnvironmentDeployMenu appearance="empty" onOpenDeployment={props.onOpenDeployment} />
           )}
         </div>
       </div>

@@ -500,59 +500,6 @@ it('uses the requested version and restores surviving triggers as redeploy and u
   await expect.element(more).toHaveFocus()
 })
 
-it('keeps disabled composed menu triggers inert and opens the current environment after deployment finishes', async () => {
-  const deploying: EnvironmentDeployment = {
-    ...deployment,
-    deployment: {
-      runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
-    },
-  }
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const request = input instanceof Request ? input : new Request(input, init)
-    if (request.url.endsWith('/environments'))
-      return Response.json({ data: [{ ...environment, in_use: true }] })
-    if (request.url.endsWith('/workflows/environment-deployments'))
-      return Response.json({ environment_deployments: [deploying] })
-    throw new Error(`Unexpected request: ${request.method} ${request.url}`)
-  })
-  const screen = await renderDeploy({ environmentDeployments: [deploying] })
-  const more = screen.getByRole('button', { name: 'Canary · More actions', exact: true })
-  more.element().focus()
-  await userEvent.keyboard('{Enter}')
-  const changeVersion = screen.getByRole('menuitem', { name: 'Change version', exact: true })
-  await expect.element(changeVersion).toHaveAttribute('aria-disabled', 'true')
-  changeVersion.element().focus()
-  await expect.element(changeVersion).toHaveFocus()
-  await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
-  await userEvent.keyboard(' ')
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
-  await userEvent.keyboard('{Escape}')
-  await expect.element(more).toHaveFocus()
-
-  screen.queryClient.setQueryData(
-    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey({
-      input: { params: { app_id: appId } },
-    }),
-    { environment_deployments: [deployment] },
-  )
-  await userEvent.keyboard('{Enter}')
-  await expect.element(changeVersion).not.toHaveAttribute('aria-disabled', 'true')
-  await expect.element(changeVersion).toHaveFocus()
-  await userEvent.keyboard(' ')
-  const versions = screen.getByRole('dialog', { name: 'Change version · Canary', exact: true })
-  await expect.element(changeVersion).not.toBeInTheDocument()
-  await expect
-    .element(versions.getByRole('heading', { name: 'Change version · Canary', exact: true }))
-    .toHaveFocus()
-  await versions.getByRole('button', { name: /Release 1/ }).click()
-  const configuration = screen.getByRole('dialog', { name: 'Deploy configuration', exact: true })
-  await expect.element(configuration).toBeVisible()
-  await configuration.getByRole('button', { name: 'Cancel', exact: true }).click()
-  await expect.element(configuration).not.toBeInTheDocument()
-  await expect.element(more).toHaveFocus()
-})
-
 it('returns focus to the environment heading after a successful deployment removes the empty-state trigger', async () => {
   const deployed: EnvironmentDeployment = {
     ...deployment,

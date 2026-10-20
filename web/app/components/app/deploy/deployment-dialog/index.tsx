@@ -1,36 +1,38 @@
 'use client'
 
+import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
 import type { RefObject } from 'react'
-import type { DeploymentDialogPayload, DeploymentDialogRequest } from '../types'
+import type { DeploymentDialogRequest } from '../types'
 import type { DeploymentVersion } from '../utils/version'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useLayoutEffect, useState } from 'react'
+import { DialogContent } from '@langgenius/dify-ui/dialog'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { DeploymentConfiguration } from '../shared/deployment-configuration'
 import { VersionSelection } from '../shared/version-selection'
 
-export function DeploymentDialogSession({
+type DeploymentDialogContentProps = {
+  appId: string
+  request: DeploymentDialogRequest
+  onClose: () => void
+} & Pick<DialogContentProps, 'finalFocus'>
+
+function DeploymentDialogSession({
   appId,
-  menuActionsRef,
   request,
   titleRef,
   onClose,
-}: {
-  appId: string
-  menuActionsRef?: DeploymentDialogPayload['menuActionsRef']
-  request: DeploymentDialogRequest
+}: Omit<DeploymentDialogContentProps, 'finalFocus'> & {
   titleRef: RefObject<HTMLHeadingElement | null>
-  onClose: () => void
 }) {
   const [selectedVersion, setSelectedVersion] = useState<DeploymentVersion | undefined>(() =>
     'initialVersion' in request ? request.initialVersion : undefined,
   )
+  const previousVersionRef = useRef(selectedVersion)
   useLayoutEffect(() => {
-    titleRef.current?.focus()
+    // DialogContent owns opening focus; only move it when the wizard changes steps.
+    if (previousVersionRef.current !== selectedVersion) titleRef.current?.focus()
+    previousVersionRef.current = selectedVersion
   }, [selectedVersion, titleRef])
-  // Keep menu triggers mounted until Base UI has forwarded their payload and focus has moved.
-  useLayoutEffect(() => {
-    menuActionsRef?.current?.close()
-  }, [menuActionsRef])
 
   return (
     <div
@@ -58,5 +60,22 @@ export function DeploymentDialogSession({
         />
       )}
     </div>
+  )
+}
+
+export function DeploymentDialogContent({
+  finalFocus,
+  ...sessionProps
+}: DeploymentDialogContentProps) {
+  const titleRef = useRef<HTMLHeadingElement | null>(null)
+
+  return (
+    <DialogContent
+      initialFocus={titleRef}
+      finalFocus={finalFocus}
+      className="max-h-[min(44rem,calc(100dvh-32px))]"
+    >
+      <DeploymentDialogSession {...sessionProps} titleRef={titleRef} />
+    </DialogContent>
   )
 }

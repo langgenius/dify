@@ -1,8 +1,8 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import type { OpenDeploymentDialog } from '../types'
 import type { AccessPoint } from '../utils/access-point'
 import type { DeploymentVersion } from '../utils/version'
-import type { UndeployDialogPayload } from './types'
+import type { OpenUndeployDialog } from './types'
 import { RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { memo } from 'react'
 import { AccessPointIcon } from '../shared/access-point-icon'
@@ -18,13 +18,15 @@ export const EnvironmentRow = memo(
     canViewAccessPoint,
     latestVersion,
     row,
-    undeployDialogHandle,
+    onOpenDeployment,
+    onOpenUndeploy,
   }: {
     appId: string
     canViewAccessPoint: boolean
     latestVersion?: DeploymentVersion
     row: EnvironmentDeployment
-    undeployDialogHandle: AlertDialogHandle<UndeployDialogPayload>
+    onOpenDeployment: OpenDeploymentDialog
+    onOpenUndeploy: OpenUndeployDialog
   }) => {
     const runtimeState = row.deployment
       ? row.deployment.runtimeState
@@ -86,7 +88,8 @@ export const EnvironmentRow = memo(
           <EnvironmentRowActions
             latestVersion={latestVersion}
             row={row}
-            undeployDialogHandle={undeployDialogHandle}
+            onOpenDeployment={onOpenDeployment}
+            onOpenUndeploy={onOpenUndeploy}
           />
         </td>
       </tr>

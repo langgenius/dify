@@ -1,9 +1,7 @@
 'use client'
 
-import type { DropdownMenuActions } from '@langgenius/dify-ui/dropdown-menu'
-import type { DeploymentDialogPayload } from '../../types'
+import type { OpenDeploymentDialog } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useAtomValue } from 'jotai'
-import { useMemo, useRef } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
@@ -26,12 +24,16 @@ import {
 
 type EnvironmentDeployMenuProps = {
   appearance?: 'empty' | 'header'
+  onOpenDeployment: OpenDeploymentDialog
 }
 
-export function EnvironmentDeployMenu({ appearance = 'header' }: EnvironmentDeployMenuProps) {
+export function EnvironmentDeployMenu({
+  appearance = 'header',
+  onOpenDeployment,
+}: EnvironmentDeployMenuProps) {
   const { t } = useTranslation(['deployments'])
   const { t: tCommon } = useTranslation(['common'])
-  const undeployedEnvironments = useAtomValue(undeployedAppEnvironmentsAtom)
+  const undeployedEnvironments = useAtomValue(undeployedAppEnvironmentsAtom) ?? []
   const isLoading = useAtomValue(appEnvironmentsIsLoadingAtom)
   const isError = useAtomValue(appEnvironmentsIsErrorAtom)
   const isRetrying = useAtomValue(appEnvironmentsIsRetryingAtom)
@@ -39,27 +41,9 @@ export function EnvironmentDeployMenu({ appearance = 'header' }: EnvironmentDepl
   const isEmptyState = appearance === 'empty'
   const label = tCommon(($) => $['appMenus.deploy'])
   const triggerRef = useRef<HTMLButtonElement | null>(null)
-  const menuActionsRef = useRef<DropdownMenuActions | null>(null)
-  // The active Trigger forwards payload changes to the Root's child render function.
-  const environmentItems = useMemo(
-    () =>
-      (undeployedEnvironments ?? []).map((environment) => ({
-        environment,
-        payload: {
-          menuActionsRef,
-          request: {
-            environment: environment.display_name,
-            environmentId: environment.id,
-            kind: 'deploy',
-          },
-          returnFocusRef: triggerRef,
-        } satisfies DeploymentDialogPayload,
-      })),
-    [undeployedEnvironments],
-  )
 
   return (
-    <DropdownMenu actionsRef={menuActionsRef} modal={false}>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         render={
           <Button
@@ -106,25 +90,27 @@ export function EnvironmentDeployMenu({ appearance = 'header' }: EnvironmentDepl
                 )}
               </DropdownMenuItem>
             </div>
-          ) : environmentItems.length === 0 ? (
+          ) : undeployedEnvironments.length === 0 ? (
             <p role="status" className="px-2 py-1.5 system-xs-regular text-text-tertiary">
               {t(($) => $['deployDrawer.noNewEnvironmentAvailable'])}
             </p>
           ) : null}
           {!isLoading &&
             !isError &&
-            environmentItems.map(({ environment, payload }) => (
+            undeployedEnvironments.map((environment) => (
               <DropdownMenuItem
                 key={environment.id}
                 className="mx-0 gap-2 py-1.5"
-                closeOnClick={false}
-                render={
-                  <DialogTrigger<DeploymentDialogPayload>
-                    nativeButton={false}
-                    payload={payload}
-                    render={<div />}
-                  />
-                }
+                onClick={() => {
+                  onOpenDeployment(
+                    {
+                      environment: environment.display_name,
+                      environmentId: environment.id,
+                      kind: 'deploy',
+                    },
+                    triggerRef.current,
+                  )
+                }}
               >
                 <span
                   aria-hidden

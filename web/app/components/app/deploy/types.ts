@@ -1,5 +1,3 @@
-import type { DropdownMenuActions } from '@langgenius/dify-ui/dropdown-menu'
-import type { RefObject } from 'react'
 import type { DeploymentVersion } from './utils/version'
 
 type VersionSelectionRequest = {
@@ -19,8 +17,7 @@ type ConfigurationRequest = {
 
 export type DeploymentDialogRequest = ConfigurationRequest | VersionSelectionRequest
 
-export type DeploymentDialogPayload = {
-  menuActionsRef?: RefObject<DropdownMenuActions | null>
-  request: DeploymentDialogRequest
-  returnFocusRef: RefObject<HTMLElement | null>
-}
+export type OpenDeploymentDialog = (
+  request: DeploymentDialogRequest,
+  returnFocusElement: HTMLElement | null,
+) => void

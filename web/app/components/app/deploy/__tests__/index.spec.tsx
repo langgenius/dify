@@ -2031,6 +2031,87 @@ describe('AppDeploy', () => {
     ).toBeInTheDocument()
   })
 
+  it('preserves the deployment session when published and deployed versions refresh', async () => {
+    const user = userEvent.setup()
+    const requests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (!request.url.endsWith('/deployment:deploy'))
+        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+      requests.push(request.clone())
+      return Response.json({ message: 'Deployment failed' }, { status: 502 })
+    })
+    const row = environmentDeployment({
+      currentVersion: VERSIONS.version02,
+      id: 'pre-release',
+      name: 'Pre-release',
+      runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
+      versionsBehind: 1,
+    })
+    const view = render(<AppDeploy />, { environmentDeployments: [row] })
+    const environmentRow = screen.getByRole('row', { name: /Pre-release/ })
+    const builtIn = screen.getByRole('region', { name: 'deployments.studio.builtInTitle' })
+    await user.click(
+      within(environmentRow).getByRole('button', { name: 'deployments.studio.deployLatest' }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    const configuration = within(dialog)
+    await user.click(configuration.getByRole('combobox', { name: 'Moonshot' }))
+    await user.click(await screen.findByRole('option', { name: 'Development key' }))
+    const variables = within(configuration.getByRole('group', { name: 'Finance APP' }))
+    await user.click(variables.getByRole('combobox', { name: /PORT/ }))
+    await user.click(
+      await screen.findByRole('option', {
+        name: 'deployments.deployDrawer.envVarSource.literal',
+      }),
+    )
+    const port = variables.getByRole('spinbutton', { name: 'PORT' })
+    await user.type(port, '3000')
+
+    act(() => {
+      view.queryClient.setQueryData(appEnvironmentDeploymentsQueryOptions.queryKey, {
+        environment_deployments: [
+          environmentDeployment({
+            currentVersion: workflowVersion('Release 7', 'workflow-version-7'),
+            id: 'pre-release',
+            name: 'Pre-release',
+            runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
+            versionsBehind: 0,
+          }),
+        ],
+      })
+      view.queryClient.setQueryData(latestPublishedWorkflowQuery.queryKey, {
+        ...mockBuiltInEnvironment.publishedWorkflow,
+        id: 'workflow-version-8',
+        marked_name: 'Release 8',
+      })
+    })
+    await waitFor(() => {
+      expect(environmentRow).toHaveTextContent('deployments.studio.changeVersion')
+      expect(builtIn).toHaveTextContent('Release 8')
+    })
+    expect(dialog).toBeInTheDocument()
+    expect(configuration.getByText('Release 7')).toBeInTheDocument()
+    expect(configuration.getByRole('combobox', { name: 'Moonshot' })).toHaveTextContent(
+      'Development key',
+    )
+    expect(variables.getByRole('spinbutton', { name: 'PORT' })).toHaveValue(3000)
+    expect(port).toHaveFocus()
+    await user.click(configuration.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await waitFor(() => expect(requests).toHaveLength(1))
+    expect(new URL(requests[0]!.url).pathname).toContain(
+      '/workflows/workflow-version-7/environments/pre-release/deployment:deploy',
+    )
+    const body = await requests[0]!.json()
+    expect(body.environment_variable_groups[0].environment_variables).toContainEqual({
+      key: 'PORT',
+      value: 3000,
+      value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
+    })
+  })
+
   it('keeps deployment configuration and entered values open after an outside press', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
