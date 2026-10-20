@@ -268,16 +268,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/deploy/shared/deployment-configuration/index.tsx": {
-    "shadcn/no-restyle": {
-      "count": 2
-    }
-  },
-  "web/app/components/app/deploy/shared/version-selection/index.tsx": {
-    "shadcn/no-restyle": {
-      "count": 1
-    }
-  },
   "web/app/components/app/log/filter.tsx": {
     "react/only-export-components": {
       "count": 1
@@ -1364,11 +1354,6 @@
       "count": 5
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-selector/popup-item.tsx": {
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-configs.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
@@ -1699,11 +1684,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/snippet-list/__tests__/reflow.browser.spec.tsx": {
-    "@tanstack/query/prefer-query-options": {
       "count": 1
     }
   },
@@ -3042,11 +3022,6 @@
   },
   "web/features/account-profile/client.ts": {
     "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/files/__tests__/index.spec.tsx": {
-    "@tanstack/query/prefer-query-options": {
       "count": 1
     }
   },

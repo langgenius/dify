@@ -41,7 +41,6 @@
   "duplicateTitle": "Podvoji aplikacijo",
   "editApp": "Uredi informacije",
   "editAppTitle": "Uredi informacije o aplikaciji",
-  "editFailed": "Posodobitev informacij o aplikaciji ni uspela",
   "exportApp": "Izvozi aplikacijo",
   "exportFailed": "Izvoz ni uspel",
   "exportSecret.description": "Če je izbrano, bodo tajne vrednosti vključene v izvoženi paket aplikacije.",

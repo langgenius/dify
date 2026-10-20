@@ -4,6 +4,7 @@ import type { DeploymentDialogRequest } from '../../types'
 import type { DeploymentVersion } from '../../utils/version'
 import type { DeploymentConfigurationQueryState } from './use-deployment-configuration-queries'
 import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
+import type { DeploymentFieldError } from './utils/field-id'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -35,12 +36,16 @@ function ConfigurationError({ messages }: { messages: string[] }) {
 export function DeploymentConfigurationContent({
   compact = false,
   configurationValues,
+  fieldError,
+  onConfigurationChange,
   queryState,
   request,
   version,
 }: {
   compact?: boolean
   configurationValues: DeploymentConfigurationValuesController
+  fieldError?: DeploymentFieldError
+  onConfigurationChange: () => void
   queryState: DeploymentConfigurationQueryState
   request: DeploymentDialogRequest
   version: DeploymentVersion
@@ -130,15 +135,23 @@ export function DeploymentConfigurationContent({
             <CredentialsSection
               credentialSlots={deploymentOptions?.credential_slots ?? []}
               credentials={credentials}
+              fieldError={fieldError}
               horizontalPaddingClassName={horizontalPaddingClassName}
-              onChange={setCredential}
+              onChange={(key, value) => {
+                setCredential(key, value)
+                onConfigurationChange()
+              }}
             />
             <EnvironmentVariablesSection
               environmentVariableGroups={deploymentOptions?.environment_variable_groups ?? []}
+              fieldError={fieldError}
               getEnvironmentVariableSelection={getEnvironmentVariableSelection}
               hasCredentialSlots={hasCredentialSlots}
               horizontalPaddingClassName={horizontalPaddingClassName}
-              setEnvironmentVariableSelection={setEnvironmentVariableSelection}
+              setEnvironmentVariableSelection={(workflowId, key, value) => {
+                setEnvironmentVariableSelection(workflowId, key, value)
+                onConfigurationChange()
+              }}
             />
           </>
         )}

@@ -136,6 +136,34 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       workspaces: {
         current: {
+          networkAccessGroups: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                },
+              },
+            },
+            byGroupId: {
+              put: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+            },
+          },
           plugin: {
             readme: {
               get: {
@@ -699,6 +727,16 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
+          networkAccessGroup: {
+            put: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                },
+              },
+            },
+          },
           apiEnable: {
             post: {
               mutationOptions: {
@@ -2094,6 +2132,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
+}
+
+function invalidateNetworkAccessGroupQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+) {
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.networkAccessGroups.get.key(),
+    query.workspaces.current.networkAccessGroups.byGroupId.key(),
+    query.apps.byAppId.networkAccessGroup.key(),
+  ])
 }
 
 function invalidateAccessPolicyQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {

@@ -1,10 +1,10 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { BadYamlFormatError } from './errors'
-import { YamlStore } from './store'
+import { loadYaml, REMOVE, YamlStore } from './store'
 
 let dir: string
 let path: string
@@ -20,12 +20,12 @@ afterEach(async () => {
 
 async function parsed<T = Record<string, unknown>>(content: string): Promise<T | null> {
   await writeFile(path, content)
-  return new YamlStore(path).getTyped<T>()
+  return loadYaml(await new YamlStore(path).read(), path) as T | null
 }
 
-describe('YamlStore.getTyped', () => {
+describe('loadYaml', () => {
   it('returns null when the file does not exist', async () => {
-    expect(await new YamlStore(path).getTyped()).toBeNull()
+    expect(loadYaml(await new YamlStore(path).read(), path)).toBeNull()
   })
 
   it('reads an empty or comment-only file as an empty mapping', async () => {
@@ -82,57 +82,54 @@ describe('YamlStore.getTyped', () => {
   })
 })
 
-describe('YamlStore.withLock concurrency', () => {
+describe('YamlStore lock', () => {
   const HOLD_MS = 200
-  const releaseLater = (store: YamlStore) =>
-    new Promise<void>((resolve) => setTimeout(() => void store.unlock().then(resolve), HOLD_MS))
+  // Holds the lock the way another difyctl process would, then lets it go.
+  async function holdLock(beforeRelease: () => Promise<void> = async () => {}): Promise<void> {
+    await writeFile(`${path}.lock`, '')
+    setTimeout(() => void beforeRelease().then(() => unlink(`${path}.lock`)), HOLD_MS)
+  }
 
-  it('a second read waits while the first holds the lock, then reads', async () => {
+  it('a read waits while another process holds the lock', async () => {
     await writeFile(path, 'key: value\n')
-    const s1 = new YamlStore(path)
-    const s2 = new YamlStore(path)
-
-    await s1.lock()
-    const [value] = await Promise.all([s2.getTyped(), releaseLater(s1)])
-
-    expect(value).toEqual({ key: 'value' })
+    await holdLock()
+    const started = Date.now()
+    expect(await new YamlStore(path).read()).toBe('key: value\n')
+    expect(Date.now() - started).toBeGreaterThanOrEqual(HOLD_MS / 2)
   })
 
-  it('a second write waits while the first holds the lock, then writes', async () => {
+  it('an update waits while another process holds the lock, then sees its write', async () => {
     await writeFile(path, 'key: original\n')
-    const s1 = new YamlStore(path)
-    const s2 = new YamlStore(path)
+    await holdLock(() => writeFile(path, 'key: theirs\n'))
+    let seen: string | undefined
+    await new YamlStore(path).update((content) => {
+      seen = content
+      return { key: 'mine' }
+    })
+    expect(seen).toBe('key: theirs\n')
+    expect(readFileSync(path, 'utf8')).toBe('key: mine\n')
+  })
 
-    await s1.lock()
-    await Promise.all([s2.setTyped({ key: 'written' }), releaseLater(s1)])
-
-    expect(await s2.getTyped()).toEqual({ key: 'written' })
+  it('parallel updates from separate stores all land', async () => {
+    const WRITERS = 8
+    await Promise.all(
+      Array.from({ length: WRITERS }, (_, n) =>
+        new YamlStore(path).update((content) => ({
+          ...loadYaml(content, path),
+          [`k${n}`]: n,
+        })),
+      ),
+    )
+    expect(Object.keys(loadYaml(await new YamlStore(path).read(), path) ?? {})).toHaveLength(
+      WRITERS,
+    )
   })
 })
 
-describe('YamlStore.rmIf', () => {
-  it('removes the file when the predicate accepts what it holds', async () => {
-    await writeFile(path, 'device_code: dc-1\n')
-    await new YamlStore(path).rmIf((doc) => doc?.device_code === 'dc-1')
-    expect(existsSync(path)).toBe(false)
-  })
-
-  it('keeps the file when it holds something else', async () => {
-    await writeFile(path, 'device_code: dc-2\n')
-    await new YamlStore(path).rmIf((doc) => doc?.device_code === 'dc-1')
-    expect(readFileSync(path, 'utf8')).toBe('device_code: dc-2\n')
-  })
-
-  it('is a no-op when the file does not exist', async () => {
-    await new YamlStore(path).rmIf(() => true)
-    expect(existsSync(path)).toBe(false)
-  })
-})
-
-describe('YamlStore persistence', () => {
+describe('YamlStore.update', () => {
   it('round-trips a nested document through disk', async () => {
-    await new YamlStore(path).setTyped({ a: { b: { c: 'deep' } }, workspace: 'ws-123' })
-    expect(await new YamlStore(path).getTyped()).toEqual({
+    await new YamlStore(path).update(() => ({ a: { b: { c: 'deep' } }, workspace: 'ws-123' }))
+    expect(loadYaml(await new YamlStore(path).read(), path)).toEqual({
       a: { b: { c: 'deep' } },
       workspace: 'ws-123',
     })
@@ -141,36 +138,37 @@ describe('YamlStore persistence', () => {
   it.skipIf(process.platform === 'win32')(
     'writes the file with owner-only permissions',
     async () => {
-      await new YamlStore(path).setTyped({ token: 'abc-123' })
+      await new YamlStore(path).update(() => ({ token: 'abc-123' }))
       expect(statSync(path).mode & 0o777).toBe(0o600)
     },
   )
 
-  it('forgets its cached content once the file is deleted and reloaded', async () => {
+  it('leaves the file alone when the change returns undefined', async () => {
     await writeFile(path, 'key: value\n')
-
-    const store = new YamlStore(path)
-    expect(await store.getTyped<{ key: string }>()).toEqual({ key: 'value' })
-
-    await rm(path)
-    expect(await store.getTyped<{ key: string }>()).toBeNull()
-  })
-
-  it('flush writes file when dirty (content changed from undefined)', async () => {
-    const store = new YamlStore(path)
-    store.setRawContent('key: value\n')
-    await store.flush()
-    expect(existsSync(path)).toBe(true)
+    await new YamlStore(path).update(() => undefined)
     expect(readFileSync(path, 'utf8')).toBe('key: value\n')
   })
 
-  it('flush is a no-op when loaded content is set back unchanged', async () => {
+  it('skips the write when the document is unchanged', async () => {
     await writeFile(path, 'key: value\n')
-    const store = new YamlStore(path)
-    await store.load()
     const mtime = statSync(path).mtimeMs
-    store.setRawContent('key: value\n')
-    await store.flush()
+    await new YamlStore(path).update(() => ({ key: 'value' }))
     expect(statSync(path).mtimeMs).toBe(mtime)
+  })
+
+  it('deletes the file on REMOVE, and is a no-op when there is no file', async () => {
+    await writeFile(path, 'key: value\n')
+    await new YamlStore(path).update(() => REMOVE)
+    expect(existsSync(path)).toBe(false)
+    await new YamlStore(path).update(() => REMOVE)
+    expect(existsSync(path)).toBe(false)
+  })
+
+  it('reads the file again on each call', async () => {
+    const store = new YamlStore(path)
+    await writeFile(path, 'key: value\n')
+    expect(await store.read()).toBe('key: value\n')
+    await rm(path)
+    expect(await store.read()).toBeUndefined()
   })
 })

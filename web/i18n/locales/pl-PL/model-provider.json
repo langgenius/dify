@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "Użycie",
   "modelProvider.card.usagePriority": "Priorytet użycia",
   "modelProvider.card.usagePriorityTip": "Ustaw, który zasób ma być używany jako pierwszy przy uruchamianiu modeli.",
+  "modelProvider.clearDefaultModel.description": "Ta zmiana zostanie zastosowana po zapisaniu. Wyczyszczenie tego modelu domyślnego może spowodować nieprawidłowe działanie przepływów pracy, które od niego zależą.",
+  "modelProvider.clearDefaultModel.title": "Wyczyścić {{modelType}}?",
   "modelProvider.configureTip": "Konfigurowanie klucza interfejsu API lub dodawanie modelu do użycia",
   "modelProvider.confirmDelete": "potwierdzić usunięcie?",
   "modelProvider.defaultConfig": "Domyślna konfiguracja",

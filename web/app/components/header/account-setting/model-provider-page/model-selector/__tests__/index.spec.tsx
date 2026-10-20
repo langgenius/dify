@@ -4,14 +4,12 @@ import type {
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { DefaultModelResponse } from '../../declarations'
 import { render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
-import { useSystemDefaultModelAndModelList } from '../../hooks'
 import { ModelSelector, SplitModelSelector } from '../index'
 
 const makeModelItem = (
@@ -218,31 +216,13 @@ describe('ModelSelector', () => {
     'should display a loaded default model as incompatible when missing from the list (%s)',
     (provider) => {
       const models = [makeModel()]
-      function SystemDefaultSelector({ defaultModel }: { defaultModel?: DefaultModelResponse }) {
-        const [value] = useSystemDefaultModelAndModelList(defaultModel, models)
-        return <ModelSelector value={value} models={models} />
-      }
-      const { rerender } = renderWithQueryClient(<SystemDefaultSelector />)
+      const { rerender } = renderWithQueryClient(<ModelSelector models={models} />)
 
       expect(
         screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
       ).toBeInTheDocument()
 
-      rerender(
-        <SystemDefaultSelector
-          defaultModel={{
-            model: 'missing-model',
-            model_type: ModelTypeEnum.textGeneration,
-            provider: {
-              provider,
-              icon_small: { en_US: '', zh_Hans: '' },
-              label: { en_US: provider, zh_Hans: provider },
-              supported_model_types: [],
-              tenant_id: 'tenant-1',
-            },
-          }}
-        />,
-      )
+      rerender(<ModelSelector models={models} value={{ provider, model: 'missing-model' }} />)
 
       expect(
         screen.getByRole('button', {

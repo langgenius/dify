@@ -22,6 +22,11 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import {
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -573,8 +578,15 @@ export const useChat = (
       }
       if (generation !== workflowRequestGenerationRef.current) return
     }
-    if (!options.isNewAgent && stopChat && taskIdRef.current && !pausedStateRef.current)
-      stopChat(taskIdRef.current)
+    if (!options.isNewAgent && stopChat && taskIdRef.current && !pausedStateRef.current) {
+      void (async () => {
+        try {
+          await stopChat(taskIdRef.current)
+        } catch {
+          // The request layer owns error feedback; stopping locally must still finish.
+        }
+      })()
+    }
     stopLocalResponse()
     return true
   }, [stopChat, stopLocalResponse, options.isNewAgent, t])
@@ -1142,6 +1154,11 @@ export const useChat = (
       pausedStateRef.current = false
       resetWorkflowEventsSubscription()
       const requestGeneration = ++workflowRequestGenerationRef.current
+      const appAccessScope = isPublicAPI ? captureAppAccessScope() : null
+      const isCurrentRequest = () =>
+        requestGeneration === workflowRequestGenerationRef.current &&
+        isAppAccessScopeCurrent(appAccessScope) &&
+        !hasAppAccessError(appAccessScope)
 
       const parentMessage = threadMessages.find((item) => item.id === data.parent_message_id)
 
@@ -1214,13 +1231,13 @@ export const useChat = (
       let hasNotifiedConversationComplete = false
       let currentWorkflowRunId = ''
       const settleSend = (hasError?: boolean) => {
-        if (hasSettled) return
+        if (hasSettled || !isCurrentRequest()) return
 
         hasSettled = true
         onSendSettled?.(hasError)
       }
       const notifyConversationComplete = (workflowRunId?: string) => {
-        if (hasNotifiedConversationComplete) return
+        if (hasNotifiedConversationComplete || !isCurrentRequest()) return
 
         hasNotifiedConversationComplete = true
         onConversationComplete?.(conversationIdRef.current, workflowRunId)
@@ -1287,7 +1304,7 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          if (requestGeneration !== workflowRequestGenerationRef.current) return
+          if (!isCurrentRequest()) return
 
           handleResponding(false)
 
@@ -1301,11 +1318,22 @@ export const useChat = (
               !hasStopRespondedRef.current &&
               onGetConversationMessages
             ) {
-              const conversationMessagesResponse = await onGetConversationMessages(
-                conversationIdRef.current,
-                (newAbortController) =>
-                  (conversationMessagesAbortControllerRef.current = newAbortController),
-              )
+              let conversationMessagesResponse: unknown
+              try {
+                conversationMessagesResponse = await onGetConversationMessages(
+                  conversationIdRef.current,
+                  (newAbortController) => {
+                    if (isCurrentRequest())
+                      conversationMessagesAbortControllerRef.current = newAbortController
+                    else newAbortController.abort()
+                  },
+                )
+              } catch {
+                // Keep the streamed answer and its settlement when history cannot be refreshed.
+                return
+              }
+              if (!isCurrentRequest()) return
+
               const data = getConversationMessagesData(conversationMessagesResponse)
               const newResponseItem = data.find((item) => item.id === responseItem.id)
               completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
@@ -1371,6 +1399,7 @@ export const useChat = (
             notifyConversationComplete(completedWorkflowRunId)
 
             if (
+              isCurrentRequest() &&
               !hasError &&
               config?.suggested_questions_after_answer?.enabled &&
               !hasStopRespondedRef.current &&
@@ -1379,12 +1408,15 @@ export const useChat = (
               try {
                 const { data }: any = await onGetSuggestedQuestions(
                   responseItem.id,
-                  (newAbortController) =>
-                    (suggestedQuestionsAbortControllerRef.current = newAbortController),
+                  (newAbortController) => {
+                    if (isCurrentRequest())
+                      suggestedQuestionsAbortControllerRef.current = newAbortController
+                    else newAbortController.abort()
+                  },
                 )
-                setSuggestedQuestions(data)
+                if (isCurrentRequest()) setSuggestedQuestions(data)
               } catch {
-                setSuggestedQuestions([])
+                if (isCurrentRequest()) setSuggestedQuestions([])
               }
             }
           } finally {

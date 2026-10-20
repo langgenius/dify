@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "用量",
   "modelProvider.card.usagePriority": "使用優先順序",
   "modelProvider.card.usagePriorityTip": "設定執行模型時優先使用的資源。",
+  "modelProvider.clearDefaultModel.description": "此變更將在儲存後生效。清空後，依賴此預設模型的工作流程可能無法正常執行。",
+  "modelProvider.clearDefaultModel.title": "清空 {{modelType}}？",
   "modelProvider.configureTip": "設置 api-key 或新增要使用的模型",
   "modelProvider.confirmDelete": "確認刪除？",
   "modelProvider.defaultConfig": "默認配置",
