@@ -2,7 +2,7 @@ import type { OperationKeyOptions, OperationType } from '@orpc/tanstack-query'
 import { generateOperationKey } from '@orpc/tanstack-query'
 
 // Keep the path prefix aligned with createConsoleQuery in service/console/query-policies.ts.
-export const consoleOperationKey = <TType extends OperationType, TInput = unknown>(
+const consoleOperationKey = <TType extends OperationType, TInput = unknown>(
   path: string,
   options: OperationKeyOptions<TType, TInput> = {},
 ) => generateOperationKey(['console', ...path.split('.')], options)
