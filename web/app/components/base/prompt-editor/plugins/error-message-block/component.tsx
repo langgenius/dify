@@ -3,7 +3,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useEffect } from 'react'
 import { DELETE_ERROR_MESSAGE_COMMAND, ErrorMessageBlockNode } from '.'
-import { Variable02 } from '../../../icons/src/vender/solid/development'
 import { useSelectOrDelete } from '../../hooks'
 
 type Props = Readonly<{
@@ -32,7 +31,10 @@ const ErrorMessageBlockComponent: FC<Props> = ({ nodeKey }) => {
       }}
       ref={ref}
     >
-      <Variable02 className="mr-0.5 h-3.5 w-3.5" />
+      <span
+        aria-hidden
+        className="mr-0.5 i-custom-vender-solid-development-variable-02 h-3.5 w-3.5"
+      />
       <div className="text-xs font-medium">error_message</div>
     </div>
   )

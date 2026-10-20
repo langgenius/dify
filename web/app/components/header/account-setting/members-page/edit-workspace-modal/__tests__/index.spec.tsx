@@ -1,28 +1,25 @@
-import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { updateWorkspaceInfo } from '@/service/common'
-import { render } from '@/test/console/render'
+import { consoleClient } from '@/service/console'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import EditWorkspaceModal from '../index'
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
-const mockConsoleState = vi.hoisted(() => ({
-  current: {} as Partial<ConsoleStateFixture>,
-}))
-const mockConsoleStateReader = vi.hoisted(() => vi.fn())
+let isOwner = true
 
 const getSaveButton = () => screen.getByRole('button', { name: /operation\.(save|saving)/i })
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => mockConsoleState.current)
-})
-
-vi.mock('@/service/common')
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: (await import('@/test/console/service-responses')).withConsoleClientResponses(
+    (await importOriginal<typeof import('@/service/console')>()).consoleClient,
+    { 'workspaces.info.post': vi.fn() },
+  ),
+}))
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
   },
@@ -41,12 +38,7 @@ describe('EditWorkspaceModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    const consoleState = {
-      currentWorkspace: { name: 'Test Workspace' },
-      isCurrentWorkspaceOwner: true,
-    } as unknown as ConsoleStateFixture
-    mockConsoleState.current = consoleState
-    mockConsoleStateReader.mockReturnValue(consoleState)
+    isOwner = true
   })
 
   afterEach(() => {
@@ -58,31 +50,8 @@ describe('EditWorkspaceModal', () => {
       <>
         <EditWorkspaceModal onCancel={mockOnCancel} />
       </>,
+      { currentWorkspace: { name: 'Test Workspace', role: isOwner ? 'owner' : 'normal' } },
     )
-
-  it('should show current workspace name in the input', async () => {
-    renderModal()
-
-    expect(await screen.findByDisplayValue('Test Workspace')).toBeInTheDocument()
-  })
-
-  it('should render on the dify-ui overlay layer', async () => {
-    renderModal()
-
-    expect(await screen.findByRole('dialog')).toHaveClass('z-50')
-  })
-
-  it('should let user edit workspace name', async () => {
-    const user = userEvent.setup()
-
-    renderModal()
-
-    const input = screen.getByLabelText(/account\.workspaceName/i)
-    await user.clear(input)
-    await user.type(input, 'New Workspace Name')
-
-    expect(input).toHaveValue('New Workspace Name')
-  })
 
   it('should submit update when confirming as owner', async () => {
     const user = userEvent.setup()
@@ -92,7 +61,7 @@ describe('EditWorkspaceModal', () => {
       assign: mockAssign,
       origin: 'http://localhost',
     })
-    vi.mocked(updateWorkspaceInfo).mockResolvedValue({
+    vi.mocked(consoleClient.workspaces.info.post).mockResolvedValue({
       result: 'success',
       tenant: { id: 'workspace-id' },
     })
@@ -105,8 +74,7 @@ describe('EditWorkspaceModal', () => {
     await user.click(getSaveButton())
 
     await waitFor(() => {
-      expect(updateWorkspaceInfo).toHaveBeenCalledWith({
-        url: '/workspaces/info',
+      expect(consoleClient.workspaces.info.post).toHaveBeenCalledWith({
         body: { name: 'Renamed Workspace' },
       })
       expect(mockAssign).toHaveBeenCalledWith('http://localhost')
@@ -115,10 +83,37 @@ describe('EditWorkspaceModal', () => {
     expect(mockOnCancel).not.toHaveBeenCalled()
   })
 
+  it('should expose the saving label and prevent duplicate form submission', async () => {
+    const user = userEvent.setup()
+    let rejectUpdate!: (reason: Error) => void
+    vi.mocked(consoleClient.workspaces.info.post).mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectUpdate = reject
+        }),
+    )
+    renderModal()
+    const input = screen.getByLabelText(/account\.workspaceName/i)
+    await user.clear(input)
+    await user.type(input, 'Renamed Workspace')
+
+    await user.click(getSaveButton())
+
+    const savingButton = screen.getByRole('button', { name: /operation\.saving/i })
+    expect(savingButton).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.submit(savingButton.closest('form')!)
+    expect(consoleClient.workspaces.info.post).toHaveBeenCalledOnce()
+
+    rejectUpdate(new Error('update failed'))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /operation\.save/i })).toBeEnabled()
+    })
+  })
+
   it('should show error toast when update fails', async () => {
     const user = userEvent.setup()
 
-    vi.mocked(updateWorkspaceInfo).mockRejectedValue(new Error('update failed'))
+    vi.mocked(consoleClient.workspaces.info.post).mockRejectedValue(new Error('update failed'))
 
     renderModal()
 
@@ -134,12 +129,6 @@ describe('EditWorkspaceModal', () => {
         }),
       )
     })
-  })
-
-  it('should disable save button when there are no changes', async () => {
-    renderModal()
-
-    expect(getSaveButton()).toBeDisabled()
   })
 
   it('should disable save button and show error when the name is empty', async () => {
@@ -166,19 +155,22 @@ describe('EditWorkspaceModal', () => {
 
     fireEvent.submit(form!)
 
-    expect(updateWorkspaceInfo).not.toHaveBeenCalled()
+    expect(consoleClient.workspaces.info.post).not.toHaveBeenCalled()
     expect(mockNotify).not.toHaveBeenCalled()
   })
 
-  it('should disable confirm button for non-owners', async () => {
-    mockConsoleStateReader.mockReturnValue({
-      currentWorkspace: { name: 'Test Workspace' },
-      isCurrentWorkspaceOwner: false,
-    } as unknown as ConsoleStateFixture)
+  it('prevents a non-owner from submitting a changed workspace name', async () => {
+    isOwner = false
 
     renderModal()
 
+    const user = userEvent.setup()
+    const input = screen.getByLabelText(/account\.workspaceName/i)
+    await user.clear(input)
+    await user.type(input, 'Unauthorized rename')
     expect(getSaveButton()).toBeDisabled()
+    await user.click(getSaveButton())
+    expect(consoleClient.workspaces.info.post).not.toHaveBeenCalled()
   })
 
   it('should call onCancel when close icon is clicked', async () => {

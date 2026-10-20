@@ -5,18 +5,18 @@ import AppList from './app-list'
 
 type CreateAppDialogProps = {
   show: boolean
-  onSuccess: () => void
   onClose: () => void
   onCreateFromBlank?: () => void
+  templateMode?: 'agent'
 }
 
 const CreateAppTemplateDialog = ({
   show,
-  onSuccess,
   onClose,
   onCreateFromBlank,
+  templateMode,
 }: CreateAppDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <CreateAppDialogShell
@@ -26,10 +26,8 @@ const CreateAppTemplateDialog = ({
     >
       <AppList
         onCreateFromBlank={onCreateFromBlank}
-        onSuccess={() => {
-          onSuccess()
-          onClose()
-        }}
+        onClose={onClose}
+        templateMode={templateMode}
       />
     </CreateAppDialogShell>
   )

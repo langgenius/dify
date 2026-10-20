@@ -11,7 +11,6 @@ import {
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
@@ -38,7 +37,7 @@ type Props = {
 }
 
 const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariableMap }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const [expandedLoops, setExpandedLoops] = useState<Record<number, boolean>>({})
 
   const toggleLoop = useCallback((index: number) => {
@@ -90,8 +89,9 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
 
   return (
     <div className="bg-components-panel-bg">
-      <div
-        className="flex h-8 cursor-pointer items-center border-b-[0.5px] border-b-divider-regular px-4 text-text-accent-secondary"
+      <button
+        type="button"
+        className="flex h-8 w-full cursor-pointer items-center border-b-[0.5px] border-b-divider-regular px-4 text-text-accent-secondary"
         onClick={(e) => {
           e.stopPropagation()
           e.nativeEvent.stopImmediatePropagation()
@@ -102,7 +102,7 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
         <div className="system-sm-medium">
           {t(($) => $[`${i18nPrefix}.back`], { ns: 'workflow' })}
         </div>
-      </div>
+      </button>
       {/* List */}
       <div className="bg-components-panel-bg p-2">
         {list.map((loop, index) => (
@@ -110,7 +110,9 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
             key={index}
             className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}
           >
-            <div
+            <button
+              type="button"
+              aria-expanded={!!expandedLoops[index]}
               className={cn(
                 'flex w-full cursor-pointer items-center justify-between px-3',
                 expandedLoops[index] ? 'pt-3 pb-2' : 'py-3',
@@ -120,16 +122,21 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
             >
               <div className={cn('flex grow items-center gap-2')}>
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
-                  <Loop className="size-3 text-text-primary-on-surface" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-workflow-loop size-3 text-text-primary-on-surface"
+                  />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
                   {t(($) => $[`${i18nPrefix}.loop`], { ns: 'workflow' })} {index + 1}
                 </span>
                 {loopStatusShow(index, loop, loopDurationMap)}
               </div>
-            </div>
+            </button>
             {expandedLoops[index] && <div className="h-px grow bg-divider-subtle"></div>}
             <div
+              inert={!expandedLoops[index]}
+              aria-hidden={!expandedLoops[index]}
               className={cn(
                 'transition-all duration-200',
                 expandedLoops[index] ? 'opacity-100' : 'max-h-0 overflow-hidden opacity-0',
@@ -142,7 +149,7 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
                     title={
                       <div>
                         {t(($) => $['nodes.loop.loopVariables'], {
-                          ns: 'workflow',
+                          ns: 'workflowLogic',
                         }).toLocaleUpperCase()}
                       </div>
                     }

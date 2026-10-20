@@ -1,9 +1,10 @@
 import type { PermissionCatalogResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/client'
+import { AgentPermission } from '@/features/agent-v2/acl'
+import { consoleQuery } from '@/service/console'
 import { createTestQueryClient } from '@/test/query-client'
 import PermissionSetModal from '../index'
 
@@ -19,7 +20,6 @@ const expectedAppACLPermissionKeys = [
   'app.acl.tracing_config',
   'app.acl.log_and_annotation',
   'app.acl.access_config',
-  'app.acl.access_point_manage',
 ]
 
 const getPermissionKeyMatcher = (permissionKey: string) =>
@@ -78,6 +78,22 @@ const renderModal = (modal: ReactNode) => {
     datasetPermissionCatalog,
   )
 
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.agent.get.queryKey({ input: {} }),
+    {
+      groups: [
+        {
+          group_key: 'agent_acl',
+          group_name: 'Agent',
+          description: '',
+          permissions: Object.values(AgentPermission)
+            .filter((key) => key !== AgentPermission.Create)
+            .map((key) => ({ key, name: key, description: '' })),
+        },
+      ],
+    },
+  )
+
   return render(<QueryClientProvider client={queryClient}>{modal}</QueryClientProvider>)
 }
 
@@ -88,29 +104,6 @@ describe('PermissionSetModal', () => {
 
   // Rendering keeps the form fields and permission picker available inside the modal.
   describe('Rendering', () => {
-    it('should render create mode with app permission catalog', () => {
-      renderModal(
-        <PermissionSetModal
-          open
-          mode="create"
-          resourceType="app"
-          onClose={vi.fn()}
-          onSubmit={vi.fn()}
-        />,
-      )
-
-      expect(
-        screen.getByText('permission.permissionSet.modal.create.app.title'),
-      ).toBeInTheDocument()
-      expect(screen.getByLabelText(/permission\.permissionSet\.nameLabel/)).toBeInTheDocument()
-      expect(screen.getByLabelText('permission.permissionSet.descriptionLabel')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /Translated app permissions/ })).toHaveAttribute(
-        'aria-expanded',
-        'true',
-      )
-      expect(screen.getByText(/app\.acl\.edit/)).toBeInTheDocument()
-    })
-
     it('should render the complete app ACL permission catalog', async () => {
       renderModal(
         <PermissionSetModal
@@ -123,7 +116,9 @@ describe('PermissionSetModal', () => {
       )
 
       for (const permissionKey of expectedAppACLPermissionKeys)
-        expect(await screen.findByText(getPermissionKeyMatcher(permissionKey))).toBeInTheDocument()
+        expect(
+          await screen.findByRole('checkbox', { name: getPermissionKeyMatcher(permissionKey) }),
+        ).toBeInTheDocument()
     })
 
     it('should render dataset permission catalog when resource type is dataset', () => {
@@ -244,5 +239,51 @@ describe('PermissionSetModal', () => {
         screen.queryByRole('button', { name: 'permission.permissionList.clearAll' }),
       ).not.toBeInTheDocument()
     })
+  })
+  it('renders all eleven Agent ACL permissions without the workspace create permission', () => {
+    renderModal(
+      <PermissionSetModal
+        open
+        mode="create"
+        resourceType="agent"
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    )
+    for (const permission of Object.values(AgentPermission).filter(
+      (key) => key !== AgentPermission.Create,
+    )) {
+      expect(
+        screen.getByRole('checkbox', { name: getPermissionKeyMatcher(permission) }),
+      ).toBeInTheDocument()
+    }
+    expect(screen.queryByRole('checkbox', { name: /agent.create/ })).not.toBeInTheDocument()
+  })
+
+  it('keeps the form open and preserves input after a failed save', async () => {
+    const user = userEvent.setup()
+    const close = vi.fn()
+    const submit = vi.fn().mockRejectedValue(new Error('Unavailable'))
+    renderModal(
+      <PermissionSetModal
+        open
+        mode="create"
+        resourceType="agent"
+        onClose={close}
+        onSubmit={submit}
+      />,
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: /permissionSet.nameLabel/ }),
+      'Agent reviewers',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed'),
+    )
+    expect(screen.getByRole('textbox', { name: /permissionSet.nameLabel/ })).toHaveValue(
+      'Agent reviewers',
+    )
+    expect(close).not.toHaveBeenCalled()
   })
 })

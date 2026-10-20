@@ -15,7 +15,7 @@ export function OperationButton({
   className,
   ...buttonProps
 }: OperationButtonProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   return (
     <Button
       {...buttonProps}

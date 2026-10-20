@@ -3,6 +3,57 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAgentBackendUnreachableError,
+  zAgentNameConflictError,
+  zAgentNotBoundError,
+  zAgentNotFoundError,
+  zAgentNotPublishedError,
+  zAgentSoulLockedError,
+  zAgentVersionConflictError,
+  zAgentVersionNotFoundError,
+  zAppNotFoundError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppUnavailableError,
+  zAudioTooLargeError,
+  zBindingFileDownloadUnavailableError,
+  zCompletionRequestError,
+  zDraftWorkflowNotExistError,
+  zDraftWorkflowNotSyncError,
+  zForbiddenError,
+  zInspectorUnavailableError,
+  zInvalidComposerConfigError,
+  zInvalidRosterAgentPackageError,
+  zInvalidTracingConfigError,
+  zMaxKeysExceededError,
+  zModelCurrentlyNotSupportError,
+  zNoActiveBindingError,
+  zNoAudioUploadedError,
+  zNoFileUploadedError,
+  zNodeNotInWorkflowRunError,
+  zNodeOutputNotDeclaredError,
+  zPlaintextSecretNotAllowedError,
+  zProviderNotInitializeError,
+  zProviderNotSupportSpeechToTextError,
+  zProviderNotSupportTextToSpeechError,
+  zProviderQuotaExceededError,
+  zRateLimitError,
+  zRecommendedAppNotFoundError,
+  zRosterAgentPackageExportFailedError,
+  zRosterAgentPackageImportFailedError,
+  zRosterAgentPackageResourceUnavailableError,
+  zRosterAgentPackageTooLargeError,
+  zSpeechToTextDisabledError,
+  zTooManyFilesError,
+  zTraceConfigAlreadyExistsError,
+  zTraceConfigNotFoundError,
+  zTracingConfigProcessingFailedError,
+  zTracingConfigVerificationFailedError,
+  zTracingProviderUnavailableError,
+  zUnsupportedAudioTypeError,
+  zUnsupportedTracingProviderError,
+  zWorkflowRunNotFoundError,
+} from './zod.gen.ts'
+import {
   zDeleteAppsByAppIdAgentConfigFilesByNamePath,
   zDeleteAppsByAppIdAgentConfigFilesByNameQuery,
   zDeleteAppsByAppIdAgentConfigFilesByNameResponse,
@@ -12,6 +63,7 @@ import {
   zDeleteAppsByAppIdAnnotationsByAnnotationIdPath,
   zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse,
   zDeleteAppsByAppIdAnnotationsPath,
+  zDeleteAppsByAppIdAnnotationsQuery,
   zDeleteAppsByAppIdAnnotationsResponse,
   zDeleteAppsByAppIdChatConversationsByConversationIdPath,
   zDeleteAppsByAppIdChatConversationsByConversationIdResponse,
@@ -113,9 +165,6 @@ import {
   zGetAppsByAppIdExportPath,
   zGetAppsByAppIdExportQuery,
   zGetAppsByAppIdExportResponse,
-  zGetAppsByAppIdFeedbacksExportPath,
-  zGetAppsByAppIdFeedbacksExportQuery,
-  zGetAppsByAppIdFeedbacksExportResponse,
   zGetAppsByAppIdMessagesByMessageIdPath,
   zGetAppsByAppIdMessagesByMessageIdResponse,
   zGetAppsByAppIdPath,
@@ -458,7 +507,7 @@ import {
   zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse,
   zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetPath,
   zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({
@@ -470,6 +519,7 @@ export const get = oc
   })
   .input(z.object({ params: zGetAppsImportsByAppIdCheckDependenciesPath }))
   .output(zGetAppsImportsByAppIdCheckDependenciesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const checkDependencies = {
   get,
@@ -508,6 +558,17 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostAppsImportsBody }))
   .output(zPostAppsImportsResponse)
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    invalid_roster_agent_package: { status: 400, data: zInvalidRosterAgentPackageError },
+    recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError },
+    roster_agent_package_import_failed: { status: 500, data: zRosterAgentPackageImportFailedError },
+    roster_agent_package_resource_unavailable: {
+      status: 503,
+      data: zRosterAgentPackageResourceUnavailableError,
+    },
+    roster_agent_package_too_large: { status: 413, data: zRosterAgentPackageTooLargeError },
+  })
 
 export const imports = {
   post: post2,
@@ -516,8 +577,6 @@ export const imports = {
 }
 
 /**
- * Return the lightweight app cards needed by the Explore home page
- *
  * Get recently modified apps for the home Continue Work section
  */
 export const get2 = oc
@@ -527,10 +586,9 @@ export const get2 = oc
     method: 'GET',
     operationId: 'getAppsRecent',
     path: '/apps/recent',
-    summary: 'Return the lightweight app cards needed by the Explore home page',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsRecentQuery.optional() }))
+  .input(z.object({ query: zGetAppsRecentQuery.optional() }).optional())
   .output(zGetAppsRecentResponse)
 
 export const recent = {
@@ -549,7 +607,7 @@ export const get3 = oc
     path: '/apps/starred',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsStarredQuery.optional() }))
+  .input(z.object({ query: zGetAppsStarredQuery.optional() }).optional())
   .output(zGetAppsStarredResponse)
 
 export const starred = {
@@ -601,6 +659,7 @@ export const get4 = oc
     }),
   )
   .output(zGetAppsByAppIdAdvancedChatWorkflowRunsCountResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const count = {
   get: get4,
@@ -628,6 +687,7 @@ export const get5 = oc
     }),
   )
   .output(zGetAppsByAppIdAdvancedChatWorkflowRunsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const workflowRuns = {
   get: get5,
@@ -656,6 +716,7 @@ export const post4 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const preview = {
   post: post4,
@@ -683,6 +744,7 @@ export const post5 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run = {
   post: post5,
@@ -727,6 +789,7 @@ export const post6 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run2 = {
   post: post6,
@@ -766,6 +829,7 @@ export const post7 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run3 = {
   post: post7,
@@ -805,6 +869,10 @@ export const post8 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+  })
 
 export const run4 = {
   post: post8,
@@ -841,6 +909,11 @@ export const get6 = oc
     }),
   )
   .output(zGetAppsByAppIdAgentConfigFilesByNameDownloadResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const download = {
   get: get6,
@@ -861,6 +934,11 @@ export const get7 = oc
     }),
   )
   .output(zGetAppsByAppIdAgentConfigFilesByNamePreviewResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const preview2 = {
   get: get7,
@@ -881,6 +959,11 @@ export const delete_ = oc
     }),
   )
   .output(zDeleteAppsByAppIdAgentConfigFilesByNameResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const byName = {
   delete: delete_,
@@ -903,6 +986,11 @@ export const get8 = oc
     }),
   )
   .output(zGetAppsByAppIdAgentConfigFilesResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const post9 = oc
   .route({
@@ -921,6 +1009,11 @@ export const post9 = oc
     }),
   )
   .output(zPostAppsByAppIdAgentConfigFilesResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const files = {
   get: get8,
@@ -943,6 +1036,11 @@ export const get9 = oc
     }),
   )
   .output(zGetAppsByAppIdAgentConfigManifestResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const manifest = {
   get: get9,
@@ -965,6 +1063,11 @@ export const post10 = oc
     }),
   )
   .output(zPostAppsByAppIdAgentConfigSkillsUploadResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const upload = {
   post: post10,
@@ -985,6 +1088,11 @@ export const get10 = oc
     }),
   )
   .output(zGetAppsByAppIdAgentConfigSkillsByNameDownloadResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const download2 = {
   get: get10,
@@ -1000,6 +1108,11 @@ export const get11 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdAgentConfigSkillsByNameFilesContentPath }))
   .output(zGetAppsByAppIdAgentConfigSkillsByNameFilesContentResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const content = {
   get: get11,
@@ -1020,6 +1133,11 @@ export const get12 = oc
     }),
   )
   .output(zGetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const download3 = {
   get: get12,
@@ -1040,6 +1158,11 @@ export const get13 = oc
     }),
   )
   .output(zGetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const preview3 = {
   get: get13,
@@ -1066,6 +1189,11 @@ export const get14 = oc
     }),
   )
   .output(zGetAppsByAppIdAgentConfigSkillsByNameInspectResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const inspect = {
   get: get14,
@@ -1086,6 +1214,11 @@ export const delete2 = oc
     }),
   )
   .output(zDeleteAppsByAppIdAgentConfigSkillsByNameResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const byName2 = {
   delete: delete2,
@@ -1109,6 +1242,11 @@ export const get15 = oc
     }),
   )
   .output(zGetAppsByAppIdAgentConfigSkillsResponse)
+  .errors({
+    agent_not_bound: { status: 400, data: zAgentNotBoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const skills = {
   get: get15,
@@ -1139,6 +1277,7 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdAgentLogsPath, query: zGetAppsByAppIdAgentLogsQuery }))
   .output(zGetAppsByAppIdAgentLogsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const logs = {
   get: get16,
@@ -1262,6 +1401,10 @@ export const post13 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdAnnotationsBatchImportPath }))
   .output(zPostAppsByAppIdAnnotationsBatchImportResponse)
+  .errors({
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+  })
 
 export const batchImport = {
   post: post13,
@@ -1304,6 +1447,7 @@ export const get20 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdAnnotationsCountPath }))
   .output(zGetAppsByAppIdAnnotationsCountResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const count2 = {
   get: get20,
@@ -1399,7 +1543,12 @@ export const delete4 = oc
     successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteAppsByAppIdAnnotationsPath }))
+  .input(
+    z.object({
+      params: zDeleteAppsByAppIdAnnotationsPath,
+      query: zDeleteAppsByAppIdAnnotationsQuery.optional(),
+    }),
+  )
   .output(zDeleteAppsByAppIdAnnotationsResponse)
 
 /**
@@ -1486,6 +1635,23 @@ export const post17 = oc
     z.object({ body: zPostAppsByAppIdAudioToTextBody, params: zPostAppsByAppIdAudioToTextPath }),
   )
   .output(zPostAppsByAppIdAudioToTextResponse)
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+  })
 
 export const audioToText = {
   post: post17,
@@ -1506,6 +1672,7 @@ export const delete5 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdChatConversationsByConversationIdPath }))
   .output(zDeleteAppsByAppIdChatConversationsByConversationIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get chat conversation details
@@ -1521,6 +1688,7 @@ export const get24 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdChatConversationsByConversationIdPath }))
   .output(zGetAppsByAppIdChatConversationsByConversationIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byConversationId = {
   delete: delete5,
@@ -1546,6 +1714,7 @@ export const get25 = oc
     }),
   )
   .output(zGetAppsByAppIdChatConversationsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const chatConversations = {
   get: get25,
@@ -1566,6 +1735,18 @@ export const get26 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const suggestedQuestions = {
   get: get26,
@@ -1589,6 +1770,7 @@ export const post18 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdChatMessagesByTaskIdStopPath }))
   .output(zPostAppsByAppIdChatMessagesByTaskIdStopResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const stop = {
   post: post18,
@@ -1614,6 +1796,7 @@ export const get27 = oc
     z.object({ params: zGetAppsByAppIdChatMessagesPath, query: zGetAppsByAppIdChatMessagesQuery }),
   )
   .output(zGetAppsByAppIdChatMessagesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const chatMessages = {
   get: get27,
@@ -1636,6 +1819,7 @@ export const delete6 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdCompletionConversationsByConversationIdPath }))
   .output(zDeleteAppsByAppIdCompletionConversationsByConversationIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get completion conversation details with messages
@@ -1651,6 +1835,7 @@ export const get28 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdCompletionConversationsByConversationIdPath }))
   .output(zGetAppsByAppIdCompletionConversationsByConversationIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byConversationId2 = {
   delete: delete6,
@@ -1676,6 +1861,7 @@ export const get29 = oc
     }),
   )
   .output(zGetAppsByAppIdCompletionConversationsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const completionConversations = {
   get: get29,
@@ -1696,6 +1882,7 @@ export const post19 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdCompletionMessagesByTaskIdStopPath }))
   .output(zPostAppsByAppIdCompletionMessagesByTaskIdStopResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const stop2 = {
   post: post19,
@@ -1724,6 +1911,14 @@ export const post20 = oc
     }),
   )
   .output(zPostAppsByAppIdCompletionMessagesResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const completionMessages = {
   post: post20,
@@ -1749,6 +1944,7 @@ export const get30 = oc
     }),
   )
   .output(zGetAppsByAppIdConversationVariablesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const conversationVariables = {
   get: get30,
@@ -1779,14 +1975,13 @@ export const post21 = oc
     }),
   )
   .output(zPostAppsByAppIdConvertToWorkflowResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const convertToWorkflow = {
   post: post21,
 }
 
 /**
- * Copy app
- *
  * Create a copy of an existing application
  */
 export const post22 = oc
@@ -1797,7 +1992,6 @@ export const post22 = oc
     operationId: 'postAppsByAppIdCopy',
     path: '/apps/{app_id}/copy',
     successStatus: 201,
-    summary: 'Copy app',
     tags: ['console'],
   })
   .input(z.object({ body: zPostAppsByAppIdCopyBody, params: zPostAppsByAppIdCopyPath }))
@@ -1808,8 +2002,6 @@ export const copy = {
 }
 
 /**
- * Export app
- *
  * Export application configuration as DSL
  */
 export const get31 = oc
@@ -1819,40 +2011,18 @@ export const get31 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdExport',
     path: '/apps/{app_id}/export',
-    summary: 'Export app',
     tags: ['console'],
   })
   .input(
     z.object({ params: zGetAppsByAppIdExportPath, query: zGetAppsByAppIdExportQuery.optional() }),
   )
   .output(zGetAppsByAppIdExportResponse)
+  .errors({
+    roster_agent_package_export_failed: { status: 500, data: zRosterAgentPackageExportFailedError },
+  })
 
 export const export2 = {
   get: get31,
-}
-
-/**
- * Export user feedback data for Google Sheets
- */
-export const get32 = oc
-  .route({
-    description: 'Export user feedback data for Google Sheets',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAppsByAppIdFeedbacksExport',
-    path: '/apps/{app_id}/feedbacks/export',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      params: zGetAppsByAppIdFeedbacksExportPath,
-      query: zGetAppsByAppIdFeedbacksExportQuery.optional(),
-    }),
-  )
-  .output(zGetAppsByAppIdFeedbacksExportResponse)
-
-export const export3 = {
-  get: get32,
 }
 
 /**
@@ -1869,10 +2039,10 @@ export const post23 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdFeedbacksBody, params: zPostAppsByAppIdFeedbacksPath }))
   .output(zPostAppsByAppIdFeedbacksResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const feedbacks = {
   post: post23,
-  export: export3,
 }
 
 /**
@@ -1897,7 +2067,7 @@ export const icon = {
 /**
  * Get message details by ID
  */
-export const get33 = oc
+export const get32 = oc
   .route({
     description: 'Get message details by ID',
     inputStructure: 'detailed',
@@ -1908,9 +2078,10 @@ export const get33 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdMessagesByMessageIdPath }))
   .output(zGetAppsByAppIdMessagesByMessageIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byMessageId2 = {
-  get: get33,
+  get: get32,
 }
 
 export const messages = {
@@ -1936,6 +2107,7 @@ export const post25 = oc
     z.object({ body: zPostAppsByAppIdModelConfigBody, params: zPostAppsByAppIdModelConfigPath }),
   )
   .output(zPostAppsByAppIdModelConfigResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const modelConfig = {
   post: post25,
@@ -1960,16 +2132,12 @@ export const name = {
   post: post26,
 }
 
-/**
- * Publish app to Creators Platform
- */
 export const post27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdPublishToCreatorsPlatform',
     path: '/apps/{app_id}/publish-to-creators-platform',
-    summary: 'Publish app to Creators Platform',
     tags: ['console'],
   })
   .input(z.object({ params: zPostAppsByAppIdPublishToCreatorsPlatformPath }))
@@ -1993,6 +2161,7 @@ export const post28 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdServerRefreshPath }))
   .output(zPostAppsByAppIdServerRefreshResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const refresh = {
   post: post28,
@@ -2001,7 +2170,7 @@ export const refresh = {
 /**
  * Get MCP server configuration for an application
  */
-export const get34 = oc
+export const get33 = oc
   .route({
     description: 'Get MCP server configuration for an application',
     inputStructure: 'detailed',
@@ -2012,6 +2181,7 @@ export const get34 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdServerPath }))
   .output(zGetAppsByAppIdServerResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Create MCP server configuration for an application
@@ -2028,6 +2198,7 @@ export const post29 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdServerBody, params: zPostAppsByAppIdServerPath }))
   .output(zPostAppsByAppIdServerResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Update MCP server configuration for an application
@@ -2043,9 +2214,10 @@ export const put = oc
   })
   .input(z.object({ body: zPutAppsByAppIdServerBody, params: zPutAppsByAppIdServerPath }))
   .output(zPutAppsByAppIdServerResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const server = {
-  get: get34,
+  get: get33,
   post: post29,
   put,
   refresh,
@@ -2065,6 +2237,7 @@ export const post30 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdSiteAccessTokenResetPath }))
   .output(zPostAppsByAppIdSiteAccessTokenResetResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const accessTokenReset = {
   post: post30,
@@ -2084,6 +2257,7 @@ export const post31 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdSiteBody, params: zPostAppsByAppIdSitePath }))
   .output(zPostAppsByAppIdSiteResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const site = {
   post: post31,
@@ -2147,7 +2321,7 @@ export const star = {
 /**
  * Get average response time statistics for an application
  */
-export const get35 = oc
+export const get34 = oc
   .route({
     description: 'Get average response time statistics for an application',
     inputStructure: 'detailed',
@@ -2163,15 +2337,16 @@ export const get35 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsAverageResponseTimeResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const averageResponseTime = {
-  get: get35,
+  get: get34,
 }
 
 /**
  * Get average session interaction statistics for an application
  */
-export const get36 = oc
+export const get35 = oc
   .route({
     description: 'Get average session interaction statistics for an application',
     inputStructure: 'detailed',
@@ -2187,15 +2362,16 @@ export const get36 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsAverageSessionInteractionsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const averageSessionInteractions = {
-  get: get36,
+  get: get35,
 }
 
 /**
  * Get daily conversation statistics for an application
  */
-export const get37 = oc
+export const get36 = oc
   .route({
     description: 'Get daily conversation statistics for an application',
     inputStructure: 'detailed',
@@ -2211,15 +2387,16 @@ export const get37 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsDailyConversationsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const dailyConversations = {
-  get: get37,
+  get: get36,
 }
 
 /**
  * Get daily terminal/end-user statistics for an application
  */
-export const get38 = oc
+export const get37 = oc
   .route({
     description: 'Get daily terminal/end-user statistics for an application',
     inputStructure: 'detailed',
@@ -2235,15 +2412,16 @@ export const get38 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsDailyEndUsersResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const dailyEndUsers = {
-  get: get38,
+  get: get37,
 }
 
 /**
  * Get daily message statistics for an application
  */
-export const get39 = oc
+export const get38 = oc
   .route({
     description: 'Get daily message statistics for an application',
     inputStructure: 'detailed',
@@ -2259,15 +2437,16 @@ export const get39 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsDailyMessagesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const dailyMessages = {
-  get: get39,
+  get: get38,
 }
 
 /**
  * Get daily token cost statistics for an application
  */
-export const get40 = oc
+export const get39 = oc
   .route({
     description: 'Get daily token cost statistics for an application',
     inputStructure: 'detailed',
@@ -2283,15 +2462,16 @@ export const get40 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsTokenCostsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const tokenCosts = {
-  get: get40,
+  get: get39,
 }
 
 /**
  * Get tokens per second statistics for an application
  */
-export const get41 = oc
+export const get40 = oc
   .route({
     description: 'Get tokens per second statistics for an application',
     inputStructure: 'detailed',
@@ -2307,15 +2487,16 @@ export const get41 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsTokensPerSecondResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const tokensPerSecond = {
-  get: get41,
+  get: get40,
 }
 
 /**
  * Get user satisfaction rate statistics for an application
  */
-export const get42 = oc
+export const get41 = oc
   .route({
     description: 'Get user satisfaction rate statistics for an application',
     inputStructure: 'detailed',
@@ -2331,9 +2512,10 @@ export const get42 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsUserSatisfactionRateResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const userSatisfactionRate = {
-  get: get42,
+  get: get41,
 }
 
 export const statistics = {
@@ -2350,7 +2532,7 @@ export const statistics = {
 /**
  * Get available TTS voices for a specific language
  */
-export const get43 = oc
+export const get42 = oc
   .route({
     description: 'Get available TTS voices for a specific language',
     inputStructure: 'detailed',
@@ -2366,9 +2548,16 @@ export const get43 = oc
     }),
   )
   .output(zGetAppsByAppIdTextToAudioVoicesResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const voices = {
-  get: get43,
+  get: get42,
 }
 
 /**
@@ -2387,6 +2576,18 @@ export const post34 = oc
     z.object({ body: zPostAppsByAppIdTextToAudioBody, params: zPostAppsByAppIdTextToAudioPath }),
   )
   .output(zPostAppsByAppIdTextToAudioResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_text_to_speech: {
+      status: 400,
+      data: zProviderNotSupportTextToSpeechError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const textToAudio = {
   post: post34,
@@ -2394,18 +2595,15 @@ export const textToAudio = {
 }
 
 /**
- * Get app trace
- *
  * Get app tracing configuration
  */
-export const get44 = oc
+export const get43 = oc
   .route({
     description: 'Get app tracing configuration',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdTrace',
     path: '/apps/{app_id}/trace',
-    summary: 'Get app trace',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdTracePath }))
@@ -2425,9 +2623,10 @@ export const post35 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdTraceBody, params: zPostAppsByAppIdTracePath }))
   .output(zPostAppsByAppIdTraceResponse)
+  .errors({ tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError } })
 
 export const trace = {
-  get: get44,
+  get: get43,
   post: post35,
 }
 
@@ -2454,11 +2653,17 @@ export const delete8 = oc
     }),
   )
   .output(zDeleteAppsByAppIdTraceConfigResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
+    tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
 
 /**
  * Get tracing configuration for an application
  */
-export const get45 = oc
+export const get44 = oc
   .route({
     description: 'Get tracing configuration for an application',
     inputStructure: 'detailed',
@@ -2471,6 +2676,12 @@ export const get45 = oc
     z.object({ params: zGetAppsByAppIdTraceConfigPath, query: zGetAppsByAppIdTraceConfigQuery }),
   )
   .output(zGetAppsByAppIdTraceConfigResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
 
 /**
  * Update an existing trace app configuration
@@ -2491,6 +2702,18 @@ export const patch = oc
     z.object({ body: zPatchAppsByAppIdTraceConfigBody, params: zPatchAppsByAppIdTraceConfigPath }),
   )
   .output(zPatchAppsByAppIdTraceConfigResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
+    trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
+    tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
+    tracing_config_verification_failed: {
+      status: 400,
+      data: zTracingConfigVerificationFailedError,
+    },
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
 
 /**
  * Create a new trace app configuration
@@ -2512,10 +2735,22 @@ export const post36 = oc
     z.object({ body: zPostAppsByAppIdTraceConfigBody, params: zPostAppsByAppIdTraceConfigPath }),
   )
   .output(zPostAppsByAppIdTraceConfigResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
+    trace_config_already_exists: { status: 409, data: zTraceConfigAlreadyExistsError },
+    tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
+    tracing_config_verification_failed: {
+      status: 400,
+      data: zTracingConfigVerificationFailedError,
+    },
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
 
 export const traceConfig = {
   delete: delete8,
-  get: get45,
+  get: get44,
   patch,
   post: post36,
 }
@@ -2539,6 +2774,7 @@ export const post37 = oc
     }),
   )
   .output(zPostAppsByAppIdTriggerEnableResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const triggerEnable = {
   post: post37,
@@ -2547,7 +2783,7 @@ export const triggerEnable = {
 /**
  * Get app triggers list
  */
-export const get46 = oc
+export const get45 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2558,9 +2794,10 @@ export const get46 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdTriggersPath }))
   .output(zGetAppsByAppIdTriggersResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const triggers = {
-  get: get46,
+  get: get45,
 }
 
 /**
@@ -2568,7 +2805,7 @@ export const triggers = {
  *
  * Get workflow application execution logs
  */
-export const get47 = oc
+export const get46 = oc
   .route({
     description: 'Get workflow application execution logs',
     inputStructure: 'detailed',
@@ -2585,9 +2822,10 @@ export const get47 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowAppLogsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const workflowAppLogs = {
-  get: get47,
+  get: get46,
 }
 
 /**
@@ -2595,7 +2833,7 @@ export const workflowAppLogs = {
  *
  * Get workflow runs count statistics
  */
-export const get48 = oc
+export const get47 = oc
   .route({
     description: 'Get workflow runs count statistics',
     inputStructure: 'detailed',
@@ -2612,9 +2850,10 @@ export const get48 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowRunsCountResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const count3 = {
-  get: get48,
+  get: get47,
 }
 
 /**
@@ -2634,6 +2873,7 @@ export const post38 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopPath }))
   .output(zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const stop3 = {
   post: post38,
@@ -2652,7 +2892,7 @@ export const tasks = {
  *
  * Get workflow run node execution list
  */
-export const get49 = oc
+export const get48 = oc
   .route({
     description: 'Get workflow run node execution list',
     inputStructure: 'detailed',
@@ -2664,9 +2904,10 @@ export const get49 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsPath }))
   .output(zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const nodeExecutions = {
-  get: get49,
+  get: get48,
 }
 
 /**
@@ -2674,7 +2915,7 @@ export const nodeExecutions = {
  *
  * Get workflow run detail
  */
-export const get50 = oc
+export const get49 = oc
   .route({
     description: 'Get workflow run detail',
     inputStructure: 'detailed',
@@ -2686,9 +2927,10 @@ export const get50 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowRunsByRunIdPath }))
   .output(zGetAppsByAppIdWorkflowRunsByRunIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byRunId = {
-  get: get50,
+  get: get49,
   nodeExecutions,
 }
 
@@ -2712,6 +2954,13 @@ export const post39 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponse)
+  .errors({
+    agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
+    inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
+    no_active_binding: { status: 404, data: zNoActiveBindingError },
+  })
 
 export const download4 = {
   post: post39,
@@ -2720,7 +2969,7 @@ export const download4 = {
 /**
  * Read a text/binary preview file in a workflow Agent node sandbox
  */
-export const get51 = oc
+export const get50 = oc
   .route({
     description: 'Read a text/binary preview file in a workflow Agent node sandbox',
     inputStructure: 'detailed',
@@ -2736,15 +2985,21 @@ export const get51 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse)
+  .errors({
+    agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
+    no_active_binding: { status: 404, data: zNoActiveBindingError },
+  })
 
 export const read = {
-  get: get51,
+  get: get50,
 }
 
 /**
  * List a directory in a workflow Agent node sandbox
  */
-export const get52 = oc
+export const get51 = oc
   .route({
     description: 'List a directory in a workflow Agent node sandbox',
     inputStructure: 'detailed',
@@ -2760,9 +3015,15 @@ export const get52 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse)
+  .errors({
+    agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
+    no_active_binding: { status: 404, data: zNoActiveBindingError },
+  })
 
 export const files3 = {
-  get: get52,
+  get: get51,
   download: download4,
   read,
 }
@@ -2788,7 +3049,7 @@ export const byWorkflowRunId = {
  *
  * Get workflow run list
  */
-export const get53 = oc
+export const get52 = oc
   .route({
     description: 'Get workflow run list',
     inputStructure: 'detailed',
@@ -2805,9 +3066,10 @@ export const get53 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowRunsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const workflowRuns2 = {
-  get: get53,
+  get: get52,
   count: count3,
   tasks,
   byRunId,
@@ -2819,7 +3081,7 @@ export const workflowRuns2 = {
  *
  * Get all users in current tenant for mentions
  */
-export const get54 = oc
+export const get53 = oc
   .route({
     description: 'Get all users in current tenant for mentions',
     inputStructure: 'detailed',
@@ -2831,9 +3093,13 @@ export const get54 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowCommentsMentionUsersPath }))
   .output(zGetAppsByAppIdWorkflowCommentsMentionUsersResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+  })
 
 export const mentionUsers = {
-  get: get54,
+  get: get53,
 }
 
 /**
@@ -2854,6 +3120,10 @@ export const delete9 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdPath }))
   .output(zDeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+  })
 
 /**
  * Update a comment reply
@@ -2877,6 +3147,10 @@ export const put2 = oc
     }),
   )
   .output(zPutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+  })
 
 export const byReplyId = {
   delete: delete9,
@@ -2906,6 +3180,10 @@ export const post40 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+  })
 
 export const replies = {
   post: post40,
@@ -2929,6 +3207,10 @@ export const post41 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowCommentsByCommentIdResolvePath }))
   .output(zPostAppsByAppIdWorkflowCommentsByCommentIdResolveResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+  })
 
 export const resolve = {
   post: post41,
@@ -2952,13 +3234,17 @@ export const delete10 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowCommentsByCommentIdPath }))
   .output(zDeleteAppsByAppIdWorkflowCommentsByCommentIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+  })
 
 /**
  * Get a specific workflow comment
  *
  * Get a specific workflow comment
  */
-export const get55 = oc
+export const get54 = oc
   .route({
     description: 'Get a specific workflow comment',
     inputStructure: 'detailed',
@@ -2970,6 +3256,10 @@ export const get55 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowCommentsByCommentIdPath }))
   .output(zGetAppsByAppIdWorkflowCommentsByCommentIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+  })
 
 /**
  * Update a workflow comment
@@ -2993,10 +3283,14 @@ export const put3 = oc
     }),
   )
   .output(zPutAppsByAppIdWorkflowCommentsByCommentIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+  })
 
 export const byCommentId = {
   delete: delete10,
-  get: get55,
+  get: get54,
   put: put3,
   replies,
   resolve,
@@ -3007,7 +3301,7 @@ export const byCommentId = {
  *
  * Get all comments for a workflow
  */
-export const get56 = oc
+export const get55 = oc
   .route({
     description: 'Get all comments for a workflow',
     inputStructure: 'detailed',
@@ -3019,6 +3313,10 @@ export const get56 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowCommentsPath }))
   .output(zGetAppsByAppIdWorkflowCommentsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+  })
 
 /**
  * Create a new workflow comment
@@ -3043,9 +3341,13 @@ export const post42 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowCommentsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+  })
 
 export const comments = {
-  get: get56,
+  get: get55,
   post: post42,
   mentionUsers,
   byCommentId,
@@ -3054,7 +3356,7 @@ export const comments = {
 /**
  * Get workflow average app interaction statistics
  */
-export const get57 = oc
+export const get56 = oc
   .route({
     description: 'Get workflow average app interaction statistics',
     inputStructure: 'detailed',
@@ -3070,15 +3372,16 @@ export const get57 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const averageAppInteractions = {
-  get: get57,
+  get: get56,
 }
 
 /**
  * Get workflow daily runs statistics
  */
-export const get58 = oc
+export const get57 = oc
   .route({
     description: 'Get workflow daily runs statistics',
     inputStructure: 'detailed',
@@ -3094,15 +3397,16 @@ export const get58 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowStatisticsDailyConversationsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const dailyConversations2 = {
-  get: get58,
+  get: get57,
 }
 
 /**
  * Get workflow daily terminals statistics
  */
-export const get59 = oc
+export const get58 = oc
   .route({
     description: 'Get workflow daily terminals statistics',
     inputStructure: 'detailed',
@@ -3118,15 +3422,16 @@ export const get59 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowStatisticsDailyTerminalsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const dailyTerminals = {
-  get: get59,
+  get: get58,
 }
 
 /**
  * Get workflow daily token cost statistics
  */
-export const get60 = oc
+export const get59 = oc
   .route({
     description: 'Get workflow daily token cost statistics',
     inputStructure: 'detailed',
@@ -3142,9 +3447,10 @@ export const get60 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowStatisticsTokenCostsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const tokenCosts2 = {
-  get: get60,
+  get: get59,
 }
 
 export const statistics2 = {
@@ -3164,7 +3470,7 @@ export const workflow = {
  *
  * Get default block configuration by type
  */
-export const get61 = oc
+export const get60 = oc
   .route({
     description: 'Get default block configuration by type',
     inputStructure: 'detailed',
@@ -3181,9 +3487,10 @@ export const get61 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byBlockType = {
-  get: get61,
+  get: get60,
 }
 
 /**
@@ -3191,7 +3498,7 @@ export const byBlockType = {
  *
  * Get default block configurations for workflow
  */
-export const get62 = oc
+export const get61 = oc
   .route({
     description: 'Get default block configurations for workflow',
     inputStructure: 'detailed',
@@ -3203,16 +3510,17 @@ export const get62 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsPath }))
   .output(zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const defaultWorkflowBlockConfigs = {
-  get: get62,
+  get: get61,
   byBlockType,
 }
 
 /**
  * Get conversation variables for workflow
  */
-export const get63 = oc
+export const get62 = oc
   .route({
     description: 'Get conversation variables for workflow',
     inputStructure: 'detailed',
@@ -3223,6 +3531,7 @@ export const get63 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftConversationVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftConversationVariablesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Update conversation variables for workflow draft
@@ -3243,9 +3552,10 @@ export const post43 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftConversationVariablesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const conversationVariables2 = {
-  get: get63,
+  get: get62,
   post: post43,
 }
 
@@ -3254,7 +3564,7 @@ export const conversationVariables2 = {
  *
  * Get environment variables for workflow
  */
-export const get64 = oc
+export const get63 = oc
   .route({
     description: 'Get environment variables for workflow',
     inputStructure: 'detailed',
@@ -3266,6 +3576,10 @@ export const get64 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftEnvironmentVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+  })
 
 /**
  * Update environment variables for workflow draft
@@ -3286,9 +3600,10 @@ export const post44 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const environmentVariables = {
-  get: get64,
+  get: get63,
   post: post44,
 }
 
@@ -3311,6 +3626,7 @@ export const post45 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftFeaturesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const features = {
   post: post45,
@@ -3338,6 +3654,7 @@ export const post46 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const deliveryTest = {
   post: post46,
@@ -3365,6 +3682,7 @@ export const post47 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const preview4 = {
   post: post47,
@@ -3392,6 +3710,7 @@ export const post48 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run5 = {
   post: post48,
@@ -3437,6 +3756,7 @@ export const post49 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run6 = {
   post: post49,
@@ -3476,6 +3796,7 @@ export const post50 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run7 = {
   post: post50,
@@ -3493,7 +3814,7 @@ export const loop2 = {
   nodes: nodes6,
 }
 
-export const get65 = oc
+export const get64 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3505,9 +3826,10 @@ export const get65 = oc
     z.object({ params: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPath }),
   )
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const candidates = {
-  get: get65,
+  get: get64,
 }
 
 export const post51 = oc
@@ -3525,6 +3847,13 @@ export const post51 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_conflict_error: { status: 409, data: zAgentVersionConflictError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+  })
 
 export const copyFromRoster = {
   post: post51,
@@ -3545,6 +3874,7 @@ export const post52 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const impact = {
   post: post52,
@@ -3565,6 +3895,15 @@ export const post53 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse)
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const saveToRoster = {
   post: post53,
@@ -3585,12 +3924,18 @@ export const post54 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
+  .errors({
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const validate = {
   post: post54,
 }
 
-export const get66 = oc
+export const get65 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3605,6 +3950,11 @@ export const get66 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+  })
 
 export const put4 = oc
   .route({
@@ -3621,9 +3971,18 @@ export const put4 = oc
     }),
   )
   .output(zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const agentComposer = {
-  get: get66,
+  get: get65,
   put: put4,
   candidates,
   copyFromRoster,
@@ -3635,7 +3994,7 @@ export const agentComposer = {
 /**
  * Get last run result for draft workflow node
  */
-export const get67 = oc
+export const get66 = oc
   .route({
     description: 'Get last run result for draft workflow node',
     inputStructure: 'detailed',
@@ -3646,9 +4005,10 @@ export const get67 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunPath }))
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const lastRun = {
-  get: get67,
+  get: get66,
 }
 
 /**
@@ -3673,6 +4033,7 @@ export const post55 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run8 = {
   post: post55,
@@ -3695,6 +4056,7 @@ export const post56 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunPath }))
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run9 = {
   post: post56,
@@ -3719,11 +4081,12 @@ export const delete11 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get variables for a specific node
  */
-export const get68 = oc
+export const get67 = oc
   .route({
     description: 'Get variables for a specific node',
     inputStructure: 'detailed',
@@ -3734,10 +4097,11 @@ export const get68 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const variables = {
   delete: delete11,
-  get: get68,
+  get: get67,
 }
 
 export const byNodeId8 = {
@@ -3774,6 +4138,10 @@ export const post57 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftRunResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+  })
 
 export const run10 = {
   post: post57,
@@ -3782,7 +4150,7 @@ export const run10 = {
 /**
  * Server-Sent Events stream of inspector deltas for a draft workflow run.
  */
-export const get69 = oc
+export const get68 = oc
   .route({
     description: 'Server-Sent Events stream of inspector deltas for a draft workflow run.',
     inputStructure: 'detailed',
@@ -3793,15 +4161,19 @@ export const get69 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsPath }))
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
+  })
 
 export const events = {
-  get: get69,
+  get: get68,
 }
 
 /**
  * Full value for one declared output, including signed download URL for files.
  */
-export const get70 = oc
+export const get69 = oc
   .route({
     description: 'Full value for one declared output, including signed download URL for files.',
     inputStructure: 'detailed',
@@ -3816,9 +4188,15 @@ export const get70 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
+    node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
+    workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
+  })
 
 export const preview5 = {
-  get: get70,
+  get: get69,
 }
 
 export const byOutputName = {
@@ -3828,7 +4206,7 @@ export const byOutputName = {
 /**
  * One node's declared outputs for a draft workflow run.
  */
-export const get71 = oc
+export const get70 = oc
   .route({
     description: "One node's declared outputs for a draft workflow run.",
     inputStructure: 'detailed',
@@ -3839,16 +4217,21 @@ export const get71 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdPath }))
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
+    workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
+  })
 
 export const byNodeId9 = {
-  get: get71,
+  get: get70,
   byOutputName,
 }
 
 /**
  * Snapshot of every node's declared outputs for a draft workflow run.
  */
-export const get72 = oc
+export const get71 = oc
   .route({
     description: "Snapshot of every node's declared outputs for a draft workflow run.",
     inputStructure: 'detailed',
@@ -3859,9 +4242,13 @@ export const get72 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsPath }))
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
+  })
 
 export const nodeOutputs = {
-  get: get72,
+  get: get71,
   events,
   byNodeId: byNodeId9,
 }
@@ -3877,7 +4264,7 @@ export const runs = {
 /**
  * Get system variables for workflow
  */
-export const get73 = oc
+export const get72 = oc
   .route({
     description: 'Get system variables for workflow',
     inputStructure: 'detailed',
@@ -3888,9 +4275,10 @@ export const get73 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftSystemVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftSystemVariablesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const systemVariables = {
-  get: get73,
+  get: get72,
 }
 
 /**
@@ -3915,6 +4303,10 @@ export const post58 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+  })
 
 export const run11 = {
   post: post58,
@@ -3942,6 +4334,10 @@ export const post59 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunAllResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+  })
 
 export const runAll = {
   post: post59,
@@ -3966,6 +4362,7 @@ export const put5 = oc
   })
   .input(z.object({ params: zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetPath }))
   .output(zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const reset = {
   put: put5,
@@ -3986,11 +4383,12 @@ export const delete12 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get a specific workflow variable
  */
-export const get74 = oc
+export const get73 = oc
   .route({
     description: 'Get a specific workflow variable',
     inputStructure: 'detailed',
@@ -4001,6 +4399,7 @@ export const get74 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Update a workflow variable
@@ -4021,10 +4420,11 @@ export const patch2 = oc
     }),
   )
   .output(zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byVariableId = {
   delete: delete12,
-  get: get74,
+  get: get73,
   patch: patch2,
   reset,
 }
@@ -4044,13 +4444,14 @@ export const delete13 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsDraftVariablesPath }))
   .output(zDeleteAppsByAppIdWorkflowsDraftVariablesResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get draft workflow
  *
  * Get draft workflow variables
  */
-export const get75 = oc
+export const get74 = oc
   .route({
     description: 'Get draft workflow variables',
     inputStructure: 'detailed',
@@ -4067,10 +4468,14 @@ export const get75 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsDraftVariablesResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+  })
 
 export const variables2 = {
   delete: delete13,
-  get: get75,
+  get: get74,
   byVariableId,
 }
 
@@ -4079,7 +4484,7 @@ export const variables2 = {
  *
  * Get draft workflow for an application
  */
-export const get76 = oc
+export const get75 = oc
   .route({
     description: 'Get draft workflow for an application',
     inputStructure: 'detailed',
@@ -4091,6 +4496,10 @@ export const get76 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftPath }))
   .output(zGetAppsByAppIdWorkflowsDraftResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+  })
 
 /**
  * Sync draft workflow
@@ -4114,9 +4523,13 @@ export const post60 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
+  })
 
 export const draft2 = {
-  get: get76,
+  get: get75,
   post: post60,
   conversationVariables: conversationVariables2,
   environmentVariables,
@@ -4137,7 +4550,7 @@ export const draft2 = {
  *
  * Get published workflow for an application
  */
-export const get77 = oc
+export const get76 = oc
   .route({
     description: 'Get published workflow for an application',
     inputStructure: 'detailed',
@@ -4149,6 +4562,7 @@ export const get77 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishPath }))
   .output(zGetAppsByAppIdWorkflowsPublishResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Publish workflow
@@ -4169,16 +4583,17 @@ export const post61 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsPublishResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const publish = {
-  get: get77,
+  get: get76,
   post: post61,
 }
 
 /**
  * Server-Sent Events stream of inspector deltas for a published workflow run.
  */
-export const get78 = oc
+export const get77 = oc
   .route({
     description: 'Server-Sent Events stream of inspector deltas for a published workflow run.',
     inputStructure: 'detailed',
@@ -4189,15 +4604,19 @@ export const get78 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsPath }))
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
+  })
 
 export const events2 = {
-  get: get78,
+  get: get77,
 }
 
 /**
  * Full value for one declared output of a published run.
  */
-export const get79 = oc
+export const get78 = oc
   .route({
     description: 'Full value for one declared output of a published run.',
     inputStructure: 'detailed',
@@ -4216,9 +4635,15 @@ export const get79 = oc
   .output(
     zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse,
   )
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
+    node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
+    workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
+  })
 
 export const preview6 = {
-  get: get79,
+  get: get78,
 }
 
 export const byOutputName2 = {
@@ -4228,7 +4653,7 @@ export const byOutputName2 = {
 /**
  * One node's declared outputs for a published workflow run.
  */
-export const get80 = oc
+export const get79 = oc
   .route({
     description: "One node's declared outputs for a published workflow run.",
     inputStructure: 'detailed',
@@ -4239,16 +4664,21 @@ export const get80 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdPath }))
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
+    workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
+  })
 
 export const byNodeId10 = {
-  get: get80,
+  get: get79,
   byOutputName: byOutputName2,
 }
 
 /**
  * Snapshot of every node's declared outputs for a published workflow run.
  */
-export const get81 = oc
+export const get80 = oc
   .route({
     description: "Snapshot of every node's declared outputs for a published workflow run.",
     inputStructure: 'detailed',
@@ -4259,9 +4689,13 @@ export const get81 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsPath }))
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
+  })
 
 export const nodeOutputs2 = {
-  get: get81,
+  get: get80,
   events: events2,
   byNodeId: byNodeId10,
 }
@@ -4281,7 +4715,7 @@ export const published = {
 /**
  * Get webhook trigger for a node
  */
-export const get82 = oc
+export const get81 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4297,9 +4731,10 @@ export const get82 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsTriggersWebhookResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const webhook = {
-  get: get82,
+  get: get81,
 }
 
 export const triggers2 = {
@@ -4320,6 +4755,7 @@ export const post62 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const restore = {
   post: post62,
@@ -4340,6 +4776,7 @@ export const delete14 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsByWorkflowIdPath }))
   .output(zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Update workflow attributes
@@ -4363,6 +4800,7 @@ export const patch3 = oc
     }),
   )
   .output(zPatchAppsByAppIdWorkflowsByWorkflowIdResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byWorkflowId = {
   delete: delete14,
@@ -4375,7 +4813,7 @@ export const byWorkflowId = {
  *
  * Get all published workflows for an application
  */
-export const get83 = oc
+export const get82 = oc
   .route({
     description: 'Get all published workflows for an application',
     inputStructure: 'detailed',
@@ -4392,9 +4830,10 @@ export const get83 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const workflows3 = {
-  get: get83,
+  get: get82,
   defaultWorkflowBlockConfigs,
   draft: draft2,
   publish,
@@ -4404,8 +4843,6 @@ export const workflows3 = {
 }
 
 /**
- * Delete app
- *
  * Delete application
  */
 export const delete15 = oc
@@ -4416,33 +4853,27 @@ export const delete15 = oc
     operationId: 'deleteAppsByAppId',
     path: '/apps/{app_id}',
     successStatus: 204,
-    summary: 'Delete app',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAppsByAppIdPath }))
   .output(zDeleteAppsByAppIdResponse)
 
 /**
- * Get app detail
- *
  * Get application details
  */
-export const get84 = oc
+export const get83 = oc
   .route({
     description: 'Get application details',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppId',
     path: '/apps/{app_id}',
-    summary: 'Get app detail',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdPath }))
   .output(zGetAppsByAppIdResponse)
 
 /**
- * Update app
- *
  * Update application details
  */
 export const put6 = oc
@@ -4452,7 +4883,6 @@ export const put6 = oc
     method: 'PUT',
     operationId: 'putAppsByAppId',
     path: '/apps/{app_id}',
-    summary: 'Update app',
     tags: ['console'],
   })
   .input(z.object({ body: zPutAppsByAppIdBody, params: zPutAppsByAppIdPath }))
@@ -4460,7 +4890,7 @@ export const put6 = oc
 
 export const byAppId2 = {
   delete: delete15,
-  get: get84,
+  get: get83,
   put: put6,
   advancedChat,
   agent,
@@ -4502,8 +4932,6 @@ export const byAppId2 = {
 
 /**
  * Delete an API key for an app
- *
- * Delete an API key for an app
  */
 export const delete16 = oc
   .route({
@@ -4513,7 +4941,6 @@ export const delete16 = oc
     operationId: 'deleteAppsByResourceIdApiKeysByApiKeyId',
     path: '/apps/{resource_id}/api-keys/{api_key_id}',
     successStatus: 204,
-    summary: 'Delete an API key for an app',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAppsByResourceIdApiKeysByApiKeyIdPath }))
@@ -4525,25 +4952,20 @@ export const byApiKeyId = {
 
 /**
  * Get all API keys for an app
- *
- * Get all API keys for an app
  */
-export const get85 = oc
+export const get84 = oc
   .route({
     description: 'Get all API keys for an app',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByResourceIdApiKeys',
     path: '/apps/{resource_id}/api-keys',
-    summary: 'Get all API keys for an app',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByResourceIdApiKeysPath }))
   .output(zGetAppsByResourceIdApiKeysResponse)
 
 /**
- * Create a new API key for an app
- *
  * Create a new API key for an app
  */
 export const post63 = oc
@@ -4554,14 +4976,17 @@ export const post63 = oc
     operationId: 'postAppsByResourceIdApiKeys',
     path: '/apps/{resource_id}/api-keys',
     successStatus: 201,
-    summary: 'Create a new API key for an app',
     tags: ['console'],
   })
   .input(z.object({ params: zPostAppsByResourceIdApiKeysPath }))
   .output(zPostAppsByResourceIdApiKeysResponse)
+  .errors({
+    agent_not_published: { status: 409, data: zAgentNotPublishedError },
+    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
+  })
 
 export const apiKeys = {
-  get: get85,
+  get: get84,
   post: post63,
   byApiKeyId,
 }
@@ -4571,26 +4996,21 @@ export const byResourceId = {
 }
 
 /**
- * Get app list
- *
  * Get list of applications with pagination and filtering
  */
-export const get86 = oc
+export const get85 = oc
   .route({
     description: 'Get list of applications with pagination and filtering',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getApps',
     path: '/apps',
-    summary: 'Get app list',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsQuery.optional() }))
+  .input(z.object({ query: zGetAppsQuery.optional() }).optional())
   .output(zGetAppsResponse)
 
 /**
- * Create app
- *
  * Create a new application
  */
 export const post64 = oc
@@ -4601,14 +5021,13 @@ export const post64 = oc
     operationId: 'postApps',
     path: '/apps',
     successStatus: 201,
-    summary: 'Create app',
     tags: ['console'],
   })
   .input(z.object({ body: zPostAppsBody }))
   .output(zPostAppsResponse)
 
 export const apps = {
-  get: get86,
+  get: get85,
   post: post64,
   imports,
   recent,

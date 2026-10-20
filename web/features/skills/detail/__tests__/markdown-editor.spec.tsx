@@ -1,44 +1,8 @@
-import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { MarkdownBodyReferencePreview, MarkdownLiveBodyEditor } from '../markdown-editor'
-
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({
-    content,
-    customComponents,
-    remarkPlugins,
-  }: {
-    content: string
-    customComponents?: {
-      a?: (props: { children?: ReactNode; href?: string }) => ReactNode
-    }
-    remarkPlugins?: Array<() => (tree: unknown) => void>
-  }) => {
-    const ReferenceLink = customComponents?.a
-    const referenceNode = {
-      type: 'link',
-      url: content.match(/\[Guide\]\(<([^>]+)>\)/)?.[1],
-    }
-    const tree = { type: 'root', children: [referenceNode] }
-    remarkPlugins?.forEach((plugin) => plugin()(tree))
-
-    return (
-      <article data-testid="skill-markdown-preview">
-        <h2>{content.match(/^## (.+)$/m)?.[1]}</h2>
-        <pre>
-          <code>{content.match(/```\w*\n([\s\S]*?)```/)?.[1]}</code>
-        </pre>
-        {ReferenceLink?.({
-          children: 'Guide',
-          href: referenceNode.url,
-        })}
-      </article>
-    )
-  },
-}))
 
 const markdownBody = `## Usage
 
@@ -66,8 +30,8 @@ describe('Skill markdown editor', () => {
       />,
     )
 
-    expect(screen.getByRole('heading', { name: 'Usage' })).toBeInTheDocument()
-    expect(screen.getByText('pnpm test')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Usage' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('markdown-body')).toHaveTextContent('pnpm test'))
     expect(document.querySelector('[contenteditable="true"]')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Guide' }))
@@ -95,8 +59,8 @@ describe('Skill markdown editor', () => {
       />,
     )
 
-    expect(screen.getByRole('heading', { name: 'Usage' })).toBeInTheDocument()
-    expect(screen.getByText('pnpm test')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Usage' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('markdown-body')).toHaveTextContent('pnpm test'))
 
     await user.click(screen.getByRole('button', { name: 'Guide' }))
     expect(onOpenReference).toHaveBeenCalledWith('references/guide.md')

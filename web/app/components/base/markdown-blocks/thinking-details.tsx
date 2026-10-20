@@ -20,7 +20,7 @@ const ThinkingDetails = ({
   children,
   ...rest
 }: ThinkingDetailsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <details {...rest} className={cn('group', className)} open={isComplete ? open : true}>

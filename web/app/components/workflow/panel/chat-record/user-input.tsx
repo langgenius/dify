@@ -12,7 +12,7 @@ type UserInputProps = {
 }
 
 const UserInput = ({ variables = [], initialExpanded = true }: UserInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [expanded, setExpanded] = useState(initialExpanded)
 
   if (!variables.length) return null
@@ -33,7 +33,7 @@ const UserInput = ({ variables = [], initialExpanded = true }: UserInputProps) =
       <div className="px-2 pt-1 pb-3">
         {expanded && (
           <div className="py-2 text-[13px] text-text-primary">
-            {variables.map((variable: any) => (
+            {variables.map((variable) => (
               <div key={variable.variable} className="mb-2 last-of-type:mb-0"></div>
             ))}
           </div>

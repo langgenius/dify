@@ -5,28 +5,20 @@ Unit tests for Service API knowledge pipeline file-upload serialization.
 from datetime import UTC, datetime
 
 from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import PipelineUploadFileResponse
-from extensions.storage.storage_type import StorageType
 from libs.helper import dump_response
-from models.enums import CreatorUserRole
 from models.model import UploadFile
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _upload_file(*, created_at: datetime) -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
-        key="uploads/file-1",
+    return make_upload_file(
+        file_id="file-1",
         name="test.pdf",
         size=123,
         extension="pdf",
         mime_type="application/pdf",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="account-1",
         created_at=created_at,
-        used=False,
     )
-    upload_file.id = "file-1"
-    return upload_file
 
 
 def test_file_upload_created_at_is_isoformat_string():

@@ -138,7 +138,13 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
         mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.35"}, {"vector_support": False}]
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(
+            ValueError,
+            match=(
+                "RDS MySQL Vector functions are not available\\. Please ensure you're "
+                "using RDS MySQL 8\\.0\\.36\\+ with Vector support\\."
+            ),
+        ) as context:
             AlibabaCloudMySQLVector(self.collection_name, self.config)
 
         assert "RDS MySQL Vector functions are not available" in str(context.value)
@@ -157,7 +163,13 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         mock_cursor.fetchone.return_value = {"VERSION()": "8.0.36"}
         mock_cursor.execute.side_effect = [None, MySQLError(errno=1305, msg="FUNCTION VEC_FromText does not exist")]
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(
+            ValueError,
+            match=(
+                "RDS MySQL Vector functions are not available\\. Please ensure you're "
+                "using RDS MySQL 8\\.0\\.36\\+ with Vector support\\."
+            ),
+        ) as context:
             AlibabaCloudMySQLVector(self.collection_name, self.config)
 
         assert "RDS MySQL Vector functions are not available" in str(context.value)
@@ -348,7 +360,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
 
         # Simulate table doesn't exist error on delete
 
-        def execute_side_effect(*args, **kwargs):
+        def execute_side_effect[**P](*args: P.args, **kwargs: P.kwargs):
             if "DELETE" in args[0]:
                 raise MySQLError(errno=1146, msg="Table doesn't exist")
 
@@ -456,7 +468,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
 
         vector_store = AlibabaCloudMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
-        docs = vector_store.search_by_vector(query_vector, top_k=5, document_ids_filter=["dataset1"])
+        vector_store.search_by_vector(query_vector, top_k=5, document_ids_filter=["dataset1"])
 
         # Verify the SQL contains the WHERE clause for filtering
         execute_calls = mock_cursor.execute.call_args_list
@@ -516,10 +528,10 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         vector_store = AlibabaCloudMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="top_k must be a positive integer"):
             vector_store.search_by_vector(query_vector, top_k=0)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="top_k must be a positive integer"):
             vector_store.search_by_vector(query_vector, top_k="invalid")
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
@@ -566,7 +578,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         mock_cursor.__iter__ = lambda self: iter([])
 
         vector_store = AlibabaCloudMySQLVector(self.collection_name, self.config)
-        docs = vector_store.search_by_full_text("machine learning", top_k=5, document_ids_filter=["dataset1"])
+        vector_store.search_by_full_text("machine learning", top_k=5, document_ids_filter=["dataset1"])
 
         # Verify the SQL contains the AND clause for filtering
         execute_calls = mock_cursor.execute.call_args_list
@@ -590,10 +602,10 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
 
         vector_store = AlibabaCloudMySQLVector(self.collection_name, self.config)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="top_k must be a positive integer"):
             vector_store.search_by_full_text("test", top_k=0)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="top_k must be a positive integer"):
             vector_store.search_by_full_text("test", top_k="invalid")
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
@@ -623,7 +635,9 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
     def test_unsupported_distance_function(self, mock_pool_class):
         """Test that Pydantic validation rejects unsupported distance functions."""
         # Test that creating config with unsupported distance function raises ValidationError
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(
+            ValueError, match="1 validation error for AlibabaCloudMySQLVectorConfig\\\ndistance_function"
+        ) as context:
             AlibabaCloudMySQLVectorConfig(
                 host="localhost",
                 port=3306,
@@ -677,7 +691,23 @@ def test_config_validation_parametrized(invalid_config_override):
     }
     config.update(invalid_config_override)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for AlibabaCloudMySQLVectorConfig\\\n  Value "
+            "error, config ALIBABACLOUD_MYSQL_HOST is required "
+            "\\[type=value_error, input_value=\\{'host': '', 'port': "
+            "3306\\.\\.\\.t', 'max_connection': 5\\}, input_type=dict\\]|1 "
+            "validation error for AlibabaCloudMySQLVectorConfig\\\n  Value error, "
+            "config ALIBABACLOUD_MYSQL_MAX_CONNECTION is required "
+            "\\[type=value_error, input_value=\\{'host': 'localhost', "
+            "'po\\.\\.\\.t', 'max_connection': 0\\}, input_type=dict\\]|1 "
+            "validation error for AlibabaCloudMySQLVectorConfig\\\n  Value error, "
+            "config ALIBABACLOUD_MYSQL_PORT is required \\[type=value_error, "
+            "input_value=\\{'host': 'localhost', 'po\\.\\.\\.t', 'max_connection': "
+            "5\\}, input_type=dict\\])"
+        ),
+    ):
         AlibabaCloudMySQLVectorConfig(**config)
 
 

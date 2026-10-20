@@ -1,20 +1,9 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { changePasswordWithToken } from '@/service/common'
+import { consoleClient } from '@/service/console'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ChangePasswordForm from '../page'
-
-const countdownState = vi.hoisted(() => ({
-  onEnd: undefined as (() => void) | undefined,
-}))
-
-vi.mock('ahooks', () => ({
-  useCountDown: ({ leftTime, onEnd }: { leftTime?: number; onEnd?: () => void }) => {
-    countdownState.onEnd = onEnd
-    return [leftTime ?? 0]
-  },
-}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
@@ -29,19 +18,21 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/service/common', () => ({
-  changePasswordWithToken: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    forgotPassword: {
+      resets: {
+        post: vi.fn(),
+      },
+    },
+  },
 }))
 
 const mockReplace = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)
-const mockChangePasswordWithToken = vi.mocked(changePasswordWithToken)
-const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
+const mockChangePasswordWithToken = vi.mocked(consoleClient.forgotPassword.resets.post)
 
 const redirectUrl = '/apps?template-id=template-1&utm_source=dify_blog'
 const encodedSigninUrl =
@@ -49,34 +40,30 @@ const encodedSigninUrl =
 
 const setSearchParams = (params: Record<string, string>) => {
   mockUseSearchParams.mockReturnValue(
-    new URLSearchParams(params) as unknown as ReturnType<typeof useSearchParams>,
+    new URLSearchParams(params) as ReturnType<typeof useSearchParams>,
   )
 }
 
 const completePasswordChange = async () => {
+  const user = userEvent.setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
   render(<ChangePasswordForm />)
 
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.changePassword')
 
-  fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
-    target: { value: 'ValidPass123!' },
-  })
-  fireEvent.change(screen.getByLabelText('common.account.confirmPassword'), {
-    target: { value: 'ValidPass123!' },
-  })
-  fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+  await user.type(screen.getByLabelText('accountSettings.account.newPassword'), 'ValidPass123!')
+  await user.type(screen.getByLabelText('accountSettings.account.confirmPassword'), 'ValidPass123!')
+  await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
 
   await waitFor(() => {
     expect(screen.getByRole('link', { name: /login\.passwordChanged/ })).toBeInTheDocument()
   })
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.passwordChangedTip')
-  expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
+  expect(document.title).toBe('login.passwordChangedTip - Dify')
 }
 
 describe('Reset Password Set Password Page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    countdownState.onEnd = undefined
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
       typeof useRouter
     >)
@@ -85,19 +72,22 @@ describe('Reset Password Set Password Page', () => {
   })
 
   it('reconciles the initial route title with client branding', () => {
-    render(<ChangePasswordForm />)
+    render(<ChangePasswordForm />, {
+      systemFeatures: { branding: { enabled: true, application_title: 'Acme' } },
+    })
 
-    expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
+    expect(document.title).toBe('login.changePassword - Acme')
   })
 
   it('supports password reveal and native form submission', async () => {
     const user = userEvent.setup()
     render(<ChangePasswordForm />)
 
-    const passwordInput = screen.getByLabelText('common.account.newPassword')
-    const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+    const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+    const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
 
     expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+    expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
     expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
 
     await user.type(passwordInput, 'ValidPass123!')
@@ -110,7 +100,6 @@ describe('Reset Password Set Password Page', () => {
 
     await waitFor(() => {
       expect(mockChangePasswordWithToken).toHaveBeenCalledWith({
-        url: '/forgot-password/resets',
         body: {
           token: 'reset-token',
           new_password: 'ValidPass123!',
@@ -118,6 +107,31 @@ describe('Reset Password Set Password Page', () => {
         },
       })
     })
+  })
+
+  it('revalidates the confirmation field when the password changes', async () => {
+    const user = userEvent.setup()
+    render(<ChangePasswordForm />)
+
+    const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+    await user.type(passwordInput, 'ValidPass123!')
+    const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
+    await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
+
+    const error = await screen.findByText('accountSettings.account.notEqual')
+    expect(confirmPasswordInput).toHaveAttribute('aria-invalid', 'true')
+    expect(confirmPasswordInput).toHaveAccessibleDescription(error.textContent ?? '')
+    expect(confirmPasswordInput).toHaveFocus()
+    expect(mockChangePasswordWithToken).not.toHaveBeenCalled()
+
+    await user.clear(passwordInput)
+    await user.type(passwordInput, 'DifferentPass123!')
+
+    await waitFor(() => {
+      expect(screen.queryByText('accountSettings.account.notEqual')).not.toBeInTheDocument()
+    })
+    expect(confirmPasswordInput).not.toHaveAttribute('aria-invalid', 'true')
+    expect(mockChangePasswordWithToken).not.toHaveBeenCalled()
   })
 
   describe('Post-reset navigation', () => {
@@ -132,10 +146,15 @@ describe('Reset Password Set Password Page', () => {
 
     it('should preserve redirect_url when the countdown returns to sign in automatically', async () => {
       setSearchParams({ token: 'reset-token', redirect_url: redirectUrl })
-      await completePasswordChange()
-
-      expect(countdownState.onEnd).toBeTypeOf('function')
-      act(() => countdownState.onEnd?.())
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      try {
+        await completePasswordChange()
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+      } finally {
+        vi.useRealTimers()
+      }
 
       expect(mockReplace).toHaveBeenCalledWith(encodedSigninUrl)
     })

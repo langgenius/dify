@@ -22,14 +22,12 @@ vi.mock('@/next/link', () => ({
 }))
 
 const baseProps = {
-  ariaLabel: 'My App',
   app: {
     id: 'app-123',
     app_owner_tenant_id: 'tenant-1',
     editable: true,
     is_pinned: false,
     last_used_at: null,
-    uninstallable: false,
     app: {
       id: 'source-app-123',
       name: 'My App',
@@ -44,23 +42,11 @@ const baseProps = {
   } satisfies InstalledAppResponse,
   isSelected: false,
   onTogglePin: vi.fn(),
-  onDelete: vi.fn(),
 }
 
 describe('AppNavItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render name and item operation when expanded', () => {
-      render(<AppNavItem {...baseProps} />)
-
-      expect(screen.getByText('My App')).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
-      ).toBeInTheDocument()
-    })
   })
 
   describe('User Interactions', () => {
@@ -70,19 +56,8 @@ describe('AppNavItem', () => {
       const link = screen.getByRole('link', { name: 'My App' })
 
       expect(link).toHaveAttribute('href', '/installed/app-123')
-      expect(link).toHaveAttribute('aria-label', 'My App')
       expect(link).not.toHaveAttribute('aria-current')
       expect(link).toHaveAttribute('data-prefetch', 'false')
-    })
-
-    it('should use a contextual accessible name when ariaLabel is provided', () => {
-      render(<AppNavItem {...baseProps} ariaLabel="Open My App web app" />)
-
-      const link = screen.getByRole('link', { name: 'Open My App web app' })
-
-      expect(link).toHaveAttribute('href', '/installed/app-123')
-      expect(link).toHaveAttribute('aria-label', 'Open My App web app')
-      expect(screen.getByText('My App')).toBeInTheDocument()
     })
 
     it('should enable prefetch after pointer intent', async () => {
@@ -120,18 +95,6 @@ describe('AppNavItem', () => {
       expect(link).toHaveAttribute('aria-current', 'page')
     })
 
-    it('should call onDelete with app id when delete action is clicked', async () => {
-      const user = userEvent.setup()
-      render(<AppNavItem {...baseProps} />)
-
-      await user.click(
-        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
-      )
-      await user.click(await screen.findByText('explore.sidebar.action.delete'))
-
-      expect(baseProps.onDelete).toHaveBeenCalledWith('app-123')
-    })
-
     it('should request the next pin state', async () => {
       const user = userEvent.setup()
       render(<AppNavItem {...baseProps} />)
@@ -142,27 +105,6 @@ describe('AppNavItem', () => {
       await user.click(await screen.findByText('explore.sidebar.action.pin'))
 
       expect(baseProps.onTogglePin).toHaveBeenCalledWith('app-123', true)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should not render delete action when app is uninstallable', async () => {
-      const user = userEvent.setup()
-      render(
-        <AppNavItem
-          {...baseProps}
-          app={{
-            ...baseProps.app,
-            uninstallable: true,
-          }}
-        />,
-      )
-
-      await user.click(
-        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
-      )
-
-      expect(screen.queryByText('explore.sidebar.action.delete')).not.toBeInTheDocument()
     })
   })
 })

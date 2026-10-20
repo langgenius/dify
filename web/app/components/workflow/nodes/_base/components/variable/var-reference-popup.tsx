@@ -1,14 +1,17 @@
 'use client'
-import type { FC } from 'react'
+
+import type { FC, RefObject } from 'react'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ListEmpty from '@/app/components/base/list-empty'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import VarReferenceVars from './var-reference-vars'
 
 type Props = Readonly<{
+  searchInputRef?: RefObject<HTMLInputElement | null>
   vars: NodeOutPutVar[]
   popupFor?: 'assigned' | 'toAssigned'
   onChange: (value: ValueSelector, varDetail: Var) => void
@@ -17,6 +20,7 @@ type Props = Readonly<{
   preferSchemaType?: boolean
 }>
 const VarReferencePopup: FC<Props> = ({
+  searchInputRef,
   vars,
   popupFor,
   onChange,
@@ -24,9 +28,9 @@ const VarReferencePopup: FC<Props> = ({
   isSupportFileVar = true,
   preferSchemaType,
 }) => {
-  const { t } = useTranslation()
-  const pipelineId = useStore((s) => s.pipelineId)
-  const showManageRagInputFields = useMemo(() => !!pipelineId, [pipelineId])
+  const { t } = useTranslation(['workflow'] as const)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
+  const showManageRagInputFields = resourceKind === 'knowledge-pipeline'
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
@@ -59,6 +63,7 @@ const VarReferencePopup: FC<Props> = ({
         )
       ) : (
         <VarReferenceVars
+          searchInputRef={searchInputRef}
           searchBoxClassName="mt-1"
           vars={vars}
           onChange={onChange}

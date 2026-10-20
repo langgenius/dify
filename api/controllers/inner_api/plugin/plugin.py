@@ -33,12 +33,14 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
 from services.file_request_service import FileRequestService
+from services.workflow_run_agg import WorkflowRunAgg
 
 
 @inner_api_ns.route("/invoke/llm")
@@ -244,6 +246,7 @@ class PluginInvokeToolApi(Resource):
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
                 PluginToolBackwardsInvocation.invoke_tool(
+                    execution_driver=WorkflowRunAgg.run,
                     session=session,
                     tenant_id=tenant_model.id,
                     user_id=user_model.id,
@@ -342,6 +345,7 @@ class PluginInvokeAppApi(Resource):
     @with_session
     def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
         response = PluginAppBackwardsInvocation.invoke_app(
+            execution_driver=WorkflowRunAgg.run,
             session=session,
             app_id=payload.app_id,
             user_id=user_model.id,
@@ -351,6 +355,7 @@ class PluginInvokeAppApi(Resource):
             stream=payload.response_mode == "streaming",
             inputs=payload.inputs,
             files=payload.files,
+            end_users=application_services().app_scoped_end_users.commands,
         )
 
         return length_prefixed_response(0xF, PluginAppBackwardsInvocation.convert_to_event_stream(response))

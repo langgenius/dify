@@ -17,7 +17,7 @@ import {
 import { useInfiniteScroll } from 'ahooks'
 import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import { BlockSelectorPreviewCardContent } from '../preview-card'
 import SnippetDetailCard from './snippet-detail-card'
@@ -34,7 +34,7 @@ type SnippetsProps = {
 }
 
 const LoadingSkeleton = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div
@@ -63,7 +63,7 @@ const LoadingSkeleton = () => {
 }
 
 const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }: SnippetsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleInsertSnippet } = useInsertSnippet()
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -175,7 +175,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
             })}
             {isFetchingNextPage && (
               <div className="flex justify-center px-3 py-2">
-                <Loading />
+                <LoadingPlaceholder />
               </div>
             )}
           </ScrollAreaContent>

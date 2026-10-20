@@ -8,7 +8,7 @@ import MailForm from './components/input-mail'
 const Signup = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const pageTitle = t(($) => $['signup.createAccount'], { ns: 'login' })
   useDocumentTitle(pageTitle)
 

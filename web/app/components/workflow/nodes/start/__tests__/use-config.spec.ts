@@ -1,30 +1,22 @@
 import type { StartNodeType } from '../types'
 import type { InputVar, ValueSelector } from '@/app/components/workflow/types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderWorkflowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, ChangeType, InputVarType } from '@/app/components/workflow/types'
-import { withSelectorKey } from '@/test/i18n-mock'
 import useConfig from '../use-config'
 
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 const mockUseInspectVarsCrud = vi.hoisted(() => vi.fn())
 const mockNotify = vi.hoisted(() => vi.fn())
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
 
 vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
   return {
     ...actual,
-    useNodesReadOnly: () => mockUseNodesReadOnly(),
     useWorkflow: () => mockUseWorkflow(),
-    useIsChatMode: () => mockUseIsChatMode(),
   }
 })
 
@@ -38,7 +30,7 @@ vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
   default: (...args: unknown[]) => mockUseInspectVarsCrud(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   __esModule: true,
   toast: {
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -84,16 +76,12 @@ describe('start/use-config', () => {
     vi.clearAllMocks()
     currentInputs = createPayload()
 
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
-    })
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
     mockUseWorkflow.mockReturnValue({
       handleOutVarRenameChange: mockHandleOutVarRenameChange,
       isVarUsedInNodes: mockIsVarUsedInNodes,
       removeUsedVarInNodes: mockRemoveUsedVarInNodes,
     })
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
     mockUseNodeCrud.mockImplementation(() => ({
       inputs: currentInputs,
       setInputs: mockSetInputs,
@@ -113,7 +101,9 @@ describe('start/use-config', () => {
   })
 
   it('should rename variables and sync downstream variable references', () => {
-    const { result } = renderHook(() => useConfig('start-node', currentInputs))
+    const { result } = renderHook(() => useConfig('start-node', currentInputs), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
     const renamedList = [
       createInputVar({
         label: 'Question',
@@ -151,12 +141,14 @@ describe('start/use-config', () => {
     )
     expect(mockRenameInspectVarName).toHaveBeenCalledWith('start-node', 'query', 'prompt')
     expect(result.current.readOnly).toBe(false)
-    expect(result.current.isChatMode).toBe(false)
+    expect(result.current.isChatflow).toBe(false)
   })
 
   it('should block removal when the variable is still in use and confirm the deletion later', () => {
     mockIsVarUsedInNodes.mockReturnValue(true)
-    const { result } = renderHook(() => useConfig('start-node', currentInputs))
+    const { result } = renderHook(() => useConfig('start-node', currentInputs), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
     const nextList = [currentInputs.variables[1]!]
 
     act(() => {
@@ -171,7 +163,7 @@ describe('start/use-config', () => {
       })
     })
 
-    expect(mockDeleteInspectVar).toHaveBeenCalledWith('start-node', 'inspect-query')
+    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
     expect(mockSetInputs).not.toHaveBeenCalled()
     expect(result.current.isShowRemoveVarConfirm).toBe(true)
 
@@ -184,12 +176,31 @@ describe('start/use-config', () => {
         variables: [expect.objectContaining({ variable: 'age' })],
       }),
     )
+    expect(mockDeleteInspectVar).toHaveBeenCalledExactlyOnceWith('start-node', 'inspect-query')
     expect(mockRemoveUsedVarInNodes).toHaveBeenCalledWith(['start-node', 'query'] as ValueSelector)
     expect(result.current.isShowRemoveVarConfirm).toBe(false)
   })
 
-  it('should validate duplicate variables and labels before adding a new variable', () => {
+  it('keeps the variable and inspector value when removal is cancelled', () => {
+    mockIsVarUsedInNodes.mockReturnValue(true)
     const { result } = renderHook(() => useConfig('start-node', currentInputs))
+    act(() =>
+      result.current.handleVarListChange([currentInputs.variables[1]!], {
+        index: 0,
+        payload: { type: ChangeType.remove, payload: { beforeKey: 'query' } },
+      }),
+    )
+    act(() => result.current.hideRemoveVarConfirm())
+    expect(result.current.isShowRemoveVarConfirm).toBe(false)
+    expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
+    expect(mockRemoveUsedVarInNodes).not.toHaveBeenCalled()
+  })
+
+  it('should validate duplicate variables and labels before adding a new variable', () => {
+    const { result } = renderHook(() => useConfig('start-node', currentInputs), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
 
     let added = true
     act(() => {
@@ -205,7 +216,7 @@ describe('start/use-config', () => {
     expect(toastSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'error',
-        message: 'varKeyError.keyAlreadyExists',
+        message: expect.stringContaining('varKeyError.keyAlreadyExists'),
       }),
     )
 
@@ -230,7 +241,9 @@ describe('start/use-config', () => {
   })
 
   it('should clear inspector vars for non-remove list updates and reject duplicate labels', () => {
-    const { result } = renderHook(() => useConfig('start-node', currentInputs))
+    const { result } = renderHook(() => useConfig('start-node', currentInputs), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
     const typeEditedList = [
       createInputVar({
         label: 'Question',
@@ -266,7 +279,7 @@ describe('start/use-config', () => {
     expect(toastSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'error',
-        message: 'varKeyError.keyAlreadyExists',
+        message: expect.stringContaining('varKeyError.keyAlreadyExists'),
       }),
     )
   })

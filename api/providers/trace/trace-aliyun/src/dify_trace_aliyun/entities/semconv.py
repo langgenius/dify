@@ -5,6 +5,7 @@ ACS_ARMS_SERVICE_FEATURE: Final[str] = "acs.arms.service.feature"
 
 # Dify-specific attributes
 DIFY_APP_ID: Final[str] = "dify.app_id"
+DIFY_NODE_TYPE: Final[str] = "dify.node.type"
 
 # Public attributes
 GEN_AI_SESSION_ID: Final[str] = "gen_ai.session.id"

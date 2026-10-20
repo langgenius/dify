@@ -1,39 +1,27 @@
 import type { FileEntity } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { TransferMethod } from '@/types/app'
+import { fileUpload } from '../../utils'
 import FileUploaderInAttachmentWrapper from '../index'
 
-const mockHandleRemoveFile = vi.fn()
-const mockHandleReUploadFile = vi.fn()
-vi.mock('../../hooks', () => ({
-  useFile: () => ({
-    handleRemoveFile: mockHandleRemoveFile,
-    handleReUploadFile: mockHandleReUploadFile,
-  }),
+vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/' }))
+vi.mock('../../utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../utils')>()),
+  fileUpload: vi.fn(),
 }))
-
-vi.mock('@/utils/format', () => ({
-  formatFileSize: (size: number) => `${size}B`,
-}))
-
-vi.mock('@/utils/download', () => ({
-  downloadUrl: vi.fn(),
-}))
-
-const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
-  ({
-    enabled: true,
-    allowed_file_types: ['image'],
-    allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-    allowed_file_extensions: [],
-    number_limits: 5,
-    ...overrides,
-  }) as unknown as FileUpload
-
+const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload => ({
+  allowed_file_types: ['document'],
+  allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+  allowed_file_extensions: [],
+  number_limits: 5,
+  ...overrides,
+})
 const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   id: 'file-1',
-  name: 'test.txt',
+  name: 'report.txt',
   size: 1024,
   type: 'text/plain',
   progress: 100,
@@ -42,165 +30,101 @@ const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   ...overrides,
 })
 
-describe('FileUploaderInAttachmentWrapper', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render upload buttons when not disabled', () => {
-    render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
-
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThan(0)
-  })
-
-  it('should not render upload buttons when disabled', () => {
+it.each([TransferMethod.local_file, TransferMethod.remote_url])(
+  'offers only the configured upload method %s',
+  (method) => {
     render(
       <FileUploaderInAttachmentWrapper
         onChange={vi.fn()}
-        fileConfig={createFileConfig()}
-        isDisabled
+        fileConfig={createFileConfig({ allowed_file_upload_methods: [method] })}
       />,
     )
+    const local = screen.queryByRole('button', { name: /fileUploader.uploadFromComputer/ })
+    const remote = screen.queryByRole('button', { name: /fileUploader.pasteFileLink/ })
+    expect(method === TransferMethod.local_file ? local : remote).toBeInTheDocument()
+    expect(method === TransferMethod.local_file ? remote : local).not.toBeInTheDocument()
+  },
+)
 
-    expect(screen.queryByText(/fileUploader\.uploadFromComputer/)).not.toBeInTheDocument()
+it('removes a file from the list, emits the remaining files, and releases the upload limit', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  const remaining = createFile({ id: 'second', name: 'remaining.txt' })
+  render(
+    <FileUploaderInAttachmentWrapper
+      value={[createFile(), remaining]}
+      onChange={onChange}
+      fileConfig={createFileConfig({ number_limits: 2 })}
+    />,
+  )
+  const local = screen.getByRole('button', { name: /fileUploader.uploadFromComputer/ })
+  const remote = screen.getByRole('button', { name: /fileUploader.pasteFileLink/ })
+  expect(local).toBeDisabled()
+  expect(remote).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: /remove.*report.txt/i }))
+  expect(screen.queryByText('report.txt')).not.toBeInTheDocument()
+  expect(screen.getByText('remaining.txt')).toBeInTheDocument()
+  expect(onChange).toHaveBeenLastCalledWith([remaining])
+  expect(local).toBeEnabled()
+  expect(remote).toBeEnabled()
+})
+
+it('shows existing files without upload or delete actions when disabled', () => {
+  render(
+    <FileUploaderInAttachmentWrapper
+      value={[createFile()]}
+      onChange={vi.fn()}
+      fileConfig={createFileConfig()}
+      isDisabled
+    />,
+  )
+  expect(screen.getByText('report.txt')).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', {
+      name: /fileUploader.uploadFromComputer|fileUploader.pasteFileLink|remove/i,
+    }),
+  ).not.toBeInTheDocument()
+})
+
+it('opens and dismisses the real remote-file input', async () => {
+  const user = userEvent.setup()
+  render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
+  await user.click(screen.getByRole('button', { name: /fileUploader.pasteFileLink/ }))
+  expect(await screen.findByRole('textbox')).toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+})
+
+it('retries the original file and stores the successful upload id', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  const file = new File(['report'], 'report.txt', { type: 'text/plain' })
+  vi.mocked(fileUpload).mockImplementation(({ file, onSuccessCallback }) => {
+    onSuccessCallback({
+      id: 'uploaded-report',
+      name: file.name,
+      size: file.size,
+      mime_type: file.type,
+      extension: 'txt',
+      created_at: 1,
+      created_by: 'user-1',
+      preview_url: null,
+      source_url: '',
+    })
   })
-
-  it('should render file items for each file', () => {
-    const files = [createFile({ id: 'f1', name: 'a.txt' }), createFile({ id: 'f2', name: 'b.txt' })]
-
-    render(
-      <FileUploaderInAttachmentWrapper
-        value={files}
-        onChange={vi.fn()}
-        fileConfig={createFileConfig()}
-      />,
-    )
-
-    expect(screen.getByText(/a\.txt/i)).toBeInTheDocument()
-    expect(screen.getByText(/b\.txt/i)).toBeInTheDocument()
-  })
-
-  it('should render local upload button for local_file method', () => {
-    render(
-      <FileUploaderInAttachmentWrapper
-        onChange={vi.fn()}
-        fileConfig={createFileConfig({
-          allowed_file_upload_methods: [TransferMethod.local_file],
-        } as unknown as Partial<FileUpload>)}
-      />,
-    )
-
-    expect(screen.getByText(/fileUploader\.uploadFromComputer/)).toBeInTheDocument()
-  })
-
-  it('should render link upload option for remote_url method', () => {
-    render(
-      <FileUploaderInAttachmentWrapper
-        onChange={vi.fn()}
-        fileConfig={createFileConfig({
-          allowed_file_upload_methods: [TransferMethod.remote_url],
-        } as unknown as Partial<FileUpload>)}
-      />,
-    )
-
-    expect(screen.getByText(/fileUploader\.pasteFileLink/)).toBeInTheDocument()
-  })
-
-  it('should call handleRemoveFile when remove button is clicked', () => {
-    const files = [createFile({ id: 'f1', name: 'a.txt' })]
-
-    render(
-      <FileUploaderInAttachmentWrapper
-        value={files}
-        onChange={vi.fn()}
-        fileConfig={createFileConfig()}
-      />,
-    )
-
-    // Find the file item row, then locate the delete button within it
-    const fileNameEl = screen.getByText(/a\.txt/i)
-    const fileRow = fileNameEl.closest('[title="a.txt"]')?.parentElement?.parentElement
-    const deleteBtn = fileRow?.querySelector('button:last-of-type')
-    fireEvent.click(deleteBtn!)
-
-    expect(mockHandleRemoveFile).toHaveBeenCalledWith('f1')
-  })
-
-  it('should apply open style on remote_url trigger when portal is open', () => {
-    render(
-      <FileUploaderInAttachmentWrapper
-        onChange={vi.fn()}
-        fileConfig={createFileConfig({
-          allowed_file_upload_methods: [TransferMethod.remote_url],
-        } as unknown as Partial<FileUpload>)}
-      />,
-    )
-
-    // Click the remote_url button to open the portal
-    const linkButton = screen.getByText(/fileUploader\.pasteFileLink/)
-    fireEvent.click(linkButton)
-
-    // The button should still be in the document
-    expect(linkButton.closest('button')).toBeInTheDocument()
-  })
-
-  it('should keep upload button layout stable when remote_url popup opens', () => {
-    render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
-
-    const localButton = screen.getByText(/fileUploader\.uploadFromComputer/).closest('button')
-    const linkButton = screen.getByText(/fileUploader\.pasteFileLink/).closest('button')
-    const uploadGroup = localButton?.parentElement?.parentElement
-
-    expect(uploadGroup?.children).toHaveLength(2)
-
-    fireEvent.click(linkButton!)
-
-    expect(uploadGroup?.children).toHaveLength(2)
-    expect(linkButton).toHaveAttribute('data-popup-open')
-    expect(localButton?.parentElement).toHaveClass('min-w-0', 'flex-1')
-    expect(linkButton?.parentElement).toHaveClass('min-w-0', 'flex-1')
-    expect(linkButton).toHaveClass('w-full', 'min-w-0')
-  })
-
-  it('should disable upload buttons when file limit is reached', () => {
-    const files = [
-      createFile({ id: 'f1' }),
-      createFile({ id: 'f2' }),
-      createFile({ id: 'f3' }),
-      createFile({ id: 'f4' }),
-      createFile({ id: 'f5' }),
-    ]
-
-    render(
-      <FileUploaderInAttachmentWrapper
-        value={files}
-        onChange={vi.fn()}
-        fileConfig={createFileConfig({ number_limits: 5 })}
-      />,
-    )
-
-    const buttons = screen.getAllByRole('button')
-    const disabledButtons = buttons.filter((btn) => btn.hasAttribute('disabled'))
-    expect(disabledButtons.length).toBeGreaterThan(0)
-  })
-
-  it('should call handleReUploadFile when reupload button is clicked', () => {
-    const files = [createFile({ id: 'f1', name: 'a.txt', progress: -1 })]
-
-    const { container } = render(
-      <FileUploaderInAttachmentWrapper
-        value={files}
-        onChange={vi.fn()}
-        fileConfig={createFileConfig()}
-      />,
-    )
-
-    // ReplayLine is inside an icon button with a data-icon attribute.
-    const replayIcon = container.querySelector('svg[data-icon="ReplayLine"]')
-    const replayBtn = replayIcon!.closest('button')
-    fireEvent.click(replayBtn!)
-
-    expect(mockHandleReUploadFile).toHaveBeenCalledWith('f1')
-  })
+  render(
+    <FileUploaderInAttachmentWrapper
+      value={[createFile({ progress: -1, originalFile: file })]}
+      onChange={onChange}
+      fileConfig={createFileConfig()}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry report.txt' }))
+  expect(fileUpload).toHaveBeenCalledWith(expect.objectContaining({ file }), false, undefined)
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ id: 'file-1', uploadedId: 'uploaded-report', progress: 100 }),
+  ])
+  expect(
+    screen.queryByRole('button', { name: 'common.operation.retry report.txt' }),
+  ).not.toBeInTheDocument()
 })

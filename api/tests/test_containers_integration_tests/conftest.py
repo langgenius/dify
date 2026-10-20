@@ -49,7 +49,7 @@ class _CloserProtocol(Protocol):
 
 
 @contextmanager
-def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T, None, None]:
+def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T]:
     yield closer
     closer.close()
 
@@ -102,6 +102,9 @@ class DifyTestContainers:
         logger.info("Initializing PostgreSQL container...")
         self.postgres = PostgresContainer(
             image="postgres:14-alpine",
+            # This per-worker database is discarded after the session. Keep its
+            # data in bounded tmpfs to reduce I/O from full-schema TRUNCATE cleanup.
+            tmpfs={"/var/lib/postgresql/data": "rw,size=2g"},
         ).with_network(self.network)
         self.postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
         self.postgres.start()
@@ -173,6 +176,9 @@ class DifyTestContainers:
         self.dify_sandbox.waiting_for(_wait_for_log_message("config init success", 60))
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",
+            # Match Docker Compose: the image's 5-second limit can expire during
+            # Python/Jinja2 startup under parallel CI load.
+            "WORKER_TIMEOUT": "15",
         }
         self.dify_sandbox.start()
         sandbox_host = self.dify_sandbox.get_container_host_ip()
@@ -390,7 +396,7 @@ def _create_app_with_containers() -> Flask:
 
 
 @pytest.fixture(scope="session")
-def set_up_containers_and_env() -> Generator[DifyTestContainers, None, None]:
+def set_up_containers_and_env() -> Generator[DifyTestContainers]:
     """
     Session-scoped fixture to manage test containers.
 
@@ -432,7 +438,7 @@ def flask_app_with_containers(set_up_containers_and_env: DifyTestContainers) -> 
 
 
 @pytest.fixture
-def flask_req_ctx_with_containers(flask_app_with_containers: Flask) -> Generator[None, None, None]:
+def flask_req_ctx_with_containers(flask_app_with_containers: Flask) -> Generator[None]:
     """
     Request context fixture for containerized Flask application.
 
@@ -453,7 +459,7 @@ def flask_req_ctx_with_containers(flask_app_with_containers: Flask) -> Generator
 
 
 @pytest.fixture
-def test_client_with_containers(flask_app_with_containers: Flask) -> Generator[FlaskClient, None, None]:
+def test_client_with_containers(flask_app_with_containers: Flask) -> Generator[FlaskClient]:
     """
     Test client fixture for containerized Flask application.
 
@@ -474,7 +480,7 @@ def test_client_with_containers(flask_app_with_containers: Flask) -> Generator[F
 
 
 @pytest.fixture
-def db_session_with_containers(flask_app_with_containers: Flask) -> Generator[Session, None, None]:
+def db_session_with_containers(flask_app_with_containers: Flask) -> Generator[Session]:
     """
     Database session fixture for containerized testing.
 
@@ -541,7 +547,7 @@ def _flush_container_redis(app: Flask) -> None:
 
 
 @pytest.fixture(autouse=True)
-def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None, None, None]:
+def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None]:
     """
     Clean DB and Redis state after tests that use the containerized Flask app.
 
@@ -563,7 +569,7 @@ def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None
 
 
 @pytest.fixture(scope="package", autouse=True)
-def mock_ssrf_proxy_requests() -> Generator[None, None, None]:
+def mock_ssrf_proxy_requests() -> Generator[None]:
     """
     Avoid outbound network during containerized tests by stubbing SSRF proxy helpers.
     """

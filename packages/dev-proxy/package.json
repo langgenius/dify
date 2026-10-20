@@ -35,10 +35,16 @@
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:",
-    "vitest": "catalog:"
+    "vite-plus": "catalog:"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.21.0",
+      "onFail": "download"
+    }
   },
   "engines": {
-    "node": "^22.22.1"
+    "node": "^24.20.0"
   }
 }

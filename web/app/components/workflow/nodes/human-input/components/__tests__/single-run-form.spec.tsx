@@ -1,61 +1,10 @@
-import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { UserActionButtonType } from '../../types'
 import SingleRunForm from '../single-run-form'
-
-vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item', () => ({
-  __esModule: true,
-  default: ({
-    content,
-    formInputFields,
-    inputs,
-    onInputChange,
-  }: {
-    content: string
-    formInputFields: FormInputItem[]
-    inputs: Record<string, HumanInputFieldValue>
-    onInputChange: (name: string, value: HumanInputFieldValue) => void
-  }) => {
-    const fieldName = /\{\{#\$output\.([^#]+)#\}\}/.exec(content)?.[1]
-    if (!fieldName) return <div>{content}</div>
-
-    const field = formInputFields.find((field) => field.output_variable_name === fieldName)
-    if (!field) return null
-
-    if (field.type === 'select') {
-      return (
-        <select
-          aria-label={fieldName}
-          value={typeof inputs[fieldName] === 'string' ? inputs[fieldName] : ''}
-          onChange={(event) => onInputChange(fieldName, event.target.value)}
-        >
-          <option value="">Select</option>
-          {field.option_source.value.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      )
-    }
-
-    if (field.type === 'paragraph') {
-      return (
-        <textarea
-          aria-label={fieldName}
-          value={typeof inputs[fieldName] === 'string' ? inputs[fieldName] : ''}
-          onChange={(event) => onInputChange(fieldName, event.target.value)}
-        />
-      )
-    }
-
-    return <div>{fieldName}</div>
-  },
-}))
 
 const createFormData = (overrides: Partial<HumanInputFormData> = {}): HumanInputFormData => ({
   form_id: 'form-1',
@@ -210,7 +159,8 @@ describe('SingleRunForm', () => {
 
     expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled()
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'choice' }), 'approve')
+    await user.click(screen.getByRole('combobox', { name: 'choice' }))
+    await user.click(await screen.findByRole('option', { name: 'approve' }))
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
     await waitFor(() => {

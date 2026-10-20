@@ -1,11 +1,12 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
@@ -20,7 +21,7 @@ type ModalState = {
 }
 
 type DatasetCardModalsProps = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   modalState: ModalState
   onCloseRename: () => void
   onCloseConfirm: () => void
@@ -37,7 +38,7 @@ const DatasetCardModals = ({
   onConfirmDelete,
   onSuccess,
 }: DatasetCardModalsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
 
   return (
     <>
@@ -54,22 +55,20 @@ const DatasetCardModals = ({
         onOpenChange={(open) => !open && onCloseConfirm()}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $.deleteDatasetConfirmTitle, { ns: 'dataset' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {modalState.confirmMessage}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+            <AlertDialogDescription>{modalState.confirmMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

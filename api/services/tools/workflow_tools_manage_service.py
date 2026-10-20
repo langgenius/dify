@@ -61,17 +61,17 @@ class WorkflowToolManageService:
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
 
-        # query the app
+        # query the app and its published workflow in the same session
         app: App | None = None
+        workflow: Workflow | None = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             app = _session.scalar(select(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).limit(1))
+            if app is not None:
+                workflow = app.workflow_with_session(session=_session)
 
         # if not found raise error
         if app is None:
             raise ValueError(f"App {workflow_app_id} not found")
-
-        # query the workflow
-        workflow: Workflow | None = app.workflow
 
         # if not found raise error
         if workflow is None:
@@ -99,7 +99,7 @@ class WorkflowToolManageService:
             WorkflowToolProviderController.from_db(workflow_tool_provider)
         except Exception as e:
             logger.warning(e, exc_info=True)
-            raise ValueError(str(e))
+            raise ValueError(str(e)) from e
 
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             _session.add(workflow_tool_provider)
@@ -172,19 +172,19 @@ class WorkflowToolManageService:
         if workflow_tool_provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        # query the app
+        # query the app and its published workflow in the same session
         app: App | None = None
+        workflow: Workflow | None = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             app = _session.scalar(
                 select(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).limit(1)
             )
+            if app is not None:
+                workflow = app.workflow_with_session(session=_session)
 
         # if not found raise error
         if app is None:
             raise ValueError(f"App {workflow_tool_provider.app_id} not found")
-
-        # query the workflow
-        workflow: Workflow | None = app.workflow
 
         # if not found raise error
         if workflow is None:
@@ -209,7 +209,7 @@ class WorkflowToolManageService:
             try:
                 WorkflowToolProviderController.from_db(workflow_tool_provider)
             except Exception as e:
-                raise ValueError(str(e))
+                raise ValueError(str(e)) from e
 
             if labels is not None:
                 ToolLabelManager.update_tool_labels(
@@ -342,15 +342,17 @@ class WorkflowToolManageService:
             raise ValueError("Tool not found")
 
         workflow_app: App | None = None
+        workflow: Workflow | None = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             workflow_app = _session.scalar(
                 select(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).limit(1)
             )
+            if workflow_app is not None:
+                workflow = workflow_app.workflow_with_session(session=_session)
 
         if workflow_app is None:
             raise ValueError(f"App {db_tool.app_id} not found")
 
-        workflow = workflow_app.workflow
         if not workflow:
             raise ValueError("Workflow not found")
 

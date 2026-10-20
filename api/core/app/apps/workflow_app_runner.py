@@ -1,15 +1,23 @@
 import logging
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, cast
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.agent_strategy import AgentStrategyInfo
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+    build_dify_run_context,
+)
 from core.app.entities.queue_entities import (
     AppQueueEvent,
+    NodeExecutionSnapshot,
     QueueAgentLogEvent,
     QueueHumanInputFormFilledEvent,
     QueueHumanInputFormTimeoutEvent,
@@ -34,9 +42,11 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.credit_usage import CreditUsageAppType
 from core.rag.entities import RetrievalSourceMetadata
-from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.repositories.human_input_repository import HumanInputFormRecord
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -44,8 +54,9 @@ from core.workflow.node_factory import (
     resolve_workflow_node_class,
 )
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
-from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.callback import DifyHITLCallback
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReason
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -56,19 +67,16 @@ from core.workflow.system_variables import (
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import BuiltinNodeTypes
-from graphon.graph import Graph
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import (
-    GraphEngineEvent,
+from graphon.engine.layer import Layer
+from graphon.engine_events import (
+    EngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    NodeEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunHumanInputFormFilledEvent,
@@ -88,12 +96,103 @@ from graphon.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.entities.pause_reason import HitlRequired
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowType
+from graphon.graph import Graph
+from graphon.graph.scoping import resolve_container_id
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from graphon.variables.factory import build_segment
 from models.workflow import Workflow
+from services.workflow_node_variables import load_additional_node_variables
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
+
+
+class _WorkflowGraphNodeData(BaseNodeData):
+    """Node data fields the runner needs before concrete node validation."""
+
+    start_node_id: str | None = None
+    iteration_id: str | None = None
+    loop_id: str | None = None
+
+
+class _WorkflowGraphNodeConfig(BaseModel):
+    """Top-level node wrapper used for runner graph filtering."""
+
+    id: str
+    data: _WorkflowGraphNodeData
+
+    model_config = ConfigDict(extra="allow", strict=True)
+
+    def to_graph_node_config(self) -> dict[str, Any]:
+        return {
+            **self.model_dump(mode="python", exclude={"data"}, exclude_unset=True),
+            "data": self.data.model_dump(mode="python", exclude_unset=True),
+        }
+
+    def to_typed_node_config(self) -> NodeConfigDict:
+        return cast(NodeConfigDict, {**self.model_dump(mode="python", exclude={"data"}), "data": self.data})
+
+
+class _WorkflowGraphEdgeConfig(BaseModel):
+    """Top-level edge wrapper used for selecting a single-node subgraph."""
+
+    source: str | None = None
+    target: str | None = None
+
+    model_config = ConfigDict(extra="allow", strict=True)
+
+
+class _WorkflowGraphConfig(BaseModel):
+    """Validated graph config boundary for runner methods.
+
+    Workflow graph payloads are persisted JSON mappings with extra metadata used
+    by graphon, so validation is intentionally limited to the top-level graph
+    shape this runner needs before passing the mapping onward.
+    """
+
+    nodes: list[_WorkflowGraphNodeConfig]
+    edges: list[_WorkflowGraphEdgeConfig]
+
+    model_config = ConfigDict(extra="allow", strict=True)
+
+    def to_graph_config(self) -> dict[str, Any]:
+        return self.model_dump(mode="python", exclude_unset=True)
+
+
+def _merge_container_metadata(
+    lifecycle_metadata: Mapping[str, Any], node_metadata: Mapping[str, Any]
+) -> dict[str, Any]:
+    # Keep lifecycle details and ancestor ownership together, preserving the
+    # existing node-result precedence when both sources contain the same key.
+    return {**lifecycle_metadata, **node_metadata}
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedWorkflowRun:
+    """Prepared engine and workflow facts handed to the persistence-owning orchestrator."""
+
+    entry: WorkflowEntry
+    workflow_type: WorkflowType
+    workflow_version: str
+    generate_entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity
+    application_layers: Sequence[Layer]
+    """Layers that also receive terminal failures raised after the engine closes."""
+
+
+type WorkflowRunDriver = Callable[
+    [
+        WorkflowBasedAppRunner,
+        PauseStateLayerConfig | None,
+        WorkflowExecutionRepository,
+        WorkflowNodeExecutionRepository,
+    ],
+    None,
+]
 
 
 class WorkflowBasedAppRunner:
@@ -103,12 +202,17 @@ class WorkflowBasedAppRunner:
         queue_manager: AppQueueManager,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         app_id: str,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
+        execution_driver: WorkflowRunDriver | None = None,
     ):
         self._queue_manager = queue_manager
         self._variable_loader = variable_loader
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
+        self._execution_driver = execution_driver
+
+    def prepare(self) -> PreparedWorkflowRun | None:
+        raise NotImplementedError
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
@@ -119,9 +223,10 @@ class WorkflowBasedAppRunner:
     def _init_graph(
         self,
         graph_config: Mapping[str, Any],
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         user_from: UserFrom,
         invoke_from: InvokeFrom,
+        call_depth: int,
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
@@ -132,14 +237,7 @@ class WorkflowBasedAppRunner:
         """
         Init graph
         """
-        if "nodes" not in graph_config or "edges" not in graph_config:
-            raise ValueError("nodes or edges not found in workflow graph")
-
-        if not isinstance(graph_config.get("nodes"), list):
-            raise ValueError("nodes in workflow graph must be a list")
-
-        if not isinstance(graph_config.get("edges"), list):
-            raise ValueError("edges in workflow graph must be a list")
+        graph_config = _WorkflowGraphConfig.model_validate(graph_config).to_graph_config()
 
         # Create explicit graph init context for Graph.init.
         run_context = build_dify_run_context(
@@ -152,17 +250,18 @@ class WorkflowBasedAppRunner:
             trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
+            execution_driver=self._execution_driver,
             workflow_id=workflow_id,
             graph_config=graph_config,
             run_context=run_context,
-            call_depth=0,
+            call_depth=call_depth,
         )
 
         # Use the provided graph_runtime_state for consistent state management
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
         )
 
         if root_node_id is None:
@@ -185,7 +284,7 @@ class WorkflowBasedAppRunner:
         user_id: str,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
-    ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
+    ) -> tuple[Graph, VariablePool, RuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
         (either single iteration or single loop).
@@ -210,7 +309,7 @@ class WorkflowBasedAppRunner:
                 environment_variables=workflow.environment_variables,
             ),
         )
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
+        graph_runtime_state = RuntimeState(workflow_id=workflow.id, variable_pool=variable_pool, start_at=time.time())
 
         # Determine which type of single node execution and get graph/variable_pool
         if single_iteration_run:
@@ -219,7 +318,6 @@ class WorkflowBasedAppRunner:
                 node_id=single_iteration_run.node_id,
                 user_inputs=dict(single_iteration_run.inputs),
                 graph_runtime_state=graph_runtime_state,
-                node_type_filter_key="iteration_id",
                 node_type_label="iteration",
                 user_id=user_id,
                 app_type=app_type,
@@ -231,7 +329,6 @@ class WorkflowBasedAppRunner:
                 node_id=single_loop_run.node_id,
                 user_inputs=dict(single_loop_run.inputs),
                 graph_runtime_state=graph_runtime_state,
-                node_type_filter_key="loop_id",
                 node_type_label="loop",
                 user_id=user_id,
                 app_type=app_type,
@@ -241,7 +338,7 @@ class WorkflowBasedAppRunner:
             raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
 
         # Return the graph, variable_pool, and the same graph_runtime_state used during graph creation
-        # This ensures all nodes in the graph reference the same GraphRuntimeState instance
+        # This ensures all nodes in the graph reference the same RuntimeState instance
         return graph, variable_pool, graph_runtime_state
 
     def _get_graph_and_variable_pool_for_single_node_run(
@@ -249,8 +346,7 @@ class WorkflowBasedAppRunner:
         workflow: Workflow,
         node_id: str,
         user_inputs: dict[str, Any],
-        graph_runtime_state: GraphRuntimeState,
-        node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
+        graph_runtime_state: RuntimeState,
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
         *,
         user_id: str = "",
@@ -259,60 +355,64 @@ class WorkflowBasedAppRunner:
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
+        The workflow graph and user inputs are treated as caller-owned data; the
+        narrowed graph config used for execution is built locally.
 
         Args:
             workflow: The workflow instance
             node_id: The node ID to execute
             user_inputs: User inputs for the node
             graph_runtime_state: The graph runtime state
-            node_type_filter_key: The key to filter nodes ('iteration_id' or 'loop_id')
             node_type_label: Label for error messages ('iteration' or 'loop')
 
         Returns:
             A tuple containing (graph, variable_pool)
         """
         # fetch workflow graph
-        graph_config = workflow.graph_dict
-        if not graph_config:
-            raise ValueError("workflow graph not found")
+        source_graph_config = _WorkflowGraphConfig.model_validate(workflow.graph_dict)
 
-        graph_config = cast(dict[str, Any], graph_config)
+        node_user_inputs = dict(user_inputs)
 
-        if "nodes" not in graph_config or "edges" not in graph_config:
-            raise ValueError("nodes or edges not found in workflow graph")
-
-        if not isinstance(graph_config.get("nodes"), list):
-            raise ValueError("nodes in workflow graph must be a list")
-
-        if not isinstance(graph_config.get("edges"), list):
-            raise ValueError("edges in workflow graph must be a list")
+        graph_config = source_graph_config.to_graph_config()
 
         # filter nodes only in the specified node type (iteration or loop)
-        main_node_config = next((n for n in graph_config.get("nodes", []) if n.get("id") == node_id), None)
-        start_node_id = main_node_config.get("data", {}).get("start_node_id") if main_node_config else None
-        node_configs = [
-            node
-            for node in graph_config.get("nodes", [])
-            if node.get("id") == node_id
-            or node.get("data", {}).get(node_type_filter_key, "") == node_id
-            or (start_node_id and node.get("id") == start_node_id)
-        ]
-
-        graph_config["nodes"] = node_configs
-
-        node_ids = [node.get("id") for node in node_configs]
+        all_node_configs = graph_config["nodes"]
+        nodes_by_id = {node["id"]: node for node in all_node_configs}
+        container_ids = {node["id"]: resolve_container_id(node, nodes_by_id=nodes_by_id) for node in all_node_configs}
+        node_ids = {node_id}
+        while True:
+            child_node_ids = {node["id"] for node in all_node_configs if container_ids[node["id"]] in node_ids}
+            child_node_ids -= node_ids
+            if not child_node_ids:
+                break
+            node_ids.update(child_node_ids)
+        # Preserve ownership resolved with the complete ancestry before removing it
+        # from the debug subtree. Nested legacy IDs can otherwise become ambiguous.
+        selected_node_configs = []
+        for node in all_node_configs:
+            if node["id"] not in node_ids:
+                continue
+            selected_node = dict(node)
+            selected_node["data"] = dict(node["data"])
+            selected_node["data"]["container_id"] = container_ids[node["id"]]
+            selected_node_configs.append(_WorkflowGraphNodeConfig.model_validate(selected_node))
 
         # filter edges only in the specified node type
-        edge_configs = [
+        selected_edge_configs = [
             edge
-            for edge in graph_config.get("edges", [])
-            if (edge.get("source") is None or edge.get("source") in node_ids)
-            and (edge.get("target") is None or edge.get("target") in node_ids)
+            for edge in source_graph_config.edges
+            if (edge.source is None or edge.source in node_ids) and (edge.target is None or edge.target in node_ids)
         ]
 
-        graph_config["edges"] = edge_configs
+        node_configs = [node.to_graph_node_config() for node in selected_node_configs]
+        edge_configs = [edge.model_dump(mode="python", exclude_unset=True) for edge in selected_edge_configs]
+        graph_config = {
+            **graph_config,
+            "nodes": node_configs,
+            "edges": edge_configs,
+        }
 
-        typed_node_configs = [NodeConfigDictAdapter.validate_python(node) for node in node_configs]
+        typed_node_configs = selected_node_configs
 
         # Create explicit graph init context for Graph.init.
         run_context = build_dify_run_context(
@@ -325,6 +425,7 @@ class WorkflowBasedAppRunner:
             trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
+            execution_driver=self._execution_driver,
             workflow_id=workflow.id,
             graph_config=graph_config,
             run_context=run_context,
@@ -333,12 +434,12 @@ class WorkflowBasedAppRunner:
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
         )
 
         target_node_config = None
         for node in typed_node_configs:
-            if node["id"] == node_id:
+            if node.id == node_id:
                 target_node_config = node
                 break
 
@@ -346,8 +447,8 @@ class WorkflowBasedAppRunner:
             raise ValueError(f"{node_type_label} node id not found in workflow graph")
 
         # Get node class
-        node_type = target_node_config["data"].type
-        node_version = str(target_node_config["data"].version)
+        node_type = target_node_config.data.type
+        node_version = str(target_node_config.data.version)
         node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
         # Use the variable pool from graph_runtime_state instead of creating a new one
@@ -360,22 +461,22 @@ class WorkflowBasedAppRunner:
                 selector
                 for node_config in typed_node_configs
                 for selector in get_node_creation_preload_selectors(
-                    node_type=node_config["data"].type,
-                    node_data=node_config["data"],
+                    node_type=node_config.data.type,
+                    node_data=node_config.data,
                 )
             ],
         )
 
         try:
             variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                graph_config=workflow.graph_dict, config=target_node_config
+                graph_config=graph_config, config=target_node_config.to_typed_node_config()
             )
         except NotImplementedError:
-            variable_mapping = {}
+            variable_mapping = dict[str, Sequence[str]]()
         variable_mapping = inject_default_system_variable_mappings(
-            node_id=target_node_config["id"],
+            node_id=target_node_config.id,
             node_type=node_type,
-            node_data=target_node_config["data"],
+            node_data=target_node_config.data,
             variable_mapping=variable_mapping,
         )
 
@@ -383,19 +484,31 @@ class WorkflowBasedAppRunner:
             variable_loader=self._variable_loader,
             variable_pool=variable_pool,
             variable_mapping=variable_mapping,
-            user_inputs=user_inputs,
+            user_inputs=node_user_inputs,
+        )
+        variable_mapping = load_additional_node_variables(
+            node_config=target_node_config.to_typed_node_config(),
+            graph_config=graph_config,
+            variable_mapping=variable_mapping,
+            variable_loader=self._variable_loader,
+            variable_pool=variable_pool,
+            user_inputs=node_user_inputs,
         )
 
         WorkflowEntry.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
-            user_inputs=user_inputs,
+            user_inputs=node_user_inputs,
             variable_pool=variable_pool,
             tenant_id=workflow.tenant_id,
         )
 
         # init graph after constructor-time context has been loaded
         graph = Graph.init(
-            graph_config=graph_config, node_factory=node_factory, root_node_id=node_id, skip_validation=True
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=node_id,
+            container_id=container_ids[node_id],
+            skip_validation=True,
         )
 
         if not graph:
@@ -415,15 +528,104 @@ class WorkflowBasedAppRunner:
             logger.warning("Invalid agent strategy payload for node %s", event.node_id, exc_info=True)
             return None
 
-    def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent):
+    def publish_human_input_results(
+        self,
+        workflow_entry: WorkflowEntry,
+        pending_forms: Mapping[str, HitlRequired],
+        forms: Mapping[str, HumanInputFormRecord],
+        published_form_ids: set[str],
+    ) -> None:
+        """Publish materialized completions supplied by run orchestration."""
+        for form_id, reason in pending_forms.items():
+            form = forms[form_id]
+            node_id = reason.node_id
+            node_title = reason.node_title or form.definition.node_title or form.node_id
+            if form.status == HumanInputFormStatus.TIMEOUT:
+                self._publish_event(
+                    QueueHumanInputFormTimeoutEvent(
+                        form_id=form_id,
+                        node_id=node_id,
+                        node_type=BuiltinNodeTypes.HUMAN_INPUT,
+                        node_title=node_title,
+                        expiration_time=form.expiration_time,
+                    )
+                )
+                published_form_ids.add(form_id)
+            elif form.status == HumanInputFormStatus.SUBMITTED:
+                action = next(
+                    (item for item in form.definition.user_actions if item.id == form.selected_action_id), None
+                )
+                if action is None:
+                    raise ValueError(f"Submitted human input form has no matching action: {form_id}")
+                submitted_data = {name: build_segment(value) for name, value in (form.submitted_data or {}).items()}
+                self._publish_event(
+                    QueueHumanInputFormFilledEvent(
+                        form_id=form_id,
+                        node_id=node_id,
+                        node_type=BuiltinNodeTypes.HUMAN_INPUT,
+                        node_title=node_title,
+                        rendered_content=DifyHITLCallback.render_form_content_with_outputs(
+                            form.rendered_content,
+                            submitted_data,
+                            [item.output_variable_name for item in form.definition.inputs],
+                            form.definition.inputs,
+                        ),
+                        action_id=action.id,
+                        action_text=action.title,
+                        submitted_data=submitted_data,
+                    )
+                )
+                published_form_ids.add(form_id)
+
+    def handle_event(
+        self,
+        workflow_entry: WorkflowEntry,
+        event: EngineEvent,
+        *,
+        node_run_index: int = 1,
+        node_execution_snapshots: tuple[NodeExecutionSnapshot, ...] = (),
+        pause_reasons: Sequence[PauseReason] = (),
+    ) -> None:
         """
         Handle event
         :param workflow_entry: workflow entry
         :param event: event
         """
+        node_metadata: dict[str, Any] = (
+            {str(key): value for key, value in event.node_run_result.metadata.items()}
+            if isinstance(event, NodeEvent)
+            else {}
+        )
+        iteration_id = node_metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID.value)
+        loop_id = node_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
         match event:
+            case NodeRunHumanInputFormFilledEvent():
+                self._publish_event(
+                    QueueHumanInputFormFilledEvent(
+                        form_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        rendered_content=event.rendered_content,
+                        action_id=event.action_id,
+                        action_text=event.action_text,
+                        submitted_data=event.submitted_data,
+                    )
+                )
+            case NodeRunHumanInputFormTimeoutEvent():
+                self._publish_event(
+                    QueueHumanInputFormTimeoutEvent(
+                        form_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        expiration_time=event.expiration_time,
+                    )
+                )
             case GraphRunStartedEvent():
-                self._publish_event(QueueWorkflowStartedEvent(reason=event.reason))
+                self._publish_event(
+                    QueueWorkflowStartedEvent(reason=event.reason, node_execution_snapshots=node_execution_snapshots)
+                )
             case GraphRunSucceededEvent():
                 self._publish_event(QueueWorkflowSucceededEvent(outputs=event.outputs))
             case GraphRunPartialSucceededEvent():
@@ -442,43 +644,15 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case GraphRunPausedEvent():
-                runtime_state = workflow_entry.graph_engine.graph_runtime_state
                 paused_nodes = list(
-                    dict.fromkeys(reason.node_id for reason in event.reasons if isinstance(reason, HitlRequired))
+                    dict.fromkeys(reason.node_id for reason in pause_reasons if isinstance(reason, HumanInputRequired))
                 )
-                enriched_reasons = enrich_graph_pause_reasons(
-                    reasons=event.reasons,
-                    form_repository=HumanInputFormSubmissionRepository(),
-                    variable_pool=runtime_state.variable_pool,
-                )
-                self._enqueue_human_input_notifications(enriched_reasons)
+                self._enqueue_human_input_notifications(pause_reasons)
                 self._publish_event(
                     QueueWorkflowPausedEvent(
-                        reasons=enriched_reasons,
+                        reasons=list(pause_reasons),
                         outputs=event.outputs,
                         paused_nodes=paused_nodes,
-                    )
-                )
-            case NodeRunHumanInputFormFilledEvent():
-                self._publish_event(
-                    QueueHumanInputFormFilledEvent(
-                        node_execution_id=event.id,
-                        node_id=event.node_id,
-                        node_type=event.node_type,
-                        node_title=event.node_title,
-                        rendered_content=event.rendered_content,
-                        action_id=event.action_id,
-                        action_text=event.action_text,
-                        submitted_data=event.submitted_data,
-                    )
-                )
-            case NodeRunHumanInputFormTimeoutEvent():
-                self._publish_event(
-                    QueueHumanInputFormTimeoutEvent(
-                        node_id=event.node_id,
-                        node_type=event.node_type,
-                        node_title=event.node_title,
-                        expiration_time=event.expiration_time,
                     )
                 )
             case NodeRunRetryEvent():
@@ -498,8 +672,8 @@ class WorkflowBasedAppRunner:
                         node_title=event.node_title,
                         node_type=event.node_type,
                         start_at=event.start_at,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                         inputs=inputs,
                         process_data=process_data,
                         outputs=outputs,
@@ -514,12 +688,13 @@ class WorkflowBasedAppRunner:
                 self._publish_event(
                     QueueNodeStartedEvent(
                         node_execution_id=event.id,
+                        node_run_index=node_run_index,
                         node_id=event.node_id,
                         node_title=event.node_title,
                         node_type=event.node_type,
                         start_at=event.start_at,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                         agent_strategy=self._build_agent_strategy_info(event),
                         provider_type=event.provider_type,
                         provider_id=event.provider_id,
@@ -535,15 +710,15 @@ class WorkflowBasedAppRunner:
                     outputs=node_run_result.outputs,
                 )
                 execution_metadata = node_run_result.metadata
-                if event.node_type == BuiltinNodeTypes.ANSWER and (event.in_iteration_id or event.in_loop_id):
+                if event.node_type == BuiltinNodeTypes.ANSWER and (iteration_id or loop_id):
                     answer = outputs.get("answer")
                     if isinstance(answer, str) and answer:
                         self._publish_event(
                             QueueTextChunkEvent(
                                 text=answer,
                                 from_variable_selector=[event.node_id, "answer"],
-                                in_iteration_id=event.in_iteration_id,
-                                in_loop_id=event.in_loop_id,
+                                in_iteration_id=iteration_id,
+                                in_loop_id=loop_id,
                             )
                         )
                 self._publish_event(
@@ -557,8 +732,8 @@ class WorkflowBasedAppRunner:
                         process_data=process_data,
                         outputs=outputs,
                         execution_metadata=execution_metadata,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunFailedEvent():
@@ -579,8 +754,8 @@ class WorkflowBasedAppRunner:
                         outputs=outputs,
                         error=event.node_run_result.error or "Unknown error",
                         execution_metadata=event.node_run_result.metadata,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunExceptionEvent():
@@ -601,8 +776,8 @@ class WorkflowBasedAppRunner:
                         outputs=outputs,
                         error=event.node_run_result.error or "Unknown error",
                         execution_metadata=event.node_run_result.metadata,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunStreamChunkEvent():
@@ -610,8 +785,8 @@ class WorkflowBasedAppRunner:
                     QueueTextChunkEvent(
                         text=event.chunk,
                         from_variable_selector=list(event.selector),
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunReasoningChunkEvent():
@@ -620,8 +795,8 @@ class WorkflowBasedAppRunner:
                         reasoning=event.chunk,
                         from_node_id=event.node_id,
                         is_final=event.is_final,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunRetrieverResourceEvent():
@@ -630,8 +805,8 @@ class WorkflowBasedAppRunner:
                         retriever_resources=[
                             RetrievalSourceMetadata.model_validate(resource) for resource in event.retriever_resources
                         ],
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunAgentLogEvent():
@@ -656,9 +831,8 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         inputs=event.inputs,
-                        metadata=event.metadata,
+                        metadata=_merge_container_metadata(event.metadata, node_metadata),
                     )
                 )
             case NodeRunIterationNextEvent():
@@ -669,7 +843,6 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         index=event.index,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         output=event.pre_iteration_output,
                     )
                 )
@@ -681,10 +854,9 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         inputs=event.inputs,
                         outputs=event.outputs,
-                        metadata=event.metadata,
+                        metadata=_merge_container_metadata(event.metadata, node_metadata),
                         steps=event.steps,
                         error=event.error if isinstance(event, NodeRunIterationFailedEvent) else None,
                     )
@@ -697,9 +869,8 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         inputs=event.inputs,
-                        metadata=event.metadata,
+                        metadata=_merge_container_metadata(event.metadata, node_metadata),
                     )
                 )
             case NodeRunLoopNextEvent():
@@ -710,7 +881,6 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         index=event.index,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         output=event.pre_loop_output,
                     )
                 )
@@ -722,10 +892,9 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         inputs=event.inputs,
                         outputs=event.outputs,
-                        metadata=event.metadata,
+                        metadata=_merge_container_metadata(event.metadata, node_metadata),
                         steps=event.steps,
                         error=event.error if isinstance(event, NodeRunLoopFailedEvent) else None,
                     )

@@ -1,4 +1,4 @@
-import type { ProcessRuleResponse } from '@/models/datasets'
+import type { ProcessRuleResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +15,12 @@ type RuleDetailProps = {
 }
 
 const RuleDetail = ({ sourceData, indexingType, retrievalMethod }: RuleDetailProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation([
+    'dataset',
+    'datasetCreation',
+    'datasetDocuments',
+    'datasetSettings',
+  ])
 
   const getValue = useCallback(
     (field: string) => {

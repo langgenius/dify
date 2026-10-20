@@ -29,7 +29,6 @@ const CreateEntryCard = ({
     >
       <button
         type="button"
-        aria-label={title}
         title={title}
         className="group flex h-21 w-full cursor-pointer items-center gap-3 p-4 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
         onClick={onCreate}
@@ -52,7 +51,6 @@ const CreateEntryCard = ({
         href={linkUrl}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={linkText}
         title={linkText}
         className="flex h-8 items-center gap-0.5 border-t border-divider-subtle px-3 py-2 text-components-button-secondary-text outline-hidden hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
       >

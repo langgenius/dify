@@ -1,9 +1,13 @@
-from unittest.mock import MagicMock, patch
+from collections.abc import Iterator
+from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
+from redis import Redis
 from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
+from models.enums import CustomizeTokenStrategy
 from models.model import App, RecommendedApp, Site
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from services.recommended_app_query_service import RecommendedAppDetailRecord
@@ -46,7 +50,7 @@ def _add_catalog_app(
                 app_id=app.id,
                 title=f"site-{uuid4()}",
                 default_language="en-US",
-                customize_token_strategy="not_allow",
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
                 description="description",
                 copyright="copyright",
                 privacy_policy="privacy",
@@ -57,17 +61,23 @@ def _add_catalog_app(
     return app
 
 
-def _repository(session: Session) -> DatabaseRecommendedAppCatalogRepository:
-    redis = MagicMock(spec=RedisClientWrapper)
-    redis.get.return_value = None
+@pytest.fixture
+def catalog_redis() -> Iterator[RedisClientWrapper]:
+    with Redis() as client, patch.object(client, "execute_command", return_value=None):
+        redis = RedisClientWrapper()
+        redis.initialize(client)
+        yield redis
+
+
+def _repository(session: Session, redis: RedisClientWrapper) -> DatabaseRecommendedAppCatalogRepository:
     return DatabaseRecommendedAppCatalogRepository(
-        sessionmaker(bind=session.get_bind(), expire_on_commit=False),
-        redis=redis,
+        sessionmaker(bind=session.get_bind(), expire_on_commit=False), redis=redis
     )
 
 
 def test_list_maps_postgres_models_with_owned_session(
     db_session_with_containers: Session,
+    catalog_redis: RedisClientWrapper,
 ) -> None:
     app = _add_catalog_app(
         db_session_with_containers,
@@ -76,7 +86,7 @@ def test_list_maps_postgres_models_with_owned_session(
     private_app = _add_catalog_app(db_session_with_containers, is_public=False)
     no_site_app = _add_catalog_app(db_session_with_containers, with_site=False)
 
-    page = _repository(db_session_with_containers).list_recommended("fr-FR")
+    page = _repository(db_session_with_containers, catalog_redis).list_recommended("fr-FR")
 
     record = next(item for item in page.recommended_apps if item.app_id == app.id)
     assert record.app is not None
@@ -91,9 +101,10 @@ def test_list_maps_postgres_models_with_owned_session(
 
 def test_membership_does_not_export_dsl_with_owned_session(
     db_session_with_containers: Session,
+    catalog_redis: RedisClientWrapper,
 ) -> None:
     app = _add_catalog_app(db_session_with_containers, with_site=False)
-    repository = _repository(db_session_with_containers)
+    repository = _repository(db_session_with_containers, catalog_redis)
 
     def export_dsl(*, app_model: App, session: Session) -> str:
         assert object_session(app_model) is session

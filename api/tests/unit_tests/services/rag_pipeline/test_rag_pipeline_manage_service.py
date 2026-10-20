@@ -40,7 +40,7 @@ def test_list_rag_pipeline_datasources_marks_authorized(mocker: MockerFixture) -
         None,
     ]
 
-    result = RagPipelineManageService.list_rag_pipeline_datasources("tenant-1")
+    result = RagPipelineManageService.list_rag_pipeline_datasources("tenant-1", datasource_providers=provider_instance)
 
     assert result == [datasource_1, datasource_2]
     assert datasource_1.is_authorized is True
@@ -63,7 +63,7 @@ def test_list_rag_pipeline_datasources_marks_credential_free_providers_authorize
     provider_instance = provider_cls.return_value
     provider_instance.get_datasource_credentials.return_value = None
 
-    result = RagPipelineManageService.list_rag_pipeline_datasources("tenant-1")
+    result = RagPipelineManageService.list_rag_pipeline_datasources("tenant-1", datasource_providers=provider_instance)
 
     assert result == [local_file, notion]
     assert local_file.is_authorized is True
@@ -85,7 +85,7 @@ def test_oauth_only_provider_still_requires_authorization(
     provider_instance = provider_cls.return_value
     provider_instance.get_datasource_credentials.return_value = None
 
-    result = RagPipelineManageService.list_rag_pipeline_datasources("tenant-1")
+    result = RagPipelineManageService.list_rag_pipeline_datasources("tenant-1", datasource_providers=provider_instance)
 
     assert result == [oauth_only]
     assert oauth_only.is_authorized is False

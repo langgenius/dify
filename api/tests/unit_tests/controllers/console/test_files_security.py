@@ -1,6 +1,5 @@
 import builtins
 import io
-from unittest.mock import patch
 
 import pytest
 from flask.views import MethodView
@@ -8,15 +7,11 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import (
     FilenameNotExistsError,
-    FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
-    UnsupportedFileTypeError,
 )
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
-from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
-from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -26,7 +21,7 @@ class TestFileUploadSecurity:
     """Test file upload security logic without complex framework setup"""
 
     # Test 1: Basic file validation
-    def test_should_validate_file_presence(self):
+    def test_should_validate_file_presence(self) -> None:
         """Test that missing file is detected"""
         from flask import Flask, request
 
@@ -38,7 +33,7 @@ class TestFileUploadSecurity:
                 with pytest.raises(NoFileUploadedError):
                     raise NoFileUploadedError()
 
-    def test_should_validate_multiple_files(self):
+    def test_should_validate_multiple_files(self) -> None:
         """Test that multiple files are rejected"""
         from flask import Flask, request
 
@@ -55,7 +50,7 @@ class TestFileUploadSecurity:
                 with pytest.raises(TooManyFilesError):
                     raise TooManyFilesError()
 
-    def test_should_validate_empty_filename(self):
+    def test_should_validate_empty_filename(self) -> None:
         """Test that empty filename is rejected"""
         from flask import Flask, request
 
@@ -70,7 +65,7 @@ class TestFileUploadSecurity:
                     raise FilenameNotExistsError
 
     # Test 2: Security - Filename sanitization
-    def test_should_detect_path_traversal_in_filename(self):
+    def test_should_detect_path_traversal_in_filename(self) -> None:
         """Test protection against directory traversal attacks"""
         dangerous_filenames = [
             "../../../etc/passwd",
@@ -83,7 +78,7 @@ class TestFileUploadSecurity:
             # Any filename containing .. should be considered dangerous
             assert ".." in filename, f"Filename {filename} should be detected as path traversal"
 
-    def test_should_detect_null_byte_injection(self):
+    def test_should_detect_null_byte_injection(self) -> None:
         """Test protection against null byte injection"""
         dangerous_filenames = [
             "file.jpg\x00.php",
@@ -95,7 +90,7 @@ class TestFileUploadSecurity:
             # Null bytes should be detected
             assert "\x00" in filename, f"Filename {filename} should be detected as null byte injection"
 
-    def test_should_sanitize_special_characters(self):
+    def test_should_sanitize_special_characters(self) -> None:
         """Test that special characters in filenames are handled safely"""
         # Characters that could be problematic in various contexts
         dangerous_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|", "\x00"]
@@ -106,7 +101,7 @@ class TestFileUploadSecurity:
             assert any(c in filename for c in dangerous_chars)
 
     # Test 3: Permission validation
-    def test_should_validate_dataset_permissions(self):
+    def test_should_validate_dataset_permissions(self) -> None:
         """Test dataset upload permission logic"""
         user = Account(name="Viewer", email="viewer@example.com", status=AccountStatus.ACTIVE)
         user.role = TenantAccountRole.NORMAL
@@ -117,7 +112,7 @@ class TestFileUploadSecurity:
             with pytest.raises(Forbidden):
                 raise Forbidden()
 
-    def test_should_allow_general_upload_without_permission(self):
+    def test_should_allow_general_upload_without_permission(self) -> None:
         """Test general upload doesn't require dataset permission"""
         user = Account(name="Viewer", email="viewer@example.com", status=AccountStatus.ACTIVE)
         user.role = TenantAccountRole.NORMAL
@@ -128,35 +123,8 @@ class TestFileUploadSecurity:
             raise Forbidden()
         # Test passes if no exception is raised
 
-    # Test 4: Service error handling
-    @patch("controllers.console.files.FileService.upload_file")
-    def test_should_handle_file_too_large_error(self, mock_upload):
-        """Test that service FileTooLargeError is properly converted"""
-        mock_upload.side_effect = ServiceFileTooLargeError("File too large")
-
-        try:
-            mock_upload(filename="test.txt", content=b"data", mimetype="text/plain", user=None, source=None)
-        except ServiceFileTooLargeError as e:
-            # Simulate the error conversion in FileApi.post()
-            with pytest.raises(FileTooLargeError):
-                raise FileTooLargeError(e.description)
-
-    @patch("controllers.console.files.FileService.upload_file")
-    def test_should_handle_unsupported_file_type_error(self, mock_upload):
-        """Test that service UnsupportedFileTypeError is properly converted"""
-        mock_upload.side_effect = ServiceUnsupportedFileTypeError()
-
-        try:
-            mock_upload(
-                filename="test.exe", content=b"data", mimetype="application/octet-stream", user=None, source=None
-            )
-        except ServiceUnsupportedFileTypeError:
-            # Simulate the error conversion in FileApi.post()
-            with pytest.raises(UnsupportedFileTypeError):
-                raise UnsupportedFileTypeError()
-
-    # Test 5: File type security
-    def test_should_identify_dangerous_file_extensions(self):
+    # Test 4: File type security
+    def test_should_identify_dangerous_file_extensions(self) -> None:
         """Test detection of potentially dangerous file extensions"""
         dangerous_extensions = [
             ".php",
@@ -187,7 +155,7 @@ class TestFileUploadSecurity:
         for ext in safe_extensions:
             assert ext.lower() not in [".php", ".exe", ".sh", ".bat", ".cmd", ".ps1", ".jar", ".vbs"]
 
-    def test_should_detect_double_extensions(self):
+    def test_should_detect_double_extensions(self) -> None:
         """Test detection of double extension attacks"""
         suspicious_filenames = [
             "image.jpg.php",
@@ -201,8 +169,8 @@ class TestFileUploadSecurity:
             parts = filename.split(".")
             assert len(parts) > 2, f"Filename {filename} should have multiple extensions"
 
-    # Test 6: Configuration validation
-    def test_upload_configuration_structure(self):
+    # Test 5: Configuration validation
+    def test_upload_configuration_structure(self) -> None:
         """Test that upload configuration has correct structure"""
         # Simulate the configuration returned by FileApi.get()
         config = {
@@ -230,7 +198,7 @@ class TestFileUploadSecurity:
             assert config[field] > 0, f"Field {field} should be positive"
 
     # Test 7: Source parameter handling
-    def test_source_parameter_normalization(self):
+    def test_source_parameter_normalization(self) -> None:
         """Test that source parameter is properly normalized"""
         test_cases = [
             ("datasets", "datasets"),
@@ -247,7 +215,7 @@ class TestFileUploadSecurity:
             assert source == expected
 
     # Test 8: Boundary conditions
-    def test_should_handle_edge_case_file_sizes(self):
+    def test_should_handle_edge_case_file_sizes(self) -> None:
         """Test handling of boundary file sizes"""
         test_cases = [
             (0, "Empty file"),  # 0 bytes
@@ -262,7 +230,7 @@ class TestFileUploadSecurity:
             assert isinstance(size, int), f"{description}: Size should be integer"
             assert size >= 0, f"{description}: Size should be non-negative"
 
-    def test_should_handle_special_mime_types(self):
+    def test_should_handle_special_mime_types(self) -> None:
         """Test handling of various MIME types"""
         mime_type_tests = [
             ("application/octet-stream", "Generic binary"),

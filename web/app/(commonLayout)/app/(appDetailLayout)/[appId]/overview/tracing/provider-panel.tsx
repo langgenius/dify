@@ -1,134 +1,106 @@
 'use client'
+import type { TraceAppConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiEqualizer2Line } from '@remixicon/react'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  AliyunIconBig,
-  ArizeIconBig,
-  DatabricksIconBig,
-  LangfuseIconBig,
-  LangsmithIconBig,
-  MlflowIconBig,
-  OpikIconBig,
-  PhoenixIconBig,
-  TencentIconBig,
-  WeaveIconBig,
-} from '@/app/components/base/icons/src/public/tracing'
-import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
 import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'tracing'
+
+export type ProviderConfigError = {
+  onRetry: () => void
+  isRetrying: boolean
+}
 
 type Props = Readonly<{
   type: TracingProvider
   readOnly: boolean
   isChosen: boolean
-  config: any
+  config: TraceAppConfigResponse['tracing_config']
+  configError?: ProviderConfigError
   onChoose: () => void
-  hasConfigured: boolean
-  onConfig: () => void
 }>
 
-const getIcon = (type: TracingProvider) => {
+const getIconClassName = (type: TracingProvider) => {
   return {
-    [TracingProvider.arize]: ArizeIconBig,
-    [TracingProvider.phoenix]: PhoenixIconBig,
-    [TracingProvider.langSmith]: LangsmithIconBig,
-    [TracingProvider.langfuse]: LangfuseIconBig,
-    [TracingProvider.opik]: OpikIconBig,
-    [TracingProvider.weave]: WeaveIconBig,
-    [TracingProvider.aliyun]: AliyunIconBig,
-    [TracingProvider.mlflow]: MlflowIconBig,
-    [TracingProvider.databricks]: DatabricksIconBig,
-    [TracingProvider.tencent]: TencentIconBig,
+    [TracingProvider.arize]: 'i-custom-public-tracing-arize-icon-big w-27.75',
+    [TracingProvider.phoenix]: 'i-custom-public-tracing-phoenix-icon-big w-27.75',
+    [TracingProvider.langSmith]: 'i-custom-public-tracing-langsmith-icon-big w-31',
+    [TracingProvider.langfuse]: 'i-custom-public-tracing-langfuse-icon-big w-27.75',
+    [TracingProvider.opik]: 'i-custom-public-tracing-opik-icon-big w-[70.700851px]',
+    [TracingProvider.weave]: 'i-custom-public-tracing-weave-icon-big w-31',
+    [TracingProvider.aliyun]: 'i-custom-public-tracing-aliyun-icon-big w-24',
+    [TracingProvider.mlflow]: 'i-custom-public-tracing-mlflow-icon-big w-16.25',
+    [TracingProvider.databricks]: 'i-custom-public-tracing-databricks-icon-big w-37.5',
+    [TracingProvider.tencent]: 'i-custom-public-tracing-tencent-icon-big w-30',
   }[type]
 }
 
-const ProviderPanel: FC<Props> = ({
-  type,
-  readOnly,
-  isChosen,
-  config,
-  onChoose,
-  hasConfigured,
-  onConfig,
-}) => {
-  const { t } = useTranslation()
-  const Icon = getIcon(type)
+const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, configError, onChoose }) => {
+  const { t } = useTranslation(['app', 'common'])
+  const iconClassName = getIconClassName(type)
+  const hasConfigured = !!config
 
-  const handleConfigBtnClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      onConfig()
-    },
-    [onConfig],
-  )
-
-  const viewBtnClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-
-      const url = config?.project_url
-      if (url) window.open(url, '_blank', 'noopener,noreferrer')
-    },
-    [config?.project_url],
-  )
-
-  const handleChosen = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      if (isChosen || !hasConfigured || readOnly) return
-      onChoose()
-    },
-    [hasConfigured, isChosen, onChoose, readOnly],
-  )
   return (
     <div
       className={cn(
-        'rounded-xl border-[1.5px] bg-background-section-burn px-4 py-3',
+        'relative rounded-xl border-[1.5px] bg-background-section-burn px-4 py-3',
         isChosen
           ? 'border-components-option-card-option-selected-border bg-background-section'
           : 'border-transparent',
-        !isChosen && hasConfigured && !readOnly && 'cursor-pointer',
       )}
-      onClick={handleChosen}
+      role="group"
+      aria-label={t(($) => $[`${I18N_PREFIX}.${type}.title`], { ns: 'app' })}
     >
+      {hasConfigured && !configError && !readOnly && (
+        <button
+          type="button"
+          aria-label={t(($) => $[`${I18N_PREFIX}.${type}.title`], { ns: 'app' })}
+          aria-pressed={isChosen}
+          className="absolute inset-0 cursor-pointer rounded-xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          onClick={() => {
+            if (!isChosen) onChoose()
+          }}
+        />
+      )}
       <div className="flex items-center justify-between space-x-1">
         <div className="flex items-center">
-          <Icon className="h-6" />
+          <span aria-hidden className={cn(iconClassName, 'h-6')} />
           {isChosen && (
             <div className="ml-1 flex h-4 items-center rounded-sm border border-text-accent-secondary px-1 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $[`${I18N_PREFIX}.inUse`], { ns: 'app' })}
             </div>
           )}
         </div>
-        {!readOnly && (
-          <div className="flex items-center justify-between space-x-1">
-            {hasConfigured && (
-              <div
-                className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs"
-                onClick={viewBtnClick}
-              >
-                <View className="size-3" />
-                <div className="text-xs font-medium">
+        {configError ? (
+          <Button size="small" disabled={configError.isRetrying} onClick={configError.onRetry}>
+            {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+          </Button>
+        ) : (
+          !readOnly && (
+            <div className="relative flex items-center justify-between space-x-1">
+              {hasConfigured && (
+                <a
+                  className={buttonVariants({ size: 'small' })}
+                  href={config.project_url || undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  role={config.project_url ? undefined : 'link'}
+                  aria-disabled={!config.project_url}
+                >
+                  <span aria-hidden className="i-custom-vender-solid-general-eye size-3" />
                   {t(($) => $[`${I18N_PREFIX}.view`], { ns: 'app' })}
-                </div>
-              </div>
-            )}
-            <div
-              className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs"
-              onClick={handleConfigBtnClick}
-            >
-              <RiEqualizer2Line className="size-3" />
-              <div className="text-xs font-medium">
+                </a>
+              )}
+              <DialogTrigger payload={type} render={<Button size="small" />}>
+                <span aria-hidden className="i-ri-equalizer-2-line size-3" />
                 {t(($) => $[`${I18N_PREFIX}.config`], { ns: 'app' })}
-              </div>
+              </DialogTrigger>
             </div>
-          </div>
+          )
         )}
       </div>
       <div className="mt-2 system-xs-regular text-text-tertiary">

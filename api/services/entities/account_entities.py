@@ -1,4 +1,4 @@
-"""Framework-neutral contracts for Console account use cases."""
+"""Framework-neutral contracts shared by account use cases."""
 
 from __future__ import annotations
 
@@ -52,9 +52,44 @@ class AccountCredentials:
 
 
 @dataclass(frozen=True, slots=True)
+class AccountAuthenticationSnapshot:
+    id: str
+    email: str
+    status: str
+    password_hash: str | None
+    password_salt: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class AccountPasswordDigest:
     password_hash: str
     password_salt: str
+
+
+@dataclass(frozen=True, slots=True)
+class ForgotPasswordVerificationToken:
+    email: str
+    code: str
+    account_id: str | None = None
+
+    def promote(self) -> ForgotPasswordResetToken:
+        return ForgotPasswordResetToken(email=self.email, code=self.code, account_id=self.account_id)
+
+
+@dataclass(frozen=True, slots=True)
+class ForgotPasswordResetToken:
+    email: str
+    code: str
+    account_id: str | None = None
+
+
+type ForgotPasswordToken = ForgotPasswordVerificationToken | ForgotPasswordResetToken
+
+
+@dataclass(frozen=True, slots=True)
+class ForgotPasswordVerification:
+    email: str
+    token: str
 
 
 @dataclass(frozen=True, slots=True)

@@ -36,12 +36,11 @@ from controllers.inner_api.plugin.plugin import (
 from core.workflow.file_reference import build_file_reference
 from models import Account, Tenant
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_tenant
 
 
 def _tenant() -> Tenant:
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = "tenant-id"
-    return tenant
+    return make_tenant(tenant_id="tenant-id", name="Test Tenant")
 
 
 def _user() -> Account:

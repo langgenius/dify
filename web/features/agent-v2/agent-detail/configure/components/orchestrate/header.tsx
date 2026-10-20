@@ -15,7 +15,7 @@ export function AgentOrchestrateHeader({
   trailingAction,
   isBuildDraftActive = false,
 }: AgentOrchestrateHeaderProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const communityEditionIsolationTip = t(
     ($) => $['agentDetail.configure.communityEditionIsolationTip'],
   )

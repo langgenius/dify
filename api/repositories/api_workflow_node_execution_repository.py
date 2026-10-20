@@ -16,7 +16,6 @@ from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
-from core.repositories.factory import WorkflowNodeExecutionRepository
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 
 
@@ -41,7 +40,7 @@ class WorkflowNodeExecutionSnapshot:
     loop_id: str | None = None  # Loop id from execution metadata, if any.
 
 
-class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Protocol):
+class DifyAPIWorkflowNodeExecutionRepository(Protocol):
     """
     Protocol for service-layer operations on WorkflowNodeExecutionModel.
 
@@ -105,8 +104,6 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         Args:
             tenant_id: The tenant identifier
             app_id: The application identifier
-            workflow_id: The workflow identifier
-            triggered_from: The workflow trigger source
             workflow_run_id: The workflow run identifier
 
         Returns:
@@ -128,6 +125,8 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         Args:
             tenant_id: The tenant identifier
             app_id: The application identifier
+            workflow_id: The workflow identifier
+            triggered_from: The workflow trigger source
             workflow_run_id: The workflow run identifier
 
         Returns:

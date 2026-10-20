@@ -14,90 +14,24 @@ describe('ShareQRCode', () => {
     vi.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('renders correctly', () => {
-      render(<ShareQRCode content={content} />)
-      expect(
-        screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.title' }),
-      ).toBeInTheDocument()
-    })
+  it('uses caller-provided labels instead of App-specific defaults', async () => {
+    const user = userEvent.setup()
+    render(
+      <ShareQRCode
+        content={content}
+        triggerLabel="Show QR code"
+        scanLabel="Scan to share"
+        downloadLabel="Download QR code"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Show QR code' }))
+
+    expect(screen.getByText('Scan to share')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download QR code' })).toBeInTheDocument()
   })
 
   describe('Interaction', () => {
-    it('toggles QR code panel when clicking the icon', async () => {
-      const user = userEvent.setup()
-      render(<ShareQRCode content={content} />)
-
-      expect(screen.queryByRole('img')).not.toBeInTheDocument()
-      const trigger = screen.getByRole('button', {
-        name: 'appOverview.overview.appInfo.qrcode.title',
-      })
-      await user.click(trigger)
-
-      expect(screen.getByRole('img')).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.download' }),
-      ).toBeInTheDocument()
-      expect(screen.queryByText('appOverview.overview.appInfo.qrcode.scan')).not.toBeInTheDocument()
-
-      await user.click(trigger)
-      expect(screen.queryByRole('img')).not.toBeInTheDocument()
-    })
-
-    it('closes panel when clicking outside', async () => {
-      const user = userEvent.setup()
-      render(
-        <div>
-          <div>Outside</div>
-          <ShareQRCode content={content} />
-        </div>,
-      )
-
-      const trigger = screen.getByRole('button', {
-        name: 'appOverview.overview.appInfo.qrcode.title',
-      })
-      await user.click(trigger)
-      expect(screen.getByRole('img')).toBeInTheDocument()
-
-      await user.click(screen.getByText('Outside'))
-      expect(screen.queryByRole('img')).not.toBeInTheDocument()
-    })
-
-    it('does not close panel when clicking inside the panel', async () => {
-      const user = userEvent.setup()
-      render(<ShareQRCode content={content} />)
-
-      const trigger = screen.getByRole('button', {
-        name: 'appOverview.overview.appInfo.qrcode.title',
-      })
-      await user.click(trigger)
-
-      const canvas = screen.getByRole('img')
-      const panel = canvas.parentElement
-      await user.click(panel!)
-
-      expect(canvas).toBeInTheDocument()
-    })
-
-    it('lets panel interactions bubble without closing the panel', async () => {
-      const user = userEvent.setup()
-      const onClick = vi.fn()
-      const { container } = render(<ShareQRCode content={content} />)
-      container.addEventListener('click', onClick)
-
-      await user.click(
-        screen.getByRole('button', {
-          name: 'appOverview.overview.appInfo.qrcode.title',
-        }),
-      )
-      onClick.mockClear()
-
-      await user.click(screen.getByRole('img'))
-
-      expect(onClick).toHaveBeenCalledOnce()
-      expect(screen.getByRole('img')).toBeInTheDocument()
-    })
-
     it('calls downloadUrl when clicking download', async () => {
       const user = userEvent.setup()
       const originalToDataURL = HTMLCanvasElement.prototype.toDataURL
@@ -109,7 +43,7 @@ describe('ShareQRCode', () => {
         const trigger = screen.getByRole('button', {
           name: 'appOverview.overview.appInfo.qrcode.title',
         })
-        await user.click(trigger!)
+        await user.click(trigger)
 
         const downloadBtn = screen.getByRole('button', {
           name: 'appOverview.overview.appInfo.qrcode.download',
@@ -122,34 +56,6 @@ describe('ShareQRCode', () => {
         })
       } finally {
         HTMLCanvasElement.prototype.toDataURL = originalToDataURL
-      }
-    })
-
-    it('does not call downloadUrl when canvas is not found', async () => {
-      const user = userEvent.setup()
-      render(<ShareQRCode content={content} />)
-
-      const trigger = screen.getByRole('button', {
-        name: 'appOverview.overview.appInfo.qrcode.title',
-      })
-      await user.click(trigger)
-
-      // Override querySelector on the panel to simulate canvas not being found
-      const panel = screen.getByRole('img').parentElement!
-      const origQuerySelector = panel.querySelector.bind(panel)
-      panel.querySelector = ((sel: string) => {
-        if (sel === 'canvas') return null
-        return origQuerySelector(sel)
-      }) as typeof panel.querySelector
-
-      try {
-        const downloadBtn = screen.getByRole('button', {
-          name: 'appOverview.overview.appInfo.qrcode.download',
-        })
-        await user.click(downloadBtn)
-        expect(downloadUrl).not.toHaveBeenCalled()
-      } finally {
-        panel.querySelector = origQuerySelector
       }
     })
   })

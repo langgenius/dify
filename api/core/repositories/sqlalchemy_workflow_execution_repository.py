@@ -20,6 +20,7 @@ from models import (
     WorkflowRun,
 )
 from models.enums import WorkflowRunTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +102,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Convert status to domain enum
         status = WorkflowExecutionStatus(db_model.status)
 
-        return WorkflowExecution(
+        return TimedWorkflowExecution(
             id_=db_model.id,
             workflow_id=db_model.workflow_id,
             workflow_type=WorkflowType(db_model.type),
@@ -116,6 +117,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             exceptions_count=db_model.exceptions_count,
             started_at=db_model.created_at,
             finished_at=db_model.finished_at,
+            accumulated_elapsed_time=db_model.elapsed_time,
         )
 
     def _to_db_model(self, domain_model: WorkflowExecution) -> WorkflowRun:
@@ -167,9 +169,10 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         db_model.created_at = domain_model.started_at
         db_model.finished_at = domain_model.finished_at
 
-        # Calculate elapsed time if finished_at is available
-        if domain_model.finished_at:
-            db_model.elapsed_time = (domain_model.finished_at - domain_model.started_at).total_seconds()
+        if domain_model.finished_at or (
+            isinstance(domain_model, TimedWorkflowExecution) and domain_model.accumulated_elapsed_time is not None
+        ):
+            db_model.elapsed_time = domain_model.elapsed_time
         else:
             db_model.elapsed_time = 0
 
@@ -197,10 +200,16 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Create a new database session
         with self._session_factory() as session:
-            existing_model = session.get(WorkflowRun, db_model.id)
+            existing_model = session.get(WorkflowRun, db_model.id, with_for_update=True)
             if existing_model:
                 if existing_model.tenant_id != self._tenant_id:
                     raise ValueError("Unauthorized access to workflow run")
+                # A delayed persistence task must not resurrect a durably stopped run.
+                if (
+                    existing_model.stop_requested_at is not None
+                    and existing_model.status == WorkflowExecutionStatus.STOPPED
+                ):
+                    return
                 # Preserve the original start time for pause/resume flows.
                 db_model.created_at = existing_model.created_at
 
@@ -211,3 +220,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
             # Update the in-memory cache for faster subsequent lookups
             self._execution_cache[db_model.id] = db_model
+
+    @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        self.save(execution)

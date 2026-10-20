@@ -14,10 +14,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => searchParams,
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (selector: (state: { embeddedUserId: string }) => unknown) =>
     selector({ embeddedUserId: 'embedded-user-99' }),
@@ -31,13 +27,9 @@ vi.mock('@/service/share', () => ({
   fetchAccessToken: (...args: unknown[]) => fetchAccessTokenMock(...args),
 }))
 
-vi.mock('@/service/webapp-auth', () => ({
-  setWebAppAccessToken: vi.fn(),
-  setWebAppPassport: vi.fn(),
-}))
-
 describe('MailAndPasswordAuth', () => {
   beforeEach(() => {
+    localStorage.clear()
     vi.clearAllMocks()
     webAppLoginMock.mockResolvedValue({
       result: 'success',
@@ -46,12 +38,14 @@ describe('MailAndPasswordAuth', () => {
     fetchAccessTokenMock.mockResolvedValue({ access_token: 'passport-token' })
   })
 
+  afterEach(() => localStorage.clear())
+
   it('submits from the password field through the native form', async () => {
     const user = userEvent.setup()
     render(<MailAndPasswordAuth isEmailSetup />)
 
     const emailInput = screen.getByRole('textbox', { name: 'login.email' })
-    const passwordInput = screen.getByLabelText(/login\.password/)
+    const passwordInput = screen.getByLabelText('login.password', { exact: true })
     const submitButton = screen.getByRole('button', { name: 'login.signBtn' })
 
     expect(emailInput).toHaveAttribute('name', 'email')
@@ -70,18 +64,15 @@ describe('MailAndPasswordAuth', () => {
     await user.type(passwordInput, 'strong-password{Enter}')
 
     await waitFor(() => {
-      expect(webAppLoginMock).toHaveBeenCalledTimes(1)
+      expect(webAppLoginMock).toHaveBeenCalledWith({
+        url: '/login',
+        body: {
+          email: 'user@example.com',
+          password: 'c3Ryb25nLXBhc3N3b3Jk',
+          remember_me: true,
+        },
+      })
     })
-  })
-
-  it('keeps the password field name separate from the recovery link', () => {
-    render(<MailAndPasswordAuth isEmailSetup />)
-
-    expect(screen.getByLabelText('login.password', { exact: true })).toHaveAttribute(
-      'name',
-      'password',
-    )
-    expect(screen.getByRole('link', { name: 'login.forget' })).toBeInTheDocument()
   })
 
   it('names the password visibility action for its current state', async () => {

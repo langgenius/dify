@@ -3,7 +3,15 @@
 import type { FormEvent } from 'react'
 import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '../app-card-utils'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import {
@@ -15,12 +23,18 @@ import WorkflowHiddenInputFields from '../workflow-hidden-input-fields'
 
 type WorkflowLaunchFormProps = {
   hiddenVariables: WorkflowHiddenStartVariable[]
+  launchDisabled: boolean
   targetUrl: string
   onClose: () => void
 }
 
-function WorkflowLaunchForm({ hiddenVariables, targetUrl, onClose }: WorkflowLaunchFormProps) {
-  const { t } = useTranslation()
+function WorkflowLaunchForm({
+  hiddenVariables,
+  launchDisabled,
+  targetUrl,
+  onClose,
+}: WorkflowLaunchFormProps) {
+  const { t } = useTranslation(['appOverview', 'common'])
   const [values, setValues] = useState<Record<string, WorkflowLaunchInputValue>>(() =>
     createWorkflowLaunchInitialValues(hiddenVariables),
   )
@@ -34,6 +48,8 @@ function WorkflowLaunchForm({ hiddenVariables, targetUrl, onClose }: WorkflowLau
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (launchDisabled) return
+
     const launchUrl = await buildWorkflowLaunchUrl({
       accessibleUrl: targetUrl,
       variables: hiddenVariables,
@@ -45,26 +61,27 @@ function WorkflowLaunchForm({ hiddenVariables, targetUrl, onClose }: WorkflowLau
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-4 px-6 pb-4">
+    <form className="contents" onSubmit={handleSubmit}>
+      <DialogBody className="space-y-4">
         <WorkflowHiddenInputFields
           hiddenVariables={hiddenVariables}
           values={values}
           onValueChange={handleValueChange}
         />
-      </div>
-      <div className="flex items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
+      </DialogBody>
+      <DialogFooter>
         <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-        <Button type="submit" variant="primary">
+        <Button type="submit" variant="primary" disabled={launchDisabled}>
           {t(($) => $['overview.appInfo.launch'], { ns: 'appOverview' })}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }
 
 type WorkflowLaunchDialogProps = {
   hiddenVariables: WorkflowHiddenStartVariable[]
+  launchDisabled?: boolean
   open: boolean
   targetUrl: string
   onOpenChange: (open: boolean) => void
@@ -72,35 +89,37 @@ type WorkflowLaunchDialogProps = {
 
 export function WorkflowLaunchDialog({
   hiddenVariables,
+  launchDisabled = false,
   open,
   targetUrl,
   onOpenChange,
 }: WorkflowLaunchDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview'])
   const supportedVariables = hiddenVariables.filter(isWorkflowLaunchInputSupported)
 
   if (!hiddenVariables.length) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-140! max-w-[calc(100vw-2rem)]! p-0!">
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+      <DialogContent className="w-140">
+        <DialogHeader>
+          <DialogTitle>
             {t(($) => $['overview.appInfo.workflowLaunchHiddenInputs.title'], {
               ns: 'appOverview',
             })}
           </DialogTitle>
-          <DialogDescription className="system-md-regular text-text-tertiary">
+          <DialogDescription>
             <Trans
               i18nKey={($) => $['overview.appInfo.workflowLaunchHiddenInputs.description']}
               ns="appOverview"
               components={{ bold: <span className="system-md-medium" /> }}
             />
           </DialogDescription>
-        </div>
+        </DialogHeader>
         <WorkflowLaunchForm
           key={open ? `open:${targetUrl}` : 'closed'}
           hiddenVariables={supportedVariables}
+          launchDisabled={launchDisabled}
           targetUrl={targetUrl}
           onClose={() => onOpenChange(false)}
         />

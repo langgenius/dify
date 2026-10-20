@@ -5,7 +5,7 @@ import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom, useHydrateAtoms } from 'jotai/utils'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export const BUILT_IN_ENVIRONMENT_ID = 'built-in'
 

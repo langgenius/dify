@@ -10,18 +10,19 @@ type ConfigState = {
   webPrefix: string | undefined
 }
 
-const { configState, mockHeadersGet, systemFeaturesQueryKey } = vi.hoisted(() => ({
+const { configState, mockHeadersGet, mockBoundary, systemFeaturesQueryKey } = vi.hoisted(() => ({
   configState: {
     cookieYesSiteKey: 'site-key',
     isProd: true,
     webPrefix: 'https://cloud.dify.ai',
   } as ConfigState,
   mockHeadersGet: vi.fn(),
+  mockBoundary: vi.fn(),
   systemFeaturesQueryKey: ['console', 'system-features'] as const,
 }))
 
 vi.mock('@/features/system-features/server', () => ({
-  getCachedSystemFeatures: () => queryClient.getQueryData(systemFeaturesQueryKey),
+  getOptionalSystemFeatures: async () => queryClient.getQueryData(systemFeaturesQueryKey),
 }))
 
 vi.mock('@/config', () => ({
@@ -41,19 +42,10 @@ vi.mock('@/next/headers', () => ({
 }))
 
 vi.mock('../cloud-analytics-layout-boundary', () => ({
-  CloudAnalyticsLayoutBoundary: ({
-    cookieYesSiteKey,
-    nonce,
-  }: {
-    cookieYesSiteKey: string
-    nonce?: string
-  }) => (
-    <span
-      data-cookieyes-site-key={cookieYesSiteKey}
-      data-nonce={nonce}
-      data-testid="cloud-analytics-layout-boundary"
-    />
-  ),
+  CloudAnalyticsLayoutBoundary: (props: { cookieYesSiteKey: string; nonce?: string }) => {
+    mockBoundary(props)
+    return null
+  },
 }))
 
 async function getCloudAnalyticsResult() {
@@ -66,6 +58,8 @@ async function renderCloudAnalytics() {
 }
 
 describe('CloudAnalytics', () => {
+  let previousRegistration: string | null
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
@@ -73,7 +67,8 @@ describe('CloudAnalytics', () => {
     configState.isProd = true
     configState.webPrefix = 'https://cloud.dify.ai'
     queryClient = new QueryClient()
-    window.sessionStorage.clear()
+    previousRegistration = window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)
+    window.sessionStorage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
     queryClient.setQueryData(systemFeaturesQueryKey, { deployment_edition: 'CLOUD' })
     mockHeadersGet.mockImplementation((name: string) => {
       const values: Record<string, string> = {
@@ -84,12 +79,16 @@ describe('CloudAnalytics', () => {
     })
   })
 
-  it('mounts the layout boundary for an eligible Cloud request', async () => {
-    const { getByTestId } = await renderCloudAnalytics()
-    const boundary = getByTestId('cloud-analytics-layout-boundary')
+  afterEach(() => {
+    if (previousRegistration === null)
+      window.sessionStorage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
+    else window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, previousRegistration)
+    queryClient.clear()
+  })
 
-    expect(boundary).toHaveAttribute('data-cookieyes-site-key', 'site-key')
-    expect(boundary).toHaveAttribute('data-nonce', 'test-nonce')
+  it('mounts the layout boundary for an eligible Cloud request', async () => {
+    await renderCloudAnalytics()
+    expect(mockBoundary).toHaveBeenCalledWith({ cookieYesSiteKey: 'site-key', nonce: 'test-nonce' })
   })
 
   it('does not render on a different host', async () => {
@@ -101,9 +100,9 @@ describe('CloudAnalytics', () => {
     })
 
     const result = await getCloudAnalyticsResult()
-    const { queryByTestId } = render(result)
+    render(result)
 
-    expect(queryByTestId('cloud-analytics-layout-boundary')).toBeNull()
+    expect(mockBoundary).not.toHaveBeenCalled()
     expect(result).not.toBeNull()
     const { getAnalyticsConsent } = await import('../consent-store')
     expect(getAnalyticsConsent()).toBe('disabled')
@@ -113,9 +112,9 @@ describe('CloudAnalytics', () => {
     'disables analytics when deployment edition is %s',
     async (deploymentEdition) => {
       queryClient.setQueryData(systemFeaturesQueryKey, { deployment_edition: deploymentEdition })
-      const { queryByTestId } = await renderCloudAnalytics()
+      await renderCloudAnalytics()
 
-      expect(queryByTestId('cloud-analytics-layout-boundary')).toBeNull()
+      expect(mockBoundary).not.toHaveBeenCalled()
     },
   )
 
@@ -124,9 +123,9 @@ describe('CloudAnalytics', () => {
     window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'pending-marker')
 
     const result = await getCloudAnalyticsResult()
-    const { queryByTestId } = render(result)
+    render(result)
 
-    expect(queryByTestId('cloud-analytics-layout-boundary')).toBeNull()
+    expect(mockBoundary).not.toHaveBeenCalled()
     const { getAnalyticsConsent } = await import('../consent-store')
     expect(getAnalyticsConsent()).toBe('unknown')
     expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('pending-marker')

@@ -1,12 +1,12 @@
-import type { PopoverPositionerProps, PopoverTriggerProps } from '@langgenius/dify-ui/popover'
-import type { CSSProperties, KeyboardEvent, MouseEventHandler } from 'react'
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type {
-  CommonNodeType,
-  NodeDefault,
-  OnNodeAdd,
-  OnSelectBlock,
-  ToolWithProvider,
-} from '../types'
+  PopoverChangeEventDetails,
+  PopoverPopupProps,
+  PopoverPositionerProps,
+  PopoverTriggerProps,
+} from '@langgenius/dify-ui/popover'
+import type { CSSProperties, KeyboardEvent, MouseEventHandler, Ref } from 'react'
+import type { CommonNodeType, NodeDefault, OnNodeAdd, OnSelectBlock } from '../types'
 import type { TabType } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -19,11 +19,12 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { FlowType } from '@/types/common'
 import TipPopup from '../operator/tip-popup'
 import { useStore } from '../store'
 import { BlockEnum, isTriggerNode } from '../types'
@@ -34,8 +35,10 @@ export type BlockSelectorProps = Pick<
   PopoverPositionerProps,
   'alignOffset' | 'placement' | 'sideOffset'
 > & {
+  finalFocus?: PopoverPopupProps['finalFocus']
+  triggerRef?: Ref<HTMLButtonElement>
   open?: boolean
-  onOpenChange?: (open: boolean) => void
+  onOpenChange?: (open: boolean, details?: PopoverChangeEventDetails) => void
   onSelect: OnSelectBlock
   trigger?: NonNullable<PopoverTriggerProps['render']>
   triggerTooltip?: string
@@ -46,7 +49,7 @@ export type BlockSelectorProps = Pick<
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
   blocks?: NodeDefault[]
-  dataSources?: ToolWithProvider[]
+  dataSources?: RagPipelineDatasourceProviderResponse[]
   noBlocks?: boolean
   noTools?: boolean
   standalonePanel?: TabType
@@ -64,6 +67,8 @@ function BlockSelector({
   onSelect,
   trigger,
   triggerTooltip,
+  triggerRef,
+  finalFocus,
   placement = 'right',
   sideOffset,
   alignOffset,
@@ -86,16 +91,16 @@ function BlockSelector({
   snippetInsertPayload,
   isolateKeyboardEvents = false,
 }: BlockSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [localOpen, setLocalOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const open = openFromProps === undefined ? localOpen : openFromProps
   const handleOpenChange = useCallback(
-    (newOpen: boolean) => {
+    (newOpen: boolean, details?: PopoverChangeEventDetails) => {
       if (newOpen && disabled) return
 
       setLocalOpen(newOpen)
-      if (onOpenChange) onOpenChange(newOpen)
+      if (onOpenChange) onOpenChange(newOpen, details)
     },
     [disabled, onOpenChange],
   )
@@ -125,19 +130,22 @@ function BlockSelector({
 
   const triggerControl = trigger ? (
     <PopoverTrigger
+      ref={triggerRef}
       aria-label={triggerAriaLabel}
       disabled={disabled}
+      className={triggerClassName}
       render={trigger}
       onClick={handleTrigger}
     />
   ) : (
     <PopoverTrigger
+      ref={triggerRef}
       disabled={disabled}
       render={
         <IconButton
           aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
           variant="primary"
-          size="xs"
+          size="md"
           className={cn('z-10 rounded-full', triggerClassName)}
           style={triggerStyle}
         >
@@ -165,6 +173,7 @@ function BlockSelector({
         >
           <PopoverPopup
             initialFocus={searchInputRef}
+            finalFocus={finalFocus}
             className="border-none bg-transparent shadow-none"
             onClick={handlePopupClick}
             onKeyDown={isolateKeyboardEvents ? handlePopupKeyDown : undefined}
@@ -226,7 +235,7 @@ type BlockSelectorContentProps = Pick<
   searchInputRef: React.RefObject<HTMLInputElement | null>
 }
 
-function BlockSelectorContent({
+export function BlockSelectorContent({
   allowUserInputSelection,
   availableBlocksTypes,
   blocks: blocksFromProps,
@@ -244,14 +253,14 @@ function BlockSelectorContent({
   standalonePanel,
 }: BlockSelectorContentProps) {
   const nodes = useNodes()
-  const flowType = useHooksStore((state) => state.configsMap?.flowType)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const availableNodesMetaData = useHooksStore((state) => state.availableNodesMetaData)
   const fallbackDataSources = useStore((state) => state.dataSourceList)
   const blocks = useMemo(() => {
     if (blocksFromProps) return blocksFromProps
 
     return (availableNodesMetaData?.nodes ?? []).filter((block) => {
-      return ![
+      const excludedBlockTypes: readonly BlockEnum[] = [
         BlockEnum.Start,
         BlockEnum.StartPlaceholder,
         BlockEnum.DataSource,
@@ -259,7 +268,9 @@ function BlockSelectorContent({
         BlockEnum.IterationStart,
         BlockEnum.LoopStart,
         BlockEnum.DataSourceEmpty,
-      ].includes(block.metaData.type)
+      ]
+
+      return !excludedBlockTypes.includes(block.metaData.type)
     })
   }, [availableNodesMetaData?.nodes, blocksFromProps])
   const dataSources = dataSourcesFromProps ?? fallbackDataSources ?? []
@@ -286,12 +297,12 @@ function BlockSelectorContent({
 
     return result
   }, [filteredNodes])
-  const disableStartTab = flowType === FlowType.snippet
+  const disableStartTab = resourceKind === 'snippet'
   const { initialTab, tabs } = useTabs({
     noBlocks,
     noSources: !dataSources.length,
     noTools,
-    noSnippets: flowType === FlowType.snippet,
+    noSnippets: resourceKind === 'snippet',
     noStart: !showStartTab,
     defaultActiveTab,
     hasStartPlaceholderNode,

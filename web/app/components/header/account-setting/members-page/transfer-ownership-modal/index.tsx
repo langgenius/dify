@@ -1,15 +1,24 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
+import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import MemberSelector from './member-selector'
 
 type Props = Readonly<{
@@ -23,12 +32,8 @@ const STEP = {
 }
 type Step = (typeof STEP)[keyof typeof STEP]
 
-const getErrorMessage = (error: unknown) => {
-  return error instanceof Error ? error.message : ''
-}
-
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const verificationCodeInputId = React.useId()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: userProfile } = useSuspenseQuery({
@@ -65,15 +70,16 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     )
   }
   const sendEmail = async () => {
-    const res = await sendOwnerEmail({})
+    const res = await consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post({
+      body: {},
+    })
     startCount()
     if (res.data) setStepToken(res.data)
   }
   const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
     try {
-      const res = await verifyOwnerEmail({
-        code,
-        token,
+      const res = await consoleClient.workspaces.current.members.ownerTransferCheck.post({
+        body: { code, token },
       })
       if (res.is_valid) {
         setStepToken(res.token)
@@ -82,7 +88,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
         toast.error('Verifying email failed')
       }
     } catch (error) {
-      toast.error(`Error verifying email: ${getErrorMessage(error)}`)
+      toast.error(`Error verifying email: ${getErrorMessage(error) ?? ''}`)
     }
   }
   const sendCodeToOriginEmail = async () => {
@@ -100,167 +106,193 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const handleTransfer = async () => {
     setIsTransfer(true)
     try {
-      await ownershipTransfer(newOwner, {
-        token: stepToken,
+      await consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post({
+        params: { member_id: newOwner },
+        body: { token: stepToken },
       })
       globalThis.location.reload()
     } catch (error) {
-      toast.error(`Error ownership transfer: ${getErrorMessage(error)}`)
+      toast.error(`Error ownership transfer: ${getErrorMessage(error) ?? ''}`)
     } finally {
       setIsTransfer(false)
     }
   }
   return (
-    <Dialog open={show}>
+    <Dialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+      disablePointerDismissal
+    >
       <DialogContent className="w-105">
-        <button
-          type="button"
-          className="absolute top-5 right-5 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          onClick={onClose}
-        >
-          <span className="i-ri-close-line size-5 text-text-tertiary" aria-hidden="true" />
-        </button>
         {step === STEP.start && (
           <>
-            <div className="pb-3 title-2xl-semi-bold text-text-primary">
-              {t(($) => $['members.transferModal.title'], { ns: 'common' })}
-            </div>
-            <div className="space-y-1 pt-1 pb-2">
-              <div className="body-md-medium text-text-destructive">
-                {t(($) => $['members.transferModal.warning'], {
-                  ns: 'common',
-                  workspace: currentWorkspace.name.replace(/'/g, '’'),
-                })}
+            <DialogHeader>
+              <DialogTitle>
+                {t(($) => $['members.transferModal.title'], { ns: 'workspaceMembers' })}
+              </DialogTitle>
+              <DialogHeaderCloseButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              />
+            </DialogHeader>
+            <DialogBody>
+              <div className="space-y-1 pt-1 pb-2">
+                <div className="body-md-medium text-text-destructive">
+                  {t(($) => $['members.transferModal.warning'], {
+                    ns: 'workspaceMembers',
+                    workspace: currentWorkspace.name.replace(/'/g, '’'),
+                  })}
+                </div>
+                <div className="body-md-regular text-text-secondary">
+                  {t(($) => $['members.transferModal.warningTip'], { ns: 'workspaceMembers' })}
+                </div>
+                <div className="body-md-regular text-text-secondary">
+                  <Trans
+                    i18nKey={($) => $['members.transferModal.sendTip']}
+                    ns="workspaceMembers"
+                    components={{
+                      email: <span className="body-md-medium text-text-primary"></span>,
+                    }}
+                    values={{ email: userProfile.email }}
+                  />
+                </div>
               </div>
-              <div className="body-md-regular text-text-secondary">
-                {t(($) => $['members.transferModal.warningTip'], { ns: 'common' })}
-              </div>
-              <div className="body-md-regular text-text-secondary">
-                <Trans
-                  i18nKey={($) => $['members.transferModal.sendTip']}
-                  ns="common"
-                  components={{ email: <span className="body-md-medium text-text-primary"></span> }}
-                  values={{ email: userProfile.email }}
-                />
-              </div>
-            </div>
-            <div className="pt-3"></div>
-            <div className="space-y-2">
-              <Button className="w-full!" variant="primary" onClick={sendCodeToOriginEmail}>
-                {t(($) => $['members.transferModal.sendVerifyCode'], { ns: 'common' })}
+            </DialogBody>
+            <DialogFooter className="flex-col items-stretch">
+              <Button variant="primary" onClick={sendCodeToOriginEmail}>
+                {t(($) => $['members.transferModal.sendVerifyCode'], { ns: 'workspaceMembers' })}
               </Button>
-              <Button className="w-full!" onClick={onClose}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-            </div>
+              <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+            </DialogFooter>
           </>
         )}
         {step === STEP.verify && (
           <>
-            <div className="pb-3 title-2xl-semi-bold text-text-primary">
-              {t(($) => $['members.transferModal.verifyEmail'], { ns: 'common' })}
-            </div>
-            <div className="pt-1 pb-2">
-              <div className="body-md-regular text-text-secondary">
-                <Trans
-                  i18nKey={($) => $['members.transferModal.verifyContent']}
-                  ns="common"
-                  components={{ email: <span className="body-md-medium text-text-primary"></span> }}
-                  values={{ email: userProfile.email }}
+            <DialogHeader>
+              <DialogTitle>
+                {t(($) => $['members.transferModal.verifyEmail'], { ns: 'workspaceMembers' })}
+              </DialogTitle>
+              <DialogHeaderCloseButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              />
+            </DialogHeader>
+            <DialogBody>
+              <div className="pt-1 pb-2">
+                <div className="body-md-regular text-text-secondary">
+                  <Trans
+                    i18nKey={($) => $['members.transferModal.verifyContent']}
+                    ns="workspaceMembers"
+                    components={{
+                      email: <span className="body-md-medium text-text-primary"></span>,
+                    }}
+                    values={{ email: userProfile.email }}
+                  />
+                </div>
+                <div className="body-md-regular text-text-secondary">
+                  {t(($) => $['members.transferModal.verifyContent2'], { ns: 'workspaceMembers' })}
+                </div>
+              </div>
+              <div className="pt-3">
+                <label
+                  htmlFor={verificationCodeInputId}
+                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+                >
+                  {t(($) => $['members.transferModal.codeLabel'], { ns: 'workspaceMembers' })}
+                </label>
+                <Input
+                  id={verificationCodeInputId}
+                  name="verification-code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  className="w-full!"
+                  placeholder={t(($) => $['members.transferModal.codePlaceholder'], {
+                    ns: 'workspaceMembers',
+                  })}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  maxLength={6}
                 />
               </div>
-              <div className="body-md-regular text-text-secondary">
-                {t(($) => $['members.transferModal.verifyContent2'], { ns: 'common' })}
-              </div>
-            </div>
-            <div className="pt-3">
-              <label
-                htmlFor={verificationCodeInputId}
-                className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
-              >
-                {t(($) => $['members.transferModal.codeLabel'], { ns: 'common' })}
-              </label>
-              <Input
-                id={verificationCodeInputId}
-                name="verification-code"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                className="w-full!"
-                placeholder={t(($) => $['members.transferModal.codePlaceholder'], { ns: 'common' })}
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                maxLength={6}
-              />
-            </div>
-            <div className="mt-3 space-y-2">
+            </DialogBody>
+            <DialogFooter className="flex-col items-stretch">
               <Button
                 disabled={code.length !== 6}
-                className="w-full!"
                 variant="primary"
                 onClick={handleVerifyOriginEmail}
               >
-                {t(($) => $['members.transferModal.continue'], { ns: 'common' })}
+                {t(($) => $['members.transferModal.continue'], { ns: 'workspaceMembers' })}
               </Button>
-              <Button className="w-full!" onClick={onClose}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-            </div>
-            <div className="mt-3 flex items-center gap-1 system-xs-regular text-text-tertiary">
-              <span>{t(($) => $['members.transferModal.resendTip'], { ns: 'common' })}</span>
-              {time > 0 && (
+              <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+              <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">
                 <span>
-                  {t(($) => $['members.transferModal.resendCount'], { ns: 'common', count: time })}
+                  {t(($) => $['members.transferModal.resendTip'], { ns: 'workspaceMembers' })}
                 </span>
-              )}
-              {!time && (
-                <button
-                  type="button"
-                  onClick={sendCodeToOriginEmail}
-                  className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary"
-                >
-                  {t(($) => $['members.transferModal.resend'], { ns: 'common' })}
-                </button>
-              )}
-            </div>
+                {time > 0 && (
+                  <span>
+                    {t(($) => $['members.transferModal.resendCount'], {
+                      ns: 'workspaceMembers',
+                      count: time,
+                    })}
+                  </span>
+                )}
+                {!time && (
+                  <button
+                    type="button"
+                    onClick={sendCodeToOriginEmail}
+                    className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary"
+                  >
+                    {t(($) => $['members.transferModal.resend'], { ns: 'workspaceMembers' })}
+                  </button>
+                )}
+              </div>
+            </DialogFooter>
           </>
         )}
         {step === STEP.transfer && (
           <>
-            <div className="pb-3 title-2xl-semi-bold text-text-primary">
-              {t(($) => $['members.transferModal.title'], { ns: 'common' })}
-            </div>
-            <div className="space-y-1 pt-1 pb-2">
-              <div className="body-md-medium text-text-destructive">
-                {t(($) => $['members.transferModal.warning'], {
-                  ns: 'common',
-                  workspace: currentWorkspace.name.replace(/'/g, '’'),
-                })}
+            <DialogHeader>
+              <DialogTitle>
+                {t(($) => $['members.transferModal.title'], { ns: 'workspaceMembers' })}
+              </DialogTitle>
+              <DialogHeaderCloseButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              />
+            </DialogHeader>
+            <DialogBody>
+              <div className="space-y-1 pt-1 pb-2">
+                <div className="body-md-medium text-text-destructive">
+                  {t(($) => $['members.transferModal.warning'], {
+                    ns: 'workspaceMembers',
+                    workspace: currentWorkspace.name.replace(/'/g, '’'),
+                  })}
+                </div>
+                <div className="body-md-regular text-text-secondary">
+                  {t(($) => $['members.transferModal.warningTip'], { ns: 'workspaceMembers' })}
+                </div>
               </div>
-              <div className="body-md-regular text-text-secondary">
-                {t(($) => $['members.transferModal.warningTip'], { ns: 'common' })}
+              <div className="pt-3">
+                <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+                  {t(($) => $['members.transferModal.transferLabel'], { ns: 'workspaceMembers' })}
+                </div>
+                <MemberSelector
+                  exclude={[userProfile.id]}
+                  value={newOwner}
+                  onSelect={setNewOwner}
+                />
               </div>
-            </div>
-            <div className="pt-3">
-              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-                {t(($) => $['members.transferModal.transferLabel'], { ns: 'common' })}
-              </div>
-              <MemberSelector exclude={[userProfile.id]} value={newOwner} onSelect={setNewOwner} />
-            </div>
-            <div className="mt-4 space-y-2">
+            </DialogBody>
+            <DialogFooter className="flex-col items-stretch">
               <Button
                 disabled={!newOwner || isTransfer}
-                className="w-full!"
                 variant="primary"
                 tone="destructive"
                 onClick={handleTransfer}
               >
-                {t(($) => $['members.transferModal.transfer'], { ns: 'common' })}
+                {t(($) => $['members.transferModal.transfer'], { ns: 'workspaceMembers' })}
               </Button>
-              <Button className="w-full!" onClick={onClose}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-            </div>
+              <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+            </DialogFooter>
           </>
         )}
       </DialogContent>

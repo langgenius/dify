@@ -16,7 +16,7 @@ type IRunBatchProps = {
 }
 
 const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
 

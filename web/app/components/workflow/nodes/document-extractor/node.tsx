@@ -11,7 +11,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 const i18nPrefix = 'nodes.docExtractor'
 
 const NodeComponent: FC<NodeProps<DocExtractorNodeType>> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const nodes: Node[] = useNodes()
   const { variable_selector: variable } = data

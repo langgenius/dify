@@ -1,22 +1,22 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { zPostAgentByAgentIdCopyResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
-import { createE2EResourceName } from '../../../support/naming'
+import { createE2EResourceName } from '../../../support/naming.ts'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
-} from '../../agent-v2/support/agent-builder-resources'
-import { normalAgentPrompt } from '../../agent-v2/support/agent-soul'
-import { asArray, asRecord, asString } from '../../agent-v2/support/fixtures/common'
-import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials'
+} from '../../agent-v2/support/agent-builder-resources.ts'
+import { normalAgentPrompt } from '../../agent-v2/support/agent-soul.ts'
+import { asArray, asRecord, asString } from '../../agent-v2/support/fixtures/common.ts'
+import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials.ts'
 import {
   expectProviderToolActionVisible,
   getCurrentAgentId,
   getPreseededAgent,
   openAgentKnowledgeRetrievalDialog,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 const getComposerInheritanceSnapshot = async (world: DifyWorld, agentId: string) => {
   const draft = await world
@@ -114,7 +114,8 @@ When(
     this.lastCreatedAgentName = copiedAgent.name
     this.lastCreatedAgentRole = copiedAgent.role ?? undefined
 
-    await expect(page.getByText('Agent duplicated.')).toBeVisible()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('listitem', { name: copyName, exact: true })).toBeVisible()
   },
 )
 

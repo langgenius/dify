@@ -1,95 +1,84 @@
-import type { FormType } from '../../..'
 import type { CustomActionsProps } from '../actions'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { formContext } from '../../..'
-import Actions from '../actions'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useAppForm } from '../../..'
 
-const mockFormState = vi.hoisted(() => ({
-  canSubmit: true,
-  isSubmitting: false,
-}))
-
-vi.mock('@tanstack/react-form', async () => {
-  const actual =
-    await vi.importActual<typeof import('@tanstack/react-form')>('@tanstack/react-form')
-  return {
-    ...actual,
-    useStore: (_store: unknown, selector: (state: typeof mockFormState) => unknown) =>
-      selector(mockFormState),
-  }
-})
-
-type RenderWithFormOptions = {
-  canSubmit?: boolean
-  isSubmitting?: boolean
-  CustomActions?: (props: CustomActionsProps) => React.ReactNode
-  onSubmit?: () => void
-}
-
-const renderWithForm = ({
-  canSubmit = true,
-  isSubmitting = false,
+const TestForm = ({
+  invalid = false,
+  onSubmit = async () => {},
   CustomActions,
-  onSubmit = vi.fn(),
-}: RenderWithFormOptions = {}) => {
-  mockFormState.canSubmit = canSubmit
-  mockFormState.isSubmitting = isSubmitting
-
-  const form = {
-    store: {},
-    handleSubmit: onSubmit,
-  }
-
-  render(
-    <formContext.Provider value={form as unknown as FormType}>
-      <Actions CustomActions={CustomActions} />
-    </formContext.Provider>,
+}: {
+  invalid?: boolean
+  onSubmit?: () => Promise<void>
+  CustomActions?: (props: CustomActionsProps) => React.ReactNode
+}) => {
+  const form = useAppForm({
+    defaultValues: { name: '' },
+    validators: { onMount: () => (invalid ? 'Name is required' : undefined) },
+    onSubmit,
+  })
+  return (
+    <form.AppForm>
+      <form.Actions CustomActions={CustomActions} />
+    </form.AppForm>
   )
-
-  return { onSubmit }
 }
 
 describe('Actions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should disable submit button when form cannot submit', () => {
-    renderWithForm({ canSubmit: false })
-    expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeDisabled()
-  })
-
-  it('should call form submit when users click submit button', async () => {
-    const submitSpy = vi.fn()
-    renderWithForm({ onSubmit: submitSpy })
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.submit' }))
-
-    await waitFor(() => {
-      expect(submitSpy).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  it('should render custom actions when provided', () => {
-    const customActionsSpy = vi.fn(({ isSubmitting, canSubmit }: CustomActionsProps) => (
-      <div>{`custom-${String(isSubmitting)}-${String(canSubmit)}`}</div>
-    ))
-
-    renderWithForm({
-      CustomActions: customActionsSpy,
-    })
-
-    expect(
-      screen.queryByRole('button', { name: 'common.operation.submit' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByText('custom-false-true')).toBeInTheDocument()
-    expect(customActionsSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        form: expect.any(Object),
-        isSubmitting: false,
-        canSubmit: true,
-      }),
+  it('disables submission when the form is invalid', async () => {
+    render(<TestForm invalid />)
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeDisabled(),
     )
+  })
+
+  it('keeps the pending button focusable and prevents duplicate submissions', async () => {
+    const user = userEvent.setup()
+    let finishSubmit!: () => void
+    const pending = new Promise<void>((resolve) => {
+      finishSubmit = resolve
+    })
+    const onSubmit = vi.fn(() => pending)
+    render(<TestForm onSubmit={onSubmit} />)
+    const button = screen.getByRole('button', { name: 'common.operation.submit' })
+    await user.click(button)
+    await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'true'))
+    expect(button).not.toBeDisabled()
+    expect(button).toHaveFocus()
+    await user.click(button)
+    expect(onSubmit).toHaveBeenCalledOnce()
+    await act(async () => finishSubmit())
+    await waitFor(() => expect(button).not.toHaveAttribute('aria-disabled', 'true'))
+  })
+
+  it('lets custom actions submit the form and observe pending state', async () => {
+    const user = userEvent.setup()
+    let finish!: () => void
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
+    )
+    render(
+      <TestForm
+        onSubmit={onSubmit}
+        CustomActions={({ form, isSubmitting, canSubmit }) => (
+          <button
+            type="button"
+            disabled={!canSubmit || isSubmitting}
+            onClick={() => form.handleSubmit()}
+          >
+            {isSubmitting ? 'Saving' : 'Save'}
+          </button>
+        )}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('button', { name: 'Saving' })).toBeDisabled()
+    expect(onSubmit).toHaveBeenCalledOnce()
+    await act(async () => finish())
+    expect(await screen.findByRole('button', { name: 'Save' })).toBeEnabled()
   })
 })

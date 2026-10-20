@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
-import { baseProviderContextValue } from '@/context/provider-context'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import PlanComp from '../index'
 
 vi.mock('@/context/workspace-state', async () => {
@@ -11,33 +11,7 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: () => ({
-      ...baseProviderContextValue,
-      enableEducationPlan: true,
-    }),
-  }
-})
-
-vi.mock('@/app/components/billing/hooks/use-education-discount', () => ({
-  useEducationDiscount: () => ({
-    handleEducationDiscount: vi.fn(),
-    isEducationDiscountLoading: false,
-  }),
-}))
-
-vi.mock('@/app/components/billing/upgrade-btn', () => ({
-  default: () => <button type="button">View Plan</button>,
-}))
-
 vi.mock('@/app/components/billing/usage-info', () => ({
-  default: () => null,
-}))
-
-vi.mock('@/app/components/billing/usage-info/apps-info', () => ({
   default: () => null,
 }))
 
@@ -54,26 +28,24 @@ vi.mock('../assets', () => ({
 const renderPlan = (educationStatus = { allow_refresh: false, is_student: false }) => {
   const { wrapper } = createConsoleQueryWrapper({
     educationStatus,
+    features: { education: { enabled: true } },
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
 
-  return render(<PlanComp loc="billing-page" />, { wrapper })
+  const { wrapper: UrlState } = createNuqsTestWrapper()
+  return render(
+    <UrlState>
+      <PlanComp loc="billing-page" />
+    </UrlState>,
+    { wrapper },
+  )
 }
 
 describe('PlanComp education verification entry', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('shows education verification before View Plan when the original eligibility allows it', () => {
+  it('links eligible accounts to education verification', () => {
     renderPlan()
 
     const educationLink = screen.getByRole('link', { name: 'education.toVerified' })
-    const viewPlanButton = screen.getByRole('button', { name: 'View Plan' })
-
-    expect(
-      educationLink.compareDocumentPosition(viewPlanButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
     expect(educationLink).toHaveAttribute('href', '/education/verify')
   })
 

@@ -20,7 +20,7 @@ const isTheme = (value: string): value is Theme => {
 }
 
 export default function ThemeSelector() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { theme, setTheme } = useTheme()
   const currentTheme: Theme = theme && isTheme(theme) ? theme : 'system'
 
@@ -48,7 +48,7 @@ export default function ThemeSelector() {
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={6} className="w-[144px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={6} className="w-36">
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}
           onValueChange={(nextTheme) => setTheme(nextTheme)}

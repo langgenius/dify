@@ -1,26 +1,27 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherPublishParams } from '../types'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useConfigureButton } from '@/app/components/tools/workflow-tool/hooks/use-configure-button'
 import { appDefaultIconBackground } from '@/config'
-import { AppModeEnum } from '@/types/app'
 
 type UseWorkflowToolParams = {
   appDescription?: string
-  appIcon?: string
+  appIcon?: string | null
   appIconBackground?: string | null
   appIconType?: string | null
   appId?: string
-  appMode?: AppModeEnum
+  appMode?: AppMode
   appName?: string
   appPublished: boolean
   hasHumanInputNode: boolean
   hasPublishedVersion: boolean
   hasTriggerNode: boolean
   inputs?: InputVar[]
-  outputs?: Variable[]
+  outputs?: WorkflowToolOutputVariable[]
   toolPublished?: boolean
   workflowToolAvailable: boolean
   onClosePublisher: () => void
@@ -48,10 +49,10 @@ export function useWorkflowTool({
   toolPublished,
   workflowToolAvailable,
 }: UseWorkflowToolParams) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'] as const)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const canManageTools = useCanManageTools()
-  const visible = appMode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
+  const visible = appMode === 'workflow' && !hasHumanInputNode && !hasTriggerNode
   const published = Boolean(toolPublished)
   const message =
     !hasPublishedVersion || !workflowToolAvailable

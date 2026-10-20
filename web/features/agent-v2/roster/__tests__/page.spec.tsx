@@ -1,60 +1,24 @@
-import { screen } from '@testing-library/react'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import type { ReactElement } from 'react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { renderWithConsoleQuery as renderWithoutUrlState } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import RosterPage from '../page'
 
-const infiniteOptions = vi.hoisted(() => vi.fn((options) => options))
-const useInfiniteQueryOptions = vi.hoisted(() => vi.fn())
+const listAgents = vi.hoisted(() => vi.fn())
 const queryValues = vi.hoisted(() => ({
   created_by_me: false,
   filter: 'all',
   keyword: '',
   sort_by: 'last_modified',
 }))
-const rosterQueryState = vi.hoisted(() => ({
-  data: {
-    pages: [
-      {
-        data: [],
-        has_more: false,
-        page: 1,
-        publication_counts: { drafts: 2, published: 1 },
-      },
-    ],
-  } as
-    | {
-        pages: Array<{
-          data: never[]
-          has_more: boolean
-          page: number
-          publication_counts: { drafts: number; published: number }
-        }>
-      }
-    | undefined,
-}))
-
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
-  const agentQuery = actual.consoleQuery.agent
-  const agentQueryWithInputCapture = new Proxy(agentQuery, {
-    get(target, property, receiver) {
-      if (property !== 'get') return Reflect.get(target, property, receiver)
-
-      return {
-        ...agentQuery.get,
-        infiniteOptions,
-      }
-    },
-  })
-
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: new Proxy(actual.consoleQuery, {
-      get(target, property, receiver) {
-        if (property === 'agent') return agentQueryWithInputCapture
-
-        return Reflect.get(target, property, receiver)
-      },
-    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'agent.get': listAgents }),
   }
 })
 
@@ -62,50 +26,22 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,
 }))
 
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: (name: keyof typeof queryValues) => [queryValues[name], vi.fn()],
-  }
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useInfiniteQuery: (options: unknown) => {
-      useInfiniteQueryOptions(options)
-      return {
-        data: rosterQueryState.data,
-        error: null,
-        fetchNextPage: vi.fn(),
-        hasNextPage: false,
-        isFetchNextPageError: false,
-        isFetching: false,
-        isFetchingNextPage: false,
-        isLoadingError: false,
-        isPending: false,
-        isRefetchError: false,
-        refetch: vi.fn(),
-      }
-    },
-  }
-})
-
 vi.mock('../components/agent-roster-list', () => ({
   AgentRosterList: () => <div>Agent roster</div>,
 }))
 
-vi.mock('../components/roster-toolbar', () => ({
-  RosterToolbar: ({
-    publicationCounts,
-  }: {
-    publicationCounts: { drafts: number; published: number }
-  }) => (
-    <div>{`Roster toolbar: ${publicationCounts.published} published, ${publicationCounts.drafts} drafts`}</div>
-  ),
-}))
+const onUrlUpdate = vi.fn()
+const render = (ui: ReactElement, options?: Parameters<typeof renderWithoutUrlState>[1]) =>
+  renderWithoutUrlState(
+    <NuqsTestingAdapter
+      hasMemory
+      onUrlUpdate={onUrlUpdate}
+      searchParams={{ ...queryValues, created_by_me: String(queryValues.created_by_me) }}
+    >
+      {ui}
+    </NuqsTestingAdapter>,
+    options,
+  )
 
 describe('RosterPage', () => {
   beforeEach(() => {
@@ -114,23 +50,12 @@ describe('RosterPage', () => {
     queryValues.filter = 'all'
     queryValues.keyword = ''
     queryValues.sort_by = 'last_modified'
-    rosterQueryState.data = {
-      pages: [
-        {
-          data: [],
-          has_more: false,
-          page: 1,
-          publication_counts: { drafts: 2, published: 1 },
-        },
-      ],
-    }
-  })
-
-  it('uses the localized roster title for the page heading', () => {
-    render(<RosterPage />)
-
-    expect(screen.getByRole('heading', { name: 'agentV2.roster.title' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'agentV2.roster.title' })).toBeInTheDocument()
+    listAgents.mockReset().mockResolvedValue({
+      data: [],
+      has_more: false,
+      page: 1,
+      publication_counts: { drafts: 2, published: 1 },
+    })
   })
 
   it('reconciles the route title with client branding', () => {
@@ -143,20 +68,20 @@ describe('RosterPage', () => {
       },
     })
 
-    expect(document.title).toBe('agentV2.roster.title - Acme')
+    expect(document.title).toBe('agentRoster.roster.title - Acme')
+    expect(screen.getByRole('heading', { name: 'agentRoster.roster.title' })).toBeInTheDocument()
   })
 
-  it('uses the generated publication filter and server-owned counts', () => {
+  it('requests the publication filter and displays server-owned counts', async () => {
     queryValues.filter = 'drafts'
-
     render(<RosterPage />)
-
-    const options = infiniteOptions.mock.lastCall?.[0]
-    expect(options).toBeDefined()
-    if (!options || typeof options.input !== 'function')
-      throw new Error('Expected paginated query input')
-
-    expect(options.input(1)).toEqual({
+    expect(
+      await screen.findByRole('radio', { name: 'agentRoster.roster.filters.published 1' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.roster.filters.drafts 2' }),
+    ).toBeInTheDocument()
+    expect(listAgents).toHaveBeenCalledWith({
       query: {
         limit: 30,
         page: 1,
@@ -164,25 +89,55 @@ describe('RosterPage', () => {
         sort_by: 'last_modified',
       },
     })
-    expect(screen.getByText('Roster toolbar: 1 published, 2 drafts')).toBeInTheDocument()
   })
 
-  it('configures the roster query to keep previous filter data', () => {
+  it('keeps previous counts while the next filter request is pending, then displays the new response', async () => {
+    const user = userEvent.setup()
+    const nextPage = createDeferred<unknown>()
+    listAgents
+      .mockResolvedValueOnce({
+        data: [],
+        has_more: false,
+        page: 1,
+        publication_counts: { drafts: 2, published: 1 },
+      })
+      .mockReturnValueOnce(nextPage.promise)
     render(<RosterPage />)
-
-    const options = useInfiniteQueryOptions.mock.lastCall?.[0] as {
-      placeholderData?: (previousData: object) => object | undefined
-    }
-    const previousData = { pages: [{ data: ['previous agent'] }] }
-
-    expect(options.placeholderData?.(previousData)).toBe(previousData)
+    expect(
+      await screen.findByRole('radio', { name: 'agentRoster.roster.filters.published 1' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.roster.filters.drafts 2' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'agentRoster.roster.filters.drafts 2' }))
+    await waitFor(() => expect(listAgents).toHaveBeenCalledTimes(2))
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.roster.filters.published 1' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'agentRoster.roster.filters.drafts 2' })).toBeChecked()
+    await act(async () =>
+      nextPage.resolve({
+        data: [],
+        has_more: false,
+        page: 1,
+        publication_counts: { drafts: 4, published: 1 },
+      }),
+    )
+    expect(
+      await screen.findByRole('radio', { name: 'agentRoster.roster.filters.drafts 4' }),
+    ).toBeChecked()
   })
 
   it('renders stable zero counts before the first server response', () => {
-    rosterQueryState.data = undefined
+    listAgents.mockReturnValue(new Promise(() => {}))
 
     render(<RosterPage />)
 
-    expect(screen.getByText('Roster toolbar: 0 published, 0 drafts')).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.roster.filters.published 0' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.roster.filters.drafts 0' }),
+    ).toBeInTheDocument()
   })
 })

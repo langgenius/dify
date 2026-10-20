@@ -98,6 +98,18 @@ class AgentConfigRevisionOperation(StrEnum):
     IMPORT_PACKAGE = "import_package"
 
 
+# Revisions that add an entry to an Agent App's user-facing version history.
+# Imported Agent Apps also list the version their package seeded.
+AGENT_APP_VERSION_OPERATIONS = frozenset(
+    {
+        AgentConfigRevisionOperation.PUBLISH_DRAFT,
+        AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+        AgentConfigRevisionOperation.SAVE_TO_ROSTER,
+        AgentConfigRevisionOperation.RESTORE_VERSION,
+    }
+)
+
+
 class AgentConfigDraftType(StrEnum):
     """Editable Agent Soul draft workspace type."""
 
@@ -189,13 +201,13 @@ class Agent(DefaultFieldsMixin, Base):
     workflow_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     active_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     active_config_has_model: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
+        sa.Boolean, nullable=False, default=False, server_default=sa.false()
     )
     active_config_is_published: Mapped[bool] = mapped_column(
         sa.Boolean,
         nullable=False,
         default=False,
-        server_default=sa.text("false"),
+        server_default=sa.false(),
         comment=(
             "Whether the normal shared Agent draft has been published into the active config snapshot. "
             "User-scoped debug drafts do not affect this flag."

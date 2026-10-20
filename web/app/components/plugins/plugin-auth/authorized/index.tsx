@@ -1,21 +1,22 @@
-import type { OffsetOptions } from '@floating-ui/react'
 import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
+import type { ComponentPropsWithRef, ReactElement } from 'react'
 import type { Credential, PluginPayload } from '../types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Authorize from '../authorize'
 import ApiKeyModal from '../authorize/api-key-modal'
@@ -27,15 +28,14 @@ import {
 import { CredentialTypeEnum } from '../types'
 import Item from './item'
 
-type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
+type AuthorizedProps = Pick<PopoverContentProps, 'placement' | 'sideOffset'> & {
   pluginPayload: PluginPayload
   credentials: Credential[]
   canOAuth?: boolean
   canApiKey?: boolean
-  renderTrigger?: (open?: boolean) => React.ReactNode
+  renderTrigger?: (open: boolean, props: ComponentPropsWithRef<'button'>) => ReactElement
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
-  offset?: number | OffsetOptions
   triggerPopupSameWidth?: boolean
   popupClassName?: string
   disableSetDefault?: boolean
@@ -54,7 +54,7 @@ const Authorized = ({
   renderTrigger,
   isOpen,
   onOpenChange,
-  offset = 8,
+  sideOffset = 8,
   placement = 'bottom-start',
   triggerPopupSameWidth = true,
   popupClassName,
@@ -66,7 +66,7 @@ const Authorized = ({
   onUpdate,
   notAllowCustomCredential,
 }: AuthorizedProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments', 'plugin'])
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
@@ -191,47 +191,40 @@ const Authorized = ({
   const unavailableCredential = credentials.find(
     (credential) => credential.not_allowed_to_use && credential.is_default,
   )
-  const resolvedOffset =
-    typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
-  const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
-  const alignOffset =
-    typeof offset === 'number'
-      ? 0
-      : (resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0)
 
   return (
     <>
       <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
         <PopoverTrigger
-          render={(props, state) => (
-            <div
-              {...props}
-              className={cn(triggerPopupSameWidth ? 'w-full' : 'inline-block', props.className)}
-            >
-              {renderTrigger ? (
-                renderTrigger(state.open)
-              ) : (
-                <Button
-                  className={cn('w-full', state.open && 'bg-components-button-secondary-bg-hover')}
-                >
-                  <StatusDot status={unavailableCredential ? 'disabled' : 'success'} />
-                  {credentials.length}
-                  &nbsp;
-                  {credentials.length > 1
-                    ? t(($) => $['auth.authorizations'], { ns: 'plugin' })
-                    : t(($) => $['auth.authorization'], { ns: 'plugin' })}
-                  {!!unavailableCredentials.length &&
-                    ` (${unavailableCredentials.length} ${t(($) => $['auth.unavailable'], { ns: 'plugin' })})`}
-                  <span className="i-ri-arrow-down-s-line size-4" />
-                </Button>
-              )}
-            </div>
-          )}
+          className={triggerPopupSameWidth ? 'w-full' : undefined}
+          render={(props, state) =>
+            renderTrigger ? (
+              renderTrigger(state.open, props)
+            ) : (
+              <Button
+                {...props}
+                className={cn(
+                  props.className,
+                  state.open && 'bg-components-button-secondary-bg-hover',
+                )}
+              >
+                <StatusDot status={unavailableCredential ? 'disabled' : 'success'} />
+                {credentials.length}
+                &nbsp;
+                {credentials.length > 1
+                  ? t(($) => $['auth.authorizations'], { ns: 'plugin' })
+                  : t(($) => $['auth.authorization'], { ns: 'plugin' })}
+                {!!unavailableCredentials.length &&
+                  ` (${unavailableCredentials.length} ${t(($) => $['auth.unavailable'], { ns: 'plugin' })})`}
+                <span className="i-ri-arrow-down-s-line size-4" />
+              </Button>
+            )
+          }
         />
         <PopoverContent
+          aria-label={t(($) => $['auth.authorizations'], { ns: 'plugin' })}
           placement={placement}
           sideOffset={sideOffset}
-          alignOffset={alignOffset}
           className={cn(
             'border-0 bg-transparent p-0 shadow-none backdrop-blur-none',
             triggerPopupSameWidth && 'w-(--anchor-width)',
@@ -336,12 +329,12 @@ const Authorized = ({
       </Popover>
       <AlertDialog open={!!deleteCredentialId} onOpenChange={(open) => !open && closeConfirm()}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -351,7 +344,7 @@ const Authorized = ({
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {!!editValues && (

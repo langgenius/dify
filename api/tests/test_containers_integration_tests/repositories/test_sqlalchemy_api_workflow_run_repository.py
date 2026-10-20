@@ -5,7 +5,7 @@ from __future__ import annotations
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -84,6 +84,17 @@ def _create_workflow_run(
     session.add(workflow_run)
     session.commit()
     return workflow_run
+
+
+def _unpersisted_pause(*, workflow_id: str, workflow_run_id: str) -> WorkflowPauseEntity:
+    return _PrivateWorkflowPauseEntity(
+        pause_model=WorkflowPause(
+            workflow_id=workflow_id,
+            workflow_run_id=workflow_run_id,
+            state_object_key="unpersisted-state",
+        ),
+        reason_models=[],
+    )
 
 
 def _cleanup_scope_data(session: Session, scope: _TestScope) -> None:
@@ -350,6 +361,75 @@ class TestCreateWorkflowPause:
         assert pause_entity.workflow_execution_id == workflow_run.id
         assert pause_entity.get_pause_reasons() == []
         assert pause_entity.get_state() == state.encode()
+
+    def test_replaces_pause_when_previous_state_object_delete_fails(
+        self,
+        repository: DifyAPISQLAlchemyWorkflowRunRepository,
+        db_session_with_containers: Session,
+        test_scope: _TestScope,
+    ) -> None:
+        """Keep the run resumable when cleanup leaves an orphaned state object."""
+
+        workflow_run = _create_workflow_run(
+            db_session_with_containers,
+            test_scope,
+            status=WorkflowExecutionStatus.RUNNING,
+        )
+        previous_pause = repository.create_workflow_pause(
+            workflow_run_id=workflow_run.id,
+            state_owner_user_id=test_scope.user_id,
+            state='{"pause": "previous"}',
+            pause_reasons=[],
+        )
+        previous_pause_model = db_session_with_containers.get(WorkflowPause, previous_pause.id)
+        assert previous_pause_model is not None
+        previous_pause_model_id = previous_pause_model.id
+        previous_state_object_key = previous_pause_model.state_object_key
+        test_scope.state_keys.add(previous_state_object_key)
+
+        repository.resume_workflow_pause(
+            workflow_run_id=workflow_run.id,
+            pause_entity=previous_pause,
+        )
+
+        with patch.object(
+            storage,
+            "delete",
+            side_effect=PermissionError("DeleteObject denied"),
+        ) as delete_state_object:
+            current_pause = repository.create_workflow_pause(
+                workflow_run_id=workflow_run.id,
+                state_owner_user_id=test_scope.user_id,
+                state='{"pause": "current"}',
+                pause_reasons=[],
+            )
+
+        delete_state_object.assert_called_once_with(previous_state_object_key)
+        db_session_with_containers.expire_all()
+        pause_models = db_session_with_containers.scalars(
+            select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run.id)
+        ).all()
+        assert len(pause_models) == 1
+        current_pause_model = pause_models[0]
+        test_scope.state_keys.add(current_pause_model.state_object_key)
+        assert current_pause_model.id != previous_pause_model_id
+        assert current_pause_model.id == current_pause.id
+        assert current_pause_model.resumed_at is None
+        assert current_pause.get_state() == b'{"pause": "current"}'
+        assert storage.load(previous_state_object_key) == b'{"pause": "previous"}'
+
+        db_session_with_containers.refresh(workflow_run)
+        assert workflow_run.status == WorkflowExecutionStatus.PAUSED
+
+        resumed_pause = repository.resume_workflow_pause(
+            workflow_run_id=workflow_run.id,
+            pause_entity=current_pause,
+        )
+
+        assert resumed_pause.id == current_pause.id
+        assert resumed_pause.resumed_at is not None
+        db_session_with_containers.refresh(workflow_run)
+        assert workflow_run.status == WorkflowExecutionStatus.RUNNING
 
     def test_create_workflow_pause_not_found(
         self,
@@ -667,8 +747,7 @@ class TestResumeWorkflowPause:
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
-        pause_entity = Mock(spec=WorkflowPauseEntity)
-        pause_entity.id = str(uuid4())
+        pause_entity = _unpersisted_pause(workflow_id=test_scope.workflow_id, workflow_run_id=workflow_run.id)
 
         with pytest.raises(_WorkflowRunError, match="WorkflowRun is not in PAUSED status"):
             repository.resume_workflow_pause(
@@ -700,8 +779,9 @@ class TestResumeWorkflowPause:
         assert pause_model is not None
         test_scope.state_keys.add(pause_model.state_object_key)
 
-        mismatched_pause_entity = Mock(spec=WorkflowPauseEntity)
-        mismatched_pause_entity.id = str(uuid4())
+        mismatched_pause_entity = _unpersisted_pause(
+            workflow_id=test_scope.workflow_id, workflow_run_id=workflow_run.id
+        )
 
         with pytest.raises(_WorkflowRunError, match="different id in WorkflowPause and WorkflowPauseEntity"):
             repository.resume_workflow_pause(
@@ -750,8 +830,7 @@ class TestDeleteWorkflowPause:
     ) -> None:
         """Raise _WorkflowRunError when deleting a non-existent pause."""
 
-        pause_entity = Mock(spec=WorkflowPauseEntity)
-        pause_entity.id = str(uuid4())
+        pause_entity = _unpersisted_pause(workflow_id=str(uuid4()), workflow_run_id=str(uuid4()))
 
         with pytest.raises(_WorkflowRunError, match="WorkflowPause not found"):
             repository.delete_workflow_pause(pause_entity=pause_entity)

@@ -1,5 +1,5 @@
 # base image
-FROM python:3.12-slim-bookworm AS base
+FROM python:3.13-slim-bookworm AS base
 
 WORKDIR /app/api
 
@@ -53,15 +53,14 @@ WORKDIR /app/api
 
 # Create non-root user
 ARG dify_uid=1001
-ARG NODE_MAJOR=22
-ARG NODE_PACKAGE_VERSION=22.21.0-1nodesource1
+ARG NODE_PACKAGE_VERSION=24.20.0-1nodesource1
 ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
     chown -R dify:dify /app
 
-RUN \
-    apt-get update \
+RUN NODE_MAJOR="${NODE_PACKAGE_VERSION%%.*}" \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
@@ -107,6 +106,10 @@ ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 
 RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
     && chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
+
+# Pre-install the spaCy model unstructured needs, so document extraction works offline and as non-root
+RUN python -c "from unstructured.nlp.tokenize import sent_tokenize; sent_tokenize('Warm up.')" \
+    && python -c "import spacy; spacy.load('en_core_web_sm')"
 
 # Copy source code
 COPY --chown=dify:dify api /app/api/

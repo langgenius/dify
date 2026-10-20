@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, fireEvent, renderHook, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 
 vi.mock('@/config', () => ({
   API_PREFIX: '/api',
@@ -20,21 +21,18 @@ const mockCollections = vi.fn()
 const mockCollectionPlugins = vi.fn()
 const mockSearchAdvanced = vi.fn()
 
-vi.mock('@/service/client', () => ({
-  marketplaceClient: {
-    collections: (...args: unknown[]) => mockCollections(...args),
-    collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
-    searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
-  },
-  marketplaceQuery: {
-    collections: {
-      queryKey: (params: unknown) => ['marketplace', 'collections', params],
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  return {
+    ...actual,
+    marketplaceClient: {
+      ...actual.marketplaceClient,
+      collections: (...args: unknown[]) => mockCollections(...args),
+      collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
+      searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
     },
-    searchAdvanced: {
-      queryKey: (params: unknown) => ['marketplace', 'searchAdvanced', params],
-    },
-  },
-}))
+  }
+})
 
 const createWrapper = (searchParams = '') => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
@@ -77,214 +75,168 @@ describe('useMarketplaceData', () => {
     })
   })
 
-  it('should return initial state with loading and collections data', async () => {
+  afterEach(() => document.getElementById('marketplace-container')?.remove())
+
+  it('loads collection contents without issuing a search', async () => {
     const { useMarketplaceData } = await import('../state')
     const { Wrapper } = createWrapper('?category=all')
-
-    // Create a mock container for scroll
-    const container = document.createElement('div')
-    container.id = 'marketplace-container'
-    document.body.appendChild(container)
-
     const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.marketplaceCollections).toEqual([
+      expect.objectContaining({ name: 'col-1' }),
+    ])
+    expect(result.current.marketplaceCollectionPluginsMap).toMatchObject({
+      'col-1': [{ name: 'p1' }],
     })
-
-    expect(result.current.marketplaceCollections).toBeDefined()
-    expect(result.current.marketplaceCollectionPluginsMap).toBeDefined()
-    expect(result.current.page).toBeDefined()
-    expect(result.current.isFetchingNextPage).toBe(false)
-
-    document.body.removeChild(container)
-  })
-
-  it('should return search mode data when search text is present', async () => {
-    const { useMarketplaceData } = await import('../state')
-    const { Wrapper } = createWrapper('?category=all&q=test')
-
-    const container = document.createElement('div')
-    container.id = 'marketplace-container'
-    document.body.appendChild(container)
-
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
-
-    expect(result.current.plugins).toBeDefined()
-    expect(result.current.pluginsTotal).toBeDefined()
-
-    document.body.removeChild(container)
-  })
-
-  it('should return plugins undefined in collection mode (not search mode)', async () => {
-    const { useMarketplaceData } = await import('../state')
-    // "all" category with no search → collection mode
-    const { Wrapper } = createWrapper('?category=all')
-
-    const container = document.createElement('div')
-    container.id = 'marketplace-container'
-    document.body.appendChild(container)
-
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
-
-    // In non-search mode, plugins should be undefined since useMarketplacePlugins is disabled
     expect(result.current.plugins).toBeUndefined()
-
-    document.body.removeChild(container)
+    expect(mockSearchAdvanced).not.toHaveBeenCalled()
   })
 
-  it('should enable search for category without collections (e.g. model)', async () => {
+  it.each([
+    ['?category=all&q=test', { query: 'test' }],
+    ['?category=model', { category: 'model' }],
+    ['?category=all&tags=search', { tags: ['search'] }],
+  ])('loads search results for %s without fetching collections', async (searchParams, body) => {
     const { useMarketplaceData } = await import('../state')
-    const { Wrapper } = createWrapper('?category=model')
-
-    const container = document.createElement('div')
-    container.id = 'marketplace-container'
-    document.body.appendChild(container)
-
+    const { Wrapper } = createWrapper(searchParams)
     const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.plugins).toEqual([expect.objectContaining({ name: 'p2' })])
+    expect(result.current.pluginsTotal).toBe(1)
+    expect(mockSearchAdvanced).toHaveBeenCalledWith(
+      expect.objectContaining({ body: expect.objectContaining(body) }),
+      expect.any(Object),
+    )
+    expect(mockCollections).not.toHaveBeenCalled()
+  })
+
+  it('restores collections and clears pending results when switching Models back to All', async () => {
+    const { useMarketplaceData } = await import('../state')
+    const { useActivePluginType } = await import('../atoms')
+    const { Wrapper } = createWrapper('?category=model')
+    const { result } = renderHook(
+      () => ({
+        data: useMarketplaceData(),
+        setCategory: useActivePluginType()[1],
+      }),
+      { wrapper: Wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.data.plugins).toHaveLength(1)
+    })
+
+    await act(async () => {
+      await result.current.setCategory(PLUGIN_TYPE_SEARCH_MAP.all)
+    })
+
+    await waitFor(() => {
+      expect(result.current.data.marketplaceCollections).toHaveLength(1)
+      expect(result.current.data.plugins).toBeUndefined()
+      expect(result.current.data.pluginsTotal).toBeUndefined()
+      expect(result.current.data.isRefreshing).toBe(false)
+    })
+  })
+
+  it('should use the server route category for hydrated standalone search', async () => {
+    const { useMarketplaceData } = await import('../state')
+    const { Wrapper } = createWrapper('?q=openai')
+
+    const { result } = renderHook(() => useMarketplaceData(PLUGIN_TYPE_SEARCH_MAP.model), {
+      wrapper: Wrapper,
+    })
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    // "model" triggers search mode automatically
-    expect(result.current.plugins).toBeDefined()
-
-    document.body.removeChild(container)
+    expect(mockSearchAdvanced).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          category: 'model',
+          query: 'openai',
+        }),
+      }),
+      expect.any(Object),
+    )
   })
 
-  it('should trigger scroll pagination via handlePageChange callback', async () => {
-    // Return enough data to indicate hasNextPage (40 of 200 total)
-    mockSearchAdvanced.mockResolvedValue({
-      data: {
-        plugins: Array.from({ length: 40 }, (_, i) => ({
-          type: 'plugin',
-          org: 'test',
-          name: `p${i}`,
-          tags: [],
-        })),
-        total: 200,
-      },
-    })
-
-    const { useMarketplaceData } = await import('../state')
-    // Use "model" to force search mode
-    const { Wrapper } = createWrapper('?category=model')
-
-    const container = document.createElement('div')
-    container.id = 'marketplace-container'
-    document.body.appendChild(container)
-
-    Object.defineProperty(container, 'scrollTop', {
-      value: 900,
-      writable: true,
-      configurable: true,
-    })
-    Object.defineProperty(container, 'scrollHeight', {
-      value: 1000,
-      writable: true,
-      configurable: true,
-    })
-    Object.defineProperty(container, 'clientHeight', {
-      value: 200,
-      writable: true,
-      configurable: true,
-    })
-
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
-
-    // Wait for data to fully load (isFetching becomes false, plugins become available)
-    await waitFor(() => {
-      expect(result.current.plugins).toBeDefined()
-      expect(result.current.plugins!.length).toBeGreaterThan(0)
-    })
-
-    // Trigger scroll event to invoke handlePageChange
-    const scrollEvent = new Event('scroll')
-    Object.defineProperty(scrollEvent, 'target', { value: container })
-    container.dispatchEvent(scrollEvent)
-
-    document.body.removeChild(container)
-  })
-
-  it('should handle tags filter in search mode', async () => {
-    const { useMarketplaceData } = await import('../state')
-    // tags in URL triggers search mode
-    const { Wrapper } = createWrapper('?category=all&tags=search')
-
-    const container = document.createElement('div')
-    container.id = 'marketplace-container'
-    document.body.appendChild(container)
-
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
-
-    // Tags triggers search mode even with "all" category
-    expect(result.current.plugins).toBeDefined()
-
-    document.body.removeChild(container)
-  })
-
-  it('should not fetch next page when scroll fires but no more data', async () => {
-    // Return only 2 items with total=2 → no more pages
-    mockSearchAdvanced.mockResolvedValue({
-      data: {
-        plugins: [
-          { type: 'plugin', org: 'test', name: 'p1', tags: [] },
-          { type: 'plugin', org: 'test', name: 'p2', tags: [] },
-        ],
-        total: 2,
-      },
-    })
-
+  it('appends a scrolled page, deduplicates overlapping results and stops at the total', async () => {
+    const plugin = (index: number) => ({ type: 'plugin', org: 'test', name: `p${index}`, tags: [] })
+    mockSearchAdvanced
+      .mockResolvedValueOnce({
+        data: { plugins: Array.from({ length: 40 }, (_, index) => plugin(index)), total: 42 },
+      })
+      .mockResolvedValueOnce({ data: { plugins: [plugin(39), plugin(40)], total: 42 } })
     const { useMarketplaceData } = await import('../state')
     const { Wrapper } = createWrapper('?category=model')
-
     const container = document.createElement('div')
     container.id = 'marketplace-container'
     document.body.appendChild(container)
-
-    Object.defineProperty(container, 'scrollTop', {
-      value: 900,
-      writable: true,
-      configurable: true,
+    Object.defineProperties(container, {
+      scrollTop: { value: 900, configurable: true },
+      scrollHeight: { value: 1000, configurable: true },
+      clientHeight: { value: 200, configurable: true },
     })
-    Object.defineProperty(container, 'scrollHeight', {
-      value: 1000,
-      writable: true,
-      configurable: true,
-    })
-    Object.defineProperty(container, 'clientHeight', {
-      value: 200,
-      writable: true,
-      configurable: true,
-    })
-
     const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
-
-    await waitFor(() => {
-      expect(result.current.plugins).toBeDefined()
+    await waitFor(() => expect(result.current.plugins).toHaveLength(40))
+    fireEvent.scroll(container)
+    await waitFor(() => expect(result.current.page).toBe(2))
+    expect(result.current.plugins?.map((item) => item.name)).toEqual(
+      Array.from({ length: 41 }, (_, index) => `p${index}`),
+    )
+    expect(mockSearchAdvanced).toHaveBeenLastCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ page: 2 }) }),
+      expect.any(Object),
+    )
+    await act(async () => {
+      fireEvent.scroll(container)
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
     })
-
-    // Scroll fires but hasNextPage is false → handlePageChange does nothing
-    const scrollEvent = new Event('scroll')
-    Object.defineProperty(scrollEvent, 'target', { value: container })
-    container.dispatchEvent(scrollEvent)
-
-    // isFetchingNextPage should remain false
+    expect(mockSearchAdvanced).toHaveBeenCalledTimes(2)
     expect(result.current.isFetchingNextPage).toBe(false)
+  })
 
-    document.body.removeChild(container)
+  // Regression: `isSearchMode` was derived from the raw URL value while the
+  // request body used the 500ms-debounced one. Keystroke #1 therefore flipped
+  // the hook into search mode with an empty query, firing a full search for ''
+  // whose generic top-plugins results rendered until the real ones replaced
+  // them — the wrong-results flash at the start of every search session.
+  it('should never issue an empty-query search when typing starts', async () => {
+    const { useMarketplaceData } = await import('../state')
+    const { useSearchPluginText } = await import('../atoms')
+    const { Wrapper } = createWrapper('?category=all')
+
+    const { result } = renderHook(
+      () => ({
+        data: useMarketplaceData(),
+        setSearch: useSearchPluginText()[1],
+      }),
+      { wrapper: Wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.data.isLoading).toBe(false)
+    })
+
+    await act(async () => {
+      await result.current.setSearch('openai')
+    })
+
+    await waitFor(
+      () => {
+        expect(mockSearchAdvanced).toHaveBeenCalled()
+      },
+      { timeout: 3000 },
+    )
+
+    expect(mockSearchAdvanced).not.toHaveBeenCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ query: '' }) }),
+      expect.anything(),
+    )
+    expect(mockSearchAdvanced).toHaveBeenCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ query: 'openai' }) }),
+      expect.anything(),
+    )
   })
 })

@@ -7,8 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
+from core.agent.workflow_references import (
+    extract_workflow_node_output_selectors,
+    workflow_previous_node_output_refs_from_selectors,
+)
 from core.workflow.graph_topology import WorkflowGraphTopology
-from graphon.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
@@ -115,6 +119,14 @@ class WorkflowAgentNodeValidator:
                         f"Workflow Agent node {node_id} requires a binding before publishing."
                     )
                 continue
+            if (
+                require_binding
+                and node_data.get("error_strategy") == ErrorStrategy.DEFAULT_VALUE
+                and WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict).output_routes.enabled
+            ):
+                raise WorkflowAgentNodeValidationError(
+                    "Output routes do not support the node-level default-value error strategy."
+                )
             cls.validate_binding(
                 session=session,
                 binding=binding,
@@ -191,6 +203,8 @@ class WorkflowAgentNodeValidator:
         cls._validate_agent_soul_tools(binding=binding, agent_soul=agent_soul)
         cls._validate_agent_soul_knowledge(session=session, binding=binding, agent_soul=agent_soul)
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+        if require_agent_model:
+            node_job.output_routes.validate_for_execution()
         cls.validate_node_job(session=session, binding=binding, node_job=node_job, topology=topology)
 
     @classmethod
@@ -221,7 +235,14 @@ class WorkflowAgentNodeValidator:
                     ref_context=f"output {output.name} benchmark file",
                 )
 
-        for ref in node_job.previous_node_output_refs:
+        route_refs = (
+            workflow_previous_node_output_refs_from_selectors(
+                extract_workflow_node_output_selectors("\n".join(route.name for route in node_job.output_routes.routes))
+            )
+            if node_job.output_routes.enabled
+            else []
+        )
+        for ref in [*node_job.previous_node_output_refs, *route_refs]:
             selector = cls.selector_from_ref(ref)
             if selector is None:
                 raise WorkflowAgentNodeValidationError(

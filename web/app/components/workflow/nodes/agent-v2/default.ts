@@ -20,7 +20,7 @@ const nodeDefault: NodeDefault<AgentV2NodeType> = {
     agent_node_kind: 'dify_agent',
     version: '2',
   },
-  checkValid(payload, t: TFunction<'workflow'>) {
+  checkValid(payload, t: TFunction<['workflow']>) {
     if (!hasValidAgentBinding(payload)) {
       return {
         isValid: false,
@@ -30,6 +30,19 @@ const nodeDefault: NodeDefault<AgentV2NodeType> = {
         }),
       }
     }
+
+    const routes = payload.agent_output_routes
+    if (
+      routes?.enabled &&
+      ((routes.routes?.length ?? 0) < 2 || routes.routes?.some((route) => !route.name?.trim()))
+    )
+      return {
+        isValid: false,
+        errorMessage: t(($) => $['errorMsg.fieldRequired'], {
+          ns: 'workflow',
+          field: t(($) => $['nodes.agent.outputRoutes.title'], { ns: 'workflow' }),
+        }),
+      }
 
     return {
       isValid: true,

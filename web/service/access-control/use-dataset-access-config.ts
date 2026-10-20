@@ -1,10 +1,10 @@
-import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
+import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
-  RemoveDatasetAccessPolicyMemberBindingsRequest,
-  UpdateDatasetUserAccessSettingsRequest,
+  RemoveResourceAccessPolicyMemberBindingsRequest,
+  UpdateResourceUserAccessSettingsRequest,
 } from '@/models/access-control'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { normalizeDatasetAccessMatrix, normalizeDatasetUserAccessPolicies } from './normalizers'
 
 const NAME_SPACE = 'dataset-access-config'
@@ -100,7 +100,7 @@ export const useUpdateDatasetUserAccessSettings = (datasetId: string) => {
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-dataset-user-access-settings', datasetId],
-    mutationFn: (payload: UpdateDatasetUserAccessSettingsRequest) =>
+    mutationFn: (payload: UpdateResourceUserAccessSettingsRequest) =>
       datasetRbacClient.users.byTargetAccountId.accessPolicies.put({
         params: {
           dataset_id: datasetId,
@@ -131,7 +131,7 @@ export const useRemoveDatasetAccessPolicyMemberBindings = (datasetId: string) =>
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'remove-dataset-access-policy-member-bindings', datasetId],
-    mutationFn: (removals: RemoveDatasetAccessPolicyMemberBindingsRequest[]) =>
+    mutationFn: (removals: RemoveResourceAccessPolicyMemberBindingsRequest[]) =>
       Promise.all(
         removals.map((removal) =>
           datasetRbacClient.accessPolicies.byPolicyId.memberBindings.delete({

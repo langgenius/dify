@@ -1,12 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type Props = Readonly<{
   value?: string
@@ -15,12 +17,12 @@ type Props = Readonly<{
 }>
 
 const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
 
-  const { data } = useMembers()
+  const { data } = useQuery(consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }))
 
   const currentValue = useMemo(() => {
     if (!data?.accounts || !value) return null
@@ -49,20 +51,21 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
         render={
           <button
             type="button"
-            className="group flex cursor-pointer appearance-none items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt"
+            className="group flex cursor-pointer appearance-none items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
           />
         }
       >
         {!currentValue && (
           <span className="grow p-1 system-sm-regular text-components-input-text-placeholder">
-            {t(($) => $['members.transferModal.transferPlaceholder'], { ns: 'common' })}
+            {t(($) => $['members.transferModal.transferPlaceholder'], { ns: 'workspaceMembers' })}
           </span>
         )}
         {currentValue && (
           <>
-            <span aria-hidden>
-              <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
-            </span>
+            <Avatar size="sm" aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(currentValue.name)}</AvatarFallback>
+              <AvatarImage src={currentValue.avatar_url || undefined} alt="" />
+            </Avatar>
             <span className="grow truncate system-sm-medium text-text-secondary">
               {currentValue.name}
             </span>
@@ -110,9 +113,10 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
                   setOpen(false)
                 }}
               >
-                <span aria-hidden>
-                  <Avatar avatar={account.avatar_url} size="sm" name={account.name} />
-                </span>
+                <Avatar size="sm" aria-hidden="true">
+                  <AvatarFallback>{getAvatarInitial(account.name)}</AvatarFallback>
+                  <AvatarImage src={account.avatar_url || undefined} alt="" />
+                </Avatar>
                 <span className="grow truncate system-sm-medium text-text-secondary">
                   {account.name}
                 </span>

@@ -1,11 +1,10 @@
 import type { FC } from 'react'
 import type { Field } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowDropDownLine, RiArrowDropRightLine } from '@remixicon/react'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
-import Divider from '@/app/components/base/divider'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { Type } from '../../../types'
 import { getFieldType, getHasChildren } from '../../../utils'
@@ -77,7 +76,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
 
   const hasChildren = useMemo(() => getHasChildren(schema), [schema])
   const type = useMemo(() => getFieldType(schema), [schema])
-  const isHovering = hoveringProperty === path.join('.')
+  const isHovering = !readOnly && hoveringProperty === path.join('.')
 
   const handleExpand = () => {
     setIsExpanded(!isExpanded)
@@ -108,12 +107,14 @@ const SchemaNode: FC<SchemaNodeProps> = ({
             <button
               type="button"
               onClick={handleExpand}
-              className="py-0.5 text-text-tertiary hover:text-text-accent"
+              aria-label={name}
+              aria-expanded={isExpanded}
+              className="rounded-sm py-0.5 text-text-tertiary hover:text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             >
               {isExpanded ? (
-                <RiArrowDropDownLine className="size-4" />
+                <span aria-hidden className="i-ri-arrow-drop-down-line size-4" />
               ) : (
-                <RiArrowDropRightLine className="size-4" />
+                <span aria-hidden className="i-ri-arrow-drop-right-line size-4" />
               )}
             </button>
           </div>
@@ -134,59 +135,64 @@ const SchemaNode: FC<SchemaNodeProps> = ({
               depth={depth}
             />
           ) : (
-            <Card name={name} type={type} required={required} description={schema.description} />
+            <Card
+              name={name}
+              type={type}
+              required={required}
+              description={schema.description}
+              readOnly={readOnly}
+            />
           )}
         </div>
       </div>
 
-      <div
-        className={cn(
-          'absolute z-0 flex w-5 justify-center',
-          schema.description ? 'top-12 h-[calc(100%-3rem)]' : 'top-7 h-[calc(100%-1.75rem)]',
-          indentLeft[depth],
+      <div className="relative">
+        <div className={cn('absolute inset-y-0 z-0 flex w-5 justify-center', indentLeft[depth])}>
+          <Separator
+            decorative
+            orientation="vertical"
+            className={cn('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}
+          />
+        </div>
+
+        {isExpanded && hasChildren && depth < JSON_SCHEMA_MAX_DEPTH && (
+          <>
+            {schema.type === Type.object &&
+              schema.properties &&
+              Object.entries(schema.properties).map(([key, childSchema]) => (
+                <SchemaNode
+                  key={key}
+                  name={key}
+                  required={!!schema.required?.includes(key)}
+                  schema={childSchema}
+                  path={[...path, 'properties', key]}
+                  parentPath={path}
+                  depth={depth + 1}
+                  readOnly={readOnly}
+                />
+              ))}
+
+            {schema.type === Type.array &&
+              schema.items &&
+              schema.items.type === Type.object &&
+              schema.items.properties &&
+              Object.entries(schema.items.properties).map(([key, childSchema]) => (
+                <SchemaNode
+                  key={key}
+                  name={key}
+                  required={!!schema.items?.required?.includes(key)}
+                  schema={childSchema}
+                  path={[...path, 'items', 'properties', key]}
+                  parentPath={path}
+                  depth={depth + 1}
+                  readOnly={readOnly}
+                />
+              ))}
+          </>
         )}
-      >
-        <Divider
-          type="vertical"
-          className={cn('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}
-        />
+
+        {!readOnly && depth === 0 && !isAddingNewField && <AddField />}
       </div>
-
-      {isExpanded && hasChildren && depth < JSON_SCHEMA_MAX_DEPTH && (
-        <>
-          {schema.type === Type.object &&
-            schema.properties &&
-            Object.entries(schema.properties).map(([key, childSchema]) => (
-              <SchemaNode
-                key={key}
-                name={key}
-                required={!!schema.required?.includes(key)}
-                schema={childSchema}
-                path={[...path, 'properties', key]}
-                parentPath={path}
-                depth={depth + 1}
-              />
-            ))}
-
-          {schema.type === Type.array &&
-            schema.items &&
-            schema.items.type === Type.object &&
-            schema.items.properties &&
-            Object.entries(schema.items.properties).map(([key, childSchema]) => (
-              <SchemaNode
-                key={key}
-                name={key}
-                required={!!schema.items?.required?.includes(key)}
-                schema={childSchema}
-                path={[...path, 'items', 'properties', key]}
-                parentPath={path}
-                depth={depth + 1}
-              />
-            ))}
-        </>
-      )}
-
-      {!readOnly && depth === 0 && !isAddingNewField && <AddField />}
     </div>
   )
 }

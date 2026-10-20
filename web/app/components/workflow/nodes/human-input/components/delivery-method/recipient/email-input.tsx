@@ -1,5 +1,5 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Recipient as RecipientItem } from '../../../types'
-import type { Member } from '@/models/common'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -18,7 +18,7 @@ const i18nPrefix = 'nodes.humanInput'
 type Props = Readonly<{
   email: string
   value: RecipientItem[]
-  list: Member[]
+  list: AccountWithRoleResponse[]
   onDelete: (recipient: RecipientItem) => void
   onSelect: (value: string) => void
   onAdd: (email: string) => void
@@ -26,7 +26,7 @@ type Props = Readonly<{
 }>
 
 const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = false }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowHumanInput'])
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocus, setIsFocus] = useState(false)
   const [open, setOpen] = useState(false)
@@ -48,7 +48,7 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
   const placeholder = useMemo(() => {
     return selectedEmails.length === 0 || isFocus
       ? t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.placeholder`], {
-          ns: 'workflow',
+          ns: 'workflowHumanInput',
         })
       : ''
   }, [selectedEmails, t, isFocus])
@@ -102,7 +102,9 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation()
 
-    if (e.key === 'Enter' || e.key === 'Tab' || e.key === ' ' || e.key === ',') {
+    if (e.key === 'Tab') {
+      setOpen(false)
+    } else if (e.key === 'Enter' || e.key === ' ' || e.key === ',') {
       e.preventDefault()
       handleEmailAdd()
     } else if (e.key === 'Backspace') {
@@ -131,7 +133,7 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
           <EmailItem
             key={item.user_id || item.email}
             email={email}
-            data={item as unknown as Member}
+            data={item as unknown as AccountWithRoleResponse}
             onDelete={onDelete}
             disabled={disabled}
             isError={isErrorMember(item)}

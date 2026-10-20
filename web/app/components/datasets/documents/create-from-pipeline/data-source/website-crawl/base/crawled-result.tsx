@@ -33,7 +33,7 @@ const CrawledResult = ({
   showPreview = false,
   isMultipleChoice = true,
 }: CrawledResultProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const isCheckAll = checkedList.length === list.length
 

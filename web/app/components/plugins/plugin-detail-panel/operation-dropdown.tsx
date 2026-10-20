@@ -25,6 +25,7 @@ type OperationDropdownProps = Readonly<
     detailUrl: string
     popupClassName?: string
     triggerSize?: 'm' | 'xs'
+    triggerAriaLabel?: string
     destructiveRemove?: boolean
     showCheckVersion?: boolean
     showRemove?: boolean
@@ -43,11 +44,12 @@ export function OperationDropdown({
   alignOffset = 0,
   popupClassName,
   triggerSize = 'm',
+  triggerAriaLabel,
   destructiveRemove = false,
   showCheckVersion = true,
   showRemove = true,
 }: OperationDropdownProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_marketplace,
@@ -73,7 +75,9 @@ export function OperationDropdown({
       <DropdownMenuTrigger
         render={
           <IconButton
-            aria-label={t(($) => $['detailPanel.operation.moreActions'], { ns: 'plugin' })}
+            aria-label={
+              triggerAriaLabel ?? t(($) => $['detailPanel.operation.moreActions'], { ns: 'plugin' })
+            }
             size={triggerSize === 'xs' ? 'xs' : 'md'}
             className="data-popup-open:bg-state-base-hover"
           >
@@ -113,7 +117,6 @@ export function OperationDropdown({
             href={detailUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}
           >
             <span className="min-w-0 grow truncate px-1 py-0.5">
               {t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}

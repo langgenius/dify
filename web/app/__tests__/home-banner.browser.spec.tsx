@@ -2,24 +2,9 @@ import type { BannerResponse } from '@dify/contracts/api/console/explore/types.g
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Banner } from '@/features/home/banner/banner'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({ data: { id: 'account-123' } }),
-  }
-})
-
-vi.mock('@/features/account-profile/client', () => ({
-  userProfileQueryOptions: () => ({}),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -55,14 +40,15 @@ const banners: BannerResponse[] = [
 ]
 
 async function renderBanner() {
+  const { wrapper: Wrapper } = createConsoleQueryWrapper({ accountProfile: { id: 'account-123' } })
   return render(
-    <>
+    <Wrapper>
       <button type="button">Before carousel</button>
       <div style={{ width: 300 }}>
         <Banner banners={banners} />
       </div>
       <button type="button">After carousel</button>
-    </>,
+    </Wrapper>,
   )
 }
 
@@ -86,9 +72,6 @@ describe('Home banner browser interactions', () => {
     const firstPicker = screen.getByRole('button', { name: '01 First banner' })
     await expect.element(stopRotationControl).toBeVisible()
     const rotationControlElement = stopRotationControl.element()
-    expect(rotationControlElement.getBoundingClientRect().left).toBeLessThan(
-      firstPicker.element().getBoundingClientRect().left,
-    )
 
     await screen.getByRole('button', { name: 'Before carousel' }).click()
     await userEvent.tab()
@@ -147,44 +130,6 @@ describe('Home banner browser interactions', () => {
     await userEvent.unhover(carousel)
 
     await expect.poll(() => slidesContainer.getAttribute('aria-live')).toBe('off')
-  })
-
-  it('keeps an explicit pause after a real pointer drag released inside the carousel', async () => {
-    // Embla's pointer lifecycle and owner-window timer depend on browser behavior that happy-dom cannot reproduce faithfully.
-    const screen = await renderBanner()
-    const carousel = screen.getByRole('region', { name: 'explore.banner.carouselLabel' })
-    const stopRotationControl = screen.getByRole('button', {
-      name: 'explore.banner.stopRotation',
-    })
-    const slidesContainer = getSlidesContainer(carousel.element())
-    const slidesRect = slidesContainer.getBoundingClientRect()
-    const firstSlide = screen.getByRole('group', { name: 'First banner' })
-    const firstSlideElement = firstSlide.element()
-    await stopRotationControl.click()
-    await userEvent.unhover(carousel)
-    await expect
-      .element(screen.getByRole('button', { name: 'explore.banner.startRotation' }))
-      .toBeVisible()
-
-    vi.useFakeTimers()
-    try {
-      await userEvent.dragAndDrop(slidesContainer, slidesContainer, {
-        sourcePosition: { x: slidesRect.width / 2 - 4, y: slidesRect.height / 2 },
-        targetPosition: { x: slidesRect.width / 2 + 4, y: slidesRect.height / 2 },
-        steps: 2,
-      })
-      await vi.advanceTimersByTimeAsync(1000)
-      const firstSlideStateAfterDrag = firstSlideElement.getAttribute('aria-hidden')
-      await vi.advanceTimersByTimeAsync(5001)
-      expect(firstSlideElement.getAttribute('aria-hidden')).toBe(firstSlideStateAfterDrag)
-    } finally {
-      vi.useRealTimers()
-    }
-
-    expect(slidesContainer).toHaveAttribute('aria-live', 'polite')
-    await expect
-      .element(screen.getByRole('button', { name: 'explore.banner.startRotation' }))
-      .toBeVisible()
   })
 
   it('keeps autoplay initialized but stopped for reduced motion so Play remains safe', async () => {

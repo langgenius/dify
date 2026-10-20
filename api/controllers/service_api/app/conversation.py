@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema, field_validator
 from sqlalchemy.orm import sessionmaker
@@ -26,6 +25,7 @@ from fields.conversation_fields import (
     SimpleConversation,
 )
 from graphon.variables.types import SegmentType
+from libs.external_api import error_responses
 from libs.helper import UUIDStrOrEmpty, dump_response, to_timestamp
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
@@ -159,6 +159,7 @@ register_response_schema_models(
 
 @service_api_ns.route("/conversations")
 class ConversationApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc(
         summary="List Conversations",
         description="Retrieve the conversation list for the current user, ordered by most recently active.",
@@ -185,7 +186,8 @@ class ConversationApi(Resource):
         service_api_ns.models[ConversationInfiniteScrollPagination.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    def get(self, app_model: App, end_user: EndUser):
+    @model_validate(ConversationListQuery)
+    def get(self, query_args: ConversationListQuery, app_model: App, end_user: EndUser):
         """List all conversations for the current user.
 
         Supports pagination using last_id and limit parameters.
@@ -194,7 +196,6 @@ class ConversationApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        query_args = ConversationListQuery.model_validate(request.args.to_dict())
         last_id = query_args.last_id or None
 
         try:
@@ -219,12 +220,13 @@ class ConversationApi(Resource):
                 return ConversationInfiniteScrollPagination(
                     limit=pagination.limit, has_more=pagination.has_more, data=conversations
                 ).model_dump(mode="json")
-        except services.errors.conversation.LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+        except services.errors.conversation.LastConversationNotExistsError as caught_error:
+            raise NotFound("Last Conversation Not Exists.") from caught_error
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>")
 class ConversationDetailApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc(
         summary="Delete Conversation",
         description="Delete a conversation.",
@@ -257,13 +259,14 @@ class ConversationDetailApi(Resource):
 
         try:
             ConversationService.delete(app_model, conversation_id_str, end_user, session=db.session())
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
         return "", 204
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/name")
 class ConversationRenameApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc(
         summary="Rename Conversation",
         description=(
@@ -309,12 +312,13 @@ class ConversationRenameApi(Resource):
                 app_model, conversation_id_str, end_user, payload.name, payload.auto_generate, session=session
             )
             return dump_response(SimpleConversation, ConversationResponseSource(conversation, session=session))
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/variables")
 class ConversationVariablesApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc(
         summary="List Conversation Variables",
         description="Retrieve variables from a specific conversation.",
@@ -343,7 +347,8 @@ class ConversationVariablesApi(Resource):
         service_api_ns.models[ConversationVariableInfiniteScrollPaginationResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    def get(self, app_model: App, end_user: EndUser, conversation_id: UUID):
+    @model_validate(ConversationVariablesQuery)
+    def get(self, query_args: ConversationVariablesQuery, app_model: App, end_user: EndUser, conversation_id: UUID):
         """List all variables for a conversation.
 
         Conversational variables are only available for chat applications.
@@ -355,7 +360,6 @@ class ConversationVariablesApi(Resource):
 
         conversation_id_str = str(conversation_id)
 
-        query_args = ConversationVariablesQuery.model_validate(request.args.to_dict())
         last_id = query_args.last_id or None
 
         try:
@@ -369,12 +373,13 @@ class ConversationVariablesApi(Resource):
                 session=db.session(),
             )
             return dump_response(ConversationVariableInfiniteScrollPaginationResponse, pagination)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/variables/<uuid:variable_id>")
 class ConversationVariableDetailApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc(
         summary="Update Conversation Variable",
         description="Update the value of a specific conversation variable. The value must match the expected type.",
@@ -434,9 +439,9 @@ class ConversationVariableDetailApi(Resource):
                 app_model, conversation_id_str, variable_id_str, end_user, payload.value, session=db.session()
             )
             return dump_response(ConversationVariableResponse, variable)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationVariableNotExistsError:
-            raise NotFound("Conversation Variable Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationVariableNotExistsError as caught_error:
+            raise NotFound("Conversation Variable Not Exists.") from caught_error
         except services.errors.conversation.ConversationVariableTypeMismatchError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e

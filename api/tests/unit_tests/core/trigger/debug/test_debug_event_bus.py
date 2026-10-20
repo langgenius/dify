@@ -16,7 +16,7 @@ from core.trigger.debug.events import PluginTriggerDebugEvent
 
 class TestDispatch:
     @patch("core.trigger.debug.event_bus.redis_client")
-    def test_returns_dispatch_count(self, mock_redis):
+    def test_returns_dispatch_count(self, mock_redis: MagicMock) -> None:
         mock_redis.eval.return_value = 3
         event = MagicMock()
         event.model_dump_json.return_value = '{"test": true}'
@@ -27,7 +27,7 @@ class TestDispatch:
         mock_redis.eval.assert_called_once()
 
     @patch("core.trigger.debug.event_bus.redis_client")
-    def test_redis_error_returns_zero(self, mock_redis):
+    def test_redis_error_returns_zero(self, mock_redis: MagicMock) -> None:
         mock_redis.eval.side_effect = RedisError("connection lost")
         event = MagicMock()
         event.model_dump_json.return_value = "{}"
@@ -39,7 +39,7 @@ class TestDispatch:
 
 class TestPoll:
     @patch("core.trigger.debug.event_bus.redis_client")
-    def test_returns_deserialized_event(self, mock_redis):
+    def test_returns_deserialized_event(self, mock_redis: MagicMock) -> None:
         event_json = PluginTriggerDebugEvent(
             timestamp=100,
             name="push",
@@ -63,7 +63,7 @@ class TestPoll:
         assert result.name == "push"
 
     @patch("core.trigger.debug.event_bus.redis_client")
-    def test_returns_none_when_no_event(self, mock_redis):
+    def test_returns_none_when_no_event(self, mock_redis: MagicMock) -> None:
         mock_redis.eval.return_value = None
 
         result = TriggerDebugEventBus.poll(
@@ -78,7 +78,7 @@ class TestPoll:
         assert result is None
 
     @patch("core.trigger.debug.event_bus.redis_client")
-    def test_redis_error_returns_none(self, mock_redis):
+    def test_redis_error_returns_none(self, mock_redis: MagicMock) -> None:
         mock_redis.eval.side_effect = RedisError("timeout")
 
         result = TriggerDebugEventBus.poll(

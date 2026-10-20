@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,6 +8,8 @@ from extensions.storage.tencent_cos_storage import TencentCosStorage
 from tests.unit_tests.oss.__mock.base import (
     BaseStorageTest,
     get_example_bucket,
+    get_example_data,
+    get_example_filename,
 )
 
 pytest_plugins = ("tests.unit_tests.oss.__mock.tencent_cos",)
@@ -19,6 +22,11 @@ class TestTencentCos(BaseStorageTest):
         with patch.object(CosConfig, "__init__", return_value=None, autospec=True):
             self.storage = TencentCosStorage()
         self.storage.bucket_name = get_example_bucket()
+
+    def test_download(self, tmp_path: Path):
+        destination = tmp_path / "download.txt"
+        self.storage.download(get_example_filename(), str(destination))
+        assert destination.read_bytes() == get_example_data()
 
 
 class TestTencentCosConfiguration:

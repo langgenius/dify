@@ -17,16 +17,20 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from extensions.ext_database import db
-from fields.dataset_fields import DatasetDetailResponse
+from fields.dataset_fields import (
+    DatasetDetailResponse,
+)
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.dataset import DatasetPermissionEnum
-from services.dataset_service import DatasetPermissionService, DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
+from services.knowledge.dataset_read_service import load_dataset_detail
+from services.knowledge.dataset_service import DatasetPermissionService, DatasetService
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+from services.rbac import contracts as rbac_contracts
 
 
 class RagPipelineDatasetImportPayload(BaseModel):
@@ -39,6 +43,7 @@ register_response_schema_models(console_ns, DatasetDetailResponse, RagPipelineIm
 
 @console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.expect(console_ns.models[RagPipelineDatasetImportPayload.__name__])
     @console_ns.response(
         201,
@@ -88,17 +93,22 @@ class CreateRagPipelineDatasetApi(Resource):
                     db.session(),
                 )
             db.session.commit()
-        except services.errors.dataset.DatasetNameDuplicateError:
-            raise DatasetNameDuplicateError()
+        except services.errors.dataset.DatasetNameDuplicateError as caught_error:
+            raise DatasetNameDuplicateError() from caught_error
 
         if dify_config.RBAC_ENABLED and dataset_id is not None:
             enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
                 current_tenant_id,
                 current_user.id,
                 dataset_id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset_id)
+            enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+                current_tenant_id,
+                current_user.id,
+                rbac_contracts.RBACResourceType.DATASET,
+                dataset_id,
+            )
 
         return dump_response(RagPipelineImportResponse, import_info), 201
 
@@ -116,6 +126,7 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
+        session = db.session()
         dataset = DatasetService.create_empty_rag_pipeline_dataset(
             tenant_id=current_tenant_id,
             rag_pipeline_dataset_create_entity=RagPipelineDatasetCreateEntity(
@@ -129,6 +140,6 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
                 permission=DatasetPermissionEnum.ONLY_ME,
                 partial_member_list=None,
             ),
-            session=db.session(),
+            session=session,
         )
-        return dump_response(DatasetDetailResponse, dataset), 201
+        return dump_response(DatasetDetailResponse, load_dataset_detail(dataset, session=session)), 201

@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
 from core.db.session_factory import session_factory
-from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
+from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity, DefaultModelSetting
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
 from core.entities.provider_entities import (
     CredentialConfiguration,
@@ -65,11 +65,11 @@ from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
     from graphon.model_runtime.protocols.runtime import ModelRuntime
-    from models.account import Account
 
 logger = logging.getLogger(__name__)
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+_provider_configuration_cache_rows_adapter: TypeAdapter[list[Any]] = TypeAdapter(list[Any])
 _PROVIDER_CONFIGURATION_CACHE_TTL_SECONDS = 300
 _PROVIDER_CONFIGURATION_CACHE_VERSION_TTL_SECONDS = 360
 _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:version"
@@ -357,9 +357,7 @@ class _ProviderConfigurationSourceCache:
                 return None, version
 
             cached_text = cached_records.decode("utf-8") if isinstance(cached_records, bytes) else cached_records
-            rows = json.loads(cached_text)
-            if not isinstance(rows, list):
-                return None, version
+            rows = _provider_configuration_cache_rows_adapter.validate_json(cached_text)
 
             return [entry_cls.from_cache_row(row) for row in rows if isinstance(row, dict)], version
         except Exception:
@@ -462,7 +460,7 @@ def _attach_active_credentials(
 
 def _load_provider_model_cache_entries(tenant_id: str) -> list[_ProviderModelCacheEntry]:
     with session_factory.create_session() as session:
-        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
+        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid.is_(True))
         provider_models = list(session.scalars(stmt))
         _attach_active_credentials(
             session=session,
@@ -849,7 +847,7 @@ class ProviderManager:
 
     def get_default_model(self, tenant_id: str, model_type: ModelType) -> DefaultModelEntity | None:
         """
-        Get default model.
+        Get the configured default model, or None when no default is saved.
 
         :param tenant_id: workspace id
         :param model_type: model type
@@ -860,27 +858,6 @@ class ProviderManager:
             TenantDefaultModel.model_type == model_type,
         )
         default_model = db.session.scalar(stmt)
-
-        # If it does not exist, get the first available provider model from get_configurations
-        # and update the TenantDefaultModel record
-        if not default_model:
-            # Get provider configurations
-            provider_configurations = self.get_configurations(tenant_id)
-
-            # get available models from provider_configurations
-            available_models = provider_configurations.get_models(model_type=model_type, only_active=True)
-
-            if available_models:
-                available_model = available_models[0]
-
-                default_model = TenantDefaultModel(
-                    tenant_id=tenant_id,
-                    model_type=model_type,
-                    provider_name=available_model.provider.provider,
-                    model_name=available_model.model,
-                )
-                db.session.add(default_model)
-                db.session.commit()
 
         if not default_model:
             return None
@@ -930,16 +907,7 @@ class ProviderManager:
         :return:
         """
         provider_configurations = self.get_configurations(tenant_id)
-        if provider not in provider_configurations:
-            raise ValueError(f"Provider {provider} does not exist.")
-
-        # get available models from provider_configurations
-        available_models = provider_configurations.get_models(model_type=model_type, only_active=True)
-
-        # check if the model is exist in available models
-        model_names = [model.model for model in available_models]
-        if model not in model_names:
-            raise ValueError(f"Model {model} does not exist.")
+        self._validate_default_model(provider_configurations, model_type, provider, model)
         stmt = select(TenantDefaultModel).where(
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
@@ -965,11 +933,55 @@ class ProviderManager:
 
         return default_model
 
+    def replace_default_model_records(self, tenant_id: str, model_settings: Sequence[DefaultModelSetting]) -> None:
+        """Replace a tenant's defaults atomically, deleting model types omitted from the settings."""
+        if model_settings:
+            provider_configurations = self.get_configurations(tenant_id)
+            # Provider resolution can perform external I/O, so validate before opening the write transaction.
+            for setting in model_settings:
+                self._validate_default_model(
+                    provider_configurations, setting.model_type, setting.provider, setting.model
+                )
+
+        settings_by_type = {setting.model_type: setting for setting in model_settings}
+        with session_factory.create_session() as session, session.begin():
+            default_models = session.scalars(
+                select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == tenant_id)
+            )
+            for default_model in default_models:
+                replacement = settings_by_type.pop(default_model.model_type, None)
+                if replacement is None:
+                    session.delete(default_model)
+                else:
+                    default_model.provider_name = replacement.provider
+                    default_model.model_name = replacement.model
+
+            session.add_all(
+                TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=setting.model_type,
+                    provider_name=setting.provider,
+                    model_name=setting.model,
+                )
+                for setting in settings_by_type.values()
+            )
+
+    @staticmethod
+    def _validate_default_model(
+        provider_configurations: ProviderConfigurations, model_type: ModelType, provider: str, model: str
+    ) -> None:
+        if provider not in provider_configurations:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        available_models = provider_configurations.get_models(model_type=model_type, only_active=True)
+        if model not in [available_model.model for available_model in available_models]:
+            raise ValueError(f"Model {model} does not exist.")
+
     @staticmethod
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
+            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
             providers = list(session.scalars(stmt))
             _attach_active_credentials(
                 session=session,
@@ -1126,50 +1138,6 @@ class ProviderManager:
             else:
                 provider_names.append(str(model_provider_id))
         return provider_names
-
-    @staticmethod
-    def get_provider_available_credentials(
-        tenant_id: str,
-        provider_name: str,
-        user: Account | None = None,
-    ) -> list[CredentialConfiguration]:
-        """
-        Get provider all credentials, filtered by visibility.
-
-        :param tenant_id: workspace id
-        :param provider_name: provider name
-        :param user: current user (id + admin flag drive the visibility filter)
-        :return:
-        """
-        from models.credential_permission import CredentialType as CredPermType
-        from services.credential_permission_service import CredentialPermissionService
-
-        with session_factory.create_session() as session:
-            stmt = (
-                select(ProviderCredential)
-                .where(
-                    ProviderCredential.tenant_id == tenant_id,
-                    ProviderCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
-                )
-                .order_by(ProviderCredential.created_at.desc())
-            )
-
-            if user is not None:
-                stmt = CredentialPermissionService.apply_visibility_filter(
-                    stmt,
-                    model_id_column=ProviderCredential.id,
-                    model_user_id_column=ProviderCredential.user_id,
-                    model_visibility_column=ProviderCredential.visibility,
-                    credential_type=CredPermType.PROVIDER_CREDENTIAL,
-                    user=user,
-                )
-
-            available_credentials = session.scalars(stmt).all()
-
-        return [
-            CredentialConfiguration(credential_id=credential.id, credential_name=credential.credential_name)
-            for credential in available_credentials
-        ]
 
     @staticmethod
     def get_provider_model_available_credentials(
@@ -1672,13 +1640,11 @@ class ProviderManager:
 
                     for variable in provider_credential_secret_variables:
                         if variable in provider_credentials:
-                            try:
+                            with contextlib.suppress(ValueError):
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                     provider_credentials.get(variable, ""),
                                     decoding_context,
                                 )
-                            except ValueError:
-                                pass
 
                     current_using_credentials = provider_credentials or {}
 
@@ -1814,13 +1780,11 @@ class ProviderManager:
 
                             for variable in model_credential_secret_variables:
                                 if variable in provider_model_credentials:
-                                    try:
+                                    with contextlib.suppress(ValueError):
                                         provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                             provider_model_credentials.get(variable) or "",
                                             decoding_context,
                                         )
-                                    except ValueError:
-                                        pass
 
                             # cache provider model credentials
                             provider_model_credentials_cache.set(credentials=provider_model_credentials)

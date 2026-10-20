@@ -55,6 +55,7 @@ from events.app_event import app_draft_workflow_was_synced, app_published_workfl
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
+from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import (
@@ -65,7 +66,6 @@ from graphon.enums import (
 )
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
-from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
@@ -94,7 +94,24 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
-from tasks.new_agent_beta_task import register_new_agent_beta_workflow_publish_after_commit
+from services.human_input_service import HumanInputService
+from services.system_feature_service import SystemFeatureService
+from services.workflow.workflow_converter import WorkflowConverter
+from services.workflow_node_variables import get_human_input_form_variable_mapping
+from services.workflow_ref_service import WorkflowRef
+from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_version_number_service import allocate_version_number
+
+from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from .human_input_delivery_test_service import (
+    DeliveryTestContext,
+    DeliveryTestEmailRecipient,
+    DeliveryTestError,
+    DeliveryTestUnsupportedError,
+    HumanInputDeliveryTestService,
+)
+from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
+from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
 
 @dataclass(frozen=True)
@@ -140,21 +157,6 @@ class _DebugHumanInputNode:
 
 
 HumanInputNode = _DebugHumanInputNode
-from services.human_input_service import HumanInputService
-from services.workflow.workflow_converter import WorkflowConverter
-from services.workflow_ref_service import WorkflowRef
-from services.workflow_version_number_service import allocate_version_number
-
-from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
-from .human_input_delivery_test_service import (
-    DeliveryTestContext,
-    DeliveryTestEmailRecipient,
-    DeliveryTestError,
-    DeliveryTestUnsupportedError,
-    HumanInputDeliveryTestService,
-)
-from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
-from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
 _file_access_controller = DatabaseFileAccessController()
 
@@ -243,19 +245,16 @@ class WorkflowService:
         )
         return session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(
-        self, app_model: App, workflow_id: str | None = None, *, session: Session
-    ) -> Workflow | None:
+    @staticmethod
+    def get_draft_workflow(app_model: App, *, session: Session) -> Workflow | None:
         """
-        Get draft workflow
+        Return the app's draft workflow, or None if no draft exists.
 
         Reuses the caller's active session so workflow reads stay in the same
-        transaction as the surrounding request or task.
+        transaction as the surrounding request or task. No service construction
+        or Flask database binding is needed for this read.
         """
-        if workflow_id:
-            return self.get_published_workflow_by_id(app_model, workflow_id, session=session)
-        # fetch draft workflow by app_model
-        workflow = session.scalar(
+        return session.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -265,10 +264,7 @@ class WorkflowService:
             .limit(1)
         )
 
-        # return draft workflow
-        return workflow
-
-    def _get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
+    def get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
         """Return the app draft while holding its row lock for the caller's transaction."""
         return session.scalar(
             select(Workflow)
@@ -281,8 +277,8 @@ class WorkflowService:
             .with_for_update()
         )
 
+    @staticmethod
     def get_published_workflow_by_id(
-        self,
         app_model: App,
         workflow_id: str,
         *,
@@ -360,9 +356,14 @@ class WorkflowService:
         limit: int,
         user_id: str | None,
         named_only: bool = False,
+        include_draft: bool = True,
     ) -> tuple[Sequence[Workflow], bool]:
         """
         Get published workflow with pagination
+
+        The console lists the draft alongside published versions (``include_draft=True``,
+        the default); callers that only want published versions, where the draft would
+        break restore or ordering, pass ``include_draft=False``.
         """
         if not app_model.workflow_id:
             return [], False
@@ -389,6 +390,9 @@ class WorkflowService:
 
         if named_only:
             stmt = stmt.where(Workflow.marked_name != "")
+
+        if not include_draft:
+            stmt = stmt.where(Workflow.version != Workflow.VERSION_DRAFT)
 
         workflows = session.scalars(stmt).all()
 
@@ -433,7 +437,7 @@ class WorkflowService:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
 
         # fetch draft workflow by app_model
-        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
+        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
@@ -554,7 +558,7 @@ class WorkflowService:
         variables they do not touch. Existing variables keep their order and new variables are appended.
         The transaction is committed before this method returns.
         """
-        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
+        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
         if not workflow:
             raise ValueError("No draft workflow found.")
 
@@ -700,9 +704,7 @@ class WorkflowService:
         )
 
         # Validate credentials before publishing, for credential policy check
-        from services.feature_service import FeatureService
-
-        if FeatureService.is_plugin_manager_enabled():
+        if SystemFeatureService.is_plugin_manager_enabled():
             self._validate_workflow_credentials(draft_workflow, session=session)
 
         # validate graph structure
@@ -749,17 +751,11 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
-        has_inline_agent = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
             session=session,
             draft_workflow=draft_workflow,
             published_workflow=workflow,
         )
-        if has_inline_agent:
-            register_new_agent_beta_workflow_publish_after_commit(
-                session=session,
-                published_workflow_id=workflow.id,
-                published_at=workflow.created_at,
-            )
 
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
@@ -786,93 +782,103 @@ class WorkflowService:
         )
 
         for node in nodes:
-            node_data = node.get("data", {})
-            node_type = node_data.get("type")
-            node_id = node.get("id", "unknown")
+            self.validate_node_credentials(workflow.tenant_id, node, environment_variables, session=session)
 
-            try:
-                # Extract and validate credentials based on node type
-                if node_type == "tool":
-                    credential_id = node_data.get("credential_id")
-                    provider = node_data.get("provider_id")
-                    if provider:
-                        if credential_id:
-                            # Check specific credential
-                            from core.helper.credential_utils import check_credential_policy_compliance
+    def validate_node_credentials(
+        self,
+        tenant_id: str,
+        node: Mapping[str, Any],
+        environment_variables: Mapping[str, VariableBase],
+        *,
+        session: Session,
+    ) -> None:
+        """Publish's credential check for one node.
 
-                            check_credential_policy_compliance(
-                                credential_id=credential_id,
-                                provider=provider,
-                                credential_type=PluginCredentialType.TOOL,
-                            )
-                        else:
-                            # Check default workspace credential for this provider
-                            self._check_default_tool_credential(workflow.tenant_id, provider, session=session)
+        :raises ValueError: naming the node when a credential it needs violates policy or is unusable
+        """
+        node_data = node.get("data", {})
+        node_type = node_data.get("type")
+        node_id = node.get("id", "unknown")
 
-                elif node_type == "agent":
-                    agent_params = node_data.get("agent_parameters", {})
+        try:
+            # Extract and validate credentials based on node type
+            if node_type == "tool":
+                credential_id = node_data.get("credential_id")
+                provider = node_data.get("provider_id")
+                if provider:
+                    if credential_id:
+                        # Check specific credential
+                        from core.helper.credential_utils import check_credential_policy_compliance
 
-                    model_config = agent_params.get("model", {}).get("value", {})
-                    if model_config.get("provider") and model_config.get("model"):
-                        self._validate_llm_model_config(
-                            workflow.tenant_id, model_config["provider"], model_config["model"]
-                        )
-
-                        # Validate load balancing credentials for agent model if load balancing is enabled
-                        agent_model_node_data = {"model": model_config}
-                        self._validate_load_balancing_credentials(
-                            workflow, agent_model_node_data, node_id, session=session
-                        )
-
-                    # Validate agent tools
-                    tools = agent_params.get("tools", {}).get("value", [])
-                    for tool in tools:
-                        # Agent tools store provider in provider_name field
-                        provider = tool.get("provider_name")
-                        credential_id = tool.get("credential_id")
-                        if provider:
-                            if credential_id:
-                                from core.helper.credential_utils import check_credential_policy_compliance
-
-                                check_credential_policy_compliance(credential_id, provider, PluginCredentialType.TOOL)
-                            else:
-                                self._check_default_tool_credential(workflow.tenant_id, provider, session=session)
-
-                elif node_type in ["llm", "knowledge_retrieval", "parameter_extractor", "question_classifier"]:
-                    validation_node_data = node_data
-                    model_config = node_data.get("model", {})
-                    if node_type == "llm" and should_resolve_llm_model_selector(node_data.get("model_selector")):
-                        selector = parse_llm_model_selector(node_data["model_selector"])
-                        variable = environment_variables.get(selector[1])
-                        if not isinstance(variable, LLMEnvironmentVariable):
-                            raise ValueError(
-                                f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
-                            )
-                        resolved_model = resolve_llm_model_config(
-                            node_model=ModelConfig.model_validate(model_config),
-                            variable_name=selector[1],
-                            variable_value=variable.value,
-                        )
-                        model_config = resolved_model.model_dump(mode="json")
-                        validation_node_data = {**node_data, "model": model_config}
-                    provider = model_config.get("provider")
-                    model_name = model_config.get("name")
-
-                    if provider and model_name:
-                        # Validate that the provider+model combination can fetch valid credentials
-                        self._validate_llm_model_config(workflow.tenant_id, provider, model_name)
-                        # Validate load balancing credentials if load balancing is enabled
-                        self._validate_load_balancing_credentials(
-                            workflow, validation_node_data, node_id, session=session
+                        check_credential_policy_compliance(
+                            credential_id=credential_id,
+                            provider=provider,
+                            credential_type=PluginCredentialType.TOOL,
                         )
                     else:
-                        raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
+                        # Check default workspace credential for this provider
+                        self._check_default_tool_credential(tenant_id, provider, session=session)
 
-            except Exception as e:
-                if isinstance(e, ValueError):
-                    raise e
+            elif node_type == "agent":
+                agent_params = node_data.get("agent_parameters", {})
+
+                model_config = agent_params.get("model", {}).get("value", {})
+                if model_config.get("provider") and model_config.get("model"):
+                    self._validate_llm_model_config(tenant_id, model_config["provider"], model_config["model"])
+
+                    # Validate load balancing credentials for agent model if load balancing is enabled
+                    agent_model_node_data = {"model": model_config}
+                    self._validate_load_balancing_credentials(
+                        tenant_id, agent_model_node_data, node_id, session=session
+                    )
+
+                # Validate agent tools
+                tools = agent_params.get("tools", {}).get("value", [])
+                for tool in tools:
+                    # Agent tools store provider in provider_name field
+                    provider = tool.get("provider_name")
+                    credential_id = tool.get("credential_id")
+                    if provider:
+                        if credential_id:
+                            from core.helper.credential_utils import check_credential_policy_compliance
+
+                            check_credential_policy_compliance(credential_id, provider, PluginCredentialType.TOOL)
+                        else:
+                            self._check_default_tool_credential(tenant_id, provider, session=session)
+
+            elif node_type in ["llm", "knowledge_retrieval", "parameter_extractor", "question_classifier"]:
+                validation_node_data = node_data
+                model_config = node_data.get("model", {})
+                if node_type == "llm" and should_resolve_llm_model_selector(node_data.get("model_selector")):
+                    selector = parse_llm_model_selector(node_data["model_selector"])
+                    variable = environment_variables.get(selector[1])
+                    if not isinstance(variable, LLMEnvironmentVariable):
+                        raise ValueError(
+                            f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                        )
+                    resolved_model = resolve_llm_model_config(
+                        node_model=ModelConfig.model_validate(model_config),
+                        variable_name=selector[1],
+                        variable_value=variable.value,
+                    )
+                    model_config = resolved_model.model_dump(mode="json")
+                    validation_node_data = {**node_data, "model": model_config}
+                provider = model_config.get("provider")
+                model_name = model_config.get("name")
+
+                if provider and model_name:
+                    # Validate that the provider+model combination can fetch valid credentials
+                    self._validate_llm_model_config(tenant_id, provider, model_name)
+                    # Validate load balancing credentials if load balancing is enabled
+                    self._validate_load_balancing_credentials(tenant_id, validation_node_data, node_id, session=session)
                 else:
-                    raise ValueError(f"Node {node_id} ({node_type}): {str(e)}")
+                    raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
+
+        except Exception as e:
+            if isinstance(e, ValueError):
+                raise e
+            else:
+                raise ValueError(f"Node {node_id} ({node_type}): {str(e)}") from e
 
     def _validate_llm_model_config(self, tenant_id: str, provider: str, model_name: str) -> None:
         """
@@ -925,7 +931,7 @@ class WorkflowService:
         except Exception as e:
             raise ValueError(
                 f"Failed to validate LLM model configuration (provider: {provider}, model: {model_name}): {str(e)}"
-            )
+            ) from e
 
     def _check_default_tool_credential(self, tenant_id: str, provider: str, *, session: Session) -> None:
         """
@@ -968,15 +974,15 @@ class WorkflowService:
             )
 
         except Exception as e:
-            raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}")
+            raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}") from e
 
     def _validate_load_balancing_credentials(
-        self, workflow: Workflow, node_data: dict[str, Any], node_id: str, *, session: Session
+        self, tenant_id: str, node_data: Mapping[str, Any], node_id: str, *, session: Session
     ) -> None:
         """
         Validate load balancing credentials for a workflow node.
 
-        :param workflow: The workflow being validated
+        :param tenant_id: The workspace that owns the workflow
         :param node_data: The node data containing model configuration
         :param node_id: The node ID for error reporting
         :raises ValueError: If load balancing credentials violate policy compliance
@@ -990,11 +996,9 @@ class WorkflowService:
             return  # No model config to validate
 
         # Check if this model has load balancing enabled
-        if self._is_load_balancing_enabled(workflow.tenant_id, provider, model_name):
+        if self._is_load_balancing_enabled(tenant_id, provider, model_name):
             # Get all load balancing configurations for this model
-            load_balancing_configs = self._get_load_balancing_configs(
-                workflow.tenant_id, provider, model_name, session=session
-            )
+            load_balancing_configs = self._get_load_balancing_configs(tenant_id, provider, model_name, session=session)
             # Validate each load balancing configuration
             try:
                 for config in load_balancing_configs:
@@ -1005,7 +1009,7 @@ class WorkflowService:
                             config["credential_id"], provider, PluginCredentialType.MODEL
                         )
             except Exception as e:
-                raise ValueError(f"Invalid load balancing credentials for {provider}/{model_name}: {str(e)}")
+                raise ValueError(f"Invalid load balancing credentials for {provider}/{model_name}: {str(e)}") from e
 
     def _is_load_balancing_enabled(self, tenant_id: str, provider: str, model_name: str) -> bool:
         """
@@ -1194,7 +1198,7 @@ class WorkflowService:
             add_variables_to_pool(
                 variable_pool,
                 build_bootstrap_variables(
-                    system_variables=default_system_variables(),
+                    system_variables=build_system_variables(),
                     environment_variables=draft_workflow.environment_variables,
                 ),
             )
@@ -1213,6 +1217,7 @@ class WorkflowService:
             enclosing_node_id = None
 
         run = WorkflowEntry.single_step_run(
+            execution_driver=WorkflowRunAgg.run,
             workflow=draft_workflow,
             node_id=node_id,
             user_inputs=user_inputs,
@@ -1221,18 +1226,6 @@ class WorkflowService:
             variable_loader=variable_loader,
         )
 
-        # run draft workflow node
-        start_at = time.perf_counter()
-        node_execution = self._handle_single_step_result(
-            invoke_node_fn=lambda: run,
-            start_at=start_at,
-            node_id=node_id,
-        )
-
-        # Set workflow_id on the NodeExecution
-        node_execution.workflow_id = draft_workflow.id
-
-        # Create repository and save the node execution
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             tenant_id=app_model.tenant_id,
@@ -1240,6 +1233,46 @@ class WorkflowService:
             app_id=app_model.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
+        node, node_events = run
+        started_event: NodeRunStartedEvent | None = None
+
+        def persist_node_start() -> Generator[NodeEvent | ContainerAwaitRequest]:
+            nonlocal started_event
+            for event in node_events:
+                if isinstance(event, NodeRunStartedEvent) and event.node_id == node_id:
+                    started_event = event
+                    # Agent workspace allocation requires this caller row before the node body runs.
+                    repository.save_synchronously(
+                        WorkflowNodeExecution(
+                            id=event.id,
+                            node_execution_id=event.id,
+                            workflow_id=draft_workflow.id,
+                            index=1,
+                            predecessor_node_id=event.predecessor_node_id,
+                            node_id=event.node_id,
+                            node_type=event.node_type,
+                            title=event.node_title,
+                            process_data=event.node_run_result.process_data or None,
+                            metadata=event.node_run_result.metadata,
+                            created_at=event.start_at,
+                        )
+                    )
+                yield event
+
+        start_at = time.perf_counter()
+        node_execution = self._handle_single_step_result(
+            invoke_node_fn=lambda: (node, persist_node_start()),
+            start_at=start_at,
+            node_id=node_id,
+        )
+        node_execution.workflow_id = draft_workflow.id
+        if started_event is not None:
+            node_execution.id = started_event.id
+            node_execution.node_execution_id = started_event.id
+            node_execution.created_at = started_event.start_at
+            node_execution.predecessor_node_id = started_event.predecessor_node_id
+        repository.save_synchronously(node_execution)
+        # LogStore needs its terminal append in addition to the synchronous SQL caller row.
         repository.save(node_execution)
 
         workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
@@ -1598,7 +1631,7 @@ class WorkflowService:
         human_input_node_data = HumanInputNodeData.model_validate(
             adapt_human_input_node_data_for_graph(node_config["data"])
         )
-        variable_mapping = human_input_node_data.extract_variable_selector_to_variable_mapping(node_config["id"])
+        variable_mapping = get_human_input_form_variable_mapping(node_config["id"], human_input_node_data)
         normalized_user_inputs: dict[str, Any] = dict(manual_inputs)
 
         load_into_variable_pool(
@@ -1643,7 +1676,7 @@ class WorkflowService:
         self,
         invoke_node_fn: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+            tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]],
         ],
         start_at: float,
         node_id: str,
@@ -1683,7 +1716,7 @@ class WorkflowService:
         self,
         invoke_node_fn: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+            tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]],
         ],
     ) -> tuple[Node, NodeRunResult | None, bool, str | None]:
         """
@@ -1860,7 +1893,7 @@ class WorkflowService:
         try:
             HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_data))
         except Exception as e:
-            raise ValueError(f"Invalid HumanInput node data: {str(e)}")
+            raise ValueError(f"Invalid HumanInput node data: {str(e)}") from e
 
     def update_workflow(
         self,

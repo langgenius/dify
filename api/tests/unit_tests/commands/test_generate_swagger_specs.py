@@ -71,7 +71,7 @@ def _reset_schema_cache(api):
     api.__dict__.pop("__schema__", None)
 
 
-def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: Path):
+def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -81,12 +81,27 @@ def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: P
         "web-openapi.json",
         "service-openapi.json",
         "openapi-openapi.json",
+        "inner-openapi.json",
     ]
 
     for path in written_paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
         assert payload["openapi"] == "3.1.0"
         assert "paths" in payload
+
+    inner_path = next(path for path in written_paths if path.name == "inner-openapi.json")
+    inner_payload = json.loads(inner_path.read_text(encoding="utf-8"))
+    assert inner_payload["security"] == [{"InnerApiKey": []}]
+    assert inner_payload["components"]["securitySchemes"] == {
+        "InnerApiKey": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Inner-Api-Key",
+            "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
+        }
+    }
+    assert "Bearer" not in inner_payload["components"]["securitySchemes"]
+    assert "/enterprise/apps/{app_id}/dsl" in inner_payload["paths"]
 
 
 def test_generate_specs_match_live_openapi_payloads(tmp_path: Path):
@@ -127,11 +142,12 @@ import sys
 from pathlib import Path
 
 from controllers.console import api as console_api
+from controllers.inner_api import api as inner_api
 from controllers.openapi import api as openapi_api
 from controllers.service_api import api as service_api
 from controllers.web import api as web_api
 
-apis = (console_api, web_api, service_api, openapi_api)
+apis = (console_api, web_api, service_api, openapi_api, inner_api)
 assert all(api._add_specs is False for api in apis)
 
 from dev.generate_swagger_specs import generate_specs
@@ -142,6 +158,7 @@ assert [path.name for path in written_paths] == [
     "web-openapi.json",
     "service-openapi.json",
     "openapi-openapi.json",
+    "inner-openapi.json",
 ]
 """
     env = os.environ.copy()
@@ -194,6 +211,19 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
     conversation_id = service_payload["components"]["schemas"]["ChatRequestPayload"]["properties"]["conversation_id"]
     assert "default" in conversation_id
     assert conversation_id["default"] is None
+
+    schemas = service_payload["components"]["schemas"]
+    document_detail = schemas["DocumentDetailResponse"]
+    validator = Draft202012Validator(service_payload)
+    for schema in (document_detail, *schemas["DocumentTextUpdate"]["anyOf"]):
+        for property_schema in schema["properties"].values():
+            if "default" in property_schema:
+                validator.evolve(schema=property_schema).validate(property_schema["default"])
+
+    assert document_detail["required"] == ["id"]
+    assert document_detail["properties"]["enabled"]["type"] == "boolean"
+    assert "default" not in document_detail["properties"]["enabled"]
+    assert document_detail["properties"]["tokens"]["default"] is None
 
 
 def test_generate_specs_writes_unique_operation_ids(tmp_path: Path):
@@ -325,10 +355,14 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     assert pipeline_operation["operationId"] == "run_pipeline"
 
     chat_error_content = chat_operation["responses"]["401"]["content"]
-    assert chat_error_content == {"application/json": {}}
+    # No business error on chat-messages answers 401, so it keeps the open error body.
+    assert chat_error_content == {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
     chat_success_content = chat_operation["responses"]["200"]["content"]
     assert chat_success_content["application/json"]["schema"] == {"$ref": "#/components/schemas/ChatBlockingResponse"}
     assert chat_success_content["text/event-stream"]["schema"] == {"type": "string"}
+
+    upload_bad_request = payload["paths"]["/files/upload"]["post"]["responses"]["400"]["description"]
+    assert "`file_extension_blocked`" in upload_bad_request
 
     schemas = payload["components"]["schemas"]
     expected_property_descriptions = {
@@ -602,6 +636,17 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     }
 
 
+def test_generate_specs_writes_web_file_upload_error_codes(tmp_path: Path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    web_path = next(path for path in written_paths if path.name == "web-openapi.json")
+    payload = json.loads(web_path.read_text(encoding="utf-8"))
+
+    upload_bad_request = payload["paths"]["/files/upload"]["post"]["responses"]["400"]["description"]
+    assert "`file_extension_blocked`" in upload_bad_request
+
+
 def test_standalone_inline_model_name_includes_list_constraints():
     module = _load_generate_swagger_specs_module()
 
@@ -626,7 +671,7 @@ def test_generate_specs_is_idempotent(tmp_path: Path):
     second_paths = module.generate_specs(tmp_path / "second")
 
     assert [path.name for path in first_paths] == [path.name for path in second_paths]
-    for first_path, second_path in zip(first_paths, second_paths):
+    for first_path, second_path in zip(first_paths, second_paths, strict=False):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
 
 
@@ -659,6 +704,22 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert file_upload_schema["properties"]["file"]["format"] == "binary"
     assert file_upload_schema["properties"]["file"]["type"] == "string"
     assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
+
+    package_import = paths["/apps/imports"]["post"]
+    assert _request_schema(package_import, "multipart/form-data")["required"] == ["file"]
+    assert _request_schema(package_import, "multipart/form-data")["properties"]["app_id"]["type"] == "string"
+    assert _request_schema(package_import, "application/json")["$ref"] == "#/components/schemas/AppImportPayload"
+    assert "mode" in schemas["AppImportPayload"]["required"]
+    assert "403" in package_import["responses"]
+    export = paths["/apps/{app_id}/export"]["get"]
+    assert export["responses"]["200"]["content"]["application/zip"]["schema"] == {"type": "string", "format": "binary"}
+    assert export["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/AppExportResponse"
+    )
+    export_format = next(param for param in export["parameters"] if param["name"] == "format")
+    assert set(export_format["schema"]["enum"]) == {"yaml", "ifpkg"}
+    assert export_format["schema"].get("default") is None
+    assert "defaults to ifpkg for all Apps" in export_format["description"]
 
     api_key_auth_binding_schema = _request_schema(paths["/api-key-auth/data-source/binding"]["post"])
     assert api_key_auth_binding_schema["$ref"] == "#/components/schemas/ApiKeyAuthBindingPayload"
@@ -703,6 +764,25 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
         "#/components/schemas/SyncDraftWorkflowResponse"
     )
     assert sync_draft_workflow["properties"]["updated_at"]["type"] == "integer"
+    trigger_run_request = _request_schema(paths["/apps/{app_id}/workflows/draft/trigger/run"]["post"])
+    assert trigger_run_request["$ref"] == "#/components/schemas/DraftWorkflowTriggerRunPayload"
+    assert "DraftWorkflowTriggerRunRequest" not in schemas
+
+    draft_variable_list_ref = "#/components/schemas/WorkflowDraftVariableListWithoutValueResponse"
+    for path in (
+        "/apps/{app_id}/workflows/draft/variables",
+        "/snippets/{snippet_id}/workflows/draft/variables",
+        "/rag/pipelines/{pipeline_id}/workflows/draft/variables",
+    ):
+        assert _response_schema(paths[path]["get"])["$ref"] == draft_variable_list_ref
+    assert schemas["WorkflowDraftVariableListResponse"]["properties"]["items"]["items"]["$ref"] == (
+        "#/components/schemas/WorkflowDraftVariableResponse"
+    )
+    full_content = schemas["WorkflowDraftVariableFullContentResponse"]
+    assert set(full_content["properties"]) == {"size_bytes", "value_type", "length", "download_url"}
+    assert "WorkflowDraftVariable" not in schemas
+    assert "WorkflowDraftVariableList" not in schemas
+    assert "WorkflowDraftVariableWithoutValue" not in schemas
     tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
     assert {"type": "string"} in tool_icon_schema["anyOf"]
     assert {"additionalProperties": True, "type": "object"} in tool_icon_schema["anyOf"]
@@ -747,6 +827,14 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     )
     assert {"enabled", "model", "prompt"} <= set(schemas["WorkflowSuggestedQuestionsAfterAnswerPayload"]["properties"])
     assert {"enabled", "language", "voice", "autoPlay"} <= set(schemas["WorkflowTextToSpeechPayload"]["properties"])
+    assert schemas["WorkflowTextToSpeechPayload"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
+        "disabled",
+        "enabled",
+    ]
+    assert schemas["AgentTextToSpeechFeatureConfig"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
+        "disabled",
+        "enabled",
+    ]
     assert {"enabled", "type", "config"} <= set(schemas["WorkflowSensitiveWordAvoidancePayload"]["properties"])
     file_upload = schemas["WorkflowFileUploadPayload"]["properties"]
     assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)

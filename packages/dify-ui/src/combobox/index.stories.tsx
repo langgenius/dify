@@ -13,6 +13,7 @@ import {
   ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
+  ComboboxIcon,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxInputTrigger,
@@ -28,6 +29,7 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
+  createComboboxItems,
   useComboboxFilter,
   useComboboxFilteredItems,
 } from '.'
@@ -191,6 +193,10 @@ const tagOptions: Option[] = [
   { value: 'finance', label: 'Finance' },
   { value: 'support', label: 'Support' },
 ]
+const tagItems = createComboboxItems(tagOptions, {
+  getValue: (option) => option.value,
+  getLabel: (option) => option.label,
+})
 
 const directoryOptions: Option[] = [
   {
@@ -294,13 +300,8 @@ async function searchOptions(
 }
 
 const renderOptionItem = (option: Option) => (
-  <ComboboxItem
-    key={option.value}
-    value={option}
-    disabled={option.disabled}
-    className="h-auto min-h-8 py-1.5"
-  >
-    <ComboboxItemText className="flex items-center gap-2 px-0">
+  <ComboboxItem key={option.value} value={option} disabled={option.disabled}>
+    <ComboboxItemText className="flex items-center gap-2">
       {option.icon && (
         <span aria-hidden className={cn(option.icon, 'size-4 shrink-0 text-text-tertiary')} />
       )}
@@ -331,9 +332,8 @@ const renderVirtualizedOptionItem = (option: Option, index: number, itemCount: n
     aria-posinset={index + 1}
     aria-setsize={itemCount}
     disabled={option.disabled}
-    className="h-auto min-h-8 py-1.5"
   >
-    <ComboboxItemText className="flex items-center gap-2 px-0">
+    <ComboboxItemText className="flex items-center gap-2">
       {option.icon && (
         <span aria-hidden className={cn(option.icon, 'size-4 shrink-0 text-text-tertiary')} />
       )}
@@ -348,23 +348,19 @@ const renderVirtualizedOptionItem = (option: Option, index: number, itemCount: n
   </ComboboxItem>
 )
 
-const PopupSearchInput = ({ label, placeholder }: { label: string; placeholder: string }) => (
-  <div className="p-1 pb-0">
-    <ComboboxInputGroup className="h-8 min-h-8 px-2">
+function PopupSearchInput({ label, placeholder }: { label: string; placeholder: string }) {
+  return (
+    <ComboboxInputGroup>
       <span
         aria-hidden
-        className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+        className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
       />
-      <ComboboxInput
-        aria-label={label}
-        placeholder={`${placeholder}…`}
-        className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
-      />
+      <ComboboxInput aria-label={label} placeholder={`${placeholder}…`} />
     </ComboboxInputGroup>
-  </div>
-)
+  )
+}
 
-const GroupedToolList = () => {
+function GroupedToolList() {
   const groups = useComboboxFilteredItems<OptionGroup>()
 
   return (
@@ -380,11 +376,11 @@ const GroupedToolList = () => {
   )
 }
 
-const VirtualizedModelList = ({
+function VirtualizedModelList({
   virtualizerRef,
 }: {
   virtualizerRef: React.RefObject<StoryVirtualizer | null>
-}) => {
+}) {
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const filteredItems = useComboboxFilteredItems<Option>()
   const virtualizer = useVirtualizer({
@@ -446,17 +442,13 @@ const VirtualizedModelList = ({
   )
 }
 
-const FilteredModelStatus = () => {
+function FilteredModelStatus() {
   const filteredItems = useComboboxFilteredItems<Option>()
 
-  return (
-    <ComboboxStatus className="border-y border-divider-subtle px-2 py-1 text-text-quaternary tabular-nums">
-      {filteredItems.length} matching models
-    </ComboboxStatus>
-  )
+  return <ComboboxStatus>{filteredItems.length} matching models</ComboboxStatus>
 }
 
-const VirtualizedLongListDemo = () => {
+function VirtualizedLongListDemo() {
   const [value, setValue] = React.useState<Option | null>(modelCatalogOptions[137]!)
   const virtualizerRef = React.useRef<StoryVirtualizer | null>(null)
 
@@ -472,7 +464,7 @@ const VirtualizedLongListDemo = () => {
         }}
       >
         <ComboboxLabel>Model catalog</ComboboxLabel>
-        <ComboboxTrigger>
+        <ComboboxTrigger render={<Button variant="secondary" />}>
           <ComboboxValue placeholder="Select model" />
         </ComboboxTrigger>
         <ComboboxPortal>
@@ -490,7 +482,7 @@ const VirtualizedLongListDemo = () => {
   )
 }
 
-const AsyncDirectoryDemo = () => {
+function AsyncDirectoryDemo() {
   const [searchResults, setSearchResults] = React.useState<Option[]>([])
   const [selectedValue, setSelectedValue] = React.useState<Option | null>(null)
   const [searchValue, setSearchValue] = React.useState('')
@@ -568,22 +560,19 @@ const AsyncDirectoryDemo = () => {
           })
         }}
       >
-        <ComboboxInputGroup className="h-8 min-h-8 px-2">
+        <ComboboxInputGroup>
           <span
             aria-hidden
-            className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+            className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
           />
-          <ComboboxInput
-            placeholder="Search owners…"
-            className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
-          />
-          <ComboboxClear className="mr-0.5" />
-          <ComboboxInputTrigger className="mr-0" />
+          <ComboboxInput placeholder="Search owners…" />
+          <ComboboxClear />
+          <ComboboxInputTrigger />
         </ComboboxInputGroup>
         <ComboboxPortal>
           <ComboboxPositioner>
-            <ComboboxPopup className="w-105" aria-busy={isPending || undefined}>
-              <ComboboxStatus className="border-b border-divider-subtle">{status}</ComboboxStatus>
+            <ComboboxPopup aria-busy={isPending || undefined}>
+              <ComboboxStatus>{status}</ComboboxStatus>
               <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
               <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
             </ComboboxPopup>
@@ -594,7 +583,7 @@ const AsyncDirectoryDemo = () => {
   )
 }
 
-const InlinePopoverDemo = () => {
+function InlinePopoverDemo() {
   const [open, setOpen] = React.useState(false)
   const [value, setValue] = React.useState<Option | null>(null)
   const [inputValue, setInputValue] = React.useState('')
@@ -623,16 +612,12 @@ const InlinePopoverDemo = () => {
             onInputValueChange={setInputValue}
           >
             <div className="p-2 pb-1">
-              <ComboboxInputGroup className="h-8 min-h-8 px-2">
+              <ComboboxInputGroup>
                 <span
                   aria-hidden
-                  className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+                  className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
                 />
-                <ComboboxInput
-                  aria-label="Search reviewers"
-                  placeholder="Search reviewers…"
-                  className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
-                />
+                <ComboboxInput aria-label="Search reviewers" placeholder="Search reviewers…" />
               </ComboboxInputGroup>
             </div>
             <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
@@ -655,7 +640,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound combobox built on Base UI Combobox for searchable predefined selections. Use an input as the trigger, place an input inside a named popup, or set `inline` when an external Popover owns the surface. Keep independent actions outside the listbox, keep Status mounted while changing its children, and use Clear only for selection clearing.',
+          'Compound combobox built on Base UI Combobox for searchable predefined selections. Use an input as the trigger, or open a named popup that contains the input from the unstyled trigger, composed through `render` or with Value and Icon for a select-like field, or set `inline` when an external Popover owns the surface. Keep independent actions outside the listbox, keep Status mounted while changing its children, and use Clear only for selection clearing.',
       },
     },
   },
@@ -670,17 +655,14 @@ export const Default: Story = {
     <Field name="dataSource" className={fieldWidth}>
       <FieldLabel>Connect source</FieldLabel>
       <Combobox items={dataSourceOptions} defaultValue={defaultDataSource}>
-        <ComboboxInputGroup className="h-8 min-h-8 px-2">
+        <ComboboxInputGroup>
           <span
             aria-hidden
-            className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+            className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
           />
-          <ComboboxInput
-            placeholder="Search data sources…"
-            className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
-          />
-          <ComboboxClear className="mr-0.5" />
-          <ComboboxInputTrigger className="mr-0" />
+          <ComboboxInput placeholder="Search data sources…" />
+          <ComboboxClear />
+          <ComboboxInputTrigger />
         </ComboboxInputGroup>
         <ComboboxPortal>
           <ComboboxPositioner>
@@ -714,8 +696,11 @@ export const TriggerWithPopupInput: Story = {
     <div className={fieldWidth}>
       <Combobox items={dataSourceOptions} defaultValue={defaultPopupDataSource}>
         <ComboboxLabel>Data source</ComboboxLabel>
-        <ComboboxTrigger>
-          <ComboboxValue placeholder="Choose source" />
+        <ComboboxTrigger className="group/trigger flex h-8 w-full min-w-0 items-center gap-0.5 rounded-lg bg-components-input-bg-normal py-2 pr-2 pl-3 text-start system-sm-regular text-components-input-text-filled transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder data-popup-open:bg-state-base-hover-alt motion-reduce:transition-none">
+          <span className="min-w-0 grow truncate">
+            <ComboboxValue placeholder="Choose source" />
+          </span>
+          <ComboboxIcon className="text-text-quaternary transition-colors group-hover/trigger:text-text-secondary group-data-popup-open/trigger:text-text-secondary" />
         </ComboboxTrigger>
         <ComboboxPortal>
           <ComboboxPositioner>
@@ -763,6 +748,9 @@ export const InlineInPopover: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'Choose reviewer' }))
     const reopenedPopover = await body.findByRole('dialog', { name: 'Choose reviewer' })
+    await waitFor(async () => {
+      await expect(reopenedPopover).toBeVisible()
+    })
     await expect(
       within(reopenedPopover).getByRole('combobox', { name: 'Search reviewers' }),
     ).toHaveValue('')
@@ -780,14 +768,14 @@ export const Sizes: Story = {
         <Field key={size} name={`provider-${size}`}>
           <FieldLabel>{`${size[0]!.toUpperCase()}${size.slice(1)}`}</FieldLabel>
           <Combobox items={sizeOptions} defaultValue={defaultProvider}>
-            <ComboboxInputGroup size={size} className="px-2">
+            <ComboboxInputGroup size={size}>
               <span
                 aria-hidden
-                className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+                className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
               />
-              <ComboboxInput size={size} placeholder="Search providers…" className="px-1" />
-              <ComboboxClear size={size} className="mr-0.5" />
-              <ComboboxInputTrigger size={size} className="mr-0" />
+              <ComboboxInput size={size} placeholder="Search providers…" />
+              <ComboboxClear size={size} />
+              <ComboboxInputTrigger size={size} />
             </ComboboxInputGroup>
             <ComboboxPortal>
               <ComboboxPositioner>
@@ -808,7 +796,7 @@ export const Grouped: Story = {
     <div className={fieldWidth}>
       <Combobox items={toolGroups} defaultValue={defaultTool}>
         <ComboboxLabel>Workflow tool</ComboboxLabel>
-        <ComboboxTrigger>
+        <ComboboxTrigger render={<Button variant="secondary" />}>
           <ComboboxValue placeholder="Select tool" />
         </ComboboxTrigger>
         <ComboboxPortal>
@@ -824,32 +812,39 @@ export const Grouped: Story = {
   ),
 }
 
-const MultipleChipsDemo = () => {
+function MultipleChipsDemo() {
   const [value, setValue] = React.useState<Option[]>(defaultReviewers)
 
   return (
     <Field name="reviewers" className={fieldWidth}>
       <FieldLabel>Reviewers</FieldLabel>
       <Combobox items={reviewerOptions} multiple value={value} onValueChange={setValue}>
-        <ComboboxInputGroup className="h-auto min-h-8 items-start py-1">
-          <ComboboxChips>
-            <ComboboxValue<Option, true>>
-              {(selectedValue) => (
-                <React.Fragment>
-                  {selectedValue?.map((item) => (
-                    <ComboboxChip key={item.value}>
+        <ComboboxInputGroup className="items-start py-1">
+          <ComboboxValue<Option, true>>
+            {(selectedValue) => {
+              const selectedReviewers = selectedValue ?? []
+
+              return (
+                <ComboboxChips
+                  aria-label={selectedReviewers.length > 0 ? 'Selected reviewers' : undefined}
+                >
+                  {selectedReviewers.map((item) => (
+                    <ComboboxChip
+                      key={item.value}
+                      aria-description="Press Backspace or Delete to remove"
+                    >
                       <span className="max-w-32 truncate">{item.label}</span>
                       <ComboboxChipRemove aria-label={`Remove ${item.label}`} />
                     </ComboboxChip>
                   ))}
                   <ComboboxInput
-                    placeholder={selectedValue?.length ? '' : 'Assign reviewers…'}
-                    className="min-w-24 px-1 py-0.5"
+                    placeholder={selectedReviewers.length > 0 ? '' : 'Assign reviewers…'}
+                    className="min-w-24 py-0.5"
                   />
-                </React.Fragment>
-              )}
-            </ComboboxValue>
-          </ComboboxChips>
+                </ComboboxChips>
+              )
+            }}
+          </ComboboxValue>
         </ComboboxInputGroup>
         <ComboboxPortal>
           <ComboboxPositioner>
@@ -861,6 +856,11 @@ const MultipleChipsDemo = () => {
       </Combobox>
       <FieldDescription>
         Selected reviewers wrap inside the input instead of scrolling horizontally.
+        {value.length > 0 && (
+          <span className="sr-only">
+            {` ${value.length} selected. From the start of the input, press Left Arrow to focus the selected items`}
+          </span>
+        )}
       </FieldDescription>
     </Field>
   )
@@ -871,11 +871,25 @@ export const MultipleChips: Story = {
   play: async ({ canvas, userEvent }) => {
     await expect(canvas.getByText('Maya Chen')).toBeVisible()
     await expect(canvas.getByText('Liam Brooks')).toBeVisible()
+    await expect(canvas.getByRole('toolbar', { name: 'Selected reviewers' })).toBeVisible()
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Remove Maya Chen' }))
+    await expect(canvas.getByText('Liam Brooks').parentElement!).toHaveAccessibleDescription(
+      'Press Backspace or Delete to remove',
+    )
 
-    await expect(canvas.queryByText('Maya Chen')).not.toBeInTheDocument()
-    await expect(canvas.getByText('Liam Brooks')).toBeVisible()
+    const input = canvas.getByRole('combobox', { name: 'Reviewers' })
+    await expect(input).toHaveAccessibleDescription(
+      'Selected reviewers wrap inside the input instead of scrolling horizontally. 2 selected. From the start of the input, press Left Arrow to focus the selected items',
+    )
+
+    input.focus()
+    await userEvent.keyboard('{ArrowLeft}{Delete}')
+
+    await expect(canvas.queryByText('Liam Brooks')).not.toBeInTheDocument()
+    await expect(canvas.getByText('Maya Chen')).toBeVisible()
+    await expect(input).toHaveAccessibleDescription(
+      'Selected reviewers wrap inside the input instead of scrolling horizontally. 1 selected. From the start of the input, press Left Arrow to focus the selected items',
+    )
   },
 }
 
@@ -888,16 +902,13 @@ export const Empty: Story = {
     <Field name="connector" className={fieldWidth}>
       <FieldLabel>Connector</FieldLabel>
       <Combobox items={emptyOptions} defaultInputValue="salesforce">
-        <ComboboxInputGroup className="h-8 min-h-8 px-2">
+        <ComboboxInputGroup>
           <span
             aria-hidden
-            className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+            className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
           />
-          <ComboboxInput
-            placeholder="Search connectors…"
-            className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
-          />
-          <ComboboxInputTrigger className="mr-0" />
+          <ComboboxInput placeholder="Search connectors…" />
+          <ComboboxInputTrigger />
         </ComboboxInputGroup>
         <ComboboxPortal>
           <ComboboxPositioner>
@@ -917,7 +928,7 @@ export const Disabled: Story = {
     <div className={fieldWidth}>
       <Combobox items={providerOptions} defaultValue={disabledProvider} disabled>
         <ComboboxLabel>Disabled provider</ComboboxLabel>
-        <ComboboxTrigger>
+        <ComboboxTrigger render={<Button variant="secondary" />}>
           <ComboboxValue />
         </ComboboxTrigger>
         <ComboboxPortal>
@@ -938,12 +949,9 @@ export const ReadOnly: Story = {
     <Field name="readOnlySource" className={fieldWidth}>
       <FieldLabel>Read-only source</FieldLabel>
       <Combobox items={dataSourceOptions} defaultValue={readOnlyDataSource} readOnly>
-        <ComboboxInputGroup className="h-8 min-h-8 px-2">
-          <ComboboxInput
-            placeholder="Read-only data source…"
-            className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
-          />
-          <ComboboxInputTrigger className="mr-0" />
+        <ComboboxInputGroup>
+          <ComboboxInput placeholder="Read-only data source…" />
+          <ComboboxInputTrigger />
         </ComboboxInputGroup>
         <ComboboxPortal>
           <ComboboxPositioner>
@@ -955,31 +963,54 @@ export const ReadOnly: Story = {
       </Combobox>
     </Field>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const input = canvas.getByRole('combobox', { name: 'Read-only source' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(input).toHaveValue('Website crawler')
+    await userEvent.click(input)
+    await waitFor(async () => {
+      await expect(body.getByRole('option', { name: /Notion/ })).toBeVisible()
+    })
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(body.getByRole('option', { name: /S3 bucket/ })).toHaveAttribute(
+      'data-highlighted',
+    )
+    await userEvent.keyboard('{Enter}')
+    await expect(input).toHaveValue('Website crawler')
+  },
 }
 
-const ControlledDemo = () => {
-  const [value, setValue] = React.useState<Option | null>(defaultTag)
+function ControlledDemo() {
+  const [value, setValue] = React.useState<string | null>(defaultTag.value)
 
   return (
     <div className="flex w-80 flex-col items-start gap-3">
       <div className="w-full">
-        <Combobox items={tagOptions} value={value} onValueChange={setValue}>
+        <Combobox<string, false, Option> items={tagItems} value={value} onValueChange={setValue}>
           <ComboboxLabel>Default app tag</ComboboxLabel>
-          <ComboboxTrigger>
+          <ComboboxTrigger render={<Button variant="secondary" />}>
             <ComboboxValue placeholder="Select tag" />
           </ComboboxTrigger>
           <ComboboxPortal>
             <ComboboxPositioner>
               <ComboboxPopup aria-label="Default app tag">
                 <PopupSearchInput label="Search app tags" placeholder="Search tags" />
-                <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
+                <ComboboxList<Option>>
+                  {(option) => (
+                    <ComboboxItem<string> key={option.value} value={option.value}>
+                      <ComboboxItemText>{option.label}</ComboboxItemText>
+                      <ComboboxItemIndicator />
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
               </ComboboxPopup>
             </ComboboxPositioner>
           </ComboboxPortal>
         </Combobox>
       </div>
       <span className="rounded-md border border-divider-subtle bg-components-panel-bg px-2 py-1 system-xs-regular text-text-tertiary">
-        Selected: {value?.label ?? 'None'}
+        Selected ID: {value ?? 'None'}
       </span>
     </div>
   )
@@ -987,16 +1018,24 @@ const ControlledDemo = () => {
 
 export const Controlled: Story = {
   render: () => <ControlledDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Uses `createComboboxItems` so the controlled value is a primitive ID while the list renders complete option records.',
+      },
+    },
+  },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const trigger = canvas.getByRole('combobox', { name: 'Default app tag' })
     const body = within(canvasElement.ownerDocument.body)
 
-    await expect(canvas.getByText('Selected: Production')).toBeVisible()
+    await expect(canvas.getByText('Selected ID: production')).toBeVisible()
     await userEvent.click(trigger)
     await userEvent.click(await body.findByRole('option', { name: 'Finance' }))
 
     await expect(trigger).toHaveTextContent('Finance')
-    await expect(canvas.getByText('Selected: Finance')).toBeVisible()
+    await expect(canvas.getByText('Selected ID: finance')).toBeVisible()
     await waitFor(async () => {
       await expect(body.queryByRole('dialog', { name: 'Default app tag' })).not.toBeInTheDocument()
     })

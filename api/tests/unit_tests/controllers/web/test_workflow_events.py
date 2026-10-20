@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from unittest.mock import ANY, MagicMock, Mock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -11,9 +11,10 @@ from flask import Flask
 from controllers.common.errors import NotFoundError
 from controllers.web.workflow_events import WorkflowEventsApi
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _workflow_app() -> App:
@@ -21,12 +22,7 @@ def _workflow_app() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        type=EndUserType.BROWSER,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1")
 
 
 def _workflow_run(
@@ -149,21 +145,25 @@ class TestWorkflowEventsApi:
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
-        workflow_generator = Mock()
-        workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
-        snapshot_builder = Mock(return_value=["snapshot-events"])
-        monkeypatch.setattr("controllers.web.workflow_events.WorkflowAppGenerator", lambda: workflow_generator)
+        snapshot_calls: list[dict[str, object]] = []
+
+        def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
+            snapshot_calls.append(kwargs)
+            return [{"event": "snapshot"}]
+
         monkeypatch.setattr("controllers.web.workflow_events.build_workflow_event_stream", snapshot_builder)
 
         with app.test_request_context("/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true"):
             response = WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
-        assert response.get_data(as_text=True) == "data: snapshot\n\n"
-        snapshot_builder.assert_called_once_with(
-            app_mode=AppMode.WORKFLOW,
-            workflow_run=run,
-            tenant_id="tenant-1",
-            app_id="app-1",
-            session_maker=ANY,
-            close_on_pause=False,
-        )
+        assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
+        assert snapshot_calls == [
+            {
+                "app_mode": AppMode.WORKFLOW,
+                "workflow_run": run,
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "session_maker": ANY,
+                "close_on_pause": False,
+            }
+        ]

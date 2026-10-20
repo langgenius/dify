@@ -4,19 +4,20 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import Professional from '../../assets/professional'
@@ -31,19 +32,22 @@ const ICON_MAP = {
 }
 
 type CloudPlanItemProps = {
-  currentPlan: CloudPlan
   plan: CloudPlan
   billingInterval: GetBillingSubscriptionData['query']['interval']
-  isEducationDiscountEligible: boolean
+  billing:
+    | {
+        currentPlan: CloudPlan
+        currentBillingInterval: string
+        isEducationDiscountEligible: boolean | undefined
+        isEducationDiscountActivated: boolean
+      }
+    | undefined
 }
 
-export function CloudPlanItem({
-  plan,
-  currentPlan,
-  billingInterval,
-  isEducationDiscountEligible,
-}: CloudPlanItemProps) {
-  const { t } = useTranslation()
+export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemProps) {
+  const currentPlan = billing?.currentPlan
+  const isEducationDiscountEligible = billing?.isEducationDiscountEligible
+  const { t } = useTranslation(['billing', 'common', 'education'])
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isPlanActionPending, setIsPlanActionPending] = React.useState(false)
   const isYearly = billingInterval === 'year'
@@ -53,7 +57,12 @@ export function CloudPlanItem({
   const planInfo = ALL_PLANS[plan]
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
-  const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
+  const isCurrentSubscription =
+    isCurrentPaidPlan && billingInterval === billing?.currentBillingInterval
+  const isPlanDisabled =
+    !billing ||
+    (!isCurrentSubscription && billing.isEducationDiscountEligible === undefined) ||
+    (!isCurrentPaidPlan && planInfo.level <= ALL_PLANS[billing.currentPlan].level)
   const isEducationDiscountSupportedPlan = plan === 'professional' && isYearly
   const educationDiscountWarningText =
     canManageBilling &&
@@ -83,11 +92,11 @@ export function CloudPlanItem({
   const runPlanAction = async () => {
     if (isPlanActionPending || isEducationDiscountLoading) return
 
-    if (isPlanDisabled) return
+    if (!billing || isPlanDisabled) return
 
     setIsPlanActionPending(true)
     try {
-      if (isCurrentPaidPlan) {
+      if (isCurrentSubscription) {
         if (!canManageBilling) {
           toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
           return
@@ -130,7 +139,7 @@ export function CloudPlanItem({
     }
   }
   const handlePlanButtonClick = async () => {
-    if (educationDiscountWarningText && !isPlanDisabled) {
+    if (educationDiscountWarningText && !billing?.isEducationDiscountActivated && !isPlanDisabled) {
       setShowEducationPricingConfirm(true)
       return
     }
@@ -168,7 +177,7 @@ export function CloudPlanItem({
           </div>
         </div>
         {/* Price */}
-        <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
+        <div className="flex flex-wrap items-end gap-x-2 px-1 pt-4 pb-8">
           {isFreePlan && (
             <span className="title-4xl-semi-bold text-text-primary">
               {t(($) => $['plansCommon.free'], { ns: 'billing' })}
@@ -178,10 +187,18 @@ export function CloudPlanItem({
             <>
               {isYearly && (
                 <span className="title-4xl-semi-bold text-text-quaternary line-through">
+                  <span className="sr-only">
+                    {t(($) => $['plansCommon.originalAnnualPrice'], { ns: 'billing' })}
+                  </span>
                   ${planInfo.price * 12}
                 </span>
               )}
               <span className="title-4xl-semi-bold text-text-primary">
+                {isYearly && (
+                  <span className="sr-only">
+                    {t(($) => $['plansCommon.discountedAnnualPrice'], { ns: 'billing' })}
+                  </span>
+                )}
                 ${isYearly ? planInfo.price * 10 : planInfo.price}
               </span>
               <span className="pb-0.5 system-md-regular text-text-tertiary">
@@ -197,10 +214,10 @@ export function CloudPlanItem({
             variant="tertiary"
             size={null}
             disabled={isPlanDisabled}
-            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:bg-saas-dify-blue-static data-[plan=professional]:text-text-primary-on-surface data-[plan=professional]:hover:bg-saas-dify-blue-static-hover data-[plan=team]:bg-saas-background-inverted data-[plan=team]:text-background-default data-[plan=team]:hover:bg-saas-background-inverted-hover"
+            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:not-data-disabled:bg-saas-dify-blue-static data-[plan=professional]:not-data-disabled:text-text-primary-on-surface data-[plan=professional]:not-data-disabled:hover:bg-saas-dify-blue-static-hover data-[plan=team]:not-data-disabled:bg-saas-background-inverted data-[plan=team]:not-data-disabled:text-background-default data-[plan=team]:not-data-disabled:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap"
             onClick={handlePlanButtonClick}
           >
-            <span className="grow text-start">{buttonLabel}</span>
+            <span className="min-w-0 grow text-start">{buttonLabel}</span>
             {!isPlanDisabled && (
               <span aria-hidden className="i-ri-arrow-right-line size-5 shrink-0" />
             )}
@@ -215,26 +232,18 @@ export function CloudPlanItem({
       <CloudPlanFeatures plan={plan} />
       <Dialog open={showEducationPricingConfirm} onOpenChange={setShowEducationPricingConfirm}>
         <DialogContent backdropProps={{ forceRender: true }} className="w-130">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute top-6 right-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="flex flex-col gap-2 pr-10">
-            <DialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+          <DialogHeader>
+            <DialogTitle>
               {t(($) => $['educationPricingConfirm.title'], { ns: 'education' })}
             </DialogTitle>
-            <DialogDescription className="w-full system-md-regular text-text-tertiary">
+            <DialogDescription>
               {t(($) => $['educationPricingConfirm.description'], { ns: 'education' })}
             </DialogDescription>
-          </div>
-          <div className="mt-10 flex items-start justify-end gap-3">
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
+          </DialogHeader>
+          <DialogFooter>
             <Button
               size="large"
               onClick={handleContinueWithoutEducationDiscount}
@@ -253,7 +262,7 @@ export function CloudPlanItem({
             >
               {t(($) => $['educationPricingConfirm.continue'], { ns: 'education' })}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

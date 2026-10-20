@@ -780,7 +780,7 @@ class NodeOutputInspectorService:
                 "NodeOutputInspector: malformed node_job_config for binding %s", bundle.binding.id, exc_info=True
             )
             return None
-        return list(effective_declared_outputs(node_job.declared_outputs))
+        return list(effective_declared_outputs(node_job.declared_outputs, node_job.output_routes))
 
     @staticmethod
     def _infer_outputs_from_payload(*, execution: WorkflowNodeExecutionModel | None) -> list[_ResolvedDeclaration]:
@@ -798,6 +798,4 @@ def _is_passing(result: Mapping[str, Any]) -> bool:
     """A check-result row is "passing" when its ``status`` is the ready/passed
     sentinel emitted by the type-checker / output-check executor."""
     status = result.get("status")
-    if status in {"ready", "passed", "not_produced"}:
-        return True
-    return False
+    return status in {"ready", "passed", "not_produced"}

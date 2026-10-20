@@ -10,11 +10,12 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -36,31 +37,28 @@ import {
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
-import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
 } from '@/app/components/step-by-step-tour/dropdown-menu'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import dynamic from '@/next/dynamic'
+import { AccessMode } from '@/models/access-control'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { consoleQuery } from '@/service/client'
-import { fetchInstalledAppList } from '@/service/explore'
-import { AppModeEnum } from '@/types/app'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
@@ -74,18 +72,15 @@ const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-m
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
 })
-const DSLExportConfirmModal = dynamic(
-  () => import('@/app/components/workflow/dsl-export-confirm-modal'),
-  {
-    ssr: false,
-  },
-)
+const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
+  ssr: false,
+})
 
 const OPERATIONS_MENU_POPUP_CLASS_NAME = 'min-w-[216px]'
 const APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE = new Set<AppPartial['mode']>([
-  AppModeEnum.ADVANCED_CHAT,
-  AppModeEnum.WORKFLOW,
-])
+  'advanced-chat',
+  'workflow',
+] as const)
 
 function requiresPublishedWorkflowInExplore(app: AppPartial) {
   return APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE.has(app.mode)
@@ -126,7 +121,7 @@ function AppCardOperationsMenuItems({
   onDelete,
   onAccessConfig,
 }: AppCardOperationsMenuItemsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'navigation'])
   const openAsyncWindow = useAsyncWindowOpen()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
@@ -136,6 +131,7 @@ function AppCardOperationsMenuItems({
   const needsPublishBeforeExplore = requiresPublishedWorkflowInExplore(app) && !app.workflow?.id
   const shouldShowOpenInExploreOption =
     !app.has_draft_trigger &&
+    app.access_mode !== AccessMode.EXTERNAL_MEMBERS &&
     (needsPublishBeforeExplore ||
       !systemFeatures.webapp_auth.enabled ||
       (!isGettingUserCanAccessApp && Boolean(userCanAccessApp?.result)))
@@ -163,7 +159,9 @@ function AppCardOperationsMenuItems({
     try {
       await openAsyncWindow(
         async () => {
-          const { installed_apps } = await fetchInstalledAppList(app.id)
+          const { installed_apps } = await consoleClient.installedApps.get({
+            query: { app_id: app.id },
+          })
           if (installed_apps?.length > 0)
             return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
           throw new Error(t(($) => $.notPublishedYet, { ns: 'app' }))
@@ -207,7 +205,7 @@ function AppCardOperationsMenuItems({
           onClick={(event) => handleMenuAction(event, onExport)}
         >
           <span className="system-sm-regular text-text-secondary">
-            {t(($) => $.export, { ns: 'app' })}
+            {t(($) => $.exportApp, { ns: 'app' })}
           </span>
         </MenuItem>
       )}
@@ -233,7 +231,7 @@ function AppCardOperationsMenuItems({
           onClick={(event) => handleMenuAction(event, onAccessConfig)}
         >
           <span className="text-sm/5 text-text-secondary">
-            {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+            {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
           </span>
         </MenuItem>
       )}
@@ -266,7 +264,7 @@ export function AppCardInteractions({
   stepByStepTourActionMenuOpen = false,
   stepByStepTourActionMenuHighlightPart,
 }: AppCardInteractionsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -274,7 +272,6 @@ export function AppCardInteractions({
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
   const { mutate: copyApp } = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
   const { mutateAsync: updateApp } = useMutation(consoleQuery.apps.byAppId.put.mutationOptions())
@@ -299,7 +296,12 @@ export function AppCardInteractions({
   const isOperationsMenuOpen = operationsMenu.open
   const setIsOperationsMenuOpen = operationsMenu.onOpenChange
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
-  const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
+  const {
+    exportAppDsl,
+    isExporting: isAppDslExporting,
+    errorMessage: exportError,
+    reset: resetExport,
+  } = useExportAppDsl()
   const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
   const isExporting = isAppDslExporting || isWorkflowAppDslExporting
   const isTogglingStar = isStarring || isUnstarring
@@ -326,8 +328,6 @@ export function AppCardInteractions({
         { params: { app_id: app.id } },
         {
           onSuccess: () => {
-            toast.success(t(($) => $.appDeleted, { ns: 'app' }))
-            onPlanInfoChanged()
             setActiveDialog(null)
             setConfirmDeleteInput('')
           },
@@ -343,7 +343,7 @@ export function AppCardInteractions({
       const message = error instanceof Error ? error.message : ''
       toast.error(`${t(($) => $.appDeleteFailed, { ns: 'app' })}${message ? `: ${message}` : ''}`)
     }
-  }, [app.id, deleteApp, onPlanInfoChanged, t])
+  }, [app.id, deleteApp, t])
 
   const onDeleteDialogOpenChange = useCallback(
     (open: boolean) => {
@@ -355,7 +355,8 @@ export function AppCardInteractions({
     [isDeleting],
   )
 
-  const isDeleteConfirmDisabled = isDeleting || confirmDeleteInput !== app.name
+  const deleteNameMismatch = confirmDeleteInput !== app.name
+  const isDeleteConfirmDisabled = isDeleting || deleteNameMismatch
 
   const onDeleteDialogSubmit: FormEventHandler<HTMLFormElement> = useCallback(
     (e) => {
@@ -424,7 +425,6 @@ export function AppCardInteractions({
           },
         })
         setActiveDialog(null)
-        toast.success(t(($) => $.editDone, { ns: 'app' }))
       } catch (e) {
         toast.error(e instanceof Error ? e.message : t(($) => $.editFailed, { ns: 'app' }))
       }
@@ -457,8 +457,6 @@ export function AppCardInteractions({
             }
 
             setActiveDialog(null)
-            toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-            onPlanInfoChanged()
             getRedirection(newApp, push, {
               currentUserId,
               resourceMaintainer: newApp.maintainer ?? undefined,
@@ -476,15 +474,21 @@ export function AppCardInteractions({
   }
 
   const onExport = async (include = false) => {
-    await exportAppDsl({ appId: app.id, appName: app.name, includeSecret: include })
+    const result = await exportAppDsl({
+      appId: app.id,
+      appName: app.name,
+      includeSecret: include,
+      feedback: 'dialog',
+    })
+    return result.status === 'downloaded'
   }
 
   const exportCheck = async () => {
     if (isExporting) return
 
+    resetExport()
     setIsOperationsMenuOpen(false)
-    const isWorkflowApp =
-      app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT
+    const isWorkflowApp = app.mode === 'workflow' || app.mode === 'advanced-chat'
     const result = isWorkflowApp
       ? await exportWorkflowAppDsl({ appId: app.id, appName: app.name })
       : await exportAppDsl({ appId: app.id, appName: app.name })
@@ -521,8 +525,7 @@ export function AppCardInteractions({
   const shouldShowDuplicateOption = canCreateApp
   const shouldShowExportOption = appACLCapabilities.canImportExportDSL
   const shouldShowSwitchOption =
-    appACLCapabilities.canEdit &&
-    (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
+    appACLCapabilities.canEdit && (app.mode === 'completion' || app.mode === 'chat')
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
   const shouldShowOperationsMenu =
@@ -592,9 +595,9 @@ export function AppCardInteractions({
                       aria-label={starToggleAccessibleLabel}
                       className="group disabled:opacity-70"
                     >
-                      <StarIcon
+                      <span
                         aria-hidden
-                        className="size-4.5 text-text-tertiary group-data-pressed:text-text-warning-secondary"
+                        className="i-custom-vender-solid-general-star size-4.5 text-text-tertiary group-data-pressed:text-text-warning-secondary"
                       />
                     </IconButton>
                   }
@@ -613,26 +616,13 @@ export function AppCardInteractions({
                 render={
                   <IconButton
                     size="lg"
-                    aria-label={
-                      isExporting
-                        ? t(($) => $['operation.exporting'], { ns: 'common' })
-                        : t(($) => $['operation.moreActionsFor'], {
-                            ns: 'common',
-                            name: app.name,
-                          })
-                    }
-                    disabled={isExporting}
+                    aria-label={t(($) => $['operation.moreActionsFor'], {
+                      ns: 'common',
+                      name: app.name,
+                    })}
                     className="data-popup-open:bg-state-base-hover"
                   >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'size-4.5 text-text-tertiary',
-                        isExporting
-                          ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-                          : 'i-ri-more-fill',
-                      )}
-                    />
+                    <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
                   </IconButton>
                 }
               />
@@ -681,20 +671,26 @@ export function AppCardInteractions({
         />
       )}
       {activeDialog === 'switch' && (
-        <SwitchAppModal show appDetail={app} onClose={() => setActiveDialog(null)} />
+        <SwitchAppModal
+          open
+          sourceApp={app}
+          onOpenChange={(open) => {
+            if (!open) setActiveDialog(null)
+          }}
+        />
       )}
       <AlertDialog open={activeDialog === 'delete'} onOpenChange={onDeleteDialogOpenChange}>
         <AlertDialogContent>
-          <form className="flex flex-col" onSubmit={onDeleteDialogSubmit}>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <form onSubmit={onDeleteDialogSubmit}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              <AlertDialogDescription>
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <Field name="confirm-app-name" className="mt-2">
-                <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
+              <Field name="confirm-app-name">
+                <FieldLabel>
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"
@@ -706,7 +702,7 @@ export function AppCardInteractions({
                     }}
                   />
                 </FieldLabel>
-                <InputGroup className="border-components-input-border-hover">
+                <InputGroup>
                   <InputGroupInput
                     type="text"
                     autoComplete="off"
@@ -715,37 +711,38 @@ export function AppCardInteractions({
                     value={confirmDeleteInput}
                     onValueChange={setConfirmDeleteInput}
                   />
-                  <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
+                  <InputGroupAddon align="inline-end">
                     <Button
                       variant="tertiary"
                       size="small"
                       onClick={() => setConfirmDeleteInput(app.name)}
-                      className="rounded-full px-2.5"
                     >
                       {t(($) => $['operation.fill'], { ns: 'common' })}
                     </Button>
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
-            </div>
-            <AlertDialogActions>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
               <AlertDialogCancelButton type="button" disabled={isDeleting}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton
                 type="submit"
                 loading={isDeleting}
-                disabled={isDeleteConfirmDisabled}
+                disabled={deleteNameMismatch}
               >
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </form>
         </AlertDialogContent>
       </AlertDialog>
       {secretEnvList.length > 0 && (
-        <DSLExportConfirmModal
+        <AppExportConfirmModal
           envList={secretEnvList}
+          errorMessage={exportError}
+          isExporting={isExporting}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
         />

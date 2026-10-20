@@ -1,0 +1,52 @@
+@media (max-width: 879px) {
+  :global([data-marketplace-standalone]) .partnerHeader {
+    box-sizing: border-box;
+    display: grid;
+    width: 100%;
+    grid-template-areas:
+      'title action'
+      'description description';
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: center;
+    column-gap: 12px;
+  }
+
+  :global([data-marketplace-standalone]) .partnerHeaderWithNavigation {
+    padding-right: 80px;
+  }
+
+  :global([data-marketplace-standalone]) .partnerTitle {
+    grid-area: title;
+  }
+
+  :global([data-marketplace-standalone]) .partnerMetadata {
+    display: contents;
+  }
+
+  :global([data-marketplace-standalone]) .partnerDescription {
+    grid-area: description;
+    min-width: 0;
+  }
+
+  :global([data-marketplace-standalone]) .partnerSeparator {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .partnerAction {
+    grid-area: action;
+    justify-self: start;
+    min-width: 0;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  :global([data-marketplace-standalone]) .partnerActionLabel {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  :global([data-marketplace-standalone]) .partnerActionIcon {
+    flex-shrink: 0;
+  }
+}

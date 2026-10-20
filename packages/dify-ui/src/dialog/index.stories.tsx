@@ -1,31 +1,39 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { DialogActions } from '.'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import {
   createDialogHandle,
   Dialog,
   DialogBackdrop,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogPopup,
   DialogPortal,
   DialogTitle,
   DialogTrigger,
   DialogViewport,
 } from '.'
-import { Button } from '../button'
-import { Field, FieldDescription, FieldError, FieldLabel } from '../field'
-import { Form } from '../form'
-import { IconButton } from '../icon-button'
-import { Input } from '../input'
 import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '../scroll-area'
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../alert-dialog'
+import { Button } from '../button'
+import { Field, FieldError, FieldLabel } from '../field'
+import { Form } from '../form'
+import { Input } from '../input'
+import { Textarea } from '../textarea'
 
 const meta = {
   title: 'Base/UI/Dialog',
@@ -34,8 +42,11 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component:
-          'Compound modal dialog built on Base UI Dialog. Use it for focused flows that interrupt the user, such as editing settings, confirming non-destructive actions, or collecting short-form input. `DialogClose` is unstyled anatomy: compose it with `IconButton` for an icon-only control or `Button` for a visible action.',
+        component: [
+          'Compound modal dialog built on Base UI Dialog. Use it for focused flows that interrupt the user, such as editing settings, collecting short-form input, or inspecting a record. `DialogContent` is the centered modal surface: compose `DialogHeader`, `DialogBody` and `DialogFooter` in it and the parts own the spacing, so a call site only arranges its content. `DialogBody` scrolls between the header and footer when the surface reaches the viewport.',
+          '',
+          'Open state is uncontrolled by default; pass `open` and `onOpenChange` to close after an async action or to veto a close through `eventDetails.cancel()`. `DialogHeaderCloseButton` belongs inside `DialogHeader`, which reserves space for the optional close icon; `DialogClose` stays unstyled and composes a visible action such as Cancel. `DialogPopup` is the bare dialog element for a surface that places and dresses itself, composed with `DialogPortal`, `DialogBackdrop` and `DialogViewport`.',
+        ].join('\n'),
       },
     },
   },
@@ -45,267 +56,100 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const releaseNoteItems = Array.from({ length: 24 }, (_, index) => ({
+const panelClassName =
+  'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
+
+const releaseNotes = Array.from({ length: 24 }, (_, index) => ({
   id: `improvement-${index + 1}`,
   title: `Improvement #${index + 1}`,
   body: 'Refined a workflow behavior so long content naturally overflows and scrolls inside the dialog.',
 }))
 
-function ReleaseNoteHeader({ title, description }: { title: string; description: string }) {
+function ReleaseNoteList() {
   return (
-    <div className="flex shrink-0 flex-col gap-2 p-6 pr-12 pb-4">
-      <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-        {title}
-      </DialogTitle>
-      <DialogDescription className="text-sm leading-5 text-text-secondary">
-        {description}
-      </DialogDescription>
-    </div>
-  )
-}
-
-function ReleaseNoteSections() {
-  return (
-    <div className="flex flex-col gap-3 px-6 py-2 text-sm leading-5 text-text-secondary">
-      {releaseNoteItems.map((item) => (
-        <section key={item.id} className="rounded-lg bg-background-default-subtle px-3 py-2">
-          <h3 className="font-medium text-text-primary">{item.title}</h3>
-          <p>{item.body}</p>
-        </section>
+    <ol className="flex flex-col gap-3">
+      {releaseNotes.map((note) => (
+        <li
+          key={note.id}
+          className="rounded-lg bg-background-default-subtle px-3 py-2 system-sm-regular text-text-secondary"
+        >
+          <h3 className="system-sm-medium text-text-primary">{note.title}</h3>
+          <p>{note.body}</p>
+        </li>
       ))}
-    </div>
-  )
-}
-
-function ReleaseNoteFooter() {
-  return (
-    <div className="flex shrink-0 justify-end border-t border-divider-subtle p-4">
-      <DialogClose render={<Button />}>Close</DialogClose>
-    </div>
+    </ol>
   )
 }
 
 export const Default: Story = {
   render: () => (
     <Dialog>
-      <DialogTrigger render={<Button />}>Open dialog</DialogTrigger>
+      <DialogTrigger render={<Button />}>Start onboarding</DialogTrigger>
       <DialogContent>
-        <DialogClose
-          render={
-            <IconButton aria-label="Close dialog" size="lg" className="absolute inset-e-6 top-6">
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="flex flex-col gap-2 pr-8">
-          <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-            Invite collaborators
-          </DialogTitle>
-          <DialogDescription className="text-sm leading-5 text-text-secondary">
-            Add teammates by email to share this workspace. They will receive an invitation link.
+        <DialogHeader>
+          <DialogTitle>Welcome to Dify</DialogTitle>
+          <DialogDescription>
+            Setup takes about a minute and prepares your default models, datasets and API keys.
           </DialogDescription>
-        </div>
-        <div className="mt-5 flex flex-col gap-2">
-          <label className="text-xs font-medium text-text-tertiary" htmlFor="invite-email">
-            Email address
-          </label>
-          <Input id="invite-email" type="email" placeholder="teammate@example.com" />
-        </div>
-        <div className="mt-6 flex items-center justify-end">
-          <Button variant="primary">Send invite</Button>
-        </div>
+          <DialogHeaderCloseButton aria-label="Close dialog" />
+        </DialogHeader>
+        <DialogBody>
+          <ol className="list-inside list-decimal space-y-1 system-sm-regular text-text-secondary">
+            <li>Connect a model provider</li>
+            <li>Import your first knowledge base</li>
+            <li>Create an API key for your app</li>
+          </ol>
+        </DialogBody>
+        <DialogFooter>
+          <DialogClose render={<Button />}>Skip for now</DialogClose>
+          <Button variant="primary">Start setup</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   ),
   play: async ({ canvas, canvasElement, userEvent }) => {
     const body = within(canvasElement.ownerDocument.body)
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Open dialog' }))
-
-    const dialog = body.getByRole('dialog', { name: 'Invite collaborators' })
+    await userEvent.click(canvas.getByRole('button', { name: 'Start onboarding' }))
+    const dialog = await body.findByRole('dialog', { name: 'Welcome to Dify' })
     await waitFor(async () => {
       await expect(dialog).toBeVisible()
     })
-    await expect(body.getByRole('textbox', { name: 'Email address' })).toBeVisible()
+    await expect(dialog).toHaveAccessibleDescription(/Setup takes about a minute/)
 
-    await userEvent.click(body.getByRole('button', { name: 'Close dialog' }))
+    await userEvent.click(body.getByRole('button', { name: 'Skip for now' }))
     await waitFor(async () => {
-      await expect(
-        body.queryByRole('dialog', { name: 'Invite collaborators' }),
-      ).not.toBeInTheDocument()
+      await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
     })
+    await expect(canvas.getByRole('button', { name: 'Start onboarding' })).toHaveFocus()
   },
-}
-
-export const WithoutCloseButton: Story = {
-  render: () => (
-    <Dialog>
-      <DialogTrigger render={<Button />}>Start onboarding</DialogTrigger>
-      <DialogContent>
-        <div className="flex flex-col gap-2">
-          <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-            Welcome to Dify
-          </DialogTitle>
-          <DialogDescription className="text-sm leading-5 text-text-secondary">
-            Let's get your workspace ready. This takes about a minute and sets up your default
-            models, datasets, and API keys.
-          </DialogDescription>
-        </div>
-        <div className="mt-6 flex items-center justify-end gap-2">
-          <Button variant="secondary">Skip for now</Button>
-          <Button variant="primary">Start setup</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  ),
-}
-
-const ControlledDemo = () => {
-  const [open, setOpen] = React.useState(false)
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        Open controlled dialog
-      </Button>
-      <span className="text-xs text-text-tertiary">State: {open ? 'open' : 'closed'}</span>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogClose
-            render={
-              <IconButton aria-label="Close dialog" size="lg" className="absolute inset-e-6 top-6">
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="flex flex-col gap-2 pr-8">
-            <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-              Rename workspace
-            </DialogTitle>
-            <DialogDescription className="text-sm leading-5 text-text-secondary">
-              The workspace URL will stay the same, but the display name updates everywhere.
-            </DialogDescription>
-          </div>
-          <Input type="text" defaultValue="Acme Workspace" className="mt-4" />
-          <div className="mt-6 flex items-center justify-end gap-2">
-            <Button variant="secondary" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={() => setOpen(false)}>
-              Save
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
-
-export const Controlled: Story = {
-  render: () => <ControlledDemo />,
-}
-
-type WorkspaceDialogPayload = {
-  name: string
-  memberCount: number
-}
-
-const workspaceDialogPayloads = [
-  { name: 'Design', memberCount: 8 },
-  { name: 'Engineering', memberCount: 24 },
-] as const satisfies readonly WorkspaceDialogPayload[]
-
-function DetachedTriggersDemo() {
-  const [dialogHandle] = React.useState(() => createDialogHandle<WorkspaceDialogPayload>())
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="flex gap-2">
-        {workspaceDialogPayloads.map((payload) => (
-          <DialogTrigger
-            key={payload.name}
-            handle={dialogHandle}
-            payload={payload}
-            render={<Button variant="secondary" />}
-          >
-            Edit {payload.name}
-          </DialogTrigger>
-        ))}
-      </div>
-
-      <Dialog handle={dialogHandle}>
-        {({ payload }) => (
-          <DialogContent>
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label="Close dialog"
-                  size="lg"
-                  className="absolute inset-e-6 top-6"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
-            <div className="grid gap-2 pr-8">
-              <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-                {payload ? `Edit ${payload.name}` : 'Edit workspace'}
-              </DialogTitle>
-              <DialogDescription className="text-sm leading-5 text-text-secondary">
-                {payload
-                  ? `${payload.memberCount} members currently have access to this workspace.`
-                  : 'Choose a workspace to edit.'}
-              </DialogDescription>
-            </div>
-          </DialogContent>
-        )}
-      </Dialog>
-    </div>
-  )
-}
-
-export const DetachedTriggers: Story = {
-  render: () => <DetachedTriggersDemo />,
 }
 
 type ApiExtensionFormValues = {
   name: string
   endpoint: string
-  apiKey: string
 }
 
-const FormDialogDemo = () => {
-  const [open, setOpen] = React.useState(false)
+function FormDialogDemo() {
+  const actionsRef = React.useRef<DialogActions>(null)
   const nameInputRef = React.useRef<HTMLInputElement>(null)
 
   return (
-    <Dialog open={open} onOpenChange={setOpen} disablePointerDismissal>
-      <DialogTrigger render={<Button />}>Configure API extension</DialogTrigger>
-      <DialogPortal>
-        <DialogBackdrop forceRender />
-        <DialogPopup
-          initialFocus={nameInputRef}
-          className="fixed top-1/2 left-1/2 max-h-[80dvh] w-160 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain p-6"
+    <Dialog actionsRef={actionsRef} disablePointerDismissal>
+      <DialogTrigger render={<Button />}>Add API extension</DialogTrigger>
+      <DialogContent initialFocus={nameInputRef}>
+        <DialogHeader>
+          <DialogTitle>Add API extension</DialogTitle>
+          <DialogDescription>
+            Save the endpoint this workspace calls for external data tools.
+          </DialogDescription>
+          <DialogHeaderCloseButton aria-label="Close dialog" />
+        </DialogHeader>
+        <Form<ApiExtensionFormValues>
+          className="contents"
+          onFormSubmit={() => actionsRef.current?.close()}
         >
-          <DialogClose
-            render={
-              <IconButton aria-label="Close dialog" size="lg" className="absolute inset-e-6 top-6">
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="grid gap-2 pr-8">
-            <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-              Configure API extension
-            </DialogTitle>
-            <DialogDescription className="text-sm leading-5 text-text-secondary">
-              Save the endpoint and credentials used by this workspace integration.
-            </DialogDescription>
-          </div>
-          <Form<ApiExtensionFormValues>
-            className="grid gap-4 pt-5"
-            onFormSubmit={() => setOpen(false)}
-          >
+          <DialogBody className="flex flex-col gap-4">
             <Field name="name">
               <FieldLabel>Name</FieldLabel>
               <Input ref={nameInputRef} required placeholder="Production API" />
@@ -314,202 +158,421 @@ const FormDialogDemo = () => {
             <Field name="endpoint">
               <FieldLabel>Endpoint</FieldLabel>
               <Input type="url" required placeholder="https://api.example.com" />
-              <FieldDescription>
-                <a
-                  href="https://docs.dify.ai/use-dify/workspace/api-extension/api-extension"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center text-text-accent underline decoration-text-accent/60 decoration-1 underline-offset-2 outline-hidden hover:decoration-text-accent focus-visible:rounded-xs focus-visible:no-underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                >
-                  View API extension docs
-                </a>
-              </FieldDescription>
               <FieldError match="valueMissing">Endpoint is required.</FieldError>
               <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
             </Field>
-            <Field
-              name="apiKey"
-              validate={(value) => {
-                if (typeof value === 'string' && value.length > 0 && value.length < 5)
-                  return 'API key must be at least 5 characters.'
-
-                return null
-              }}
-            >
-              <FieldLabel>API key</FieldLabel>
-              <Input required placeholder="sk-..." />
-              <FieldError match="valueMissing">API key is required.</FieldError>
-              <FieldError match="customError" />
-            </Field>
-            <div className="mt-2 flex items-center justify-end gap-2">
-              <Button type="button" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary">
-                Save
-              </Button>
-            </div>
-          </Form>
-        </DialogPopup>
-      </DialogPortal>
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose render={<Button />}>Cancel</DialogClose>
+            <Button type="submit" variant="primary">
+              Save
+            </Button>
+          </DialogFooter>
+        </Form>
+      </DialogContent>
     </Dialog>
   )
 }
 
 export const FormDialog: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '`initialFocus` lands on the first field, `disablePointerDismissal` keeps typed input safe from a stray outside click, and the confirming action is the form submit: Enter or the submit button runs `onFormSubmit`, which closes through `actionsRef`.',
+      },
+    },
+  },
   render: () => <FormDialogDemo />,
   play: async ({ canvas, canvasElement, userEvent }) => {
     const body = within(canvasElement.ownerDocument.body)
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Configure API extension' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Add API extension' }))
+    const nameInput = await body.findByRole('textbox', { name: 'Name' })
+    await waitFor(async () => {
+      await expect(nameInput).toHaveFocus()
+    })
 
-    await expect(body.getByRole('textbox', { name: 'Name' })).toHaveFocus()
+    await userEvent.type(nameInput, 'Production API')
+    await userEvent.click(canvasElement.ownerDocument.body)
+    await expect(body.getByRole('dialog', { name: 'Add API extension' })).toHaveAttribute(
+      'data-open',
+    )
+    await expect(nameInput).toHaveValue('Production API')
+
+    await userEvent.type(body.getByRole('textbox', { name: 'Endpoint' }), 'https://api.example.com')
+    await userEvent.keyboard('{Enter}')
+    await waitFor(async () => {
+      await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
+    })
   },
 }
 
-const OutsideScrollingContentDemo = () => {
-  const [open, setOpen] = React.useState(false)
-  const popupRef = React.useRef<HTMLDivElement>(null)
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>Review long release notes</DialogTrigger>
-      <DialogPortal>
-        <DialogBackdrop className="duration-600 ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]" />
-        <DialogViewport className="group/dialog">
-          <ScrollArea className="h-full group-data-ending-style/dialog:pointer-events-none">
-            <ScrollAreaViewport
-              aria-label="Scrollable dialog viewport"
-              role="region"
-              className="overscroll-contain group-data-ending-style/dialog:pointer-events-none"
-            >
-              <ScrollAreaContent className="flex min-h-full items-center justify-center px-4 py-16">
-                <DialogPopup
-                  ref={popupRef}
-                  initialFocus={popupRef}
-                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden transition-[translate] duration-700 ease-[cubic-bezier(0.45,1.005,0,1.005)] data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:scale-100 data-ending-style:opacity-100 data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] data-starting-style:translate-y-[100dvh] data-starting-style:scale-100 data-starting-style:opacity-100"
-                >
-                  <DialogClose
-                    render={
-                      <IconButton
-                        aria-label="Close dialog"
-                        size="lg"
-                        className="absolute inset-e-6 top-6"
-                      >
-                        <span aria-hidden className="i-ri-close-line size-4" />
-                      </IconButton>
-                    }
-                  />
-                  <ReleaseNoteHeader
-                    title="Long release notes"
-                    description="This layout lets the outer dialog viewport scroll while the popup keeps its natural height."
-                  />
-                  <ReleaseNoteSections />
-                  <ReleaseNoteFooter />
-                </DialogPopup>
-              </ScrollAreaContent>
-            </ScrollAreaViewport>
-            <ScrollAreaScrollbar>
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollArea>
-        </DialogViewport>
-      </DialogPortal>
-    </Dialog>
-  )
-}
-
-export const OutsideScrollingContent: Story = {
-  render: () => <OutsideScrollingContentDemo />,
-}
-
-export const OutsidePopupElements: Story = {
+export const ScrollingBody: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Long content scrolls inside `DialogBody` while the header and footer stay put; the surface is capped at the viewport height.',
+      },
+    },
+  },
   render: () => (
     <Dialog>
-      <DialogTrigger render={<Button />}>Open uncontained dialog</DialogTrigger>
+      <DialogTrigger render={<Button />}>Review release notes</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Release notes</DialogTitle>
+          <DialogDescription>Highlights from the latest workspace update.</DialogDescription>
+          <DialogHeaderCloseButton aria-label="Close dialog" />
+        </DialogHeader>
+        <DialogBody role="region" aria-label="Release notes" tabIndex={0}>
+          <ReleaseNoteList />
+        </DialogBody>
+        <DialogFooter>
+          <DialogClose render={<Button />}>Close</DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Review release notes' }))
+    const dialog = await body.findByRole('dialog', { name: 'Release notes' })
+    const region = within(dialog).getByRole('region', { name: 'Release notes' })
+    await waitFor(async () => {
+      await expect(region.scrollHeight).toBeGreaterThan(region.clientHeight)
+    })
+    await expect(dialog.scrollHeight).toBe(dialog.clientHeight)
+
+    region.scrollTop = region.scrollHeight
+    await expect(region.scrollTop).toBeGreaterThan(0)
+    await expect(dialog.scrollTop).toBe(0)
+  },
+}
+
+export const ViewportScrolling: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The popup keeps its natural height and `DialogViewport` scrolls instead; `DialogPopup` dresses itself because the centered `DialogContent` surface is not used.',
+      },
+    },
+  },
+  render: () => (
+    <Dialog>
+      <DialogTrigger render={<Button />}>Read the full changelog</DialogTrigger>
       <DialogPortal>
-        <DialogBackdrop className="min-h-dvh" />
-        <DialogViewport className="grid place-items-center px-4 py-12 xl:py-6">
-          <DialogPopup className="group/popup pointer-events-none relative flex h-full w-full max-w-280 justify-center border-0 bg-transparent shadow-none transition-opacity data-ending-style:scale-100 data-ending-style:opacity-0 data-starting-style:scale-100 data-starting-style:opacity-0">
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label="Close"
-                  size="lg"
-                  className="pointer-events-auto absolute -top-10 right-0 z-10 flex items-center justify-center border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
-            <div className="pointer-events-auto flex h-full w-full max-w-280 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105">
-              <div className="grid gap-2">
-                <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-                  Knowledge review
-                </DialogTitle>
-                <DialogDescription className="text-sm leading-5 text-text-secondary">
-                  The close button is visually outside this panel but remains inside the popup for
-                  focus order and screen reader context.
-                </DialogDescription>
-              </div>
-              <div className="mt-6 grid flex-1 place-items-center rounded-xl bg-background-default-subtle text-sm text-text-tertiary">
-                Panel content
-              </div>
-            </div>
+        <DialogBackdrop />
+        <DialogViewport className="overflow-y-auto">
+          <DialogPopup className={`${panelClassName} mx-auto my-16 w-120 max-w-[calc(100vw-2rem)]`}>
+            <DialogHeader>
+              <DialogTitle>Changelog</DialogTitle>
+              <DialogDescription>
+                Every improvement shipped since the last release.
+              </DialogDescription>
+              <DialogHeaderCloseButton aria-label="Close dialog" />
+            </DialogHeader>
+            <DialogBody>
+              <ReleaseNoteList />
+            </DialogBody>
+            <DialogFooter>
+              <DialogClose render={<Button />}>Close</DialogClose>
+            </DialogFooter>
           </DialogPopup>
         </DialogViewport>
       </DialogPortal>
     </Dialog>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Read the full changelog' }))
+    const dialog = await body.findByRole('dialog', { name: 'Changelog' })
+    const viewport = dialog.parentElement as HTMLElement
+    await waitFor(async () => {
+      await expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight)
+    })
+    await expect(dialog.scrollHeight).toBe(dialog.clientHeight)
+    await expect(dialog.getBoundingClientRect().top).toBeGreaterThan(0)
+
+    viewport.scrollTop = viewport.scrollHeight
+    await waitFor(async () => {
+      await expect(dialog.getBoundingClientRect().top).toBeLessThan(0)
+    })
+    await expect(dialog.scrollTop).toBe(0)
+  },
 }
 
-const InsideScrollingContentDemo = () => {
-  const [open, setOpen] = React.useState(false)
+const traceRows = [
+  ['LLM', '1.84s', '812 tokens'],
+  ['Knowledge retrieval', '0.42s', '6 chunks'],
+  ['Code', '0.08s', 'ok'],
+  ['Answer', '0.01s', 'ok'],
+] as const
+
+export const SidePanel: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A run-detail panel docked to the viewport edge, the way the log panels in web are built: `DialogPopup` places and dresses itself over a transparent `DialogBackdrop`.',
+      },
+    },
+  },
+  render: () => (
+    <Dialog>
+      <DialogTrigger render={<Button />}>View run detail</DialogTrigger>
+      <DialogPortal>
+        <DialogBackdrop className="bg-transparent" />
+        <DialogPopup
+          className={`${panelClassName} fixed inset-e-2 top-16 bottom-4 flex w-120 max-w-[calc(100vw-1rem)] flex-col overflow-hidden`}
+        >
+          <DialogHeader>
+            <DialogTitle>Run detail</DialogTitle>
+            <DialogDescription>Node executions for the selected message.</DialogDescription>
+            <DialogHeaderCloseButton aria-label="Close panel" />
+          </DialogHeader>
+          <DialogBody>
+            <table className="w-full system-sm-regular text-text-secondary">
+              <thead className="system-xs-medium-uppercase text-text-tertiary">
+                <tr>
+                  <th scope="col" className="pb-2 text-start">
+                    Node
+                  </th>
+                  <th scope="col" className="pb-2 text-start">
+                    Elapsed
+                  </th>
+                  <th scope="col" className="pb-2 text-start">
+                    Output
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {traceRows.map(([node, elapsed, output]) => (
+                  <tr key={node} className="border-t border-divider-subtle">
+                    <td className="py-2 text-text-primary">{node}</td>
+                    <td className="py-2">{elapsed}</td>
+                    <td className="py-2">{output}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </DialogBody>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const trigger = canvas.getByRole('button', { name: 'View run detail' })
+
+    await userEvent.click(trigger)
+    const dialog = await body.findByRole('dialog', { name: 'Run detail' })
+    await waitFor(async () => {
+      await expect(dialog).toBeVisible()
+    })
+    await expect(trigger).toBeVisible()
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(async () => {
+      await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    await expect(trigger).toHaveFocus()
+  },
+}
+
+type ApiKeyPayload = {
+  name: string
+  lastUsed: string
+}
+
+const apiKeys = [
+  { name: 'Production', lastUsed: '2 minutes ago' },
+  { name: 'Staging', lastUsed: '3 days ago' },
+] as const satisfies readonly ApiKeyPayload[]
+
+function DetachedTriggersDemo() {
+  const [dialogHandle] = React.useState(() => createDialogHandle<ApiKeyPayload>())
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>Review release notes</DialogTrigger>
-      <DialogPortal>
-        <DialogBackdrop />
-        <DialogViewport className="flex items-center justify-center overflow-hidden p-4">
-          <DialogPopup className="relative flex h-[min(44rem,calc(100dvh-2rem))] min-h-0 w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden">
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label="Close dialog"
-                  size="lg"
-                  className="absolute inset-e-6 top-6"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
-            <ReleaseNoteHeader
-              title="Release notes"
-              description="Highlights from the latest workspace update."
-            />
-            <ScrollArea className="flex min-h-0 flex-auto overflow-hidden">
-              <ScrollAreaViewport
-                aria-label="Release note improvements"
-                role="region"
-                className="overscroll-contain"
+    <React.Fragment>
+      <ul className="flex w-96 flex-col divide-y divide-divider-subtle">
+        {apiKeys.map((apiKey) => (
+          <li key={apiKey.name} className="flex items-center justify-between gap-4 py-2">
+            <span className="system-sm-medium text-text-primary">{apiKey.name}</span>
+            <DialogTrigger
+              handle={dialogHandle}
+              payload={apiKey}
+              render={<Button size="small" variant="secondary" />}
+            >
+              Edit {apiKey.name}
+            </DialogTrigger>
+          </li>
+        ))}
+      </ul>
+      <Dialog handle={dialogHandle}>
+        {({ payload }) => (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit {payload?.name} key</DialogTitle>
+              <DialogDescription>Last used {payload?.lastUsed}.</DialogDescription>
+              <DialogHeaderCloseButton aria-label="Close dialog" />
+            </DialogHeader>
+            <DialogBody>
+              <Field name="name">
+                <FieldLabel>Key name</FieldLabel>
+                <Input defaultValue={payload?.name} />
+              </Field>
+            </DialogBody>
+            <DialogFooter>
+              <DialogClose render={<Button />}>Cancel</DialogClose>
+              <Button variant="primary" onClick={() => dialogHandle.close()}>
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+    </React.Fragment>
+  )
+}
+
+export const DetachedTriggers: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'One dialog serves a list of rows: each row is a `DialogTrigger` bound to a `createDialogHandle` with its row as `payload`, and the root renders from that payload.',
+      },
+    },
+  },
+  render: () => <DetachedTriggersDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Edit Staging' }))
+    const dialog = await body.findByRole('dialog', { name: 'Edit Staging key' })
+    await waitFor(async () => {
+      await expect(dialog).toBeVisible()
+    })
+    await expect(within(dialog).getByRole('textbox', { name: 'Key name' })).toHaveValue('Staging')
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => {
+      await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    await expect(canvas.getByRole('button', { name: 'Edit Staging' })).toHaveFocus()
+  },
+}
+
+function UnsavedChangesDemo() {
+  const [open, setOpen] = React.useState(false)
+  const [confirmOpen, setConfirmOpen] = React.useState(false)
+  const [saved, setSaved] = React.useState('')
+  const [draft, setDraft] = React.useState('')
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && draft !== saved) {
+          details.cancel()
+          setConfirmOpen(true)
+          return
+        }
+        setOpen(nextOpen)
+      }}
+    >
+      <DialogTrigger render={<Button />}>Edit description</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit description</DialogTitle>
+          <DialogDescription>Shown on the app card and in the explore page.</DialogDescription>
+          <DialogHeaderCloseButton aria-label="Close dialog" />
+        </DialogHeader>
+        <DialogBody>
+          <Field name="description">
+            <FieldLabel>Description</FieldLabel>
+            <Textarea value={draft} onValueChange={setDraft} placeholder="What does this app do?" />
+          </Field>
+        </DialogBody>
+        <DialogFooter>
+          <DialogClose render={<Button />}>Cancel</DialogClose>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setSaved(draft)
+              setOpen(false)
+            }}
+          >
+            Save
+          </Button>
+        </DialogFooter>
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your edits to the description will be lost.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton variant="secondary">Keep editing</AlertDialogCancelButton>
+              <AlertDialogConfirmButton
+                onClick={() => {
+                  setConfirmOpen(false)
+                  setDraft(saved)
+                  setOpen(false)
+                }}
               >
-                <ScrollAreaContent>
-                  <ReleaseNoteSections />
-                </ScrollAreaContent>
-              </ScrollAreaViewport>
-              <ScrollAreaScrollbar>
-                <ScrollAreaThumb />
-              </ScrollAreaScrollbar>
-            </ScrollArea>
-            <ReleaseNoteFooter />
-          </DialogPopup>
-        </DialogViewport>
-      </DialogPortal>
+                Discard
+              </AlertDialogConfirmButton>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </DialogContent>
     </Dialog>
   )
 }
 
-export const InsideScrollingContent: Story = {
-  render: () => <InsideScrollingContentDemo />,
+export const UnsavedChanges: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Closing a dirty dialog is vetoed with `eventDetails.cancel()` in `onOpenChange`, and a nested `AlertDialog` asks before the edits are discarded; the parent surface steps back and dims while the alert is open.',
+      },
+    },
+  },
+  render: () => <UnsavedChangesDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Edit description' }))
+    const dialog = await body.findByRole('dialog', { name: 'Edit description' })
+    const description = within(dialog).getByRole('textbox', { name: 'Description' })
+    await userEvent.type(description, 'Answers support tickets')
+
+    await userEvent.keyboard('{Escape}')
+    const alert = await body.findByRole('alertdialog', { name: 'Discard unsaved changes?' })
+    await waitFor(async () => {
+      await expect(alert).toBeVisible()
+    })
+    await expect(dialog).toHaveAttribute('data-nested-dialog-open')
+
+    await userEvent.click(within(alert).getByRole('button', { name: 'Keep editing' }))
+    await waitFor(async () => {
+      await expect(body.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    await expect(description).toHaveValue('Answers support tickets')
+
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(await body.findByRole('button', { name: 'Discard' }))
+    await waitFor(async () => {
+      await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  },
 }

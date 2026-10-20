@@ -1,5 +1,5 @@
 import type { VersionHistoryContextMenuOptions } from '../../types'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import dayjs from 'dayjs'
 import * as React from 'react'
@@ -11,17 +11,20 @@ import { WorkflowVersion } from '../../types'
 import ActionMenu from './action-menu'
 
 type VersionHistoryItemProps = {
-  item: VersionHistory
-  currentVersion: VersionHistory | null
+  item: FetchWorkflowDraftResponse
+  currentVersion: FetchWorkflowDraftResponse | null
   latestVersionId: string
-  onClick: (item: VersionHistory) => void
+  onClick: (item: FetchWorkflowDraftResponse) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
   canImportExportDSL: boolean
   isLast: boolean
   hideActionMenu?: boolean
 }
 
-const formatVersion = (versionHistory: VersionHistory, latestVersionId: string): string => {
+const formatVersion = (
+  versionHistory: FetchWorkflowDraftResponse,
+  latestVersionId: string,
+): string => {
   const { version, id } = versionHistory
   if (version === WorkflowVersion.Draft) return WorkflowVersion.Draft
   if (id === latestVersionId) return WorkflowVersion.Latest
@@ -36,7 +39,7 @@ const formatVersion = (versionHistory: VersionHistory, latestVersionId: string):
   }
 }
 
-const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
+function VersionHistoryItem({
   item,
   currentVersion,
   latestVersionId,
@@ -45,8 +48,8 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   canImportExportDSL,
   isLast,
   hideActionMenu,
-}) => {
-  const { t } = useTranslation()
+}: VersionHistoryItemProps) {
+  const { t } = useTranslation(['workflowHistory'])
   const [open, setOpen] = useState(false)
 
   const formatTime = (time: number) => dayjs.unix(time).format('YYYY-MM-DD HH:mm')
@@ -76,7 +79,6 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         'group relative flex gap-x-1 rounded-lg p-2',
         isSelected ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
       )}
-      onMouseLeave={() => setOpen(false)}
       onContextMenu={(e) => {
         if (hideActionMenu) return
 
@@ -100,7 +102,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           className="pointer-events-none absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle"
         />
       )}
-      <div className="pointer-events-none relative z-[1] flex h-5 w-4.5 shrink-0 items-center justify-center">
+      <div className="pointer-events-none relative z-1 flex h-5 w-4.5 shrink-0 items-center justify-center">
         <div
           aria-hidden
           className={cn(
@@ -109,7 +111,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           )}
         />
       </div>
-      <div className="pointer-events-none relative z-[1] flex grow flex-col gap-y-0.5 overflow-hidden">
+      <div className="pointer-events-none relative z-1 flex grow flex-col gap-y-0.5 overflow-hidden">
         <div className="mr-6 flex h-5 items-center gap-x-1">
           <div
             id={titleId}
@@ -119,15 +121,15 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
             )}
           >
             {isDraft
-              ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflow' })
+              ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflowHistory' })
               : getWorkflowVersionName(
                   item,
-                  t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                  t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
                 )}
           </div>
           {isLatest && (
             <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase text-text-accent-secondary">
-              {t(($) => $['versionHistory.latest'], { ns: 'workflow' })}
+              {t(($) => $['versionHistory.latest'], { ns: 'workflowHistory' })}
             </div>
           )}
         </div>
@@ -157,22 +159,15 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       </div>
       {/* Action Menu */}
       {!hideActionMenu && !isDraft && (
-        <div
-          className={cn(
-            'invisible absolute top-1 right-1 z-10 group-focus-within:visible group-hover:visible',
-            open && 'visible',
-          )}
-        >
-          <ActionMenu
-            workflowId={item.id}
-            isShowDelete={!isLatest}
-            isNamedVersion={!!item.marked_name}
-            canImportExportDSL={canImportExportDSL}
-            open={open}
-            setOpen={setOpen}
-            handleClickActionMenuItem={handleClickActionMenuItem}
-          />
-        </div>
+        <ActionMenu
+          workflowId={item.id}
+          isShowDelete={!isLatest}
+          isNamedVersion={!!item.marked_name}
+          canImportExportDSL={canImportExportDSL}
+          open={open}
+          setOpen={setOpen}
+          handleClickActionMenuItem={handleClickActionMenuItem}
+        />
       )}
     </div>
   )

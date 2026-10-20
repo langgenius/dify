@@ -8,13 +8,9 @@ import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
-import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useCallback, useState } from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useProviderContext } from '@/context/provider-context'
-import { currentWorkspaceIdAtom } from '@/context/workspace-state'
-import { usePricingModal } from '@/hooks/use-query-params'
-import dynamic from '@/next/dynamic'
 import { useTriggerEventsLimitModal } from './hooks/use-trigger-events-limit-modal'
 import { ModalContext } from './modal-context'
 
@@ -27,12 +23,6 @@ const ModerationSettingModal = dynamic(
 )
 const ExternalDataToolModal = dynamic(
   () => import('@/app/components/app/configuration/tools/external-data-tool-modal'),
-  {
-    ssr: false,
-  },
-)
-const Pricing = dynamic(
-  () => import('@/app/components/billing/pricing').then((module) => module.Pricing),
   {
     ssr: false,
   },
@@ -61,9 +51,12 @@ const OpeningSettingModal = dynamic(
     ssr: false,
   },
 )
-const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugin'), {
-  ssr: false,
-})
+const InstallFromGitHub = dynamic(
+  () => import('@/app/components/plugins/install-plugin/install-from-github'),
+  {
+    ssr: false,
+  },
+)
 
 const TriggerEventsLimitModal = dynamic(
   () => import('@/app/components/billing/trigger-events-limit-modal'),
@@ -76,7 +69,6 @@ type ModalContextProviderProps = {
   children: ReactNode
 }
 export const ModalContextProvider = ({ children }: ModalContextProviderProps) => {
-  const [showPricingModal, setPricingModalOpen] = usePricingModal()
   const [showModerationSettingModal, setShowModerationSettingModal] =
     useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] =
@@ -93,15 +85,8 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   > | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] =
     useState<ModalState<UpdatePluginPayload> | null>(null)
-  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
-
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
-  const { plan, isFetchedPlan } = useProviderContext()
-  const { triggerEventsLimitModal, dismissTriggerEventsLimitModal } = useTriggerEventsLimitModal({
-    plan,
-    isFetchedPlan,
-    currentWorkspaceId,
-  })
+  const { triggerEventsLimitModal, dismissTriggerEventsLimitModal } = useTriggerEventsLimitModal()
 
   const handleCancelModerationSettingModal = () => {
     setShowModerationSettingModal(null)
@@ -143,9 +128,10 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   }, [showExternalKnowledgeAPIModal])
 
   const handleSaveExternalApiModal = useCallback(
-    async (updatedFormValue: CreateExternalAPIReq) => {
+    // Callers refresh their API list; the created API is not passed back.
+    async () => {
       if (showExternalKnowledgeAPIModal?.onSaveCallback)
-        showExternalKnowledgeAPIModal.onSaveCallback(updatedFormValue)
+        showExternalKnowledgeAPIModal.onSaveCallback()
       setShowExternalKnowledgeAPIModal(null)
     },
     [showExternalKnowledgeAPIModal],
@@ -188,17 +174,9 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
     setShowOpeningModal(null)
   }
 
-  const handleShowPricingModal = useCallback(() => {
-    setPricingModalOpen(true)
-  }, [setPricingModalOpen])
-
-  const handleCancelPricingModal = useCallback(() => {
-    setPricingModalOpen(false)
-  }, [setPricingModalOpen])
   const hasBlockingModalOpen = Boolean(
     showModerationSettingModal ||
     showExternalDataToolModal ||
-    showPricingModal ||
     showAnnotationFullModal ||
     showModelModal ||
     showExternalKnowledgeAPIModal ||
@@ -213,7 +191,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
         hasBlockingModalOpen,
         setShowModerationSettingModal,
         setShowExternalDataToolModal,
-        setShowPricingModal: handleShowPricingModal,
         setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
         setShowModelModal,
         setShowExternalKnowledgeAPIModal,
@@ -238,8 +215,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
             onValidateBeforeSave={handleValidateBeforeSaveExternalDataTool}
           />
         )}
-
-        {!!showPricingModal && <Pricing onCancel={handleCancelPricingModal} />}
 
         {showAnnotationFullModal && (
           <AnnotationFullModal
@@ -285,13 +260,13 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
         )}
 
         {!!showUpdatePluginModal && (
-          <UpdatePlugin
-            {...showUpdatePluginModal.payload}
-            onCancel={() => {
+          <InstallFromGitHub
+            updatePayload={showUpdatePluginModal.payload.github}
+            onClose={() => {
               setShowUpdatePluginModal(null)
               showUpdatePluginModal.onCancelCallback?.()
             }}
-            onSave={() => {
+            onSuccess={() => {
               if (showUpdatePluginModal.payload.category !== PluginCategoryEnum.model) {
                 setShowUpdatePluginModal(null)
                 showUpdatePluginModal.onSaveCallback?.()
@@ -311,10 +286,6 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
             total={triggerEventsLimitModal.total}
             resetInDays={triggerEventsLimitModal.resetInDays}
             onClose={dismissTriggerEventsLimitModal}
-            onUpgrade={() => {
-              dismissTriggerEventsLimitModal()
-              handleShowPricingModal()
-            }}
           />
         )}
       </>

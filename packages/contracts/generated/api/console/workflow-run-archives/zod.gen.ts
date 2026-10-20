@@ -3,13 +3,29 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * WorkflowRunArchiveDownloadPayload
  *
  * Request body for preparing one monthly workflow-run archive download.
  */
 export const zWorkflowRunArchiveDownloadPayload = z.object({
   month: z.int().gte(1).lte(12),
-  year: z.int().gte(1),
+  year: z.int().gte(1).lte(9999),
 })
 
 /**
@@ -60,6 +76,7 @@ export const zWorkflowRunArchiveDownloadTaskResponse = z.object({
 export const zWorkflowRunArchiveMonthResponse = z.object({
   archive_bytes: z.int(),
   bundle_count: z.int(),
+  deletion_status: z.enum(['failed', 'pending', 'processing']).nullish(),
   download_task: zWorkflowRunArchiveDownloadTaskResponse.nullish(),
   latest_archived_at: z.iso.datetime(),
   month: z.int(),
@@ -74,6 +91,26 @@ export const zWorkflowRunArchiveMonthResponse = z.object({
 export const zWorkflowRunArchiveListResponse = z.object({
   months: z.array(zWorkflowRunArchiveMonthResponse),
   summary: zWorkflowRunArchiveSummaryResponse,
+})
+
+/**
+ * WorkflowRunArchiveDeletionStatus
+ */
+export const zWorkflowRunArchiveDeletionStatus = z.enum([
+  'completed',
+  'failed',
+  'pending',
+  'processing',
+])
+
+/**
+ * WorkflowRunArchiveDeletionTaskResponse
+ */
+export const zWorkflowRunArchiveDeletionTaskResponse = z.object({
+  error: z.string().nullish(),
+  month: z.int(),
+  status: zWorkflowRunArchiveDeletionStatus,
+  year: z.int(),
 })
 
 /**
@@ -97,3 +134,14 @@ export const zGetWorkflowRunArchivesDownloadsByDownloadIdPath = z.object({
  */
 export const zGetWorkflowRunArchivesDownloadsByDownloadIdResponse =
   zWorkflowRunArchiveDownloadTaskResponse
+
+export const zDeleteWorkflowRunArchivesByYearByMonthPath = z.object({
+  month: z.int().gte(1).lte(12),
+  year: z.int().gte(1).lte(9999),
+})
+
+/**
+ * Archive deletion accepted
+ */
+export const zDeleteWorkflowRunArchivesByYearByMonthResponse =
+  zWorkflowRunArchiveDeletionTaskResponse

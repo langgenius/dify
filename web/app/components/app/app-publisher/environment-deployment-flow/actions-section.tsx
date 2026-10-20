@@ -8,23 +8,23 @@ function environmentHref(path: string, appId: string, environmentId: string) {
 
 export function PublisherEnvironmentActionsSection({
   appId,
-  canAccessPoint = false,
+  canViewAccessPoint,
   deployment,
   environmentId,
 }: {
   appId?: string
-  canAccessPoint?: boolean
+  canViewAccessPoint: boolean
   deployment?: EnvironmentDeployment
   environmentId: string
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const actionsDisabled = !appId || !deployment
   const accessPointHref = appId ? environmentHref('access-point', appId, environmentId) : undefined
   const deployHref = appId ? environmentHref('deploy', appId, environmentId) : undefined
 
   return (
     <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
-      {canAccessPoint && (
+      {canViewAccessPoint && (
         <SuggestedAction
           disabled={actionsDisabled}
           description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}

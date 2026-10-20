@@ -4,8 +4,84 @@ import type { OxlintConfig } from 'vite-plus/lint'
 import path from 'node:path'
 
 const rootDir = import.meta.dirname
+const webPackageJson = path.resolve(rootDir, 'web/package.json')
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
+
+export const stylingContractRules = {
+  'shadcn/no-restyle': [
+    'error',
+    {
+      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip|dialog|alert-dialog)$'],
+      allow: ['*'],
+      contracts: [
+        {
+          pattern: '^TooltipContent$',
+          allow: ['flex', 'items-center', 'gap-1', 'w-*', 'max-w-*'],
+          // `flex` also names a shadcn class group; allow display flex without flex sizing.
+          deny: ['flex-*'],
+          message:
+            '"{{className}}" is outside the TooltipContent styling contract. Use the default surface, spacing, and typography from packages/dify-ui/src/tooltip/index.tsx; callers may compose a label/shortcut row or constrain width.',
+        },
+        {
+          pattern: '^InfotipContent$',
+          allow: ['w-*', 'max-w-*', 'whitespace-pre-wrap'],
+          message:
+            '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
+        },
+        {
+          pattern: '^(Dialog|AlertDialog)Content$',
+          allow: [
+            'w-*',
+            'min-w-*',
+            'max-w-*',
+            'h-*',
+            'min-h-*',
+            'max-h-*',
+            'overflow-hidden',
+            'transition-none',
+          ],
+          deny: ['max-w-none', 'max-h-none', 'w-screen', 'h-screen'],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and its parts own spacing; callers may size it within the viewport or disable transitions. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
+        },
+        {
+          pattern: '^DialogPopup$',
+          allow: ['*'],
+          deny: ['top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2'],
+          message:
+            '"{{className}}" recreates the DialogContent centering. Use DialogContent for a centered dialog; DialogPopup is the bare dialog element for a surface that places and dresses itself.',
+        },
+        {
+          pattern: '^(Dialog|AlertDialog)(Title|Description)$',
+          allow: ['sr-only'],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. Use its default typography and colour; callers may only hide it visually.',
+        },
+        {
+          pattern: '^(DialogHeader|AlertDialogHeader|AlertDialogFooter)$',
+          allow: [],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The part owns its spacing and layout.',
+        },
+        {
+          pattern: '^DialogFooter$',
+          allow: ['flex-col', 'items-stretch'],
+          message:
+            '"{{className}}" is outside the DialogFooter styling contract. The footer owns its spacing and alignment; callers may stack full-width actions.',
+        },
+        {
+          pattern: '^(Dialog|AlertDialog)Body$',
+          allow: ['layout', 'gap-*', 'space-x-*', 'space-y-*'],
+          deny: ['flex-1', 'flex-auto', 'flex-initial', 'flex-none', 'overflow-*'],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The body owns the content gutter and scrolls between the header and footer; callers may lay out its content.',
+        },
+      ],
+    },
+  ],
+} satisfies NonNullable<OxlintConfig['rules']>
+
 const tailwindCanonicalClassesOverride = {
   files: [
     'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
@@ -22,7 +98,23 @@ const tailwindCanonicalClassesOverride = {
   },
 } satisfies NonNullable<OxlintConfig['overrides']>[number]
 
-export const webJsxA11yRules = {
+// Oxlint's default handler lists omit pointer and touch activation.
+const jsxInteractionHandlers = [
+  'onClick',
+  'onDoubleClick',
+  'onContextMenu',
+  'onMouseDown',
+  'onMouseUp',
+  'onPointerDown',
+  'onPointerUp',
+  'onTouchStart',
+  'onTouchEnd',
+  'onKeyPress',
+  'onKeyDown',
+  'onKeyUp',
+]
+
+export const jsxA11yRules = {
   'jsx-a11y/alt-text': 'error',
   'jsx-a11y/anchor-ambiguous-text': 'off',
   'jsx-a11y/anchor-has-content': 'error',
@@ -34,6 +126,8 @@ export const webJsxA11yRules = {
   'jsx-a11y/aria-unsupported-elements': 'error',
   'jsx-a11y/autocomplete-valid': 'error',
   'jsx-a11y/click-events-have-key-events': 'error',
+  // The native rule cannot resolve names supplied by Base UI render composition.
+  'jsx-a11y/control-has-associated-label': 'off',
   'jsx-a11y/heading-has-content': 'error',
   'jsx-a11y/html-has-lang': 'error',
   'jsx-a11y/iframe-has-title': 'error',
@@ -44,10 +138,15 @@ export const webJsxA11yRules = {
       tabbable: ['button', 'checkbox', 'link', 'searchbox', 'spinbutton', 'switch', 'textbox'],
     },
   ],
-  'jsx-a11y/label-has-associated-control': 'error',
+  'jsx-a11y/label-has-associated-control': [
+    'error',
+    { controlComponents: ['Checkbox', 'Textarea'] },
+  ],
+  'jsx-a11y/lang': 'error',
   'jsx-a11y/media-has-caption': 'error',
   'jsx-a11y/mouse-events-have-key-events': 'error',
   'jsx-a11y/no-access-key': 'error',
+  'jsx-a11y/no-aria-hidden-on-focusable': 'error',
   'jsx-a11y/no-autofocus': 'error',
   'jsx-a11y/no-distracting-elements': 'error',
   'jsx-a11y/no-interactive-element-to-noninteractive-role': [
@@ -60,16 +159,7 @@ export const webJsxA11yRules = {
   'jsx-a11y/no-noninteractive-element-interactions': [
     'error',
     {
-      handlers: [
-        'onClick',
-        'onError',
-        'onLoad',
-        'onMouseDown',
-        'onMouseUp',
-        'onKeyPress',
-        'onKeyDown',
-        'onKeyUp',
-      ],
+      handlers: [...jsxInteractionHandlers, 'onError', 'onLoad'],
       alert: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
       body: ['onError', 'onLoad'],
       dialog: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
@@ -80,8 +170,9 @@ export const webJsxA11yRules = {
   'jsx-a11y/no-noninteractive-element-to-interactive-role': [
     'error',
     {
-      ul: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
-      ol: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
+      // ARIA in HTML allows list widgets here, but not treegrid.
+      ul: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree'],
+      ol: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree'],
       li: ['menuitem', 'menuitemradio', 'menuitemcheckbox', 'option', 'row', 'tab', 'treeitem'],
       table: ['grid'],
       td: ['gridcell'],
@@ -91,7 +182,6 @@ export const webJsxA11yRules = {
   'jsx-a11y/no-noninteractive-tabindex': [
     'error',
     {
-      tags: [],
       roles: ['tabpanel'],
       allowExpressionValues: true,
     },
@@ -101,7 +191,7 @@ export const webJsxA11yRules = {
     'error',
     {
       allowExpressionValues: true,
-      handlers: ['onClick', 'onMouseDown', 'onMouseUp', 'onKeyPress', 'onKeyDown', 'onKeyUp'],
+      handlers: jsxInteractionHandlers,
     },
   ],
   'jsx-a11y/role-has-required-aria-props': 'error',
@@ -160,18 +250,13 @@ export const lintConfig = {
   // Keep JavaScript plugins ordered by rule namespace. The `-js` aliases distinguish
   // plugins that supplement an active native Oxlint plugin with the same namespace.
   jsPlugins: [
+    '@shadcn/lint',
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
-    'eslint-plugin-command',
     {
       name: 'dify',
       specifier: './web/plugins/eslint/index.js',
-    },
-    'eslint-plugin-erasable-syntax-only',
-    {
-      name: 'eslint-comments',
-      specifier: '@eslint-community/eslint-plugin-eslint-comments',
     },
     {
       name: 'eslint-react',
@@ -191,7 +276,7 @@ export const lintConfig = {
     'eslint-plugin-storybook',
   ],
   options: {
-    reportUnusedDisableDirectives: 'warn',
+    reportUnusedDisableDirectives: 'error',
     respectEslintDisableDirectives: false,
     typeAware: true,
     typeCheck: true,
@@ -444,11 +529,11 @@ export const lintConfig = {
     ],
     'vars-on-top': 'error',
     yoda: ['error', 'never'],
-    'eslint-comments/no-aggregating-enable': 'error',
-    'eslint-comments/no-duplicate-disable': 'error',
-    'eslint-comments/no-unlimited-disable': 'error',
-    'eslint-comments/no-unused-enable': 'error',
-    'command/command': 'error',
+    'unicorn/no-abusive-eslint-disable': 'error',
+    'dify/no-file-wide-disable': 'error',
+    'dify/require-disable-directive-description': 'error',
+    'dify/require-i18n-namespace': 'error',
+    'dify/require-t-function-namespace': 'error',
     'perfectionist/sort-exports': [
       'error',
       {
@@ -478,10 +563,6 @@ export const lintConfig = {
     'import/no-duplicates': 'error',
     'import/no-mutable-exports': 'error',
     'import/no-named-default': 'error',
-    'erasable-syntax-only/enums': 'error',
-    'erasable-syntax-only/import-aliases': 'error',
-    'erasable-syntax-only/namespaces': 'error',
-    'erasable-syntax-only/parameter-properties': 'error',
     'regexp/confusing-quantifier': 'warn',
     'regexp/control-character-escape': 'error',
     'regexp/match-any': 'error',
@@ -739,7 +820,6 @@ export const lintConfig = {
     {
       files: ['**/*.d.{ts,cts,mts}'],
       rules: {
-        'eslint-comments/no-unlimited-disable': 'off',
         'no-unused-vars': 'off',
       },
     },
@@ -771,6 +851,7 @@ export const lintConfig = {
         '@tanstack/query/infinite-query-property-order': 'error',
         '@tanstack/query/no-void-query-fn': 'error',
         '@tanstack/query/mutation-property-order': 'error',
+        '@tanstack/query/prefer-query-options': 'error',
         'react/exhaustive-deps': 'warn',
         'react/no-array-index-key': 'warn',
         'react/no-clone-element': 'warn',
@@ -787,8 +868,12 @@ export const lintConfig = {
       },
     },
     {
-      files: ['web/**/*.tsx'],
-      rules: webJsxA11yRules,
+      files: ['web/**/*.{jsx,tsx}', 'packages/dify-ui/**/*.{jsx,tsx}'],
+      rules: jsxA11yRules,
+    },
+    {
+      files: ['web/**/*.{jsx,tsx}'],
+      rules: stylingContractRules,
     },
     {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],
@@ -810,7 +895,7 @@ export const lintConfig = {
     {
       files: ['web/.storybook/main.{js,cjs,mjs,ts}'],
       rules: {
-        'storybook/no-uninstalled-addons': 'error',
+        'storybook/no-uninstalled-addons': ['error', { packageJsonLocation: webPackageJson }],
       },
     },
     {
@@ -826,11 +911,6 @@ export const lintConfig = {
               height: 'h',
             },
             libraries: [
-              {
-                prefix: 'i-custom-',
-                source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-                name: '^(?<name>.*)$',
-              },
               {
                 source: '^@remixicon/react$',
                 name: '^(?<set>Ri)(?<name>.+)$',
@@ -880,7 +960,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },
@@ -893,11 +981,6 @@ export const lintConfig = {
                 group: ['@floating-ui/*'],
                 message:
                   'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
-              },
-              {
-                group: ['**/base/input', '**/base/input/*'],
-                message:
-                  'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input for standalone inputs, and @langgenius/dify-ui/field for labelled or validated form composition.',
               },
               {
                 group: [
@@ -952,7 +1035,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },
@@ -965,11 +1056,6 @@ export const lintConfig = {
                 group: ['@floating-ui/*'],
                 message:
                   'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
-              },
-              {
-                group: ['**/base/input', '**/base/input/*'],
-                message:
-                  'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input for standalone inputs, and @langgenius/dify-ui/field for labelled or validated form composition.',
               },
               {
                 group: [
@@ -1118,6 +1204,19 @@ export const lintConfig = {
       },
     },
     {
+      files: ['web/**/*.{jsx,tsx}'],
+      excludeFiles: [
+        'web/**/__tests__/**',
+        'web/**/*.spec.{jsx,tsx}',
+        'web/**/*.test.{jsx,tsx}',
+        'web/**/*.stories.{jsx,tsx}',
+        'web/**/*.story.{jsx,tsx}',
+      ],
+      rules: {
+        'dify/require-title-for-truncated-text': 'warn',
+      },
+    },
+    {
       files: [
         'web/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
         'web/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
@@ -1132,6 +1231,29 @@ export const lintConfig = {
     {
       files: ['packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {
+        'func-names': ['error', 'as-needed'],
+        'id-denylist': ['error', 'e'],
+        'unicorn/import-style': [
+          'error',
+          {
+            extendDefaultStyles: false,
+            styles: {
+              react: { namespace: true },
+              'react-dom': { namespace: true },
+              'react-dom/client': { namespace: true },
+              'react-dom/server': { namespace: true },
+            },
+          },
+        ],
+        'react/function-component-definition': [
+          'error',
+          {
+            namedComponents: ['function-declaration', 'function-expression'],
+            unnamedComponents: ['arrow-function', 'function-expression'],
+          },
+        ],
+        'react/jsx-fragments': ['error', 'element'],
+        'react/jsx-no-useless-fragment': ['error', { allowExpressions: true }],
         'react/exhaustive-deps': [
           'error',
           {
@@ -1146,113 +1268,6 @@ export const lintConfig = {
         'react/only-export-components': 'off',
         'eslint-react/no-context-provider': 'off',
         'eslint-react/no-use-context': 'off',
-      },
-    },
-    {
-      files: ['packages/dify-ui/**/*.tsx'],
-      rules: {
-        'jsx-a11y/alt-text': 'error',
-        'jsx-a11y/anchor-ambiguous-text': 'off',
-        'jsx-a11y/anchor-has-content': 'off',
-        'jsx-a11y/anchor-is-valid': 'error',
-        'jsx-a11y/aria-activedescendant-has-tabindex': 'error',
-        'jsx-a11y/aria-props': 'error',
-        'jsx-a11y/aria-proptypes': 'error',
-        'jsx-a11y/aria-role': 'error',
-        'jsx-a11y/aria-unsupported-elements': 'error',
-        'jsx-a11y/autocomplete-valid': 'error',
-        'jsx-a11y/click-events-have-key-events': 'error',
-        'jsx-a11y/control-has-associated-label': 'off',
-        'jsx-a11y/heading-has-content': 'error',
-        'jsx-a11y/html-has-lang': 'error',
-        'jsx-a11y/iframe-has-title': 'error',
-        'jsx-a11y/img-redundant-alt': 'error',
-        'jsx-a11y/interactive-supports-focus': [
-          'error',
-          {
-            tabbable: [
-              'button',
-              'checkbox',
-              'link',
-              'searchbox',
-              'spinbutton',
-              'switch',
-              'textbox',
-            ],
-          },
-        ],
-        'jsx-a11y/label-has-associated-control': 'off',
-        'jsx-a11y/media-has-caption': 'error',
-        'jsx-a11y/mouse-events-have-key-events': 'error',
-        'jsx-a11y/no-access-key': 'error',
-        'jsx-a11y/no-autofocus': 'error',
-        'jsx-a11y/no-distracting-elements': 'error',
-        'jsx-a11y/no-interactive-element-to-noninteractive-role': [
-          'error',
-          {
-            tr: ['none', 'presentation'],
-            canvas: ['img'],
-          },
-        ],
-        'jsx-a11y/no-noninteractive-element-interactions': [
-          'error',
-          {
-            handlers: [
-              'onClick',
-              'onError',
-              'onLoad',
-              'onMouseDown',
-              'onMouseUp',
-              'onKeyPress',
-              'onKeyDown',
-              'onKeyUp',
-            ],
-            alert: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
-            body: ['onError', 'onLoad'],
-            dialog: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
-            iframe: ['onError', 'onLoad'],
-            img: ['onError', 'onLoad'],
-          },
-        ],
-        'jsx-a11y/no-noninteractive-element-to-interactive-role': [
-          'error',
-          {
-            ul: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
-            ol: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
-            li: [
-              'menuitem',
-              'menuitemradio',
-              'menuitemcheckbox',
-              'option',
-              'row',
-              'tab',
-              'treeitem',
-            ],
-            table: ['grid'],
-            td: ['gridcell'],
-            fieldset: ['radiogroup', 'presentation'],
-          },
-        ],
-        'jsx-a11y/no-noninteractive-tabindex': [
-          'error',
-          {
-            tags: [],
-            roles: ['tabpanel'],
-            allowExpressionValues: true,
-          },
-        ],
-        'jsx-a11y/no-redundant-roles': 'error',
-        'jsx-a11y/no-static-element-interactions': [
-          'error',
-          {
-            allowExpressionValues: true,
-            handlers: ['onClick', 'onMouseDown', 'onMouseUp', 'onKeyPress', 'onKeyDown', 'onKeyUp'],
-          },
-        ],
-        'jsx-a11y/role-has-required-aria-props': 'error',
-        'jsx-a11y/role-supports-aria-props': 'error',
-        'jsx-a11y/scope': 'error',
-        'jsx-a11y/tabindex-no-positive': 'error',
       },
     },
     {
@@ -1284,15 +1299,6 @@ export const lintConfig = {
             packageJsonLocation: difyUiPackageJson,
           },
         ],
-      },
-    },
-    {
-      files: [
-        'packages/dify-ui/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
-        'packages/dify-ui/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
-      ],
-      rules: {
-        'eslint-react/purity': 'off',
       },
     },
     {
@@ -1415,11 +1421,6 @@ export const lintConfig = {
         'valid-typeof': 'error',
         'vars-on-top': 'off',
         yoda: 'off',
-        'eslint-comments/no-aggregating-enable': 'off',
-        'eslint-comments/no-duplicate-disable': 'off',
-        'eslint-comments/no-unlimited-disable': 'off',
-        'eslint-comments/no-unused-enable': 'off',
-        'command/command': 'off',
         'perfectionist/sort-exports': 'off',
         'perfectionist/sort-named-exports': 'off',
         'perfectionist/sort-named-imports': 'off',
@@ -1431,10 +1432,6 @@ export const lintConfig = {
         'import/no-duplicates': 'off',
         'import/no-mutable-exports': 'off',
         'import/no-named-default': 'off',
-        'erasable-syntax-only/enums': 'off',
-        'erasable-syntax-only/import-aliases': 'off',
-        'erasable-syntax-only/namespaces': 'off',
-        'erasable-syntax-only/parameter-properties': 'off',
         'regexp/confusing-quantifier': 'off',
         'regexp/control-character-escape': 'off',
         'regexp/match-any': 'off',

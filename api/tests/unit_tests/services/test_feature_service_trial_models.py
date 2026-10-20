@@ -6,18 +6,19 @@ import pytest
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services import feature_service as feature_service_module
 from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
-def test_get_system_features_excludes_trial_models():
-    result = FeatureService.get_system_features().model_dump()
+def test_get_public_system_features_excludes_trial_models() -> None:
+    result = SystemFeatureService.get_public_system_features().model_dump()
 
     assert "trial_models" not in result
 
 
 def test_get_trial_models_returns_providers_with_paid_or_trial_enabled(
     config_overrides: Callable[..., None],
-):
-    values: dict[str, bool] = {}
+) -> None:
+    values: dict[str, object] = {}
     for provider in HostedTrialProvider:
         values[f"HOSTED_{provider.config_key}_PAID_ENABLED"] = False
         values[f"HOSTED_{provider.config_key}_TRIAL_ENABLED"] = False

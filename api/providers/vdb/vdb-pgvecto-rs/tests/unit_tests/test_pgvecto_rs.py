@@ -4,6 +4,7 @@ import sys
 import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
@@ -67,7 +68,7 @@ class _FakeBeginContext:
 
 
 def _sessionmaker_factory(calls, execute_results=None):
-    def _sessionmaker(*args, **kwargs):
+    def _sessionmaker[**P](*args: P.args, **kwargs: P.kwargs):
         session = _FakeSessionContext(calls=calls, execute_results=execute_results)
         return MagicMock(begin=MagicMock(return_value=_FakeBeginContext(session)))
 
@@ -191,14 +192,15 @@ def test_add_texts_get_ids_and_delete_methods(pgvecto_module, monkeypatch: pytes
             return ("insert", kwargs)
 
     monkeypatch.setattr(module, "insert", lambda table: _InsertBuilder(table))
-    monkeypatch.setattr(module, "uuid4", MagicMock(side_effect=["uuid-1", "uuid-2"]))
+    first_id, second_id = UUID(int=1), UUID(int=2)
+    monkeypatch.setattr(module, "uuid4", iter([first_id, second_id]).__next__)
     docs = [
         Document(page_content="a", metadata={"doc_id": "1"}),
         Document(page_content="b", metadata={"doc_id": "2"}),
     ]
 
     ids = vector.add_texts(docs, [[0.1], [0.2]])
-    assert ids == ["uuid-1", "uuid-2"]
+    assert ids == [str(first_id), str(second_id)]
     assert any(call[0][0][0] == "insert" for call in runtime_calls if call[0])
 
     monkeypatch.setattr(
@@ -334,8 +336,8 @@ def test_factory_uses_existing_or_generated_collection(pgvecto_module, monkeypat
     embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
 
     with patch.object(module, "PGVectoRS", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=embeddings)
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=embeddings)
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=embeddings, session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=embeddings, session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

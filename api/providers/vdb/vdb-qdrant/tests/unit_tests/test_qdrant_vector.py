@@ -4,13 +4,16 @@ import os
 import sys
 import types
 from collections import UserDict
+from pathlib import Path
 from types import SimpleNamespace
 from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
+from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
 from models.dataset import Dataset, DatasetCollectionBinding
 from models.enums import CollectionBindingType
@@ -295,12 +298,15 @@ def test_search_and_helper_methods(qdrant_module):
 
 
 @pytest.mark.parametrize("sqlite3_session", [(DatasetCollectionBinding,)], indirect=True)
+@pytest.mark.parametrize("use_caller_session", [True, False])
 def test_qdrant_factory_paths(
     qdrant_module,
     monkeypatch: pytest.MonkeyPatch,
     sqlite3_session: Session,
+    use_caller_session: bool,
 ):
     factory = qdrant_module.QdrantVectorFactory()
+    session = sqlite3_session if use_caller_session else None
     dataset = Dataset(id="dataset-1", tenant_id="tenant-1", collection_binding_id=None)
     monkeypatch.setattr(qdrant_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(qdrant_module, "current_app", SimpleNamespace(config=SimpleNamespace(root_path="/root")))
@@ -312,7 +318,7 @@ def test_qdrant_factory_paths(
     monkeypatch.setattr(qdrant_module.dify_config, "QDRANT_REPLICATION_FACTOR", 1)
 
     with patch.object(qdrant_module, "QdrantVector", return_value="vector") as vector_cls:
-        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=session)
     assert result == "vector"
     assert vector_cls.call_args.kwargs["collection_name"] == "AUTO_COLLECTION"
     assert dataset.index_struct is not None
@@ -331,10 +337,53 @@ def test_qdrant_factory_paths(
     monkeypatch.setattr(qdrant_module.db, "session", sqlite3_session)
 
     with patch.object(qdrant_module, "QdrantVector", return_value="vector") as vector_cls:
-        factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=session)
     assert vector_cls.call_args.kwargs["collection_name"] == "BOUND_COLLECTION"
 
     sqlite3_session.delete(binding)
     sqlite3_session.commit()
     with pytest.raises(ValueError, match="Dataset Collection Bindings does not exist"):
-        factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=session)
+
+
+@pytest.mark.parametrize("vector_type", [None, "qdrant"])
+def test_vector_reads_uncommitted_annotation_binding(
+    qdrant_module, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, vector_type: str | None
+):
+    # Separate connections must not see each other's uncommitted rows. An
+    # in-memory SQLite engine would share a connection and hide this regression.
+    engine = create_engine(f"sqlite:///{tmp_path / 'bindings.db'}")
+    DatasetCollectionBinding.__table__.create(engine)
+    monkeypatch.setattr(Vector, "get_vector_factory", staticmethod(lambda _: qdrant_module.QdrantVectorFactory))
+    monkeypatch.setattr(qdrant_module, "current_app", SimpleNamespace(config=SimpleNamespace(root_path="/root")))
+    monkeypatch.setattr(qdrant_module.dify_config, "VECTOR_STORE", "qdrant")
+    monkeypatch.setattr(qdrant_module.dify_config, "VECTOR_STORE_WHITELIST_ENABLE", False)
+    monkeypatch.setattr(qdrant_module.dify_config, "QDRANT_URL", "http://localhost:6333")
+
+    try:
+        with Session(engine) as session, Session(engine) as other_session:
+            monkeypatch.setattr(qdrant_module.db, "session", other_session)
+            binding = DatasetCollectionBinding(
+                provider_name="provider",
+                model_name="model",
+                type=CollectionBindingType.ANNOTATION,
+                collection_name="ANNOTATION_COLLECTION",
+            )
+            session.add(binding)
+            session.flush()
+            stmt = select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == binding.id)
+            assert other_session.scalar(stmt) is None
+            dataset = Dataset(id="app-1", tenant_id="tenant-1", collection_binding_id=binding.id)
+
+            vector = Vector(
+                dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session, vector_type=vector_type
+            )
+
+            assert vector._vector_processor.collection_name == "ANNOTATION_COLLECTION"
+            assert dataset.index_struct_dict is not None
+            assert dataset.index_struct_dict["vector_store"]["class_prefix"] == "ANNOTATION_COLLECTION"
+            assert other_session.scalar(stmt) is None
+            session.rollback()
+            assert session.scalar(stmt) is None
+    finally:
+        engine.dispose()

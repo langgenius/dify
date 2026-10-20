@@ -14,8 +14,7 @@ class HumanInputEmailDeliveryCase:
     name: str
     deployment_edition: DeploymentEdition
     tenant_id: str | None
-    billing_feature_enabled: bool
-    plan: str
+    plan: CloudPlan
     expected: bool
 
 
@@ -24,7 +23,6 @@ CASES = [
         name="enterprise_edition",
         deployment_edition=DeploymentEdition.ENTERPRISE,
         tenant_id=None,
-        billing_feature_enabled=False,
         plan=CloudPlan.SANDBOX,
         expected=True,
     ),
@@ -32,7 +30,6 @@ CASES = [
         name="community_edition",
         deployment_edition=DeploymentEdition.COMMUNITY,
         tenant_id=None,
-        billing_feature_enabled=False,
         plan=CloudPlan.SANDBOX,
         expected=True,
     ),
@@ -40,15 +37,6 @@ CASES = [
         name="cloud_edition_requires_tenant",
         deployment_edition=DeploymentEdition.CLOUD,
         tenant_id=None,
-        billing_feature_enabled=True,
-        plan=CloudPlan.PROFESSIONAL,
-        expected=False,
-    ),
-    HumanInputEmailDeliveryCase(
-        name="billing_feature_off",
-        deployment_edition=DeploymentEdition.CLOUD,
-        tenant_id="tenant-1",
-        billing_feature_enabled=False,
         plan=CloudPlan.PROFESSIONAL,
         expected=False,
     ),
@@ -56,7 +44,6 @@ CASES = [
         name="professional_plan",
         deployment_edition=DeploymentEdition.CLOUD,
         tenant_id="tenant-1",
-        billing_feature_enabled=True,
         plan=CloudPlan.PROFESSIONAL,
         expected=True,
     ),
@@ -64,7 +51,6 @@ CASES = [
         name="team_plan",
         deployment_edition=DeploymentEdition.CLOUD,
         tenant_id="tenant-1",
-        billing_feature_enabled=True,
         plan=CloudPlan.TEAM,
         expected=True,
     ),
@@ -72,7 +58,6 @@ CASES = [
         name="sandbox_plan",
         deployment_edition=DeploymentEdition.CLOUD,
         tenant_id="tenant-1",
-        billing_feature_enabled=True,
         plan=CloudPlan.SANDBOX,
         expected=False,
     ),
@@ -83,10 +68,9 @@ CASES = [
 def test_resolve_human_input_email_delivery_enabled_matrix(
     config_overrides: Callable[..., None],
     case: HumanInputEmailDeliveryCase,
-):
+) -> None:
     config_overrides(DEPLOYMENT_EDITION=case.deployment_edition)
     features = FeatureModel()
-    features.billing.enabled = case.billing_feature_enabled
     features.billing.subscription.plan = case.plan
 
     result = FeatureService._resolve_human_input_email_delivery_enabled(
@@ -99,12 +83,12 @@ def test_resolve_human_input_email_delivery_enabled_matrix(
 
 def test_get_vector_space_converts_billing_float_size(
     monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-):
+) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",
-        lambda tenant_id: {"size": 5120.75, "limit": 20480},
+        lambda _tenant_id: {"size": 5120.75, "limit": 20480},
     )
 
     result = FeatureService.get_vector_space("tenant-1")
@@ -116,12 +100,12 @@ def test_get_vector_space_converts_billing_float_size(
 
 def test_get_vector_space_preserves_unknown_usage(
     monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-):
+) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",
-        lambda tenant_id: {"size": 0.0, "limit": 50, "usage_unknown": True},
+        lambda _tenant_id: {"size": 0.0, "limit": 50, "usage_unknown": True},
     )
 
     result = FeatureService.get_vector_space("tenant-1")

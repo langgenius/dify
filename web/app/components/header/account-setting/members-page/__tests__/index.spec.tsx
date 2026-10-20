@@ -1,47 +1,42 @@
-import type { ReactElement } from 'react'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
-import type { ConsoleStateFixture } from '@/test/console/state-fixture'
-import { screen, within } from '@testing-library/react'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vite-plus/test'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { useProviderContext } from '@/context/provider-context'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
-import { useMembers } from '@/service/use-common'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MembersPage from '../index'
 
-const mockConsoleState = vi.hoisted(() => ({
-  current: {} as Partial<ConsoleStateFixture>,
+const { membersRequest, rolesRequest, memberRolesRequest, updateRoles, inviteMember } = vi.hoisted(
+  () => ({
+    membersRequest: vi.fn(),
+    rolesRequest: vi.fn(),
+    memberRolesRequest: vi.fn(),
+    updateRoles: vi.fn(),
+    inviteMember: vi.fn(),
+  }),
+)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': async () =>
+        (await import('@dify/contracts/api/console/features/zod.gen')).zGetFeaturesResponse.parse({
+          is_allow_transfer_workspace: true,
+        }),
+      'workspaces.current.members.get': membersRequest,
+      'workspaces.current.rbac.roles.get': rolesRequest,
+      'workspaces.current.rbac.members.byMemberId.rbacRoles.get': memberRolesRequest,
+      'workspaces.current.rbac.members.byMemberId.rbacRoles.put': updateRoles,
+      'workspaces.current.members.inviteEmail.post': inviteMember,
+    }),
+  }
+})
+vi.mock('@/hooks/use-format-time-from-now', () => ({
+  useFormatTimeFromNow: () => ({ formatTimeFromNow: (value: number) => `active:${value}` }),
 }))
-const mockConsoleStateReader = vi.hoisted(() => vi.fn())
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => mockConsoleState.current)
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState.current)
-})
-
-vi.mock('@/context/provider-context')
-vi.mock('@/hooks/use-format-time-from-now')
-vi.mock('@/service/access-control/use-member-roles')
-vi.mock('@/service/use-common')
-
-const renderMembersPage = () =>
-  renderWithConsoleQuery(<MembersPage />, {
-    accountProfile: mockConsoleState.current.userProfile,
-    systemFeatures: { is_email_setup: true },
-  })
-
-const getMemberDetailsButton = (memberId: string) =>
-  within(screen.getByTestId(`member-row-${memberId}`)).getByRole('button', {
-    name: /members\.memberDetails\.openAria/i,
-  })
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -56,680 +51,279 @@ const createRole = (overrides: Partial<Role>): Role => ({
   ...overrides,
 })
 
-const setConsoleState = (value: ConsoleStateFixture) => {
-  mockConsoleState.current = value
-  mockConsoleStateReader.mockReturnValue(value)
+const defaultAccounts: AccountWithRoleResponse[] = [
+  {
+    id: '1',
+    name: 'Owner User',
+    email: 'owner@example.com',
+    avatar: '',
+    avatar_url: '',
+    role: 'owner',
+    last_active_at: 1731000000,
+    last_login_at: 1731000000,
+    created_at: 1731000000,
+    status: 'active',
+    roles: [createRole({ id: 'owner-role', name: 'Owner', is_builtin: true, role_tag: 'owner' })],
+  },
+  {
+    id: '2',
+    name: 'Admin User',
+    email: 'admin@example.com',
+    avatar: '',
+    avatar_url: '',
+    role: 'admin',
+    last_active_at: 1731000000,
+    last_login_at: 1731000000,
+    created_at: 1731000000,
+    status: 'active',
+    roles: [createRole({ id: 'admin-role', name: 'Admin', is_builtin: true })],
+  },
+]
+
+let accounts: AccountWithRoleResponse[]
+const choices = [
+  createRole({ id: 'admin', name: 'Admin' }),
+  createRole({ id: 'role-next', name: 'Next role' }),
+  createRole({ id: 'role-extra', name: 'Extra role' }),
+]
+async function renderMembersPage(options: ConsoleQueryTestOptions = {}) {
+  const view = renderWithConsoleQuery(
+    <NuqsTestingAdapter>
+      <MembersPage />
+    </NuqsTestingAdapter>,
+    {
+      accountProfile: { id: '1', email: 'owner@example.com' },
+      currentWorkspace: { name: 'Test Workspace', role: 'owner' },
+      workspacePermissionKeys: ['workspace.member.manage'],
+      features: { is_allow_transfer_workspace: true },
+      systemFeatures: { is_email_setup: true },
+      ...options,
+    },
+  )
+  await screen.findByRole('button', { name: 'Admin User' })
+  return view
+}
+const detailsDialog = () => screen.getByRole('dialog', { name: /members\.memberDetails\.title/ })
+async function chooseRoles(user: ReturnType<typeof userEvent.setup>, multiple: boolean) {
+  await user.click(screen.getByRole('button', { name: 'Admin User' }))
+  const details = detailsDialog()
+  await user.click(
+    within(details).getByRole('button', {
+      name: multiple ? /memberDetails\.assign(?=$|:)/ : 'common.operation.edit',
+    }),
+  )
+  await user.click(await screen.findByRole(multiple ? 'checkbox' : 'radio', { name: /Next role/ }))
+  if (multiple) await user.click(screen.getByRole('checkbox', { name: /Extra role/ }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  return details
 }
 
-vi.mock('../edit-workspace-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div>
-      <div>Edit Workspace Modal</div>
-      <button onClick={onCancel}>Close Edit Workspace</button>
-    </div>
-  ),
-}))
-vi.mock('../invite-modal', () => ({
-  InviteModal: ({
-    open,
-    trigger,
-    onOpenChange,
-    onSend,
-  }: {
-    open: boolean
-    trigger: ReactElement<{ disabled?: boolean }>
-    onOpenChange: (open: boolean) => void
-    onSend: (results: Array<{ email: string; status: 'success'; url: string }>) => void
-  }) => (
-    <div>
-      <button disabled={trigger.props.disabled} onClick={() => onOpenChange(true)}>
-        Invite
-      </button>
-      {open && (
-        <div>
-          <div>Invite Modal</div>
-          <button onClick={() => onOpenChange(false)}>Close Invite Modal</button>
-          <button
-            onClick={() => {
-              onOpenChange(false)
-              onSend([{ email: 'sent@example.com', status: 'success', url: 'http://invite/link' }])
-            }}
-          >
-            Send Invite Results
-          </button>
-        </div>
-      )}
-    </div>
-  ),
-}))
-vi.mock('../invited-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div>
-      <div>Invited Modal</div>
-      <button onClick={onCancel}>Close Invited Modal</button>
-    </div>
-  ),
-}))
-vi.mock('../role-badges', () => ({
-  default: ({ roleNames }: { roleNames: string[] }) => (
-    <div data-testid="role-badges">{roleNames.join(',')}</div>
-  ),
-}))
-vi.mock('../member-menu', () => ({
-  default: ({
-    member,
-    isCurrentUser,
-    onTransferOwnership,
-    canTransferOwnership,
-  }: {
-    member: Member
-    isCurrentUser?: boolean
-    onTransferOwnership?: () => void
-    canTransferOwnership?: boolean
-  }) => (
-    <div data-testid="member-menu">
-      {member.role !== 'owner' && !isCurrentUser && <div>{`Member Operation ${member.role}`}</div>}
-      {canTransferOwnership && member.role === 'owner' && onTransferOwnership && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onTransferOwnership()
-          }}
-        >
-          Transfer ownership
-        </button>
-      )}
-    </div>
-  ),
-}))
-vi.mock('../transfer-ownership-modal', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div>
-      <div>Transfer Ownership Modal</div>
-      <button onClick={onClose}>Close Transfer Modal</button>
-    </div>
-  ),
-}))
-vi.mock('../member-details-modal', () => ({
-  default: ({
-    member,
-    onClose,
-    canAssignRoles,
-    onAssignSubmit,
-  }: {
-    member: Member
-    onClose: () => void
-    canAssignRoles?: boolean
-    onAssignSubmit?: (roles: Role[]) => void
-  }) => (
-    <div>
-      <div>Member Details Modal</div>
-      <div data-testid="details-member-name">{member.name}</div>
-      <div data-testid="details-can-assign">{String(canAssignRoles)}</div>
-      <button
-        onClick={() =>
-          onAssignSubmit?.([
-            createRole({ id: 'role-next', name: 'Next role' }),
-            createRole({ id: 'role-extra', name: 'Extra role' }),
-          ])
-        }
-      >
-        Submit Member Roles
-      </button>
-      <button onClick={onClose}>Close Member Details Modal</button>
-    </div>
-  ),
-}))
-vi.mock('@/app/components/billing/upgrade-btn', () => ({
-  default: () => <div>Upgrade Button</div>,
-}))
+beforeEach(() => {
+  vi.clearAllMocks()
+  accounts = structuredClone(defaultAccounts)
+  membersRequest.mockImplementation(async () => ({ accounts }))
+  rolesRequest.mockResolvedValue({
+    data: choices,
+    pagination: { current_page: 1, total_pages: 1, total_count: 3, per_page: 20 },
+  })
+  memberRolesRequest.mockResolvedValue({ roles: [] })
+  updateRoles.mockImplementation(
+    async ({ params, body }: { params: { member_id: string }; body: { role_ids: string[] } }) => {
+      accounts = accounts.map((account) =>
+        account.id === params.member_id
+          ? { ...account, roles: choices.filter((role) => body.role_ids.includes(role.id)) }
+          : account,
+      )
+      return { result: 'success' }
+    },
+  )
+  inviteMember.mockResolvedValue({
+    result: 'success',
+    tenant_id: 'tenant-id',
+    invitation_results: [
+      { email: 'sent@example.com', status: 'success', url: 'http://invite/link' },
+    ],
+  })
+})
 
 describe('MembersPage', () => {
-  const mockRefetch = vi.fn()
-  const mockFormatTimeFromNow = vi.fn(() => 'just now')
-  const mockUpdateRolesOfMember = vi.fn()
-
-  const mockAccounts: Member[] = [
-    {
-      id: '1',
-      name: 'Owner User',
-      email: 'owner@example.com',
-      avatar: '',
-      avatar_url: '',
-      role: 'owner',
-      last_active_at: '1731000000',
-      last_login_at: '1731000000',
-      created_at: '1731000000',
-      status: 'active',
-      roles: [createRole({ id: 'owner-role', name: 'Owner', is_builtin: true, role_tag: 'owner' })],
-    },
-    {
-      id: '2',
-      name: 'Admin User',
-      email: 'admin@example.com',
-      avatar: '',
-      avatar_url: '',
-      role: 'admin',
-      last_active_at: '1731000000',
-      last_login_at: '1731000000',
-      created_at: '1731000000',
-      status: 'active',
-      roles: [createRole({ id: 'admin-role', name: 'Admin', is_builtin: true })],
-    },
-  ]
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-
-    setConsoleState({
-      userProfile: { email: 'owner@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'owner' },
-      isCurrentWorkspaceOwner: true,
-      isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as ConsoleStateFixture)
-
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: mockAccounts },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-    mockUpdateRolesOfMember.mockImplementation((_payload, options) => {
-      options?.onSuccess?.()
-      return Promise.resolve()
-    })
-    vi.mocked(useUpdateRolesOfMember).mockReturnValue({
-      mutateAsync: mockUpdateRolesOfMember,
-    } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
-
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: false,
-        isAllowTransferWorkspace: true,
-      }),
+  it('shows account roles and the created time fallback in separate table cells', async () => {
+    accounts[1] = { ...accounts[1]!, last_active_at: null, created_at: 1700000000 }
+    await renderMembersPage()
+    const row = screen.getByRole('row', { name: /admin@example.com/ })
+    expect(within(row).getByRole('cell', { name: 'active:1700000000000' })).toBeInTheDocument()
+    expect(within(row).getByRole('cell', { name: 'Admin' })).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Admin User' })).not.toHaveTextContent(
+      'admin@example.com',
     )
-
-    vi.mocked(useFormatTimeFromNow).mockReturnValue({
-      formatTimeFromNow: mockFormatTimeFromNow,
-    })
   })
 
-  it('should render workspace and member information', () => {
-    renderMembersPage()
-
-    expect(screen.getByText('Test Workspace'))!.toBeInTheDocument()
-    expect(screen.getByText('Owner User'))!.toBeInTheDocument()
-    expect(screen.getByText('Admin User'))!.toBeInTheDocument()
+  it('sends an invitation and displays the returned invitation link', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage()
+    await user.click(screen.getByRole('button', { name: /members\.invite$/ }))
+    await user.type(
+      screen.getByRole('textbox', { name: /members\.emailRecipients/ }),
+      'sent@example.com',
+    )
+    await user.click(screen.getByRole('combobox', { name: /members\.role/ }))
+    await user.click(await screen.findByRole('option', { name: /Admin/ }))
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/ }))
+    expect(
+      await screen.findByRole('dialog', { name: /members\.invitationSent$/ }),
+    ).toBeInTheDocument()
+    expect(inviteMember).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'http://invite/link' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /members\.ok$/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('should render fixed name column and flexible role column layout', () => {
-    renderMembersPage()
+  it.each([
+    ['owner', 'owner@example.com', 'Owner User'],
+    ['admin', 'admin@example.com', 'Admin User'],
+  ] as const)(
+    'does not allow assigning roles to the %s current member',
+    async (role, email, name) => {
+      const user = userEvent.setup()
+      await renderMembersPage({ currentWorkspace: { role }, accountProfile: { email } })
+      await user.click(screen.getByRole('button', { name }))
+      const dialog = detailsDialog()
+      expect(
+        within(dialog).queryByRole('button', { name: 'common.operation.save' }),
+      ).not.toBeInTheDocument()
+      expect(
+        within(dialog).queryByRole('button', { name: 'common.operation.edit' }),
+      ).not.toBeInTheDocument()
+      expect(updateRoles).not.toHaveBeenCalled()
+    },
+  )
 
+  it('hides member management without permission while allowing member details', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage({ currentWorkspace: { role: 'normal' }, workspacePermissionKeys: [] })
+    expect(screen.queryByRole('button', { name: /members\.invite$/ })).not.toBeInTheDocument()
     expect(
-      screen.getByText('common.members.name', { selector: '.system-xs-medium-uppercase' }),
-    )!.toHaveClass('w-65', 'shrink-0')
+      screen.queryByRole('button', { name: /members\.memberActions(?=$|:)/ }),
+    ).not.toBeInTheDocument()
     expect(
-      screen.getByText('common.members.role', { selector: '.system-xs-medium-uppercase' }),
-    )!.toHaveClass('min-w-0', 'grow')
-    expect(getMemberDetailsButton('1').children[0])!.toHaveClass('w-65', 'shrink-0')
-    expect(getMemberDetailsButton('1').children[2])!.toHaveClass('min-w-0', 'grow')
-  })
-
-  it('should render plural roles column header when RBAC is enabled', () => {
-    renderWithConsoleQuery(<MembersPage />, {
-      systemFeatures: {
-        is_email_setup: true,
-        rbac_enabled: true,
-      },
-    })
-
+      screen.queryByRole('button', { name: /account\.editWorkspaceInfo/ }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Admin User' }))
     expect(
-      screen.getByText('common.members.roles', { selector: '.system-xs-medium-uppercase' }),
-    )!.toHaveClass('min-w-0', 'grow')
-    expect(
-      screen.queryByText('common.members.role', { selector: '.system-xs-medium-uppercase' }),
+      within(detailsDialog()).queryByRole('button', { name: 'common.operation.save' }),
     ).not.toBeInTheDocument()
   })
 
-  it('should open and close invite modal', async () => {
+  it.each([false, true])(
+    'saves selected roles and refreshes the member row with RBAC=%s',
+    async (multiple) => {
+      const user = userEvent.setup()
+      await renderMembersPage({ systemFeatures: { is_email_setup: true, rbac_enabled: multiple } })
+      const dialog = await chooseRoles(user, multiple)
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() =>
+        expect(updateRoles).toHaveBeenCalledWith({
+          params: { member_id: '2' },
+          body: { role_ids: multiple ? ['role-next', 'role-extra'] : ['role-next'] },
+        }),
+      )
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(
+        await within(screen.getByRole('row', { name: /admin@example.com/ })).findByText(
+          'Next role',
+        ),
+      ).toBeInTheDocument()
+    },
+  )
+
+  it('keeps role edits while saving and after failure, then closes only after a successful retry', async () => {
     const user = userEvent.setup()
-
-    renderMembersPage()
-
-    await user.click(screen.getByRole('button', { name: /invite/i }))
-    expect(screen.getByText('Invite Modal'))!.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Close Invite Modal' }))
-    expect(screen.queryByText('Invite Modal')).not.toBeInTheDocument()
-  })
-
-  it('should open invited modal after invite results are sent', async () => {
-    const user = userEvent.setup()
-
-    renderMembersPage()
-
-    await user.click(screen.getByRole('button', { name: /invite/i }))
-    await user.click(screen.getByRole('button', { name: 'Send Invite Results' }))
-
-    expect(screen.getByText('Invited Modal'))!.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Close Invited Modal' }))
-    expect(screen.queryByText('Invited Modal')).not.toBeInTheDocument()
-  })
-
-  it('should open transfer ownership modal when transfer action is used', async () => {
-    const user = userEvent.setup()
-
-    renderMembersPage()
-
-    await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
-    expect(screen.getByText('Transfer Ownership Modal'))!.toBeInTheDocument()
-  })
-
-  it('should show non-interactive owner role when transfer ownership is not allowed', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: false,
-        isAllowTransferWorkspace: false,
-      }),
+    let rejectSave!: (error: Error) => void
+    updateRoles.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectSave = reject
+        }),
     )
-
-    renderMembersPage()
-
-    expect(screen.getByText('Owner'))!.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
-  })
-
-  it('should hide manager controls for non-owner non-manager users', () => {
-    setConsoleState({
-      userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
-      isCurrentWorkspaceOwner: false,
-      isCurrentWorkspaceManager: false,
-    } as unknown as ConsoleStateFixture)
-
-    renderMembersPage()
-
-    expect(screen.queryByRole('button', { name: /invite/i })).not.toBeInTheDocument()
-    expect(screen.queryByText('Transfer ownership')).not.toBeInTheDocument()
-  })
-
-  it('should open and close edit workspace modal', async () => {
-    const user = userEvent.setup()
-
-    renderMembersPage()
-
-    await user.click(screen.getByRole('button', { name: /account\.editWorkspaceInfo/i }))
-    expect(screen.getByText('Edit Workspace Modal'))!.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Close Edit Workspace' }))
-    expect(screen.queryByText('Edit Workspace Modal')).not.toBeInTheDocument()
-  })
-
-  it('should close transfer ownership modal when close is clicked', async () => {
-    const user = userEvent.setup()
-
-    renderMembersPage()
-
-    await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
-    expect(screen.getByText('Transfer Ownership Modal'))!.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Close Transfer Modal' }))
-    expect(screen.queryByText('Transfer Ownership Modal')).not.toBeInTheDocument()
-  })
-
-  it('should show pending status and you indicator', () => {
-    const pendingAccount: Member = {
-      ...mockAccounts[1]!,
-      status: 'pending',
-    }
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [mockAccounts[0], pendingAccount] },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    renderMembersPage()
-
-    expect(screen.getByText(/members\.pending/i))!.toBeInTheDocument()
-    expect(screen.getByText(/members\.you/i))!.toBeInTheDocument() // Current user is owner@example.com
-  })
-
-  it('should show billing information for limited plan', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: 'sandbox',
-          total: { teamMembers: 5 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
-
-    renderMembersPage()
-
-    expect(screen.getByText(/plansCommon\.member/i))!.toBeInTheDocument()
-    expect(screen.getByText('2'))!.toBeInTheDocument() // accounts.length
-    expect(screen.getByText('/'))!.toBeInTheDocument()
-    expect(screen.getByText('5'))!.toBeInTheDocument() // plan.total.teamMembers
-  })
-
-  it('should show unlimited billing information', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: 'sandbox',
-          total: { teamMembers: -1 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
-
-    renderMembersPage()
-
-    expect(screen.getByText(/plansCommon\.unlimited/i))!.toBeInTheDocument()
-  })
-
-  it('should show non-billing member format for team plan even when billing is enabled', () => {
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: 'team',
-          total: { teamMembers: 50 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
-
-    renderMembersPage()
-
-    // 'team' is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
-    // 'team' is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
-    expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
-  })
-
-  it('should show invite button when user is manager but not owner', () => {
-    setConsoleState({
-      userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
-      isCurrentWorkspaceOwner: false,
-      isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as ConsoleStateFixture)
-
-    renderMembersPage()
-
-    expect(screen.getByRole('button', { name: /invite/i }))!.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
-  })
-
-  it('should allow admins to operate other non-owner members only', () => {
-    setConsoleState({
-      userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
-      isCurrentWorkspaceOwner: false,
-      isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as ConsoleStateFixture)
-    vi.mocked(useMembers).mockReturnValue({
-      data: {
-        accounts: [
-          mockAccounts[0],
-          mockAccounts[1],
-          {
-            ...mockAccounts[1]!,
-            id: '3',
-            email: 'editor@example.com',
-            name: 'Editor User',
-            role: 'editor',
-          },
-          {
-            ...mockAccounts[1]!,
-            id: '4',
-            email: 'normal@example.com',
-            name: 'Normal User',
-            role: 'normal',
-          },
-          {
-            ...mockAccounts[1]!,
-            id: '5',
-            email: 'dataset@example.com',
-            name: 'Dataset User',
-            role: 'dataset_operator',
-          },
-          {
-            ...mockAccounts[1]!,
-            id: '6',
-            email: 'other-admin@example.com',
-            name: 'Other Admin User',
-            role: 'admin',
-          },
-        ],
-      },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    renderMembersPage()
-
-    expect(screen.getByText('Member Operation editor'))!.toBeInTheDocument()
-    expect(screen.getByText('Member Operation normal'))!.toBeInTheDocument()
-    expect(screen.getByText('Member Operation dataset_operator'))!.toBeInTheDocument()
-    expect(screen.getByText('Member Operation admin'))!.toBeInTheDocument()
-    expect(screen.queryByText('Member Operation owner')).not.toBeInTheDocument()
-  })
-
-  it('should use created_at as fallback when last_active_at is empty', () => {
-    const memberNoLastActive: Member = {
-      ...mockAccounts[1]!,
-      last_active_at: '',
-      created_at: '1700000000',
-    }
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [memberNoLastActive] },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    renderMembersPage()
-
-    expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1700000000000)
-  })
-
-  it('should not show plural s when only one account in billing layout', () => {
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [mockAccounts[0]] },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: 'sandbox',
-          total: { teamMembers: 5 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
-      }),
-    )
-
-    renderMembersPage()
-
-    expect(screen.getByText(/plansCommon\.member/i))!.toBeInTheDocument()
-    expect(screen.getByText('1'))!.toBeInTheDocument()
-  })
-
-  it('should not show plural s when only one account in non-billing layout', () => {
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [mockAccounts[0]] },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    renderMembersPage()
-
-    expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
-    expect(screen.getByText('1'))!.toBeInTheDocument()
-  })
-
-  it('should render role badge names from account roles', () => {
-    setConsoleState({
-      userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
-      isCurrentWorkspaceOwner: false,
-      isCurrentWorkspaceManager: false,
-    } as unknown as ConsoleStateFixture)
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [{ ...mockAccounts[1], role: 'unknown_role' as Member['role'] }] },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    renderMembersPage()
-
-    expect(screen.getByText('Admin'))!.toBeInTheDocument()
-  })
-
-  it('should expose member details as a native row button without nesting member actions', () => {
-    renderMembersPage()
-
-    const row = screen.getByTestId('member-row-2')
-    const detailsButton = getMemberDetailsButton('2')
-    const memberMenu = within(row).getByTestId('member-menu')
-
-    expect(row).not.toHaveAttribute('role', 'button')
-    expect(row).not.toHaveClass('hover:bg-state-base-hover')
-    expect(detailsButton).toHaveAttribute('type', 'button')
-    expect(detailsButton).toHaveClass(
-      'hover:bg-state-base-hover',
-      'focus-visible:bg-state-base-hover',
-    )
-    expect(detailsButton).not.toContainElement(memberMenu)
-  })
-
-  it('should open member details modal when a member row is clicked', async () => {
-    const user = userEvent.setup()
-
-    renderMembersPage()
-
-    await user.click(getMemberDetailsButton('2'))
-
-    expect(screen.getByText('Member Details Modal'))!.toBeInTheDocument()
-    expect(screen.getByTestId('details-member-name'))!.toHaveTextContent('Admin User')
-
-    await user.click(screen.getByRole('button', { name: 'Close Member Details Modal' }))
-    expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
-  })
-
-  it('should open member details modal via keyboard Enter', async () => {
-    const user = userEvent.setup()
-
-    renderMembersPage()
-
-    const detailsButton = getMemberDetailsButton('2')
-    detailsButton.focus()
-    await user.keyboard('{Enter}')
-
-    expect(screen.getByText('Member Details Modal'))!.toBeInTheDocument()
-  })
-
-  it('should not allow assigning roles from member details when target is owner', async () => {
-    const user = userEvent.setup()
-
-    renderMembersPage()
-
-    await user.click(getMemberDetailsButton('1'))
-
-    expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
-  })
-
-  it('should not allow assigning roles from member details when target is current user', async () => {
-    const user = userEvent.setup()
-    setConsoleState({
-      userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
-      isCurrentWorkspaceOwner: false,
-      isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as ConsoleStateFixture)
-
-    renderMembersPage()
-
-    await user.click(getMemberDetailsButton('2'))
-
-    expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
-  })
-
-  it('should submit only one member role when RBAC is disabled', async () => {
-    const user = userEvent.setup()
-
-    renderMembersPage()
-
-    await user.click(getMemberDetailsButton('2'))
-    await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
-
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        memberId: '2',
-        roleIds: ['role-next'],
-      },
-      expect.any(Object),
-    )
-    expect(mockRefetch).toHaveBeenCalled()
-    expect(screen.getByText('Member Details Modal')).toBeInTheDocument()
-    expect(screen.getByTestId('details-member-name')).toHaveTextContent('Admin User')
-  })
-
-  it('should submit multiple member roles when RBAC is enabled', async () => {
-    const user = userEvent.setup()
-
-    renderWithConsoleQuery(<MembersPage />, {
-      systemFeatures: {
-        is_email_setup: true,
-        rbac_enabled: true,
-      },
+    await renderMembersPage()
+    const dialog = await chooseRoles(user, false)
+    const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
+    await user.click(save)
+    await user.click(save)
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    expect(updateRoles).toHaveBeenCalledOnce()
+    await act(async () => {
+      rejectSave(new Error('Save failed'))
     })
-
-    await user.click(getMemberDetailsButton('2'))
-    await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
-
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        memberId: '2',
-        roleIds: ['role-next', 'role-extra'],
-      },
-      expect.any(Object),
-    )
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(within(dialog).getByText('Next role')).toBeInTheDocument()
+    await user.click(save)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(updateRoles).toHaveBeenCalledTimes(2)
   })
 
-  it('should not open member details when clicking the member menu area', async () => {
+  it('opens ownership transfer from the owner action without opening member details', async () => {
     const user = userEvent.setup()
-
-    renderMembersPage()
-
-    await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
-
-    expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
-  })
-
-  it('should show the upgrade action without blocking the backend-authoritative invite flow', async () => {
-    const user = userEvent.setup()
-    vi.mocked(useProviderContext).mockReturnValue(
-      createMockProviderContextValue({
-        enableBilling: true,
-        plan: {
-          type: 'sandbox',
-          total: { teamMembers: 2 } as unknown as ReturnType<
-            typeof useProviderContext
-          >['plan']['total'],
-        } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    await renderMembersPage()
+    await user.click(
+      within(screen.getByRole('row', { name: /owner@example.com/ })).getByRole('button', {
+        name: /members\.memberActions(?=$|:)/,
       }),
     )
+    await user.click(screen.getByRole('menuitem', { name: /members\.transferOwnership$/ }))
+    expect(
+      await screen.findByRole('dialog', { name: /members\.transferModal\.title/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: /members\.memberDetails\.title/ }),
+    ).not.toBeInTheDocument()
+  })
 
-    renderMembersPage()
+  it('disables ownership transfer when the feature is unavailable', async () => {
+    await renderMembersPage({ features: { is_allow_transfer_workspace: false } })
+    expect(
+      within(screen.getByRole('row', { name: /owner@example.com/ })).queryByRole('button', {
+        name: /members\.memberActions(?=$|:)/,
+      }),
+    ).not.toBeInTheDocument()
+  })
 
-    expect(screen.getByText('Upgrade Button'))!.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Invite' }))
-    expect(screen.getByText('Invite Modal')).toBeInTheDocument()
+  it('discards a canceled workspace name edit before reopening', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage()
+    const edit = screen.getByRole('button', { name: /account\.editWorkspaceInfo/ })
+    await user.click(edit)
+    const input = screen.getByRole('textbox', { name: /account\.workspaceName$/ })
+    await user.clear(input)
+    await user.type(input, 'Unsaved name')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(edit)
+    expect(screen.getByRole('textbox', { name: /account\.workspaceName$/ })).toHaveValue(
+      'Test Workspace',
+    )
+  })
+
+  it.each([
+    ['sandbox', 5, 'plansCommon.member'],
+    ['sandbox', 0, 'plansCommon.unlimited'],
+    ['team', 50, 'plansCommon.memberAfter'],
+  ] as const)('shows the %s member allowance with limit %s', async (plan, limit, label) => {
+    await renderMembersPage({
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { billing: { subscription: { plan } }, members: { size: 2, limit } },
+    })
+    expect(screen.getByText(new RegExp(label))).toBeInTheDocument()
+  })
+
+  it('keeps invitation available at the displayed plan limit', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage({
+      systemFeatures: { deployment_edition: 'CLOUD', is_email_setup: true },
+      features: { billing: { subscription: { plan: 'sandbox' } }, members: { size: 2, limit: 2 } },
+    })
+    await user.click(screen.getByRole('button', { name: /members\.invite$/ }))
+    expect(screen.getByRole('dialog', { name: /members\.inviteTeamMember$/ })).toBeInTheDocument()
   })
 })

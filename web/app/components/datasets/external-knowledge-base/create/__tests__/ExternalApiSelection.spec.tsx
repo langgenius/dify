@@ -1,146 +1,96 @@
-import { render, screen } from '@testing-library/react'
+import type { ExternalKnowledgeApiListResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import ExternalApiSelection from '../ExternalApiSelection'
 
-const mocks = vi.hoisted(() => ({
-  push: vi.fn(),
-  refresh: vi.fn(),
-  setShowExternalKnowledgeAPIModal: vi.fn(),
-  invalidateQueries: vi.fn(),
-  externalKnowledgeApiList: [] as Array<{
-    id: string
-    name: string
-    settings: { endpoint: string }
-  }>,
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
-}))
-
+const mocks = vi.hoisted(() => ({ getApis: vi.fn(), refresh: vi.fn(), openModal: vi.fn() }))
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
 vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowExternalKnowledgeAPIModal: mocks.setShowExternalKnowledgeAPIModal,
-  }),
+  useModalContext: () => ({ setShowExternalKnowledgeAPIModal: mocks.openModal }),
 }))
-
-const externalKnowledgeApiQueryKey = ['console', 'datasets', 'externalKnowledgeApi', 'get']
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
-    ...original,
-    useQuery: () => ({ data: { data: mocks.externalKnowledgeApiList } }),
-    useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.externalKnowledgeApi.get': mocks.getApis,
+    }),
   }
 })
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    datasets: {
-      externalKnowledgeApi: {
-        get: {
-          queryOptions: () => ({
-            queryKey: ['console', 'datasets', 'externalKnowledgeApi', 'get'],
-          }),
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('../ExternalApiSelect', () => ({
-  default: ({
-    items,
-    onSelect,
-  }: {
-    items: Array<{ value: string; name: string }>
-    onSelect: (item: { value: string; name: string }) => void
-  }) => (
-    <div>
-      {items.map((item) => (
-        <button type="button" key={item.value} onClick={() => onSelect(item)}>
-          {item.name}
-        </button>
-      ))}
-    </div>
-  ),
-}))
-
-const { default: ExternalApiSelection } = await import('../ExternalApiSelection')
-
-const defaultProps = {
-  external_knowledge_api_id: '',
-  external_knowledge_id: '',
-  onChange: vi.fn(),
+const response: ExternalKnowledgeApiListResponse = {
+  data: ['One', 'Two'].map((name, index) => ({
+    id: `api-${index + 1}`,
+    name: `API ${name}`,
+    description: '',
+    settings: { endpoint: `https://api${index + 1}.com` },
+    created_at: '2026-01-01',
+    created_by: 'user',
+    tenant_id: 'workspace',
+    dataset_bindings: [],
+  })),
+  has_more: false,
+  page: 1,
+  limit: 20,
+  total: 2,
 }
 
-describe('ExternalApiSelection', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.externalKnowledgeApiList = [
-      { id: 'api-1', name: 'API One', settings: { endpoint: 'https://api1.com' } },
-      { id: 'api-2', name: 'API Two', settings: { endpoint: 'https://api2.com' } },
-    ]
-  })
+function Harness({ onChange = vi.fn() }: { onChange?: (value: object) => void }) {
+  const [value, setValue] = useState({ external_knowledge_api_id: '', external_knowledge_id: '' })
+  return (
+    <ExternalApiSelection
+      {...value}
+      onChange={(next) => {
+        setValue((current) => ({ ...current, ...next }))
+        onChange(next)
+      }}
+    />
+  )
+}
 
-  it('selects an external knowledge API', async () => {
-    const user = userEvent.setup()
-    render(<ExternalApiSelection {...defaultProps} />)
+beforeEach(() => mocks.getApis.mockResolvedValue(response))
 
-    await user.click(screen.getByRole('button', { name: 'API Two' }))
-
-    expect(defaultProps.onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ external_knowledge_api_id: 'api-2' }),
-    )
-  })
-
-  it('updates the external knowledge ID', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    const Harness = () => {
-      const [value, setValue] = useState(defaultProps)
-      return (
-        <ExternalApiSelection
-          {...value}
-          onChange={(nextValue) => {
-            setValue((current) => ({ ...current, ...nextValue }))
-            onChange(nextValue)
-          }}
-        />
-      )
-    }
-    render(<Harness />)
-
-    await user.type(screen.getByPlaceholderText('dataset.externalKnowledgeIdPlaceholder'), 'kb-123')
-
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ external_knowledge_id: 'kb-123' }),
-    )
-  })
-
-  it('opens external API creation when no API exists', async () => {
-    const user = userEvent.setup()
-    mocks.externalKnowledgeApiList = []
-    render(<ExternalApiSelection {...defaultProps} />)
-
-    await user.click(screen.getByRole('button', { name: 'dataset.noExternalKnowledge' }))
-
-    expect(mocks.setShowExternalKnowledgeAPIModal).toHaveBeenCalledOnce()
-  })
-
-  it('invalidates the generated query after creating an external API', async () => {
-    const user = userEvent.setup()
-    mocks.externalKnowledgeApiList = []
-    render(<ExternalApiSelection {...defaultProps} />)
-
-    await user.click(screen.getByRole('button', { name: 'dataset.noExternalKnowledge' }))
-    const modalConfig = mocks.setShowExternalKnowledgeAPIModal.mock.calls[0]![0]
-    await modalConfig.onSaveCallback()
-
-    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: externalKnowledgeApiQueryKey,
-    })
-    expect(mocks.refresh).toHaveBeenCalledOnce()
+it('defaults to the first API and keeps the chosen API while entering the knowledge ID', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(<Harness onChange={onChange} />)
+  const selector = await screen.findByRole('button', { name: 'dataset.externalAPIPanelTitle' })
+  await waitFor(() => expect(selector).toHaveTextContent('API One'))
+  await user.click(selector)
+  await user.click(screen.getByRole('button', { name: 'API Two https://api2.com' }))
+  expect(selector).toHaveTextContent('API Two')
+  expect(screen.queryByText('https://api2.com')).not.toBeInTheDocument()
+  await user.type(screen.getByRole('textbox', { name: 'dataset.externalKnowledgeId' }), 'kb-123')
+  expect(onChange).toHaveBeenLastCalledWith({
+    external_knowledge_api_id: 'api-2',
+    external_knowledge_id: 'kb-123',
   })
 })
+
+it.each(['empty list', 'selector'] as const)(
+  'refreshes APIs after creation from the %s',
+  async (entry) => {
+    const user = userEvent.setup()
+    if (entry === 'empty list')
+      mocks.getApis.mockResolvedValueOnce({ ...response, data: [], total: 0 })
+    render(<Harness />)
+    if (entry === 'selector') {
+      await user.click(await screen.findByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.createNewExternalAPI' }))
+    } else {
+      await user.click(await screen.findByRole('button', { name: 'dataset.noExternalKnowledge' }))
+    }
+    expect(mocks.openModal).toHaveBeenCalledWith(expect.objectContaining({ isEditMode: false }))
+    await act(async () => mocks.openModal.mock.calls[0]![0].onSaveCallback())
+    await waitFor(() => expect(mocks.getApis).toHaveBeenCalledTimes(2))
+    expect(mocks.refresh).toHaveBeenCalledOnce()
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }),
+      ).toHaveTextContent('API One'),
+    )
+  },
+)

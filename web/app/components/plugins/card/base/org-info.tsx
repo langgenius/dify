@@ -13,7 +13,7 @@ const OrgInfo = ({ className, orgName, packageName, packageNameClassName }: Prop
       {orgName && (
         <>
           <span
-            className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary"
+            className="min-w-0 shrink truncate system-xs-regular text-text-tertiary"
             title={orgName}
           >
             {orgName}
@@ -23,7 +23,7 @@ const OrgInfo = ({ className, orgName, packageName, packageNameClassName }: Prop
       )}
       <span
         className={cn(
-          'w-0 min-w-0 grow truncate system-xs-regular text-text-tertiary',
+          'min-w-0 shrink truncate system-xs-regular text-text-tertiary',
           packageNameClassName,
         )}
         title={packageName}

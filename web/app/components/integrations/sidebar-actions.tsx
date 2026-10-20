@@ -30,8 +30,6 @@ type PermissionTooltipWrapperProps = {
   show: boolean
 }
 
-const permissionTooltipClassName = 'w-[112px] text-left'
-
 function PermissionTooltipWrapper({
   children,
   className,
@@ -40,8 +38,9 @@ function PermissionTooltipWrapper({
   show,
 }: PermissionTooltipWrapperProps) {
   const trigger = (
-    <span aria-label={show ? content : undefined} className={cn('inline-flex', className)}>
+    <span className={cn('inline-flex', className)}>
       {children}
+      {show && <span className="sr-only">{content}</span>}
     </span>
   )
 
@@ -50,7 +49,7 @@ function PermissionTooltipWrapper({
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />
-      <TooltipContent placement={placement} sideOffset={8} className={permissionTooltipClassName}>
+      <TooltipContent placement={placement} sideOffset={8}>
         {content}
       </TooltipContent>
     </Tooltip>
@@ -66,7 +65,7 @@ export function IntegrationSidebarActions({
   installContextCategory?: PluginCategoryEnum
   onSwitchToMarketplace: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   return (
     <IntegrationSidebarInstallActions
@@ -106,20 +105,15 @@ function IntegrationSidebarInstallActions({
           disabled={!canManagement}
           rootClassName="w-full"
           triggerVariant="primary"
-          triggerClassName="h-8 min-w-0 justify-start gap-2 px-2.5 py-2 system-sm-medium transition-[width]"
+          triggerClassName="h-8 min-w-0 justify-start gap-2 px-2.5 py-2 system-sm-medium transition-[width] data-popup-open:bg-components-button-primary-bg-hover"
           triggerLabel={installLabel}
-          triggerOpenClassName="bg-components-button-primary-bg-hover"
           popupClassName="w-[200px]"
           installContextCategory={installContextCategory}
           showTriggerArrow={false}
           onSwitchToMarketplaceTab={onSwitchToMarketplace}
         />
       </PermissionTooltipWrapper>
-      <PluginTasks
-        animatedSlot
-        dropdownAnchor={() => actionRowRef.current}
-        dropdownPlacement="bottom-start"
-      />
+      <PluginTasks animatedSlot anchor={() => actionRowRef.current} placement="bottom-start" />
     </div>
   )
 }
@@ -141,7 +135,7 @@ export function IntegrationSidebarUtilityActions({
   showPermissionQuickPanel: boolean
   onPermissionChange: (key: PermissionSettingKey, value: PermissionType) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const debugLabel = t(($) => $['debugInfo.title'], { ns: 'plugin' })
   const permissionsLabel = t(($) => $['privilege.permissions'], { ns: 'plugin' })
 
@@ -166,11 +160,7 @@ export function IntegrationSidebarUtilityActions({
         <Popover>
           <PopoverTrigger
             render={
-              <Button
-                variant="ghost"
-                className={sidebarUtilityActionClassName}
-                aria-label={permissionsLabel}
-              >
+              <Button variant="ghost" className={sidebarUtilityActionClassName}>
                 <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
                   <span className="i-ri-equalizer-2-line size-4" />
                 </span>

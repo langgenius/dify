@@ -12,11 +12,11 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
-    AgentSessionConfigurationChangedError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -27,7 +27,6 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -48,6 +47,7 @@ from core.errors.error import (
 from core.helper.trace_id_helper import get_external_trace_id
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
@@ -148,6 +148,13 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 # define completion message api for user
 @console_ns.route("/apps/<uuid:app_id>/completion-messages")
 class CompletionMessageApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("create_completion_message")
     @console_ns.doc(description="Generate completion message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -159,7 +166,7 @@ class CompletionMessageApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
     @with_session
     @get_app_model(mode=AppMode.COMPLETION)
     @model_validate(CompletionMessagePayload)
@@ -181,26 +188,26 @@ class CompletionMessageApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
         except Exception as e:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from e
 
 
 @console_ns.route("/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop")
@@ -215,8 +222,9 @@ class CompletionMessageStopApi(Resource):
     @with_current_user_id
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user_id: str, app_model: App, task_id: str):
-
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.DEBUGGER,
             user_id=current_user_id,
@@ -228,6 +236,15 @@ class CompletionMessageStopApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
 class ChatMessageApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("create_chat_message")
     @console_ns.doc(description="Generate chat message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -241,7 +258,7 @@ class ChatMessageApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
     @with_session
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     def post(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
@@ -252,6 +269,15 @@ class ChatMessageApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
 class AgentChatMessageApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("create_agent_chat_message")
     @console_ns.doc(description="Generate an Agent App chat message for debugging")
     @console_ns.doc(params={"agent_id": "Agent ID"})
@@ -263,7 +289,7 @@ class AgentChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -282,6 +308,15 @@ class AgentChatMessageApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/build-chat/finalize")
 class AgentBuildChatFinalizeApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("finalize_agent_build_chat")
     @console_ns.doc(description="Run a build-draft Agent App turn that asks the agent to push config updates")
     @console_ns.doc(params={"agent_id": "Agent ID"})
@@ -292,7 +327,7 @@ class AgentBuildChatFinalizeApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -326,6 +361,7 @@ class ChatMessageStopApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages/<string:task_id>/stop")
 class AgentChatMessageStopApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("stop_agent_chat_message")
     @console_ns.doc(description="Stop a running Agent App chat message generation")
     @console_ns.doc(params={"agent_id": "Agent ID", "task_id": "Task ID to stop"})
@@ -333,6 +369,7 @@ class AgentChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session(write=False)
@@ -472,7 +509,7 @@ def _create_build_chat_finalization_message(
     return {"result": "success"}, 200
 
 
-def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[str, None, None]) -> None:
+def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[str]) -> None:
     """Consume a streamed app-generate response until a terminal message event arrives.
 
     Finalize keeps the normal Agent App streaming path so the existing queue,
@@ -532,30 +569,30 @@ def _generate_chat_message(
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=streaming,
         )
-    except services.errors.conversation.ConversationNotExistsError:
-        raise NotFound("Conversation Not Exists.")
-    except services.errors.conversation.ConversationCompletedError:
-        raise ConversationCompletedError()
-    except services.errors.app_model_config.AppModelConfigBrokenError:
+    except services.errors.conversation.ConversationNotExistsError as caught_error:
+        raise NotFound("Conversation Not Exists.") from caught_error
+    except services.errors.conversation.ConversationCompletedError as caught_error:
+        raise ConversationCompletedError() from caught_error
+    except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
         logger.exception("App model config broken.")
-        raise AppUnavailableError()
+        raise AppUnavailableError() from caught_error
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
+        raise ProviderNotInitializeError(ex.description) from ex
+    except QuotaExceededError as caught_error:
+        raise ProviderQuotaExceededError() from caught_error
+    except ModelCurrentlyNotSupportError as caught_error:
+        raise ProviderModelCurrentlyNotSupportError() from caught_error
     except InvokeRateLimitError as ex:
-        raise InvokeRateLimitHttpError(ex.description)
+        raise InvokeRateLimitHttpError(ex.description) from ex
     except CompletionRequestError:
         raise
     except InvokeError as e:
-        raise CompletionRequestError(e.description)
+        raise CompletionRequestError(e.description) from e
     except ValueError as e:
         raise e
     except Exception as e:
         logger.exception("internal server error.")
-        raise InternalServerError()
+        raise InternalServerError() from e
 
 
 def _generate_chat_message_response(
@@ -580,6 +617,8 @@ def _generate_chat_message_response(
 
 def _stop_chat_message(*, current_user_id: str, app_model: App, task_id: str):
     AppTaskService.stop_task(
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
         task_id=task_id,
         invoke_from=InvokeFrom.DEBUGGER,
         user_id=current_user_id,
@@ -621,16 +660,12 @@ def _raise_agent_stream_error_before_response(response):
             if isinstance(response, _ClosableStream):
                 response.close()
             message = error_payload.get("message")
-            if error_payload.get("code") == AgentSessionConfigurationChangedError.error_code:
-                raise AgentSessionConfigurationChangedError(
-                    str(message or AgentSessionConfigurationChangedError.description)
-                )
             raise CompletionRequestError(str(message or "Agent App chat failed."))
 
         return _prepend_stream_chunks(buffered, chunk, iterator)
 
 
-def _prepend_stream_chunks(buffered: list[Any], first: Any, iterator: Iterator[Any]) -> Generator[Any, None, None]:
+def _prepend_stream_chunks(buffered: list[Any], first: Any, iterator: Iterator[Any]) -> Generator[Any]:
     yield from buffered
     yield first
     yield from iterator

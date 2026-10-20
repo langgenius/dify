@@ -33,7 +33,7 @@ export function EnvironmentButton({
           </button>
         }
       />
-      <TooltipContent role="tooltip">{name}</TooltipContent>
+      <TooltipContent>{name}</TooltipContent>
     </Tooltip>
   )
 }

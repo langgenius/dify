@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -345,10 +346,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             return answer, ToolInvokeMeta.error_instance(answer)
 
         if isinstance(tool_call_args, str):
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 tool_call_args = json.loads(tool_call_args)
-            except json.JSONDecodeError:
-                pass
 
         # invoke tool
         with use_credit_usage_metadata({"app_type": CreditUsageAppType.AGENT}):

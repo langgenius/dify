@@ -59,7 +59,7 @@ export function ToolItem({
   versionMismatch,
   authRemoved,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'tools'])
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const providerNameText = isMCPTool ? providerShowName : providerName?.split('/').pop()
   const isTransparent = uninstalled || versionMismatch || isError
@@ -84,7 +84,7 @@ export function ToolItem({
             ref={triggerRef}
             type="button"
             aria-label={accessibleTriggerLabel}
-            className="absolute inset-0 z-0 cursor-pointer rounded-lg border-0 bg-transparent outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+            className="absolute inset-0 z-0 cursor-pointer rounded-lg border-0 bg-transparent focus-visible:ring-inset"
           />
         }
       />
@@ -106,8 +106,11 @@ export function ToolItem({
             <AppIcon
               className="h-7 w-7 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge"
               size="xs"
-              icon={icon?.content}
-              background={icon?.background}
+              icon={{
+                icon_type: 'emoji',
+                icon: icon?.content,
+                icon_background: icon?.background,
+              }}
             />
           )}
         </div>

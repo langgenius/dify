@@ -24,7 +24,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const treeNodes = formatNodeList(list, t)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
@@ -118,10 +118,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
               }}
             ></div>
           </div>
-          <div
-            id={`${node.id}-children`}
-            className={`relative pl-2 ${isCollapsed ? 'hidden' : ''}`}
-          >
+          <div id={`${node.id}-children`} hidden={isCollapsed} className="relative pl-2">
             <div
               className={cn(
                 'absolute top-0 bottom-0 left-1.25 w-0.5',

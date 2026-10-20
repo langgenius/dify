@@ -1,6 +1,7 @@
 """Tests for Celery SSL configuration."""
 
 import ssl
+from importlib import import_module
 from unittest.mock import MagicMock, patch
 
 from enums import DeploymentEdition
@@ -162,6 +163,7 @@ class TestCelerySSLConfiguration:
 
         # Mock all the scheduler configs
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.AGENT_SANDBOX_METERING_ENABLED = False
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -212,6 +214,7 @@ class TestCelerySSLConfiguration:
         mock_config.CELERY_TASK_ANNOTATIONS = {}
 
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.AGENT_SANDBOX_METERING_ENABLED = False
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -246,6 +249,15 @@ class TestCelerySSLConfiguration:
         assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
         assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
+        assert "tasks.workflow_run_archive_deletion_tasks" in celery_app.conf["imports"]
+        import_module("tasks.workflow_run_archive_deletion_tasks")
+        task_name = "tasks.workflow_run_archive_deletion_tasks.delete_workflow_run_archive_task"
+        archive_deletion = celery_app.tasks[task_name]
+        assert archive_deletion.queue == "workflow_archive"
+        assert archive_deletion.acks_late is True
+        assert archive_deletion.reject_on_worker_lost is True
+        assert archive_deletion.autoretry_for == (Exception,)
+        assert archive_deletion.retry_kwargs["max_retries"] == 5
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
             "tasks.delete_conversation_task.sweep_deleted_conversations"
         )

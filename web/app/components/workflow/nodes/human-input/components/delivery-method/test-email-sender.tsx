@@ -2,18 +2,24 @@ import type { EmailConfig, FormInputItem } from '../../types'
 import type { Node, NodeOutPutVar, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightSFill } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { noop, unionBy } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import Divider from '@/app/components/base/divider'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
 import { formatValue } from '@/app/components/workflow/nodes/_base/components/before-run-form/helpers'
 import {
@@ -23,9 +29,10 @@ import {
   isSystemVar,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { useTestEmailSender } from '@/service/use-workflow'
 import { getHumanInputFormDependencySelectors, isOutput } from '../../utils'
 import EmailInput from './recipient/email-input'
@@ -44,6 +51,8 @@ type EmailSenderModalProps = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
 }
+
+type EmailSenderContentProps = Omit<EmailSenderModalProps, 'open'>
 
 const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
   const targetVar = list.find((item) => item.nodeId === valueSelector[0])
@@ -73,18 +82,17 @@ const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
 }
 
 const varTypeToInputVarType = (type: VarType) => {
+  const structuredVariableTypes: readonly VarType[] = [
+    VarType.object,
+    VarType.array,
+    VarType.arrayNumber,
+    VarType.arrayString,
+    VarType.arrayObject,
+  ]
+
   if (type === VarType.number) return InputVarType.number
   if (type === VarType.boolean) return InputVarType.checkbox
-  if (
-    [
-      VarType.object,
-      VarType.array,
-      VarType.arrayNumber,
-      VarType.arrayString,
-      VarType.arrayObject,
-    ].includes(type)
-  )
-    return InputVarType.json
+  if (structuredVariableTypes.includes(type)) return InputVarType.json
   if (type === VarType.file) return InputVarType.singleFile
   if (type === VarType.arrayFile) return InputVarType.multiFiles
 
@@ -117,10 +125,9 @@ const formatEmailSenderInputs = (
   }
 }
 
-const EmailSenderModal = ({
+const EmailSenderContent = ({
   nodeId,
   deliveryId,
-  open,
   onOpenChange,
   jumpToEmailConfigModal,
   config,
@@ -128,14 +135,14 @@ const EmailSenderModal = ({
   formInputs,
   nodesOutputVars = [],
   availableNodes = [],
-}: EmailSenderModalProps) => {
-  const { t } = useTranslation()
+}: EmailSenderContentProps) => {
+  const { t } = useTranslation(['common', 'workflow', 'workflowHumanInput'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const appDetail = useAppStore((state) => state.appDetail)
+  const appId = useAtomValue(editorAppIdAtom)
   const { mutateAsync: testEmailSender } = useTestEmailSender()
 
   const debugEnabled = !!config?.debug_mode
@@ -151,7 +158,9 @@ const EmailSenderModal = ({
     config?.recipients?.items &&
     config?.recipients?.items.length > 0
 
-  const { data: members } = useMembers()
+  const { data: members } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const accounts = members?.accounts || []
 
   const generatedInputs = useMemo(() => {
@@ -222,7 +231,7 @@ const EmailSenderModal = ({
   }, [generatedInputs, inputs])
 
   const handleConfirm = useCallback(async () => {
-    if (!confirmChecked) return
+    if (!confirmChecked || !appId) return
     const { formattedValues, parseErrorJsonField } = formatEmailSenderInputs(
       generatedInputs,
       inputs,
@@ -236,7 +245,7 @@ const EmailSenderModal = ({
     setSendingEmail(true)
     try {
       await testEmailSender({
-        appID: appDetail?.id || '',
+        appID: appId,
         nodeID: nodeId,
         deliveryID: deliveryId,
         inputs: formattedValues,
@@ -245,30 +254,28 @@ const EmailSenderModal = ({
     } finally {
       setSendingEmail(false)
     }
-  }, [
-    confirmChecked,
-    generatedInputs,
-    inputs,
-    testEmailSender,
-    appDetail?.id,
-    nodeId,
-    deliveryId,
-    t,
-  ])
+  }, [confirmChecked, generatedInputs, inputs, testEmailSender, appId, nodeId, deliveryId, t])
+
+  const hasBody =
+    ((onlySpecificUsers || combinedRecipients) && !debugEnabled) || generatedInputs.length > 0
 
   if (done) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
+      <>
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.done`], {
+              ns: 'workflowHumanInput',
+            })}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogBody>
           <div className="space-y-2">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.done`], { ns: 'workflow' })}
-            </DialogTitle>
             {debugEnabled && (
               <div className="system-md-regular text-text-secondary">
                 <Trans
                   i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.debugDone`]}
-                  ns="workflow"
+                  ns="workflowHumanInput"
                   components={{
                     email: <span className="system-md-semibold text-text-secondary"></span>,
                   }}
@@ -280,7 +287,7 @@ const EmailSenderModal = ({
               <div className="system-md-regular text-text-secondary">
                 <Trans
                   i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone2`]}
-                  ns="workflow"
+                  ns="workflowHumanInput"
                   components={{
                     team: <span className="system-md-medium text-text-secondary"></span>,
                   }}
@@ -291,7 +298,7 @@ const EmailSenderModal = ({
             {!debugEnabled && onlySpecificUsers && (
               <div className="system-md-regular text-text-secondary">
                 {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone3`], {
-                  ns: 'workflow',
+                  ns: 'workflowHumanInput',
                 })}
               </div>
             )}
@@ -299,7 +306,7 @@ const EmailSenderModal = ({
               <div className="system-md-regular text-text-secondary">
                 <Trans
                   i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone1`]}
-                  ns="workflow"
+                  ns="workflowHumanInput"
                   components={{
                     team: <span className="system-md-medium text-text-secondary"></span>,
                   }}
@@ -321,88 +328,80 @@ const EmailSenderModal = ({
               />
             </div>
           )}
-          <div className="mt-6 flex flex-row-reverse gap-2">
-            <Button variant="primary" className="w-18" onClick={() => onOpenChange(false)}>
-              {t(($) => $['operation.ok'], { ns: 'common' })}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="primary" className="w-18" onClick={() => onOpenChange(false)}>
+            {t(($) => $['operation.ok'], { ns: 'common' })}
+          </Button>
+        </DialogFooter>
+      </>
     )
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="space-y-1 pr-8">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.title`], { ns: 'workflow' })}
-          </DialogTitle>
-          {debugEnabled && (
-            <>
-              <div className="system-sm-regular text-text-secondary">
-                {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip`], {
-                  ns: 'workflow',
-                })}
-              </div>
-              <div className="system-sm-regular text-text-secondary">
-                <Trans
-                  i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip2`]}
-                  ns="workflow"
-                  components={{
-                    email: <span className="system-sm-semibold text-text-primary"></span>,
-                  }}
-                  values={{ email: userProfileEmail }}
-                />
-              </div>
-            </>
-          )}
-          {!debugEnabled && onlyWholeTeam && (
+    <>
+      <DialogHeader>
+        <DialogTitle>
+          {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.title`], {
+            ns: 'workflowHumanInput',
+          })}
+        </DialogTitle>
+        {debugEnabled && (
+          <>
             <div className="system-sm-regular text-text-secondary">
-              <Trans
-                i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip2`]}
-                ns="workflow"
-                components={{
-                  team: <span className="system-sm-semibold text-text-primary"></span>,
-                }}
-                values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
-              />
-            </div>
-          )}
-          {!debugEnabled && onlySpecificUsers && (
-            <div className="system-sm-regular text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip3`], {
-                ns: 'workflow',
+              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip`], {
+                ns: 'workflowHumanInput',
               })}
             </div>
-          )}
-          {!debugEnabled && combinedRecipients && (
             <div className="system-sm-regular text-text-secondary">
               <Trans
-                i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip1`]}
-                ns="workflow"
+                i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip2`]}
+                ns="workflowHumanInput"
                 components={{
-                  team: <span className="system-sm-semibold text-text-primary"></span>,
+                  email: <span className="system-sm-semibold text-text-primary"></span>,
                 }}
-                values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
+                values={{ email: userProfileEmail }}
               />
             </div>
-          )}
-        </div>
-        {(onlySpecificUsers || combinedRecipients) && !debugEnabled && (
-          <>
-            <div className="mt-4">
+          </>
+        )}
+        {!debugEnabled && onlyWholeTeam && (
+          <div className="system-sm-regular text-text-secondary">
+            <Trans
+              i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip2`]}
+              ns="workflowHumanInput"
+              components={{
+                team: <span className="system-sm-semibold text-text-primary"></span>,
+              }}
+              values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
+            />
+          </div>
+        )}
+        {!debugEnabled && onlySpecificUsers && (
+          <div className="system-sm-regular text-text-secondary">
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip3`], {
+              ns: 'workflowHumanInput',
+            })}
+          </div>
+        )}
+        {!debugEnabled && combinedRecipients && (
+          <div className="system-sm-regular text-text-secondary">
+            <Trans
+              i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip1`]}
+              ns="workflowHumanInput"
+              components={{
+                team: <span className="system-sm-semibold text-text-primary"></span>,
+              }}
+              values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
+            />
+          </div>
+        )}
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      {hasBody && (
+        <DialogBody>
+          {(onlySpecificUsers || combinedRecipients) && !debugEnabled && (
+            <>
               <EmailInput
                 disabled
                 email={userProfileEmail}
@@ -412,83 +411,97 @@ const EmailSenderModal = ({
                 onSelect={noop}
                 onAdd={noop}
               />
-            </div>
-            <div className="mt-1 system-xs-regular text-text-tertiary">
-              <Trans
-                i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.tip`]}
-                ns="workflow"
-                components={{
-                  strong: (
-                    <button
-                      type="button"
-                      onClick={jumpToEmailConfigModal}
-                      className="inline cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent"
-                    />
-                  ),
-                }}
-              />
-            </div>
-          </>
-        )}
-        {/* vars */}
-        {generatedInputs.length > 0 && (
-          <>
-            <div>
-              <Divider className="mt-4! mb-2! h-px! w-12! bg-divider-regular" />
-            </div>
-            <div className="py-2">
-              <button
-                type="button"
-                aria-expanded={!collapsed}
-                className="group flex h-6 cursor-pointer items-center border-none bg-transparent p-0 text-left"
-                onClick={() => setCollapsed(!collapsed)}
-              >
-                <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">
-                  {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.vars`], { ns: 'workflow' })}
-                </div>
-                <RiArrowRightSFill
-                  className={cn(
-                    'size-4 text-text-quaternary group-hover:text-text-primary',
-                    !collapsed && 'rotate-90',
-                  )}
-                  aria-hidden
-                />
-              </button>
-              <div className="system-xs-regular text-text-tertiary">
-                {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.varsTip`], {
-                  ns: 'workflow',
-                })}
-              </div>
-              {!collapsed && (
-                <div className="mt-3 space-y-4">
-                  {generatedInputs.map((variable, index) => (
-                    <div key={variable.variable} className="mb-4 last-of-type:mb-0">
-                      <FormItem
-                        autoFocus={index === 0}
-                        payload={variable}
-                        value={inputs[variable.variable]}
-                        onChange={(v) => handleValueChange(variable.variable, v)}
+              <div className="mt-1 system-xs-regular text-text-tertiary">
+                <Trans
+                  i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailSender.tip`]}
+                  ns="workflowHumanInput"
+                  components={{
+                    strong: (
+                      <button
+                        type="button"
+                        onClick={jumpToEmailConfigModal}
+                        className="inline cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent"
                       />
-                    </div>
-                  ))}
+                    ),
+                  }}
+                />
+              </div>
+            </>
+          )}
+          {/* vars */}
+          {generatedInputs.length > 0 && (
+            <>
+              <div>
+                <Separator className="mt-4 mb-2 w-12" />
+              </div>
+              <div className="py-2">
+                <button
+                  type="button"
+                  aria-expanded={!collapsed}
+                  className="group flex h-6 cursor-pointer items-center border-none bg-transparent p-0 text-left"
+                  onClick={() => setCollapsed(!collapsed)}
+                >
+                  <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">
+                    {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.vars`], {
+                      ns: 'workflowHumanInput',
+                    })}
+                  </div>
+                  <RiArrowRightSFill
+                    className={cn(
+                      'size-4 text-text-quaternary group-hover:text-text-primary',
+                      !collapsed && 'rotate-90',
+                    )}
+                    aria-hidden
+                  />
+                </button>
+                <div className="system-xs-regular text-text-tertiary">
+                  {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.varsTip`], {
+                    ns: 'workflowHumanInput',
+                  })}
                 </div>
-              )}
-            </div>
-          </>
-        )}
-        <div className="mt-6 flex flex-row-reverse gap-2">
-          <Button
-            disabled={sendingEmail || !confirmChecked}
-            loading={sendingEmail}
-            variant="primary"
-            onClick={handleConfirm}
-          >
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.send`], { ns: 'workflow' })}
-          </Button>
-          <Button className="w-18" onClick={() => onOpenChange(false)}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-        </div>
+                {!collapsed && (
+                  <div className="mt-3 space-y-4">
+                    {generatedInputs.map((variable, index) => (
+                      <div key={variable.variable} className="mb-4 last-of-type:mb-0">
+                        <FormItem
+                          autoFocus={index === 0}
+                          payload={variable}
+                          value={inputs[variable.variable]}
+                          onChange={(v) => handleValueChange(variable.variable, v)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogBody>
+      )}
+      <DialogFooter>
+        <Button className="w-18" onClick={() => onOpenChange(false)}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button
+          disabled={!confirmChecked}
+          loading={sendingEmail}
+          variant="primary"
+          onClick={handleConfirm}
+        >
+          {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.send`], {
+            ns: 'workflowHumanInput',
+          })}
+        </Button>
+      </DialogFooter>
+    </>
+  )
+}
+
+const EmailSenderModal = ({ open, onOpenChange, ...props }: EmailSenderModalProps) => {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
+      <DialogContent>
+        <EmailSenderContent {...props} onOpenChange={onOpenChange} />
       </DialogContent>
     </Dialog>
   )

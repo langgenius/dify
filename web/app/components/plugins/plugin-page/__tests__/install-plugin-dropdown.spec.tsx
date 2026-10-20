@@ -1,238 +1,112 @@
-import type { ReactElement } from 'react'
-import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import type { ComponentProps } from 'react'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InstallPluginDropdown from '../install-plugin-dropdown'
 
-const { mockSystemFeatures } = vi.hoisted(() => ({
-  mockSystemFeatures: {
-    enable_marketplace: true,
-    plugin_installation_permission: {
-      restrict_to_marketplace_only: false,
-    },
-  },
+const { upload } = vi.hoisted(() => ({ upload: vi.fn() }))
+vi.mock('@/service/plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/plugins')>()),
+  uploadFile: upload,
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
+// Catalog invalidation is independent of choosing and closing an installer.
+vi.mock('../../install-plugin/hooks/use-refresh-plugin-list', () => ({
+  default: () => ({ refreshPluginList: vi.fn() }),
+}))
+const renderDropdown = (
+  props: Partial<ComponentProps<typeof InstallPluginDropdown>> = {},
+  systemFeatures: ConsoleQueryTestOptions['systemFeatures'] = { enable_marketplace: true },
+) => {
+  const onSwitchToMarketplaceTab = vi.fn()
   return {
-    ...actual,
-    SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS: '.difypkg,.zip',
+    ...renderWithConsoleQuery(
+      <InstallPluginDropdown onSwitchToMarketplaceTab={onSwitchToMarketplaceTab} {...props} />,
+      { systemFeatures },
+    ),
+    onSwitchToMarketplaceTab,
   }
+}
+const openMenu = async (
+  user: ReturnType<typeof userEvent.setup>,
+  name = 'plugin.installPlugin',
+) => {
+  await user.click(screen.getByRole('button', { name }))
+}
+
+it('offers all enabled installation sources and switches to the marketplace', async () => {
+  const user = userEvent.setup()
+  const { onSwitchToMarketplaceTab } = renderDropdown({ triggerLabel: 'Install' })
+  await openMenu(user, 'Install')
+  expect(screen.getByRole('menuitem', { name: 'plugin.source.github' })).toBeInTheDocument()
+  expect(screen.getByRole('menuitem', { name: 'plugin.source.local' })).toBeInTheDocument()
+  await user.click(screen.getByRole('menuitem', { name: 'plugin.source.marketplace' }))
+  expect(onSwitchToMarketplaceTab).toHaveBeenCalledOnce()
 })
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: mockSystemFeatures })
+it('prevents opening the menu or selecting a file while installation is disabled', async () => {
+  const user = userEvent.setup()
+  const { container, onSwitchToMarketplaceTab } = renderDropdown({ disabled: true })
+  const trigger = screen.getByRole('button', { name: 'plugin.installPlugin' })
+  expect(trigger).toBeDisabled()
+  await user.click(trigger)
+  // A native file input has no implicit ARIA role and is activated by the menu action.
+  const input = container.querySelector<HTMLInputElement>('input[type="file"]')!
+  expect(input).toBeDisabled()
+  await user.upload(input, new File(['content'], 'plugin.difypkg'))
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(onSwitchToMarketplaceTab).not.toHaveBeenCalled()
+  expect(upload).not.toHaveBeenCalled()
+})
 
-vi.mock('@/app/components/base/icons/src/vender/solid/files', () => ({
-  FileZip: () => <span data-testid="file-zip-icon">file</span>,
-}))
+it('offers only the marketplace when custom installation is restricted', async () => {
+  const user = userEvent.setup()
+  renderDropdown(
+    {},
+    {
+      enable_marketplace: true,
+      plugin_installation_permission: { restrict_to_marketplace_only: true },
+    },
+  )
+  await openMenu(user)
+  expect(screen.getByRole('menuitem', { name: 'plugin.source.marketplace' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'plugin.source.github' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'plugin.source.local' })).not.toBeInTheDocument()
+})
 
-vi.mock('@/app/components/base/icons/src/vender/solid/general', () => ({
-  Github: () => <span data-testid="github-icon">github</span>,
-}))
+it('opens the GitHub installer and returns to the dropdown when it is cancelled', async () => {
+  const user = userEvent.setup()
+  renderDropdown()
+  await openMenu(user)
+  await user.click(screen.getByRole('menuitem', { name: 'plugin.source.github' }))
+  await screen.findByRole('dialog', { name: 'plugin.installFromGitHub.installPlugin' })
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await openMenu(user)
+  expect(screen.getByRole('menuitem', { name: 'plugin.source.github' })).toBeInTheDocument()
+})
 
-vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
-  MagicBox: () => <span data-testid="magic-box-icon">magic</span>,
-}))
+it('passes the selected file to the real installer and permits selecting the same file after closing', async () => {
+  const user = userEvent.setup()
+  upload.mockRejectedValue(new Error('Upload unavailable'))
+  const { container } = renderDropdown()
+  const input = container.querySelector<HTMLInputElement>('input[type="file"]')!
+  const file = new File(['content'], 'plugin.difypkg')
+  const filePicker = vi.spyOn(input, 'click')
+  await openMenu(user)
+  await user.click(screen.getByRole('menuitem', { name: 'plugin.source.local' }))
+  expect(filePicker).toHaveBeenCalledOnce()
+  filePicker.mockRestore()
+  await user.upload(input, file)
+  await screen.findByRole('dialog', { name: 'plugin.installModal.uploadFailed' })
+  expect(upload).toHaveBeenCalledExactlyOnceWith(file, false)
+  await user.click(screen.getByText('common.operation.close'))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
-vi.mock('@remixicon/react', () => ({
-  RiAddCircleFill: ({ className }: { className?: string }) => (
-    <span data-testid="add-circle-fill-icon" className={className} />
-  ),
-  RiArrowDownSLine: ({ className }: { className?: string }) => (
-    <span data-testid="arrow-down-icon" className={className} />
-  ),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/install-from-github', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="github-modal">
-      <button data-testid="close-github-modal" onClick={onClose}>
-        close
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/install-from-local-package', () => ({
-  default: ({ file, onClose }: { file: File; onClose: () => void }) => (
-    <div data-testid="local-modal">
-      <span>{file.name}</span>
-      <button data-testid="close-local-modal" onClick={onClose}>
-        close
-      </button>
-    </div>
-  ),
-}))
-
-const getTrigger = (name = 'plugin.installPlugin') => screen.getByRole('button', { name })
-
-describe('InstallPluginDropdown', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockSystemFeatures.enable_marketplace = true
-    mockSystemFeatures.plugin_installation_permission.restrict_to_marketplace_only = false
-  })
-
-  it('shows all install methods when marketplace and custom installs are enabled', () => {
-    render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
-
-    fireEvent.click(getTrigger())
-
-    expect(screen.getByText('plugin.installFrom')).toBeInTheDocument()
-    expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
-    expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
-    expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
-  })
-
-  it('applies custom trigger label and presentation props', () => {
-    const { container } = render(
-      <InstallPluginDropdown
-        onSwitchToMarketplaceTab={vi.fn()}
-        rootClassName="custom-root"
-        triggerClassName="custom-trigger"
-        triggerLabel="Install"
-        triggerOpenClassName="custom-open"
-        triggerVariant="primary"
-        popupClassName="custom-popup"
-      />,
-    )
-
-    const trigger = getTrigger('Install')
-
-    expect(container.querySelector('.custom-root')).toBeInTheDocument()
-    expect(trigger).toHaveTextContent('Install')
-    expect(screen.getByTestId('add-circle-fill-icon')).toBeInTheDocument()
-    expect(screen.getByTestId('arrow-down-icon')).toBeInTheDocument()
-    expect(trigger).toHaveClass('custom-trigger')
-    expect(trigger).not.toHaveAttribute('data-popup-open')
-
-    fireEvent.click(trigger)
-
-    expect(trigger).toHaveClass('custom-open')
-    expect(trigger).toHaveAttribute('data-popup-open', '')
-    expect(screen.getByRole('menu')).toHaveClass('custom-popup')
-  })
-
-  it('can hide the trigger arrow for compact integrations placement', () => {
-    render(
-      <InstallPluginDropdown
-        onSwitchToMarketplaceTab={vi.fn()}
-        triggerLabel="Install"
-        showTriggerArrow={false}
-      />,
-    )
-
-    const trigger = getTrigger('Install')
-
-    expect(trigger).toHaveTextContent('Install')
-    expect(screen.getByTestId('add-circle-fill-icon')).toBeInTheDocument()
-    expect(screen.queryByTestId('arrow-down-icon')).not.toBeInTheDocument()
-  })
-
-  it('keeps the trigger visible but disabled when install is unavailable', () => {
-    const onSwitchToMarketplaceTab = vi.fn()
-    const { container } = render(
-      <InstallPluginDropdown disabled onSwitchToMarketplaceTab={onSwitchToMarketplaceTab} />,
-    )
-
-    const trigger = getTrigger()
-
-    expect(trigger).toBeDisabled()
-
-    fireEvent.click(trigger)
-    fireEvent.change(container.querySelector('input[type="file"]')!, {
-      target: {
-        files: [new File(['content'], 'plugin.difypkg')],
-      },
-    })
-
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('local-modal')).not.toBeInTheDocument()
-    expect(onSwitchToMarketplaceTab).not.toHaveBeenCalled()
-  })
-
-  it('shows only marketplace when installation is restricted', () => {
-    mockSystemFeatures.plugin_installation_permission.restrict_to_marketplace_only = true
-
-    render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
-
-    fireEvent.click(getTrigger())
-
-    expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
-    expect(screen.queryByText('plugin.source.github')).not.toBeInTheDocument()
-    expect(screen.queryByText('plugin.source.local')).not.toBeInTheDocument()
-  })
-
-  it('switches to marketplace when the marketplace action is selected', () => {
-    const onSwitchToMarketplaceTab = vi.fn()
-    render(<InstallPluginDropdown onSwitchToMarketplaceTab={onSwitchToMarketplaceTab} />)
-
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getByText('plugin.source.marketplace'))
-
-    expect(onSwitchToMarketplaceTab).toHaveBeenCalledTimes(1)
-  })
-
-  it('opens the github installer when github is selected', async () => {
-    render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
-
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getByText('plugin.source.github'))
-
-    expect(await screen.findByTestId('github-modal')).toBeInTheDocument()
-  })
-
-  it('opens the local package installer when a file is selected', () => {
-    const { container } = render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
-
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getByText('plugin.source.local'))
-    fireEvent.change(container.querySelector('input[type="file"]')!, {
-      target: {
-        files: [new File(['content'], 'plugin.difypkg')],
-      },
-    })
-
-    expect(screen.getByTestId('local-modal')).toBeInTheDocument()
-    expect(screen.getByText('plugin.difypkg')).toBeInTheDocument()
-  })
-
-  it('triggers the hidden file input when local is selected from the menu', () => {
-    const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click')
-
-    render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
-
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getByText('plugin.source.local'))
-
-    expect(clickSpy).toHaveBeenCalledTimes(1)
-    clickSpy.mockRestore()
-  })
-
-  it('closes the github installer when the modal requests close', async () => {
-    render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
-
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getByText('plugin.source.github'))
-    fireEvent.click(await screen.findByTestId('close-github-modal'))
-
-    expect(screen.queryByTestId('github-modal')).not.toBeInTheDocument()
-  })
-
-  it('closes the local package installer when the modal requests close', () => {
-    const { container } = render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
-
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getByText('plugin.source.local'))
-    fireEvent.change(container.querySelector('input[type="file"]')!, {
-      target: {
-        files: [new File(['content'], 'plugin.difypkg')],
-      },
-    })
-    fireEvent.click(screen.getByTestId('close-local-modal'))
-
-    expect(screen.queryByTestId('local-modal')).not.toBeInTheDocument()
-  })
+  await openMenu(user)
+  await user.click(screen.getByRole('menuitem', { name: 'plugin.source.local' }))
+  await user.upload(input, file)
+  await screen.findByRole('dialog', { name: 'plugin.installModal.uploadFailed' })
+  expect(upload).toHaveBeenCalledTimes(2)
 })

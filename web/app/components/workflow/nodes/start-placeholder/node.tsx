@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 const i18nPrefix = 'nodes.startPlaceholder'
 
 const Node: FC<NodeProps> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const descriptionKey = data.selected ? 'nodeDescription' : 'nodeCollapsedDescription'
 
   return (
