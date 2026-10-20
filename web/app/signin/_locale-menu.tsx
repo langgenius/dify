@@ -1,3 +1,5 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,30 +18,45 @@ type LocaleMenuProps<T extends string> = {
   items: Array<LocaleMenuItem<T>>
   value?: T
   onChange?: (value: T) => void
+  compact?: boolean
 }
 
 export default function LocaleMenu<T extends string>({
   items,
   value,
   onChange,
+  compact = false,
 }: LocaleMenuProps<T>) {
   const selectedItem = items.find((item) => item.value === value)
 
   return (
-    <div className="w-56 text-right">
+    <div className={cn(!compact && 'w-56', 'text-right')}>
       <DropdownMenu>
         <div className="relative inline-block text-left">
           <div>
             <DropdownMenuTrigger
               render={
-                <button
-                  type="button"
-                  className="inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-2.5 py-1.5 text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
-                />
+                compact ? (
+                  <Button
+                    variant="ghost"
+                    className="h-8 px-2 system-sm-medium text-text-tertiary"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-2.5 py-1.5 text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
+                  />
+                )
               }
             >
-              <span className="mr-1 i-heroicons-globe-alt size-5" aria-hidden="true" />
+              <span
+                className={
+                  compact ? 'i-ri-global-line size-4' : 'mr-1 i-heroicons-globe-alt size-5'
+                }
+                aria-hidden="true"
+              />
               {selectedItem?.name}
+              {compact && <span className="i-ri-arrow-down-s-line size-4" aria-hidden="true" />}
             </DropdownMenuTrigger>
           </div>
         </div>

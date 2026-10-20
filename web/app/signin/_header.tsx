@@ -15,7 +15,7 @@ const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector
   loading: () => <div className="size-8 bg-transparent" />,
 })
 
-const Header = ({ className }: { className?: string }) => {
+const Header = ({ className, compact = false }: { className?: string; compact?: boolean }) => {
   const locale = useLocale()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
@@ -32,13 +32,14 @@ const Header = ({ className }: { className?: string }) => {
       )}
       <div className="flex items-center gap-1">
         <LocaleMenu
+          compact={compact}
           value={locale}
           items={languages.filter((item) => item.supported)}
           onChange={(value) => {
             setLocaleOnClient(value, false)
           }}
         />
-        <Separator decorative orientation="vertical" className="mx-0 ml-2 h-4" />
+        {!compact && <Separator decorative orientation="vertical" className="mx-0 ml-2 h-4" />}
         <ThemeSelector />
       </div>
     </header>
