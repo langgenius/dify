@@ -120,6 +120,7 @@ export function getFormattedAgentDebugChatTree(
     chatList.push({
       id: item.id,
       content: answer,
+      isError: item.status === 'error',
       agent_thoughts: addFileInfos(
         sortAgentSorts(
           (item.agent_thoughts ?? []).map((thought) =>
