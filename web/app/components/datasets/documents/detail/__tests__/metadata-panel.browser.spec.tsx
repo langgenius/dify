@@ -12,13 +12,32 @@ import { DatasetACLPermission } from '@/utils/permission'
 import { DataType } from '../../../metadata/types'
 import DocumentDetail from '../index'
 
-// Enough fields that the metadata panel overflows the viewport and renders its scrollbar.
-const fields = Array.from({ length: 14 }, (_, i) => ({
-  id: `field-${i + 1}`,
-  name: `field_${i + 1}`,
-  type: DataType.string,
-  value: `A long metadata value for field ${i + 1} that wraps onto a second line`,
-}))
+// Real English copy: raw i18n keys cannot wrap, so they would widen the edit header past the panel.
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  const withNamespace = (ns: string, messages: Record<string, string>) =>
+    Object.fromEntries(Object.entries(messages).map(([key, value]) => [`${ns}.${key}`, value]))
+  const { default: common } = await import('@/i18n/locales/en-US/common.json')
+  const { default: dataset } = await import('@/i18n/locales/en-US/dataset.json')
+  const { default: datasetDocuments } = await import('@/i18n/locales/en-US/dataset-documents.json')
+  return createReactI18nextMock({
+    ...withNamespace('common', common),
+    ...withNamespace('dataset', dataset),
+    ...withNamespace('datasetDocuments', datasetDocuments),
+  })
+})
+
+// Enough fields that the metadata panel overflows the viewport and renders its scrollbar. The last
+// one is a time field, whose date picker must shrink to keep its remove button inside the row.
+const fields = [
+  ...Array.from({ length: 13 }, (_, i) => ({
+    id: `field-${i + 1}`,
+    name: `field_${i + 1}`,
+    type: DataType.string,
+    value: `A long metadata value for field ${i + 1} that wraps onto a second line`,
+  })),
+  { id: 'field-14', name: 'recorded_at', type: DataType.time, value: 1759780800 },
+]
 const save = vi.fn()
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -115,16 +134,16 @@ beforeEach(() => {
 it('keeps edit controls clickable beside the metadata scrollbar and reaches the last field', async () => {
   await page.viewport(1280, 640)
   const screen = await renderDocumentDetail()
-  await screen.getByRole('button', { name: 'common.operation.edit' }).click()
+  await screen.getByRole('button', { name: 'Edit' }).click()
 
-  const removeButtons = screen.getByRole('button', { name: 'common.operation.remove' })
+  const removeButtons = screen.getByRole('button', { name: 'Remove' })
   await expect.element(removeButtons.nth(fields.length - 1)).toBeInTheDocument()
 
   // The last row starts below the fold, so this also proves the panel scrolls to it.
   await clickRightEdge(removeButtons.nth(fields.length - 1))
   await expect.poll(() => removeButtons.elements().length).toBe(fields.length - 1)
 
-  const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+  const saveButton = screen.getByRole('button', { name: 'Save' })
   await clickRightEdge(saveButton)
   await expect.poll(() => save.mock.calls.length).toBe(1)
   expect(save.mock.calls[0]?.[0]).toMatchObject({

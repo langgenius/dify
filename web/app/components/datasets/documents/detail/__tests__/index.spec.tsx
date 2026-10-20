@@ -298,6 +298,26 @@ describe('DocumentDetail', () => {
       ).not.toBeInTheDocument()
     })
 
+    it('opens metadata in a drawer on mobile instead of beside the chunks', async () => {
+      const user = userEvent.setup()
+      vi.stubGlobal('innerWidth', 390)
+      try {
+        render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+        expect(
+          screen.queryByText('dataset.metadata.documentMetadata.documentInformation'),
+        ).not.toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: /metadata\.title/ }))
+        expect(
+          within(await screen.findByRole('dialog')).getByText(
+            'dataset.metadata.documentMetadata.documentInformation',
+          ),
+        ).toBeVisible()
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    })
+
     it.each([true, false])(
       'allows metadata editing only with edit permission (%s)',
       async (canEdit) => {
