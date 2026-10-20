@@ -73,9 +73,9 @@ def test_lease_lost_during_execution_is_reported_to_owner(
 def test_lost_lease_aborts_real_graph_and_prevents_successor_node(
     monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
-    from graphon.graph_engine import GraphEngine, GraphEngineConfig
-    from graphon.graph_engine.command_channels import InMemoryChannel
-    from graphon.graph_events import GraphEngineEvent, GraphRunAbortedEvent
+    from graphon.engine import Engine
+    from graphon.engine.command import InMemoryChannel
+    from graphon.engine_events import EngineEvent, GraphRunAbortedEvent
     from services.workflow.execution.adapters.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
     from tests.unit_tests.core.workflow.graph_engine.test_table_runner import WorkflowRunner
 
@@ -109,7 +109,7 @@ def test_lost_lease_aborts_real_graph_and_prevents_successor_node(
         return not started_node.is_set()
 
     reservations.renew.side_effect = renew
-    events: list[GraphEngineEvent] = []
+    events: list[EngineEvent] = []
 
     def execute() -> None:
         nonlocal events
@@ -118,12 +118,10 @@ def test_lost_lease_aborts_real_graph_and_prevents_successor_node(
         ) as cancellation:
             cancellation.bind(state.graph_execution)
             attach_stop_aware_ready_queue(state, task_id="task", should_stop=cancellation.is_cancelled)
-            engine = GraphEngine(
-                workflow_id="workflow",
+            engine = Engine(
                 graph=graph,
-                graph_runtime_state=state,
+                runtime_state=state,
                 command_channel=InMemoryChannel(),
-                config=GraphEngineConfig(),
             )
             events = list(engine.run())
 
@@ -138,7 +136,7 @@ def test_lost_lease_aborts_real_graph_and_prevents_successor_node(
 def test_finished_graph_is_not_cancelled_when_terminal_write_ends_lease(outcome: str) -> None:
     from time import monotonic
 
-    from graphon.graph_engine.domain.graph_execution import GraphExecution
+    from graphon.runtime.execution import GraphExecution
     from services.workflow.debug_cancellation import DebugExecutionCancellation
 
     state = GraphExecution(workflow_id="workflow", started=True)
@@ -153,7 +151,7 @@ def test_finished_graph_is_not_cancelled_when_terminal_write_ends_lease(outcome:
 def test_blocked_renewal_or_suspended_process_cannot_start_queued_node(monkeypatch: pytest.MonkeyPatch) -> None:
     from queue import Empty
 
-    from graphon.graph_engine.domain.graph_execution import GraphExecution
+    from graphon.runtime.execution import GraphExecution
     from services.workflow import debug_cancellation as module
     from services.workflow.execution.adapters.workflow.stop_aware_ready_queue import StopAwareReadyQueue
 
@@ -177,7 +175,7 @@ def test_blocked_renewal_or_suspended_process_cannot_start_queued_node(monkeypat
 def test_blocked_database_renewal_still_aborts_active_execution(
     monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
-    from graphon.graph_engine.domain.graph_execution import GraphExecution
+    from graphon.runtime.execution import GraphExecution
 
     config_overrides(WORKFLOW_DEBUG_RESERVATION_TIMEOUT=1)
     clock = [0.0]
@@ -231,7 +229,7 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
     from core.app.apps.base_app_queue_manager import AppQueueManager
     from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
     from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-    from graphon.runtime import GraphRuntimeState, VariablePool
+    from graphon.runtime import RuntimeState, VariablePool
     from graphon.variable_loader import DUMMY_VARIABLE_LOADER
     from models.model import AppMode
     from repositories.workflow.definition_repository import workflow_snapshot
@@ -240,7 +238,7 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
     from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
     from tests.unit_tests.model_factories import make_workflow
 
-    state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+    state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
     state.graph_execution.started = True
     state.graph_execution.paused = True
     cancellation = DebugExecutionCancellation(deadline=monotonic() + 10)
@@ -257,10 +255,6 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
         variable_loader=DUMMY_VARIABLE_LOADER,
         workflow=workflow_snapshot(make_workflow()),
         system_user_id="account",
-        workflow_execution_repository=create_autospec(WorkflowExecutionRepository, instance=True, spec_set=True),
-        workflow_node_execution_repository=create_autospec(
-            WorkflowNodeExecutionRepository, instance=True, spec_set=True
-        ),
         graph_runtime_state=state,
         cancellation=cancellation,
         runtime=workflow_runtime,
@@ -276,5 +270,10 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
         "services.workflow.execution.adapters.workflow.app_runner.WorkflowEntry", lose_lease_before_engine_starts
     )
     with pytest.raises(WorkflowDebugReservationExpiredError):
-        runner.run()
+        workflow_runtime.execution_driver(
+            runner,
+            None,
+            create_autospec(WorkflowExecutionRepository, instance=True, spec_set=True),
+            create_autospec(WorkflowNodeExecutionRepository, instance=True, spec_set=True),
+        )
     assert state.graph_execution.aborted is True
