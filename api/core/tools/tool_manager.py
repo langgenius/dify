@@ -59,8 +59,8 @@ from graphon.runtime import VariablePool
 from graphon.variables.template_resolution import convert_template
 from models.provider_ids import ToolProviderID
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
-from services.tools.mcp_tools_manage_service import MCPToolManageService
-from services.tools.tools_transform_service import ToolTransformService
+from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService
+from services.tools.legacy_tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
@@ -304,7 +304,7 @@ class ToolManager:
                 if builtin_provider.expires_at != -1 and (builtin_provider.expires_at - 60) < int(time.time()):
                     # TODO: circular import
                     from core.plugin.impl.oauth import OAuthHandler
-                    from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+                    from services.tools.legacy_builtin_tools_manage_service import BuiltinToolManageService
 
                     tool_provider = ToolProviderID(provider_id)
                     provider_name = tool_provider.provider_name

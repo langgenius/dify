@@ -74,7 +74,7 @@ from models.dataset import SegmentAttachmentBinding
 from models.human_input_delivery import BoundRecipient, DeliveryChannelConfig, EmailDeliveryMethod, EmailRecipients
 from models.human_input_entities import FileInputConfig, FileListInputConfig, FormInputConfig, HumanInputNodeData
 from models.model import UploadFile
-from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from services.tools.legacy_builtin_tools_manage_service import BuiltinToolManageService
 
 from .system_variables import SystemVariableKey, get_system_text
 

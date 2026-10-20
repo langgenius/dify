@@ -24,10 +24,7 @@ from core.tools.entities.api_entities import (
 )
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.tool_label_manager import ToolLabelManager
-from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_provider_encrypter
-from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account
@@ -35,6 +32,9 @@ from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.credentials.query import CredentialQuery, ToolCredentialRecord
+from services.tools.builtin.credentials import resolve_oauth_client
+from services.tools.provider_queries import ToolProviders
+from services.tools.tool_manager import ToolManager
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ class BuiltinToolManageService:
                 ToolTransformService.convert_tool_entity_to_api_entity(
                     tool=tool,
                     tenant_id=tenant_id,
-                    labels=ToolLabelManager.get_tool_labels(provider_controller),
+                    labels=provider_controller.tool_labels,
                 )
             )
 
@@ -525,55 +525,13 @@ class BuiltinToolManageService:
             return user_client is not None and user_client.enabled
 
     @staticmethod
-    def get_oauth_client(tenant_id: str, provider: str) -> Mapping[str, Any] | None:
-        """
-        get builtin tool provider
-        """
-        tool_provider = ToolProviderID(provider)
-        provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
-        encrypter, _ = create_provider_encrypter(
+    def get_oauth_client(tenant_id: str, provider: str, *, tool_providers: ToolProviders) -> Mapping[str, Any] | None:
+        return resolve_oauth_client(
+            providers=tool_providers,
+            controller=ToolManager.get_builtin_provider(provider, tenant_id),
             tenant_id=tenant_id,
-            config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
-            cache=NoOpProviderCredentialCache(),
+            provider_id=provider,
         )
-        with Session(db.engine, autoflush=False) as session:
-            user_client = session.scalar(
-                select(ToolOAuthTenantClient)
-                .where(
-                    ToolOAuthTenantClient.tenant_id == tenant_id,
-                    ToolOAuthTenantClient.provider == tool_provider.provider_name,
-                    ToolOAuthTenantClient.plugin_id == tool_provider.plugin_id,
-                    ToolOAuthTenantClient.enabled.is_(True),
-                )
-                .limit(1)
-            )
-            oauth_params: Mapping[str, Any] | None = None
-            if user_client:
-                oauth_params = encrypter.decrypt(user_client.oauth_params)
-                return oauth_params
-
-            # only verified provider can use official oauth client
-            is_verified = not isinstance(
-                provider_controller, PluginToolProviderController
-            ) or PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
-            if not is_verified:
-                return oauth_params
-
-            system_client = session.scalar(
-                select(ToolOAuthSystemClient)
-                .where(
-                    ToolOAuthSystemClient.plugin_id == tool_provider.plugin_id,
-                    ToolOAuthSystemClient.provider == tool_provider.provider_name,
-                )
-                .limit(1)
-            )
-            if system_client:
-                try:
-                    oauth_params = decrypt_system_params(system_client.encrypted_oauth_params)
-                except Exception as e:
-                    raise ValueError(f"Error decrypting system oauth params: {e}") from e
-
-            return oauth_params
 
     @staticmethod
     def get_builtin_tool_provider_icon(provider: str):
@@ -586,7 +544,9 @@ class BuiltinToolManageService:
         return icon_bytes, mime_type
 
     @staticmethod
-    def list_builtin_tools(user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:
+    def list_builtin_tools(
+        user_id: str, tenant_id: str, *, tool_providers: ToolProviders
+    ) -> list[ToolProviderApiEntity]:
         """
         list builtin tools
         """
@@ -594,7 +554,7 @@ class BuiltinToolManageService:
         provider_controllers = ToolManager.list_builtin_providers(tenant_id)
 
         # get all user added providers
-        db_providers: list[BuiltinToolProvider] = ToolManager.list_default_builtin_providers(tenant_id)
+        db_providers: list[BuiltinToolProvider] = tool_providers.default_builtin(tenant_id=tenant_id)
 
         # rewrite db_providers
         for db_provider in db_providers:
@@ -633,7 +593,7 @@ class BuiltinToolManageService:
                         ToolTransformService.convert_tool_entity_to_api_entity(
                             tenant_id=tenant_id,
                             tool=tool,
-                            labels=ToolLabelManager.get_tool_labels(provider_controller),
+                            labels=provider_controller.tool_labels,
                         )
                     )
 
