@@ -1,4 +1,5 @@
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   createCatalogModelFixture,
@@ -47,7 +48,7 @@ beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 
 it('keeps the settings behind its nested confirmation and restores focus without losing the draft', async () => {
-  // Real browser focus verifies returning to a surviving clear button or Save after that button disappears.
+  // Clearing removes the initiating button; verify native focus recovery and continued keyboard access.
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['plugin.model_config'],
   })
@@ -96,10 +97,17 @@ it('keeps the settings behind its nested confirmation and restores focus without
     await confirmation.getByRole('button', { name: 'Clear' }).click()
     await expect.element(confirmation).not.toBeInTheDocument()
     await expect.element(settings).toBeVisible()
-    await expect.element(settings.getByRole('button', { name: 'Save' })).toHaveFocus()
     await expect
       .element(settings.getByRole('button', { name: 'Clear System Reasoning Model' }))
       .not.toBeInTheDocument()
+    await expect.element(settings.getByRole('button', { name: 'Save' })).toHaveFocus()
+    await userEvent.keyboard('{Tab}')
+    expect(settingsPopup.contains(document.activeElement)).toBe(true)
+    await userEvent.keyboard('{Escape}')
+    await expect.element(settings).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('button', { name: 'System Model Settings' }))
+      .toHaveFocus()
   } finally {
     queryClient.clear()
   }

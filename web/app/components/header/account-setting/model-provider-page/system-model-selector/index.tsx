@@ -153,10 +153,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         )}
         {t(($) => $['modelProvider.systemModelSettings'], { ns: 'modelProvider' })}
       </DialogTrigger>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="max-h-[calc(100dvh-2rem)] max-w-120"
-      >
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-120">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'modelProvider' })}
@@ -204,7 +201,6 @@ function SystemModelSession({
   const { t } = useTranslation(['common', 'modelProvider'])
   const modelLabelId = useId()
   const saveButtonRef = useRef<HTMLButtonElement>(null)
-  const clearConfirmedRef = useRef(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
@@ -297,7 +293,6 @@ function SystemModelSession({
             modelType === ModelTypeEnum.speech2text ||
             modelType === ModelTypeEnum.tts
           ) {
-            clearConfirmedRef.current = false
             setClearConfirmation({ modelType, labelKey, open: true })
             return
           }
@@ -312,7 +307,6 @@ function SystemModelSession({
   const handleConfirmClear = () => {
     if (!clearConfirmation || !canManageSystemDefaultModel) return
 
-    clearConfirmedRef.current = true
     handleChangeDefaultModel(clearConfirmation.modelType, undefined)
     closeClearConfirmation()
   }
@@ -514,12 +508,14 @@ function SystemModelSession({
         onOpenChange={(nextOpen) => {
           if (!nextOpen) closeClearConfirmation()
         }}
-        onOpenChangeComplete={(nextOpen) => {
-          if (!nextOpen) setClearConfirmation((current) => (current?.open ? current : undefined))
-        }}
       >
         <AlertDialogContent
-          finalFocus={() => (clearConfirmedRef.current ? saveButtonRef.current : true)}
+          backdropProps={{ forceRender: true }}
+          finalFocus={() =>
+            clearConfirmation && !defaultModels?.[clearConfirmation.modelType]
+              ? saveButtonRef.current
+              : true
+          }
         >
           <AlertDialogHeader>
             <AlertDialogTitle>
