@@ -3,7 +3,7 @@ import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import ExitStack
 from contextvars import copy_context
-from typing import Any, Protocol, TypedDict
+from typing import Any, TypedDict
 from uuid import uuid4
 
 from configs import dify_config
@@ -46,7 +46,9 @@ from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariableP
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models import Account
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
+from models.workflow import Workflow
 from services.human_input.ports import HumanInputFormReader
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
 from services.workflow.execution.adapters.node_factory import (
     DifyGraphInitContext,
@@ -107,24 +109,6 @@ class _EdgeConfigDict(TypedDict):
 class SingleNodeGraphDict(TypedDict):
     nodes: list[_NodeConfigDict]
     edges: list[_EdgeConfigDict]
-
-
-class _WorkflowEntryDefinition(Protocol):
-    """Narrow workflow view shared by ORM rows and detached snapshots during migration."""
-
-    @property
-    def id(self) -> str: ...
-
-    @property
-    def tenant_id(self) -> str: ...
-
-    @property
-    def app_id(self) -> str: ...
-
-    @property
-    def graph_dict(self) -> Mapping[str, Any]: ...
-
-    def get_node_config_by_id(self, node_id: str) -> Mapping[str, Any]: ...
 
 
 class WorkflowEntry:
@@ -205,7 +189,7 @@ class WorkflowEntry:
     def single_step_run(
         cls,
         *,
-        workflow: _WorkflowEntryDefinition,
+        workflow: WorkflowSnapshot | Workflow,
         node_id: str,
         user_id: str,
         user_inputs: Mapping[str, Any],

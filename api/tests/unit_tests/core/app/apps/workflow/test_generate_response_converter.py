@@ -1,6 +1,5 @@
 from collections.abc import Generator
 
-from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
     NodeFinishStreamResponse,
@@ -10,6 +9,9 @@ from core.app.entities.task_entities import (
     WorkflowAppStreamResponse,
 )
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from services.workflow.execution.adapters.workflow.generate_response_converter import (
+    WorkflowAppGenerateResponseConverter,
+)
 
 
 class TestWorkflowGenerateResponseConverter:
