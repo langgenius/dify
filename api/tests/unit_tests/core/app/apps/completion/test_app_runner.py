@@ -26,6 +26,7 @@ from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.provider_configuration import ProviderModelBundle
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.moderation.base import ModerationError
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
@@ -117,6 +118,14 @@ def model_runtime(monkeypatch: pytest.MonkeyPatch) -> tuple[ProviderModelBundle,
         provider_schema=bundle.configuration.provider,
         model_runtime=create_plugin_model_runtime(tenant_id=TENANT_ID),
     )
+    provider_declaration = PluginModelProviderDeclaration.model_validate(
+        {
+            **bundle.configuration.provider.model_dump(),
+            "plugin_unique_identifier": "langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "installation_source": None,
+        }
+    )
+    monkeypatch.setattr(PluginModelRuntime, "fetch_model_providers", lambda _runtime: [provider_declaration])
     calls: list[RecordedCall] = []
     events: list[str] = []
 
@@ -469,7 +478,11 @@ class TestCompletionAppRunner:
                     "method": "POST",
                     "path": f"plugin/{TENANT_ID}/dispatch/llm/invoke",
                     "type_": LLMResultChunk,
-                    "headers": {"X-Plugin-ID": "langgenius/openai", "Content-Type": "application/json"},
+                    "headers": {
+                        "X-Plugin-ID": "langgenius/openai",
+                        "X-Plugin-Unique-Identifier": "langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        "Content-Type": "application/json",
+                    },
                     "data": {
                         "app_id": APP_ID,
                         "data": {

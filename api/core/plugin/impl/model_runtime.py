@@ -27,7 +27,6 @@ from graphon.model_runtime.entities.llm_entities import (
 )
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
-from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingInputType, EmbeddingResult
 from graphon.model_runtime.model_providers.base.large_language_model import normalize_non_stream_runtime_result
@@ -185,6 +184,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             credentials=credentials,
         )
@@ -203,6 +203,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model_type=model_type.value,
             model=model,
@@ -256,6 +257,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model_type=model_type.value,
             model=model,
@@ -328,6 +330,7 @@ class PluginModelRuntime(ModelRuntime):
                 tenant_id=self.tenant_id,
                 user_id=self.user_id,
                 plugin_id=plugin_id,
+                plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
                 provider=provider_name,
                 model=model,
                 credentials=credentials,
@@ -342,6 +345,7 @@ class PluginModelRuntime(ModelRuntime):
                 tenant_id=self.tenant_id,
                 user_id=self.user_id,
                 plugin_id=plugin_id,
+                plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
                 provider=provider_name,
                 model=model,
                 credentials=credentials,
@@ -448,6 +452,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model_type=model_type.value,
             model=model,
@@ -474,6 +479,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -498,6 +504,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -521,6 +528,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -545,6 +553,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -566,6 +575,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -591,6 +601,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -619,6 +630,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -645,6 +657,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -668,6 +681,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -690,6 +704,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -712,13 +727,14 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
             provider=provider_name,
             model=model,
             credentials=credentials,
             text=text,
         )
 
-    def _get_provider_schema(self, provider: str) -> ProviderEntity:
+    def _get_provider_schema(self, provider: str) -> PluginModelProviderDeclaration:
         providers = self.fetch_model_providers()
         provider_entity = next((item for item in providers if item.provider == provider), None)
         if provider_entity is None:

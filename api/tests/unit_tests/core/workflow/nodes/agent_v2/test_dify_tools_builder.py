@@ -18,6 +18,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_manager import ToolManager
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolsBuilder,
@@ -69,7 +70,12 @@ class FakeRuntimeProvider:
         return self.tool
 
 
-class FakeTool(Tool):
+class FakeTool(PluginTool):
+    plugin_unique_identifier = "langgenius/search:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+    def __init__(self, entity: ToolEntity, runtime: ToolRuntime) -> None:
+        super().__init__(entity, runtime, runtime.tenant_id, "icon.svg", self.plugin_unique_identifier)
+
     def tool_provider_type(self):
         raise NotImplementedError
 
