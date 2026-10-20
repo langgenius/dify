@@ -1,7 +1,10 @@
 import type { z } from 'zod'
+import type { Change } from './store'
 import { isRecord } from '@/util/is-record'
 import { BadYamlFormatError } from './errors'
-import { loadYaml, YamlStore } from './store'
+import { loadYaml, REMOVE, YamlStore } from './store'
+
+export { REMOVE } from './store'
 
 export type Notice = (text: string) => void
 
@@ -46,16 +49,6 @@ function readTolerant<S extends z.ZodType>(
     return null
   }
   if (raw === null) return null
-  return parseTolerant(raw, path, schema, notice)
-}
-
-function parseTolerant<S extends z.ZodType>(
-  raw: unknown,
-  path: string,
-  schema: S,
-  notice: Notice,
-): z.output<S> | null {
-  if (raw === null) return null
   if (!isRecord(raw)) {
     notice(`${path} is not a YAML mapping; ignoring it`)
     return null
@@ -79,35 +72,35 @@ function parseTolerant<S extends z.ZodType>(
 export type LocalFile<T> = Readonly<{
   path: string
   read: () => Promise<T | null>
-  write: (doc: T) => Promise<void>
-  update: (transform: (doc: T | null) => T | undefined | Promise<T | undefined>) => Promise<void>
-  remove: () => Promise<void>
-  /** Remove the file only while it still holds a document `matches` accepts. */
-  removeIf: (matches: (doc: T) => boolean) => Promise<void>
+  /** The only way to change the file: `change` sees the latest document, under the file's lock. */
+  update: (change: (doc: T | null) => Change<T>) => Promise<void>
 }>
 
-/** Tolerant read (bad value → default + notice; unusable file → null); write replaces the whole file. */
+// A file is read again on every use, so the same problem would be reported each time.
+function onceEach(notice: Notice): Notice {
+  const said = new Set<string>()
+  return (text) => {
+    if (said.has(text)) return
+    said.add(text)
+    notice(text)
+  }
+}
+
+/** Tolerant read (bad value → default + notice; unusable file → null); update writes the whole file. */
 export function localFile<S extends z.ZodType>(
   path: string,
   schema: S,
   notice: Notice,
 ): LocalFile<z.output<S>> {
   const store = new YamlStore(path)
+  const report = onceEach(notice)
   return {
     path,
-    read: async () => readTolerant(await store.getRaw(), schema, path, notice),
-    write: async (doc) => store.setTyped(schema.parse(doc)),
-    update: async (transform) => {
-      await store.update(async (content) => {
-        const next = await transform(readTolerant(content, schema, path, notice))
-        return next === undefined ? undefined : schema.parse(next)
-      })
-    },
-    remove: () => store.rm(),
-    removeIf: (matches) =>
-      store.rmIf((doc) => {
-        const parsed = schema.safeParse(doc)
-        return parsed.success && matches(parsed.data)
+    read: async () => readTolerant(await store.read(), schema, path, report),
+    update: (change) =>
+      store.update((content) => {
+        const next = change(readTolerant(content, schema, path, report))
+        return next === undefined || next === REMOVE ? next : schema.parse(next)
       }),
   }
 }

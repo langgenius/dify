@@ -36,6 +36,11 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.networkAccessGroups.get': async () => ({
+        tenant_id: 'workspace-1',
+        entitled: true,
+        groups: [],
+      }),
       'workspaces.current.members.get': async () => ({ accounts: [] }),
       'features.vectorSpace.get': async () => ({ size: 0, limit: 50, usage_unknown: false }),
       'billing.invoices.get': async () => ({ url: 'https://billing.example.com' }),
@@ -319,3 +324,42 @@ it('ignores an invalid settings destination', () => {
   renderSettings('unknown')
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
+
+it.each(['owner', 'admin', 'editor'] as const)(
+  'opens IP Policies with the controls allowed for %s',
+  async (role) => {
+    renderSettings(TAB.IP_POLICIES, { currentWorkspace: { role } })
+    const dialog = await findSettings()
+    expect(
+      await within(dialog).findByRole('heading', { name: 'common.settings.ipPolicyEmptyTitle' }),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'common.settings.ipPolicies' }),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('heading', { name: 'common.settings.ipPolicies' }),
+    ).toBeInTheDocument()
+    if (role === 'editor') {
+      expect(
+        within(dialog).queryByRole('button', { name: 'common.settings.ipPolicyEmptyCreate' }),
+      ).not.toBeInTheDocument()
+    } else {
+      expect(
+        within(dialog).getByRole('button', { name: 'common.settings.ipPolicyEmptyCreate' }),
+      ).toBeInTheDocument()
+    }
+  },
+)
+
+it.each(['normal', 'dataset_operator'] as const)(
+  'hides IP Policies and rejects its direct destination for %s',
+  async (role) => {
+    renderSettings(TAB.IP_POLICIES, { currentWorkspace: { role } })
+    const dialog = await findSettings()
+    expect(await expectMembers()).toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('button', { name: 'common.settings.ipPolicies' }),
+    ).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('common.settings.ipPolicyEmptyTitle')).not.toBeInTheDocument()
+  },
+)
