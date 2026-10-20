@@ -12,7 +12,9 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
 import json
-from typing import Any
+from collections.abc import Callable, Generator
+from contextlib import AbstractContextManager, contextmanager
+from typing import Any, cast
 from unittest.mock import patch
 
 import httpx
@@ -63,9 +65,19 @@ def _patch_shared_httpx_client():
         response.request = httpx.Request(method, url)
         return response
 
+    @contextmanager
+    def stream(**kwargs: object) -> Generator[httpx.Response]:
+        stream_call = cast(Callable[..., AbstractContextManager[httpx.Response]], httpx.stream)
+        with stream_call(**kwargs) as response:
+            method, url = kwargs["method"], kwargs["url"]
+            assert isinstance(method, str)
+            assert isinstance(url, str)
+            response.request = httpx.Request(method, url)
+            yield response
+
     with (
         patch("core.plugin.impl.base._httpx_client.request", side_effect=request),
-        patch("core.plugin.impl.base._httpx_client.stream", side_effect=lambda **kw: httpx.stream(**kw)),
+        patch("core.plugin.impl.base._httpx_client.stream", side_effect=stream),
     ):
         yield
 
@@ -1050,7 +1062,7 @@ class TestPluginRuntimeEdgeCases:
             first_result = next(results)
             assert first_result.value == "valid"
 
-            with pytest.raises(ValueError, match="\\{invalid json\\}"):
+            with pytest.raises(PluginDaemonInternalServerError, match="Invalid response"):
                 next(results)
 
     def test_request_with_bytes_data(self, plugin_client, mock_config):
