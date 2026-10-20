@@ -16,6 +16,7 @@ from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Whitelist
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+from models.vector import VectorConfiguration
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -175,7 +176,13 @@ def test_get_vector_factory_entry_point_overrides_builtin(vector_factory_module,
 def test_vector_init_uses_default_and_custom_attributes(vector_factory_module, unbound_session: Session):
     dataset = _dataset()
 
-    with patch.object(vector_factory_module.Vector, "_init_vector", return_value="processor") as init_vector:
+    with (
+        patch.object(
+            vector_factory_module, "resolve_vector_configuration", return_value=VectorConfiguration("qdrant")
+        ) as resolve,
+        patch.object(vector_factory_module.Vector, "get_vector_factory") as factory,
+    ):
+        factory.return_value.return_value.init_vector.return_value = "processor"
         default_vector = vector_factory_module.Vector(dataset, session=unbound_session)
         custom_vector = vector_factory_module.Vector(dataset, attributes=["doc_id"], session=unbound_session)
 
@@ -200,21 +207,26 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module, u
     assert default_vector._session is unbound_session
     assert custom_vector._session is unbound_session
     assert default_vector._vector_processor == "processor"
-    assert [call.kwargs["session"] for call in init_vector.call_args_list] == [unbound_session, unbound_session]
+    assert [call.kwargs["session"] for call in resolve.call_args_list] == [unbound_session, unbound_session]
 
 
 @pytest.mark.parametrize("with_session", [True, False])
-def test_vector_with_resolved_type_passes_session(vector_factory_module, unbound_session: Session, with_session: bool):
+def test_vector_with_resolved_configuration_passes_session(
+    vector_factory_module, unbound_session: Session, with_session: bool
+):
     dataset = _dataset()
     session = unbound_session if with_session else None
     factory = MagicMock()
     with (
         patch.object(vector_factory_module.Vector, "get_vector_factory", return_value=factory),
-        patch.object(vector_factory_module.Vector, "resolve_vector_type") as resolve_vector_type,
+        patch.object(vector_factory_module, "resolve_vector_configuration") as resolve_configuration,
     ):
-        vector = vector_factory_module.Vector(dataset, session=session, vector_type="qdrant")
+        vector = vector_factory_module.Vector(
+            dataset, session=session, configuration=VectorConfiguration("qdrant", "resolved-collection")
+        )
 
-    resolve_vector_type.assert_not_called()
+    resolve_configuration.assert_not_called()
+    factory.assert_called_once_with(collection_name="resolved-collection")
     factory.return_value.init_vector.assert_called_once_with(
         dataset, vector._attributes, vector._embeddings, session=session
     )
@@ -282,7 +294,7 @@ def test_init_vector_prefers_dataset_index_struct(
 ):
     calls = {"vector_type": None, "init_args": None}
 
-    class _Factory:
+    class _Factory(vector_factory_module.AbstractVectorFactory):
         def init_vector(self, dataset, attributes, embeddings, *, session):
             calls["init_args"] = (dataset, attributes, embeddings, session)
             return "vector-processor"
@@ -293,16 +305,15 @@ def test_init_vector_prefers_dataset_index_struct(
         staticmethod(lambda vector_type: calls.update(vector_type=vector_type) or _Factory),
     )
 
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = _dataset(index_struct_dict={"type": vector_factory_module.VectorType.UPSTASH})
-    vector._attributes = ["doc_id"]
-    vector._embeddings = "embeddings"
+    vector = vector_factory_module.Vector(
+        _dataset(index_struct_dict={"type": vector_factory_module.VectorType.UPSTASH}),
+        attributes=["doc_id"],
+        session=unbound_session,
+    )
 
-    result = vector._init_vector(session=unbound_session)
-
-    assert result == "vector-processor"
+    assert vector._vector_processor == "vector-processor"
     assert calls["vector_type"] == vector_factory_module.VectorType.UPSTASH
-    assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings", unbound_session)
+    assert calls["init_args"] == (vector._dataset, ["doc_id"], vector._embeddings, unbound_session)
 
 
 def test_init_vector_uses_whitelist_override(
@@ -310,7 +321,7 @@ def test_init_vector_uses_whitelist_override(
 ):
     calls = {"vector_type": None}
 
-    class _Factory:
+    class _Factory(vector_factory_module.AbstractVectorFactory):
         def init_vector(self, dataset, attributes, embeddings, *, session):
             return "vector-processor"
 
@@ -328,14 +339,13 @@ def test_init_vector_uses_whitelist_override(
         staticmethod(lambda vector_type: calls.update(vector_type=vector_type) or _Factory),
     )
 
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = _dataset(tenant_id=tenant_id, index_struct_dict=None)
-    vector._attributes = ["doc_id"]
-    vector._embeddings = "embeddings"
+    vector = vector_factory_module.Vector(
+        _dataset(tenant_id=tenant_id, index_struct_dict=None),
+        attributes=["doc_id"],
+        session=sqlite_session,
+    )
 
-    result = vector._init_vector(session=sqlite_session)
-
-    assert result == "vector-processor"
+    assert vector._vector_processor == "vector-processor"
     assert calls["vector_type"] == vector_factory_module.VectorType.TIDB_ON_QDRANT
 
 
@@ -344,13 +354,8 @@ def test_init_vector_raises_when_vector_store_missing(
 ):
     apply_config_overrides(monkeypatch, VECTOR_STORE=None, VECTOR_STORE_WHITELIST_ENABLE=False)
 
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = _dataset(index_struct_dict=None)
-    vector._attributes = []
-    vector._embeddings = "embeddings"
-
     with pytest.raises(ValueError, match="Vector store must be specified"):
-        vector._init_vector(session=unbound_session)
+        vector_factory_module.Vector(_dataset(index_struct_dict=None), session=unbound_session)
 
 
 def test_create_batches_texts_and_skips_empty_input(vector_factory_module):

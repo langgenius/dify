@@ -1,10 +1,11 @@
 import threading
+from functools import partial
 from typing import override
 
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelManager
@@ -19,6 +20,7 @@ from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Document, DocumentSegment
 from repositories.knowledge.segment_read_adapter import sign_segment_content
+from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -77,7 +79,13 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             model=self.reranking_model_name,
         )
 
-        rerank_runner = RerankModelRunner(rerank_model_instance, session=session)
+        rerank_runner = RerankModelRunner(
+            rerank_model_instance,
+            load_upload=partial(
+                SQLAlchemyKnowledgeUploadRepository(session_factory=sessionmaker(bind=session.get_bind())).get_by_id,
+                workspace_id=self.tenant_id,
+            ),
+        )
         all_documents = rerank_runner.run(query, all_documents, self.score_threshold, self.top_k)
 
         for hit_callback in self.hit_callbacks:

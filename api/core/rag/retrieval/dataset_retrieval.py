@@ -6,6 +6,7 @@ import threading
 import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
+from functools import partial
 from typing import Any, cast
 
 from flask import Flask, current_app
@@ -97,6 +98,7 @@ from models.enums import CreatorUserRole, DatasetQuerySource
 from repositories.knowledge.dataset_read_repository import get_dataset_available_document_count
 from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 from repositories.knowledge.segment_read_adapter import sign_segment_content
+from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from services.feature_service import FeatureService
 from services.knowledge.external.service import ExternalDatasetService
 from services.knowledge.retrieval.attachments import authorize_retrieved_segment
@@ -1989,7 +1991,12 @@ class DatasetRetrieval:
                             reranking_model,
                             weights,
                             False,
-                            session=session,
+                            load_upload=partial(
+                                SQLAlchemyKnowledgeUploadRepository(
+                                    session_factory=sessionmaker(bind=session.get_bind())
+                                ).get_by_id,
+                                workspace_id=tenant_id,
+                            ),
                         )
                         if query:
                             all_documents_item = data_post_processor.invoke(

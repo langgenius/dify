@@ -1,3 +1,5 @@
+from extensions.application_services.retrieval import build_dataset_retrieval
+
 """SQLite-backed tests for dataset availability, rate limiting, and retrieval orchestration."""
 
 from dataclasses import dataclass
@@ -12,13 +14,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
-from core.rag.retrieval import dataset_retrieval as retrieval_module
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset, DocumentSegment, RateLimitLog
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.knowledge.retrieval import dataset_retrieval as retrieval_module
 
 
 @dataclass(frozen=True)
@@ -27,11 +28,8 @@ class RetrievalDatabase:
 
 
 @pytest.fixture
-def retrieval_database(
-    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
-) -> RetrievalDatabase:
+def retrieval_database(sqlite_session_factory: sessionmaker[Session]) -> RetrievalDatabase:
     """Bind every retrieval-owned session to a disposable SQLite database."""
-    monkeypatch.setattr(retrieval_module.session_factory, "create_session", sqlite_session_factory)
     return RetrievalDatabase(session_maker=sqlite_session_factory)
 
 
@@ -197,7 +195,7 @@ class TestCheckKnowledgeRateLimit:
     ) -> None:
         redis = _patch_rate_limit(monkeypatch, enabled=False)
 
-        DatasetRetrieval()._check_knowledge_rate_limit("tenant-1")
+        build_dataset_retrieval(retrieval_database.session_maker)()._check_knowledge_rate_limit("tenant-1")
 
         redis.zadd.assert_not_called()
         with retrieval_database.session_maker() as session:
@@ -210,7 +208,7 @@ class TestCheckKnowledgeRateLimit:
     ) -> None:
         redis = _patch_rate_limit(monkeypatch, enabled=True, request_count=50)
 
-        DatasetRetrieval()._check_knowledge_rate_limit("tenant-1")
+        build_dataset_retrieval(retrieval_database.session_maker)()._check_knowledge_rate_limit("tenant-1")
 
         current_time = 1234567890000
         redis.zadd.assert_called_once_with("rate_limit_tenant-1", {current_time: current_time})
@@ -226,7 +224,7 @@ class TestCheckKnowledgeRateLimit:
         _patch_rate_limit(monkeypatch, enabled=True, request_count=150)
 
         with pytest.raises(exc.RateLimitExceededError, match="knowledge base request rate limit"):
-            DatasetRetrieval()._check_knowledge_rate_limit("tenant-1")
+            build_dataset_retrieval(retrieval_database.session_maker)()._check_knowledge_rate_limit("tenant-1")
 
         with retrieval_database.session_maker() as session:
             logs = session.scalars(select(RateLimitLog)).all()
@@ -272,7 +270,7 @@ class TestGetAvailableDatasets:
             tenant_id="tenant-2",
         )
 
-        datasets = DatasetRetrieval()._get_available_datasets(
+        datasets = build_dataset_retrieval(retrieval_database.session_maker)()._records.available_datasets(
             "tenant-1",
             ["available", "disabled", "archived", "waiting", "external", "other-tenant"],
         )
@@ -285,7 +283,12 @@ class TestGetAvailableDatasets:
     ) -> None:
         _persist_dataset(retrieval_database, dataset_id="empty")
 
-        assert DatasetRetrieval()._get_available_datasets("tenant-1", ["empty"]) == []
+        assert (
+            build_dataset_retrieval(retrieval_database.session_maker)()._records.available_datasets(
+                "tenant-1", ["empty"]
+            )
+            == []
+        )
 
 
 class TestDatasetRetrievalKnowledgeRetrieval:
@@ -315,7 +318,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
     ) -> None:
         dataset, document = _persist_available_dataset(retrieval_database)
         segment = _persist_segment(retrieval_database, dataset_id=dataset.id, document_id=document.id)
-        retrieval = DatasetRetrieval()
+        retrieval = build_dataset_retrieval(retrieval_database.session_maker)()
         monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", MagicMock())
         monkeypatch.setattr(retrieval, "multiple_retrieve", MagicMock(return_value=[_rag_document("Python", "node-1")]))
         record = SimpleNamespace(segment=segment, score=0.9, child_chunks=[], summary=None, files=None)
@@ -331,7 +334,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
             invoke_from=InvokeFrom.WEB_APP,
         )
         with bind_file_access_scope(scope), retrieval_database.session_maker() as caller_session:
-            result = retrieval.knowledge_retrieval(caller_session, _request(dataset_ids=[dataset.id]))
+            result = retrieval.knowledge_retrieval(_request(dataset_ids=[dataset.id]))
             granted_scope = get_current_file_access_scope()
 
         assert len(result) == 1
@@ -347,14 +350,14 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         retrieval_database: RetrievalDatabase,
     ) -> None:
         _persist_available_dataset(retrieval_database)
-        retrieval = DatasetRetrieval()
+        retrieval = build_dataset_retrieval(retrieval_database.session_maker)()
         monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", MagicMock())
         metadata_filter = MagicMock(return_value=(None, None))
         monkeypatch.setattr(retrieval, "get_metadata_filter_condition", metadata_filter)
         monkeypatch.setattr(retrieval, "multiple_retrieve", MagicMock(return_value=[]))
 
         with retrieval_database.session_maker() as caller_session:
-            result = retrieval.knowledge_retrieval(caller_session, _request(dataset_ids=["dataset-1"]))
+            result = retrieval.knowledge_retrieval(_request(dataset_ids=["dataset-1"]))
 
         assert result == []
         metadata_filter.assert_not_called()
@@ -365,7 +368,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         retrieval_database: RetrievalDatabase,
     ) -> None:
         _persist_dataset(retrieval_database, dataset_id="external", provider="external")
-        retrieval = DatasetRetrieval()
+        retrieval = build_dataset_retrieval(retrieval_database.session_maker)()
         monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", MagicMock())
         external_document = _rag_document(
             "External knowledge",
@@ -382,7 +385,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         monkeypatch.setattr(retrieval, "multiple_retrieve", MagicMock(return_value=[external_document]))
 
         with retrieval_database.session_maker() as caller_session:
-            result = retrieval.knowledge_retrieval(caller_session, _request(dataset_ids=["external"]))
+            result = retrieval.knowledge_retrieval(_request(dataset_ids=["external"]))
 
         assert len(result) == 1
         assert result[0].metadata.data_source_type == "external"
@@ -394,12 +397,12 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         retrieval_database: RetrievalDatabase,
     ) -> None:
         _persist_available_dataset(retrieval_database)
-        retrieval = DatasetRetrieval()
+        retrieval = build_dataset_retrieval(retrieval_database.session_maker)()
         monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", MagicMock())
         monkeypatch.setattr(retrieval, "multiple_retrieve", MagicMock(return_value=[]))
 
         with retrieval_database.session_maker() as caller_session:
-            result = retrieval.knowledge_retrieval(caller_session, _request(dataset_ids=["dataset-1"]))
+            result = retrieval.knowledge_retrieval(_request(dataset_ids=["dataset-1"]))
 
         assert result == []
 
@@ -408,7 +411,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         monkeypatch: pytest.MonkeyPatch,
         retrieval_database: RetrievalDatabase,
     ) -> None:
-        retrieval = DatasetRetrieval()
+        retrieval = build_dataset_retrieval(retrieval_database.session_maker)()
         monkeypatch.setattr(
             retrieval,
             "_check_knowledge_rate_limit",
@@ -417,7 +420,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
 
         with retrieval_database.session_maker() as caller_session:
             with pytest.raises(exc.RateLimitExceededError):
-                retrieval.knowledge_retrieval(caller_session, _request(dataset_ids=["dataset-1"]))
+                retrieval.knowledge_retrieval(_request(dataset_ids=["dataset-1"]))
 
     def test_no_available_datasets_skips_retrieval(
         self,
@@ -425,13 +428,13 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         retrieval_database: RetrievalDatabase,
     ) -> None:
         _persist_dataset(retrieval_database, dataset_id="empty")
-        retrieval = DatasetRetrieval()
+        retrieval = build_dataset_retrieval(retrieval_database.session_maker)()
         monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", MagicMock())
         multiple_retrieve = MagicMock()
         monkeypatch.setattr(retrieval, "multiple_retrieve", multiple_retrieve)
 
         with retrieval_database.session_maker() as caller_session:
-            result = retrieval.knowledge_retrieval(caller_session, _request(dataset_ids=["empty"]))
+            result = retrieval.knowledge_retrieval(_request(dataset_ids=["empty"]))
 
         assert result == []
         multiple_retrieve.assert_not_called()

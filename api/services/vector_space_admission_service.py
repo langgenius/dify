@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.model_manager import ModelManager
-from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -19,6 +18,7 @@ from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset
+from repositories.knowledge.vector_configuration_repository import resolve_vector_type
 from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
@@ -252,7 +252,7 @@ class VectorSpaceAdmissionService:
             or workload.probe_text is None
         ):
             return
-        if Vector.resolve_vector_type(dataset, session=session) != VectorType.TIDB_ON_QDRANT:
+        if resolve_vector_type(dataset, session=session) != VectorType.TIDB_ON_QDRANT:
             return
 
         plan = self._get_plan(dataset.tenant_id)
