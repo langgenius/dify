@@ -4,11 +4,18 @@ import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.impl import base as client_module
+from core.plugin.impl.oauth import OAuthHandler
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderIdentity
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from repositories.credentials.query_repository import CredentialQueryRepository
 from services.tools import builtin_tools_manage_service as service_module
@@ -276,11 +283,23 @@ class TestUpdateBuiltinToolProvider:
             MagicMock(return_value=(encrypter, cache)),
         )
 
-        result = BuiltinToolManageService.update_builtin_tool_provider(
-            "u", "tenant-1", "google", "cred-1", credentials={"key": "value"}
-        )
+        events: list[str] = []
+
+        def committed(_connection: Connection) -> None:
+            events.append("commit")
+
+        engine = repository_session.get_bind()
+        event.listen(engine, "commit", committed)
+        cache.delete.side_effect = lambda: events.append("invalidate")
+        try:
+            result = BuiltinToolManageService.update_builtin_tool_provider(
+                "u", "tenant-1", "google", "cred-1", credentials={"key": "value"}
+            )
+        finally:
+            event.remove(engine, "commit", committed)
 
         assert result == {"result": "success"}
+        assert events == ["commit", "invalidate"]
         controller.validate_credentials.assert_called_once_with("u", {"key": "value"})
         cache.delete.assert_called_once()
         repository_session.expire_all()
@@ -309,6 +328,90 @@ class TestGetOauthClientSchema:
 
 
 class TestGetOauthClient:
+    def test_system_client_binds_verified_package_and_reads_rotated_credentials(
+        self, monkeypatch: pytest.MonkeyPatch, repository_session: Session
+    ) -> None:
+        identifier = f"langgenius/google:1.0.0@{'a' * 32}"
+        controller = service_module.PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin(
+                identity=ToolProviderIdentity(
+                    author="test",
+                    name="google",
+                    label=I18nObject(en_US="Google"),
+                    description=I18nObject(en_US="Google"),
+                    icon="icon.svg",
+                ),
+                plugin_id="langgenius/google",
+                credentials_schema=[],
+                tools=[],
+                oauth_schema=OAuthSchema(),
+            ),
+            tenant_id="tenant-1",
+            plugin_id="langgenius/google",
+            plugin_unique_identifier=identifier,
+        )
+        monkeypatch.setattr(service_module.ToolManager, "get_plugin_provider", lambda *_args: controller)
+        monkeypatch.setattr(
+            service_module.PluginService, "is_plugin_verified", lambda _tenant, value: value == identifier
+        )
+        monkeypatch.setattr(service_module, "decrypt_system_params", json.loads)
+        row = _persist_system_oauth_client(repository_session)
+        row.encrypted_oauth_params = json.dumps({"client_secret": "first-test-secret"})
+        repository_session.commit()
+        first = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
+        assert first is not None
+        assert first.plugin_unique_identifier == identifier
+
+        row.encrypted_oauth_params = json.dumps({"client_secret": "rotated-test-secret"})
+        repository_session.commit()
+        second = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
+        assert second is not None
+        assert second.credentials == {"client_secret": "rotated-test-secret"}
+
+        replacement_identifier = f"langgenius/google:2.0.0@{'b' * 32}"
+
+        def replace_during_verification(_tenant: str, value: str) -> bool:
+            controller.plugin_unique_identifier = replacement_identifier
+            return value == identifier
+
+        monkeypatch.setattr(service_module.PluginService, "is_plugin_verified", replace_during_verification)
+        third = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
+        assert third is not None
+        assert third.plugin_unique_identifier == identifier
+        assert controller.plugin_unique_identifier == replacement_identifier
+        assert BuiltinToolManageService.get_oauth_client("tenant-1", "google") is None
+        requests: list[httpx.Request] = []
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(
+                200, text='data: {"code":0,"message":"","data":{"authorization_url":"https://example.com"}}'
+            )
+
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            monkeypatch.setattr(client_module, "_httpx_client", client)
+            for config in (first, second, third):
+                OAuthHandler().get_authorization_url(
+                    "tenant-1",
+                    "user",
+                    "langgenius/google",
+                    "google",
+                    "https://example.com/callback",
+                    config.credentials,
+                    plugin_unique_identifier=config.plugin_unique_identifier,
+                )
+
+        assert [request.headers["X-Plugin-Unique-Identifier"] for request in requests] == [
+            identifier,
+            identifier,
+            identifier,
+        ]
+        assert [json.loads(request.content)["data"]["system_credentials"] for request in requests] == [
+            {"client_secret": "first-test-secret"},
+            {"client_secret": "rotated-test-secret"},
+            {"client_secret": "rotated-test-secret"},
+        ]
+
     def test_returns_tenant_client_params_when_exists(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -316,8 +419,9 @@ class TestGetOauthClient:
     ) -> None:
         _persist_tenant_oauth_client(repository_session)
         controller = MagicMock()
+        controller.plugin_unique_identifier = "langgenius/google:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         controller.get_oauth_client_schema.return_value = list[object]()
-        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
+        monkeypatch.setattr(service_module.ToolManager, "get_plugin_provider", MagicMock(return_value=controller))
         encrypter = MagicMock()
         encrypter.decrypt.return_value = {"client_id": "id", "client_secret": "secret"}
         monkeypatch.setattr(
@@ -326,7 +430,8 @@ class TestGetOauthClient:
 
         result = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
 
-        assert result == {"client_id": "id", "client_secret": "secret"}
+        assert result is not None
+        assert result.credentials == {"client_id": "id", "client_secret": "secret"}
         encrypter.decrypt.assert_called_once_with({"encrypted": "data"})
 
     def test_falls_back_to_system_client(
@@ -336,17 +441,20 @@ class TestGetOauthClient:
     ) -> None:
         _persist_system_oauth_client(repository_session)
         controller = MagicMock()
+        controller.plugin_unique_identifier = "langgenius/google:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         controller.get_oauth_client_schema.return_value = list[object]()
-        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
+        monkeypatch.setattr(service_module.ToolManager, "get_plugin_provider", MagicMock(return_value=controller))
         monkeypatch.setattr(
             service_module, "create_provider_encrypter", MagicMock(return_value=(MagicMock(), MagicMock()))
         )
+        monkeypatch.setattr(service_module.PluginService, "is_plugin_verified", lambda *_args: True)
         decrypt = MagicMock(return_value={"sys_key": "sys_val"})
         monkeypatch.setattr(service_module, "decrypt_system_params", decrypt)
 
         result = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
 
-        assert result == {"sys_key": "sys_val"}
+        assert result is not None
+        assert result.credentials == {"sys_key": "sys_val"}
         decrypt.assert_called_once_with("enc")
 
 
