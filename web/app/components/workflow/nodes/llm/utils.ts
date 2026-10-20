@@ -146,7 +146,7 @@ export const checkJsonDepth = (json: any) => {
   let maxDepth = 0
 
   if (getTypeOf(json) === 'array') {
-    if (json[0] && getTypeOf(json[0]) === 'object') maxDepth = checkJsonDepth(json[0]) + 1
+    maxDepth = checkJsonDepth(json[0]) + 1
   } else if (getTypeOf(json) === 'object') {
     const propertyDepths = Object.values(json).map((value) => checkJsonDepth(value))
     maxDepth = propertyDepths.length ? Math.max(...propertyDepths) + 1 : 1
@@ -165,8 +165,8 @@ export const checkJsonSchemaDepth = (schema: Field) => {
       checkJsonSchemaDepth(value),
     )
     maxDepth = propertyDepths.length ? Math.max(...propertyDepths) + 1 : 1
-  } else if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
-    maxDepth = checkJsonSchemaDepth(schema.items) + 1
+  } else if (schema.type === Type.array) {
+    maxDepth = (schema.items ? checkJsonSchemaDepth(schema.items) : 0) + 1
   }
 
   return maxDepth
