@@ -9,7 +9,7 @@ import pytest
 from flask import Flask, Response
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Forbidden, InternalServerError
+from werkzeug.exceptions import Forbidden, InternalServerError, UnprocessableEntity
 
 from controllers.console.app import audio as audio_module
 from controllers.console.app.audio import (
@@ -48,7 +48,6 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
-    ProviderNotSupportTextToSpeechLanageServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
@@ -372,22 +371,6 @@ def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch)
     assert response == expected_voices
 
 
-def test_console_text_modes_language_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        AudioService,
-        "transcript_tts_voices",
-        lambda **_kwargs: (_ for _ in ()).throw(ProviderNotSupportTextToSpeechLanageServiceError()),
-    )
-
-    api = TextModesApi()
-    handler = unwrap(api.get)
-    app_model = _app(tenant_id="t1")
-
-    with app.test_request_context("/console/api/apps/app/text-to-audio/voices?language=en", method="GET"):
-        with pytest.raises(AppUnavailableError):
-            handler(api, TextToSpeechVoiceQuery(language="en-US"), app_model=app_model)
-
-
 def test_audio_to_text_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = ChatMessageAudioApi()
     method = unwrap(api.post)
@@ -540,6 +523,7 @@ def test_agent_text_to_speech_voices_uses_backing_app_and_language(app: Flask, u
     ):
         response = unwrap(api.get)(
             api,
+            TextToSpeechVoiceQuery(language="en-US"),
             session=unbound_session,
             current_tenant_id="tenant-1",
             current_user=current_user,
@@ -573,6 +557,7 @@ def test_agent_text_to_speech_voices_does_not_query_provider_without_permission(
     ):
         unwrap(api.get)(
             api,
+            TextToSpeechVoiceQuery(language="en-US"),
             session=unbound_session,
             current_tenant_id="tenant-1",
             current_user=_account(),
@@ -580,6 +565,30 @@ def test_agent_text_to_speech_voices_does_not_query_provider_without_permission(
         )
 
     get_voices.assert_not_called()
+    resolve_app.assert_not_called()
+
+
+def test_agent_text_to_speech_voices_rejects_missing_language(app: Flask, unbound_session: Session) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    api = AgentTextToSpeechVoicesApi()
+    view = unwrap(api.get)
+    # Stop at the innermost decorator so request validation runs without the auth and session layers.
+    handler = unwrap(api.get, stop=lambda f: f.__dict__.get("__wrapped__") is view)
+    with (
+        patch.object(audio_module, "resolve_existing_agent_runtime_app_model") as resolve_app,
+        patch.object(audio_module, "enforce_rbac_checks") as check_access,
+        app.test_request_context(f"/console/api/agent/{agent_id}/text-to-audio/voices", method="GET"),
+        pytest.raises(UnprocessableEntity),
+    ):
+        handler(
+            api,
+            session=unbound_session,
+            current_tenant_id="tenant-1",
+            current_user=_account(),
+            agent_id=agent_id,
+        )
+
+    check_access.assert_not_called()
     resolve_app.assert_not_called()
 
 
@@ -665,7 +674,9 @@ def test_agent_tts_preserves_missing_agent_error(app: Flask, unbound_session: Se
         "current_user": _account(),
         "agent_id": agent_id,
     }
-    if not voices:
+    if voices:
+        args["req_data"] = TextToSpeechVoiceQuery(language="en-US")
+    else:
         args["req_data"] = TextToSpeechPayload(text="Preview")
     with (
         patch.object(audio_module, "resolve_existing_agent_runtime_app_model", side_effect=AgentNotFoundError()),

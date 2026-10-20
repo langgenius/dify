@@ -1,6 +1,7 @@
 'use client'
+import type { PluginInstallTaskStartResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type { InstallPackageResponse, Plugin, PluginManifestInMarket } from '../../../types'
+import type { Plugin, PluginManifestInMarket } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -78,7 +79,7 @@ const Installed: FC<Props> = ({
     try {
       let taskId
       let isInstalled
-      let installResponse: InstallPackageResponse | undefined
+      let installResponse: PluginInstallTaskStartResponse | undefined
       if (hasInstalled) {
         const response = await updatePackageFromMarketPlace({
           original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
@@ -152,7 +153,8 @@ const Installed: FC<Props> = ({
             <p className="system-md-regular text-text-warning">
               {t(($) => $.difyVersionNotCompatible, {
                 ns: 'plugin',
-                minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version,
+                minimalDifyVersion:
+                  pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0',
               })}
             </p>
           )}

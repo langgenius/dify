@@ -46,7 +46,7 @@ const getOutputType = (schema: unknown): string => {
 
 const StrategyDetail: FC<Props> = ({ provider, tenantId, detail, onHide }) => {
   const getValueFromI18nObject = useRenderI18nObject()
-  const { t } = useTranslation(['common', 'tools'])
+  const { t } = useTranslation(['common', 'tools', 'plugin', 'workflow'])
 
   const outputSchema = useMemo(() => {
     const properties = detail.output_schema?.properties
@@ -97,13 +97,14 @@ const StrategyDetail: FC<Props> = ({ provider, tenantId, detail, onHide }) => {
                     <RiCloseLine aria-hidden="true" className="size-4" />
                   </IconButton>
                 </div>
-                <div
-                  className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
+                <button
+                  type="button"
+                  className="mb-2 flex min-h-6 cursor-pointer items-center gap-1 rounded-sm system-xs-semibold-uppercase text-text-accent-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onClick={onHide}
                 >
-                  <RiArrowLeftLine className="size-4" />
-                  BACK
-                </div>
+                  <RiArrowLeftLine aria-hidden="true" className="size-4" />
+                  {t(($) => $['detailPanel.operation.back'], { ns: 'plugin' })}
+                </button>
                 <div className="flex items-center gap-1">
                   <Icon
                     size="tiny"
@@ -161,7 +162,7 @@ const StrategyDetail: FC<Props> = ({ provider, tenantId, detail, onHide }) => {
                         <Separator className="my-2 h-[0.5px]" />
                       </div>
                       <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">
-                        OUTPUT
+                        {t(($) => $['common.output'], { ns: 'workflow' })}
                       </div>
                       {outputSchema.length > 0 && (
                         <div className="space-y-1 px-4 py-2">

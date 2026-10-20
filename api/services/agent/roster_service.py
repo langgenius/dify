@@ -12,6 +12,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
+    AGENT_APP_VERSION_OPERATIONS,
     APP_BACKED_AGENT_SOURCES,
     WORKFLOW_ONLY_AGENT_SOURCES,
     Agent,
@@ -395,10 +396,9 @@ class AgentRosterService:
 
         Unlike :meth:`create_roster_agent`, this does not commit: the caller
         (``AppService.create_app``) owns the surrounding transaction so the App
-        row and its backing Agent are persisted atomically. A default (empty)
-        Agent Soul is seeded; the user configures model/prompt/tools afterward in
-        the Composer. Importers may provide a portable Soul and provenance while
-        retaining the same one-App-to-one-Agent transaction boundary.
+        row and its backing Agent are persisted atomically. The caller supplies
+        the initial Agent Soul, or an empty one is seeded. Importers may provide
+        a portable Soul and provenance while retaining the same transaction boundary.
         """
         soul = initial_soul or AgentSoulConfig()
         agent = Agent(
@@ -1309,12 +1309,7 @@ class AgentRosterService:
         if agent.source == AgentSource.AGENT_APP or (
             agent.source == AgentSource.IMPORTED and agent.scope == AgentScope.ROSTER and agent.app_id
         ):
-            operations = {
-                AgentConfigRevisionOperation.PUBLISH_DRAFT,
-                AgentConfigRevisionOperation.SAVE_NEW_VERSION,
-                AgentConfigRevisionOperation.SAVE_TO_ROSTER,
-                AgentConfigRevisionOperation.RESTORE_VERSION,
-            }
+            operations = set(AGENT_APP_VERSION_OPERATIONS)
             if agent.source == AgentSource.IMPORTED:
                 operations.add(AgentConfigRevisionOperation.IMPORT_PACKAGE)
             return operations

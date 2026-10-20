@@ -107,9 +107,9 @@ function WorkspaceCardTrigger({
   onPrefetchWorkspaces: () => void
   onPlanClick: () => void
 }) {
-  const { t } = useTranslation(['common'])
-  const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'common' })
-  const openMenuLabel = t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })
+  const { t } = useTranslation(['common', 'navigation'])
+  const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'navigation' })
+  const openMenuLabel = t(($) => $['mainNav.workspace.openMenu'], { ns: 'navigation' })
   const isUnlimited = credits === -1
   const formattedCredits = isUnlimited
     ? t(($) => $['license.unlimited'], { ns: 'common' })
@@ -125,7 +125,7 @@ function WorkspaceCardTrigger({
         onMouseEnter={onPrefetchWorkspaces}
         onFocus={onPrefetchWorkspaces}
         className={cn(
-          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
+          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:ring-inset',
           showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
           'data-popup-open:bg-linear-to-b data-popup-open:from-background-section-burn data-popup-open:to-background-section',
         )}
@@ -253,7 +253,7 @@ const selectCurrentWorkspaceCardData = (workspace: CurrentWorkspaceCardSource) =
 })
 
 export function WorkspaceCard() {
-  const { t } = useTranslation(['billing', 'common'])
+  const { t } = useTranslation(['billing', 'common', 'navigation'])
   const queryClient = useQueryClient()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -309,7 +309,6 @@ export function WorkspaceCard() {
       if (currentWorkspace.id === tenant_id) return
 
       await switchWorkspaceMutation.mutateAsync({ body: { tenant_id } })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       location.assign(`${location.origin}${basePath}`)
     } catch {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
@@ -340,8 +339,10 @@ export function WorkspaceCard() {
             name={currentWorkspace.name}
             status={renderWorkspaceStatus()}
             showInviteMembers={showInviteMembers}
-            settingsLabel={t(($) => $['mainNav.workspace.settings'], { ns: 'common' })}
-            inviteMembersLabel={t(($) => $['mainNav.workspace.inviteMembers'], { ns: 'common' })}
+            settingsLabel={t(($) => $['mainNav.workspace.settings'], { ns: 'navigation' })}
+            inviteMembersLabel={t(($) => $['mainNav.workspace.inviteMembers'], {
+              ns: 'navigation',
+            })}
             onOpenSettings={() => {
               setOpen(false)
               setSettingsDestination(hasBillingPlan ? 'billing' : 'members')

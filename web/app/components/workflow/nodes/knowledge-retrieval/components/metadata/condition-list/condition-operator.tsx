@@ -26,14 +26,14 @@ const ConditionOperator = ({
   value,
   onSelect,
 }: ConditionOperatorProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const [open, setOpen] = useState(false)
 
   const options = useMemo(() => {
     return getOperators(variableType).map((o) => {
       return {
         label: isComparisonOperatorNeedTranslate(o)
-          ? t(($) => $[`${i18nPrefix}.comparisonOperator.${o}`], { ns: 'workflow' })
+          ? t(($) => $[`${i18nPrefix}.comparisonOperator.${o}`], { ns: 'workflowLogic' })
           : o,
         value: o,
       }
@@ -54,7 +54,7 @@ const ConditionOperator = ({
           >
             {selectedOption
               ? selectedOption.label
-              : t(($) => $[`${i18nPrefix}.select`], { ns: 'workflow' })}
+              : t(($) => $[`${i18nPrefix}.select`], { ns: 'workflowLogic' })}
             <RiArrowDownSLine className="size-3.5" />
           </Button>
         }

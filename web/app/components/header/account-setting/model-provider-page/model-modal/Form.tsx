@@ -24,7 +24,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useCallback, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
@@ -110,6 +110,7 @@ function Form<
   availableNodes,
 }: FormProps<CustomFormSchema>) {
   const language = useLanguage()
+  const formId = useId()
   const [changeKey, setChangeKey] = useState('')
   const filteredProps: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'> = {
     className,
@@ -128,19 +129,23 @@ function Form<
     fieldMoreInfo,
   }
 
-  const handleFormChange = (key: string, val: FormValue[string]) => {
-    if (isEditMode && (key === '__model_type' || key === '__model_name')) return
+  const handleFormChange = useCallback(
+    (key: string, val: FormValue[string]) => {
+      if (readonly) return
+      if (isEditMode && (key === '__model_type' || key === '__model_name')) return
 
-    setChangeKey(key)
-    const shouldClearVariable: Record<string, string | undefined> = {}
-    if (showOnVariableMap[key]?.length) {
-      showOnVariableMap[key].forEach((clearVariable) => {
-        const schema = formSchemas.find((it) => it.variable === clearVariable)
-        shouldClearVariable[clearVariable] = schema ? schema.default : undefined
-      })
-    }
-    onChange({ ...value, [key]: val, ...shouldClearVariable })
-  }
+      setChangeKey(key)
+      const shouldClearVariable: FormValue = {}
+      if (showOnVariableMap[key]?.length) {
+        showOnVariableMap[key].forEach((clearVariable) => {
+          const schema = formSchemas.find((it) => it.variable === clearVariable)
+          shouldClearVariable[clearVariable] = schema ? schema.default : undefined
+        })
+      }
+      onChange({ ...value, [key]: val, ...shouldClearVariable })
+    },
+    [readonly, isEditMode, showOnVariableMap, formSchemas, onChange, value],
+  )
 
   const handleModelChanged = useCallback(
     (key: string, model: ModelSelectorValue) => {
@@ -149,9 +154,9 @@ function Form<
         ...model,
         type: FormTypeEnum.modelSelector,
       }
-      onChange({ ...value, [key]: newValue })
+      handleFormChange(key, newValue)
     },
-    [onChange, value],
+    [handleFormChange, value],
   )
 
   const renderField = (formSchema: CredentialFormSchema | CustomFormSchema) => {
@@ -196,6 +201,7 @@ function Form<
 
       const disabled =
         readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
+      const inputId = `${formId}-${variable}`
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div
@@ -204,11 +210,18 @@ function Form<
               'flex items-center py-2 system-sm-semibold text-text-secondary',
             )}
           >
-            {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            <label htmlFor={inputId}>
+              {label[language] || label.en_US}
+              {required && (
+                <span aria-hidden className="ml-1 text-red-500">
+                  *
+                </span>
+              )}
+            </label>
             {infotipContent}
           </div>
           <Input
+            id={inputId}
             className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
             value={
               isShowDefaultValue &&
@@ -252,7 +265,8 @@ function Form<
       )
         return null
 
-      const disabled = isEditMode && (variable === '__model_type' || variable === '__model_name')
+      const disabled =
+        readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       const gridColumnsClassName = radioGridColumnsClassNames[options.length] ?? 'grid-cols-1'
       const selectedValue = typeof value[variable] === 'string' ? value[variable] : undefined
       const translatedLabel = label[language] || label.en_US
@@ -399,6 +413,7 @@ function Form<
             <Fieldset
               render={
                 <RadioGroup<boolean>
+                  disabled={readonly}
                   className="flex items-center justify-between gap-3 py-2"
                   value={booleanValue}
                   onValueChange={(val) => handleFormChange(variable, val)}
@@ -417,13 +432,13 @@ function Form<
               </FieldsetLegend>
               <div className="flex items-center gap-3">
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                     <Radio<boolean> value={true} />
                     True
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                     <Radio<boolean> value={false} />
                     False
                   </FieldLabel>
@@ -579,7 +594,7 @@ function Form<
             {infotipContent}
           </div>
           <VarReferencePicker
-            readonly={false}
+            readonly={!!readonly}
             isShowNodeName
             nodeId={nodeId || ''}
             value={value[variable] || []}

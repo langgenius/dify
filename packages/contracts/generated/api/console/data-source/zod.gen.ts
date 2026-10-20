@@ -3,24 +3,100 @@
 import * as z from 'zod'
 
 /**
- * Success
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
  */
-export const zGetDataSourceIntegratesResponse = z.record(z.string(), z.unknown())
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
 
 /**
- * Success
+ * SimpleResultResponse
  */
-export const zPatchDataSourceIntegratesResponse = z.record(z.string(), z.unknown())
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
 
-export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
-  action: z.string(),
-  binding_id: z.uuid(),
+/**
+ * InvalidActionError
+ *
+ * Invalid action.
+ */
+export const zInvalidActionError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_action'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * DataSourceIntegrateIconResponse
+ */
+export const zDataSourceIntegrateIconResponse = z.object({
+  emoji: z.string().nullish(),
+  type: z.string().nullish(),
+  url: z.string().nullish(),
+})
+
+/**
+ * NotionPageType
+ */
+export const zNotionPageType = z.enum(['database', 'page'])
+
+/**
+ * DataSourceIntegratePageResponse
+ */
+export const zDataSourceIntegratePageResponse = z.object({
+  page_icon: zDataSourceIntegrateIconResponse.nullable(),
+  page_id: z.string(),
+  page_name: z.string(),
+  parent_id: z.string(),
+  type: zNotionPageType,
+})
+
+/**
+ * DataSourceIntegrateWorkspaceResponse
+ */
+export const zDataSourceIntegrateWorkspaceResponse = z.object({
+  pages: z.array(zDataSourceIntegratePageResponse),
+  total: z.int(),
+  workspace_icon: z.string().nullable(),
+  workspace_id: z.string().nullable(),
+  workspace_name: z.string().nullable(),
+})
+
+/**
+ * DataSourceIntegrateResponse
+ */
+export const zDataSourceIntegrateResponse = z.object({
+  created_at: z.int().nullable(),
+  disabled: z.boolean().nullable(),
+  id: z.string().nullable(),
+  is_bound: z.boolean(),
+  link: z.string(),
+  provider: z.string(),
+  source_info: zDataSourceIntegrateWorkspaceResponse.nullable(),
+})
+
+/**
+ * DataSourceIntegrateListResponse
+ */
+export const zDataSourceIntegrateListResponse = z.object({
+  data: z.array(zDataSourceIntegrateResponse),
 })
 
 /**
  * Success
  */
-export const zGetDataSourceIntegratesByBindingIdByActionResponse = z.record(z.string(), z.unknown())
+export const zGetDataSourceIntegratesResponse = zDataSourceIntegrateListResponse
 
 export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),
@@ -30,7 +106,4 @@ export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
 /**
  * Success
  */
-export const zPatchDataSourceIntegratesByBindingIdByActionResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDataSourceIntegratesByBindingIdByActionResponse = zSimpleResultResponse

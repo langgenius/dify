@@ -8,14 +8,17 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
+from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.node_runtime import DifyToolFileManager
 from core.workflow.system_variables import build_system_variables
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variables.segments import ArrayFileSegment
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
@@ -44,7 +47,7 @@ class _StubToolRuntime:
         tool_parameters: dict[str, Any],
         workflow_call_depth: int,
         provider_name: str,
-    ) -> Generator[ToolRuntimeMessage, None, None]:
+    ) -> Generator[ToolRuntimeMessage]:
         yield from ()
 
     def get_usage(self, *, tool_runtime: ToolRuntimeHandle) -> LLMUsage:
@@ -71,7 +74,6 @@ def tool_node(monkeypatch) -> ToolNode:
         ops_stub.TraceTask = object  # pragma: no cover - stub attribute
         monkeypatch.setitem(sys.modules, module_name, ops_stub)
 
-    from graphon.nodes.protocols import ToolFileManagerProtocol
     from graphon.nodes.tool.tool_node import ToolNode
 
     graph_config: dict[str, Any] = {
@@ -107,19 +109,18 @@ def tool_node(monkeypatch) -> ToolNode:
     )
 
     variable_pool = build_test_variable_pool(variables=build_system_variables(user_id="user-id"))
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+    graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=0.0)
 
     config = graph_config["nodes"][0]
 
-    # Provide a stub ToolFileManager to satisfy the ToolNode constructor.
-    tool_file_manager = MagicMock(spec=ToolFileManagerProtocol)
+    tool_file_manager = DifyToolFileManager(init_params.run_context)
     runtime = _StubToolRuntime()
 
     node = ToolNode(
         node_id="node-instance",
         data=ToolNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         tool_file_manager=tool_file_manager,
         runtime=runtime,
     )
@@ -204,7 +205,7 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode):
     assert files_segment.value == []
 
 
-def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
+def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode, mocker: MockerFixture):
     file_obj = File(
         file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
@@ -215,9 +216,10 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
         size=123,
         storage_key="file-key",
     )
-    tool_node._tool_file_manager.get_file_generator_by_tool_file_id.return_value = (
-        None,
-        SimpleNamespace(mime_type="application/pdf"),
+    download = mocker.patch.object(
+        ToolFileManager,
+        "get_file_generator_by_tool_file_id",
+        return_value=(None, SimpleNamespace(mime_type="application/pdf")),
     )
     tool_node._runtime.build_file_reference = MagicMock(return_value=file_obj)
     message = ToolRuntimeMessage(
@@ -228,7 +230,7 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
 
     events, _ = _run_transform(tool_node, message)
 
-    tool_node._tool_file_manager.get_file_generator_by_tool_file_id.assert_called_once_with("file-id")
+    download.assert_called_once_with("file-id")
     completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
     assert len(completed_events) == 1
     files_segment = completed_events[0].node_run_result.outputs["files"]
@@ -241,7 +243,7 @@ def test_tool_node_passes_node_execution_id_when_runtime_accepts_it(tool_node: T
     tool_node._runtime.get_runtime = MagicMock(return_value=runtime_handle)
 
     result = tool_node._get_tool_runtime(
-        variable_pool=tool_node.graph_runtime_state.variable_pool,
+        variable_pool=tool_node.runtime_state.variable_pool,
         node_execution_id="node-execution-id",
     )
 
@@ -249,6 +251,6 @@ def test_tool_node_passes_node_execution_id_when_runtime_accepts_it(tool_node: T
     tool_node._runtime.get_runtime.assert_called_once_with(
         node_id="node-instance",
         node_data=tool_node.node_data,
-        variable_pool=tool_node.graph_runtime_state.variable_pool,
+        variable_pool=tool_node.runtime_state.variable_pool,
         node_execution_id="node-execution-id",
     )

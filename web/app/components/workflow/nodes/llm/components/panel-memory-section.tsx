@@ -1,16 +1,16 @@
 import type { FC } from 'react'
 import type { LLMNodeType } from '../types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '@/app/components/workflow/nodes/_base/components/memory-config'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import { FlowType } from '@/types/common'
 
 type Props = Readonly<{
   readOnly: boolean
-  isChatMode: boolean
+  isChatflow: boolean
   isChatModel: boolean
   isCompletionModel: boolean
   inputs: LLMNodeType
@@ -21,7 +21,7 @@ type Props = Readonly<{
   }
   availableVars: NodeOutPutVar[]
   availableNodesWithParent: Node[]
-  flowType?: FlowType
+  resourceKind?: EditorResource['kind']
   handleSyeQueryChange: (query: string) => void
   handleMemoryChange: (memory?: Memory) => void
 }>
@@ -44,26 +44,26 @@ const SNIPPET_DEFAULT_MEMORY: Memory = {
 
 const PanelMemorySection: FC<Props> = ({
   readOnly,
-  isChatMode,
+  isChatflow,
   isChatModel,
   isCompletionModel,
   inputs,
   hasSetBlockStatus,
   availableVars,
   availableNodesWithParent,
-  flowType,
+  resourceKind,
   handleSyeQueryChange,
   handleMemoryChange,
 }) => {
   const userLabelId = React.useId()
   const memoryLabelId = React.useId()
 
-  const { t } = useTranslation(['workflow'])
-  const isSnippetFlow = flowType === FlowType.snippet
+  const { t } = useTranslation(['workflow', 'workflowModels'])
+  const isSnippetFlow = resourceKind === 'snippet'
   const shouldCheckSysQuery = !isSnippetFlow
   const defaultMemory = isSnippetFlow ? SNIPPET_DEFAULT_MEMORY : DEFAULT_MEMORY
 
-  if (!isChatMode) return null
+  if (!isChatflow) return null
 
   return (
     <>
@@ -101,12 +101,12 @@ const PanelMemorySection: FC<Props> = ({
                   <Infotip>
                     <InfotipTrigger aria-labelledby={userLabelId} />
                     <InfotipContent aria-labelledby={userLabelId} className="w-45">
-                      {t(($) => $['nodes.llm.roleDescription.user'], { ns: 'workflow' })}
+                      {t(($) => $['nodes.llm.roleDescription.user'], { ns: 'workflowModels' })}
                     </InfotipContent>
                   </Infotip>
                 </div>
               }
-              value={inputs.memory.query_prompt_template || defaultMemory.query_prompt_template}
+              value={inputs.memory.query_prompt_template ?? defaultMemory.query_prompt_template}
               onChange={handleSyeQueryChange}
               readOnly={readOnly}
               isShowContext={false}

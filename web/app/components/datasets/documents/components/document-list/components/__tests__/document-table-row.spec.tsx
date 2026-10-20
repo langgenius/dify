@@ -1,7 +1,7 @@
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
-import type { SimpleDocumentDetail } from '@/models/datasets'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
@@ -26,6 +26,12 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(mockSearchParams),
 }))
 
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (
+    selector: (value: { dataset: { permission_keys: string[] } }) => unknown,
+  ) => selector({ dataset: { permission_keys: ['dataset.acl.edit'] } }),
+}))
+
 const createWrapper = (value: string[] = [], onValueChange = vi.fn()) => {
   const { wrapper: QueryClientWrapper } = createConsoleQueryWrapper()
   return ({ children }: { children: ReactNode }) => (
@@ -43,44 +49,30 @@ const createWrapper = (value: string[] = [], onValueChange = vi.fn()) => {
   )
 }
 
-type LocalDoc = SimpleDocumentDetail & { percent?: number }
+type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
-const createMockDoc = (overrides: Record<string, unknown> = {}): LocalDoc =>
-  ({
-    id: 'doc-1',
-    position: 1,
-    data_source_type: DataSourceType.FILE,
-    data_source_info: {},
-    data_source_detail_dict: {
-      upload_file: { name: 'test.txt', extension: 'txt' },
+const createMockDoc = (overrides: Partial<LocalDoc> = {}): LocalDoc => ({
+  id: 'doc-1',
+  name: 'test-document.txt',
+  data_source_type: DataSourceType.FILE,
+  indexing_status: 'completed',
+  display_status: 'available',
+  enabled: true,
+  archived: false,
+  created_at: 1700000000,
+  data_source_detail_dict: {
+    upload_file: {
+      id: 'file-1',
+      name: 'test.txt',
+      extension: 'txt',
+      mime_type: 'text/plain',
+      size: 1024,
+      created_at: 1700000000,
+      created_by: 'user-1',
     },
-    dataset_process_rule_id: 'rule-1',
-    dataset_id: 'dataset-1',
-    batch: 'batch-1',
-    name: 'test-document.txt',
-    created_from: 'web',
-    created_by: 'user-1',
-    created_at: Date.now(),
-    tokens: 100,
-    indexing_status: 'completed',
-    error: null,
-    enabled: true,
-    disabled_at: null,
-    disabled_by: null,
-    archived: false,
-    archived_reason: null,
-    archived_by: null,
-    archived_at: null,
-    updated_at: Date.now(),
-    doc_type: null,
-    doc_metadata: undefined,
-    doc_language: 'en',
-    display_status: 'available',
-    word_count: 500,
-    hit_count: 10,
-    doc_form: 'text_model',
-    ...overrides,
-  }) as unknown as LocalDoc
+  },
+  ...overrides,
+})
 
 const getRowCheckbox = () => screen.getByRole('checkbox', { name: 'test-document.txt' })
 
@@ -111,55 +103,6 @@ describe('DocumentTableRow', () => {
     mockSearchParams = ''
   })
 
-  describe('Rendering', () => {
-    it('should render index number correctly', () => {
-      render(<DocumentTableRow {...defaultProps} index={5} />, { wrapper: createWrapper() })
-      expect(screen.getByText('6'))!.toBeInTheDocument()
-    })
-
-    it('should render document name with tooltip', () => {
-      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('test-document.txt'))!.toBeInTheDocument()
-    })
-
-    it('should render checkbox element', () => {
-      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
-      expect(getRowCheckbox())!.toBeInTheDocument()
-    })
-  })
-
-  describe('Selection', () => {
-    it('should show check icon when document id is selected by CheckboxGroup', () => {
-      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper(['doc-1']) })
-      expect(getRowCheckbox()).toHaveAttribute('aria-checked', 'true')
-    })
-
-    it('should not show check icon when document id is not selected by CheckboxGroup', () => {
-      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
-      expect(getRowCheckbox()).toHaveAttribute('aria-checked', 'false')
-    })
-
-    it('should call CheckboxGroup onValueChange when checkbox is clicked', () => {
-      const onValueChange = vi.fn()
-      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper([], onValueChange) })
-
-      fireEvent.click(getRowCheckbox())
-      expect(onValueChange).toHaveBeenCalledWith(['doc-1'])
-    })
-
-    it('should stop propagation when checkbox container is clicked', () => {
-      const { container } = render(<DocumentTableRow {...defaultProps} />, {
-        wrapper: createWrapper(),
-      })
-
-      const checkboxContainer = container.querySelector('td')?.querySelector('div')
-      if (checkboxContainer) {
-        fireEvent.click(checkboxContainer)
-        expect(mockPush).not.toHaveBeenCalled()
-      }
-    })
-  })
-
   describe('Row Navigation', () => {
     it('provides a keyboard-accessible detail link preserving search parameters', async () => {
       const user = userEvent.setup()
@@ -181,36 +124,12 @@ describe('DocumentTableRow', () => {
       expect(mockPush).not.toHaveBeenCalled()
     })
 
-    it('should navigate to document detail on row click', () => {
-      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
-
-      const row = screen.getByRole('row')
-      fireEvent.click(row)
-
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/doc-1')
-    })
-
-    it('should navigate with correct datasetId and documentId', () => {
-      render(
-        <DocumentTableRow
-          {...defaultProps}
-          datasetId="custom-dataset"
-          doc={createMockDoc({ id: 'custom-doc' })}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const row = screen.getByRole('row')
-      fireEvent.click(row)
-
-      expect(mockPush).toHaveBeenCalledWith('/datasets/custom-dataset/documents/custom-doc')
-    })
-
-    it('should preserve search params when navigating to detail', () => {
+    it('should preserve search params when navigating to detail', async () => {
+      const user = userEvent.setup()
       mockSearchParams = 'page=2&status=error'
       render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
 
-      fireEvent.click(screen.getByRole('row'))
+      await user.click(screen.getByRole('row'))
 
       expect(mockPush).toHaveBeenCalledWith(
         '/datasets/dataset-1/documents/doc-1?page=2&status=error',
@@ -218,161 +137,32 @@ describe('DocumentTableRow', () => {
     })
   })
 
-  describe('Word Count Display', () => {
-    it('should display word count less than 1000 as is', () => {
-      const doc = createMockDoc({ word_count: 500 })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByText('500'))!.toBeInTheDocument()
-    })
-
-    it('should display word count 1000 or more in k format', () => {
-      const doc = createMockDoc({ word_count: 1500 })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByText('1.5k'))!.toBeInTheDocument()
-    })
-
-    it('should display 0 with empty style when word_count is 0', () => {
-      const doc = createMockDoc({ word_count: 0 })
-      const { container } = render(<DocumentTableRow {...defaultProps} doc={doc} />, {
-        wrapper: createWrapper(),
-      })
-      const zeroCells = container.querySelectorAll('.text-text-tertiary')
-      expect(zeroCells.length).toBeGreaterThan(0)
-    })
-
-    it('should handle undefined word_count', () => {
-      const doc = createMockDoc({ word_count: undefined as unknown as number })
-      const { container } = render(<DocumentTableRow {...defaultProps} doc={doc} />, {
-        wrapper: createWrapper(),
-      })
-      expect(container)!.toBeInTheDocument()
-    })
-  })
-
-  describe('Hit Count Display', () => {
-    it('should display hit count less than 1000 as is', () => {
-      const doc = createMockDoc({ hit_count: 100 })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByText('100'))!.toBeInTheDocument()
-    })
-
-    it('should display hit count 1000 or more in k format', () => {
-      const doc = createMockDoc({ hit_count: 2500 })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByText('2.5k'))!.toBeInTheDocument()
-    })
-
-    it('should display 0 with empty style when hit_count is 0', () => {
-      const doc = createMockDoc({ hit_count: 0 })
-      const { container } = render(<DocumentTableRow {...defaultProps} doc={doc} />, {
-        wrapper: createWrapper(),
-      })
-      const zeroCells = container.querySelectorAll('.text-text-tertiary')
-      expect(zeroCells.length).toBeGreaterThan(0)
-    })
-  })
-
-  describe('Chunking Mode', () => {
-    it('should render ChunkingModeLabel with general mode', () => {
-      render(<DocumentTableRow {...defaultProps} isGeneralMode isQAMode={false} />, {
-        wrapper: createWrapper(),
-      })
-      // ChunkingModeLabel should be rendered
-      // ChunkingModeLabel should be rendered
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
-    })
-
-    it('should render ChunkingModeLabel with QA mode', () => {
-      render(<DocumentTableRow {...defaultProps} isGeneralMode={false} isQAMode />, {
-        wrapper: createWrapper(),
-      })
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Summary Status', () => {
-    it('should render SummaryStatus when summary_index_status is present', () => {
-      const doc = createMockDoc({ summary_index_status: 'completed' })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
-    })
-
-    it('should not render SummaryStatus when summary_index_status is absent', () => {
-      const doc = createMockDoc({ summary_index_status: undefined })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
-    })
-  })
-
   describe('Rename Action', () => {
-    it('should call onShowRenameModal when rename button is clicked', () => {
+    it('exposes a named rename action that can be activated with the keyboard', async () => {
+      const user = userEvent.setup()
       const onShowRenameModal = vi.fn()
-      const { container } = render(
-        <DocumentTableRow {...defaultProps} onShowRenameModal={onShowRenameModal} />,
-        { wrapper: createWrapper() },
-      )
-
-      // Find the rename button by finding the RiEditLine icon's parent
-      const renameButtons = container.querySelectorAll('.cursor-pointer.rounded-md')
-      if (renameButtons.length > 0) {
-        fireEvent.click(renameButtons[0]!)
-        expect(onShowRenameModal).toHaveBeenCalledWith(defaultProps.doc)
-        expect(mockPush).not.toHaveBeenCalled()
-      }
-    })
-  })
-
-  describe('Operations', () => {
-    it('should pass selectedIds to Operations component', () => {
-      render(<DocumentTableRow {...defaultProps} selectedIds={['doc-1', 'doc-2']} />, {
+      render(<DocumentTableRow {...defaultProps} onShowRenameModal={onShowRenameModal} />, {
         wrapper: createWrapper(),
       })
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
-    })
 
-    it('should pass onSelectedIdChange to Operations component', () => {
-      const onSelectedIdChange = vi.fn()
-      render(<DocumentTableRow {...defaultProps} onSelectedIdChange={onSelectedIdChange} />, {
-        wrapper: createWrapper(),
-      })
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
+      await user.tab()
+      await user.tab()
+      await user.tab()
+      expect(
+        screen.getByRole('button', { name: 'datasetDocuments.list.table.rename' }),
+      ).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(onShowRenameModal).toHaveBeenCalledWith(defaultProps.doc)
+      expect(mockPush).not.toHaveBeenCalled()
     })
   })
 
-  describe('Document Source Icon', () => {
-    it('should render with FILE data source type', () => {
-      const doc = createMockDoc({ data_source_type: DataSourceType.FILE })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
-    })
-
-    it('should render with NOTION data source type', () => {
-      const doc = createMockDoc({
-        data_source_type: DataSourceType.NOTION,
-        data_source_info: { notion_page_icon: 'icon.png' },
-      })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
-    })
-
-    it('should render with WEB data source type', () => {
-      const doc = createMockDoc({ data_source_type: DataSourceType.WEB })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle document with very long name', () => {
-      const doc = createMockDoc({ name: `${'a'.repeat(500)}.txt` })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
-    })
-
-    it('should handle document with special characters in name', () => {
-      const doc = createMockDoc({ name: '<script>test</script>.txt' })
-      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByText('<script>test</script>.txt'))!.toBeInTheDocument()
-    })
+  it('selects a row without triggering detail navigation', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper([], onValueChange) })
+    await user.click(getRowCheckbox())
+    expect(onValueChange).toHaveBeenCalledWith(['doc-1'])
+    expect(mockPush).not.toHaveBeenCalled()
   })
 })

@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptRole, PromptVariable } from '@/models/debug'
@@ -20,7 +21,6 @@ import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/promp
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
-import { AppModeEnum } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
 import ConfirmAddVar from './confirm-add-var'
 import MessageTypeSelector from './message-type-selector'
@@ -102,7 +102,7 @@ const AdvancedPromptInput: FC<Props> = ({
       },
     })
   }
-  const isChatApp = mode !== AppModeEnum.COMPLETION
+  const isChatApp = mode !== 'completion'
   const [isCopied, setIsCopied] = React.useState(false)
 
   const promptVariablesObj = (() => {
@@ -194,7 +194,7 @@ const AdvancedPromptInput: FC<Props> = ({
                 <Infotip>
                   <InfotipTrigger aria-labelledby={promptLabelId} className="ml-1" />
                   <InfotipContent aria-labelledby={promptLabelId} className="w-45">
-                    {t(($) => $.promptTip, { ns: 'appDebug' })}
+                    {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
                   </InfotipContent>
                 </Infotip>
               </div>

@@ -56,6 +56,24 @@ def test_validate_provider_does_not_load_optional_dependencies(provider: Tracing
     load_provider.assert_not_called()
 
 
+def test_require_provider_available_loads_provider_dependencies() -> None:
+    with patch.object(OpsTraceManagerGateway, "_provider_config") as load_provider:
+        OpsTraceManagerGateway().require_provider_available("weave")
+
+    load_provider.assert_called_once_with("weave")
+
+
+def test_require_provider_available_reports_missing_dependency() -> None:
+    unavailable = AppTracingConfigProviderUnavailableError()
+    with (
+        patch.object(OpsTraceManagerGateway, "_provider_config", side_effect=unavailable),
+        pytest.raises(AppTracingConfigProviderUnavailableError) as caught,
+    ):
+        OpsTraceManagerGateway().require_provider_available("weave")
+
+    assert caught.value is unavailable
+
+
 @pytest.mark.parametrize("update", [False, True])
 def test_prepare_config_reports_missing_provider_dependencies(monkeypatch: pytest.MonkeyPatch, update: bool) -> None:
     missing_dependency = TraceProviderNotInstalledError("weave", "wandb")

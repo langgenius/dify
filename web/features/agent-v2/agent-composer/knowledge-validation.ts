@@ -34,9 +34,9 @@ export const getKnowledgeRetrievalSetName = (item: AgentKnowledgeRetrievalItem) 
 
 export const useKnowledgeValidationMessage = () => {
   const { t } = useTranslation(['agentV2'])
-  const { t: tCommon } = useTranslation(['common'])
+  const { t: tCommon } = useTranslation(['common', 'modelProvider'])
   const { t: tAppDebug } = useTranslation(['appDebug'])
-  const { t: tWorkflow } = useTranslation(['workflow'])
+  const { t: tWorkflow } = useTranslation(['workflowModels'])
 
   return (issueCode?: KnowledgeValidationIssueCode) => {
     switch (issueCode) {
@@ -60,7 +60,9 @@ export const useKnowledgeValidationMessage = () => {
         })
       case 'single_model_required':
         return tCommon(($) => $['errorMsg.fieldRequired'], {
-          field: tCommon(($) => $['modelProvider.systemReasoningModel.key']),
+          field: tCommon(($) => $['modelProvider.systemReasoningModel.key'], {
+            ns: 'modelProvider',
+          }),
         })
       case 'metadata_model_required':
         return t(
@@ -68,7 +70,9 @@ export const useKnowledgeValidationMessage = () => {
         )
       case 'metadata_conditions_required':
         return tCommon(($) => $['errorMsg.fieldRequired'], {
-          field: tWorkflow(($) => $['nodes.knowledgeRetrieval.metadata.panel.conditions']),
+          field: tWorkflow(($) => $['nodes.knowledgeRetrieval.metadata.panel.conditions'], {
+            ns: 'workflowModels',
+          }),
         })
       default:
         return undefined

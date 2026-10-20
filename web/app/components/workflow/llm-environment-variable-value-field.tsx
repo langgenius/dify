@@ -23,7 +23,7 @@ export function LLMEnvironmentVariableValueField({
   value?: LLMEnvironmentVariableValue
   onChange: (value: LLMEnvironmentVariableValue) => void
 }) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
   const { activeTextGenerationModelList } = useTextGenerationCurrentProviderAndModelAndModelList()
   const selectableModelList = requiredMode
     ? activeTextGenerationModelList
@@ -43,7 +43,7 @@ export function LLMEnvironmentVariableValueField({
 
     if (typeof mode !== 'string') return
     if (requiredMode && mode !== requiredMode) {
-      toast.error(t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' }))
+      toast.error(t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'modelProvider' }))
       return
     }
 

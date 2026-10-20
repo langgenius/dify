@@ -1,577 +1,277 @@
+import type { ComponentProps } from 'react'
 import type { AssignerNodeOperation, AssignerNodeType } from '../types'
-import type { PanelProps } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useNodes, useReactFlow } from 'reactflow'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import OperationSelector from '../components/operation-selector'
-import VarList from '../components/var-list'
-import Node from '../node'
+import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store'
+import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import NodePreview from '../node'
 import Panel from '../panel'
-import { AssignerNodeInputType, WriteMode, writeModeTypesNum } from '../types'
-import useConfig from '../use-config'
+import { AssignerNodeInputType, WriteMode } from '../types'
 
-const mockHandleAddOperationItem = vi.fn()
-
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, operations, children }: any) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/list-no-data-placeholder', () => ({
-  default: ({ children }: any) => <div>{children}</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
+// Monaco is a browser-owned editor; exercise the surrounding assignment flow with its input contract.
+vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({
     value,
     onChange,
-    onOpen,
-    placeholder,
-    popupFor,
-    valueTypePlaceHolder,
-    filterVar,
-  }: any) => (
-    <div>
-      <div>{Array.isArray(value) ? value.join('.') : String(value ?? '')}</div>
-      {valueTypePlaceHolder && <div>{`type:${valueTypePlaceHolder}`}</div>}
-      {popupFor === 'toAssigned' && (
-        <div>{`filter:${String(filterVar?.({ nodeId: 'node-1', variable: 'count', type: VarType.string }))}:${String(filterVar?.({ nodeId: 'node-2', variable: 'other', type: VarType.string }))}`}</div>
-      )}
-      <button
-        type="button"
-        onClick={() => {
-          onOpen?.()
-          onChange(popupFor === 'assigned' ? ['node-1', 'count'] : ['node-2', 'result'])
-        }}
-      >
-        {placeholder || popupFor || 'pick-var'}
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, onChange }: any) => (
+    readOnly,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/editor/code-editor').default
+  >) => (
     <textarea
-      aria-label="code-editor"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
+      aria-label="JSON assignment"
+      value={typeof value === 'object' ? JSON.stringify(value) : value}
+      readOnly={readOnly}
+      onChange={(event) => onChange?.(event.target.value)}
     />
   ),
 }))
 
-vi.mock('@/app/components/workflow/panel/chat-variable-panel/components/bool-value', () => ({
-  default: ({ value, onChange }: any) => (
-    <button type="button" onClick={() => onChange(!value)}>
-      {`bool:${String(value)}`}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/variable-label', () => ({
-  VariableLabelInNode: ({ variables, nodeTitle, rightSlot }: any) => (
-    <div>
-      <span>{nodeTitle}</span>
-      <span>{variables.join('.')}</span>
-      {rightSlot}
-    </div>
-  ),
-}))
-
-vi.mock('../hooks', () => ({
-  useHandleAddOperationItem: () => mockHandleAddOperationItem,
-}))
-
-vi.mock('../use-config', () => ({
-  default: vi.fn(),
-}))
-
-const mockUseConfig = vi.mocked(useConfig)
-
-const createOperation = (
-  overrides: Partial<AssignerNodeOperation> = {},
-): AssignerNodeOperation => ({
-  variable_selector: ['node-1', 'count'],
-  input_type: AssignerNodeInputType.variable,
-  operation: WriteMode.overwrite,
-  value: ['node-2', 'result'],
+const operation = (overrides: Partial<AssignerNodeOperation> = {}): AssignerNodeOperation => ({
+  variable_selector: ['conversation', 'greeting'],
+  input_type: AssignerNodeInputType.constant,
+  operation: WriteMode.set,
+  value: 'hello',
   ...overrides,
 })
-
-const createData = (overrides: Partial<AssignerNodeType> = {}): AssignerNodeType => ({
+const data = (items: AssignerNodeOperation[]): AssignerNodeType => ({
   title: 'Assigner',
   desc: '',
   type: BlockEnum.VariableAssigner,
   version: '2',
-  items: [createOperation()],
-  ...overrides,
+  items,
 })
-
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  handleOperationListChanges: vi.fn(),
-  getAssignedVarType: vi.fn(() => VarType.string),
-  getToAssignedVarType: vi.fn(() => VarType.string),
-  writeModeTypes: [WriteMode.overwrite, WriteMode.clear, WriteMode.set],
-  writeModeTypesArr: [WriteMode.overwrite, WriteMode.clear, WriteMode.append, WriteMode.extend],
-  writeModeTypesNum,
-  filterAssignedVar: vi.fn(() => true),
-  filterToAssignedVar: vi.fn(() => true),
-  getAvailableVars: vi.fn(() => []),
-  filterVar: vi.fn(() => vi.fn(() => true)),
-  ...overrides,
-})
-
-const panelProps: PanelProps = {
-  getInputVars: vi.fn(() => []),
-  toVarInputs: vi.fn(() => []),
-  runInputData: {},
-  runInputDataRef: { current: {} },
-  setRunInputData: vi.fn(),
-  runResult: null,
+const renderPanel = (items = [operation()], readOnly = false) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  let readData: () => AssignerNodeType
+  const LivePanel = () => {
+    const current = useNodes<AssignerNodeType>().find((node) => node.id === 'assigner')
+    const flow = useReactFlow<AssignerNodeType>()
+    readData = () => flow.getNode('assigner')!.data
+    return current ? (
+      <Panel
+        panelProps={{
+          getInputVars: () => [],
+          toVarInputs: () => [],
+          runInputData: {},
+          runInputDataRef: { current: {} },
+          setRunInputData: () => {},
+          runResult: null,
+        }}
+        id="assigner"
+        data={current.data}
+      />
+    ) : null
+  }
+  const view = renderWorkflowFlowComponent(<LivePanel />, {
+    queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canEdit: !readOnly } },
+    initialStoreState: {
+      conversationVariables: [
+        {
+          id: 'greeting',
+          name: 'greeting',
+          description: '',
+          value_type: ChatVarType.String,
+          value: 'hello',
+        },
+        { id: 'count', name: 'count', description: '', value_type: ChatVarType.Number, value: 3 },
+        {
+          id: 'ready',
+          name: 'ready',
+          description: '',
+          value_type: ChatVarType.Boolean,
+          value: false,
+        },
+        {
+          id: 'settings',
+          name: 'settings',
+          description: '',
+          value_type: ChatVarType.Object,
+          value: { a: 1 },
+        },
+      ],
+    },
+    nodes: [
+      createNode({ id: 'start', data: { type: BlockEnum.Start, variables: [] } }),
+      createNode({
+        id: 'source',
+        data: {
+          title: 'Source',
+          type: BlockEnum.Code,
+          outputs: { text: { type: 'string' }, count: { type: 'number' } },
+        },
+      }),
+      createNode({ id: 'assigner', data: data(items) }),
+    ],
+    edges: [
+      createEdge({ source: 'start', target: 'source' }),
+      createEdge({ source: 'source', target: 'assigner' }),
+    ],
+  })
+  return { ...view, getData: () => readData() }
 }
+const operationName = (mode: WriteMode) => `workflowLogic.nodes.assigner.operations.${mode}`
 
-describe('assigner path', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockHandleAddOperationItem.mockReturnValue([
-      createOperation(),
-      createOperation({ variable_selector: [] }),
-    ])
-    mockUseConfig.mockReturnValue(createConfigResult())
+describe('Assigner panel integration', () => {
+  it('adds and removes operations in the actual workflow graph', async () => {
+    const user = userEvent.setup()
+    const { getData } = renderPanel([])
+    expect(screen.getByText('workflowLogic.nodes.assigner.noVarTip')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    expect(getData().version).toBe('2')
+    expect(getData().items).toHaveLength(1)
+    expect(getData().items[0]?.variable_selector).toEqual([])
+    expect(
+      screen.getByText('workflowLogic.nodes.assigner.selectAssignedVariable'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+    expect(getData().items).toEqual([])
+    expect(screen.getByText('workflowLogic.nodes.assigner.noVarTip')).toBeInTheDocument()
   })
 
-  describe('Path Integration', () => {
-    it('should open the operation selector and choose number operations', async () => {
-      const user = userEvent.setup()
-      const onSelect = vi.fn()
-
-      render(
-        <OperationSelector
-          value={WriteMode.overwrite}
-          onSelect={onSelect}
-          assignedVarType={VarType.number}
-          writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
-          writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
-          writeModeTypesNum={[WriteMode.increment]}
-        />,
-      )
-
-      await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
-      expect(screen.getByText('workflow.nodes.assigner.operations.clear'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.set'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.+='))!.toBeInTheDocument()
-
-      await user.click(screen.getByText('workflow.nodes.assigner.operations.+='))
-      expect(onSelect).toHaveBeenCalledWith({
-        value: WriteMode.increment,
-        name: WriteMode.increment,
-      })
+  it('persists string edits and clears the previous constant when changing operation', async () => {
+    const user = userEvent.setup()
+    const { getData } = renderPanel()
+    const input = screen.getByRole('textbox', { name: 'conversation.greeting' })
+    await user.clear(input)
+    await user.type(input, 'Updated greeting')
+    expect(getData().items[0]).toMatchObject({
+      value: 'Updated greeting',
+      input_type: AssignerNodeInputType.constant,
     })
-
-    it('should not open a disabled operation selector', async () => {
-      const user = userEvent.setup()
-
-      render(
-        <OperationSelector
-          value={WriteMode.overwrite}
-          onSelect={vi.fn()}
-          disabled
-          assignedVarType={VarType.string}
-          writeModeTypes={[WriteMode.overwrite]}
-        />,
-      )
-
-      await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
-      expect(screen.queryByText('workflow.nodes.assigner.operations.title')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: operationName(WriteMode.set) }))
+    await user.click(screen.getByRole('menuitemradio', { name: operationName(WriteMode.clear) }))
+    expect(getData().items[0]).toMatchObject({
+      operation: WriteMode.clear,
+      value: [],
+      input_type: AssignerNodeInputType.variable,
     })
+    expect(screen.queryByRole('textbox', { name: 'conversation.greeting' })).not.toBeInTheDocument()
+  })
 
-    it('should render empty and populated variable lists across constant editors', async () => {
-      const user = userEvent.setup()
-      const onChange = vi.fn()
-      const onOpen = vi.fn()
-      const { rerender } = render(
-        <VarList readonly={false} nodeId="node-1" list={[]} onChange={onChange} />,
-      )
-
-      expect(screen.getByText('workflow.nodes.assigner.noVarTip'))!.toBeInTheDocument()
-
-      rerender(
-        <VarList
-          readonly={false}
-          nodeId="node-1"
-          list={[createOperation({ variable_selector: [], value: [] })]}
-          onChange={onChange}
-          onOpen={onOpen}
-          filterVar={vi.fn(() => true)}
-          filterToAssignedVar={vi.fn(() => true)}
-          getAssignedVarType={vi.fn(() => VarType.string)}
-          getToAssignedVarType={vi.fn(() => VarType.string)}
-          writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
-          writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
-          writeModeTypesNum={writeModeTypesNum}
-        />,
-      )
-
-      await user.click(screen.getByText('workflow.nodes.assigner.selectAssignedVariable'))
-      expect(onOpen).toHaveBeenCalledWith(0)
-      expect(onChange).toHaveBeenLastCalledWith(
-        [
-          {
-            variable_selector: ['node-1', 'count'],
-            operation: WriteMode.overwrite,
-            input_type: AssignerNodeInputType.variable,
-            value: undefined,
-          },
-        ],
-        ['node-1', 'count'],
-      )
-
-      onChange.mockClear()
-      rerender(
-        <VarList
-          readonly={false}
-          nodeId="node-1"
-          list={[createOperation({ operation: WriteMode.overwrite, value: ['node-2', 'result'] })]}
-          onChange={onChange}
-          filterVar={vi.fn(() => true)}
-          filterToAssignedVar={vi.fn(() => true)}
-          getAssignedVarType={vi.fn(() => VarType.boolean)}
-          getToAssignedVarType={vi.fn(() => VarType.string)}
-          writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
-          writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
-          writeModeTypesNum={writeModeTypesNum}
-        />,
-      )
-
-      expect(screen.getByText('filter:false:true'))!.toBeInTheDocument()
-      await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
-      await user.click(screen.getByText('workflow.nodes.assigner.operations.set'))
-      expect(onChange).toHaveBeenLastCalledWith([
-        createOperation({
-          operation: WriteMode.set,
-          input_type: AssignerNodeInputType.constant,
-          value: false,
-        }),
-      ])
-
-      onChange.mockClear()
-      await user.click(screen.getByText('workflow.nodes.assigner.setParameter'))
-      expect(onChange).toHaveBeenLastCalledWith(
-        [createOperation({ operation: WriteMode.overwrite, value: ['node-2', 'result'] })],
-        ['node-2', 'result'],
-      )
-
-      onChange.mockClear()
-      rerender(
-        <VarList
-          readonly={false}
-          nodeId="node-1"
-          list={[createOperation({ operation: WriteMode.set, value: 'hello' })]}
-          onChange={onChange}
-          filterVar={vi.fn(() => true)}
-          filterToAssignedVar={vi.fn(() => true)}
-          getAssignedVarType={vi.fn(() => VarType.string)}
-          getToAssignedVarType={vi.fn(() => VarType.string)}
-          writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
-          writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
-          writeModeTypesNum={writeModeTypesNum}
-        />,
-      )
-
-      await user.click(screen.getByRole('textbox', { name: 'node-1.count' }))
-      await user.keyboard('{Control>}a{/Control}')
-      await user.paste('updated text')
-      expect(onChange).toHaveBeenLastCalledWith(
-        [createOperation({ operation: WriteMode.set, value: 'updated text' })],
-        undefined,
-      )
-
-      onChange.mockClear()
-      rerender(
-        <VarList
-          readonly={false}
-          nodeId="node-1"
-          list={[createOperation({ operation: WriteMode.set, value: 3 })]}
-          onChange={onChange}
-          filterVar={vi.fn(() => true)}
-          filterToAssignedVar={vi.fn(() => true)}
-          getAssignedVarType={vi.fn(() => VarType.number)}
-          getToAssignedVarType={vi.fn(() => VarType.number)}
-          writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
-          writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
-          writeModeTypesNum={writeModeTypesNum}
-        />,
-      )
-
-      await user.click(screen.getByRole('textbox', { name: 'node-1.count' }))
-      await user.keyboard('{Control>}a{/Control}')
-      await user.paste('5')
-      expect(onChange).toHaveBeenLastCalledWith(
-        [createOperation({ operation: WriteMode.set, value: 5 })],
-        undefined,
-      )
-
-      onChange.mockClear()
-      rerender(
-        <VarList
-          readonly={false}
-          nodeId="node-1"
-          list={[createOperation({ operation: WriteMode.set, value: false })]}
-          onChange={onChange}
-          filterVar={vi.fn(() => true)}
-          filterToAssignedVar={vi.fn(() => true)}
-          getAssignedVarType={vi.fn(() => VarType.boolean)}
-          getToAssignedVarType={vi.fn(() => VarType.boolean)}
-          writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
-          writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
-          writeModeTypesNum={writeModeTypesNum}
-        />,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'bool:false' }))
-      expect(onChange).toHaveBeenLastCalledWith(
-        [createOperation({ operation: WriteMode.set, value: true })],
-        undefined,
-      )
-
-      onChange.mockClear()
-      rerender(
-        <VarList
-          readonly={false}
-          nodeId="node-1"
-          list={[createOperation({ operation: WriteMode.set, value: '{"a":1}' })]}
-          onChange={onChange}
-          filterVar={vi.fn(() => true)}
-          filterToAssignedVar={vi.fn(() => true)}
-          getAssignedVarType={vi.fn(() => VarType.object)}
-          getToAssignedVarType={vi.fn(() => VarType.object)}
-          writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
-          writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
-          writeModeTypesNum={writeModeTypesNum}
-        />,
-      )
-
-      await user.click(screen.getByRole('textbox', { name: 'code-editor' }))
-      await user.keyboard('{Control>}a{/Control}')
-      await user.paste('{"a":2}')
-      expect(onChange).toHaveBeenLastCalledWith(
-        [createOperation({ operation: WriteMode.set, value: '{"a":2}' })],
-        undefined,
-      )
-
-      onChange.mockClear()
-      rerender(
-        <VarList
-          readonly={false}
-          nodeId="node-1"
-          list={[createOperation({ operation: WriteMode.increment, value: 2 })]}
-          onChange={onChange}
-          filterVar={vi.fn(() => true)}
-          filterToAssignedVar={vi.fn(() => true)}
-          getAssignedVarType={vi.fn(() => VarType.number)}
-          getToAssignedVarType={vi.fn(() => VarType.number)}
-          writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
-          writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
-          writeModeTypesNum={writeModeTypesNum}
-        />,
-      )
-
-      await user.click(screen.getByRole('textbox', { name: 'node-1.count' }))
-      await user.keyboard('{Control>}a{/Control}')
-      await user.paste('4')
-      expect(onChange).toHaveBeenLastCalledWith(
-        [createOperation({ operation: WriteMode.increment, value: 4 })],
-        undefined,
-      )
-
-      const buttons = screen.getAllByRole('button')
-      await user.click(buttons.at(-1)!)
-      expect(onChange).toHaveBeenLastCalledWith([])
+  it('chooses a numeric operation and persists numeric rather than string input', async () => {
+    const user = userEvent.setup()
+    const { getData } = renderPanel([
+      operation({ variable_selector: ['conversation', 'count'], value: 3 }),
+    ])
+    await user.click(screen.getByRole('button', { name: operationName(WriteMode.set) }))
+    await user.click(
+      screen.getByRole('menuitemradio', { name: operationName(WriteMode.increment) }),
+    )
+    const input = screen.getByRole('textbox', { name: 'conversation.count' })
+    await user.clear(input)
+    await user.type(input, '5')
+    await user.tab()
+    expect(getData().items[0]).toMatchObject({
+      operation: WriteMode.increment,
+      value: 5,
+      input_type: AssignerNodeInputType.constant,
     })
+  })
 
-    it('should render version 2 and legacy node previews', () => {
-      const { rerender } = renderWorkflowFlowComponent(
-        <Node
-          id="assigner-node"
-          data={createData({
-            items: [createOperation({ variable_selector: [] })],
-          })}
-        />,
-        {
-          nodes: [
-            {
-              id: 'node-1',
-              position: { x: 0, y: 0 },
-              data: { title: 'Answer', type: BlockEnum.Answer } as any,
-            },
-            {
-              id: 'start',
-              position: { x: 0, y: 0 },
-              data: { title: 'Start', type: BlockEnum.Start } as any,
-            },
-          ],
-          edges: [],
-        },
-      )
+  it('changes a boolean using the real option controls', async () => {
+    const user = userEvent.setup()
+    const { getData } = renderPanel([
+      operation({ variable_selector: ['conversation', 'ready'], value: false }),
+    ])
+    await user.click(screen.getByRole('button', { name: 'True' }))
+    expect(getData().items[0]?.value).toBe(true)
+  })
 
-      expect(screen.getByText('workflow.nodes.assigner.varNotSet'))!.toBeInTheDocument()
+  it('persists the JSON editor result', async () => {
+    const user = userEvent.setup()
+    const { getData } = renderPanel([
+      operation({ variable_selector: ['conversation', 'settings'], value: '{"a":1}' }),
+    ])
+    const editor = screen.getByRole('textbox', { name: 'JSON assignment' })
+    await user.clear(editor)
+    await user.paste('{"a":2}')
+    expect(getData().items[0]?.value).toBe('{"a":2}')
+  })
 
-      rerender(
-        <Node
-          id="assigner-node"
-          data={createData({
-            items: [createOperation()],
-          })}
-        />,
-      )
+  it('prevents adding, removing, changing operation, or editing constants without edit access', async () => {
+    const user = userEvent.setup()
+    const initial = [
+      operation(),
+      operation({ variable_selector: ['conversation', 'ready'], value: false }),
+    ]
+    const { getData } = renderPanel(initial, true)
+    const add = screen.getByRole('button', { name: 'common.operation.add' })
+    expect(add).toBeDisabled()
+    await user.click(add)
+    for (const remove of screen.getAllByRole('button', { name: 'common.operation.remove' })) {
+      expect(remove).toBeDisabled()
+      await user.click(remove)
+    }
+    for (const selector of screen.getAllByRole('button', { name: operationName(WriteMode.set) })) {
+      expect(selector).toBeDisabled()
+      await user.click(selector)
+    }
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    const input = screen.getByRole('textbox', { name: 'conversation.greeting' })
+    expect(input).toHaveAttribute('readonly')
+    await user.type(input, 'changed')
+    const trueOption = screen.getByRole('button', { name: 'True' })
+    expect(trueOption).toBeDisabled()
+    await user.click(trueOption)
+    expect(getData().items).toEqual(initial)
+  })
+})
 
-      expect(screen.getByText('Answer'))!.toBeInTheDocument()
-      expect(screen.getByText('node-1.count'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.over-write'))!.toBeInTheDocument()
-
-      rerender(
-        <Node
-          id="assigner-node"
-          data={
-            {
-              title: 'Legacy Assigner',
-              desc: '',
-              type: BlockEnum.VariableAssigner,
-              assigned_variable_selector: ['sys', 'query'],
-              write_mode: WriteMode.append,
-            } as any
-          }
-        />,
-      )
-
-      expect(screen.getByText('Start'))!.toBeInTheDocument()
-      expect(screen.getByText('sys.query'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.append'))!.toBeInTheDocument()
+describe('Assigner node previews', () => {
+  it('shows unset operations and resolves the actual variable label and operation', async () => {
+    const view = renderWorkflowFlowComponent(<NodePreview id="assigner" data={data([])} />, {
+      nodes: [createNode({ id: 'source', data: { title: 'Source', type: BlockEnum.Code } })],
     })
+    expect(screen.getByText('workflowLogic.nodes.assigner.varNotSet')).toBeInTheDocument()
+    view.rerender(
+      <NodePreview
+        id="assigner"
+        data={data([
+          operation({ variable_selector: ['source', 'count'], operation: WriteMode.overwrite }),
+        ])}
+      />,
+    )
+    await waitFor(() => expect(screen.getByText('Source')).toBeInTheDocument())
+    expect(screen.getByText('count')).toBeInTheDocument()
+    expect(screen.getByText(operationName(WriteMode.overwrite))).toBeInTheDocument()
+  })
 
-    it('should skip empty version 2 items and resolve system variables without an operation badge', () => {
-      renderWorkflowFlowComponent(
-        <Node
-          id="assigner-node"
-          data={createData({
-            items: [
-              createOperation({ variable_selector: [] }),
-              createOperation({
-                variable_selector: ['sys', 'query'],
-                operation: undefined,
-              }),
-            ],
-          })}
-        />,
-        {
-          nodes: [
-            {
-              id: 'node-1',
-              position: { x: 0, y: 0 },
-              data: { title: 'Answer', type: BlockEnum.Answer } as any,
-            },
-            {
-              id: 'start',
-              position: { x: 0, y: 0 },
-              data: { title: 'Start', type: BlockEnum.Start } as any,
-            },
-          ],
-          edges: [],
-        },
-      )
-
-      expect(screen.getByText('Start'))!.toBeInTheDocument()
-      expect(screen.getByText('sys.query'))!.toBeInTheDocument()
-      expect(
-        screen.queryByText('workflow.nodes.assigner.operations.over-write'),
-      ).not.toBeInTheDocument()
+  it('supports legacy selectors without a version or items list', () => {
+    const legacy = {
+      title: 'Legacy',
+      desc: '',
+      type: BlockEnum.VariableAssigner,
+      assigned_variable_selector: ['sys', 'query'],
+      write_mode: WriteMode.append,
+    } as unknown as AssignerNodeType
+    const view = renderWorkflowFlowComponent(<NodePreview id="assigner" data={legacy} />, {
+      nodes: [createNode({ id: 'start', data: { title: 'Start', type: BlockEnum.Start } })],
     })
-
-    it('should return null for legacy nodes without assigned variables and resolve non-system legacy vars', () => {
-      const { rerender } = renderWorkflowFlowComponent(
-        <Node
-          id="assigner-node"
-          data={
-            {
-              title: 'Legacy Assigner',
-              desc: '',
-              type: BlockEnum.VariableAssigner,
-              assigned_variable_selector: [],
-              write_mode: WriteMode.append,
-            } as any
-          }
-        />,
-        {
-          nodes: [
-            {
-              id: 'node-1',
-              position: { x: 0, y: 0 },
-              data: { title: 'Answer', type: BlockEnum.Answer } as any,
-            },
-            {
-              id: 'start',
-              position: { x: 0, y: 0 },
-              data: { title: 'Start', type: BlockEnum.Start } as any,
-            },
-          ],
-          edges: [],
-        },
-      )
-
-      expect(
-        screen.queryByText('workflow.nodes.assigner.operations.append'),
-      ).not.toBeInTheDocument()
-      expect(screen.queryByText('node-1.count')).not.toBeInTheDocument()
-
-      rerender(
-        <Node
-          id="assigner-node"
-          data={
-            {
-              title: 'Legacy Assigner',
-              desc: '',
-              type: BlockEnum.VariableAssigner,
-              assigned_variable_selector: ['node-1', 'count'],
-              write_mode: WriteMode.append,
-            } as any
-          }
-        />,
-      )
-
-      expect(screen.getByText('Answer'))!.toBeInTheDocument()
-      expect(screen.getByText('node-1.count'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.append'))!.toBeInTheDocument()
-    })
-
-    it('should add panel operations with the real variable list inside the panel', async () => {
-      const user = userEvent.setup()
-      const config = createConfigResult({
-        inputs: createData(),
-      })
-      mockUseConfig.mockReturnValue(config)
-
-      render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
-
-      await user.click(screen.getAllByRole('button')[0]!)
-
-      expect(mockHandleAddOperationItem).toHaveBeenCalledWith(createData().items)
-      expect(config.handleOperationListChanges).toHaveBeenCalledWith([
-        createOperation(),
-        createOperation({ variable_selector: [] }),
-      ])
-
-      expect(screen.getByText('workflow.nodes.assigner.variables'))!.toBeInTheDocument()
-      expect(screen.getByText('node-1.count'))!.toBeInTheDocument()
-    })
+    expect(screen.getByText('Start')).toBeInTheDocument()
+    expect(screen.getByText('query')).toBeInTheDocument()
+    expect(screen.getByText(operationName(WriteMode.append))).toBeInTheDocument()
+    view.rerender(
+      <NodePreview
+        id="assigner"
+        data={{ ...legacy, assigned_variable_selector: [] } as unknown as AssignerNodeType}
+      />,
+    )
+    expect(screen.queryByText(operationName(WriteMode.append))).not.toBeInTheDocument()
   })
 })

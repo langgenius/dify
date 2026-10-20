@@ -1,17 +1,33 @@
 import type { ReactElement } from 'react'
-import type { Mock } from 'vite-plus/test'
 import type { IBatchModalProps } from '../index'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import BatchModal, { ProcessStatus } from '../index'
 
 let annotationQuota = { size: 0, limit: 10 }
 
-vi.mock('@/service/annotation', () => ({
+const mocks = vi.hoisted(() => ({
   annotationBatchImport: vi.fn(),
   checkAnnotationBatchImportProgress: vi.fn(),
+}))
+
+vi.mock('@/service/annotation', () => ({
+  annotationBatchImport: mocks.annotationBatchImport,
+}))
+
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: {
+      byAppId: {
+        annotations: {
+          batchImportStatus: { byJobId: { get: mocks.checkAnnotationBatchImportProgress } },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('../csv-downloader', () => ({
@@ -19,23 +35,6 @@ vi.mock('../csv-downloader', () => ({
 }))
 
 let lastUploadedFile: File | undefined
-
-vi.mock('../csv-uploader', () => ({
-  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
-    <div>
-      <button
-        data-testid="mock-uploader"
-        onClick={() => {
-          lastUploadedFile = new File(['question,answer'], 'batch.csv', { type: 'text/csv' })
-          updateFile(lastUploadedFile)
-        }}
-      >
-        upload
-      </button>
-      {file && <span data-testid="selected-file">{file.name}</span>}
-    </div>
-  ),
-}))
 
 vi.mock('@/app/components/billing/annotation-full', () => ({
   default: () => <div data-testid="annotation-full" />,
@@ -53,8 +52,8 @@ vi.mock('@/app/notifications', () => ({
     info: (message: string) => mockNotify({ type: 'info', message }),
   },
 }))
-const annotationBatchImportMock = annotationBatchImport as Mock
-const checkAnnotationBatchImportProgressMock = checkAnnotationBatchImportProgress as Mock
+const annotationBatchImportMock = mocks.annotationBatchImport
+const checkAnnotationBatchImportProgressMock = mocks.checkAnnotationBatchImportProgress
 
 const renderComponent = (props: Partial<IBatchModalProps> = {}) => {
   const mergedProps: IBatchModalProps = {
@@ -77,11 +76,21 @@ function render(ui: ReactElement) {
   })
 }
 
+async function selectFile(user: ReturnType<typeof userEvent.setup>) {
+  lastUploadedFile = new File(['question,answer'], 'batch.csv', { type: 'text/csv' })
+  const input = document.querySelector<HTMLInputElement>('input[type="file"]')!
+  await user.upload(input, lastUploadedFile)
+}
+
 describe('BatchModal', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     lastUploadedFile = undefined
     annotationQuota = { size: 0, limit: 10 }
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('should disable run action and show billing hint when annotation quota is full', () => {
@@ -93,34 +102,37 @@ describe('BatchModal', () => {
     expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' }))!.toBeDisabled()
   })
 
-  it('should reset uploader state when modal closes and allow manual cancellation', () => {
+  it('should reset uploader state when modal closes and allow manual cancellation', async () => {
+    const user = userEvent.setup()
     const { rerender, props } = renderComponent()
 
-    fireEvent.click(screen.getByTestId('mock-uploader'))
-    expect(screen.getByTestId('selected-file'))!.toHaveTextContent('batch.csv')
+    await selectFile(user)
+    expect(screen.getByText('batch')).toBeInTheDocument()
 
     rerender(<BatchModal {...props} isShow={false} />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     rerender(<BatchModal {...props} isShow />)
 
-    expect(screen.queryByTestId('selected-file')).toBeNull()
+    expect(screen.queryByText('batch')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.cancel' }))
     expect(props.onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('should call onCancel when close button is clicked', () => {
+  it('should call onCancel when close button is clicked', async () => {
+    const user = userEvent.setup()
     const { props } = renderComponent()
 
-    fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
+    await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
     expect(props.onCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should submit the csv file, poll status, and notify when import completes', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const { props } = renderComponent()
-    const fileTrigger = screen.getByTestId('mock-uploader')
-    fireEvent.click(fileTrigger)
+    await selectFile(user)
 
     const runButton = screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })
     expect(runButton).not.toBeDisabled()
@@ -133,15 +145,13 @@ describe('BatchModal', () => {
       .mockResolvedValueOnce({ job_id: 'job-1', job_status: ProcessStatus.PROCESSING })
       .mockResolvedValueOnce({ job_id: 'job-1', job_status: ProcessStatus.COMPLETED })
 
-    await act(async () => {
-      fireEvent.click(runButton)
-    })
+    await user.click(runButton)
 
     await waitFor(() => {
       expect(annotationBatchImportMock).toHaveBeenCalledTimes(1)
     })
 
-    const formData = annotationBatchImportMock.mock.calls[0]![0].body as FormData
+    const formData = annotationBatchImportMock.mock.calls[0]![1] as FormData
     expect(formData.get('file')).toBe(lastUploadedFile)
 
     await waitFor(() => {

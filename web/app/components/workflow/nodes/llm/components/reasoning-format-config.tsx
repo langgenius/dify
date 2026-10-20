@@ -15,12 +15,12 @@ const ReasoningFormatConfig: FC<ReasoningFormatConfigProps> = ({
   onChange,
   readonly = false,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
 
   return (
     <Field
-      title={t(($) => $['nodes.llm.reasoningFormat.title'], { ns: 'workflow' })}
-      tooltip={t(($) => $['nodes.llm.reasoningFormat.tooltip'], { ns: 'workflow' })}
+      title={t(($) => $['nodes.llm.reasoningFormat.title'], { ns: 'workflowModels' })}
+      tooltip={t(($) => $['nodes.llm.reasoningFormat.tooltip'], { ns: 'workflowModels' })}
       operations={
         // ON = separated, OFF = tagged
         <Switch

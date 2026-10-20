@@ -15,6 +15,7 @@ const i18nPrefix = 'nodes.questionClassifiers'
 type Props = Readonly<{
   className?: string
   headerClassName?: string
+  labelId?: string
   nodeId: string
   payload: Topic
   onChange: (payload: Topic) => void
@@ -31,6 +32,7 @@ type Props = Readonly<{
 const ClassItem: FC<Props> = ({
   className,
   headerClassName,
+  labelId,
   nodeId,
   payload,
   onChange,
@@ -43,7 +45,7 @@ const ClassItem: FC<Props> = ({
   placeholder,
   defaultLabel,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const reactId = useId()
   const [isEditingLabel, setIsEditingLabel] = useState(false)
   const [draftLabel, setDraftLabel] = useState('')
@@ -102,38 +104,48 @@ const ClassItem: FC<Props> = ({
   })
 
   const title = isEditingLabel ? (
-    <input
-      ref={labelInputRef}
-      value={draftLabel}
-      aria-label={
-        defaultLabel ?? t(($) => $[`${i18nPrefix}.labelEditorAriaLabel`], { ns: 'workflow' })
-      }
-      className={cn(
-        'h-6 w-full rounded-md border border-divider-regular bg-components-input-bg-normal px-2 text-xs font-semibold text-text-secondary ring-0 outline-none',
-        'focus:border-components-input-border-active',
-      )}
-      onChange={(event) => setDraftLabel(event.target.value)}
-      onBlur={() => handleLabelSave(draftLabel)}
-      onClick={(event) => event.stopPropagation()}
-      onDoubleClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault()
-          handleLabelSave(draftLabel)
+    <>
+      <span id={labelId} hidden>
+        {displayLabel}
+      </span>
+      <input
+        ref={labelInputRef}
+        value={draftLabel}
+        aria-label={
+          defaultLabel ??
+          t(($) => $[`${i18nPrefix}.labelEditorAriaLabel`], { ns: 'workflowModels' })
         }
+        className={cn(
+          'h-6 w-full rounded-md border border-divider-regular bg-components-input-bg-normal px-2 text-xs font-semibold text-text-secondary ring-0 outline-none',
+          'focus:border-components-input-border-active',
+        )}
+        onChange={(event) => setDraftLabel(event.target.value)}
+        onBlur={() => handleLabelSave(draftLabel)}
+        onClick={(event) => event.stopPropagation()}
+        onDoubleClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            handleLabelSave(draftLabel)
+          }
 
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          handleLabelCancel()
-        }
-      }}
-    />
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            handleLabelCancel()
+          }
+        }}
+      />
+    </>
   ) : readonly ? (
-    <div className="-ml-1 px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary">
+    <div
+      id={labelId}
+      className="-ml-1 px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary"
+    >
       {displayLabel}
     </div>
   ) : (
     <button
+      id={labelId}
       type="button"
       className={cn(
         '-ml-1 rounded px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary transition-colors',
@@ -157,7 +169,7 @@ const ClassItem: FC<Props> = ({
       headerClassName={headerClassName}
       title={title}
       placeholder={
-        placeholder ?? t(($) => $[`${i18nPrefix}.topicPlaceholder`], { ns: 'workflow' })!
+        placeholder ?? t(($) => $[`${i18nPrefix}.topicPlaceholder`], { ns: 'workflowModels' })!
       }
       value={payload.name}
       onChange={handleNameChange}

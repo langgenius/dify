@@ -3,7 +3,7 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import Panel from '../panel'
 
 const {
@@ -15,7 +15,6 @@ const {
   mockHandleParamsChange,
   mockHandleBodyChange,
   mockHandleResponseBodyChange,
-  mockIsPrivateOrLocalAddress,
 } = vi.hoisted(() => ({
   mockHandleStatusCodeChange: vi.fn(),
   mockGenerateWebhookUrl: vi.fn(),
@@ -25,104 +24,24 @@ const {
   mockHandleParamsChange: vi.fn(),
   mockHandleBodyChange: vi.fn(),
   mockHandleResponseBodyChange: vi.fn(),
-  mockIsPrivateOrLocalAddress: vi.fn((_url: string) => false),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div>
-      <span>{title}</span>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  default: ({
-    children,
-    onCollapse,
-    collapsed,
-  }: {
-    children: React.ReactNode
-    onCollapse: (value: boolean) => void
-    collapsed: boolean
-  }) => (
-    <div>
-      <button data-testid="toggle-output-vars" type="button" onClick={() => onCollapse(!collapsed)}>
-        toggle output vars
-      </button>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  default: () => <div data-testid="split" />,
-}))
-
-vi.mock('../components/header-table', () => ({
-  default: ({ onChange }: { onChange: (value: Array<Record<string, string>>) => void }) => (
-    <button
-      data-testid="header-table"
-      type="button"
-      onClick={() => onChange([{ key: 'Authorization', value: 'Bearer token' }])}
-    >
-      header table
-    </button>
-  ),
-}))
-
-vi.mock('../components/parameter-table', () => ({
-  default: ({
-    title,
-    onChange,
-    placeholder,
-    contentType,
-  }: {
-    title: string
-    onChange: (value: Array<Record<string, string>>) => void
-    placeholder?: string
-    contentType?: string
-  }) => (
-    <div>
-      <span>{placeholder}</span>
-      <span>{contentType}</span>
-      <button
-        data-testid={`parameter-${title}`}
-        type="button"
-        onClick={() => onChange([{ key: title, value: 'value' }])}
-      >
-        {title}
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../components/paragraph-input', () => ({
-  default: ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value: string
-    onChange: (value: string) => void
-    placeholder: string
-  }) => (
-    <textarea value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
-  ),
-}))
-
-vi.mock('../utils/render-output-vars', () => ({
-  OutputVariablesContent: ({ variables }: { variables: unknown[] }) => (
-    <div data-testid="output-variables">{variables.length}</div>
-  ),
-}))
-
-vi.mock('@/utils/urlValidation', () => ({
-  isPrivateOrLocalAddress: (url: string) => mockIsPrivateOrLocalAddress(url),
-}))
-
-const mockConfigState = {
+const mockConfigState: {
+  readOnly: boolean
+  inputs: Pick<
+    WebhookTriggerNodeType,
+    | 'method'
+    | 'webhook_url'
+    | 'webhook_debug_url'
+    | 'content_type'
+    | 'headers'
+    | 'params'
+    | 'body'
+    | 'status_code'
+    | 'response_body'
+    | 'variables'
+  >
+} = {
   readOnly: false,
   inputs: {
     method: 'POST',
@@ -155,11 +74,10 @@ vi.mock('../use-config', () => ({
   }),
 }))
 
-const getStatusCodeInput = () => {
-  return screen
-    .getAllByDisplayValue('200')
-    .find((element) => element.getAttribute('aria-hidden') !== 'true') as HTMLInputElement
-}
+const getStatusCodeInput = () =>
+  screen.getByRole('textbox', {
+    name: 'workflowIntegrations.nodes.triggerWebhook.statusCode',
+  })
 
 describe('WebhookTriggerPanel', () => {
   const panelProps: NodePanelProps<WebhookTriggerNodeType> = {
@@ -250,15 +168,17 @@ describe('WebhookTriggerPanel', () => {
       const user = userEvent.setup()
       render(<Panel {...panelProps} />)
       const input = screen.getByRole('textbox', {
-        name: 'workflow.nodes.triggerWebhook.webhookUrl',
+        name: 'workflowIntegrations.nodes.triggerWebhook.webhookUrl',
       })
       expect(input).toHaveAttribute('readonly')
-      await user.click(screen.getByText('workflow.nodes.triggerWebhook.webhookUrl'))
+      await user.click(screen.getByText('workflowIntegrations.nodes.triggerWebhook.webhookUrl'))
       expect(input).toHaveFocus()
       await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
       expect(await navigator.clipboard.readText()).toBe('https://example.com/webhook')
       expect(
-        await screen.findByRole('button', { name: 'workflow.nodes.triggerWebhook.urlCopied' }),
+        await screen.findByRole('button', {
+          name: 'workflowIntegrations.nodes.triggerWebhook.urlCopied',
+        }),
       ).toHaveFocus()
     })
 
@@ -266,33 +186,74 @@ describe('WebhookTriggerPanel', () => {
       const user = userEvent.setup()
       render(<Panel {...panelProps} />)
 
-      await user.click(screen.getAllByRole('combobox')[0]!)
+      await user.click(
+        screen.getByRole('combobox', { name: 'workflowIntegrations.nodes.triggerWebhook.method' }),
+      )
       await user.click(await screen.findByRole('option', { name: 'GET' }))
-      await user.click(screen.getAllByRole('combobox')[1]!)
+      await user.click(
+        screen.getByRole('combobox', {
+          name: 'workflowIntegrations.nodes.triggerWebhook.contentType',
+        }),
+      )
       await user.click(await screen.findByRole('option', { name: 'text/plain' }))
-      fireEvent.click(screen.getByTestId('parameter-Query Parameters'))
-      fireEvent.click(screen.getByTestId('header-table'))
-      fireEvent.click(screen.getByTestId('parameter-Request Body Parameters'))
-      fireEvent.change(screen.getByDisplayValue('ok'), { target: { value: 'updated body' } })
-      fireEvent.click(screen.getByTestId('toggle-output-vars'))
+      const [query, header, body] = screen.getAllByRole('textbox', {
+        name: 'workflowIntegrations.nodes.triggerWebhook.varName',
+      })
+      await user.click(query!)
+      await user.paste('search')
+      await user.click(header!)
+      await user.paste('Authorization')
+      await user.click(body!)
+      await user.paste('message')
+      const responseBody = screen.getByDisplayValue<HTMLTextAreaElement>('ok')
+      await user.click(responseBody)
+      responseBody.select()
+      await user.paste('updated body')
 
       expect(mockHandleMethodChange).toHaveBeenCalledWith('GET')
       expect(mockHandleContentTypeChange).toHaveBeenCalledWith('text/plain')
       expect(mockHandleParamsChange).toHaveBeenCalledWith([
-        { key: 'Query Parameters', value: 'value' },
+        { name: 'search', type: VarType.string, required: false },
       ])
       expect(mockHandleHeadersChange).toHaveBeenCalledWith([
-        { key: 'Authorization', value: 'Bearer token' },
+        { name: 'Authorization', required: false },
       ])
       expect(mockHandleBodyChange).toHaveBeenCalledWith([
-        { key: 'Request Body Parameters', value: 'value' },
+        { name: 'message', type: VarType.string, required: false },
       ])
       expect(mockHandleResponseBodyChange).toHaveBeenCalledWith('updated body')
     })
 
+    it('prevents configuration changes and URL generation in readonly mode', async () => {
+      const user = userEvent.setup()
+      mockConfigState.readOnly = true
+      mockConfigState.inputs = {
+        ...mockConfigState.inputs,
+        webhook_url: '',
+        headers: [{ name: 'Authorization', required: true }],
+        params: [{ name: 'search', type: VarType.string, required: false }],
+        body: [{ name: 'message', type: VarType.string, required: false }],
+      }
+      render(<Panel {...panelProps} />)
+
+      for (const input of screen.getAllByRole('textbox', {
+        name: 'workflowIntegrations.nodes.triggerWebhook.varName',
+      })) {
+        expect(input).toBeDisabled()
+        await user.type(input, 'changed')
+      }
+      for (const select of screen.getAllByRole('combobox')) expect(select).toBeDisabled()
+      expect(getStatusCodeInput()).toBeDisabled()
+      expect(screen.getByDisplayValue('ok')).toBeDisabled()
+      expect(screen.queryByRole('button', { name: 'Delete row' })).not.toBeInTheDocument()
+      expect(mockGenerateWebhookUrl).not.toHaveBeenCalled()
+      expect(mockHandleHeadersChange).not.toHaveBeenCalled()
+      expect(mockHandleParamsChange).not.toHaveBeenCalled()
+      expect(mockHandleBodyChange).not.toHaveBeenCalled()
+    })
+
     it('copies the debug URL from the keyboard and announces success while keeping its visible name', async () => {
       const user = userEvent.setup()
-      mockIsPrivateOrLocalAddress.mockReturnValue(true)
       mockConfigState.inputs = {
         ...mockConfigState.inputs,
         webhook_debug_url: 'http://127.0.0.1:8000/debug',
@@ -301,10 +262,12 @@ describe('WebhookTriggerPanel', () => {
       render(<Panel {...panelProps} />)
 
       const button = screen.getByRole('button', {
-        name: 'workflow.nodes.triggerWebhook.debugUrlTitle http://127.0.0.1:8000/debug workflow.nodes.triggerWebhook.debugUrlCopy',
+        name: 'workflowIntegrations.nodes.triggerWebhook.debugUrlTitle http://127.0.0.1:8000/debug workflowIntegrations.nodes.triggerWebhook.debugUrlCopy',
       })
       await user.click(
-        screen.getByRole('textbox', { name: 'workflow.nodes.triggerWebhook.webhookUrl' }),
+        screen.getByRole('textbox', {
+          name: 'workflowIntegrations.nodes.triggerWebhook.webhookUrl',
+        }),
       )
       await user.tab()
       await user.tab()
@@ -313,12 +276,12 @@ describe('WebhookTriggerPanel', () => {
       expect(await navigator.clipboard.readText()).toBe('http://127.0.0.1:8000/debug')
       await waitFor(() =>
         expect(screen.getByRole('status')).toHaveTextContent(
-          'workflow.nodes.triggerWebhook.debugUrlCopied',
+          'workflowIntegrations.nodes.triggerWebhook.debugUrlCopied',
         ),
       )
       expect(button).toHaveFocus()
       expect(
-        screen.getByText('workflow.nodes.triggerWebhook.debugUrlPrivateAddressWarning'),
+        screen.getByText('workflowIntegrations.nodes.triggerWebhook.debugUrlPrivateAddressWarning'),
       ).toBeInTheDocument()
     })
   })

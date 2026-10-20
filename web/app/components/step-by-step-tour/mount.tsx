@@ -23,8 +23,8 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { Translation } from 'react-i18next'
 import {
   pricingQueryParamName,
   pricingQueryParser,
@@ -151,7 +151,6 @@ export default function StepByStepTourMount({
   const router = useRouter()
   const pathname = usePathname()
   const docLink = useDocLink()
-  const { t } = useTranslation(['common'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -442,366 +441,424 @@ export default function StepByStepTourMount({
   const recoveryVisible = Boolean(recoveryAnchorRef) && skipRecoveryVisible
 
   if (!visible && !recoveryVisible) return null
-  const title = t(($) => $['stepByStepTour.title'])
-  const taskCopy: Record<
-    StepByStepTourTaskId,
-    Pick<StepByStepTourTaskView, 'title' | 'description' | 'primaryActionLabel'>
-  > = {
-    home: {
-      title: canCreateApp
-        ? t(($) => $['stepByStepTour.tasks.home.title'])
-        : t(($) => $['stepByStepTour.tasks.home.noCreate.title']),
-      description: canCreateApp
-        ? t(($) => $['stepByStepTour.tasks.home.description'])
-        : t(($) => $['stepByStepTour.tasks.home.noCreate.description']),
-      primaryActionLabel: t(($) => $['stepByStepTour.tasks.home.primaryActionLabel']),
-    },
-    studio: {
-      title: canCreateApp
-        ? t(($) => $['stepByStepTour.tasks.studio.title'])
-        : t(($) => $['stepByStepTour.tasks.studio.noCreate.title']),
-      description: canCreateApp
-        ? t(($) => $['stepByStepTour.tasks.studio.description'])
-        : t(($) => $['stepByStepTour.tasks.studio.noCreate.description']),
-      primaryActionLabel: t(($) => $['stepByStepTour.tasks.studio.primaryActionLabel']),
-    },
-    knowledge: {
-      title: hasKnowledgeWalkthroughPermissions
-        ? t(($) => $['stepByStepTour.tasks.knowledge.title'])
-        : t(($) => $['stepByStepTour.tasks.knowledge.noPermission.title']),
-      description: hasKnowledgeWalkthroughPermissions
-        ? t(($) => $['stepByStepTour.tasks.knowledge.description'])
-        : t(($) => $['stepByStepTour.tasks.knowledge.noPermission.description']),
-      primaryActionLabel: hasKnowledgeWalkthroughPermissions
-        ? t(($) => $['stepByStepTour.tasks.knowledge.primaryActionLabel'])
-        : t(($) => $['stepByStepTour.tasks.knowledge.noPermission.primaryActionLabel']),
-    },
-    integration: {
-      title: hasIntegrationWalkthroughPermissions
-        ? t(($) => $['stepByStepTour.tasks.integration.title'])
-        : t(($) => $['stepByStepTour.tasks.integration.noPermission.title']),
-      description: hasIntegrationWalkthroughPermissions
-        ? t(($) => $['stepByStepTour.tasks.integration.description'])
-        : t(($) => $['stepByStepTour.tasks.integration.noPermission.description']),
-      primaryActionLabel: t(($) => $['stepByStepTour.tasks.integration.primaryActionLabel']),
-    },
-  }
-  const tasks = availableTasks.map((task): StepByStepTourTaskView => {
-    const completed = completedTaskIds.includes(task.id)
-    const knowledgeUnavailable = task.id === 'knowledge' && !hasKnowledgeWalkthroughPermissions
-
-    return {
-      ...taskCopy[task.id],
-      id: task.id,
-      iconClassName: knowledgeUnavailable ? 'i-ri-lock-line' : task.iconClassName,
-      status: completed ? 'completed' : task.id === currentTask?.id ? 'current' : 'pending',
-      canToggleCompletion: false,
-    }
-  })
-
-  const skipTour = () => {
-    if (checklistExiting) return
-
-    setChecklistExiting(true)
-
-    skipTimeoutRef.current = window.setTimeout(() => {
-      patchSkipTour({
-        onSuccess: trackTourSkipped,
-        onError: () => {
-          setChecklistExiting(false)
-          setSkipRecoveryVisible(false)
-        },
-      })
-      setChecklistExiting(false)
-      if (recoveryAnchorRef) setSkipRecoveryVisible(true)
-    }, 160)
-  }
-
-  const skipActiveGuide = () => {
-    const guideAnalyticsProperties = activeGuideAnalyticsProperties
-    if (guideAnalyticsProperties) {
-      trackStepByStepTourEvent({
-        action: 'guide_skipped',
-        task_id: guideAnalyticsProperties.task_id,
-        guide_id: guideAnalyticsProperties.guide_id,
-      })
-    }
-
-    resetSession()
-    setShellMode('expanded')
-  }
-
-  const getNextVisibleActiveGuideIndex = (startIndex: number) => {
-    if (activeGuideIndexes.length > 0) {
-      let nextGuideIndexes = activeGuideIndexes
-      let nextGuideIndex = nextGuideIndexes.find((index) => index >= startIndex)
-
-      while (nextGuideIndex !== undefined) {
-        if (
-          isGuideEligibleForPlan(activeGuides[nextGuideIndex]!, canSetPluginPreferences) &&
-          isOptionalGuideTargetAvailable(activeGuides[nextGuideIndex]!, pathname)
-        ) {
-          return { activeGuideIndex: nextGuideIndex, activeGuideIndexes: nextGuideIndexes }
-        }
-
-        nextGuideIndexes = nextGuideIndexes.filter((index) => index !== nextGuideIndex)
-        nextGuideIndex = nextGuideIndexes.find((index) => index >= startIndex)
-      }
-
-      return { activeGuideIndex: -1, activeGuideIndexes: nextGuideIndexes }
-    }
-
-    for (let index = startIndex; index < activeGuides.length; index += 1) {
-      if (
-        isGuideEligibleForPlan(activeGuides[index]!, canSetPluginPreferences) &&
-        isOptionalGuideTargetAvailable(activeGuides[index]!, pathname)
-      ) {
-        return { activeGuideIndex: index, activeGuideIndexes: undefined }
-      }
-    }
-
-    return { activeGuideIndex: -1, activeGuideIndexes: undefined }
-  }
-
-  const completeActiveGuide = () => {
-    if (!activeTask || !activeGuide) return
-
-    if (activeGuide.completionMode === 'external') return
-
-    const guideAnalyticsProperties = activeGuideAnalyticsProperties
-    if (guideAnalyticsProperties) {
-      trackStepByStepTourEvent({
-        action: 'guide_completed',
-        task_id: guideAnalyticsProperties.task_id,
-        guide_id: guideAnalyticsProperties.guide_id,
-      })
-    }
-
-    if (activeGuideIndex < activeGuides.length - 1) {
-      const nextActiveGuide = getNextVisibleActiveGuideIndex(activeGuideIndex + 1)
-
-      if (nextActiveGuide.activeGuideIndex === -1) {
-        completeTask({
-          taskId: activeTask.id,
-          onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, activeTask.id),
-        })
-        resetSession()
-        setShellMode('expanded')
-        return
-      }
-
-      advanceGuide({
-        guideIndex: nextActiveGuide.activeGuideIndex,
-        guideIndexes: nextActiveGuide.activeGuideIndexes,
-      })
-      return
-    }
-
-    completeTask({
-      taskId: activeTask.id,
-      onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, activeTask.id),
-    })
-    resetSession()
-    setShellMode('expanded')
-  }
-
-  const dismissCompletedTour = () => {
-    patchSkipTour({
-      onSuccess: trackTourSkipped,
-    })
-    resetSession()
-    setShellMode('expanded')
-  }
-
-  const progress = {
-    ariaValueText: t(($) => $['stepByStepTour.progressAriaValueText'], {
-      completed: completedAvailableTaskIds.length,
-      total: availableTasks.length,
-    }),
-    completed: completedAvailableTaskIds.length,
-    total: availableTasks.length,
-  }
-  const floatingChecklist = (
-    <FloatingChecklist
-      title={title}
-      duration={t(($) => $['stepByStepTour.duration'])}
-      progress={progress}
-      completionPrompt={
-        completionPromptVisible
-          ? {
-              label: t(($) => $['stepByStepTour.completion.label']),
-              title: t(($) => $['stepByStepTour.completion.title']),
-              description: t(($) => $['stepByStepTour.completion.description']),
-              dismissLabel: t(($) => $['stepByStepTour.completion.dismiss']),
-              onDismiss: dismissCompletedTour,
-            }
-          : undefined
-      }
-      tasks={tasks}
-      closeButtonRef={checklistCloseButtonRef}
-      skipLabel={t(($) => $['stepByStepTour.skip'])}
-      minimizeLabel={t(($) => $['stepByStepTour.minimize'])}
-      getTaskCompleteLabel={(taskTitle) =>
-        t(($) => $['stepByStepTour.markTaskComplete'], { title: taskTitle })
-      }
-      getTaskIncompleteLabel={(taskTitle) =>
-        t(($) => $['stepByStepTour.markTaskIncomplete'], { title: taskTitle })
-      }
-      onMinimize={() => {
-        setShellMode('collapsed')
-      }}
-      onSkip={skipTour}
-      onCompleteTask={(taskId) => {
-        const guides = getStepByStepTourGuides(taskId, sessionGuideGroup)
-        const hasExternalCompletionGuide = guides.some(
-          (guide) => getStepByStepTourGuideKind(guide) === 'action',
-        )
-        if (hasExternalCompletionGuide) return
-
-        completeTask({
-          taskId,
-          onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, taskId),
-        })
-      }}
-      onStartTask={(taskId) => {
-        const task = availableTasks.find((item) => item.id === taskId)
-
-        if (!task) return
-
-        const guideGroup =
-          taskId === 'home'
-            ? homeGuideGroup
-            : taskId === 'integration'
-              ? integrationGuideGroup
-              : undefined
-        trackStepByStepTourEvent({
-          action: 'task_started',
-          task_id: taskId,
-          permission_variant: getPermissionVariant(taskId),
-        })
-
-        if (taskId === 'knowledge' && !hasKnowledgeWalkthroughPermissions) {
-          completeTask({
-            taskId,
-            onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, taskId),
-          })
-          resetSession()
-          setShellMode('expanded')
-          return
-        }
-
-        const guides = getStepByStepTourGuides(taskId, guideGroup)
-        const guideIndexes = createGuideIndexes(guides).filter((index) =>
-          isGuideEligibleForPlan(guides[index]!, canSetPluginPreferences),
-        )
-        startTask({
-          taskId,
-          guideGroup,
-          guideIndexes: guideIndexes.length > 0 ? guideIndexes : undefined,
-        })
-        router.push(task.route)
-      }}
-      onUncompleteTask={(taskId) => {
-        uncompleteTask({
-          taskId,
-          onSuccess: (completedTaskIds) => {
-            trackStepByStepTourEvent({
-              action: 'task_reopened',
-              task_id: taskId,
-              completed_task_count: completedTaskIds.filter((completedTaskId) =>
-                availableTaskIds.includes(completedTaskId),
-              ).length,
-            })
-          },
-        })
-      }}
-      className={cn(
-        'transition-opacity duration-150 ease-out motion-reduce:transition-none',
-        checklistExiting && 'opacity-0',
-      )}
-    />
-  )
-
   return (
-    <div className={cn('relative', className)}>
-      {overlayVisible && !allTasksCompleted && activeTask && activeGuide && activeTargetElement && (
-        <StepByStepTourCoachmark
-          guide={{
-            ...activeGuide,
-            description: t(($) => $[activeGuide.description]),
-            learnMoreHref: activeGuide.learnMoreDocPath
-              ? docLink(activeGuide.learnMoreDocPath)
-              : undefined,
-            learnMoreLabel: t(($) => $[activeGuide.learnMoreLabel]),
-            primaryActionLabel: t(($) => $[activeGuide.primaryActionLabel]),
-            title: t(($) => $[activeGuide.title]),
-          }}
-          targetElement={activeTargetElement}
-          placement={activeGuidePlacement}
-          stepLabel={t(($) => $['stepByStepTour.stepLabel'], {
-            current: activeStepIndex + 1,
-            total: activeStepTotal,
-          })}
-          skipLabel={t(($) => $['stepByStepTour.skip'])}
-          interactionPolicy={getStepByStepTourGuideInteractionPolicy(
-            activeGuide,
-            activeTask.canClickThrough,
-          )}
-          onSkip={skipActiveGuide}
-          onComplete={completeActiveGuide}
-        />
-      )}
-      {visible && (!allTasksCompleted || completionPromptVisible) && (
-        <Popover
-          open={overlayVisible && expanded}
-          onOpenChange={(open) => {
-            if (open) setShellMode('expanded')
-          }}
-        >
-          <div
-            ref={anchorRef}
-            aria-hidden="true"
-            className="pointer-events-none absolute bottom-0 left-0 h-0 w-full"
-          />
-          {checklistMinimized && (
-            <PopoverTrigger
-              ref={restoreTriggerRef}
-              aria-label={t(($) => $['stepByStepTour.restore'])}
-              render={(props) => <MinimizedTourPill {...props} title={title} progress={progress} />}
+    <Suspense fallback={null}>
+      <Translation ns={['onboarding']}>
+        {(t) => {
+          const title = t(($) => $['stepByStepTour.title'], { ns: 'onboarding' })
+          const taskCopy: Record<
+            StepByStepTourTaskId,
+            Pick<StepByStepTourTaskView, 'title' | 'description' | 'primaryActionLabel'>
+          > = {
+            home: {
+              title: canCreateApp
+                ? t(($) => $['stepByStepTour.tasks.home.title'], { ns: 'onboarding' })
+                : t(($) => $['stepByStepTour.tasks.home.noCreate.title'], { ns: 'onboarding' }),
+              description: canCreateApp
+                ? t(($) => $['stepByStepTour.tasks.home.description'], { ns: 'onboarding' })
+                : t(($) => $['stepByStepTour.tasks.home.noCreate.description'], {
+                    ns: 'onboarding',
+                  }),
+              primaryActionLabel: t(($) => $['stepByStepTour.tasks.home.primaryActionLabel'], {
+                ns: 'onboarding',
+              }),
+            },
+            studio: {
+              title: canCreateApp
+                ? t(($) => $['stepByStepTour.tasks.studio.title'], { ns: 'onboarding' })
+                : t(($) => $['stepByStepTour.tasks.studio.noCreate.title'], { ns: 'onboarding' }),
+              description: canCreateApp
+                ? t(($) => $['stepByStepTour.tasks.studio.description'], { ns: 'onboarding' })
+                : t(($) => $['stepByStepTour.tasks.studio.noCreate.description'], {
+                    ns: 'onboarding',
+                  }),
+              primaryActionLabel: t(($) => $['stepByStepTour.tasks.studio.primaryActionLabel'], {
+                ns: 'onboarding',
+              }),
+            },
+            knowledge: {
+              title: hasKnowledgeWalkthroughPermissions
+                ? t(($) => $['stepByStepTour.tasks.knowledge.title'], { ns: 'onboarding' })
+                : t(($) => $['stepByStepTour.tasks.knowledge.noPermission.title'], {
+                    ns: 'onboarding',
+                  }),
+              description: hasKnowledgeWalkthroughPermissions
+                ? t(($) => $['stepByStepTour.tasks.knowledge.description'], { ns: 'onboarding' })
+                : t(($) => $['stepByStepTour.tasks.knowledge.noPermission.description'], {
+                    ns: 'onboarding',
+                  }),
+              primaryActionLabel: hasKnowledgeWalkthroughPermissions
+                ? t(($) => $['stepByStepTour.tasks.knowledge.primaryActionLabel'], {
+                    ns: 'onboarding',
+                  })
+                : t(($) => $['stepByStepTour.tasks.knowledge.noPermission.primaryActionLabel'], {
+                    ns: 'onboarding',
+                  }),
+            },
+            integration: {
+              title: hasIntegrationWalkthroughPermissions
+                ? t(($) => $['stepByStepTour.tasks.integration.title'], { ns: 'onboarding' })
+                : t(($) => $['stepByStepTour.tasks.integration.noPermission.title'], {
+                    ns: 'onboarding',
+                  }),
+              description: hasIntegrationWalkthroughPermissions
+                ? t(($) => $['stepByStepTour.tasks.integration.description'], { ns: 'onboarding' })
+                : t(($) => $['stepByStepTour.tasks.integration.noPermission.description'], {
+                    ns: 'onboarding',
+                  }),
+              primaryActionLabel: t(
+                ($) => $['stepByStepTour.tasks.integration.primaryActionLabel'],
+                {
+                  ns: 'onboarding',
+                },
+              ),
+            },
+          }
+          const tasks = availableTasks.map((task): StepByStepTourTaskView => {
+            const completed = completedTaskIds.includes(task.id)
+            const knowledgeUnavailable =
+              task.id === 'knowledge' && !hasKnowledgeWalkthroughPermissions
+
+            return {
+              ...taskCopy[task.id],
+              id: task.id,
+              iconClassName: knowledgeUnavailable ? 'i-ri-lock-line' : task.iconClassName,
+              status: completed ? 'completed' : task.id === currentTask?.id ? 'current' : 'pending',
+              canToggleCompletion: false,
+            }
+          })
+
+          const skipTour = () => {
+            if (checklistExiting) return
+
+            setChecklistExiting(true)
+
+            skipTimeoutRef.current = window.setTimeout(() => {
+              patchSkipTour({
+                onSuccess: trackTourSkipped,
+                onError: () => {
+                  setChecklistExiting(false)
+                  setSkipRecoveryVisible(false)
+                },
+              })
+              setChecklistExiting(false)
+              if (recoveryAnchorRef) setSkipRecoveryVisible(true)
+            }, 160)
+          }
+
+          const skipActiveGuide = () => {
+            const guideAnalyticsProperties = activeGuideAnalyticsProperties
+            if (guideAnalyticsProperties) {
+              trackStepByStepTourEvent({
+                action: 'guide_skipped',
+                task_id: guideAnalyticsProperties.task_id,
+                guide_id: guideAnalyticsProperties.guide_id,
+              })
+            }
+
+            resetSession()
+            setShellMode('expanded')
+          }
+
+          const getNextVisibleActiveGuideIndex = (startIndex: number) => {
+            if (activeGuideIndexes.length > 0) {
+              let nextGuideIndexes = activeGuideIndexes
+              let nextGuideIndex = nextGuideIndexes.find((index) => index >= startIndex)
+
+              while (nextGuideIndex !== undefined) {
+                if (
+                  isGuideEligibleForPlan(activeGuides[nextGuideIndex]!, canSetPluginPreferences) &&
+                  isOptionalGuideTargetAvailable(activeGuides[nextGuideIndex]!, pathname)
+                ) {
+                  return { activeGuideIndex: nextGuideIndex, activeGuideIndexes: nextGuideIndexes }
+                }
+
+                nextGuideIndexes = nextGuideIndexes.filter((index) => index !== nextGuideIndex)
+                nextGuideIndex = nextGuideIndexes.find((index) => index >= startIndex)
+              }
+
+              return { activeGuideIndex: -1, activeGuideIndexes: nextGuideIndexes }
+            }
+
+            for (let index = startIndex; index < activeGuides.length; index += 1) {
+              if (
+                isGuideEligibleForPlan(activeGuides[index]!, canSetPluginPreferences) &&
+                isOptionalGuideTargetAvailable(activeGuides[index]!, pathname)
+              ) {
+                return { activeGuideIndex: index, activeGuideIndexes: undefined }
+              }
+            }
+
+            return { activeGuideIndex: -1, activeGuideIndexes: undefined }
+          }
+
+          const completeActiveGuide = () => {
+            if (!activeTask || !activeGuide) return
+
+            if (activeGuide.completionMode === 'external') return
+
+            const guideAnalyticsProperties = activeGuideAnalyticsProperties
+            if (guideAnalyticsProperties) {
+              trackStepByStepTourEvent({
+                action: 'guide_completed',
+                task_id: guideAnalyticsProperties.task_id,
+                guide_id: guideAnalyticsProperties.guide_id,
+              })
+            }
+
+            if (activeGuideIndex < activeGuides.length - 1) {
+              const nextActiveGuide = getNextVisibleActiveGuideIndex(activeGuideIndex + 1)
+
+              if (nextActiveGuide.activeGuideIndex === -1) {
+                completeTask({
+                  taskId: activeTask.id,
+                  onSuccess: (completedTaskIds) =>
+                    trackTaskCompleted(completedTaskIds, activeTask.id),
+                })
+                resetSession()
+                setShellMode('expanded')
+                return
+              }
+
+              advanceGuide({
+                guideIndex: nextActiveGuide.activeGuideIndex,
+                guideIndexes: nextActiveGuide.activeGuideIndexes,
+              })
+              return
+            }
+
+            completeTask({
+              taskId: activeTask.id,
+              onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, activeTask.id),
+            })
+            resetSession()
+            setShellMode('expanded')
+          }
+
+          const dismissCompletedTour = () => {
+            patchSkipTour({
+              onSuccess: trackTourSkipped,
+            })
+            resetSession()
+            setShellMode('expanded')
+          }
+
+          const progress = {
+            ariaValueText: t(($) => $['stepByStepTour.progressAriaValueText'], {
+              ns: 'onboarding',
+              completed: completedAvailableTaskIds.length,
+              total: availableTasks.length,
+            }),
+            completed: completedAvailableTaskIds.length,
+            total: availableTasks.length,
+          }
+          const floatingChecklist = (
+            <FloatingChecklist
+              title={title}
+              duration={t(($) => $['stepByStepTour.duration'], { ns: 'onboarding' })}
+              progress={progress}
+              completionPrompt={
+                completionPromptVisible
+                  ? {
+                      label: t(($) => $['stepByStepTour.completion.label'], { ns: 'onboarding' }),
+                      title: t(($) => $['stepByStepTour.completion.title'], { ns: 'onboarding' }),
+                      description: t(($) => $['stepByStepTour.completion.description'], {
+                        ns: 'onboarding',
+                      }),
+                      dismissLabel: t(($) => $['stepByStepTour.completion.dismiss'], {
+                        ns: 'onboarding',
+                      }),
+                      onDismiss: dismissCompletedTour,
+                    }
+                  : undefined
+              }
+              tasks={tasks}
+              closeButtonRef={checklistCloseButtonRef}
+              skipLabel={t(($) => $['stepByStepTour.skip'], { ns: 'onboarding' })}
+              minimizeLabel={t(($) => $['stepByStepTour.minimize'], { ns: 'onboarding' })}
+              getTaskCompleteLabel={(taskTitle) =>
+                t(($) => $['stepByStepTour.markTaskComplete'], {
+                  ns: 'onboarding',
+                  title: taskTitle,
+                })
+              }
+              getTaskIncompleteLabel={(taskTitle) =>
+                t(($) => $['stepByStepTour.markTaskIncomplete'], {
+                  ns: 'onboarding',
+                  title: taskTitle,
+                })
+              }
+              onMinimize={() => {
+                setShellMode('collapsed')
+              }}
+              onSkip={skipTour}
+              onCompleteTask={(taskId) => {
+                const guides = getStepByStepTourGuides(taskId, sessionGuideGroup)
+                const hasExternalCompletionGuide = guides.some(
+                  (guide) => getStepByStepTourGuideKind(guide) === 'action',
+                )
+                if (hasExternalCompletionGuide) return
+
+                completeTask({
+                  taskId,
+                  onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, taskId),
+                })
+              }}
+              onStartTask={(taskId) => {
+                const task = availableTasks.find((item) => item.id === taskId)
+
+                if (!task) return
+
+                const guideGroup =
+                  taskId === 'home'
+                    ? homeGuideGroup
+                    : taskId === 'integration'
+                      ? integrationGuideGroup
+                      : undefined
+                trackStepByStepTourEvent({
+                  action: 'task_started',
+                  task_id: taskId,
+                  permission_variant: getPermissionVariant(taskId),
+                })
+
+                if (taskId === 'knowledge' && !hasKnowledgeWalkthroughPermissions) {
+                  completeTask({
+                    taskId,
+                    onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, taskId),
+                  })
+                  resetSession()
+                  setShellMode('expanded')
+                  return
+                }
+
+                const guides = getStepByStepTourGuides(taskId, guideGroup)
+                const guideIndexes = createGuideIndexes(guides).filter((index) =>
+                  isGuideEligibleForPlan(guides[index]!, canSetPluginPreferences),
+                )
+                startTask({
+                  taskId,
+                  guideGroup,
+                  guideIndexes: guideIndexes.length > 0 ? guideIndexes : undefined,
+                })
+                router.push(task.route)
+              }}
+              onUncompleteTask={(taskId) => {
+                uncompleteTask({
+                  taskId,
+                  onSuccess: (completedTaskIds) => {
+                    trackStepByStepTourEvent({
+                      action: 'task_reopened',
+                      task_id: taskId,
+                      completed_task_count: completedTaskIds.filter((completedTaskId) =>
+                        availableTaskIds.includes(completedTaskId),
+                      ).length,
+                    })
+                  },
+                })
+              }}
+              className={cn(
+                'transition-opacity duration-150 ease-out motion-reduce:transition-none',
+                checklistExiting && 'opacity-0',
+              )}
             />
-          )}
-          {overlayVisible && (
-            <PopoverPortal>
-              <PopoverPositioner
-                placement="top-start"
-                sideOffset={0}
-                anchor={anchorRef}
-                collisionPadding={8}
-                collisionAvoidance={{
-                  side: 'shift',
-                  align: 'shift',
-                  fallbackAxisSide: 'none',
-                }}
-              >
-                <PopoverPopup initialFocus={checklistCloseButtonRef} finalFocus={restoreTriggerRef}>
-                  {floatingChecklist}
-                </PopoverPopup>
-              </PopoverPositioner>
-            </PopoverPortal>
-          )}
-        </Popover>
-      )}
-      {recoveryAnchorRef && (
-        <SkipRecoveryPrompt
-          open={recoveryVisible}
-          anchorRef={recoveryAnchorRef}
-          label={t(($) => $['stepByStepTour.skipRecovery.label'])}
-          message={t(($) => $['stepByStepTour.skipRecovery.message'])}
-          dismissLabel={t(($) => $['stepByStepTour.skipRecovery.dismiss'])}
-          onOpenChange={setSkipRecoveryVisible}
-        />
-      )}
-    </div>
+          )
+
+          return (
+            <div className={cn('relative', className)}>
+              {overlayVisible &&
+                !allTasksCompleted &&
+                activeTask &&
+                activeGuide &&
+                activeTargetElement && (
+                  <StepByStepTourCoachmark
+                    guide={{
+                      ...activeGuide,
+                      description: t(($) => $[activeGuide.description]),
+                      learnMoreHref: activeGuide.learnMoreDocPath
+                        ? docLink(activeGuide.learnMoreDocPath)
+                        : undefined,
+                      learnMoreLabel: t(($) => $[activeGuide.learnMoreLabel]),
+                      primaryActionLabel: t(($) => $[activeGuide.primaryActionLabel]),
+                      title: t(($) => $[activeGuide.title]),
+                    }}
+                    targetElement={activeTargetElement}
+                    placement={activeGuidePlacement}
+                    stepLabel={t(($) => $['stepByStepTour.stepLabel'], {
+                      ns: 'onboarding',
+                      current: activeStepIndex + 1,
+                      total: activeStepTotal,
+                    })}
+                    skipLabel={t(($) => $['stepByStepTour.skip'], { ns: 'onboarding' })}
+                    interactionPolicy={getStepByStepTourGuideInteractionPolicy(
+                      activeGuide,
+                      activeTask.canClickThrough,
+                    )}
+                    onSkip={skipActiveGuide}
+                    onComplete={completeActiveGuide}
+                  />
+                )}
+              {visible && (!allTasksCompleted || completionPromptVisible) && (
+                <Popover
+                  open={overlayVisible && expanded}
+                  onOpenChange={(open) => {
+                    if (open) setShellMode('expanded')
+                  }}
+                >
+                  <div
+                    ref={anchorRef}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute bottom-0 left-0 h-0 w-full"
+                  />
+                  {checklistMinimized && (
+                    <PopoverTrigger
+                      ref={restoreTriggerRef}
+                      aria-label={t(($) => $['stepByStepTour.restore'], { ns: 'onboarding' })}
+                      render={(props) => (
+                        <MinimizedTourPill {...props} title={title} progress={progress} />
+                      )}
+                    />
+                  )}
+                  {overlayVisible && (
+                    <PopoverPortal>
+                      <PopoverPositioner
+                        placement="top-start"
+                        sideOffset={0}
+                        anchor={anchorRef}
+                        collisionPadding={8}
+                        collisionAvoidance={{
+                          side: 'shift',
+                          align: 'shift',
+                          fallbackAxisSide: 'none',
+                        }}
+                      >
+                        <PopoverPopup
+                          initialFocus={checklistCloseButtonRef}
+                          finalFocus={restoreTriggerRef}
+                        >
+                          {floatingChecklist}
+                        </PopoverPopup>
+                      </PopoverPositioner>
+                    </PopoverPortal>
+                  )}
+                </Popover>
+              )}
+              {recoveryAnchorRef && (
+                <SkipRecoveryPrompt
+                  open={recoveryVisible}
+                  anchorRef={recoveryAnchorRef}
+                  label={t(($) => $['stepByStepTour.skipRecovery.label'], { ns: 'onboarding' })}
+                  message={t(($) => $['stepByStepTour.skipRecovery.message'], { ns: 'onboarding' })}
+                  dismissLabel={t(($) => $['stepByStepTour.skipRecovery.dismiss'], {
+                    ns: 'onboarding',
+                  })}
+                  onOpenChange={setSkipRecoveryVisible}
+                />
+              )}
+            </div>
+          )
+        }}
+      </Translation>
+    </Suspense>
   )
 }
 

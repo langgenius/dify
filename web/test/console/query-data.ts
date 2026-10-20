@@ -2,6 +2,7 @@ import type {
   EducationStatusResponse,
   GetAccountProfileResponse,
 } from '@dify/contracts/api/console/account/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type {
   GetSystemFeaturesLicenseResponse,
@@ -28,6 +29,7 @@ import {
   ensureCurrentWorkspaceQuery,
   seedCurrentWorkspaceQuery,
 } from '@/test/console/current-workspace'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import {
   createSystemFeaturesFixture,
@@ -57,8 +59,8 @@ type CurrentWorkspaceQueryProvider = {
   }
 }
 
-const fallbackTrialModelsQueryKey = ['console', 'trialModels', 'get'] as const
-const fallbackAppDslVersionQueryKey = ['console', 'appDslVersion', 'get'] as const
+const fallbackTrialModelsQueryKey = consoleQueryKey('trialModels.get')
+const fallbackAppDslVersionQueryKey = consoleQueryKey('appDslVersion.get')
 
 const getTrialModelsQueryKey = () => {
   const trialModelsQuery = (consoleQuery as { trialModels?: TrialModelsQueryProvider }).trialModels
@@ -163,6 +165,14 @@ const ensureTrialModels = (queryClient: QueryClient) => {
 
 export const seedAppDslVersion = (queryClient: QueryClient, appDslVersion = '0.6.0') => {
   queryClient.setQueryData(getAppDslVersionQueryKey(), { app_dsl_version: appDslVersion })
+}
+
+export const seedAppDetail = (queryClient: QueryClient, appDetail: AppDetailWithSite) => {
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appDetail.id } } }),
+    appDetail,
+  )
+  return appDetail
 }
 
 export type ConsoleQueryTestOptions = {

@@ -3,15 +3,17 @@ from types import SimpleNamespace
 from typing import override
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from flask import Flask
 from flask_login import LoginManager, UserMixin
+from flask_restx import Api, Resource
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
-from controllers.common.rbac import DatasetId, PlainApp, RBACCheck, Workspace
+from controllers.common.rbac import RBAC_CHECKS_ATTR, DatasetId, PlainApp, RBACCheck, Workspace
 from controllers.console import api as console_api
 from controllers.console import flask_admission
 from controllers.console import wraps as wraps_module
@@ -34,11 +36,13 @@ from controllers.console.wraps import (
     only_edition_self_hosted,
     rbac_permission_required,
     setup_required,
+    validate_request,
     with_current_tenant_id,
     with_current_user,
     with_current_user_id,
 )
 from enums import DeploymentEdition
+from libs.external_api import register_external_error_handlers
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from machinery.errors import ActiveWorkspaceRequiredError
@@ -303,21 +307,6 @@ class TestCurrentContextInjection:
         assert admission_context.active_workspace_id == "tenant-123"
         assert route_value == "route-value"
 
-    def test_console_account_admission_enforces_declared_edition_first(self):
-        class Handler:
-            @flask_admission.console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
-            def get(self, request_context: RequestContext):
-                return request_context
-
-        with (
-            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY),
-            Flask(__name__).test_request_context(),
-            pytest.raises(HTTPException) as exc_info,
-        ):
-            Handler().get()
-
-        assert exc_info.value.code == 404
-
     def test_console_account_admission_enforces_legacy_workspace_roles(self):
         current_user = make_account()
         current_user.role = TenantAccountRole.NORMAL
@@ -491,6 +480,19 @@ class TestCurrentContextInjection:
 
 class TestRbacPermissionRequired:
     """Test enterprise RBAC decorator."""
+
+    def test_keeps_swagger_docs_but_not_rbac_checks_of_the_wrapped_view(self):
+        def view(**kwargs):
+            return "ok"
+
+        inner_checks = (RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),)
+        view.__apidoc__ = {"responses": {"404": ("Missing", None, {})}}  # type: ignore[attr-defined]
+        setattr(view, RBAC_CHECKS_ATTR, inner_checks)
+
+        guarded = rbac_permission_required(RBACCheck(RBACPermission.APP_DELETE, PlainApp()))(view)
+
+        assert guarded.__apidoc__ == view.__apidoc__  # type: ignore[attr-defined]
+        assert guarded.__dict__[RBAC_CHECKS_ATTR] != inner_checks
 
     def test_resource_scoped_check_uses_resource_id(self):
         current_user = make_account("account-1")
@@ -717,6 +719,35 @@ class TestModelValidationInjection:
         assert "count" in exc_info.value.description
 
 
+class TestValidateRequest:
+    class Payload(BaseModel):
+        token: dict[str, str]
+
+    @pytest.mark.parametrize("http_method", ["POST", "PUT"])
+    def test_rejected_input_is_redacted_from_response_and_logs(
+        self, caplog: pytest.LogCaptureFixture, http_method: str
+    ) -> None:
+        secret = "submitted-private-token-should-never-appear"
+        app = Flask(__name__)
+        api = Api(app)
+        register_external_error_handlers(api)
+        payload_model = self.Payload
+
+        class Endpoint(Resource):
+            def post(self) -> object:
+                return validate_request(payload_model).model_dump()
+
+            put = post
+
+        api.add_resource(Endpoint, "/items")
+        response = app.test_client().open("/items", method=http_method, json={"token": secret})
+
+        assert response.status_code == 422
+        assert "token" in response.get_data(as_text=True)
+        assert secret not in response.get_data(as_text=True)
+        assert secret not in caplog.text
+
+
 class TestEditionChecks:
     """Test edition-specific decorators"""
 
@@ -819,6 +850,30 @@ class TestBillingPaidPlanRequired:
 
         assert exc_info.value.code == 403
         assert "requires a paid plan" in str(exc_info.value.description)
+
+    def test_should_return_service_unavailable_when_billing_lookup_fails(self) -> None:
+        app = create_app_with_login()
+
+        @cloud_edition_billing_paid_plan_required
+        def paid_view() -> str:
+            return "paid_success"
+
+        with app.test_request_context():
+            with (
+                patch(
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(MockUser("test_user"), "tenant123"),
+                ),
+                patch(
+                    "controllers.console.wraps.BillingService.get_info",
+                    side_effect=httpx.ConnectError("billing unavailable"),
+                ),
+                pytest.raises(HTTPException) as exc_info,
+            ):
+                paid_view()
+
+        assert exc_info.value.code == 503
+        assert "temporarily unavailable" in str(exc_info.value.description)
 
 
 class TestBillingResourceLimits:

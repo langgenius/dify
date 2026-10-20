@@ -61,7 +61,7 @@ const IterationLogTrigger = ({
   allExecutions,
   onShowIterationResultList,
 }: IterationLogTriggerProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
 
   const getNodesForInstance = (key: string): NodeTracing[] => {
     if (!allExecutions) return []
@@ -139,11 +139,14 @@ const IterationLogTrigger = ({
         className="i-custom-vender-workflow-iteration size-4 shrink-0 text-components-button-tertiary-text"
       />
       <div className="flex-1 text-left system-sm-medium text-components-button-tertiary-text">
-        {t(($) => $['nodes.iteration.iteration'], { ns: 'workflow', count: displayIterationCount })}
+        {t(($) => $['nodes.iteration.iteration'], {
+          ns: 'workflowLogic',
+          count: displayIterationCount,
+        })}
         {errorCount > 0 && (
           <>
-            {t(($) => $['nodes.iteration.comma'], { ns: 'workflow' })}
-            {t(($) => $['nodes.iteration.error'], { ns: 'workflow', count: errorCount })}
+            {t(($) => $['nodes.iteration.comma'], { ns: 'workflowLogic' })}
+            {t(($) => $['nodes.iteration.error'], { ns: 'workflowLogic', count: errorCount })}
           </>
         )}
       </div>

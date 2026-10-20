@@ -120,6 +120,18 @@ function importBindings(code: string): ImportBinding[] {
   return result
 }
 
+export function createImportBindingReader() {
+  const cache = new Map<string, readonly ImportBinding[]>()
+  return (code: string) => {
+    let bindings = cache.get(code)
+    if (!bindings) {
+      bindings = importBindings(code)
+      cache.set(code, bindings)
+    }
+    return bindings
+  }
+}
+
 export function hasClientDirective(code: string) {
   if (!code.includes('use client')) return false
   const source = ts.createSourceFile(
@@ -144,6 +156,7 @@ export async function resolveTranslationImports(
     importer: string,
   ) => Promise<{ id: string; external?: boolean } | undefined>,
   isAsset: (specifier: string) => boolean = () => false,
+  readBindings = createImportBindingReader(),
 ) {
   const resolutions = new Map<string, Map<string, ModuleResolution>>()
   let resolveCalls = 0
@@ -187,8 +200,8 @@ export async function resolveTranslationImports(
         else if (!declarationImports.has(specifier) && !isAsset(specifier))
           imports.set(specifier, null)
       }
-      const before = importBindings(source)
-      const after = importBindings(code)
+      const before = readBindings(source)
+      const after = readBindings(code)
       const proposals = new Map<string, Set<string | null | undefined>>()
       const record = (specifier: string, target: string | null | undefined) => {
         const values = proposals.get(specifier) ?? new Set<string | null | undefined>()

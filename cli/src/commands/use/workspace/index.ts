@@ -1,42 +1,56 @@
-import type { CommandEffect } from '@/framework/command'
-import { DifyCommand } from '@/commands/_shared/dify-command'
-import { httpRetryFlag } from '@/commands/_shared/global-flags'
-import { Args } from '@/framework/flags'
-import { runUseWorkspace } from './use'
+import type { CommandContext } from '@/plugins/base'
+import { z } from 'zod'
+import { assertNotEnvLogin } from '@/auth/logout'
+import { readLocalFile } from '@/call/files'
+import { parseJsonBody } from '@/call/json-body'
+import { buildRequest } from '@/call/request'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { Command } from '@/plugins/commands/command'
+import { env } from '@/plugins/env'
+import { http } from '@/plugins/http'
+import { session } from '@/plugins/session'
 
-export default class UseWorkspace extends DifyCommand {
-  static override description =
-    'Switch the active workspace on the server (omit the id to pick interactively)'
+const INPUT = z.object({ workspace_id: z.string().min(1) })
+const WORKSPACE = z.object({ id: z.string(), name: z.string() })
 
-  static override effect: CommandEffect = 'write'
+const WORKSPACE_DESCRIBE_OP = 'describe.workspace'
+const ENV_WORKSPACE_ID_MESSAGE = 'DIFY_WORKSPACE_ID is set; unset it to pin locally'
+const ENV_LOGIN_MESSAGE = 'the login comes from DIFY_TOKEN; set DIFY_WORKSPACE_ID instead'
+const MALFORMED_WORKSPACE_MESSAGE = 'describe workspace response has no id and name'
 
-  static override examples = [
-    '<%= config.bin %> use workspace ws-abc123',
-    '<%= config.bin %> use workspace',
-  ]
+export default class WorkspaceUse extends Command<typeof INPUT> {
+  static override summary =
+    'Pin this device to a workspace; the web console keeps its own current workspace'
+  static override effect = 'write' as const
+  static override input = INPUT
+  static override positional = ['workspace_id'] as const
 
-  static override args = {
-    workspaceId: Args.string({
-      description: 'workspace id to switch to (omit to pick interactively)',
-      required: false,
-    }),
-  }
+  async run(input: z.infer<typeof INPUT>, ctx: CommandContext) {
+    const envService = await ctx.get(env)
+    if (envService.workspaceId !== undefined) {
+      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: ENV_WORKSPACE_ID_MESSAGE })
+    }
 
-  static override flags = {
-    'http-retry': httpRetryFlag,
-  }
+    const sessionService = await ctx.get(session)
+    const login = await sessionService.require()
+    assertNotEnvLogin(sessionService.fromEnv, ENV_LOGIN_MESSAGE)
 
-  async run(argv: string[]): Promise<void> {
-    const { args, flags } = this.parse(UseWorkspace, argv)
-    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
-    await runUseWorkspace(
-      { workspaceId: args.workspaceId },
-      {
-        reg: ctx.reg,
-        active: ctx.active,
-        http: ctx.http,
-        io: ctx.io,
-      },
+    // Check membership first so a mistyped id is never pinned.
+    const httpService = await ctx.get(http)
+    const res = await httpService.request(async (cat) =>
+      buildRequest(
+        cat.opOrThrow(WORKSPACE_DESCRIBE_OP),
+        { workspace_id: input.workspace_id },
+        { readFile: readLocalFile },
+      ),
     )
+    const workspace = WORKSPACE.safeParse(await parseJsonBody(res))
+    if (!workspace.success)
+      throw new BaseError({ code: ErrorCode.ServerError, message: MALFORMED_WORKSPACE_MESSAGE })
+
+    await sessionService.save({ ...login, workspaceId: workspace.data.id })
+
+    return { workspace_id: workspace.data.id, name: workspace.data.name }
   }
 }

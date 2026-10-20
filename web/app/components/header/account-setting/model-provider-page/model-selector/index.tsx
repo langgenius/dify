@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -26,6 +27,8 @@ const getModelProviderPluginId = (provider: string) => {
 }
 
 type ModelSelectorBaseProps = {
+  triggerRef?: Ref<HTMLButtonElement>
+  'aria-labelledby'?: string
   value?: ModelSelectorValue
   models: ModelSelectorProvider[]
   className?: string
@@ -54,6 +57,8 @@ type SplitModelSelectorProps = ModelSelectorBaseProps & {
 }
 
 function ModelSelectorRoot({
+  triggerRef,
+  'aria-labelledby': labelledBy,
   value,
   models,
   className,
@@ -143,6 +148,8 @@ function ModelSelectorRoot({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <ModelSelectorTrigger
+        ref={triggerRef}
+        aria-labelledby={labelledBy}
         currentProvider={currentProvider}
         currentModel={currentModel}
         defaultModel={value}

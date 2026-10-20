@@ -1,264 +1,184 @@
 import type { ComponentProps } from 'react'
-import type { Plugin } from '@/app/components/plugins/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { render } from '@/test/console/render'
-import { trackMarketplaceSiteCardClick } from '@/utils/marketplace-site-track'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import {
+  createPluginInstallPermissionStore,
+  PluginInstallPermissionContext,
+} from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import CardWrapper from '../card-wrapper'
 
-vi.mock('@/app/components/plugins/hooks', () => ({
-  useTags: () => ({
-    getTagLabel: (name: string) => `tag:${name}`,
-  }),
-}))
-
-vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ payload, footer }: { payload: Plugin; footer?: React.ReactNode }) => (
-    <div data-testid="card">
-      <span>{payload.name}</span>
-      {footer}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/card/card-more-info', () => ({
-  default: ({ downloadCount, tags }: { downloadCount: number; tags: string[] }) => (
-    <div data-testid="card-more-info">
-      {downloadCount}:{tags.join('|')}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="install-modal">
-      <button data-testid="close-install-modal" onClick={onClose}>
-        close
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission', () => ({
-  default: () => ({ canInstallPlugin: true }),
-  useOptionalPluginInstallPermission: () => ({ canInstallPlugin: true }),
-}))
-
-vi.mock('../../detail-dialog', () => ({
-  default: ({
-    isInstalled,
-    open,
-    onOpenChange,
-  }: {
-    isInstalled: boolean
-    open: boolean
-    onOpenChange: (open: boolean) => void
-  }) =>
-    open ? (
-      <div role="dialog" aria-label="marketplace detail" data-installed={isInstalled}>
-        <button type="button" onClick={() => onOpenChange(false)}>
-          close detail
-        </button>
-      </div>
-    ) : null,
-}))
-
-vi.mock('@/utils/marketplace-site-track', () => ({
-  trackMarketplaceSiteCardClick: vi.fn(),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-  useLocale: () => 'en-US',
-}))
-
-const deploymentState = vi.hoisted(() => ({
-  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
-}))
-
-vi.mock('@/features/system-features/state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-  return createSystemFeaturesStateModuleMock(() => deploymentState)
+// Keep the real dialog/iframe while preventing navigation to a remote document.
+vi.mock('../../utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils')>()
+  return {
+    ...actual,
+    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) => {
+      const url = new URL(
+        actual.getPluginLinkInMarketplace(...args),
+        'https://marketplace.example.test',
+      )
+      return `about:blank${url.search}`
+    },
+  }
+})
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.marketplace.pkg.get': async () => ({
+        manifest: (await import('@/test/fixtures/plugin')).createPluginDeclarationFixture(),
+      }),
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: 'everyone',
+        debug_permission: 'everyone',
+      }),
+    }),
+  }
 })
 
-const plugin = {
-  type: 'plugin',
-  org: 'dify',
-  name: 'plugin-a',
-  plugin_id: 'plugin-a',
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_package_identifier: 'pkg',
-  icon: 'icon.png',
-  verified: true,
-  label: { 'en-US': 'Plugin A' },
-  brief: { 'en-US': 'Brief' },
-  description: { 'en-US': 'Description' },
-  introduction: 'Intro',
-  repository: 'https://github.com/dify/plugin-a',
-  category: PluginCategoryEnum.tool,
-  install_count: 42,
-  endpoint: { settings: [] },
-  tags: [{ name: 'search' }, { name: 'agent' }],
-  badges: [],
-  verification: { authorized_category: 'community' },
-  from: 'marketplace',
-} as Plugin
+const plugin = createMarketplacePluginFixture()
 
 describe('CardWrapper', () => {
-  beforeEach(() => {
-    deploymentState.deploymentEdition = 'CLOUD'
-    vi.clearAllMocks()
+  afterEach(() => {
+    delete window.__marketplaceTracking__
+    document.body.removeAttribute('data-is-marketplace')
   })
 
-  const renderCardWrapper = (props: Partial<ComponentProps<typeof CardWrapper>> = {}) =>
-    render(
-      <ThemeProvider forcedTheme="dark">
-        <CardWrapper plugin={plugin} {...props} />
+  const renderCardWrapper = (
+    props: Partial<ComponentProps<typeof CardWrapper>> = {},
+    edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLOUD',
+    canInstallPlugin = true,
+  ) => {
+    const queryClient = createConsoleQueryClient()
+    seedModelProviderQueries(queryClient)
+    const store = createPluginInstallPermissionStore({ canInstallPlugin })
+    return renderWithConsoleQuery(
+      <ThemeProvider defaultTheme="dark" enableSystem={false}>
+        <PluginInstallPermissionContext value={store}>
+          <CardWrapper plugin={plugin} {...props} />
+        </PluginInstallPermissionContext>
       </ThemeProvider>,
+      { queryClient, systemFeatures: { deployment_edition: edition } },
     )
+  }
 
-  it('renders a non-navigating card by default when install button is hidden', () => {
+  const detailTitle = 'Plugin A · plugin.detailPanel.operation.detail'
+  const installTitle = 'plugin.installModal.installPlugin'
+
+  it('opens details from the card with hidden actions and closes in place', async () => {
+    const user = userEvent.setup()
     renderCardWrapper()
-
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
-    expect(document.querySelector('[data-marketplace-card="plugin-a"]')).toBeInTheDocument()
-    expect(screen.getByTestId('card-more-info')).toHaveTextContent('42:tag:search|tag:agent')
-  })
-
-  it('opens marketplace detail from the card surface', async () => {
-    const user = userEvent.setup()
-    renderCardWrapper({ showInstallButton: true })
-
+    expect(
+      screen.queryByRole('button', { name: 'plugin.detailPanel.operation.install' }),
+    ).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Plugin A' }))
-
-    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
-    expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: detailTitle })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('opens marketplace detail from the keyboard', async () => {
+  it('keeps direct installation separate from details and closes the real installer', async () => {
     const user = userEvent.setup()
     renderCardWrapper({ showInstallButton: true })
-
-    await user.tab()
-    expect(screen.getByRole('button', { name: 'Plugin A' })).toHaveFocus()
-    await user.keyboard('{Enter}')
-
-    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
-  })
-
-  it('keeps install as its own action when the card is clicked through the install button', async () => {
-    const user = userEvent.setup()
-    renderCardWrapper({ showInstallButton: true })
-
     await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }))
-
-    expect(screen.getByTestId('install-modal')).toBeInTheDocument()
-    expect(screen.queryByRole('dialog', { name: 'marketplace detail' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: installTitle })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: detailTitle })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('links the card to its marketplace detail when explicitly enabled', () => {
-    renderCardWrapper({ linkToMarketplaceDetail: true })
+  it('keeps details available without granting installation to a restricted user', async () => {
+    const user = userEvent.setup()
+    renderCardWrapper({ showInstallButton: true }, 'CLOUD', false)
+    expect(
+      screen.queryByRole('button', { name: 'plugin.detailPanel.operation.install' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Plugin A' }))
+    expect(await screen.findByRole('dialog', { name: detailTitle })).toBeInTheDocument()
+    const src = screen.getByTitle(detailTitle).getAttribute('src')!
+    expect(new URL(src).searchParams.get('canInstall')).toBe('false')
+  })
 
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/plugin/dify/plugin-a')
-    fireEvent.click(screen.getByRole('link'))
-    expect(trackMarketplaceSiteCardClick).toHaveBeenCalledWith({
-      itemId: 'dify/plugin-a',
-      itemType: 'plugin',
-      itemName: 'Plugin A',
+  it('links explicitly enabled cards to marketplace details and records their click', async () => {
+    const user = userEvent.setup()
+    const track = vi.fn()
+    const rememberReferrer = vi.fn()
+    document.body.setAttribute('data-is-marketplace', '')
+    window.__marketplaceTracking__ = {
+      track,
+      rememberReferrer,
+      markSearch: vi.fn(),
+      flushSearch: vi.fn(),
+      markFilter: vi.fn(),
+      flushFilter: vi.fn(),
+    }
+    renderCardWrapper({ linkToMarketplaceDetail: true })
+    const link = screen.getByRole('link')
+    expect(link).toHaveAttribute('href', '/plugin/dify/plugin-a')
+    await user.click(link)
+    expect(track).toHaveBeenCalledExactlyOnceWith('marketplace_card_click', {
+      click_target: 'card',
+      item_id: 'dify/plugin-a',
+      item_type: 'plugin',
+      item_name: 'Plugin A',
       section: 'list',
     })
+    expect(rememberReferrer).toHaveBeenCalledExactlyOnceWith('dify/plugin-a', 'list')
   })
 
-  it('renders install and marketplace detail actions when install button is shown', () => {
-    renderCardWrapper({ showInstallButton: true })
-
-    expect(
-      screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }),
-    ).toBeInTheDocument()
-  })
-
-  it('shows a disabled installed action and prevents another installation', async () => {
+  it('blocks reinstallation while opening details with the installed state', async () => {
     const user = userEvent.setup()
     renderCardWrapper({ showInstallButton: true, isInstalled: true })
-
     const installedButton = screen.getByRole('button', { name: 'plugin.task.installed' })
     expect(installedButton).toBeDisabled()
-
     await user.click(installedButton)
-    expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
-  })
-
-  it('opens and closes marketplace detail dialog from the detail action', async () => {
-    const user = userEvent.setup()
-    renderCardWrapper({ showInstallButton: true, isInstalled: true })
-
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }))
-    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toHaveAttribute(
-      'data-installed',
-      'true',
-    )
-
-    await user.click(screen.getByRole('button', { name: 'close detail' }))
-    expect(screen.queryByRole('dialog', { name: 'marketplace detail' })).not.toBeInTheDocument()
+    await screen.findByRole('dialog', { name: detailTitle })
+    const src = screen.getByTitle(detailTitle).getAttribute('src')!
+    expect(new URL(src).searchParams.get('installed')).toBe('true')
+    expect(screen.queryByRole('dialog', { name: installTitle })).not.toBeInTheDocument()
   })
 
-  it('opens and closes install modal from install action', () => {
-    renderCardWrapper({ showInstallButton: true })
-
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }))
-    expect(screen.getByTestId('install-modal')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('close-install-modal'))
-    expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
-  })
-
-  it('does not open the install confirmation modal from the marketplace detail dialog', async () => {
-    const user = userEvent.setup()
-    renderCardWrapper({ showInstallButton: true })
-
-    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }))
-
-    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
-    expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
-  })
   it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
     'links %s plugin details to the official site while preserving direct installation',
     async (edition) => {
-      deploymentState.deploymentEdition = edition
       const user = userEvent.setup()
-      render(<CardWrapper plugin={plugin} showInstallButton />)
-
+      renderCardWrapper({ showInstallButton: true }, edition)
       const card = screen.getByRole('link', { name: 'Plugin A' })
       const url = new URL(card.getAttribute('href')!)
       expect(url.origin).toBe('https://marketplace.dify.ai')
       expect(url.pathname).toBe('/plugin/dify/plugin-a')
       expect(url.searchParams.get('source')).toBe(window.location.origin)
-      expect([...url.searchParams.keys()].sort()).toEqual(['language', 'source'])
+      expect(url.searchParams.get('theme')).toBe('dark')
       expect(card).toHaveAttribute('target', '_blank')
       expect(card).toHaveAttribute('rel', 'noopener noreferrer')
       expect(
         screen.getByRole('link', { name: 'plugin.detailPanel.operation.detail' }),
       ).toHaveAttribute('href', url.toString())
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(document.querySelector('iframe')).toBeNull()
-
+      expect(screen.queryByTitle(detailTitle)).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }))
-      expect(screen.getByTestId('install-modal')).toBeInTheDocument()
+      expect(await screen.findByRole('dialog', { name: installTitle })).toBeInTheDocument()
     },
   )
 
   it('keeps Bundle details inside Dify in Community edition', async () => {
-    deploymentState.deploymentEdition = 'COMMUNITY'
     const user = userEvent.setup()
-    render(<CardWrapper plugin={{ ...plugin, type: 'bundle' }} />)
+    renderCardWrapper({ plugin: { ...plugin, type: 'bundle' } }, 'COMMUNITY')
     await user.click(screen.getByRole('button', { name: 'Plugin A' }))
-    expect(screen.getByRole('dialog', { name: 'marketplace detail' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: detailTitle })).toBeInTheDocument()
   })
 })

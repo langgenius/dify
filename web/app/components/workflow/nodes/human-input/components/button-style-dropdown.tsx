@@ -20,10 +20,12 @@ type Props = Readonly<{
 }>
 
 const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, readonly }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHumanInput'])
   const [open, setOpen] = useState(false)
   const titleId = useId()
-  const chooseStyleLabel = t(($) => $[`${i18nPrefix}.userActions.chooseStyle`], { ns: 'workflow' })
+  const chooseStyleLabel = t(($) => $[`${i18nPrefix}.userActions.chooseStyle`], {
+    ns: 'workflowHumanInput',
+  })
   const accessibleLabel = `${text}: ${chooseStyleLabel}`
   const currentStyle = useMemo(() => {
     switch (data) {
@@ -87,7 +89,7 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
           >
             <RadioItem
               value={UserActionButtonType.Primary}
-              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.primary`], { ns: 'workflow' })}`}
+              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.primary`], { ns: 'workflowHumanInput' })}`}
               nativeButton
               render={<button type="button" />}
               className="box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section outline-hidden hover:bg-background-section-burn focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-disabled:cursor-not-allowed"
@@ -98,7 +100,7 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
             </RadioItem>
             <RadioItem
               value={UserActionButtonType.Default}
-              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.default`], { ns: 'workflow' })}`}
+              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.default`], { ns: 'workflowHumanInput' })}`}
               nativeButton
               render={<button type="button" />}
               className="box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section outline-hidden hover:bg-background-section-burn focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-disabled:cursor-not-allowed"
@@ -109,7 +111,7 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
             </RadioItem>
             <RadioItem
               value={UserActionButtonType.Accent}
-              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.accent`], { ns: 'workflow' })}`}
+              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.accent`], { ns: 'workflowHumanInput' })}`}
               nativeButton
               render={<button type="button" />}
               className="box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section outline-hidden hover:bg-background-section-burn focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-disabled:cursor-not-allowed"
@@ -125,7 +127,7 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
             </RadioItem>
             <RadioItem
               value={UserActionButtonType.Ghost}
-              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.ghost`], { ns: 'workflow' })}`}
+              aria-label={`${text}, ${t(($) => $[`${i18nPrefix}.userActions.buttonStyle.ghost`], { ns: 'workflowHumanInput' })}`}
               nativeButton
               render={<button type="button" />}
               className="box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section outline-hidden hover:bg-background-section-burn focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-disabled:cursor-not-allowed"

@@ -2,27 +2,21 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeSearch from '../home-search'
 import { homeCatalogPinnedAtom } from '../home-sticky-state'
 import { HomeStickyStateProvider } from '../home-sticky-state-provider'
-import { MarketplaceSearchAutocomplete } from '../marketplace-search-autocomplete'
+import {
+  MarketplaceSearchAutocomplete,
+  MarketplaceSearchForm,
+} from '../marketplace-search-autocomplete'
 
 const { mockTemplateSearch } = vi.hoisted(() => ({
   mockTemplateSearch: vi.fn(),
 }))
-
-vi.mock('ahooks', async (importOriginal) => {
-  const original = await importOriginal<typeof import('ahooks')>()
-
-  return {
-    ...original,
-    useDebounce: <T,>(value: T) => value,
-  }
-})
 
 vi.mock('react-i18next', async (importOriginal) => {
   const original = await importOriginal<typeof import('react-i18next')>()
@@ -49,29 +43,26 @@ vi.mock('@/service/marketplace', async (importOriginal) => {
     ...original,
     marketplaceQuery: {
       searchAdvanced: {
-        queryOptions: ({ input }: { input: unknown }) => ({
-          queryKey: ['marketplace', 'plugins', input],
+        queryOptions: (
+          options: Parameters<typeof original.marketplaceQuery.searchAdvanced.queryOptions>[0],
+        ) => ({
+          ...original.marketplaceQuery.searchAdvanced.queryOptions(options),
           queryFn: () => ({ data: { plugins: [], total: 0 } }),
         }),
       },
       templateSearch: {
-        queryOptions: ({ input }: { input: unknown }) => ({
-          queryKey: ['marketplace', 'templates', input],
-          queryFn: () => mockTemplateSearch(input),
+        queryOptions: (
+          options: Parameters<typeof original.marketplaceQuery.templateSearch.queryOptions>[0],
+        ) => ({
+          ...original.marketplaceQuery.templateSearch.queryOptions(options),
+          queryFn: () => mockTemplateSearch(options.input),
         }),
       },
     },
   }
 })
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      gcTime: 0,
-      retry: false,
-    },
-  },
-})
+let queryClient: QueryClient
 
 function Wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -108,7 +99,7 @@ function PinnedHeaderState() {
 
 describe('Marketplace search autocomplete layout', () => {
   beforeEach(() => {
-    queryClient.clear()
+    queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } })
     mockTemplateSearch.mockReset()
     mockTemplateSearch.mockResolvedValue({ data: { templates: [], total: 0 } })
   })
@@ -141,7 +132,9 @@ describe('Marketplace search autocomplete layout', () => {
       </Wrapper>,
     )
 
-    const scrollContainer = screen.getByTestId('marketplace-scroll-container').element()
+    const container = screen.getByTestId('marketplace-scroll-container')
+    await expect.element(container).toBeVisible()
+    const scrollContainer = container.element()
     scrollContainer.scrollTop = 300
     scrollContainer.dispatchEvent(new Event('scroll'))
     await new Promise(requestAnimationFrame)
@@ -150,9 +143,10 @@ describe('Marketplace search autocomplete layout', () => {
     await expect.element(screen.getByRole('tablist', { name: 'Header catalog tabs' })).toBeVisible()
 
     const catalogNavigation = screen
-      .getByRole('region', { name: 'common.mainNav.marketplace' })
+      .getByRole('region', { name: 'navigation.mainNav.marketplace' })
       .element()
     const scrollTopBefore = scrollContainer.scrollTop
+    await expect.element(input).toBeVisible()
     const inputTopBefore = input.element().getBoundingClientRect().top
     const navigationTopBefore = catalogNavigation.getBoundingClientRect().top
 
@@ -160,8 +154,43 @@ describe('Marketplace search autocomplete layout', () => {
     await expect.element(screen.getByText('No templates found')).toBeVisible()
 
     expect(scrollContainer.scrollTop).toBe(scrollTopBefore)
-    await expect.element(screen.getByRole('tablist', { name: 'Header catalog tabs' })).toBeVisible()
+    // Base UI hides the page outside the open suggestions from assistive technology, so the
+    // pinned tabs are only reachable when hidden elements are included.
+    await expect
+      .element(screen.getByRole('tablist', { name: 'Header catalog tabs', includeHidden: true }))
+      .toBeVisible()
     expect(input.element().getBoundingClientRect().top).toBeCloseTo(inputTopBefore)
     expect(catalogNavigation.getBoundingClientRect().top).toBeCloseTo(navigationTopBefore)
+  })
+
+  // The search owns no Enter handler: the browser's implicit submission submits the route form
+  // when no suggestion is highlighted. Only a real browser performs that submission.
+  it('submits the route search form on Enter when no suggestion is highlighted', async () => {
+    const handleSubmit = vi.fn((event: Event) => {
+      event.preventDefault()
+    })
+
+    const screen = await render(
+      <Wrapper>
+        <MarketplaceSearchForm
+          action="/search/templates"
+          locale="en-US"
+          placeholder="Search templates"
+          query=""
+          scope="templates"
+        />
+      </Wrapper>,
+    )
+
+    screen.container.querySelector('form')!.addEventListener('submit', handleSubmit)
+
+    const input = screen.getByRole('combobox', { name: 'Search templates' })
+    await input.fill('open')
+    await expect.element(screen.getByText('No templates found')).toBeVisible()
+
+    await userEvent.keyboard('{Enter}')
+
+    expect(handleSubmit).toHaveBeenCalledOnce()
+    await expect.element(input).toHaveValue('open')
   })
 })

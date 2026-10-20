@@ -39,7 +39,13 @@ const RetrievalParamConfig: FC<Props> = ({
   disabled = false,
   onChange,
 }) => {
-  const { t } = useTranslation(['common', 'dataset', 'datasetSettings', 'workflow'])
+  const { t } = useTranslation([
+    'common',
+    'dataset',
+    'datasetSettings',
+    'workflow',
+    'modelProvider',
+  ])
   const rerankLabelId = useId()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
   const isEconomical = type === RETRIEVE_METHOD.keywordSearch
@@ -106,8 +112,8 @@ const RetrievalParamConfig: FC<Props> = ({
     },
     {
       value: RerankingModeEnum.RerankingModel,
-      label: t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' }),
-      tips: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' }),
+      label: t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' }),
+      tips: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' }),
     },
   ]
 
@@ -127,12 +133,12 @@ const RetrievalParamConfig: FC<Props> = ({
             )}
             <div className="flex items-center">
               <span id={rerankLabelId} className="mr-0.5 system-sm-semibold text-text-secondary">
-                {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
+                {t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })}
               </span>
               <Infotip>
                 <InfotipTrigger aria-labelledby={rerankLabelId} />
                 <InfotipContent aria-labelledby={rerankLabelId} className="w-50">
-                  {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' })}
                 </InfotipContent>
               </Infotip>
             </div>
@@ -221,7 +227,7 @@ const RetrievalParamConfig: FC<Props> = ({
       {isHybridSearch && (
         <>
           <RadioGroup<RerankingModeEnum>
-            aria-label={t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
+            aria-label={t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })}
             value={value.reranking_mode}
             onValueChange={handleChangeRerankMode}
             className="mb-4 flex gap-2 @max-[28rem]/retrieval:flex-col"

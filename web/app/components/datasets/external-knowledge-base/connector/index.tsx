@@ -14,9 +14,9 @@ import { createExternalKnowledgeBase } from '@/service/datasets'
 const ExternalKnowledgeBaseConnector = () => {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const { t } = useTranslation(['common', 'dataset'])
+  const { t } = useTranslation(['dataset', 'onboarding'])
   useDocumentTitle(
-    t(($) => $['stepByStepTour.guides.knowledge.empty.connect.title'], { ns: 'common' }),
+    t(($) => $['stepByStepTour.guides.knowledge.empty.connect.title'], { ns: 'onboarding' }),
   )
 
   const handleConnect = async (formValue: CreateKnowledgeBaseReq) => {

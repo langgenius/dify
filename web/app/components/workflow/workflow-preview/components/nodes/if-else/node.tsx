@@ -13,7 +13,7 @@ const i18nPrefix = 'nodes.ifElse'
 
 const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
   const { data } = props
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
   const { cases } = data
   const casesLength = cases.length
   const checkIsConditionSet = useCallback((condition: Condition) => {
@@ -36,7 +36,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
   }, [])
   const conditionNotSet = (
     <div className="flex h-6 items-center space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary">
-      {t(($) => $[`${i18nPrefix}.conditionNotSetup`], { ns: 'workflow' })}
+      {t(($) => $[`${i18nPrefix}.conditionNotSetup`], { ns: 'workflowLogic' })}
     </div>
   )
 
@@ -78,7 +78,9 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                 )}
                 {i !== caseItem.conditions.length - 1 && (
                   <div className="absolute right-1 -bottom-2.5 z-10 text-2xs leading-4 font-medium text-text-accent uppercase">
-                    {t(($) => $[`${i18nPrefix}.${caseItem.logical_operator}`], { ns: 'workflow' })}
+                    {t(($) => $[`${i18nPrefix}.${caseItem.logical_operator}`], {
+                      ns: 'workflowLogic',
+                    })}
                   </div>
                 )}
               </div>

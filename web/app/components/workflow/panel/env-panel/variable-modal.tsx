@@ -26,7 +26,7 @@ type ModalPropsType = {
 const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
   const secretLabelId = React.useId()
 
-  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'modelProvider'])
   const workflowStore = useWorkflowStore()
   const [type, setType] = React.useState<EnvironmentVariable['value_type']>('string')
   const [name, setName] = React.useState('')
@@ -244,7 +244,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
         <Field name="value" className="mb-4">
           {type === 'llm' ? (
             <div className="py-1 system-sm-semibold text-text-secondary">
-              {t(($) => $['modelProvider.model'], { ns: 'common' })}
+              {t(($) => $['modelProvider.model'], { ns: 'modelProvider' })}
             </div>
           ) : (
             <FieldLabel className="system-sm-semibold">

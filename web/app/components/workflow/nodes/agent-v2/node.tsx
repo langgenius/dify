@@ -1,6 +1,5 @@
 import type { NodeProps } from '../../types'
 import type { AgentV2NodeType } from './types'
-import type { AppIconType } from '@/types/app'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUpdateNodeInternals } from 'reactflow'
@@ -9,12 +8,6 @@ import { NodeBranches } from '../_base/components/branch-list/node-branches'
 import { SettingItem } from '../_base/components/setting-item'
 import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'
 import { hasInlineAgentBinding, hasValidRosterAgentBinding } from './types'
-
-const getAppIconType = (iconType?: string | null): AppIconType | null => {
-  if (iconType === 'emoji' || iconType === 'image' || iconType === 'link') return iconType
-
-  return null
-}
 
 function AgentNodeAvatar({
   agent,
@@ -34,15 +27,7 @@ function AgentNodeAvatar({
   if (!agent)
     return <span aria-hidden className="size-8 shrink-0 rounded-full bg-text-quaternary/20" />
 
-  return (
-    <AppIcon
-      size="small"
-      iconType={getAppIconType(agent.icon_type)}
-      icon={agent.icon ?? undefined}
-      background={agent.icon_background}
-      imageUrl={agent.icon ?? undefined}
-    />
-  )
+  return <AppIcon size="small" icon={{ ...agent, icon_url: agent.icon }} />
 }
 
 function AgentNodeAvatarPlaceholder() {
@@ -58,13 +43,13 @@ function AgentNodeModel({
   agent?: ReturnType<typeof useAgentRosterDetail>['data']
   isLoading: boolean
 }) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
   const isInlineAgent = hasInlineAgentBinding(data)
   const name = isInlineAgent
-    ? t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflow' })
+    ? t(($) => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflowAgent' })
     : agent?.name
   const role = isInlineAgent
-    ? t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflow' })
+    ? t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflowAgent' })
     : ''
   const showPlaceholder = isLoading || (!isInlineAgent && !agent)
 
@@ -105,7 +90,7 @@ export function AgentV2Node(props: NodeProps<AgentV2NodeType>) {
   useEffect(() => {
     updateNodeInternals(id)
   }, [id, data.agent_output_routes, updateNodeInternals])
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
   const hasValidAgent = hasValidRosterAgentBinding(data)
   const isInlineAgent = hasInlineAgentBinding(data)
   const rosterAgentId =

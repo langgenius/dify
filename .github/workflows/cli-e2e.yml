@@ -78,7 +78,7 @@ jobs:
       ws2_app_id: ${{ steps.out.outputs.DIFY_E2E_WS2_APP_ID }}
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -87,7 +87,7 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
 
@@ -121,7 +121,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -166,7 +166,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -227,7 +227,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -266,7 +266,7 @@ jobs:
 
       - name: Upload results on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-run-${{ matrix.name }}-${{ github.run_id }}
           path: cli/test-results/
@@ -287,7 +287,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -341,7 +341,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -396,7 +396,7 @@ jobs:
 
       - name: Upload results on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-last-${{ github.run_id }}
           path: cli/test-results/

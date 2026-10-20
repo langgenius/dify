@@ -1,7 +1,7 @@
 import { readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { isExcludedCommandPath } from '../src/framework/command-fs.js'
+import { isExcludedCommandPath } from '../src/plugins/commands/command-fs.js'
 
 const RESERVED_JS_KEYWORDS = new Set([
   'break',
@@ -106,7 +106,7 @@ function compareStrings(a: string, b: string): number {
 
 function emitImports(entries: readonly CommandEntry[]): string {
   const sorted = [...entries].sort((a, b) => compareStrings(a.importPath, b.importPath))
-  const lines = [`import type { CommandTree } from '@/framework/registry'`]
+  const lines = [`import type { CommandTree } from '@/plugins/commands/registry'`]
   for (const e of sorted) lines.push(`import ${e.identifier} from '${e.importPath}'`)
   return lines.join('\n')
 }
@@ -153,13 +153,17 @@ function emitEntry(key: string, node: TreeNode, indent: string): string {
 export function formatModule(entries: readonly CommandEntry[], tree: TreeNode): string {
   const importsBlock = emitImports(entries)
   const topKeys = [...tree.subcommands.keys()].sort()
-  const literalParts = ['export const commandTree: CommandTree = {']
-  for (const key of topKeys) {
-    const child = tree.subcommands.get(key)!
-    literalParts.push(emitEntry(key, child, '  '))
-  }
-  literalParts.push('}')
-  return `${HEADER}\n${importsBlock}\n\n${literalParts.join('\n')}\n`
+  // Empty object on one line, matching the repo formatter's own convention —
+  // otherwise a fresh `tree:gen` and `tree:check` disagree right after a commit.
+  const literal =
+    topKeys.length === 0
+      ? 'export const commandTree: CommandTree = {}'
+      : [
+          'export const commandTree: CommandTree = {',
+          ...topKeys.map((key) => emitEntry(key, tree.subcommands.get(key)!, '  ')),
+          '}',
+        ].join('\n')
+  return `${HEADER}\n${importsBlock}\n\n${literal}\n`
 }
 
 async function walk(dir: string): Promise<string[]> {
@@ -215,7 +219,8 @@ export async function discoverCommands(commandsDir: string): Promise<CommandEntr
 
   entries.sort((a, b) => compareStrings(a.importPath, b.importPath))
 
-  if (entries.length === 0) throw new Error(`no commands found under ${commandsDir}`)
+  if (entries.length === 0)
+    throw new Error(`no commands found under ${commandsDir} — expected <verb>/index.ts folders`)
 
   assertUniqueIdentifiers(entries)
   return entries

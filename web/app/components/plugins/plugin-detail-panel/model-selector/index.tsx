@@ -50,7 +50,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   isInWorkflow,
   scope = ModelTypeEnum.textGeneration,
 }) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
   const scopeFeatures = useMemo((): ModelFeatureEnum[] => {
@@ -171,7 +171,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         const keys = Object.keys(removedDetails || {})
         if (keys.length) {
           toast.warning(
-            `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+            `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
           )
         }
       } catch {

@@ -1,13 +1,15 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { ChatItem, ChatItemInTree } from '@/app/components/base/chat/types'
+import type { ChatItem } from '@/app/components/base/chat/types'
 import { RiCloseLine } from '@remixicon/react'
-import { memo, useCallback, useEffect, useState } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { skipToken, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { memo, useMemo, useState } from 'react'
 import Chat from '@/app/components/base/chat/chat'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { fetchConversationMessages } from '@/service/debug'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import { consoleQuery } from '@/service/console'
 import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../../store'
 import { formatWorkflowRunIdentifier } from '../../utils'
@@ -48,43 +50,34 @@ function getFormattedChatList(messages: any[]) {
 }
 
 const ChatRecord = () => {
-  const [fetched, setFetched] = useState(false)
-  const [chatItemTree, setChatItemTree] = useState<ChatItemInTree[]>([])
-  const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const [selectedMessage, setSelectedMessage] = useState<{
+    appId: string
+    conversationId: string | undefined
+    messageId: string
+  }>()
   const workflowStore = useWorkflowStore()
+  const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const { handleLoadBackupDraft } = useWorkflowRun()
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const currentConversationID = historyWorkflowData?.conversation_id
 
-  const handleFetchConversationMessages = useCallback(async () => {
-    if (appDetail && currentConversationID) {
-      try {
-        setFetched(false)
-        const res = await fetchConversationMessages(appDetail.id, currentConversationID)
-
-        const newAllChatItems = getFormattedChatList((res as any).data)
-
-        const tree = buildChatItemTree(newAllChatItems)
-        setChatItemTree(tree)
-        setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
-      } catch {
-      } finally {
-        setFetched(true)
-      }
-    }
-  }, [appDetail, currentConversationID])
-
-  useEffect(() => {
-    handleFetchConversationMessages()
-  }, [currentConversationID, appDetail, handleFetchConversationMessages])
-
-  const switchSibling = useCallback(
-    (siblingMessageId: string) => {
-      setThreadChatItems(getThreadMessages(chatItemTree, siblingMessageId))
-    },
-    [chatItemTree],
+  const { data, isPending } = useQuery(
+    consoleQuery.apps.byAppId.chatMessages.get.queryOptions({
+      input: currentConversationID
+        ? { params: { app_id: appId }, query: { conversation_id: currentConversationID } }
+        : skipToken,
+      retry: false,
+      refetchOnWindowFocus: false,
+    }),
   )
+  const chatItems = useMemo(() => getFormattedChatList(data?.data ?? []), [data])
+  const chatItemTree = useMemo(() => buildChatItemTree(chatItems), [chatItems])
+  const selectedMessageId =
+    selectedMessage?.appId === appId && selectedMessage.conversationId === currentConversationID
+      ? selectedMessage.messageId
+      : chatItems.at(-1)?.id
+  const threadChatItems: IChatItem[] = getThreadMessages(chatItemTree, selectedMessageId)
 
   return (
     <div
@@ -93,20 +86,23 @@ const ChatRecord = () => {
       //   background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
       // }}
     >
-      {!fetched && (
+      {isPending && (
         <div className="flex h-full items-center justify-center">
           <LoadingPlaceholder />
         </div>
       )}
-      {fetched && (
+      {!isPending && (
         <>
           <div className="flex shrink-0 items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
-            {`TEST CHAT${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
+            {`TEST CHAT${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at, historyWorkflowData?.status)}`}
             <div
               className="flex size-6 cursor-pointer items-center justify-center"
               onClick={() => {
                 handleLoadBackupDraft()
-                workflowStore.setState({ historyWorkflowData: undefined })
+                workflowStore.setState({
+                  historyWorkflowData: undefined,
+                  messageLogItem: undefined,
+                })
               }}
             >
               <RiCloseLine className="size-4 text-text-tertiary" />
@@ -128,8 +124,11 @@ const ChatRecord = () => {
               chatNode={<UserInput />}
               noChatInput
               allToolIcons={{}}
-              showPromptLog
-              switchSibling={switchSibling}
+              onOpenLog={setMessageLogItem}
+              canOpenLog={(item) => !!item.workflow_run_id}
+              switchSibling={(messageId) =>
+                setSelectedMessage({ appId, conversationId: currentConversationID, messageId })
+              }
               noSpacing
               chatAnswerContainerInner="pr-2!"
             />

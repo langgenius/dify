@@ -257,6 +257,7 @@
   "segment.searchResults_one": "РЕЗУЛЬТАТ",
   "segment.searchResults_other": "РЕЗУЛЬТАТІВ",
   "segment.searchResults_zero": "РЕЗУЛЬТАТ",
+  "segment.statusFilterLabel": "Фільтрувати сегменти за статусом",
   "segment.summary": "РЕЗЮМЕ",
   "segment.summaryPlaceholder": "Напишіть короткий опис для кращого пошуку…"
 }

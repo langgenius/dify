@@ -5,6 +5,7 @@ import type {
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { mutationOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
@@ -26,7 +27,6 @@ import {
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerToolPresentationIdentitiesAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
 import {
   getAgentToolPublishIssue,
@@ -55,7 +55,7 @@ export function useAgentConfigureSync({
   enabled: boolean
   publishEnabled: boolean
 }) {
-  const { t: tCommon } = useTranslation(['common'])
+  const { t: tCommon } = useTranslation(['common', 'modelProvider'])
   const { t: tWorkflow } = useTranslation(['workflow'])
   const getKnowledgeValidationMessage = useKnowledgeValidationMessage()
   const toolPresentationIdentities = useAtomValue(agentComposerToolPresentationIdentitiesAtom)
@@ -374,7 +374,7 @@ export function useAgentConfigureSync({
   )
 
   useEffect(() => {
-    const scheduleDirtyDraftSave = () => {
+    return store.sub(agentComposerDraftAtom, () => {
       const agentSoulDraft = getAgentSoulDraft()
       const agentSoulDraftKey = JSON.stringify(agentSoulDraft)
       const isDirty = store.get(isAgentComposerDirtyAtom)
@@ -389,11 +389,8 @@ export function useAgentConfigureSync({
       }
 
       debouncedSaveDraft()
-    }
-
-    scheduleDirtyDraftSave()
-    return store.sub(agentComposerDraftAtom, scheduleDirtyDraftSave)
-  }, [debouncedSaveDraft, enabled, getAgentSoulDraft, store])
+    })
+  }, [debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
     const saveDraftWhenPageHidden = () => {
@@ -433,7 +430,7 @@ export function useAgentConfigureSync({
       currentModel: draft.model,
     })
     if (!configSnapshot.model?.model_provider || !configSnapshot.model.model) {
-      toast.error(tCommon(($) => $['modelProvider.selectModel']))
+      toast.error(tCommon(($) => $['modelProvider.selectModel'], { ns: 'modelProvider' }))
       return false
     }
 
@@ -444,8 +441,14 @@ export function useAgentConfigureSync({
         toolPublishIssue.tool.name
       toast.error(
         toolPublishIssue.type === 'uninstalled'
-          ? tWorkflow(($) => $['nodes.agent.toolNotInstallTooltip'], { tool: toolName })
-          : tWorkflow(($) => $['nodes.agent.toolNotAuthorizedTooltip'], { tool: toolName }),
+          ? tWorkflow(($) => $['nodes.agent.toolNotInstallTooltip'], {
+              ns: 'workflow',
+              tool: toolName,
+            })
+          : tWorkflow(($) => $['nodes.agent.toolNotAuthorizedTooltip'], {
+              ns: 'workflow',
+              tool: toolName,
+            }),
       )
       return false
     }
@@ -475,20 +478,7 @@ export function useAgentConfigureSync({
       })
       return { kind: published.publication_kind, draft }
     } catch (error) {
-      let errorData: unknown = error
-      if (error instanceof Response) {
-        try {
-          errorData = await error.clone().json()
-        } catch {}
-      }
-      toast.error(
-        errorData &&
-          typeof errorData === 'object' &&
-          'message' in errorData &&
-          typeof errorData.message === 'string'
-          ? errorData.message
-          : tCommon(($) => $['api.actionFailed']),
-      )
+      toast.error(error instanceof Error ? error.message : tCommon(($) => $['api.actionFailed']))
       throw error
     } finally {
       publishInFlightRef.current = false

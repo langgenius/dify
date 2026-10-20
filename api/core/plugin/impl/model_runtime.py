@@ -32,7 +32,7 @@ from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingInputType, EmbeddingResult
 from graphon.model_runtime.model_providers.base.large_language_model import normalize_non_stream_runtime_result
 from graphon.model_runtime.protocols.runtime import ModelRuntime
-from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
+from graphon.model_runtime.protocols.tts_runtime import TTSChunk, TTSModelVoice
 from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ class _PluginStructuredOutputModelInstance:
         stop: Sequence[str] | None = None,
         stream: bool = True,
         callbacks: object | None = None,
-    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+    ) -> LLMResult | Generator[LLMResultChunk]:
         del callbacks
         if stream:
             return self._runtime.invoke_llm(
@@ -303,7 +303,7 @@ class PluginModelRuntime(ModelRuntime):
         stop: Sequence[str] | None,
         stream: Literal[True],
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Generator[LLMResultChunk, None, None]: ...
+    ) -> Generator[LLMResultChunk]: ...
 
     @override
     def invoke_llm(
@@ -318,7 +318,7 @@ class PluginModelRuntime(ModelRuntime):
         stop: Sequence[str] | None,
         stream: bool,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+    ) -> LLMResult | Generator[LLMResultChunk]:
         app_id = request_metadata.get("app_id") if request_metadata else None
         if not isinstance(app_id, str):
             app_id = None
@@ -387,7 +387,7 @@ class PluginModelRuntime(ModelRuntime):
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
         stream: Literal[True],
-    ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+    ) -> Generator[LLMResultChunkWithStructuredOutput]: ...
 
     @override
     def invoke_llm_with_structured_output(
@@ -401,7 +401,7 @@ class PluginModelRuntime(ModelRuntime):
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
         stream: bool,
-    ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+    ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]:
         model_schema = self.get_model_schema(
             provider=provider,
             model_type=ModelType.LLM,
@@ -638,10 +638,10 @@ class PluginModelRuntime(ModelRuntime):
         content_text: str,
         voice: str,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Iterable[bytes]:
+    ) -> Iterable[TTSChunk]:
         del request_metadata
         plugin_id, provider_name = self._split_provider(provider)
-        return self.client.invoke_tts(
+        chunks = self.client.invoke_tts(
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
@@ -651,6 +651,8 @@ class PluginModelRuntime(ModelRuntime):
             content_text=content_text,
             voice=voice,
         )
+        # ponytail: the current Dify client exposes bytes; preserve MIME metadata when its TTS response model does.
+        return (TTSChunk(data=chunk, mime_type=None) for chunk in chunks)
 
     @override
     def get_tts_model_voices(

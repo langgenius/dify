@@ -14,7 +14,10 @@ const { request, searchMarketplace, marketplaceResults, marketplace, install } =
   marketplace: vi.fn(),
   install: vi.fn(),
 }))
-vi.mock('@/service/base', () => ({ request }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request,
+}))
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: () => ({
     queryPluginsWithDebounced: searchMarketplace,
@@ -27,15 +30,9 @@ vi.mock('@/service/use-plugins', () => ({
   useInstallPackageFromMarketPlace: () => ({ mutate: install, isPending: false }),
 }))
 
-vi.mock(
-  '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
-  () => ({
-    default: () => ({ canInstallPlugin: true, canUpdatePlugin: true }),
-  }),
-)
-
 beforeEach(() => {
   vi.clearAllMocks()
+  request.mockReset()
   marketplaceResults.mockReturnValue([])
   marketplace.mockReturnValue({
     isLoading: false,
@@ -74,7 +71,7 @@ it('selects the generated strategy output and metadata through the real provider
     systemFeatures: { enable_marketplace: false },
   })
 
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   await user.click(await screen.findByRole('button', { name: 'Agent provider' }))
   await user.click(await screen.findByRole('button', { name: 'ReAct' }))
   expect(onChange).toHaveBeenCalledWith({
@@ -97,7 +94,7 @@ it('preserves a nullable output schema when selecting a strategy', async () => {
   render(<AgentStrategySelector onChange={onChange} />, {
     systemFeatures: { enable_marketplace: false },
   })
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   await user.click(await screen.findByRole('button', { name: 'Agent provider' }))
   await user.click(await screen.findByRole('button', { name: 'ReAct' }))
   expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ agent_output_schema: null }))
@@ -116,7 +113,7 @@ it('preserves letter ordering and author groups across flat and tree views', asy
   render(<AgentStrategySelector onChange={vi.fn()} />, {
     systemFeatures: { enable_marketplace: false },
   })
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   await screen.findByRole('button', { name: 'Apple' })
   const providerNames = () =>
     screen
@@ -145,9 +142,9 @@ it('filters by provider identity without changing the saved selection or opening
   render(<AgentStrategySelector onChange={onChange} />, {
     systemFeatures: { enable_marketplace: false },
   })
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   await screen.findByRole('button', { name: 'Display name' })
-  const search = screen.getByPlaceholderText('workflow.nodes.agent.strategy.searchPlaceholder')
+  const search = screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder')
   await user.type(search, 'TARGET')
   expect(screen.getByRole('button', { name: 'Display name' })).toHaveAttribute(
     'aria-expanded',
@@ -172,7 +169,7 @@ it('keeps letter navigation for long catalogs and removes it in tree view', asyn
   render(<AgentStrategySelector onChange={vi.fn()} />, {
     systemFeatures: { enable_marketplace: false },
   })
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   const letter = await screen.findByRole('button', { name: 'K' })
   await user.click(letter)
   expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({ behavior: 'smooth' })
@@ -193,11 +190,13 @@ it('keeps marketplace search and its category link alongside the installed catal
   render(<AgentStrategySelector onChange={vi.fn()} />, {
     systemFeatures: { enable_marketplace: true },
   })
-  await user.click(screen.getByText('workflow.nodes.agent.strategy.selectTip'))
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   const link = screen.getByRole('link', { name: 'plugin.findMoreInMarketplace' })
-  expect(link.getAttribute('href')).toContain('/plugins/agent-strategy')
+  expect(new URL(link.getAttribute('href')!, window.location.href).pathname).toBe(
+    '/plugins/agent-strategy',
+  )
   await user.type(
-    screen.getByPlaceholderText('workflow.nodes.agent.strategy.searchPlaceholder'),
+    screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
     'react',
   )
   expect(searchMarketplace).toHaveBeenLastCalledWith({
@@ -207,12 +206,34 @@ it('keeps marketplace search and its category link alongside the installed catal
   expect(screen.getByText('Marketplace strategy')).toBeInTheDocument()
 })
 
+it('shows installed strategies once and keeps other marketplace results available', async () => {
+  const user = userEvent.setup()
+  const provider = createProvider()
+  marketplaceResults.mockReturnValue([
+    createPlugin({ plugin_id: provider.plugin_id, label: { en_US: 'Installed Marketplace' } }),
+    createPlugin({ plugin_id: 'org/available', label: { en_US: 'Available Marketplace' } }),
+  ])
+  request.mockImplementation(() => Promise.resolve(Response.json([provider])))
+  render(<AgentStrategySelector onChange={vi.fn()} />, {
+    systemFeatures: { enable_marketplace: true },
+  })
+
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
+  expect(await screen.findByRole('button', { name: 'Agent provider' })).toBeInTheDocument()
+  await user.type(
+    screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
+    'agent',
+  )
+  expect(screen.queryByText('Installed Marketplace')).not.toBeInTheDocument()
+  expect(await screen.findByText('Available Marketplace')).toBeInTheDocument()
+})
+
 it('preserves an older saved selection with no plugin identifier until the user chooses a replacement', async () => {
   const user = userEvent.setup()
   const onChange = vi.fn()
   const provider = createProvider()
   request.mockImplementation((url: string) =>
-    Promise.resolve(Response.json(url.includes('agent-providers') ? [provider] : provider)),
+    Promise.resolve(Response.json(url.endsWith('/agent-providers') ? [provider] : provider)),
   )
   render(
     <AgentStrategySelector
@@ -248,11 +269,9 @@ it('keeps the install action for a saved marketplace strategy that is no longer 
     refetch: vi.fn(),
   })
   request.mockImplementation((url: string) =>
-    Promise.resolve(
-      url.includes('agent-providers')
-        ? Response.json([])
-        : Response.json({ message: 'Provider not installed' }, { status: 404 }),
-    ),
+    url.endsWith('/agent-providers')
+      ? Promise.resolve(Response.json([]))
+      : Promise.reject(new Error('Provider not installed')),
   )
   render(
     <AgentStrategySelector
@@ -265,14 +284,16 @@ it('keeps the install action for a saved marketplace strategy that is no longer 
       }}
       onChange={vi.fn()}
     />,
-    { systemFeatures: { enable_marketplace: true } },
+    { systemFeatures: { enable_marketplace: true }, workspacePermissionKeys: ['plugin.install'] },
   )
   await user.click(
-    await screen.findByRole('button', { name: 'workflow.nodes.agent.pluginInstaller.install' }),
+    await screen.findByRole('button', {
+      name: 'workflowAgent.nodes.agent.pluginInstaller.install',
+    }),
   )
   expect(install).toHaveBeenCalledWith('langgenius/agent:1.0.0@hash', expect.any(Object))
   expect(
-    screen.queryByPlaceholderText('workflow.nodes.agent.strategy.searchPlaceholder'),
+    screen.queryByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
   ).not.toBeInTheDocument()
   expect(screen.getByText('Saved label')).toBeInTheDocument()
 })

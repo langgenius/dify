@@ -15,15 +15,13 @@ it('keeps browser history separate from the home and snippet collection destinat
   const user = userEvent.setup()
   render(<SnippetDetailTop />)
   const path = within(screen.getByRole('navigation', { name: 'workflow.tabs.snippets' }))
-  expect(path.getAllByRole('listitem')).toHaveLength(2)
-  expect(path.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
+  expect(path.getByRole('link', { name: 'navigation.mainNav.home' })).toHaveAttribute('href', '/')
   const collection = path.getByRole('link', { name: 'workflow.tabs.snippets' })
   expect(collection).toHaveAttribute('href', '/snippets')
   expect(collection).not.toHaveAttribute('aria-current')
 
   const previous = path.getByRole('button', { name: 'common.operation.back' })
-  previous.focus()
-  await user.keyboard('{Enter}')
+  await user.click(previous)
   expect(back).toHaveBeenCalledOnce()
 })
 

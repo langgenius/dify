@@ -13,6 +13,7 @@ from controllers.console.workspace import snippets as snippets_module
 from models.account import Account, TenantAccountRole
 from models.snippet import CustomizedSnippet
 from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
+from tests.unit_tests.controllers.error_body import raised_error
 from tests.unit_tests.model_factories import make_account
 
 
@@ -85,7 +86,10 @@ def test_snippet_list_query_ignores_indexed_values(app: Flask):
     assert query.creators is None
 
 
-def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+@pytest.mark.usefixtures("app_query_services")
+def test_list_snippets_returns_pagination(
+    application_tags, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     snippets = [_snippet()]
     tag_id = "11111111-1111-1111-1111-111111111111"
     get_snippets = Mock(return_value=(snippets, 1, False))
@@ -133,6 +137,7 @@ def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.Monkey
         is_published=None,
         creators=["account-2"],
         tag_ids=[tag_id],
+        tags=application_tags,
     )
 
 
@@ -202,7 +207,7 @@ def test_create_snippet_rejects_forbidden_nodes(app: Flask, monkeypatch: pytest.
             },
         },
     ):
-        response, status_code = handler(api, req_data, sqlite_session, "tenant-1", user)
+        response, status_code = raised_error(lambda: handler(api, req_data, sqlite_session, "tenant-1", user))
 
     assert status_code == 400
     assert "knowledge-retrieval" in response["message"]
@@ -274,10 +279,12 @@ def test_patch_snippet_returns_400_for_empty_payload(
         method="PATCH",
         json={},
     ):
-        response, status_code = handler(api, req_data, sqlite_session, "tenant-1", user, snippet_id="snippet-1")
+        response, status_code = raised_error(
+            lambda: handler(api, req_data, sqlite_session, "tenant-1", user, snippet_id="snippet-1")
+        )
 
     assert status_code == 400
-    assert response == {"message": "No valid fields to update"}
+    assert response == {"code": "invalid_param", "message": "No valid fields to update"}
 
 
 def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
@@ -420,6 +427,7 @@ def _persisted_name(session: Session) -> str | None:
         return stored.name if stored else None
 
 
+@pytest.mark.usefixtures("app_query_services")
 def test_delete_snippet_delegates_to_service(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     snippet = _snippet()
     user = _account()
@@ -441,6 +449,7 @@ def test_delete_snippet_delegates_to_service(app: Flask, monkeypatch: pytest.Mon
     assert isinstance(delete_snippet.call_args.kwargs["snippet"], CustomizedSnippet)
 
 
+@pytest.mark.usefixtures("app_query_services")
 def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     snippet = _snippet(name="Snippet One")
     export_snippet_dsl = Mock(return_value="version: 0.1.0\nkind: snippet\n")
@@ -467,6 +476,7 @@ def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.
     export_snippet_dsl.assert_called_once_with(snippet=snippet, include_secret=True, workflow_id="workflow-1")
 
 
+@pytest.mark.usefixtures("app_query_services")
 def test_export_snippet_raises_not_found_for_missing_workflow(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
@@ -490,6 +500,7 @@ def test_export_snippet_raises_not_found_for_missing_workflow(
             handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
+@pytest.mark.usefixtures("app_query_services")
 def test_import_snippet_returns_202_for_pending_confirmation(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
@@ -519,6 +530,7 @@ def test_import_snippet_returns_202_for_pending_confirmation(
     import_snippet.assert_called_once()
 
 
+@pytest.mark.usefixtures("app_query_services")
 def test_import_snippet_returns_400_for_failed_import(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
@@ -547,6 +559,7 @@ def test_import_snippet_returns_400_for_failed_import(
     assert response["error"] == "Invalid DSL"
 
 
+@pytest.mark.usefixtures("app_query_services")
 def test_import_confirm_returns_200_for_completed_import(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
@@ -586,6 +599,7 @@ def test_check_dependencies_raises_when_snippet_missing(
             handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
+@pytest.mark.usefixtures("app_query_services")
 def test_check_dependencies_returns_dependency_result(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):

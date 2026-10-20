@@ -77,6 +77,31 @@ def test_paginated_fills_the_next_page_hint_from_the_call_and_leaves_the_rest_al
     assert plain(ctx=object()) == ContractResp(value=1)
 
 
+def test_paginated_keeps_the_view_hints_and_adds_the_next_page() -> None:
+    setup = Hint(summary="Set up", op="thing.describe", input={})
+
+    @paginated("thing.list")
+    def view(*, ctx: object, query: ContractQuery) -> _Page:
+        page = _Page.build(page=query.page, limit=query.limit, total=50, items=[])
+        page.hints = [setup]
+        return page
+
+    assert [h.op for h in view(ctx=object(), query=ContractQuery(page=1, limit=20)).hints] == [
+        "thing.describe",
+        "thing.list",
+    ]
+
+    own = Hint(summary="Next page", op="thing.list", input={"cursor": "c2"})
+
+    @paginated("thing.list")
+    def cursor_view(*, ctx: object, query: ContractQuery) -> _Page:
+        page = _Page.build(page=query.page, limit=query.limit, total=50, items=[])
+        page.hints = [own]
+        return page
+
+    assert cursor_view(ctx=object(), query=ContractQuery(page=1, limit=20)).hints == [own]
+
+
 def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app):
     @accepts(query=ContractQuery)
     def view(*, query):

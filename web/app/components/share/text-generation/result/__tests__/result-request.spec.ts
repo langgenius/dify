@@ -1,3 +1,4 @@
+import type { TextGenerationTranslate } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -5,7 +6,8 @@ import { withSelectorKey } from '@/test/i18n-mock'
 import { Resolution, TransferMethod } from '@/types/app'
 import { buildResultRequestData, validateResultRequest } from '../result-request'
 
-const createTranslator = () => withSelectorKey(vi.fn((key: string) => key))
+const createTranslator = () =>
+  withSelectorKey(vi.fn((key: string) => key)) as TextGenerationTranslate
 
 const createFileEntity = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   id: 'file-1',

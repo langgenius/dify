@@ -10,11 +10,12 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -22,7 +23,6 @@ import VarList from '@/app/components/workflow/nodes/_base/components/variable/v
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
@@ -46,8 +46,8 @@ const getModelSelectionKey = (
   `${source}:${environmentVariableName}:${provider}:${modelName}:${JSON.stringify(completionParams)}`
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['common', 'workflow'])
-  const flowType = useHooksStore((s) => s.configsMap?.flowType)
+  const { t } = useTranslation(['common', 'workflow', 'modelProvider', 'workflowModels'])
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const {
     readOnly,
     inputs,
@@ -55,7 +55,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
     environmentVariables,
     isEnvironmentModelSource,
     isChatModel,
-    isChatMode,
+    isChatflow,
     isCompletionModel,
     shouldShowContextTip,
     isVisionModel,
@@ -138,7 +138,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           const keys = Object.keys(removedDetails)
           if (keys.length)
             toast.warning(
-              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
             )
           handleModelChanged(model, filtered)
         } catch {
@@ -189,7 +189,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           const keys = Object.keys(removedDetails)
           if (keys.length)
             toast.warning(
-              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((key) => `${key} (${removedDetails[key]})`).join(', ')}`,
+              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((key) => `${key} (${removedDetails[key]})`).join(', ')}`,
             )
           handleModelSelectorChange(modelSelector, filtered)
         } catch {
@@ -209,11 +209,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflowModels' })}
           required
           warningDot={hasModelWarning}
           operations={
-            flowType === FlowType.snippet && !isEnvironmentModelSource ? undefined : (
+            resourceKind === 'snippet' && !isEnvironmentModelSource ? undefined : (
               <FormInputTypeSwitch
                 value={isEnvironmentModelSource ? VarKindType.variable : VarKindType.constant}
                 readonly={readOnly}
@@ -235,7 +235,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
                 onValueChange={(nextValue) => nextValue && handleEnvironmentModelChange(nextValue)}
               >
                 <SelectTrigger
-                  aria-label={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflow' })}
+                  aria-label={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflowModels' })}
                   className="w-full"
                 >
                   {selectedEnvironmentVariableName ??
@@ -272,8 +272,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
 
         {/* knowledge */}
         <Field
-          title={t(($) => $[`${i18nPrefix}.context`], { ns: 'workflow' })}
-          tooltip={t(($) => $[`${i18nPrefix}.contextTooltip`], { ns: 'workflow' })!}
+          title={t(($) => $[`${i18nPrefix}.context`], { ns: 'workflowModels' })}
+          tooltip={t(($) => $[`${i18nPrefix}.contextTooltip`], { ns: 'workflowModels' })!}
         >
           <>
             <VarReferencePicker
@@ -286,7 +286,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
             />
             {shouldShowContextTip && (
               <div className="text-xs leading-4.5 font-normal text-[#DC6803]">
-                {t(($) => $[`${i18nPrefix}.notSetContextInPromptTip`], { ns: 'workflow' })}
+                {t(($) => $[`${i18nPrefix}.notSetContextInPromptTip`], { ns: 'workflowModels' })}
               </div>
             )}
           </>
@@ -299,7 +299,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
             nodeId={id}
             filterVar={isShowVars ? filterJinja2InputVar : filterInputVar}
             isChatModel={isChatModel}
-            isChatApp={isChatMode}
+            isChatApp={isChatflow}
             isShowContext
             payload={inputs.prompt_template}
             onChange={handlePromptChange}
@@ -338,19 +338,19 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           </Field>
         )}
 
-        {isChatMode && (
+        {isChatflow && (
           <>
             <Split />
             <PanelMemorySection
               readOnly={readOnly}
-              isChatMode={isChatMode}
+              isChatflow={isChatflow}
               isChatModel={isChatModel}
               isCompletionModel={isCompletionModel}
               inputs={inputs}
               hasSetBlockStatus={hasSetBlockStatus}
               availableVars={availableVars}
               availableNodesWithParent={availableNodesWithParent}
-              flowType={flowType}
+              resourceKind={resourceKind}
               handleSyeQueryChange={handleSyeQueryChange}
               handleMemoryChange={handleMemoryChange}
             />

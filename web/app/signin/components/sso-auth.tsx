@@ -1,8 +1,10 @@
 'use client'
+
 import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import type { FC } from 'react'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
+import { ORPCError } from '@orpc/client'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -13,6 +15,13 @@ type SSOAuthProps = {
   protocol: SsoProtocol
 }
 
+// The request layer already toasts HTTP errors whose JSON body carries a message.
+const hasNotifiedRequestError = (error: unknown) =>
+  error instanceof ORPCError &&
+  error.status !== 401 &&
+  ((typeof error.data?.message === 'string' && !!error.data.message) ||
+    (typeof error.data?.error === 'string' && !!error.data.error))
+
 const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   const router = useRouter()
   const { t } = useTranslation(['login'])
@@ -21,6 +30,11 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
 
   const [isLoading, setIsLoading] = useState(false)
 
+  const handleSSOError = (error: unknown) => {
+    if (hasNotifiedRequestError(error)) return
+    toast.error(t(($) => $['error.ssoFailed'], { ns: 'login' }))
+  }
+
   const handleSSOLogin = () => {
     setIsLoading(true)
     if (protocol === zSsoProtocol.enum.saml) {
@@ -28,6 +42,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
         .then((res) => {
           router.push(res.url)
         })
+        .catch(handleSSOError)
         .finally(() => {
           setIsLoading(false)
         })
@@ -37,6 +52,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           document.cookie = `user-oidc-state=${res.state};Path=/`
           router.push(res.url)
         })
+        .catch(handleSSOError)
         .finally(() => {
           setIsLoading(false)
         })
@@ -46,6 +62,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           document.cookie = `user-oauth2-state=${res.state};Path=/`
           router.push(res.url)
         })
+        .catch(handleSSOError)
         .finally(() => {
           setIsLoading(false)
         })

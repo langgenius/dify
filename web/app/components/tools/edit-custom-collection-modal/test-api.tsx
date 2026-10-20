@@ -10,13 +10,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiSettings2Line } from '@remixicon/react'
 import * as React from 'react'
@@ -99,9 +100,15 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                       {`${t(($) => $['test.title'], { ns: 'tools' })}  ${toolName}`}
                     </DrawerTitle>
-                    <DrawerCloseButton
-                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                      className="size-6 rounded-md"
+                    <DrawerClose
+                      render={
+                        <IconButton
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          size="md"
+                        >
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
                     />
                   </div>
                 </div>
@@ -195,7 +202,10 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                       </div>
                       <div className="h-px w-0 grow"></div>
                     </div>
-                    <div className="mt-2 h-50 overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-3 py-2 system-xs-regular text-text-secondary">
+                    <div
+                      role="status"
+                      className="mt-2 h-50 overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-3 py-2 system-xs-regular text-text-secondary"
+                    >
                       {result || (
                         <span className="text-text-quaternary">
                           {t(($) => $['test.testResultPlaceholder'], { ns: 'tools' })}

@@ -1,6 +1,6 @@
 'use client'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { AppData } from '@/models/share'
-import type { TryAppInfo } from '@/service/try-app'
 import { memo } from 'react'
 import { FileUploadContext } from '@/app/components/base/file-uploader/upload-context'
 import Chat from './chat'
@@ -8,19 +8,19 @@ import TextGeneration from './text-generation'
 
 type Props = Readonly<{
   appId: string
-  appDetail: TryAppInfo
+  appDetail: TrialAppDetailResponse
 }>
 
 function TryApp({ appId, appDetail }: Props) {
   const mode = appDetail?.mode
-  const isChat = ['chat', 'advanced-chat', 'agent-chat'].includes(mode!)
+  const isChat = ['chat', 'advanced-chat', 'agent-chat', 'agent'].includes(mode)
   const isCompletion = !isChat
 
   return (
     <FileUploadContext
       value={{
         localUploadUrl: `/trial-apps/${appId}/files/upload`,
-        remoteUploadUrl: `/trial-apps/${appId}/remote-files/upload`,
+        trialAppId: appId,
       }}
     >
       <div className="flex size-full">

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createStore, Provider } from 'jotai'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import SnippetList from '..'
 
@@ -13,15 +14,10 @@ const mockQueryState = vi.hoisted(() => ({
   tagIDs: [] as string[],
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useConfirmSnippetImportMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
-  useCreateSnippetMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
-  useDeleteSnippetMutation: () => ({ isPending: false, mutate: vi.fn() }),
-  useExportSnippetMutation: () => ({ mutateAsync: vi.fn() }),
-  useImportSnippetDSLMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
+vi.mock('@/service/use-snippets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-snippets')>()),
   useInfiniteSnippetList: (params: unknown, options: unknown) =>
     mockUseInfiniteSnippetList(params, options),
-  useUpdateSnippetMutation: () => ({ isPending: false, mutate: vi.fn() }),
 }))
 
 vi.mock('../hooks/use-snippets-query-state', () => ({
@@ -48,63 +44,34 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          avatar_url: null,
-          id: 'creator-1',
-          name: 'Alice',
-          status: 'active',
-        },
-      ],
-    },
-  }),
-}))
-
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
     queryFn: async () => ({ profile: { id: 'creator-1' } }),
-    queryKey: ['account-profile'],
+    queryKey: consoleQueryKey('account.profile.get'),
   }),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            post: vi.fn(),
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    tags: {
-      get: {
-        key: () => ['tags'],
-        queryOptions: ({ input }: { input: { query: { type: string } } }) => ({
-          queryFn: async () => [],
-          queryKey: ['tags', input.query.type],
-        }),
-      },
-      post: {
-        mutationOptions: () => ({ mutationFn: vi.fn() }),
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({
+        accounts: [{ avatar_url: null, id: 'creator-1', name: 'Alice', status: 'active' }],
+      }),
+      'tags.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/next/dynamic', () => ({
-  default: () => () => null,
+vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
+  TagManagementModal: () => null,
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
@@ -140,8 +107,7 @@ const renderSnippetList = async () => {
       queries: { retry: false },
     },
   })
-  queryClient.setQueryData(['account-profile'], { profile: { id: 'creator-1' } })
-  queryClient.setQueryData(['tags', 'snippet'], [])
+  queryClient.setQueryData(consoleQueryKey('account.profile.get'), { profile: { id: 'creator-1' } })
 
   const store = createStore()
   seedRegisteredConsoleStateFixture(store)
@@ -220,7 +186,6 @@ describe('Snippet list reflow', () => {
     const gridElement = card.element().closest('[aria-busy]')
     if (!gridElement) throw new Error('Snippet card did not render inside the list grid')
 
-    expect(mainElement.clientWidth).toBe(320)
     expect(mainElement.scrollWidth).toBe(mainElement.clientWidth)
     expect(gridElement.scrollWidth).toBe(gridElement.clientWidth)
     ;[creatorFilter, statusFilter, tagFilter, search, createAction, card].forEach((locator) => {

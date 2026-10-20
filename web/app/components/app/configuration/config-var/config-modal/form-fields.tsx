@@ -1,8 +1,8 @@
 'use client'
+import type { TFunction } from 'i18next'
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
 import type { ConfigModalValidationError } from './utils'
-import type { SelectorTranslate } from '@/app/components/app/configuration/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -25,7 +25,6 @@ import {
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { Trans } from 'react-i18next'
-import { getStringSelectorTranslate } from '@/app/components/app/configuration/utils'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
@@ -59,7 +58,7 @@ type ConfigModalFormFieldsProps = {
   showHiddenField?: boolean
   tempPayload: InputVar
   validationError?: ConfigModalValidationError
-  t: SelectorTranslate<'appDebug'>
+  t: TFunction<['appDebug']>
 }
 
 const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
@@ -79,13 +78,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   showHiddenField = true,
   tempPayload,
   validationError,
-  t: rawTranslate,
+  t,
 }) => {
   const hiddenLabelId = React.useId()
 
   const fileInputTypes: readonly InputVarType[] = [InputVarType.singleFile, InputVarType.multiFiles]
 
-  const t = getStringSelectorTranslate(rawTranslate)
   const { type, label, variable } = tempPayload
   const numberDefault =
     typeof tempPayload.default === 'number' ||
@@ -386,7 +384,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         </Field>
       )}
 
-      <label className="mt-5! flex h-6 items-center space-x-2">
+      <label className="mt-5! flex h-6 cursor-pointer items-center space-x-2 has-data-disabled:cursor-not-allowed">
         <Checkbox
           checked={tempPayload.required}
           disabled={!isFileInput && tempPayload.hide}
@@ -399,7 +397,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
 
       {showHiddenField && !isFileInput && (
         <div className="mt-5! flex h-6 items-center gap-2">
-          <label className="flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-2 has-data-disabled:cursor-not-allowed">
             <Checkbox
               checked={tempPayload.hide}
               disabled={tempPayload.required}

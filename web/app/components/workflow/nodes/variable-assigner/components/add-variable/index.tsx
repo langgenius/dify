@@ -2,7 +2,8 @@ import type { VariableAssignerNodeType } from '../../types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
 import { useVariableAssigner } from '../../hooks'
 
@@ -18,7 +19,9 @@ const AddVariable = ({
   variableAssignerNodeData,
   handleId,
 }: AddVariableProps) => {
+  const { t } = useTranslation(['workflowLogic'])
   const [open, setOpen] = useState(false)
+  const popupRef = useRef<HTMLDivElement>(null)
   const { handleAssignVariableValueChange } = useVariableAssigner()
 
   const handleSelectVariable = useCallback(
@@ -37,6 +40,9 @@ const AddVariable = ({
             <button
               {...props}
               type="button"
+              aria-label={t(($) => $['nodes.variableAssigner.setAssignVariable'], {
+                ns: 'workflowLogic',
+              })}
               className={cn('block border-none bg-transparent p-0', props.className)}
             >
               <div
@@ -63,11 +69,16 @@ const AddVariable = ({
           )}
         />
         <PopoverContent
+          ref={popupRef}
           placement="right"
           sideOffset={4}
           className="border-none bg-transparent shadow-none"
         >
-          <AddVariablePopup onSelect={handleSelectVariable} availableVars={availableVars} />
+          <AddVariablePopup
+            onSelect={handleSelectVariable}
+            availableVars={availableVars}
+            keyboardTarget={popupRef}
+          />
         </PopoverContent>
       </Popover>
     </div>

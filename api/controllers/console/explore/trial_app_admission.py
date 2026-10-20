@@ -6,6 +6,7 @@ from typing import Concatenate
 
 from controllers.console.explore.error import TrialAppFeatureDisabledError, TrialAppLimitExceeded, TrialAppNotAllowed
 from extensions.ext_application_services import application_services
+from libs.external_api import document_errors
 from machinery.context import RequestContext
 from services.trial_app_access_service import (
     TrialAppRef,
@@ -23,13 +24,15 @@ def trial_feature_enable[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise TrialAppFeatureDisabledError()
         return view(*args, **kwargs)
 
-    return decorated
+    return document_errors(decorated, TrialAppFeatureDisabledError)
 
 
 def get_trial_app[T, **P, R](
     view: Callable[Concatenate[T, RequestContext, TrialAppRef, P], R],
+    *,
+    check_usage: bool = True,
 ) -> Callable[Concatenate[T, RequestContext, P], R]:
-    """Check trial availability and inject an admitted app after Console admission."""
+    """Admit the trial app, optionally skipping generation quota for task cancellation."""
 
     @wraps(view)
     def decorated(self: T, request_context: RequestContext, /, *args: P.args, **kwargs: P.kwargs) -> R:
@@ -37,8 +40,8 @@ def get_trial_app[T, **P, R](
         if app_id is None:
             raise RuntimeError("The trial app admission route must provide app_id")
         try:
-            trial_app = application_services().trial_app_access.get_access(
-                app_id=str(app_id), account_id=request_context.account_id
+            trial_app = application_services().trial_apps.access.get_access(
+                app_id=str(app_id), account_id=request_context.account_id, check_usage=check_usage
             )
         except TrialAppUnavailableError as error:
             raise TrialAppNotAllowed() from error
@@ -46,4 +49,12 @@ def get_trial_app[T, **P, R](
             raise TrialAppLimitExceeded() from error
         return view(self, request_context, trial_app, *args, **kwargs)
 
-    return trial_feature_enable(decorated)
+    documented = (TrialAppNotAllowed, TrialAppLimitExceeded) if check_usage else (TrialAppNotAllowed,)
+    return trial_feature_enable(document_errors(decorated, *documented))
+
+
+def get_trial_app_for_stop[T, **P, R](
+    view: Callable[Concatenate[T, RequestContext, TrialAppRef, P], R],
+) -> Callable[Concatenate[T, RequestContext, P], R]:
+    """Keep trial access checks without requiring remaining generation quota."""
+    return get_trial_app(view, check_usage=False)

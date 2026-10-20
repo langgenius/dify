@@ -18,7 +18,7 @@ type RunModeProps = {
 }
 
 export function RunMode({ text }: RunModeProps) {
-  const { t } = useTranslation(['common', 'pipeline', 'workflow'])
+  const { t } = useTranslation(['common', 'pipeline', 'workflowDebug'])
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const workflowStore = useWorkflowStore()
@@ -49,11 +49,22 @@ export function RunMode({ text }: RunModeProps) {
     handleWorkflowStartRunInWorkflow()
   }
 
-  useHotkey(RAG_PIPELINE_RUN_HOTKEY, handleRun, {
-    enabled: !isDisabled,
-    ignoreInputs: true,
-    preventDefault: true,
-  })
+  useHotkey(
+    RAG_PIPELINE_RUN_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleRun()
+    },
+    {
+      stopPropagation: false,
+      enabled: !isDisabled,
+      ignoreInputs: true,
+      preventDefault: false,
+    },
+  )
 
   if (!canRun) return null
 
@@ -91,8 +102,8 @@ export function RunMode({ text }: RunModeProps) {
         )}
         {!isDisabled && (
           <KbdGroup>
-            {RAG_PIPELINE_RUN_HOTKEY.split('+').map((key) => (
-              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+            {formatForDisplay(RAG_PIPELINE_RUN_HOTKEY, { parts: true }).map((key) => (
+              <Kbd key={key}>{key}</Kbd>
             ))}
           </KbdGroup>
         )}
@@ -103,7 +114,7 @@ export function RunMode({ text }: RunModeProps) {
           className={cn(
             'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
           )}
-          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
+          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })}
           onClick={handleStop}
         >
           <span

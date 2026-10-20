@@ -2,7 +2,7 @@
 
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
-import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetInfo from './dataset-info'
 import NavLink from './nav-link'
@@ -27,7 +27,7 @@ type DatasetDetailSectionProps = {
 }
 
 const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -37,10 +37,18 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const { data: datasetRes, refetch: mutateDatasetRes } = useDatasetDetail(datasetId ?? '')
-  const { data: relatedApps } = useDatasetRelatedApps(datasetId ?? '', {
-    enabled: !!datasetId && !!datasetRes,
-  })
+  const { data: datasetRes, refetch: mutateDatasetRes } = useQuery(
+    consoleQuery.datasets.byDatasetId.get.queryOptions({
+      input: { params: { dataset_id: datasetId ?? '' } },
+      enabled: !!datasetId,
+    }),
+  )
+  const { data: relatedApps } = useQuery(
+    consoleQuery.datasets.byDatasetId.relatedApps.get.queryOptions({
+      input: { params: { dataset_id: datasetId ?? '' } },
+      enabled: !!datasetId && !!datasetRes,
+    }),
+  )
   const datasetACLCapabilities = useMemo(
     () =>
       getDatasetACLCapabilities(datasetRes?.permission_keys, {
@@ -68,7 +76,13 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   const navigation = useMemo(() => {
     if (!datasetId) return []
 
-    const baseNavigation = [
+    const baseNavigation: {
+      name: string
+      href: string
+      icon: string
+      selectedIcon: string
+      disabled: boolean
+    }[] = [
       {
         name: t(($) => $['datasetMenus.hitTesting'], { ns: 'common' }),
         href: `/datasets/${datasetId}/hitTesting`,
@@ -86,7 +100,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
       ...(datasetACLCapabilities.canAccessConfig
         ? [
             {
-              name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
+              name: t(($) => $['settings.resourceAccess'], { ns: 'navigation' }),
               href: `/datasets/${datasetId}/access-config`,
               icon: 'i-ri-lock-2-line',
               selectedIcon: 'i-ri-lock-2-fill',
@@ -121,7 +135,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   return (
     <DatasetDetailContext.Provider
       value={{
-        indexingTechnique: datasetRes.indexing_technique,
+        indexingTechnique: datasetRes.indexing_technique ?? undefined,
         dataset: datasetRes,
         mutateDatasetRes,
       }}
@@ -140,7 +154,10 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
         <div className="py-2">
           <DatasetInfo expand={expand} />
         </div>
-        <nav className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}>
+        <nav
+          aria-label={datasetRes.name}
+          className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}
+        >
           {navigation.map((item) => (
             <NavLink
               key={item.href}

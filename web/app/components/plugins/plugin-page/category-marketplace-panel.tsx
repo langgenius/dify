@@ -31,7 +31,7 @@ const CategoryMarketplacePanel = ({
   searchText: string
   tags?: string[]
 }) => {
-  const { t } = useTranslation(['common', 'plugin', 'workflow'])
+  const { t } = useTranslation(['common', 'plugin', 'workflow', 'modelProvider'])
   const { theme } = useTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapsed, setCollapsed] = useState(false)
@@ -102,7 +102,7 @@ const CategoryMarketplacePanel = ({
         </button>
         <div className="flex items-center gap-1">
           <span className="system-sm-regular text-text-tertiary">
-            {t(($) => $['modelProvider.discoverMore'], { ns: 'common' })}
+            {t(($) => $['modelProvider.discoverMore'], { ns: 'modelProvider' })}
           </span>
           <Link
             className="inline-flex items-center system-sm-medium text-text-accent"

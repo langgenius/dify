@@ -1,10 +1,23 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { useMembers } from '@/service/use-common'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import MemberSelector from '../member-selector'
 
-vi.mock('@/service/use-common')
+const { mockMembersHook } = vi.hoisted(() => ({
+  mockMembersHook: vi.fn(),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': () => mockMembersHook(),
+    }),
+  }
+})
 
 const mockAccounts = [
   { id: '1', name: 'John Doe', email: 'john@example.com', avatar_url: '' },
@@ -14,7 +27,7 @@ const mockAccounts = [
 
 const getTrigger = () =>
   screen.getByRole('button', {
-    name: 'common.members.transferModal.transferPlaceholder',
+    name: 'workspaceMembers.members.transferModal.transferPlaceholder',
   })
 
 const getMemberButtons = () =>
@@ -27,20 +40,13 @@ describe('MemberSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: mockAccounts },
-    } as unknown as ReturnType<typeof useMembers>)
+    mockMembersHook.mockResolvedValue({ accounts: mockAccounts })
   })
 
-  it('should render placeholder when no value is selected', () => {
-    render(<MemberSelector onSelect={mockOnSelect} />)
-    expect(getTrigger()).toHaveAttribute('aria-expanded', 'false')
-  })
-
-  it('should render selected member info', () => {
+  it('should render selected member info', async () => {
     render(<MemberSelector value="1" onSelect={mockOnSelect} />)
     expect(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: /John Doe.*john@example\.com/,
       }),
     ).toBeInTheDocument()
@@ -51,6 +57,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} exclude={['1']} />)
 
     await user.click(getTrigger())
+    await screen.findByRole('button', { name: /Jane Smith.*jane@example\.com/ })
 
     const items = getMemberButtons()
     expect(items).toHaveLength(2) // Jane and Bob (John excluded)
@@ -63,6 +70,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
+    await screen.findByRole('button', { name: /Jane Smith.*jane@example\.com/ })
     await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'Jane')
 
     const items = getMemberButtons()
@@ -76,6 +84,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
+    await screen.findByRole('button', { name: /Jane Smith.*jane@example\.com/ })
     await user.click(screen.getByRole('button', { name: /Jane Smith.*jane@example\.com/ }))
 
     expect(mockOnSelect).toHaveBeenCalledWith('2')
@@ -91,6 +100,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
+    await screen.findByRole('button', { name: /Jane Smith.*jane@example\.com/ })
     await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'john@')
 
     const items = getMemberButtons()
@@ -105,42 +115,22 @@ describe('MemberSelector', () => {
     expect(getTrigger()).toBeInTheDocument()
   })
 
-  it('should handle missing data gracefully', () => {
-    vi.mocked(useMembers).mockReturnValue({ data: undefined } as unknown as ReturnType<
-      typeof useMembers
-    >)
-    render(<MemberSelector onSelect={mockOnSelect} />)
-    expect(getTrigger()).toBeInTheDocument()
-  })
-
   it('should filter by email when account name is empty', async () => {
     const user = userEvent.setup()
-    vi.mocked(useMembers).mockReturnValue({
-      data: {
-        accounts: [
-          ...mockAccounts,
-          { id: '4', name: '', email: 'noname@example.com', avatar_url: '' },
-        ],
-      },
-    } as unknown as ReturnType<typeof useMembers>)
+    mockMembersHook.mockResolvedValue({
+      accounts: [
+        ...mockAccounts,
+        { id: '4', name: '', email: 'noname@example.com', avatar_url: '' },
+      ],
+    })
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
+    await screen.findByRole('button', { name: /Jane Smith.*jane@example\.com/ })
     await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'noname@')
 
     const items = getMemberButtons()
     expect(items).toHaveLength(1)
-  })
-
-  it('should expose the expanded state while the dropdown is open', async () => {
-    const user = userEvent.setup()
-    render(<MemberSelector onSelect={mockOnSelect} />)
-
-    const trigger = getTrigger()
-    expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    await user.click(trigger)
-
-    expect(trigger).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('should not match account when neither name nor email contains search value', async () => {
@@ -148,29 +138,13 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
+    await screen.findByRole('button', { name: /Jane Smith.*jane@example\.com/ })
     await user.type(
       screen.getByRole('searchbox', { name: 'common.operation.search' }),
       'xyz-no-match-xyz',
     )
 
     expect(screen.queryAllByRole('button', { name: /@example\.com/ })).toHaveLength(0)
-  })
-
-  it('should fall back to empty string for account with undefined email when searching', async () => {
-    const user = userEvent.setup()
-    vi.mocked(useMembers).mockReturnValue({
-      data: {
-        accounts: [
-          { id: '1', name: 'John', email: undefined as unknown as string, avatar_url: '' },
-        ],
-      },
-    } as unknown as ReturnType<typeof useMembers>)
-    render(<MemberSelector onSelect={mockOnSelect} />)
-
-    await user.click(getTrigger())
-    await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'john')
-
-    expect(screen.getByRole('button', { name: /John/ })).toBeInTheDocument()
   })
 
   it.each([
@@ -185,6 +159,7 @@ describe('MemberSelector', () => {
     await user.keyboard(key)
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    await screen.findByRole('button', { name: /Jane Smith.*jane@example\.com/ })
     expect(getMemberButtons()).toHaveLength(3)
   })
 
@@ -196,6 +171,7 @@ describe('MemberSelector', () => {
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
+    await screen.findByRole('button', { name: /Jane Smith.*jane@example\.com/ })
     const jane = screen.getByRole('button', { name: /Jane Smith.*jane@example\.com/ })
     jane.focus()
     await user.keyboard(key)

@@ -1,961 +1,176 @@
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
+import { useState } from 'react'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalMethodConfig from '../index'
 
-let mockRetrievalMethods: string[] = [
-  RETRIEVE_METHOD.semantic,
-  RETRIEVE_METHOD.fullText,
-  RETRIEVE_METHOD.hybrid,
-]
+let validDefault = true
 
-// Mock model hooks with controllable return values
-let mockRerankDefaultModel: { provider: { provider: string }; model: string } | undefined = {
-  provider: { provider: 'test-provider' },
-  model: 'test-rerank-model',
-}
-let mockIsRerankDefaultModelValid: boolean | undefined = true
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    defaultModel: mockRerankDefaultModel,
-    currentModel: mockIsRerankDefaultModelValid,
-  }),
-}))
-
-// Mock child component RetrievalParamConfig to simplify testing
-vi.mock('../../retrieval-param-config', () => ({
-  default: ({
-    type,
-    value,
-    onChange,
-    showMultiModalTip,
-  }: {
-    type: RETRIEVE_METHOD
-    value: RetrievalConfig
-    onChange: (v: RetrievalConfig) => void
-    showMultiModalTip?: boolean
-  }) => (
-    <div data-testid={`retrieval-param-config-${type}`}>
-      <span data-testid="param-config-type">{type}</span>
-      <span data-testid="param-config-multimodal-tip">{String(showMultiModalTip)}</span>
-      <button
-        data-testid={`update-top-k-${type}`}
-        onClick={() => onChange({ ...value, top_k: 10 })}
-      >
-        Update Top K
-      </button>
-    </div>
-  ),
-}))
-
-// Factory function to create mock RetrievalConfig
-const createMockRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
+const config = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
   reranking_enable: false,
-  reranking_model: {
-    reranking_provider_name: '',
-    reranking_model_name: '',
-  },
+  reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
   top_k: 4,
   score_threshold_enabled: false,
   score_threshold: 0.5,
   ...overrides,
 })
-
-const render = (ui: React.ReactElement) => {
+const methods = [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid]
+const radioName = (method: RETRIEVE_METHOD) => `dataset.retrieval.${method}.title`
+const weights = {
+  weight_type: WeightedScoreEnum.Customized,
+  vector_setting: {
+    vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
+    embedding_provider_name: '',
+    embedding_model_name: '',
+  },
+  keyword_setting: { keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword },
+}
+const render = createNuqsTestRenderer((ui: React.ReactElement, supported: string[] = methods) => {
   const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(
+    queryClient,
+    validDefault
+      ? [
+          createModelCatalogFixture({
+            provider: 'provider',
+            models: [createCatalogModelFixture({ model: 'reranker', model_type: 'rerank' })],
+          }),
+        ]
+      : [],
+  )
+  if (validDefault) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.defaultModel.get.queryKey({
+        input: { query: { model_type: 'rerank' } },
+      }),
+      {
+        data: createDefaultModelFixture({
+          provider: { provider: 'provider' },
+          model: 'reranker',
+          model_type: 'rerank',
+        }),
+      },
+    )
+  }
   queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
-    retrieval_method: mockRetrievalMethods,
+    retrieval_method: supported,
   })
   return renderWithConsoleQuery(ui, { queryClient })
-}
+})
+beforeEach(() => {
+  validDefault = true
+})
 
-// Helper to render component with default props
-const renderComponent = (
-  props: Partial<React.ComponentProps<typeof RetrievalMethodConfig>> = {},
-) => {
-  const defaultProps = {
-    value: createMockRetrievalConfig(),
-    onChange: vi.fn(),
+it('keeps numeric parameter interaction outside retrieval mode selection', async () => {
+  const user = userEvent.setup()
+  function Owner() {
+    const [value, onChange] = useState(config())
+    return <RetrievalMethodConfig value={value} onChange={onChange} />
   }
-  return render(<RetrievalMethodConfig {...defaultProps} {...props} />)
-}
+  render(<Owner />)
+  const semantic = screen.getByRole('radio', { name: radioName(RETRIEVE_METHOD.semantic) })
+  expect(semantic).toBeChecked()
+  expect(semantic).not.toContainElement(
+    screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }),
+  )
+  semantic.focus()
+  await user.keyboard('{ArrowDown}')
+  const fullText = screen.getByRole('radio', { name: radioName(RETRIEVE_METHOD.fullText) })
+  expect(fullText).toBeChecked()
+  expect(fullText).toHaveFocus()
+  const topK = screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' })
+  await user.click(topK)
+  await user.keyboard('{ArrowUp}')
+  expect(topK).toHaveValue('5')
+  expect(fullText).toBeChecked()
+  expect(screen.getAllByRole('radio', { checked: true })).toHaveLength(1)
+})
 
-describe('RetrievalMethodConfig', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    // Reset mock values to defaults
-    mockRetrievalMethods = [
-      RETRIEVE_METHOD.semantic,
-      RETRIEVE_METHOD.fullText,
-      RETRIEVE_METHOD.hybrid,
-    ]
-    mockRerankDefaultModel = {
-      provider: { provider: 'test-provider' },
-      model: 'test-rerank-model',
-    }
-    mockIsRerankDefaultModelValid = true
-  })
-
-  it('selects one retrieval mode with arrow keys and keeps parameter controls outside radios', async () => {
+it.each(methods.flatMap((method) => [true, false].map((valid) => ({ method, valid }))))(
+  'selects $method with a valid default reranker: $valid',
+  async ({ method, valid }) => {
     const user = userEvent.setup()
-    const Owner = () => {
-      const [value, setValue] = React.useState(createMockRetrievalConfig())
-      return <RetrievalMethodConfig value={value} onChange={setValue} />
-    }
-    render(<Owner />)
-    const semantic = screen.getByRole('radio', { name: 'dataset.retrieval.semantic_search.title' })
-    expect(
-      screen.getByRole('radiogroup', { name: 'datasetSettings.form.retrievalSetting.method' }),
-    ).toContainElement(semantic)
-    expect(semantic).toBeChecked()
-    expect(semantic).not.toContainElement(screen.getByRole('button', { name: 'Update Top K' }))
-    semantic.focus()
-    await user.keyboard('{ArrowDown}')
-    const fullText = screen.getByRole('radio', { name: 'dataset.retrieval.full_text_search.title' })
-    expect(fullText).toHaveFocus()
-    expect(fullText).toBeChecked()
-    expect(semantic).not.toBeChecked()
-    await user.click(screen.getByRole('button', { name: 'Update Top K' }))
-    expect(fullText).toBeChecked()
-    expect(screen.getAllByRole('radio', { checked: true })).toHaveLength(1)
+    validDefault = valid
+    const onChange = vi.fn()
+    const value = config({
+      search_method:
+        method === RETRIEVE_METHOD.semantic ? RETRIEVE_METHOD.fullText : RETRIEVE_METHOD.semantic,
+    })
+    render(<RetrievalMethodConfig value={value} onChange={onChange} />)
+    await user.click(screen.getByRole('radio', { name: radioName(method) }))
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      ...value,
+      search_method: method,
+      reranking_enable: valid,
+      reranking_model: {
+        reranking_provider_name: valid ? 'provider' : '',
+        reranking_model_name: valid ? 'reranker' : '',
+      },
+      ...(method === RETRIEVE_METHOD.hybrid
+        ? {
+            weights,
+            reranking_mode: valid
+              ? RerankingModeEnum.RerankingModel
+              : RerankingModeEnum.WeightedScore,
+          }
+        : {}),
+    })
+  },
+)
+
+it('preserves explicitly selected models and weights when switching to hybrid search', async () => {
+  const user = userEvent.setup()
+  validDefault = false
+  const onChange = vi.fn()
+  const value = config({
+    reranking_model: {
+      reranking_provider_name: 'chosen-provider',
+      reranking_model_name: 'chosen-model',
+    },
+    weights: {
+      ...weights,
+      vector_setting: { ...weights.vector_setting, vector_weight: 0.8 },
+      keyword_setting: { keyword_weight: 0.2 },
+    },
   })
-
-  // Tests for basic rendering
-  describe('Rendering', () => {
-    it('should render all three retrieval methods when all are supported', () => {
-      renderComponent()
-
-      expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
-      expect(screen.getByText('dataset.retrieval.full_text_search.title')).toBeInTheDocument()
-      expect(screen.getByText('dataset.retrieval.hybrid_search.title')).toBeInTheDocument()
-    })
-
-    it('should render descriptions for all retrieval methods', () => {
-      renderComponent()
-
-      expect(screen.getByText('dataset.retrieval.semantic_search.description')).toBeInTheDocument()
-      expect(screen.getByText('dataset.retrieval.full_text_search.description')).toBeInTheDocument()
-      expect(screen.getByText('dataset.retrieval.hybrid_search.description')).toBeInTheDocument()
-    })
-
-    it('should only render semantic search when only semantic is supported', () => {
-      mockRetrievalMethods = [RETRIEVE_METHOD.semantic]
-      renderComponent()
-
-      expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
-      expect(screen.queryByText('dataset.retrieval.full_text_search.title')).not.toBeInTheDocument()
-      expect(screen.queryByText('dataset.retrieval.hybrid_search.title')).not.toBeInTheDocument()
-    })
-
-    it('should only render fullText search when only fullText is supported', () => {
-      mockRetrievalMethods = [RETRIEVE_METHOD.fullText]
-      renderComponent()
-
-      expect(screen.queryByText('dataset.retrieval.semantic_search.title')).not.toBeInTheDocument()
-      expect(screen.getByText('dataset.retrieval.full_text_search.title')).toBeInTheDocument()
-      expect(screen.queryByText('dataset.retrieval.hybrid_search.title')).not.toBeInTheDocument()
-    })
-
-    it('should only render hybrid search when only hybrid is supported', () => {
-      mockRetrievalMethods = [RETRIEVE_METHOD.hybrid]
-      renderComponent()
-
-      expect(screen.queryByText('dataset.retrieval.semantic_search.title')).not.toBeInTheDocument()
-      expect(screen.queryByText('dataset.retrieval.full_text_search.title')).not.toBeInTheDocument()
-      expect(screen.getByText('dataset.retrieval.hybrid_search.title')).toBeInTheDocument()
-    })
-
-    it('should render nothing when no retrieval methods are supported', () => {
-      mockRetrievalMethods = []
-      const { container } = renderComponent()
-
-      // Only the wrapper div should exist
-      expect(container.firstChild?.childNodes.length).toBe(0)
-    })
-
-    it('should show RetrievalParamConfig for the active method', () => {
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-      })
-
-      expect(screen.getByTestId('retrieval-param-config-semantic_search')).toBeInTheDocument()
-      expect(
-        screen.queryByTestId('retrieval-param-config-full_text_search'),
-      ).not.toBeInTheDocument()
-      expect(screen.queryByTestId('retrieval-param-config-hybrid_search')).not.toBeInTheDocument()
-    })
-
-    it('should show RetrievalParamConfig for fullText when active', () => {
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText }),
-      })
-
-      expect(screen.queryByTestId('retrieval-param-config-semantic_search')).not.toBeInTheDocument()
-      expect(screen.getByTestId('retrieval-param-config-full_text_search')).toBeInTheDocument()
-      expect(screen.queryByTestId('retrieval-param-config-hybrid_search')).not.toBeInTheDocument()
-    })
-
-    it('should show RetrievalParamConfig for hybrid when active', () => {
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.hybrid }),
-      })
-
-      expect(screen.queryByTestId('retrieval-param-config-semantic_search')).not.toBeInTheDocument()
-      expect(
-        screen.queryByTestId('retrieval-param-config-full_text_search'),
-      ).not.toBeInTheDocument()
-      expect(screen.getByTestId('retrieval-param-config-hybrid_search')).toBeInTheDocument()
-    })
+  render(<RetrievalMethodConfig value={value} onChange={onChange} />)
+  await user.click(screen.getByRole('radio', { name: radioName(RETRIEVE_METHOD.hybrid) }))
+  expect(onChange).toHaveBeenCalledExactlyOnceWith({
+    ...value,
+    search_method: RETRIEVE_METHOD.hybrid,
+    reranking_enable: true,
+    reranking_mode: RerankingModeEnum.RerankingModel,
   })
-
-  // Tests for props handling
-  describe('Props', () => {
-    it('should pass showMultiModalTip to RetrievalParamConfig', () => {
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-        showMultiModalTip: true,
-      })
-
-      expect(screen.getByTestId('param-config-multimodal-tip')).toHaveTextContent('true')
-    })
-
-    it('should default showMultiModalTip to false', () => {
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-      })
-
-      expect(screen.getByTestId('param-config-multimodal-tip')).toHaveTextContent('false')
-    })
-
-    it('should apply disabled state to option cards', () => {
-      renderComponent({ disabled: true })
-
-      // When disabled, clicking should not trigger onChange
-      const semanticOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.semantic_search.title',
-      })
-      expect(semanticOption).toHaveAttribute('aria-disabled', 'true')
-    })
-
-    it('should default disabled to false', () => {
-      renderComponent()
-
-      const semanticOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.semantic_search.title',
-      })
-      expect(semanticOption).not.toBeDisabled()
-    })
-  })
-
-  // Tests for user interactions and event handlers
-  describe('User Interactions', () => {
-    it('should call onChange when switching to semantic search', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText }),
-        onChange,
-      })
-
-      const semanticOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.semantic_search.title',
-      })
-      fireEvent.click(semanticOption!)
-
-      expect(onChange).toHaveBeenCalledTimes(1)
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          search_method: RETRIEVE_METHOD.semantic,
-          reranking_enable: true,
-        }),
-      )
-    })
-
-    it('should call onChange when switching to fullText search', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-        onChange,
-      })
-
-      const fullTextOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.full_text_search.title',
-      })
-      fireEvent.click(fullTextOption!)
-
-      expect(onChange).toHaveBeenCalledTimes(1)
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          search_method: RETRIEVE_METHOD.fullText,
-          reranking_enable: true,
-        }),
-      )
-    })
-
-    it('should call onChange when switching to hybrid search', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-        onChange,
-      })
-
-      const hybridOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.hybrid_search.title',
-      })
-      fireEvent.click(hybridOption!)
-
-      expect(onChange).toHaveBeenCalledTimes(1)
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          search_method: RETRIEVE_METHOD.hybrid,
-          reranking_enable: true,
-        }),
-      )
-    })
-
-    it('should not call onChange when clicking the already active method', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-        onChange,
-      })
-
-      const semanticOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.semantic_search.title',
-      })
-      fireEvent.click(semanticOption!)
-
-      expect(onChange).not.toHaveBeenCalled()
-    })
-
-    it('should not call onChange when disabled', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-        onChange,
-        disabled: true,
-      })
-
-      const fullTextOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.full_text_search.title',
-      })
-      fireEvent.click(fullTextOption!)
-
-      expect(onChange).not.toHaveBeenCalled()
-    })
-
-    it('should propagate onChange from RetrievalParamConfig', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-        onChange,
-      })
-
-      const updateButton = screen.getByTestId('update-top-k-semantic_search')
-      fireEvent.click(updateButton)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          top_k: 10,
-        }),
-      )
-    })
-  })
-
-  // Tests for reranking model configuration
-  describe('Reranking Model Configuration', () => {
-    it('should set reranking model when switching to semantic and model is valid', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.fullText,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        }),
-        onChange,
-      })
-
-      const semanticOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.semantic_search.title',
-      })
-      fireEvent.click(semanticOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reranking_model: {
-            reranking_provider_name: 'test-provider',
-            reranking_model_name: 'test-rerank-model',
-          },
-          reranking_enable: true,
-        }),
-      )
-    })
-
-    it('should preserve existing reranking model when switching', () => {
-      const onChange = vi.fn()
-      const existingModel = {
-        reranking_provider_name: 'existing-provider',
-        reranking_model_name: 'existing-model',
-      }
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.fullText,
-          reranking_model: existingModel,
-        }),
-        onChange,
-      })
-
-      const semanticOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.semantic_search.title',
-      })
-      fireEvent.click(semanticOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reranking_model: existingModel,
-          reranking_enable: true,
-        }),
-      )
-    })
-
-    it('should set reranking_enable to false when no valid model', () => {
-      mockIsRerankDefaultModelValid = false
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.fullText,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        }),
-        onChange,
-      })
-
-      const semanticOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.semantic_search.title',
-      })
-      fireEvent.click(semanticOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reranking_enable: false,
-        }),
-      )
-    })
-
-    it('should set reranking_mode for hybrid search', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.semantic,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        }),
-        onChange,
-      })
-
-      const hybridOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.hybrid_search.title',
-      })
-      fireEvent.click(hybridOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          search_method: RETRIEVE_METHOD.hybrid,
-          reranking_mode: RerankingModeEnum.RerankingModel,
-        }),
-      )
-    })
-
-    it('should set weighted score mode when no valid rerank model for hybrid', () => {
-      mockIsRerankDefaultModelValid = false
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.semantic,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        }),
-        onChange,
-      })
-
-      const hybridOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.hybrid_search.title',
-      })
-      fireEvent.click(hybridOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reranking_mode: RerankingModeEnum.WeightedScore,
-        }),
-      )
-    })
-
-    it('should set default weights for hybrid search when no existing weights', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.semantic,
-          weights: undefined,
-        }),
-        onChange,
-      })
-
-      const hybridOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.hybrid_search.title',
-      })
-      fireEvent.click(hybridOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          weights: {
-            weight_type: WeightedScoreEnum.Customized,
-            vector_setting: {
-              vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
-              embedding_provider_name: '',
-              embedding_model_name: '',
-            },
-            keyword_setting: {
-              keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
-            },
-          },
-        }),
-      )
-    })
-
-    it('should preserve existing weights for hybrid search', () => {
-      const existingWeights = {
-        weight_type: WeightedScoreEnum.Customized,
-        vector_setting: {
-          vector_weight: 0.8,
-          embedding_provider_name: 'test-embed-provider',
-          embedding_model_name: 'test-embed-model',
-        },
-        keyword_setting: {
-          keyword_weight: 0.2,
-        },
-      }
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.semantic,
-          weights: existingWeights,
-        }),
-        onChange,
-      })
-
-      const hybridOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.hybrid_search.title',
-      })
-      fireEvent.click(hybridOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          weights: existingWeights,
-        }),
-      )
-    })
-
-    it('should use RerankingModel mode and enable reranking for hybrid when existing reranking model', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.semantic,
-          reranking_model: {
-            reranking_provider_name: 'existing-provider',
-            reranking_model_name: 'existing-model',
-          },
-        }),
-        onChange,
-      })
-
-      const hybridOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.hybrid_search.title',
-      })
-      fireEvent.click(hybridOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          search_method: RETRIEVE_METHOD.hybrid,
-          reranking_enable: true,
-          reranking_mode: RerankingModeEnum.RerankingModel,
-        }),
-      )
-    })
-  })
-
-  // Tests for callback stability and memoization
-  describe('Callback Stability', () => {
-    it('should maintain stable onSwitch callback when value changes', () => {
-      const onChange = vi.fn()
-      const value1 = createMockRetrievalConfig({
-        search_method: RETRIEVE_METHOD.fullText,
-        top_k: 4,
-      })
-      const value2 = createMockRetrievalConfig({
-        search_method: RETRIEVE_METHOD.fullText,
-        top_k: 8,
-      })
-
-      const { rerender } = render(<RetrievalMethodConfig value={value1} onChange={onChange} />)
-
-      const semanticOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.semantic_search.title',
-      })
-      fireEvent.click(semanticOption!)
-
-      expect(onChange).toHaveBeenCalledTimes(1)
-
-      rerender(<RetrievalMethodConfig value={value2} onChange={onChange} />)
-
-      fireEvent.click(semanticOption!)
-      expect(onChange).toHaveBeenCalledTimes(2)
-    })
-
-    it('should use updated onChange callback after rerender', () => {
-      const onChange1 = vi.fn()
-      const onChange2 = vi.fn()
-      const value = createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText })
-
-      const { rerender } = render(<RetrievalMethodConfig value={value} onChange={onChange1} />)
-
-      rerender(<RetrievalMethodConfig value={value} onChange={onChange2} />)
-
-      const semanticOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.semantic_search.title',
-      })
-      fireEvent.click(semanticOption!)
-
-      expect(onChange1).not.toHaveBeenCalled()
-      expect(onChange2).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // Tests for component memoization
-  describe('Component Memoization', () => {
-    it('should not re-render when props are the same', () => {
-      const onChange = vi.fn()
-      const value = createMockRetrievalConfig()
-
-      const { rerender } = render(<RetrievalMethodConfig value={value} onChange={onChange} />)
-
-      // Rerender with same props reference
-      rerender(<RetrievalMethodConfig value={value} onChange={onChange} />)
-
-      // Component should still be rendered correctly
-      expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
-    })
-  })
-
-  // Tests for edge cases and error handling
-  describe('Edge Cases', () => {
-    it('should handle undefined reranking_model', () => {
-      const onChange = vi.fn()
-      const value = createMockRetrievalConfig({
-        search_method: RETRIEVE_METHOD.fullText,
-      })
-      // @ts-expect-error - Testing edge case
-      value.reranking_model = undefined
-
-      renderComponent({
-        value,
-        onChange,
-      })
-
-      expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
-    })
-
-    it('should handle missing default model', () => {
-      mockRerankDefaultModel = undefined
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.fullText,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        }),
-        onChange,
-      })
-
-      const semanticOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.semantic_search.title',
-      })
-      fireEvent.click(semanticOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        }),
-      )
-    })
-
-    it('should use fallback empty string when default model provider is undefined', () => {
-      // @ts-expect-error - Testing edge case where provider is undefined
-      mockRerankDefaultModel = { provider: undefined, model: 'test-model' }
-      mockIsRerankDefaultModelValid = true
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.fullText,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        }),
-        onChange,
-      })
-
-      const hybridOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.hybrid_search.title',
-      })
-      fireEvent.click(hybridOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: 'test-model',
-          },
-        }),
-      )
-    })
-
-    it('should use fallback empty string when default model name is undefined', () => {
-      // @ts-expect-error - Testing edge case where model is undefined
-      mockRerankDefaultModel = { provider: { provider: 'test-provider' }, model: undefined }
-      mockIsRerankDefaultModelValid = true
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({
-          search_method: RETRIEVE_METHOD.fullText,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        }),
-        onChange,
-      })
-
-      const hybridOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.hybrid_search.title',
-      })
-      fireEvent.click(hybridOption!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reranking_model: {
-            reranking_provider_name: 'test-provider',
-            reranking_model_name: '',
-          },
-        }),
-      )
-    })
-
-    it('should handle rapid sequential clicks', () => {
-      const onChange = vi.fn()
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-        onChange,
-      })
-
-      const fullTextOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.full_text_search.title',
-      })
-      const hybridOption = screen.getByRole('radio', {
-        name: 'dataset.retrieval.hybrid_search.title',
-      })
-
-      // Rapid clicks
-      fireEvent.click(fullTextOption!)
-      fireEvent.click(hybridOption!)
-      fireEvent.click(fullTextOption!)
-
-      expect(onChange).toHaveBeenCalledTimes(3)
-    })
-
-    it('should ignore unknown retrieval methods from the API', () => {
-      mockRetrievalMethods = ['unknown_search']
-      const { container } = renderComponent()
-
-      expect(container.querySelector('[class*="flex-col"]')?.childNodes.length).toBe(0)
-    })
-
-    it('should handle partial retrieval methods', () => {
-      mockRetrievalMethods = [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.hybrid]
-      renderComponent()
-
-      expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
-      expect(screen.queryByText('dataset.retrieval.full_text_search.title')).not.toBeInTheDocument()
-      expect(screen.getByText('dataset.retrieval.hybrid_search.title')).toBeInTheDocument()
-    })
-
-    it('should handle value with all optional fields set', () => {
-      const fullValue = createMockRetrievalConfig({
-        search_method: RETRIEVE_METHOD.hybrid,
-        reranking_enable: true,
-        reranking_model: {
-          reranking_provider_name: 'provider',
-          reranking_model_name: 'model',
-        },
-        top_k: 10,
-        score_threshold_enabled: true,
-        score_threshold: 0.8,
-        reranking_mode: RerankingModeEnum.WeightedScore,
-        weights: {
-          weight_type: WeightedScoreEnum.Customized,
-          vector_setting: {
-            vector_weight: 0.6,
-            embedding_provider_name: 'embed-provider',
-            embedding_model_name: 'embed-model',
-          },
-          keyword_setting: {
-            keyword_weight: 0.4,
-          },
-        },
-      })
-
-      renderComponent({ value: fullValue })
-
-      expect(screen.getByTestId('retrieval-param-config-hybrid_search')).toBeInTheDocument()
-    })
-  })
-
-  // Tests for all prop variations
-  describe('Prop Variations', () => {
-    it('should render with all props set', () => {
-      renderComponent({
-        disabled: true,
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.hybrid }),
-        showMultiModalTip: true,
-        onChange: vi.fn(),
-      })
-
-      expect(screen.getByText('dataset.retrieval.hybrid_search.title')).toBeInTheDocument()
-    })
-
-    describe('disabled prop variations', () => {
-      it('should handle disabled=true', () => {
-        renderComponent({ disabled: true })
-        const option = screen.getByRole('radio', {
-          name: 'dataset.retrieval.semantic_search.title',
-        })
-        expect(option).toHaveAttribute('aria-disabled', 'true')
-      })
-
-      it('should handle disabled=false', () => {
-        renderComponent({ disabled: false })
-        const option = screen.getByRole('radio', {
-          name: 'dataset.retrieval.semantic_search.title',
-        })
-        expect(option).not.toBeDisabled()
-      })
-    })
-
-    describe('search_method variations', () => {
-      const methods = [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid]
-
-      it.each(methods)('should correctly highlight %s when active', (method) => {
-        renderComponent({
-          value: createMockRetrievalConfig({ search_method: method }),
-        })
-
-        // The active method should have its RetrievalParamConfig rendered
-        expect(screen.getByTestId(`retrieval-param-config-${method}`)).toBeInTheDocument()
-      })
-    })
-
-    describe('showMultiModalTip variations', () => {
-      it('should pass true to child component', () => {
-        renderComponent({
-          value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-          showMultiModalTip: true,
-        })
-        expect(screen.getByTestId('param-config-multimodal-tip')).toHaveTextContent('true')
-      })
-
-      it('should pass false to child component', () => {
-        renderComponent({
-          value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-          showMultiModalTip: false,
-        })
-        expect(screen.getByTestId('param-config-multimodal-tip')).toHaveTextContent('false')
-      })
-    })
-  })
-
-  // Tests for active state visual indication
-  describe('Active State Visual Indication', () => {
-    it('should show recommended badge only on hybrid search', () => {
-      renderComponent()
-
-      // The hybrid search option should have the recommended badge
-      // This is verified by checking the isRecommended prop passed to OptionCard
-      const hybridTitle = screen.getByText('dataset.retrieval.hybrid_search.title')
-      const hybridCard = hybridTitle.closest('[role=radio]')
-
-      // Should contain recommended badge from OptionCard
-      expect(
-        hybridCard?.querySelector('[class*="badge"]') ||
-          screen.queryByText('datasetCreation.stepTwo.recommend'),
-      ).toBeTruthy()
-    })
-  })
-
-  // Tests for integration with OptionCard
-  describe('OptionCard Integration', () => {
-    it('should pass correct props to OptionCard for semantic search', () => {
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
-      })
-
-      const semanticTitle = screen.getByText('dataset.retrieval.semantic_search.title')
-      expect(semanticTitle).toBeInTheDocument()
-
-      // Check description
-      const semanticDesc = screen.getByText('dataset.retrieval.semantic_search.description')
-      expect(semanticDesc).toBeInTheDocument()
-    })
-
-    it('should pass correct props to OptionCard for fullText search', () => {
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText }),
-      })
-
-      const fullTextTitle = screen.getByText('dataset.retrieval.full_text_search.title')
-      expect(fullTextTitle).toBeInTheDocument()
-
-      const fullTextDesc = screen.getByText('dataset.retrieval.full_text_search.description')
-      expect(fullTextDesc).toBeInTheDocument()
-    })
-
-    it('should pass correct props to OptionCard for hybrid search', () => {
-      renderComponent({
-        value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.hybrid }),
-      })
-
-      const hybridTitle = screen.getByText('dataset.retrieval.hybrid_search.title')
-      expect(hybridTitle).toBeInTheDocument()
-
-      const hybridDesc = screen.getByText('dataset.retrieval.hybrid_search.description')
-      expect(hybridDesc).toBeInTheDocument()
-    })
-  })
+})
+
+it('offers only supported retrieval methods and ignores unknown API values', () => {
+  render(<RetrievalMethodConfig value={config()} onChange={vi.fn()} />, [
+    RETRIEVE_METHOD.semantic,
+    'future-method',
+  ])
+  expect(screen.getAllByRole('radio')).toHaveLength(1)
+  expect(screen.getByRole('radio', { name: radioName(RETRIEVE_METHOD.semantic) })).toBeChecked()
+})
+
+it('disables both mode selection and numeric editing when readonly', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(<RetrievalMethodConfig value={config()} onChange={onChange} disabled />)
+  const fullText = screen.getByRole('radio', { name: radioName(RETRIEVE_METHOD.fullText) })
+  expect(fullText).toBeDisabled()
+  expect(screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' })).toBeDisabled()
+  await user.click(fullText)
+  expect(onChange).not.toHaveBeenCalled()
 })

@@ -10,9 +10,9 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
-from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
+from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError, WebAppNotFoundError
 from controllers.web.wraps import (
     _validate_user_accessibility,
     _validate_webapp_token,
@@ -114,7 +114,9 @@ class TestValidateUserAccessibility:
             )
 
     @patch("controllers.web.wraps.EnterpriseService.get_app_sso_settings_last_update_time")
-    @patch("controllers.web.wraps.WebAppAuthService.is_app_require_permission_check", return_value=False)
+    @patch(
+        "services.webapp_access_query_service.WebAppAccessQueryService.is_permission_check_required", return_value=False
+    )
     def test_external_auth_type_checks_sso_update_time(
         self, mock_perm_check: MagicMock, mock_sso_time: MagicMock
     ) -> None:
@@ -132,7 +134,9 @@ class TestValidateUserAccessibility:
             )
 
     @patch("controllers.web.wraps.EnterpriseService.get_workspace_sso_settings_last_update_time")
-    @patch("controllers.web.wraps.WebAppAuthService.is_app_require_permission_check", return_value=False)
+    @patch(
+        "services.webapp_access_query_service.WebAppAccessQueryService.is_permission_check_required", return_value=False
+    )
     def test_internal_auth_type_checks_workspace_sso_update_time(
         self, mock_perm_check: MagicMock, mock_workspace_sso: MagicMock
     ) -> None:
@@ -150,7 +154,9 @@ class TestValidateUserAccessibility:
             )
 
     @patch("controllers.web.wraps.EnterpriseService.get_app_sso_settings_last_update_time")
-    @patch("controllers.web.wraps.WebAppAuthService.is_app_require_permission_check", return_value=False)
+    @patch(
+        "services.webapp_access_query_service.WebAppAccessQueryService.is_permission_check_required", return_value=False
+    )
     def test_external_auth_passes_when_granted_after_sso_update(
         self, mock_perm_check: MagicMock, mock_sso_time: MagicMock
     ) -> None:
@@ -167,8 +173,10 @@ class TestValidateUserAccessibility:
         )
 
     @patch("controllers.web.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp", return_value=False)
-    @patch("controllers.web.wraps.AppService.get_app_id_by_code", return_value="app-id-1")
-    @patch("controllers.web.wraps.WebAppAuthService.is_app_require_permission_check", return_value=True)
+    @patch("services.webapp_access_query_service.WebAppAccessQueryService.get_app_id_by_code", return_value="app-id-1")
+    @patch(
+        "services.webapp_access_query_service.WebAppAccessQueryService.is_permission_check_required", return_value=True
+    )
     def test_permission_check_denies_unauthorized_user(
         self, mock_perm: MagicMock, mock_app_id: MagicMock, mock_allowed: MagicMock
     ) -> None:
@@ -192,7 +200,7 @@ class TestValidateUserAccessibility:
         ],
     )
     @patch("controllers.web.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp")
-    @patch("controllers.web.wraps.WebAppAuthService.is_app_require_permission_check")
+    @patch("services.webapp_access_query_service.WebAppAccessQueryService.is_permission_check_required")
     def test_auth_type_must_match_current_access_mode(
         self,
         mock_permission_check: MagicMock,
@@ -221,7 +229,7 @@ class TestDecodeJwtToken:
         return flask_app_with_containers
 
     def _create_app_site_enduser(self, db_session: Session, *, enable_site: bool = True):
-        from models.model import App, AppMode, CustomizeTokenStrategy, EndUser, Site
+        from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, EndUser, Site
 
         tenant_id = str(uuid4())
         app_model = App(
@@ -234,6 +242,13 @@ class TestDecodeJwtToken:
         db_session.add(app_model)
         db_session.commit()
         db_session.expire_all()
+
+        # The happy-path fixture represents a published public App.
+        config = AppModelConfig(app_id=app_model.id)
+        db_session.add(config)
+        db_session.flush()
+        app_model.app_model_config_id = config.id
+        db_session.commit()
 
         site = Site(
             app_id=app_model.id,
@@ -261,7 +276,7 @@ class TestDecodeJwtToken:
     @patch("controllers.web.wraps._validate_user_accessibility")
     @patch("controllers.web.wraps._validate_webapp_token")
     @patch("controllers.web.wraps.EnterpriseService.WebAppAuth.get_app_access_mode_by_id")
-    @patch("controllers.web.wraps.AppService.get_app_id_by_code")
+    @patch("services.webapp_access_query_service.WebAppAccessQueryService.get_app_id_by_code")
     @patch("controllers.web.wraps.SystemFeatureService.is_webapp_auth_enabled")
     @patch("controllers.web.wraps.PassportService")
     @patch("controllers.web.wraps.extract_webapp_passport")
@@ -323,13 +338,13 @@ class TestDecodeJwtToken:
         mock_features.return_value = False
 
         with app.test_request_context("/", headers={"X-App-Code": "code1"}):
-            with pytest.raises(NotFound):
+            with pytest.raises(WebAppNotFoundError):
                 decode_jwt_token()
 
     @patch("controllers.web.wraps.SystemFeatureService.is_webapp_auth_enabled")
     @patch("controllers.web.wraps.PassportService")
     @patch("controllers.web.wraps.extract_webapp_passport")
-    def test_disabled_site_raises_bad_request(
+    def test_disabled_site_raises_app_not_found(
         self,
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
@@ -348,7 +363,7 @@ class TestDecodeJwtToken:
         mock_features.return_value = False
 
         with app.test_request_context("/", headers={"X-App-Code": site.code}):
-            with pytest.raises(BadRequest, match="Site is disabled"):
+            with pytest.raises(WebAppNotFoundError):
                 decode_jwt_token()
 
     @patch("controllers.web.wraps.SystemFeatureService.is_webapp_auth_enabled")

@@ -8,7 +8,7 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from extensions.otel import propagate_context
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
-from services.summary_index_service import SummaryIndexService
+from services.knowledge.summaries.adapters import SummaryIndexAdapter
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class SummaryIndex:
                         DocumentSegment.dataset_id == dataset_id,
                         DocumentSegment.document_id == document_id,
                         DocumentSegment.status == "completed",
-                        DocumentSegment.enabled == True,
+                        DocumentSegment.enabled.is_(True),
                     )
                 ).all()
                 segment_ids = [segment.id for segment in segments]
@@ -82,7 +82,7 @@ class SummaryIndex:
                     if segment is None:
                         return
                     try:
-                        SummaryIndexService.generate_and_vectorize_summary(
+                        SummaryIndexAdapter.generate_and_vectorize_summary(
                             segment, dataset, summary_index_setting, session=session
                         )
                     except Exception:

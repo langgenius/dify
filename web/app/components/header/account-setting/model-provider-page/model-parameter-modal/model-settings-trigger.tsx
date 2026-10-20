@@ -9,8 +9,8 @@ type ModelSettingsTriggerProps = {
 }
 
 function ModelSettingsTrigger({ disabled, surface = 'default' }: ModelSettingsTriggerProps) {
-  const { t } = useTranslation(['common'])
-  const label = t(($) => $['modelProvider.modelSettings'], { ns: 'common' })
+  const { t } = useTranslation(['modelProvider'])
+  const label = t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })
 
   return (
     <Tooltip>

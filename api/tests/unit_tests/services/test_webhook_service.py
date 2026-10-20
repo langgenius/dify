@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -126,13 +125,11 @@ class TestWebhookServiceLookup:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         target_workflow = _workflow()
-        target_workflow.created_at = datetime(2025, 1, 1, tzinfo=UTC).replace(tzinfo=None)
         tenant_decoy = _workflow(
             workflow_id="workflow-decoy",
             tenant_id="tenant-other",
             app_id="app-123",
         )
-        tenant_decoy.created_at = datetime(2026, 1, 1, tzinfo=UTC).replace(tzinfo=None)
         sqlite_session.add_all([_webhook_trigger(), target_workflow, tenant_decoy])
         sqlite_session.commit()
         monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))

@@ -37,7 +37,7 @@ type Props = {
 }
 
 const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariableMap }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const [expandedLoops, setExpandedLoops] = useState<Record<number, boolean>>({})
 
   const toggleLoop = useCallback((index: number) => {
@@ -89,8 +89,9 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
 
   return (
     <div className="bg-components-panel-bg">
-      <div
-        className="flex h-8 cursor-pointer items-center border-b-[0.5px] border-b-divider-regular px-4 text-text-accent-secondary"
+      <button
+        type="button"
+        className="flex h-8 w-full cursor-pointer items-center border-b-[0.5px] border-b-divider-regular px-4 text-text-accent-secondary"
         onClick={(e) => {
           e.stopPropagation()
           e.nativeEvent.stopImmediatePropagation()
@@ -101,7 +102,7 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
         <div className="system-sm-medium">
           {t(($) => $[`${i18nPrefix}.back`], { ns: 'workflow' })}
         </div>
-      </div>
+      </button>
       {/* List */}
       <div className="bg-components-panel-bg p-2">
         {list.map((loop, index) => (
@@ -109,7 +110,9 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
             key={index}
             className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}
           >
-            <div
+            <button
+              type="button"
+              aria-expanded={!!expandedLoops[index]}
               className={cn(
                 'flex w-full cursor-pointer items-center justify-between px-3',
                 expandedLoops[index] ? 'pt-3 pb-2' : 'py-3',
@@ -129,9 +132,11 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
                 </span>
                 {loopStatusShow(index, loop, loopDurationMap)}
               </div>
-            </div>
+            </button>
             {expandedLoops[index] && <div className="h-px grow bg-divider-subtle"></div>}
             <div
+              inert={!expandedLoops[index]}
+              aria-hidden={!expandedLoops[index]}
               className={cn(
                 'transition-all duration-200',
                 expandedLoops[index] ? 'opacity-100' : 'max-h-0 overflow-hidden opacity-0',
@@ -144,7 +149,7 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
                     title={
                       <div>
                         {t(($) => $['nodes.loop.loopVariables'], {
-                          ns: 'workflow',
+                          ns: 'workflowLogic',
                         }).toLocaleUpperCase()}
                       </div>
                     }

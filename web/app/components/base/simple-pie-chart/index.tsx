@@ -1,8 +1,6 @@
-import type { EChartsOption } from 'echarts'
 import type { CSSProperties } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import ReactECharts from 'echarts-for-react'
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import style from './index.module.css'
 
 type SimplePieChartProps = {
@@ -22,50 +20,15 @@ const SimplePieChart = ({
   animationDuration,
   className,
 }: SimplePieChartProps) => {
-  const option: EChartsOption = useMemo(
-    () => ({
-      series: [
-        {
-          type: 'pie',
-          radius: ['83%', '100%'],
-          animation: false,
-          data: [{ value: 100, itemStyle: { color: stroke } }],
-          emphasis: {
-            disabled: true,
-          },
-          labelLine: {
-            show: false,
-          },
-          cursor: 'default',
-        },
-        {
-          type: 'pie',
-          radius: '83%',
-          animationDuration: animationDuration ?? 600,
-          data: [
-            { value: percentage, itemStyle: { color: fill } },
-            { value: 100 - percentage, itemStyle: { color: '#fff' } },
-          ],
-          emphasis: {
-            disabled: true,
-          },
-          labelLine: {
-            show: false,
-          },
-          cursor: 'default',
-        },
-      ],
-    }),
-    [stroke, fill, percentage, animationDuration],
-  )
-
   return (
-    <ReactECharts
-      option={option}
+    <div
       className={cn(style.simplePieChart, className)}
       style={
         {
           '--simple-pie-chart-color': fill,
+          '--simple-pie-chart-stroke': stroke,
+          '--simple-pie-chart-percentage': Math.min(100, Math.max(0, percentage)),
+          '--simple-pie-chart-duration': `${animationDuration ?? 600}ms`,
           width: size,
           height: size,
         } as CSSProperties

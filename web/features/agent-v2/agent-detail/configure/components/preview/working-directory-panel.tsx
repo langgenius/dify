@@ -2,7 +2,6 @@
 
 import type {
   SandboxFileEntryResponse,
-  SandboxListResponse,
   SandboxReadResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSkillDetailDownloadAction } from '../orchestrate/skills/detail-dialog'
@@ -14,13 +13,15 @@ import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-stat
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { isDefinedError } from '@orpc/client'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import { downloadUrl } from '@/utils/download'
-import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
 import {
   AGENT_SAVED_FILES_ROOT_PATH,
@@ -48,10 +49,6 @@ export type AgentWorkingDirectorySource =
       nodeExecutionId: string
       workflowRunId: string
     }
-
-type SandboxErrorPayload = {
-  code?: string
-}
 
 const getSandboxRootPath = (path: string): AgentWorkingDirectoryRootPath =>
   path === AGENT_SAVED_FILES_ROOT_PATH || path.startsWith(`${AGENT_SAVED_FILES_ROOT_PATH}/`)
@@ -226,19 +223,6 @@ function countReadableFiles(files: AgentFileNode[]): number {
   }, 0)
 }
 
-async function isNoActiveBindingError(error: unknown) {
-  if (!(error instanceof Response) || error.status !== 404) return false
-
-  try {
-    const payload = (await error.clone().json()) as SandboxErrorPayload
-    return payload.code === 'no_active_binding'
-  } catch {
-    return false
-  }
-}
-
-const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
-
 export function AgentWorkingDirectoryPanel({
   source,
   onOpenChange,
@@ -309,59 +293,32 @@ export function AgentWorkingDirectoryPanel({
     setPendingOpenFolderPaths([])
   }
   const fileListQueryOptions = getFileListQueryOptions(directoryPath)
-  const fileListQuery = useQuery({
-    ...fileListQueryOptions,
-    queryFn: async (context): Promise<SandboxListResponse> => {
-      try {
-        return await fileListQueryOptions.queryFn(context)
-      } catch (error) {
-        if (await isNoActiveBindingError(error)) {
-          return {
-            entries: [],
-            path: '.',
-          }
-        }
-
-        throw error
-      }
-    },
-    retry: false,
-  })
+  const fileListQuery = useQuery({ ...fileListQueryOptions, retry: false })
+  // The sandbox operations document `no_active_binding` (404): the directory is empty, not failed.
+  const hasNoActiveBinding =
+    isDefinedError(fileListQuery.error) && fileListQuery.error.code === 'no_active_binding'
   const expandedFolderQueries = useQueries({
-    queries: loadedFolderPaths.map((path) => {
-      const queryOptions = getFileListQueryOptions(path)
-
-      return {
-        ...queryOptions,
-        queryFn: async (context): Promise<SandboxListResponse> => {
-          try {
-            return await queryOptions.queryFn(context)
-          } catch (error) {
-            if (await isNoActiveBindingError(error)) {
-              return {
-                entries: [],
-                path,
-              }
-            }
-
-            throw error
-          }
-        },
-        retry: false,
-      }
-    }),
+    queries: loadedFolderPaths.map((path) => ({ ...getFileListQueryOptions(path), retry: false })),
   })
-  const workingDirectoryFiles = expandedFolderQueries.reduce(
-    (files, query, index) => {
+  const expandedFolders = expandedFolderQueries.map((query) => {
+    const noActiveBinding = isDefinedError(query.error) && query.error.code === 'no_active_binding'
+
+    return {
+      entries: noActiveBinding ? [] : query.data?.entries,
+      isLoaded: query.isSuccess || noActiveBinding,
+    }
+  })
+  const workingDirectoryFiles = expandedFolders.reduce(
+    (files, folder, index) => {
       return mergeSandboxFileTree(
         files,
-        buildSandboxFileTree(query.data?.entries, loadedFolderPaths[index], {
+        buildSandboxFileTree(folder.entries, loadedFolderPaths[index], {
           nestRootPath: directoryPath,
           nestUnderBasePath: true,
         }),
       )
     },
-    buildSandboxFileTree(fileListQuery.data?.entries, directoryPath),
+    buildSandboxFileTree(hasNoActiveBinding ? [] : fileListQuery.data?.entries, directoryPath),
   )
   const selectedWorkingDirectoryFile =
     findReadableFile(workingDirectoryFiles, selectedFileId) ??
@@ -418,7 +375,7 @@ export function AgentWorkingDirectoryPanel({
       try {
         return await fileReadQueryOptions.queryFn(context)
       } catch (error) {
-        if (isNotFoundResponse(error)) {
+        if (isNotFoundError(error)) {
           return {
             binary: false,
             path: selectedWorkingDirectoryFile?.id ?? '',
@@ -645,15 +602,14 @@ export function AgentWorkingDirectoryPanel({
             fileName: isFileListLoading ? '' : selectedWorkingDirectoryFile?.name,
             isDownloadError: imagePreviewQuery.isError,
             isDownloadLoading: !!isImagePreviewFile && imagePreviewQuery.isPending,
-            isError: fileListQuery.isError || fileReadQuery.isError,
+            isError: (fileListQuery.isError && !hasNoActiveBinding) || fileReadQuery.isError,
             isImage: isImagePreviewFile,
             isLoading: isFileListLoading || isFileReadLoading,
           },
           onDownloadFile: selectedWorkingDirectoryFile ? handleDownloadFile : undefined,
           folderOpenState: ({ file }) => {
             const queryIndex = loadedFolderPathIndexes.get(file.id)
-            const folderLoaded =
-              queryIndex !== undefined && expandedFolderQueries[queryIndex]?.isSuccess
+            const folderLoaded = queryIndex !== undefined && expandedFolders[queryIndex]?.isLoaded
 
             return (
               openFolderPaths.includes(file.id) ||
@@ -680,7 +636,7 @@ export function AgentWorkingDirectoryPanel({
                 : paths.filter((path) => path !== file.id),
             )
           },
-          onFolderDoubleClick: ({ file }) => handleDirectoryPathChange(file.id),
+          onFolderEnter: ({ file }) => handleDirectoryPathChange(file.id),
           onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
           renderFolderSuffix: ({ file }) =>
             loadingFolderPaths.has(file.id) ? (

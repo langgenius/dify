@@ -10,7 +10,7 @@ Tests coverage for:
 import io
 import uuid
 from inspect import unwrap
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask, request
@@ -170,11 +170,8 @@ class TestAudioServiceMockedBehavior:
 
     @pytest.fixture
     def mock_file(self):
-        """Create mock file upload."""
-        mock = Mock()
-        mock.filename = "test_audio.mp3"
-        mock.content_type = "audio/mpeg"
-        return mock
+        """Create a file upload."""
+        return FileStorage(stream=io.BytesIO(b"audio"), filename="test_audio.mp3", content_type="audio/mpeg")
 
     @patch.object(AudioService, "transcript_asr")
     def test_transcript_asr_returns_response(self, mock_asr, mock_app, mock_file, sqlite_session: Session):
@@ -210,17 +207,24 @@ class TestAudioServiceMockedBehavior:
 
 
 class TestAudioApi:
-    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: {"text": "ok"})
+    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+        calls: dict[str, object] = {}
+
+        def fake_transcript_asr(**kwargs: object) -> dict[str, str]:
+            calls.update(kwargs)
+            return {"text": "ok"}
+
+        monkeypatch.setattr(AudioService, "transcript_asr", fake_transcript_asr)
         api = AudioApi()
         handler = unwrap(api.post)
         app_model = _app()
         end_user = _end_user()
 
         with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
-            response = handler(api, app_model=app_model, end_user=end_user)
+            response = handler(api, sqlite_session, app_model=app_model, end_user=end_user)
 
         assert response == {"text": "ok"}
+        assert calls["session"] is sqlite_session
 
     @pytest.mark.parametrize(
         ("exc", "expected"),
@@ -237,7 +241,14 @@ class TestAudioApi:
             (InvokeError("invoke"), CompletionRequestError),
         ],
     )
-    def test_error_mapping(self, app: Flask, monkeypatch: pytest.MonkeyPatch, exc, expected) -> None:
+    def test_error_mapping(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        exc: Exception,
+        expected: type[Exception],
+    ) -> None:
         monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(exc))
         api = AudioApi()
         handler = unwrap(api.post)
@@ -246,9 +257,9 @@ class TestAudioApi:
 
         with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
             with pytest.raises(expected):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, sqlite_session, app_model=app_model, end_user=end_user)
 
-    def test_unhandled_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_unhandled_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
         monkeypatch.setattr(
             AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom"))
         )
@@ -259,11 +270,11 @@ class TestAudioApi:
 
         with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
             with pytest.raises(InternalServerError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, sqlite_session, app_model=app_model, end_user=end_user)
 
 
 class TestTextApi:
-    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
         monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: {"audio": "ok"})
 
         api = TextApi()
@@ -277,11 +288,13 @@ class TestTextApi:
             json={"text": "hello", "voice": "v"},
         ):
             payload = TextToAudioPayload.model_validate(request.get_json() or {})
-            response = handler(api, payload, app_model=app_model, end_user=end_user)
+            response = handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)
 
         assert response == {"audio": "ok"}
 
-    def test_success_with_message_ref(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success_with_message_ref(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         calls = {}
 
         def fake_transcript_tts(**kwargs):
@@ -301,15 +314,31 @@ class TestTextApi:
             json={"text": "hello", "message_id": "message-1"},
         ):
             payload = TextToAudioPayload.model_validate(request.get_json() or {})
-            response = handler(api, payload, app_model=app_model, end_user=end_user)
+            response = handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)
 
         assert response == {"audio": "ok"}
         assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "a1"), "message-1", end_user_id="end-user-1")
+        assert calls["session"] is sqlite_session
 
-    def test_error_mapping(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(QuotaExceededError())
-        )
+    @pytest.mark.parametrize(
+        ("exc", "expected"),
+        [
+            (QuotaExceededError(), ProviderQuotaExceededError),
+            (RuntimeError("internal provider failure"), InternalServerError),
+        ],
+    )
+    def test_error_mapping(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        exc: Exception,
+        expected: type[Exception],
+    ) -> None:
+        def raise_error(**_kwargs: object) -> None:
+            raise exc
+
+        monkeypatch.setattr(AudioService, "transcript_tts", raise_error)
 
         api = TextApi()
         handler = unwrap(api.post)
@@ -318,5 +347,5 @@ class TestTextApi:
 
         with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
             payload = TextToAudioPayload.model_validate(request.get_json() or {})
-            with pytest.raises(ProviderQuotaExceededError):
-                handler(api, payload, app_model=app_model, end_user=end_user)
+            with pytest.raises(expected):
+                handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)

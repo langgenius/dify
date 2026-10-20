@@ -1,26 +1,30 @@
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
 
 import pytest
 import yaml
+from pydantic import ValidationError
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode
-from models.model import AppModelConfig, AppModelConfigDict, IconType
+from models.enums import CustomizeTokenStrategy
+from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
-from services.app_dsl_service import AppDslService, Import, PendingData
-from services.enterprise.enterprise_service import EnterpriseService
+from services.app_dsl_service import AppDslService, PendingData
 from services.entities.dsl_entities import ImportStatus
-from services.errors.account import NoPermissionError
-from services.errors.app import WorkflowNotFoundError
-from services.system_feature_service import SystemFeatureService
+from services.entities.site_dsl import SiteDsl
+from services.errors.app import DraftChangedError, WorkflowNotFoundError
+from services.errors.base import NoPermissionError
+from services.workflow.graph_diff import draft_token
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
 
@@ -91,88 +95,27 @@ def _workflow(
     return make_workflow(workflow_id="workflow-1", graph=graph, environment_variables=environment_variables or [])
 
 
-@pytest.mark.parametrize("status", [ImportStatus.FAILED, ImportStatus.PENDING])
-def test_copy_app_rolls_back_incomplete_import(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, status: ImportStatus
-) -> None:
-    original = _persist_overwrite_target(sqlite_session)
-    service = AppDslService(sqlite_session)
-    monkeypatch.setattr(service, "export_dsl", Mock(return_value="dsl"))
-
-    def import_app(**_kwargs: object) -> Import:
-        original.name = "Uncommitted change"
-        sqlite_session.flush()
-        return Import(id="import-1", status=status)
-
-    monkeypatch.setattr(service, "import_app", import_app)
-    auth_enabled = Mock()
-    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", auth_enabled)
-
-    result, copied = service.copy_app(app_model=original, account=_account(tenant_id=_TENANT_ID), tenant_id=_TENANT_ID)
-
-    assert result.status == status
-    assert copied is None
-    assert original.name == "Target"
-    auth_enabled.assert_not_called()
-
-
-@pytest.mark.parametrize("status", [ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS])
-@pytest.mark.parametrize("missing_settings", [False, True])
-def test_copy_app_commits_before_inheriting_access(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, status: ImportStatus, missing_settings: bool
-) -> None:
-    original = _persist_overwrite_target(sqlite_session)
-    service = AppDslService(sqlite_session)
-    monkeypatch.setattr(service, "export_dsl", Mock(return_value="dsl"))
-    copied_id = "55555555-5555-4555-8555-555555555555"
-
-    def import_app(**_kwargs: object) -> Import:
-        sqlite_session.add(_app(app_id=copied_id, tenant_id=_TENANT_ID))
-        return Import(id="import-1", status=status, app_id=copied_id)
-
-    def get_access_mode(app_id: str) -> SimpleNamespace:
-        assert not sqlite_session.in_transaction()
-        assert app_id == _OVERWRITE_APP_ID
-        if missing_settings:
-            raise ValueError("No settings")
-        return SimpleNamespace(access_mode="private")
-
-    def update_access_mode(app_id: str, access_mode: str) -> None:
-        assert not sqlite_session.in_transaction()
-        assert app_id == copied_id
-        assert access_mode == ("public" if missing_settings else "private")
-
-    monkeypatch.setattr(service, "import_app", import_app)
-    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: True)
-    monkeypatch.setattr(EnterpriseService.WebAppAuth, "get_app_access_mode_by_id", get_access_mode)
-    update_access = Mock(side_effect=update_access_mode)
-    monkeypatch.setattr(EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
-
-    result, copied = service.copy_app(app_model=original, account=_account(tenant_id=_TENANT_ID), tenant_id=_TENANT_ID)
-
-    assert result.status == status
-    assert copied is not None
-    assert copied.id == copied_id
-    update_access.assert_called_once()
-
-
-def test_copy_app_scopes_result_to_current_tenant(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-    original = _persist_overwrite_target(sqlite_session)
-    foreign_app = _app(tenant_id="66666666-6666-4666-8666-666666666666", app_id=_OTHER_ACCOUNT_ID)
-    sqlite_session.add(foreign_app)
-    sqlite_session.commit()
-    service = AppDslService(sqlite_session)
-    monkeypatch.setattr(service, "export_dsl", Mock(return_value="dsl"))
+def test_extract_workflow_dependencies_includes_plugin_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        service,
-        "import_app",
-        Mock(return_value=Import(id="import-1", status=ImportStatus.COMPLETED, app_id=foreign_app.id)),
+        "services.app_dsl_service.ToolNodeData.model_validate",
+        Mock(return_value=SimpleNamespace(provider_id="acme/tool/provider")),
     )
-    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
+    graph = {
+        "nodes": [
+            {"data": {"type": "tool", "plugin_id": "acme/tool"}},
+            {"data": {"type": "trigger-plugin", "plugin_id": "acme/trigger"}},
+            {"data": {"type": "datasource", "provider_type": "online_document", "plugin_id": "acme/drive"}},
+            {"data": {"type": "datasource", "provider_type": "local_file", "plugin_id": "langgenius/file"}},
+            {"data": {"type": "agent", "agent_strategy_provider_name": "acme/strategy/provider"}},
+        ]
+    }
 
-    _, copied = service.copy_app(app_model=original, account=_account(tenant_id=_TENANT_ID), tenant_id=_TENANT_ID)
-
-    assert copied is None
+    assert AppDslService._extract_dependencies_from_workflow_graph(graph) == [
+        "acme/tool",
+        "acme/trigger",
+        "acme/drive",
+        "acme/strategy",
+    ]
 
 
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -490,7 +433,14 @@ def test_pending_import_owner_access(
     ],
 )
 def test_pending_import_owner_is_required(payload: str) -> None:
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for PendingData\\\naccount_id|1 validation "
+            "error for PendingData\\\ntenant_id|2 validation errors for "
+            "PendingData\\\ntenant_id)"
+        ),
+    ) as exc_info:
         PendingData.model_validate_json(payload)
 
     assert "secret-token-123" not in str(exc_info.value)
@@ -545,6 +495,186 @@ def test_create_or_update_app_silently_discards_invalid_image_icon(sqlite_sessio
     assert service._warnings == []
 
 
+@pytest.mark.parametrize("allow_premium_site_settings", [False, True])
+def test_create_or_update_app_applies_site_settings_without_changing_access(
+    sqlite_session: Session, allow_premium_site_settings: bool
+) -> None:
+    app = _app(tenant_id=_TENANT_ID)
+    site = Site(
+        app_id=app.id,
+        title="Original Site",
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        code="destination-code",
+        copyright="Existing copyright",
+        input_placeholder="Existing placeholder",
+    )
+    sqlite_session.add_all([app, site])
+    sqlite_session.flush()
+
+    service = AppDslService(session=sqlite_session)
+    service._create_or_update_app(
+        app=app,
+        data={
+            "app": {"mode": AppMode.CHAT.value, "icon_type": "emoji", "icon": "robot"},
+            "site": {
+                "title": "Imported Site",
+                "icon_type": "image",
+                "icon": "55555555-5555-4555-8555-555555555555",
+                "use_icon_as_answer_icon": True,
+                "copyright": "Imported copyright",
+                "input_placeholder": "Imported placeholder",
+            },
+            "model_config": {"model": {}},
+        },
+        account=_account(tenant_id=_TENANT_ID),
+        allow_premium_site_settings=allow_premium_site_settings,
+    )
+
+    assert site.title == "Imported Site"
+    assert site.use_icon_as_answer_icon is True
+    assert site.icon_type == app.icon_type
+    assert site.icon == app.icon
+    assert service._warnings == []
+    assert site.code == "destination-code"
+    assert site.customize_token_strategy == CustomizeTokenStrategy.NOT_ALLOW
+    assert site.copyright == ("Imported copyright" if allow_premium_site_settings else "Existing copyright")
+    assert site.input_placeholder == ("Imported placeholder" if allow_premium_site_settings else "Existing placeholder")
+
+
+def test_create_or_update_app_rejects_null_required_site_setting_before_mutation(unbound_session: Session) -> None:
+    app = _app()
+
+    with pytest.raises(ValueError, match="Required Site settings cannot be null"):
+        AppDslService(unbound_session)._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.CHAT.value}, "site": {"title": None}},
+            account=_account(),
+        )
+
+    assert app.name == "Existing app"
+
+
+def test_import_app_resolves_site_entitlement_before_database_writes(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    service = AppDslService(unbound_session)
+    create_or_update = Mock(return_value=_app())
+    entitlement = Mock(return_value=False)
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.can_import_premium_site_settings", entitlement)
+    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftVariableService", Mock())
+
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {
+                "version": CURRENT_APP_DSL_VERSION,
+                "kind": "app",
+                "app": {"name": "Imported", "mode": "chat"},
+                "site": {"copyright": "Source copyright"},
+            }
+        ),
+    )
+
+    assert result.status == ImportStatus.COMPLETED
+    entitlement.assert_called_once_with("tenant-1")
+    assert create_or_update.call_args.kwargs["allow_premium_site_settings"] is False
+
+    entitlement.reset_mock()
+    result = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {"version": CURRENT_APP_DSL_VERSION, "kind": "app", "app": {"name": "Legacy", "mode": "chat"}}
+        ),
+    )
+    assert result.status == ImportStatus.COMPLETED
+    entitlement.assert_not_called()
+
+
+def test_confirm_import_rechecks_site_entitlement(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    pending = PendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {
+                "version": CURRENT_APP_DSL_VERSION,
+                "kind": "app",
+                "app": {"name": "Imported", "mode": "chat"},
+                "site": {"input_placeholder": "Source placeholder"},
+            }
+        ),
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", Mock())
+    entitlement = Mock(return_value=False)
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.can_import_premium_site_settings", entitlement)
+    service = AppDslService(unbound_session)
+    create_or_update = Mock(return_value=_app())
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+
+    result = service.confirm_import(import_id="pending-import", account=_account())
+
+    assert result.status == ImportStatus.COMPLETED
+    entitlement.assert_called_once_with("tenant-1")
+    assert create_or_update.call_args.kwargs["allow_premium_site_settings"] is False
+
+
+@pytest.mark.parametrize(
+    ("title", "language", "expected_language"),
+    [("Exported Site", "en-US", "en-US"), ("", "en", "en-US")],
+)
+def test_load_export_data_includes_site_presentation_settings(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    title: str,
+    language: str,
+    expected_language: str,
+) -> None:
+    app = _app()
+    site = Site(
+        app_id=app.id,
+        title=title,
+        default_language=language,
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        icon_type=IconType.EMOJI,
+        icon="🌱",
+        use_icon_as_answer_icon=True,
+        code="private-code",
+    )
+    sqlite_session.add_all([app, site])
+    sqlite_session.flush()
+    monkeypatch.setattr(AppDslService, "_append_model_config_export_data", Mock(return_value=[]))
+
+    data = AppDslService.load_export_data(app, session=sqlite_session).data
+
+    assert data["site"]["title"] == title
+    assert data["site"]["default_language"] == expected_language
+    assert SiteDsl.model_validate(data["site"]).title == title
+    assert data["site"]["icon"] == "🌱"
+    assert data["site"]["use_icon_as_answer_icon"] is True
+    assert (
+        not {
+            "id",
+            "app_id",
+            "code",
+            "customize_domain",
+            "customize_token_strategy",
+            "prompt_public",
+            "status",
+        }
+        & data["site"].keys()
+    )
+
+
+def test_site_dsl_import_rejects_unsupported_language() -> None:
+    with pytest.raises(ValidationError, match="en is not a valid language"):
+        SiteDsl.model_validate({"default_language": "en"})
+
+
 def test_create_or_update_app_flushes_new_model_config_before_signal(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -576,6 +706,52 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
     assert app.app_model_config_id is not None
     assert sqlite_session.get(AppModelConfig, app.app_model_config_id) is not None
     assert sqlite_session.in_transaction()
+
+
+@pytest.mark.parametrize(
+    ("feature", "field", "value"),
+    [
+        ("suggested_questions_after_answer", "prompt", None),
+        ("suggested_questions_after_answer", "prompt", 123),
+        ("text_to_speech", "voice", None),
+        ("text_to_speech", "language", 123),
+        ("text_to_speech", "autoPlay", "auto"),
+    ],
+)
+def test_chat_dsl_import_rejects_invalid_feature_fields(
+    sqlite_session: Session, feature: str, field: str, value: object
+) -> None:
+    app = _app()
+
+    with pytest.raises(ValueError, match=field):
+        AppDslService(session=sqlite_session)._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.CHAT}, "model_config": {feature: {"enabled": True, field: value}}},
+            account=_account(),
+        )
+
+    assert app.app_model_config_id is None
+    assert list(sqlite_session.scalars(select(AppModelConfig))) == []
+
+
+def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session) -> None:
+    app = _app()
+    model_config = {
+        "suggested_questions_after_answer": {"enabled": True, "prompt": "Follow up"},
+        "text_to_speech": {"enabled": True, "voice": "alloy", "language": "en", "autoPlay": "disabled"},
+    }
+
+    AppDslService(session=sqlite_session)._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.CHAT}, "model_config": model_config},
+        account=_account(),
+    )
+
+    assert app.app_model_config_id is not None
+    persisted = sqlite_session.get(AppModelConfig, app.app_model_config_id)
+    assert persisted is not None
+    assert persisted.suggested_questions_after_answer_dict == model_config["suggested_questions_after_answer"]
+    assert persisted.text_to_speech_dict == model_config["text_to_speech"]
 
 
 def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -763,12 +939,9 @@ def test_import_app_reraises_permission_denial_instead_of_failed_result(
 
 
 def test_append_workflow_export_data_reports_missing_selected_workflow(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    sqlite_session: Session,
 ) -> None:
     workflow_id = "11111111-1111-4111-8111-111111111111"
-    workflow_service = Mock()
-    workflow_service.get_draft_workflow.return_value = None
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
     app = _app(app_id="app-1", tenant_id="tenant-1")
 
     with pytest.raises(WorkflowNotFoundError, match=f"Workflow version not found. Workflow ID: {workflow_id}"):
@@ -776,7 +949,7 @@ def test_append_workflow_export_data_reports_missing_selected_workflow(
             export_data={},
             app_model=app,
             include_secret=False,
-            session=unbound_session,
+            session=sqlite_session,
             workflow_id=workflow_id,
         )
 
@@ -798,14 +971,17 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
         "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", Mock(return_value=[])
     )
 
-    def append_workflow(*, export_data: dict[str, object], **_kwargs: object) -> None:
+    def append_workflow(*, export_data: dict[str, object], **_kwargs: object) -> list[str]:
         export_data["workflow"] = {"fixture": "workflow"}
+        return []
 
-    def append_model(export_data: dict[str, object], *_args: object, **_kwargs: object) -> None:
+    def append_model(export_data: dict[str, object], *_args: object, **_kwargs: object) -> list[str]:
         export_data["model_config"] = {"fixture": "model"}
+        return []
 
     monkeypatch.setattr(AppDslService, "_append_workflow_export_data", Mock(side_effect=append_workflow))
     monkeypatch.setattr(AppDslService, "_append_model_config_export_data", Mock(side_effect=append_model))
+    monkeypatch.setattr(App, "site_with_session", Mock(return_value=None))
     data = yaml.safe_load(AppDslService.export_dsl(app, session=unbound_session))
     assert data["version"] == CURRENT_APP_DSL_VERSION
     assert data["kind"] == "app"
@@ -867,3 +1043,284 @@ def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, nod
     assert "incompatible" in result.error
     assert target.name == "Original"
     session.add.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("content", "found"),
+    [
+        ({"meta": {}, "nodes": [], "edges": []}, "meta, nodes, edges"),
+        ({"app": None}, "none"),
+        ({"x" * 81: {}}, "x" * 80 + "…"),
+    ],
+    ids=["original-keys", "empty-app", "bounded-key-list"],
+)
+def test_missing_app_section_names_the_keys_that_were_present(
+    unbound_session: Session, content: dict[str, object], found: str
+) -> None:
+    result = AppDslService(session=unbound_session).import_app(
+        account=_account(), import_mode="yaml-content", yaml_content=yaml.safe_dump(content, sort_keys=False)
+    )
+    assert result.status == ImportStatus.FAILED
+    assert result.error is not None
+    assert result.error.startswith("Missing app data in YAML content.")
+    assert result.error.endswith(f"(found: {found}).")
+    assert not unbound_session.in_transaction()
+
+
+@dataclass
+class _DraftWorkflowService:
+    draft: Workflow | None
+    lookups: list[str] = field(default_factory=list)
+    synced_hashes: list[str | None] = field(default_factory=list)
+
+    def _draft_of(self, app_model: App) -> Workflow | None:
+        return self.draft if self.draft is not None and self.draft.app_id == app_model.id else None
+
+    def get_draft_workflow(self, app_model: App, **_: object) -> Workflow | None:
+        self.lookups.append("read")
+        return self._draft_of(app_model)
+
+    def get_draft_workflow_for_update(self, app_model: App, **_: object) -> Workflow | None:
+        self.lookups.append("locked")
+        return self._draft_of(app_model)
+
+    def sync_draft_workflow(self, *, graph: dict[str, object], unique_hash: str | None, **_: object) -> Workflow:
+        self.synced_hashes.append(unique_hash)
+        return _workflow(graph=graph)
+
+
+def _workflow_draft(app: App) -> Workflow:
+    return make_workflow(tenant_id=app.tenant_id, app_id=app.id, graph={"nodes": [], "edges": []})
+
+
+def _guarded_overwrite(
+    monkeypatch: pytest.MonkeyPatch, session: Session, *, draft: Workflow | None
+) -> tuple[AppDslService, _DraftWorkflowService, Callable[[str], App]]:
+    service = AppDslService(session=session)
+    workflow_service = _DraftWorkflowService(draft=draft)
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
+    app = _app(mode=AppMode.WORKFLOW)
+
+    def overwrite(draft_hash: str) -> App:
+        return service._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": {"nodes": [], "edges": []}}},
+            account=_account(),
+            draft_hash=draft_hash,
+        )
+
+    return service, workflow_service, overwrite
+
+
+def test_guarded_overwrite_saves_against_the_locked_draft_it_matched(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    draft = _workflow_draft(_app(mode=AppMode.WORKFLOW))
+    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
+
+    overwrite(draft_token(draft))
+
+    assert workflow_service.lookups == ["locked"]
+    assert workflow_service.synced_hashes == [draft.unique_hash]
+
+
+@pytest.mark.parametrize("draft_exists", [True, False], ids=["draft-changed", "draft-gone"])
+def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, draft_exists: bool
+) -> None:
+    draft = _workflow_draft(_app(mode=AppMode.WORKFLOW)) if draft_exists else None
+    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
+
+    with pytest.raises(DraftChangedError):
+        overwrite("exported")
+
+    assert workflow_service.synced_hashes == []
+
+
+def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    app = _app(mode=AppMode.WORKFLOW)
+    service, workflow_service, _ = _guarded_overwrite(monkeypatch, unbound_session, draft=_workflow_draft(app))
+    cached: list[str] = []
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", lambda key, _expiry, _value: cached.append(key))
+    dependency = PluginDependency(
+        type=PluginDependencyType.Package,
+        value=PluginDependency.Package(plugin_unique_identifier="langgenius/openai:1.0.0@abc"),
+    )
+
+    with pytest.raises(DraftChangedError):
+        service._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.WORKFLOW.value, "name": "After"}, "workflow": {"graph": {}}},
+            account=_account(),
+            dependencies=[dependency],
+            draft_hash="exported",
+        )
+
+    assert cached == []
+    assert app.name == "Existing app"
+    assert workflow_service.synced_hashes == []
+
+
+def _refuse_changed_draft(forwarded: list[str | None]) -> Callable[..., App]:
+    def create_or_update_app(*, draft_hash: str | None = None, **_: object) -> App:
+        forwarded.append(draft_hash)
+        raise DraftChangedError()
+
+    return create_or_update_app
+
+
+def test_import_app_reraises_a_changed_draft_and_keeps_the_hash_for_the_confirm(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    pending_imports: dict[str, str] = {}
+    monkeypatch.setattr(
+        "services.app_dsl_service.redis_client.setex",
+        lambda key, _expiry, value: pending_imports.__setitem__(key, value),
+    )
+    service = AppDslService(session=unbound_session)
+    forwarded: list[str | None] = []
+    monkeypatch.setattr(service, "_create_or_update_app", _refuse_changed_draft(forwarded))
+
+    with pytest.raises(DraftChangedError):
+        service.import_app(
+            account=_account(),
+            import_mode="yaml-content",
+            yaml_content=yaml.safe_dump(
+                {"version": CURRENT_APP_DSL_VERSION, "kind": "app", "app": {"name": "Imported", "mode": "chat"}}
+            ),
+            draft_hash="exported",
+        )
+    assert forwarded == ["exported"]
+
+    pending = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        yaml_content="version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n",
+        draft_hash="exported",
+    )
+    assert pending.status == ImportStatus.PENDING
+    stored = PendingData.model_validate_json(pending_imports[f"app_import_info:{pending.id}"])
+    assert stored.draft_hash == "exported"
+
+
+def test_confirm_import_checks_the_pending_draft_hash(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    pending = PendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {"version": CURRENT_APP_DSL_VERSION, "kind": "app", "app": {"name": "Imported", "mode": "chat"}}
+        ),
+        draft_hash="exported",
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _key: pending.model_dump_json())
+    deleted: list[str] = []
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", deleted.append)
+    service = AppDslService(unbound_session)
+    forwarded: list[str | None] = []
+    monkeypatch.setattr(service, "_create_or_update_app", _refuse_changed_draft(forwarded))
+
+    with pytest.raises(DraftChangedError):
+        service.confirm_import(import_id="pending-import", account=_account())
+
+    assert forwarded == ["exported"]
+    assert deleted == []
+
+
+def test_pending_data_without_a_draft_hash_still_reads() -> None:
+    older = PendingData.model_validate_json(_PENDING_DATA_JSON).model_dump_json(exclude={"draft_hash"})
+    assert PendingData.model_validate_json(older).draft_hash is None
+
+
+@pytest.mark.parametrize("confirmed", [False, True])
+@pytest.mark.parametrize("overwrite", [False, True])
+def test_import_creation_marker_tracks_persisted_app(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool, overwrite: bool
+) -> None:
+    account = _account(account_id=_CALLER_ID, tenant_id=_TENANT_ID)
+    _persist_overwrite_target(sqlite_session) if overwrite else None
+    data = yaml.safe_dump(
+        {
+            "version": CURRENT_APP_DSL_VERSION,
+            "kind": "app",
+            "app": {"name": "Imported", "mode": "workflow"},
+            "workflow": {"graph": {"nodes": [], "edges": []}, "features": {}},
+        }
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock())
+    service = AppDslService(sqlite_session)
+    if confirmed:
+        pending = PendingData(
+            tenant_id=_TENANT_ID,
+            account_id=_CALLER_ID,
+            import_mode="yaml-content",
+            yaml_content=data,
+            app_id=_OVERWRITE_APP_ID if overwrite else None,
+        )
+        monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _: pending.model_dump_json())
+        result = service.confirm_import(import_id="pending", account=account)
+    else:
+        result = service.import_app(
+            account=account,
+            import_mode="yaml-content",
+            yaml_content=data,
+            app_id=_OVERWRITE_APP_ID if overwrite else None,
+        )
+    assert result.status == ImportStatus.COMPLETED, result.error
+    assert result.app_created is (not overwrite)
+    assert sqlite_session.get(App, result.app_id) is not None
+    assert "app_created" not in result.model_dump()
+    assert "app_created" not in result.model_json_schema(mode="serialization")["properties"]
+
+
+@pytest.mark.parametrize("mode", list(AppMode) + [None])
+def test_import_creator_access_only_initializes_ordinary_apps(
+    mode: AppMode | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from services.app_dsl_service import initialize_imported_app_creator_access
+    from services.entities.dsl_entities import Import
+
+    sync = Mock()
+    monkeypatch.setattr("services.enterprise.rbac_service.try_sync_creator_access_policy_member_bindings", sync)
+    result = Import(id="import", status=ImportStatus.COMPLETED, app_id="app", app_mode=mode, app_created=True)
+    initialize_imported_app_creator_access(result, tenant_id="tenant", account_id="creator")
+    assert sync.call_count == (
+        1
+        if mode in {AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}
+        else 0
+    )
+
+
+@pytest.mark.parametrize("confirmed", [False, True])
+def test_failed_import_does_not_report_creation(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool
+) -> None:
+    data = "version: " + CURRENT_APP_DSL_VERSION + "\nkind: app\napp: {name: Broken, mode: chat}\n"
+    service = AppDslService(sqlite_session)
+    if confirmed:
+        pending = PendingData(
+            tenant_id="tenant-1", account_id="account-1", import_mode="yaml-content", yaml_content=data
+        )
+        monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _: pending.model_dump_json())
+        result = service.confirm_import(import_id="pending", account=_account())
+    else:
+        result = service.import_app(account=_account(), import_mode="yaml-content", yaml_content=data)
+    assert result.status == ImportStatus.FAILED
+    assert not result.app_created
+
+
+def test_pending_import_does_not_report_creation_or_cache_marker(
+    unbound_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", cache)
+    result = AppDslService(unbound_session).import_app(
+        account=_account(), import_mode="yaml-content", yaml_content=_PENDING_WORKFLOW_DSL
+    )
+    assert result.status == ImportStatus.PENDING
+    assert not result.app_created
+    assert "app_created" not in cache.call_args.args[2]

@@ -89,14 +89,20 @@ const ListWrapper = ({
           : isError
             ? tPlugin(($) => $['marketplace.loadError'], { ns: 'plugin' })
             : plugins
-              ? tPlugin(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: pluginsTotal })
+              ? tPlugin(($) => $['marketplace.pluginsResult'], {
+                  ns: 'plugin',
+                  num: pluginsTotal ?? 0,
+                })
               : null}
       </div>
       <div className="flex w-full grow flex-col">
         {plugins && (
           <div className="mb-4 flex items-center pt-3">
             <div className="title-xl-semi-bold text-text-primary">
-              {tPlugin(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: pluginsTotal })}
+              {tPlugin(($) => $['marketplace.pluginsResult'], {
+                ns: 'plugin',
+                num: pluginsTotal ?? 0,
+              })}
             </div>
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
             <SortDropdown />

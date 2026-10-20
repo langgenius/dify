@@ -83,7 +83,7 @@ const ConditionWrap: FC<Props> = ({
   varsIsVarFileAttribute = {},
   filterVar = () => true,
 }) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflowLogic'])
 
   const getAvailableVars = useGetAvailableVars()
 
@@ -212,7 +212,7 @@ const ConditionWrap: FC<Props> = ({
                     >
                       <Button size="small" disabled={readOnly}>
                         <RiAddLine className="size-3.5" />
-                        {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
+                        {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflowLogic' })}
                       </Button>
                     </SelectTrigger>
                     <SelectPortal>
@@ -265,7 +265,7 @@ const ConditionWrap: FC<Props> = ({
           onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
           <RiAddLine className="size-3.5" />
-          {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
+          {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflowLogic' })}
         </Button>
       )}
     </>

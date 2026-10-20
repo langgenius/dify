@@ -1,5 +1,5 @@
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarInInspectType } from '@/types/workflow'
 import { createNode } from '../../__tests__/fixtures'
@@ -86,7 +86,7 @@ describe('VariableInspectTrigger', () => {
     })
 
     expect(
-      screen.queryByText('workflow.debug.variableInspect.trigger.normal'),
+      screen.queryByText('workflowDebug.debug.variableInspect.trigger.normal'),
     ).not.toBeInTheDocument()
   })
 
@@ -97,21 +97,22 @@ describe('VariableInspectTrigger', () => {
     await user.tab()
     await user.tab()
     expect(
-      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.normal' }),
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.normal' }),
     ).toHaveFocus()
     await user.keyboard('{Enter}')
 
     expect(store.getState().showVariableInspectPanel).toBe(true)
   })
 
-  it('should block opening while the workflow is read only', () => {
+  it('should block opening while the workflow is read only', async () => {
+    const user = userEvent.setup()
     const { store } = renderTrigger({
       initialStoreState: {
         isRestoring: true,
       },
     })
 
-    fireEvent.click(screen.getByText('workflow.debug.variableInspect.trigger.normal'))
+    await user.click(screen.getByText('workflowDebug.debug.variableInspect.trigger.normal'))
 
     expect(store.getState().showVariableInspectPanel).toBe(false)
   })
@@ -139,11 +140,13 @@ describe('VariableInspectTrigger', () => {
     await user.tab()
     await user.tab()
     expect(
-      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.clear' }),
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.clear' }),
     ).toHaveFocus()
     await user.keyboard(' ')
 
-    expect(screen.getByText('workflow.debug.variableInspect.trigger.cached')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowDebug.debug.variableInspect.trigger.cached'),
+    ).toBeInTheDocument()
     expect(mockDeleteAllInspectorVars).toHaveBeenCalledTimes(1)
     expect(store.getState().currentFocusNodeId).toBe('')
   })
@@ -159,13 +162,14 @@ describe('VariableInspectTrigger', () => {
     await user.tab()
     await user.tab()
     expect(
-      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
     ).toHaveFocus()
     await user.keyboard('{Enter}')
     expect(mockEmit).toHaveBeenCalledWith({ type: EVENT_WORKFLOW_STOP })
   })
 
-  it('should show the running state and open the panel while running', () => {
+  it('should show the running state and open the panel while running', async () => {
+    const user = userEvent.setup()
     const { store } = renderTrigger({
       nodes: [
         createNode({
@@ -184,10 +188,10 @@ describe('VariableInspectTrigger', () => {
       },
     })
 
-    fireEvent.click(screen.getByText('workflow.debug.variableInspect.trigger.running'))
+    await user.click(screen.getByText('workflowDebug.debug.variableInspect.trigger.running'))
 
     expect(
-      screen.queryByText('workflow.debug.variableInspect.trigger.clear'),
+      screen.queryByText('workflowDebug.debug.variableInspect.trigger.clear'),
     ).not.toBeInTheDocument()
     expect(store.getState().showVariableInspectPanel).toBe(true)
   })

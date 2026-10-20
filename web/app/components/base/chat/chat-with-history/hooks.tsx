@@ -78,7 +78,7 @@ function getFormattedChatList(messages: any[]) {
     const humanInputFormDataList: HumanInputFormData[] = []
     const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
     let workflowRunId = ''
-    item.extra_contents?.forEach((content: ExtraContent) => {
+    item.extra_contents?.forEach((content: ExtraContent, contentIndex: number) => {
       if (content.type !== 'human_input') return
 
       const formDefinition = 'form_definition' in content ? content.form_definition : undefined
@@ -90,16 +90,17 @@ function getFormattedChatList(messages: any[]) {
       }
 
       if (!('form_submission_data' in content) || !content.form_submission_data) return
-      const currentFormIndex = humanInputFormDataList.findIndex(
-        (item) => item.node_id === content.form_submission_data.node_id,
-      )
-      const requiredFormData =
-        formDefinition ||
-        (currentFormIndex > -1 ? humanInputFormDataList[currentFormIndex] : undefined)
-      if (currentFormIndex > -1) humanInputFormDataList.splice(currentFormIndex, 1)
+      // Legacy submissions without a definition expose no form ID, so give their
+      // cards a history-only identity.
+      const formId =
+        formDefinition?.form_id ??
+        `${content.workflow_run_id ?? item.id}:${content.form_submission_data.node_id}:${contentIndex}`
       workflowRunId = content.workflow_run_id || workflowRunId
       humanInputFilledFormDataList.push(
-        enrichSubmittedHumanInputFormData(content.form_submission_data, requiredFormData),
+        enrichSubmittedHumanInputFormData(
+          { ...content.form_submission_data, form_id: formId },
+          formDefinition,
+        ),
       )
     })
     newChatList.push({
@@ -288,18 +289,24 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
           }
         }
         if (item.number) {
-          const convertedNumber = Number(initInputs[item.number.variable])
+          const rawNumber = initInputs[item.number.variable]
+          const convertedNumber =
+            rawNumber === undefined || rawNumber === null || rawNumber === ''
+              ? Number.NaN
+              : Number(rawNumber)
           return {
             ...item.number,
-            default: convertedNumber || item.default || item.number.default,
+            default: Number.isNaN(convertedNumber)
+              ? (item.default ?? item.number.default)
+              : convertedNumber,
             type: 'number',
           }
         }
         if (item.checkbox) {
-          const preset = initInputs[item.checkbox.variable] === true
+          const preset = initInputs[item.checkbox.variable]
           return {
             ...item.checkbox,
-            default: preset || item.default || item.checkbox.default,
+            default: typeof preset === 'boolean' ? preset : (item.default ?? item.checkbox.default),
             type: 'checkbox',
           }
         }
@@ -356,7 +363,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
@@ -432,7 +439,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         requiredVars.forEach(({ variable, label, type }) => {
           if (hasEmptyInput) return
           if (fileIsUploading) return
-          if (!newConversationInputsRef.current[variable] && !silent)
+          const inputValue = newConversationInputsRef.current[variable]
+          if (
+            (inputValue === undefined ||
+              inputValue === null ||
+              inputValue === '' ||
+              (Array.isArray(inputValue) && inputValue.length === 0)) &&
+            !silent
+          )
             hasEmptyInput = label as string
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -465,7 +479,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     [inputsForms, t, allInputsHidden],
   )
   const handleStartChat = useCallback(
-    (callback: any) => {
+    (callback?: () => void) => {
       if (checkInputsRequired()) {
         setShowNewConversationItemInList(true)
         callback?.()
@@ -491,7 +505,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     handleChangeConversation('')
     const conversationInputs: Record<string, any> = {}
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
     handleNewConversationInputsChange(conversationInputs)
     setClearChatList(true)
@@ -557,7 +571,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       setConversationRenaming(true)
       try {
         await renameConversation(appSourceType, appId, conversationId, newName)
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         setOriginConversationList(
           produce((draft) => {
             const index = originConversationList.findIndex((item) => item.id === conversationId)
@@ -588,15 +601,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     async (messageId, feedback) => {
       await updateFeedback(
         {
-          url: `/messages/${messageId}/feedbacks`,
+          messageId,
           body: { rating: feedback.rating, content: feedback.content },
         },
         appSourceType,
         appId,
       )
-      toast.success(t(($) => $['api.success'], { ns: 'common' }))
     },
-    [appSourceType, appId, t],
+    [appSourceType, appId],
   )
   return {
     isInstalledApp,

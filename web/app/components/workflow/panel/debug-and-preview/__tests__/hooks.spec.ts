@@ -1,139 +1,182 @@
-import { act, renderHook } from '@testing-library/react'
-import { sseGet } from '@/service/base'
-import { submitHumanInputForm } from '@/service/workflow'
+import type { useWorkflowRun } from '../../../hooks/use-workflow-run'
+import type { Node } from '../../../types'
+import { act } from '@testing-library/react'
+import { createNode } from '../../../__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '../../../__tests__/workflow-test-env'
+import { fullWorkflowAccessControl } from '../../../hooks-store'
+import { BlockEnum, WorkflowRunningStatus } from '../../../types'
 import { useChat } from '../hooks'
 
-const mockHandleRun = vi.hoisted(() => vi.fn())
+type HandleRun = ReturnType<typeof useWorkflowRun>['handleRun']
+type RunCallbacks = NonNullable<Parameters<HandleRun>[1]>
+
+const mockHandleRun = vi.hoisted(() => vi.fn<HandleRun>())
 const mockFetchInspectVars = vi.hoisted(() => vi.fn())
 const mockInvalidAllLastRun = vi.hoisted(() => vi.fn())
-const mockSetIterTimes = vi.hoisted(() => vi.fn())
-const mockSetLoopTimes = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputForm = vi.hoisted(() => vi.fn())
 const mockSseGet = vi.hoisted(() => vi.fn())
-const mockGetNodes = vi.hoisted(() =>
-  vi.fn(() => [] as Array<{ id: string; type: string; data: Record<string, unknown> }>),
-)
 
-let mockWorkflowRunningData: unknown = null
-
-vi.mock('@/service/base', () => ({
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
   sseGet: (...args: unknown[]) => mockSseGet(...args),
 }))
 
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+vi.mock('@/service/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
-vi.mock('@/service/workflow', () => ({
+vi.mock('@/service/workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/workflow')>()),
   submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-  },
-}))
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-    }),
-  }),
-}))
-
-vi.mock('../../../hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({ handleRun: mockHandleRun }),
-}))
-
-vi.mock('../../../hooks/use-set-workflow-vars-with-value', () => ({
-  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
-}))
-
-vi.mock('../../../hooks-store', () => ({
-  useHooksStore: () => ({
-    configsMap: {
-      flowType: 'appFlow',
-      flowId: 'flow-1',
+const renderChat = (
+  options: {
+    canRun?: boolean
+    nodes?: Node[]
+  } = {},
+) =>
+  renderWorkflowCanvasHook(() => useChat({}), {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    nodes: options.nodes,
+    hooksStoreProps: {
+      handleRun: mockHandleRun,
+      fetchInspectVars: mockFetchInspectVars,
+      accessControl: { ...fullWorkflowAccessControl, canRun: options.canRun ?? true },
     },
-  }),
-}))
-
-vi.mock('../../../store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setIterTimes: mockSetIterTimes,
-      setLoopTimes: mockSetLoopTimes,
-      inputs: {},
-      workflowRunningData: mockWorkflowRunningData,
-    }),
-  }),
-}))
-
-const resetMocksAndWorkflowState = () => {
-  vi.clearAllMocks()
-  mockWorkflowRunningData = null
-}
+  })
 
 describe('useChat', () => {
   beforeEach(() => {
-    resetMocksAndWorkflowState()
+    vi.clearAllMocks()
   })
 
-  it('resumes the workflow event stream when switching to a sibling with pending human input', async () => {
-    let sendCallbacks: {
-      onWorkflowStarted: (payload: {
-        workflow_run_id: string
-        task_id: string
-        conversation_id: string | null
-        message_id: string
-      }) => void
-      onHumanInputRequired: (payload: { data: { node_id: string; form_token: string } }) => void
-      onCompleted: (payload: boolean) => Promise<void>
-    }
-
-    mockHandleRun.mockImplementation((_params: unknown, callbacks: typeof sendCallbacks) => {
+  it('resumes a pending-human-input sibling and reflects the responding lifecycle', async () => {
+    let sendCallbacks: RunCallbacks | undefined
+    mockHandleRun.mockImplementation((_params, callbacks) => {
       sendCallbacks = callbacks
     })
-
-    const { result } = renderHook(() => useChat({}))
+    const { result, store } = renderChat()
 
     act(() => {
-      result.current.handleSend({ query: 'test' }, {})
+      result.current.handleSend({ query: 'Review this request' }, {})
     })
 
+    expect(result.current.isResponding).toBe(true)
+    expect(result.current.chatList).toEqual([
+      expect.objectContaining({ content: 'Review this request', isAnswer: false }),
+      expect.objectContaining({ content: '', isAnswer: true }),
+    ])
+
     act(() => {
-      sendCallbacks.onWorkflowStarted({
+      sendCallbacks!.onWorkflowStarted?.({
         workflow_run_id: 'workflow-run-1',
         task_id: 'task-1',
-        conversation_id: null,
+        event: 'workflow_started',
+        data: { id: 'workflow-run-1', workflow_id: 'workflow-1', created_at: 0 },
+        conversation_id: undefined,
         message_id: 'message-1',
       })
-    })
-
-    act(() => {
-      sendCallbacks.onHumanInputRequired({
-        data: { node_id: 'human-node', form_token: 'form-token' },
+      sendCallbacks!.onHumanInputRequired?.({
+        task_id: 'task-1',
+        workflow_run_id: 'workflow-run-1',
+        event: 'human_input_required',
+        data: {
+          form_id: 'form-1',
+          node_id: 'human-node',
+          node_title: 'Approval',
+          form_content: 'Approve this request',
+          inputs: [],
+          actions: [],
+          form_token: 'form-token',
+          resolved_default_values: {},
+          display_in_ui: true,
+          expiration_time: null,
+        },
       })
     })
-
-    await act(async () => {
-      await sendCallbacks.onCompleted(false)
+    act(() => {
+      store.setState({
+        workflowRunningData: {
+          task_id: 'task-1',
+          tracing: [],
+          result: {
+            status: WorkflowRunningStatus.Paused,
+            inputs_truncated: false,
+            process_data_truncated: false,
+            outputs_truncated: false,
+          },
+        },
+      })
     })
+    await act(async () => {
+      await sendCallbacks!.onCompleted?.(false)
+    })
+
+    expect(result.current.isResponding).toBe(false)
+    expect(result.current.chatList).toEqual([
+      expect.objectContaining({ content: 'Review this request', isAnswer: false }),
+      expect.objectContaining({
+        id: 'message-1',
+        workflow_run_id: 'workflow-run-1',
+        humanInputFormDataList: [
+          expect.objectContaining({ node_id: 'human-node', form_token: 'form-token' }),
+        ],
+      }),
+    ])
 
     act(() => {
       result.current.handleSwitchSibling('message-1', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalled()
-    expect(sseGet).toBeDefined()
+    expect(mockSseGet).toHaveBeenCalledWith(
+      '/workflow/workflow-run-1/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      expect.objectContaining({ onCompleted: expect.any(Function), onData: expect.any(Function) }),
+    )
+    const resumeCallbacks = mockSseGet.mock.lastCall![2] as RunCallbacks
+
+    act(() => {
+      resumeCallbacks.onWorkflowStarted?.({
+        workflow_run_id: 'workflow-run-1',
+        task_id: 'task-2',
+        event: 'workflow_started',
+        data: { id: 'workflow-run-1', workflow_id: 'workflow-1', created_at: 0 },
+        conversation_id: undefined,
+        message_id: 'message-1',
+      })
+    })
+    expect(result.current.isResponding).toBe(true)
+
+    act(() => {
+      store.setState({ workflowRunningData: undefined })
+    })
+    await act(async () => {
+      await resumeCallbacks.onCompleted?.(false)
+    })
+
+    expect(result.current.isResponding).toBe(false)
+    expect(mockFetchInspectVars).toHaveBeenCalledWith({})
+    expect(mockInvalidAllLastRun).toHaveBeenCalledOnce()
+  })
+
+  it('does not create chat state or start a run without run permission', () => {
+    const { result } = renderChat({ canRun: false })
+
+    let accepted: boolean | undefined
+    act(() => {
+      accepted = result.current.handleSend({ query: 'Blocked request' }, {})
+    })
+
+    expect(accepted).toBe(false)
+    expect(result.current.isResponding).toBe(false)
+    expect(result.current.chatList).toEqual([])
+    expect(mockHandleRun).not.toHaveBeenCalled()
   })
 
   it('submits human input forms through the workflow service', async () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderChat()
 
     await act(async () => {
       await result.current.handleSubmitHumanInputForm('token-123', {
@@ -146,16 +189,16 @@ describe('useChat', () => {
       inputs: { field: 'value' },
       action: 'approve',
     })
-    expect(submitHumanInputForm).toBeDefined()
   })
 
   it('returns the matching custom node for a human input request', () => {
-    const node = { id: 'node-1', type: 'custom', data: { title: 'Human Input' } }
-    mockGetNodes.mockReturnValue([node, { id: 'node-2', type: 'custom', data: { title: 'Other' } }])
+    const node = createNode({
+      id: 'node-1',
+      data: { type: BlockEnum.HumanInput, title: 'Human Input' },
+    })
+    const { result } = renderChat({ nodes: [node, createNode({ id: 'node-2' })] })
 
-    const { result } = renderHook(() => useChat({}))
-
-    expect(result.current.getHumanInputNodeData('node-1')).toEqual(node)
+    expect(result.current.getHumanInputNodeData('node-1')).toMatchObject(node)
     expect(result.current.getHumanInputNodeData('missing')).toBeUndefined()
   })
 })

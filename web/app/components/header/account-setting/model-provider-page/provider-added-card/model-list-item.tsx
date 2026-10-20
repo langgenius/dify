@@ -6,13 +6,12 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { disableModel, enableModel } from '@/service/common'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelStatusEnum } from '../declarations'
 import { useUpdateModelList } from '../hooks'
@@ -39,7 +38,8 @@ const ModelListItem = ({
   onChange,
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
+  const modelNameId = useId()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -66,15 +66,15 @@ const ModelListItem = ({
   const toggleModelEnablingStatus = useCallback(
     async (enabled: boolean) => {
       if (enabled)
-        await enableModel(
-          `/workspaces/current/model-providers/${provider.provider}/models/enable`,
-          { model: model.model, model_type: model.model_type },
-        )
+        await consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch({
+          params: { provider: provider.provider },
+          body: { model: model.model, model_type: model.model_type },
+        })
       else
-        await disableModel(
-          `/workspaces/current/model-providers/${provider.provider}/models/disable`,
-          { model: model.model, model_type: model.model_type },
-        )
+        await consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch({
+          params: { provider: provider.provider },
+          body: { model: model.model, model_type: model.model_type },
+        })
 
       queryClient.invalidateQueries({
         queryKey: modelProviderModelListQueryKey,
@@ -119,6 +119,7 @@ const ModelListItem = ({
       <ModelName
         className="grow system-md-regular text-text-secondary"
         modelItem={model}
+        nameId={modelNameId}
         nameClassName={model.deprecated ? 'line-through' : undefined}
         showModelType
         showMode
@@ -160,17 +161,18 @@ const ModelListItem = ({
               openOnHover
               render={
                 <span>
-                  <Switch checked={false} disabled size="md" />
+                  <Switch aria-labelledby={modelNameId} checked={false} disabled size="md" />
                 </span>
               }
             />
             <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
-              {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'common' })}
+              {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'modelProvider' })}
             </PopoverContent>
           </Popover>
         ) : (
           canConfigureModels && (
             <Switch
+              aria-labelledby={modelNameId}
               className="ml-2"
               checked={model?.status === ModelStatusEnum.active}
               disabled={!configurableStatuses.includes(model.status)}

@@ -39,7 +39,7 @@ def test_factory_init_vector_uses_existing_index_struct_class_prefix(monkeypatch
     monkeypatch.setattr(alibaba_module.dify_config, "ALIBABACLOUD_MYSQL_HNSW_M", 6)
 
     with patch.object(alibaba_module, "AlibabaCloudMySQLVector", return_value="vector") as vector_cls:
-        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result == "vector"
     assert vector_cls.call_args.kwargs["collection_name"] == "existing_collection"
@@ -61,7 +61,7 @@ def test_factory_init_vector_generates_collection_name_when_index_struct_is_miss
     monkeypatch.setattr(alibaba_module.dify_config, "ALIBABACLOUD_MYSQL_HNSW_M", 12)
 
     with patch.object(alibaba_module, "AlibabaCloudMySQLVector", return_value="vector") as vector_cls:
-        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result == "vector"
     vector_cls.assert_called_once()

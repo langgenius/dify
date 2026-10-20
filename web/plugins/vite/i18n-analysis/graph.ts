@@ -1,10 +1,10 @@
-import type { TranslationAdapter } from './api'
-import type { ModuleResolutions } from './compiler'
+import type { TranslationAdapter } from './api.ts'
+import type { ModuleResolutions } from './compiler.ts'
 import path from 'node:path'
 import * as ts from 'typescript'
-import { createTranslationApiResolver } from './api'
-import { camelCase, readTranslationCatalog } from './catalog'
-import { createTranslationProgram, readCompilerOptions } from './compiler'
+import { createTranslationApiResolver } from './api.ts'
+import { camelCase, readTranslationCatalog } from './catalog.ts'
+import { createTranslationProgram, readCompilerOptions } from './compiler.ts'
 
 const MAX_VALUES = 200
 const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -85,6 +85,7 @@ export function checkTranslationGraph(
   context = createAnalysisContext(root),
 ) {
   const { catalog } = context.translations
+  const literalKeys = new Set([...catalog.values()].flatMap((keys) => [...keys]))
   const programStarted = performance.now()
   const { program, fileNames } = createTranslationProgram(
     root,
@@ -229,6 +230,27 @@ export function checkTranslationGraph(
     return constraint && constraint !== type ? selectorType(constraint) : undefined
   }
 
+  function mayInstantiateSelector(type: ts.Type): boolean {
+    if (selectorType(type)) return true
+    // Instantiation can reduce these types to a selector alias. Keep them even
+    // when the declaration itself does not expose SelectorParam.
+    if (
+      type.flags &
+      (ts.TypeFlags.TypeParameter |
+        ts.TypeFlags.IndexedAccess |
+        ts.TypeFlags.Conditional |
+        ts.TypeFlags.Substitution |
+        ts.TypeFlags.UnionOrIntersection)
+    )
+      return true
+    // Ordinary object/function types retain their shape and alias when their
+    // type arguments are instantiated. Mapped types can instead reduce.
+    return !!(
+      type.flags & ts.TypeFlags.Object &&
+      (type as ts.ObjectType).objectFlags & (ts.ObjectFlags.Mapped | ts.ObjectFlags.ReverseMapped)
+    )
+  }
+
   function typedTranslation(node: ts.Node, call?: ts.CallExpression): Translation | undefined {
     const type = checker.getTypeAtLocation(node)
     const brand = type.getProperty('$TFunctionBrand')
@@ -238,8 +260,21 @@ export function checkTranslationGraph(
     }
     // Prefer the instantiated namespace. Inferred selector functions can lose
     // their alias, so retain declaration signatures for recognizing adapters.
-    const resolved = call && checker.getResolvedSignature(call)
-    const signatures = [...(resolved ? [resolved] : []), ...type.getCallSignatures()]
+    const declared = type.getCallSignatures()
+    // Resolving a call checks its arguments and contextual types too. Only
+    // request that work if overload selection or generic instantiation could
+    // expose a selector parameter; unrelated generic APIs need neither.
+    const resolved =
+      call &&
+      (declared.length > 1 || declared.some((signature) => signature.typeParameters?.length)) &&
+      declared.some((signature) =>
+        signature.parameters.some((parameter) =>
+          mayInstantiateSelector(checker.getTypeOfSymbolAtLocation(parameter, node)),
+        ),
+      )
+        ? checker.getResolvedSignature(call)
+        : undefined
+    const signatures = [...(resolved ? [resolved] : []), ...declared]
     for (const signature of signatures) {
       for (const [argument, parameter] of signature.parameters.entries()) {
         const selector = selectorType(checker.getTypeOfSymbolAtLocation(parameter, node))
@@ -539,7 +574,13 @@ export function checkTranslationGraph(
   function visit(node: ts.Node) {
     if (isAdapter(node)) return
     currentSite = node
-    if (ts.isStringLiteralLike(node) && (node.text.includes('.') || node.text.includes(':'))) {
+    // Contextual key unions can only contribute usage when the literal itself
+    // exists in a catalog. Avoid type-checking unrelated paths, URLs and text.
+    if (
+      ts.isStringLiteralLike(node) &&
+      (node.text.includes('.') || node.text.includes(':')) &&
+      literalKeys.has(node.text)
+    ) {
       const contextual = checker.getContextualType(node)
       const values = contextual && literalTypes(contextual)
       if (values?.includes(node.text)) {
@@ -573,7 +614,9 @@ export function checkTranslationGraph(
               prefix: '',
               argument: api.selectorArgument,
             }
-          : translation(node.expression, node)
+          : node.arguments.length
+            ? translation(node.expression, node)
+            : undefined
       const argument = info && node.arguments[info.argument]
       if (info && argument) {
         const options =

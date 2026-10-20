@@ -45,7 +45,7 @@ type PresetsParameterProps = {
 }
 
 function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParameterProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const supportedParameterNameSet = supportedParameterNames
     ? new Set(supportedParameterNames)
     : undefined
@@ -68,7 +68,7 @@ function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParamete
           />
         }
       >
-        {t(($) => $['modelProvider.loadPresets'], { ns: 'common' })}
+        {t(($) => $['modelProvider.loadPresets'], { ns: 'modelProvider' })}
         <span className="i-ri-arrow-down-s-line size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent>

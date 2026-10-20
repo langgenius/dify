@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from inspect import unwrap
 from unittest.mock import Mock
 
@@ -14,6 +13,7 @@ from controllers.console.snippets import snippet_workflow as snippet_workflow_mo
 from models.account import Account, TenantAccountRole
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow
+from tests.unit_tests.controllers.error_body import raised_error
 from tests.unit_tests.model_factories import make_account
 
 
@@ -53,8 +53,6 @@ def _workflow(**overrides) -> Workflow:
         rag_pipeline_variables=[],
     )
     workflow.id = "workflow-1"
-    workflow.created_at = datetime(2024, 1, 1)
-    workflow.updated_at = datetime(2024, 1, 1)
     for name, value in overrides.items():
         setattr(workflow, name, value)
     return workflow
@@ -161,17 +159,19 @@ def test_draft_workflow_post_returns_400_for_invalid_graph(app: Flask, monkeypat
         method="POST",
         json={"graph": {"nodes": [], "edges": []}, "hash": "hash-1"},
     ):
-        response, status_code = handler(
-            api,
-            snippet_workflow_module.SnippetDraftSyncPayload.model_validate(
-                {"graph": {"nodes": [], "edges": []}, "hash": "hash-1"}
-            ),
-            user,
-            snippet,
+        response, status_code = raised_error(
+            lambda: handler(
+                api,
+                snippet_workflow_module.SnippetDraftSyncPayload.model_validate(
+                    {"graph": {"nodes": [], "edges": []}, "hash": "hash-1"}
+                ),
+                user,
+                snippet,
+            )
         )
 
     assert status_code == 400
-    assert response == {"message": "invalid graph"}
+    assert response == {"code": "invalid_param", "message": "invalid graph"}
 
 
 def test_draft_config_returns_parallel_depth_limit(app) -> None:
@@ -232,10 +232,10 @@ def test_published_workflow_post_returns_400_when_publish_fails(
     handler = unwrap(api.post)
 
     with app.test_request_context("/snippets/snippet-1/workflows/publish", method="POST", json={}):
-        response, status_code = handler(api, sqlite_session, user, snippet)
+        response, status_code = raised_error(lambda: handler(api, sqlite_session, user, snippet))
 
     assert status_code == 400
-    assert response == {"message": "No valid workflow found."}
+    assert response == {"code": "invalid_param", "message": "No valid workflow found."}
     sqlite_session.refresh(snippet)
     assert snippet.name == "Snippet"
 
@@ -249,7 +249,7 @@ def test_published_workflow_post_returns_success(
     snippet = _snippet()
     sqlite_session.add(snippet)
     sqlite_session.commit()
-    workflow = _workflow(created_at=datetime(2026, 8, 17, 12, 0, 0))
+    workflow = _workflow()
     monkeypatch.setattr(snippet_workflow_module.SnippetService, "publish_workflow", Mock(return_value=workflow))
 
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
@@ -454,17 +454,19 @@ def test_update_published_snippet_workflow_returns_400_when_no_fields(app: Flask
     handler = unwrap(api.patch)
 
     with app.test_request_context("/snippets/snippet-1/workflows/workflow-1", method="PATCH", json={}):
-        response, status_code = handler(
-            api,
-            snippet_workflow_module.WorkflowUpdatePayload(),
-            unbound_session,
-            _account("account-1"),
-            _snippet(),
-            workflow_id="workflow-1",
+        response, status_code = raised_error(
+            lambda: handler(
+                api,
+                snippet_workflow_module.WorkflowUpdatePayload(),
+                unbound_session,
+                _account("account-1"),
+                _snippet(),
+                workflow_id="workflow-1",
+            )
         )
 
     assert status_code == 400
-    assert response == {"message": "No valid fields to update"}
+    assert response == {"code": "invalid_param", "message": "No valid fields to update"}
 
 
 def test_update_published_snippet_workflow_raises_not_found(
@@ -594,18 +596,12 @@ def test_draft_node_last_run_raises_not_found_when_execution_missing(
             handler(api, snippet=snippet, node_id="llm-1")
 
 
-def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    set_stop_flag = Mock()
-    send_stop_command = Mock()
+def test_workflow_task_stop_uses_snippet_owner_scope(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    stop_task = Mock()
     monkeypatch.setattr(
-        snippet_workflow_module.AppQueueManager,
-        "set_stop_flag_no_user_check",
-        set_stop_flag,
-    )
-    monkeypatch.setattr(
-        snippet_workflow_module,
-        "GraphEngineManager",
-        Mock(return_value=Mock(send_stop_command=send_stop_command)),
+        snippet_workflow_module.AppTaskService,
+        "stop_workflow_task",
+        stop_task,
     )
 
     api = snippet_workflow_module.SnippetWorkflowTaskStopApi()
@@ -615,5 +611,10 @@ def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkey
         result = handler(api, snippet=_snippet(), task_id="task-1")
 
     assert result == {"result": "success"}
-    set_stop_flag.assert_called_once_with("task-1")
-    send_stop_command.assert_called_once_with("task-1")
+    stop_task.assert_called_once_with(
+        tenant_id="tenant-1",
+        app_id="snippet-1",
+        task_id="task-1",
+        app_mode=snippet_workflow_module.AppMode.WORKFLOW,
+        owner=None,
+    )

@@ -5,8 +5,15 @@ import type {
   MemberInviteSuccessResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +25,7 @@ type IInvitedModalProps = {
   onCancel: () => void
 }
 const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -41,7 +48,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
     failedInvitationResults.length === 0
   const description = t(
     ($) => $[onlyAlreadyMembers ? 'members.alreadyInTeamTip' : 'members.invitationSentTip'],
-    { ns: 'common' },
+    { ns: 'workspaceMembers' },
   )
 
   return (
@@ -51,104 +58,94 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
         if (!open) onCancel()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="w-120 p-8">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-8 right-8"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="mb-3 flex justify-between">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-background-section-burn shadow-xl">
+      <DialogContent backdropProps={{ forceRender: true }}>
+        <DialogHeader>
+          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-background-section-burn shadow-xl">
             <div className="i-heroicons-check-circle-solid h-5.5 w-5.5 text-[#039855]" />
           </div>
-        </div>
-        <DialogTitle className="mb-1 text-xl font-semibold text-text-primary">
-          {t(
-            ($) =>
-              $[onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent'],
-            { ns: 'common' },
-          )}
-        </DialogTitle>
-        {isCloudEdition && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
-        {(isNonCloudEdition || !!alreadyMemberInvitationResults.length) && (
-          <>
-            {isNonCloudEdition && (
-              <div className="mb-5 text-sm text-text-tertiary">{description}</div>
+          <DialogTitle>
+            {t(
+              ($) =>
+                $[onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent'],
+              { ns: 'workspaceMembers' },
             )}
-            <div className="mb-9 flex flex-col gap-2">
-              {isNonCloudEdition && !!successInvitationResults.length && (
-                <>
-                  <div className="py-2 text-sm font-medium text-text-primary">
-                    {t(($) => $['members.invitationLink'], { ns: 'common' })}
-                  </div>
-                  {successInvitationResults.map((item) => (
-                    <InvitationLink key={item.email} value={item} />
-                  ))}
-                </>
-              )}
-              {!!alreadyMemberInvitationResults.length && (
-                <>
-                  <div className="py-2 text-sm font-medium text-text-primary">
-                    {t(($) => $['members.alreadyInTeam'], { ns: 'common' })}
-                  </div>
-                  {!onlyAlreadyMembers && (
-                    <div className="text-sm text-text-tertiary">
-                      {t(($) => $['members.alreadyInTeamTip'], { ns: 'common' })}
+          </DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="space-y-5">
+          {isCloudEdition && <div className="text-sm text-text-tertiary">{description}</div>}
+          {(isNonCloudEdition || !!alreadyMemberInvitationResults.length) && (
+            <>
+              {isNonCloudEdition && <div className="text-sm text-text-tertiary">{description}</div>}
+              <div className="flex flex-col gap-2">
+                {isNonCloudEdition && !!successInvitationResults.length && (
+                  <>
+                    <div className="py-2 text-sm font-medium text-text-primary">
+                      {t(($) => $['members.invitationLink'], { ns: 'workspaceMembers' })}
                     </div>
-                  )}
-                  <div className="flex flex-wrap justify-between gap-y-1">
-                    {alreadyMemberInvitationResults.map((item) => (
-                      <div
-                        key={item.email}
-                        className="flex justify-center rounded-md border border-components-panel-border bg-background-section-burn px-1 text-sm text-text-secondary"
-                      >
-                        {item.email}
-                      </div>
+                    {successInvitationResults.map((item) => (
+                      <InvitationLink key={item.email} value={item} />
                     ))}
-                  </div>
-                </>
-              )}
-              {isNonCloudEdition && !!failedInvitationResults.length && (
-                <>
-                  <div className="py-2 text-sm font-medium text-text-primary">
-                    {t(($) => $['members.failedInvitationEmails'], { ns: 'common' })}
-                  </div>
-                  <div className="flex flex-wrap justify-between gap-y-1">
-                    {failedInvitationResults.map((item) => (
-                      <div
-                        key={item.email}
-                        className="flex justify-center rounded-md border border-red-300 bg-orange-50 px-1"
-                      >
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <div className="flex items-center justify-center gap-1 text-sm">
-                                {item.email}
-                                <div className="i-ri-question-line size-4 text-red-300" />
-                              </div>
-                            }
-                          />
-                          <TooltipContent>{item.message}</TooltipContent>
-                        </Tooltip>
+                  </>
+                )}
+                {!!alreadyMemberInvitationResults.length && (
+                  <>
+                    <div className="py-2 text-sm font-medium text-text-primary">
+                      {t(($) => $['members.alreadyInTeam'], { ns: 'workspaceMembers' })}
+                    </div>
+                    {!onlyAlreadyMembers && (
+                      <div className="text-sm text-text-tertiary">
+                        {t(($) => $['members.alreadyInTeamTip'], { ns: 'workspaceMembers' })}
                       </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </>
-        )}
-        <div className="flex justify-end">
+                    )}
+                    <div className="flex flex-wrap justify-between gap-y-1">
+                      {alreadyMemberInvitationResults.map((item) => (
+                        <div
+                          key={item.email}
+                          className="flex justify-center rounded-md border border-components-panel-border bg-background-section-burn px-1 text-sm text-text-secondary"
+                        >
+                          {item.email}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {isNonCloudEdition && !!failedInvitationResults.length && (
+                  <>
+                    <div className="py-2 text-sm font-medium text-text-primary">
+                      {t(($) => $['members.failedInvitationEmails'], { ns: 'workspaceMembers' })}
+                    </div>
+                    <div className="flex flex-wrap justify-between gap-y-1">
+                      {failedInvitationResults.map((item) => (
+                        <div
+                          key={item.email}
+                          className="flex justify-center rounded-md border border-red-300 bg-orange-50 px-1"
+                        >
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <div className="flex items-center justify-center gap-1 text-sm">
+                                  {item.email}
+                                  <div className="i-ri-question-line size-4 text-red-300" />
+                                </div>
+                              }
+                            />
+                            <TooltipContent>{item.message}</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </DialogBody>
+        <DialogFooter>
           <Button className="w-24" onClick={onCancel} variant="primary">
-            {t(($) => $['members.ok'], { ns: 'common' })}
+            {t(($) => $['members.ok'], { ns: 'workspaceMembers' })}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

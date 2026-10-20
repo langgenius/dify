@@ -1,4 +1,4 @@
-import type { Namespace, SelectorParam, TFunction } from 'i18next'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
 import type { Collection } from '@/app/components/tools/types'
 import type {
@@ -9,35 +9,7 @@ import type {
 } from '@/models/debug'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'
-
-export type SelectorTranslate<Ns extends Namespace> = <
-  const TargetNs extends Ns,
-  const Selector extends SelectorParam<TargetNs>,
->(
-  selector: Selector,
-  options: { ns: TargetNs } & Record<string, unknown>,
-) => ReturnType<TFunction<['app']>>
-
-type StringSelectorTranslate<Ns extends Namespace> = <
-  const TargetNs extends Ns,
-  const Selector extends SelectorParam<TargetNs>,
->(
-  selector: Selector,
-  options: { ns: TargetNs } & Record<string, unknown>,
-) => string
-
-export const getStringSelectorTranslate = <Ns extends Namespace>(
-  translate: SelectorTranslate<Ns>,
-): StringSelectorTranslate<Ns> => {
-  return (selector, options) => {
-    const result = translate(selector, options)
-    if (typeof result !== 'string')
-      throw new TypeError('Expected translation selector to return a string')
-
-    return result
-  }
-}
+import { ModelModeType, Resolution } from '@/types/app'
 
 export const withCollectionIconBasePath = (collectionList: Collection[], prefix?: string) => {
   if (!prefix) return collectionList
@@ -113,12 +85,12 @@ export const getConfigurationPublishingState = ({
   hasSetContextVar: boolean
   hasSelectedDataSets: boolean
   isAdvancedMode: boolean
-  mode: AppModeEnum
+  mode: ConfigurationAppMode
   modelModeType: ModelModeType
   promptTemplate: string
 }) => {
   const promptEmpty = (() => {
-    if (mode !== AppModeEnum.COMPLETION) return false
+    if (mode !== 'completion') return false
 
     if (isAdvancedMode) {
       if (modelModeType === ModelModeType.chat)
@@ -131,7 +103,7 @@ export const getConfigurationPublishingState = ({
   })()
 
   const cannotPublish = (() => {
-    if (mode !== AppModeEnum.COMPLETION) {
+    if (mode !== 'completion') {
       if (!isAdvancedMode) return false
 
       if (modelModeType === ModelModeType.completion) {
@@ -147,6 +119,6 @@ export const getConfigurationPublishingState = ({
   return {
     promptEmpty,
     cannotPublish,
-    contextVarEmpty: mode === AppModeEnum.COMPLETION && hasSelectedDataSets && !hasSetContextVar,
+    contextVarEmpty: mode === 'completion' && hasSelectedDataSets && !hasSetContextVar,
   }
 }

@@ -1,13 +1,13 @@
 'use client'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import { useLocale } from '#i18n'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import LocaleMenu from '@/app/signin/_locale-menu'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
-import dynamic from '@/next/dynamic'
 
 const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector'), {
   ssr: false,

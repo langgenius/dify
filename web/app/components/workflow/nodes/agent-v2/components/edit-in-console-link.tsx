@@ -7,8 +7,8 @@ import Link from '@/next/link'
 const layoutClassName = 'min-w-0 flex-1 px-3'
 
 export function EditInConsoleLink({ agentId }: { agentId: string }) {
-  const { t } = useTranslation(['workflow'])
-  const label = t(($) => $['nodes.agent.roster.editInConsole'], { ns: 'workflow' })
+  const { t } = useTranslation(['workflowAgent'])
+  const label = t(($) => $['nodes.agent.roster.editInConsole'], { ns: 'workflowAgent' })
 
   return (
     <Link

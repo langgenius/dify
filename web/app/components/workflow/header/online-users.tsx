@@ -2,20 +2,22 @@
 
 import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatar } from '@/service/common'
+import { getAvatarInitial } from '@/utils/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
-import { useStore } from '../store'
 
 const useAvatarUrls = (users: OnlineUser[]) => {
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})
@@ -48,14 +50,14 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
-  const { t } = useTranslation(['common', 'workflow'])
-  const appId = useStore((s) => s.appId)
+  const { t } = useTranslation(['workspaceMembers', 'workflowComments'])
+  const appId = useAtomValue(editorAppIdAtom)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
     onlineUsers,
     cursors,
     isEnabled: isCollaborationEnabled,
-  } = useCollaboration(appId as string, canEdit)
+  } = useCollaboration(appId, canEdit)
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -64,8 +66,8 @@ const OnlineUsers = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
-  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflow' })
-  const currentUserSuffix = t(($) => $['members.you'], { ns: 'common' })
+  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
+  const currentUserSuffix = t(($) => $['members.you'], { ns: 'workspaceMembers' })
 
   const renderDisplayName = (user: OnlineUser, baseClassName: string, suffixClassName: string) => {
     const baseName = user.username || fallbackUsername
@@ -122,15 +124,12 @@ const OnlineUsers = () => {
             const avatarUrl = getAvatarUrl(user)
             const displayName = user.username || fallbackUsername
             const avatar = (
-              <AvatarRoot size="sm" className="ring-1 ring-components-panel-bg">
-                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-                <AvatarFallback
-                  size="sm"
-                  style={userColor ? { backgroundColor: userColor } : undefined}
-                >
-                  {displayName?.[0]?.toLocaleUpperCase()}
+              <Avatar size="sm" aria-hidden="true" className="ring-1 ring-components-panel-bg">
+                <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
+                  {getAvatarInitial(displayName)}
                 </AvatarFallback>
-              </AvatarRoot>
+                <AvatarImage src={avatarUrl || undefined} alt="" />
+              </Avatar>
             )
             const triggerClassName = cn(
               'relative flex size-6 items-center justify-center',
@@ -143,12 +142,18 @@ const OnlineUsers = () => {
                 <TooltipTrigger
                   render={
                     isCurrentUser ? (
-                      <div className={triggerClassName} style={triggerStyle}>
+                      <div
+                        role="img"
+                        aria-label={displayName}
+                        className={triggerClassName}
+                        style={triggerStyle}
+                      >
                         {avatar}
                       </div>
                     ) : (
                       <button
                         type="button"
+                        aria-label={displayName}
                         className={triggerClassName}
                         style={triggerStyle}
                         onClick={() => jumpToUserCursor(user.user_id)}
@@ -215,15 +220,14 @@ const OnlineUsers = () => {
                       }}
                     >
                       <div className="relative">
-                        <AvatarRoot size="sm">
-                          {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
+                        <Avatar size="sm" aria-hidden="true">
                           <AvatarFallback
-                            size="sm"
                             style={userColor ? { backgroundColor: userColor } : undefined}
                           >
-                            {displayName?.[0]?.toLocaleUpperCase()}
+                            {getAvatarInitial(displayName)}
                           </AvatarFallback>
-                        </AvatarRoot>
+                          <AvatarImage src={avatarUrl || undefined} alt="" />
+                        </Avatar>
                       </div>
                       {renderDisplayName(
                         user,

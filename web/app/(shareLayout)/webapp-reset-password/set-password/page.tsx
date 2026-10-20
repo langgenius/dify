@@ -17,7 +17,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation(['common', 'login'])
+  const { t } = useTranslation(['common', 'login', 'accountSettings'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
@@ -60,7 +60,7 @@ const ChangePasswordForm = () => {
       return false
     }
     if (password !== confirmPassword) {
-      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'common' }))
+      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'accountSettings' }))
       return false
     }
     return true
@@ -104,7 +104,7 @@ const ChangePasswordForm = () => {
               <Field name="password" className="mb-5">
                 <div className="grid gap-0">
                   <FieldLabel className="system-md-semibold">
-                    {t(($) => $['account.newPassword'], { ns: 'common' })}
+                    {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
                   </FieldLabel>
                   <InputGroup>
                     <InputGroupInput
@@ -138,7 +138,7 @@ const ChangePasswordForm = () => {
               </Field>
               <Field name="confirmPassword" className="mb-5 gap-0">
                 <FieldLabel className="system-md-semibold">
-                  {t(($) => $['account.confirmPassword'], { ns: 'common' })}
+                  {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
                 </FieldLabel>
                 <InputGroup>
                   <InputGroupInput

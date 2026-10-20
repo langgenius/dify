@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from elasticsearch import NotFoundError
 
 from models.dataset import Dataset
 
@@ -27,19 +28,24 @@ def _build_fake_elasticsearch_modules():
 
     elasticsearch.Elasticsearch = Elasticsearch
     elasticsearch.ConnectionError = ConnectionError
+    elasticsearch.__dict__["NotFoundError"] = NotFoundError
     return {"elasticsearch": elasticsearch}
 
 
 @pytest.fixture
 def elasticsearch_ja_module(monkeypatch: pytest.MonkeyPatch):
-    for name, module in _build_fake_elasticsearch_modules().items():
-        monkeypatch.setitem(sys.modules, name, module)
-
     import dify_vdb_elasticsearch.elasticsearch_ja_vector as ja_module
     import dify_vdb_elasticsearch.elasticsearch_vector as base_module
 
-    importlib.reload(base_module)
-    return importlib.reload(ja_module)
+    try:
+        with monkeypatch.context() as module_patch:
+            for name, fake_module in _build_fake_elasticsearch_modules().items():
+                module_patch.setitem(sys.modules, name, fake_module)
+            importlib.reload(base_module)
+            yield importlib.reload(ja_module)
+    finally:
+        importlib.reload(base_module)
+        importlib.reload(ja_module)
 
 
 def test_create_collection_cache_hit(elasticsearch_ja_module, monkeypatch: pytest.MonkeyPatch):
@@ -112,8 +118,8 @@ def test_ja_factory_uses_existing_or_generated_collection(elasticsearch_ja_modul
     )
 
     with patch.object(elasticsearch_ja_module, "ElasticSearchJaVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

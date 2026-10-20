@@ -1,5 +1,6 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import SubscriptionCard from '../subscription-card'
@@ -8,21 +9,6 @@ const mockRefetch = vi.fn()
 
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => ({ refetch: mockRefetch }),
-}))
-
-vi.mock('../../../store', () => ({
-  usePluginStore: () => ({
-    detail: {
-      id: 'detail-1',
-      plugin_id: 'plugin-1',
-      name: 'Plugin',
-      plugin_unique_identifier: 'plugin-uid',
-      provider: 'provider-1',
-      declaration: {
-        trigger: { subscription_constructor: { parameters: [], credentials_schema: [] } },
-      },
-    },
-  }),
 }))
 
 vi.mock('@/service/use-triggers', () => ({
@@ -76,23 +62,22 @@ describe('SubscriptionCard', () => {
     )!.toBeInTheDocument()
   })
 
-  it('should open delete confirmation when delete action is clicked', () => {
-    const { container } = render(<SubscriptionCard data={createSubscription()} />)
+  it('should open delete confirmation when delete action is clicked', async () => {
+    const user = userEvent.setup()
+    render(<SubscriptionCard data={createSubscription()} />)
 
-    const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
-    expect(deleteButton).toBeTruthy()
-    fireEvent.click(deleteButton)
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
     expect(
       screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/),
     )!.toBeInTheDocument()
   })
 
-  it('should open edit modal when edit action is clicked', () => {
-    const { container } = render(<SubscriptionCard data={createSubscription()} />)
+  it('should open edit modal when edit action is clicked', async () => {
+    const user = userEvent.setup()
+    render(<SubscriptionCard data={createSubscription()} />)
 
-    const editButton = container.querySelectorAll('button')[0]
-    fireEvent.click(editButton!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
 
     expect(
       screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.edit\.title/),
