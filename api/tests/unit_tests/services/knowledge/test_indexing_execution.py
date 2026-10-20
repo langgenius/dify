@@ -173,3 +173,40 @@ def test_discard_failure_is_logged_without_failing_the_deleted_document(
     service.run([document.ref])
     ports.documents.fail_indexing.assert_not_called()
     assert "Failed to discard index entries of document deleted during indexing" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("existence_check", "discarded"), [(DocumentIsDeletedPausedError, True), (DocumentIsPausedError, False)]
+)
+def test_pause_after_index_write_discards_only_when_the_document_was_deleted(
+    execution: ExecutionFixture, existence_check: type[Exception], discarded: bool
+) -> None:
+    service, ports, document, chunks = execution
+    # The pause flag survives deletion and is checked before document existence.
+    ports.backend.check_paused.side_effect = [None, None, DocumentIsPausedError()]
+    ports.documents.get_indexing_document.side_effect = [document, existence_check()]
+    with pytest.raises(DocumentIsPausedError):
+        service.run([document.ref])
+    if discarded:
+        ports.backend.discard.assert_called_once_with(document, chunks)
+    else:
+        ports.backend.discard.assert_not_called()
+    ports.documents.complete_indexing.assert_not_called()
+
+
+@pytest.mark.parametrize("document_deleted", [True, False])
+def test_failed_index_write_discards_entries_only_for_a_deleted_document(
+    execution: ExecutionFixture, document_deleted: bool
+) -> None:
+    service, ports, document, chunks = execution
+    ports.backend.load.side_effect = RuntimeError("vector store unavailable")
+    ports.documents.get_indexing_document.side_effect = [
+        document,
+        DocumentIsDeletedPausedError() if document_deleted else document,
+    ]
+    service.run([document.ref])
+    ports.documents.fail_indexing.assert_called_once_with(document.ref, "vector store unavailable")
+    if document_deleted:
+        ports.backend.discard.assert_called_once_with(document, chunks)
+    else:
+        ports.backend.discard.assert_not_called()

@@ -605,8 +605,9 @@ def test_discard_leaves_index_cleanup_to_dataset_deletion(
     redis.lock.assert_not_called()
 
 
+@pytest.mark.parametrize("paused_first", [False, True])
 def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
-    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session]
+    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], paused_first: bool
 ) -> None:
     adapter, documents, segments, _, job, redis = backend
     chunk = IndexDocument(page_content="hello world", metadata={"doc_id": "node", "doc_hash": "hash"})
@@ -618,6 +619,8 @@ def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
         if texts:
             # The user deletes the document after the write passed its existence check;
             # document cleanup snapshots segment node ids before this write lands.
+            if paused_first:
+                redis.get.return_value = "True"  # the pause flag outlives the deleted document
             _delete_document_row(sqlite_session_factory)
             clean_document_indexes(
                 dataset_id="dataset-1",
@@ -632,7 +635,11 @@ def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
         patch.object(Jieba, "update_texts", cleanup_wins_the_race),
         patch("services.knowledge.indexing.adapters.cleanup.redis_client", redis),
     ):
-        service.run_in_indexing_status(job.ref)
+        if paused_first:
+            with pytest.raises(DocumentIsPausedError):
+                service.run_in_indexing_status(job.ref)
+        else:
+            service.run_in_indexing_status(job.ref)
 
     _, encoded = segments.get_keyword_table(job.ref.dataset)
     assert encoded is not None

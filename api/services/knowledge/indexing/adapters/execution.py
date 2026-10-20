@@ -175,10 +175,11 @@ class IndexingExecutionAdapter:
                 executor.submit(propagate_context(self._process_chunk), app, document.ref, chunks, True).result()
 
     def discard(self, document: IndexingDocument, chunks: list[Document]) -> None:
-        """Remove the index entries ``load`` writes for ``chunks``; deleting absent ids is a no-op.
+        """Remove the index entries ``load`` writes for ``chunks`` with the deletes document cleanup uses.
 
         Mirrors ``_process_chunk``: child vectors for parent-child documents, body vectors
-        otherwise, and body keywords for economy datasets.
+        otherwise, and body keywords for economy datasets. Some ids may never have been
+        written; each store handles that as it does when document cleanup issues the same call.
         """
         dataset = self._documents.get_indexing_dataset(document.ref.dataset)
         if dataset is None:
