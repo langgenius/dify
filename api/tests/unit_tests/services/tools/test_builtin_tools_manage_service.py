@@ -1,11 +1,15 @@
 """Unit tests for built-in tool management and its persisted credential state."""
 
 import json
+from collections.abc import Generator
+from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from redis.exceptions import LockNotOwnedError
 from sqlalchemy import select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -88,6 +92,78 @@ class TestDeleteCustomOauthClientParams:
         repository_session.expire_all()
         clients = repository_session.scalars(select(ToolOAuthTenantClient)).all()
         assert [client.tenant_id for client in clients] == ["tenant-2"]
+
+
+def test_add_builtin_tool_provider_validates_before_acquiring_expiring_lock(
+    monkeypatch: pytest.MonkeyPatch,
+    repository_session: Session,
+) -> None:
+    lock_state = {"held": False, "expired": False}
+    events: list[str] = []
+    original_sessionmaker = service_module.sessionmaker
+
+    def tracked_sessionmaker(*, bind: Engine) -> SimpleNamespace:
+        factory = original_sessionmaker(bind=bind)
+
+        @contextmanager
+        def transaction() -> Generator[Session]:
+            with factory.begin() as session:
+                yield session
+            events.append("transaction_committed")
+
+        return SimpleNamespace(begin=transaction)
+
+    @contextmanager
+    def expiring_lock(*_args: object, **_kwargs: object) -> Generator[None]:
+        lock_state["held"] = True
+        events.append("lock_acquired")
+        try:
+            yield
+        finally:
+            lock_state["held"] = False
+            events.append("lock_released")
+            if lock_state["expired"]:
+                raise LockNotOwnedError("lock lease expired during credential validation")
+
+    controller = MagicMock(need_credentials=True)
+
+    def validate_credentials(_user_id: str, _credentials: dict[str, str]) -> None:
+        # Model a slow external validation that outlives the 20-second Redis lease.
+        events.append("validation")
+        lock_state["expired"] = lock_state["held"]
+
+    controller.validate_credentials.side_effect = validate_credentials
+    empty_schema: list[object] = []
+    controller.get_credentials_schema_by_type.return_value = empty_schema
+    monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", lambda *_args: controller)
+    monkeypatch.setattr(service_module.redis_client, "lock", expiring_lock)
+    monkeypatch.setattr(service_module, "sessionmaker", tracked_sessionmaker)
+    encrypter = MagicMock()
+    encrypter.encrypt.return_value = {"encrypted": "value"}
+    monkeypatch.setattr(service_module, "create_provider_encrypter", lambda **_kwargs: (encrypter, None))
+
+    result = BuiltinToolManageService.add_builtin_tool_provider(
+        user_id="user-1",
+        api_type=CredentialType.API_KEY,
+        tenant_id="tenant-1",
+        provider="google",
+        credentials={"key": "value"},
+        name="Google credential",
+    )
+
+    assert result["result"] == "success"
+    assert lock_state["expired"] is False
+    assert events == ["validation", "lock_acquired", "transaction_committed", "lock_released"]
+    controller.validate_credentials.assert_called_once_with("user-1", {"key": "value"})
+    repository_session.expire_all()
+    saved_provider = repository_session.scalar(
+        select(BuiltinToolProvider).where(
+            BuiltinToolProvider.tenant_id == "tenant-1",
+            BuiltinToolProvider.provider == "google",
+            BuiltinToolProvider.name == "Google credential",
+        )
+    )
+    assert saved_provider is not None
 
 
 class TestListBuiltinToolProviderTools:
