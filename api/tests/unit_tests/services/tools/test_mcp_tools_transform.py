@@ -254,6 +254,71 @@ class TestMCPToolTransform:
         assert "null_prop_list" in param_map
         assert param_map["null_prop_list"].type == ToolParameter.ToolParameterType.STRING
 
+    @pytest.mark.parametrize(
+        "unsupported_type",
+        [
+            "text",
+            "String",
+            "file",
+            "files",
+            "secret-input",
+            "system-files",
+            "any",
+            "date",
+            "date-range",
+            "model-selector",
+            "app-selector",
+            "select",
+            "checkbox",
+            "dynamic-select",
+            ["bogus", "null"],
+            ["bogus", {"type": "object"}],
+        ],
+    )
+    def test_convert_mcp_schema_to_parameter_falls_back_for_unsupported_types(self, unsupported_type):
+        """Remote MCP schema types must not be allowed to crash provider loading."""
+        schema = {"type": "object", "properties": {"value": {"type": unsupported_type}}}
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        assert len(result) == 1
+        assert result[0].type == ToolParameter.ToolParameterType.STRING
+
+    def test_convert_mcp_schema_to_parameter_skips_unsupported_type_in_type_union(self):
+        """A malformed type must not hide a valid JSON Schema type in the same union."""
+        schema = {"type": "object", "properties": {"value": {"type": ["bogus", "number"]}}}
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        assert len(result) == 1
+        assert result[0].type == ToolParameter.ToolParameterType.NUMBER
+
+    def test_convert_mcp_schema_to_parameter_preserves_supported_json_schema_types(self):
+        """The unsupported-type fallback must preserve every supported schema type."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "string_value": {"type": "string"},
+                "number_value": {"type": "number"},
+                "integer_value": {"type": "integer"},
+                "boolean_value": {"type": "boolean"},
+                "object_value": {"type": "object"},
+                "array_value": {"type": "array"},
+            },
+        }
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        param_types = {parameter.name: parameter.type for parameter in result}
+        assert param_types == {
+            "string_value": ToolParameter.ToolParameterType.STRING,
+            "number_value": ToolParameter.ToolParameterType.NUMBER,
+            "integer_value": ToolParameter.ToolParameterType.NUMBER,
+            "boolean_value": ToolParameter.ToolParameterType.BOOLEAN,
+            "object_value": ToolParameter.ToolParameterType.OBJECT,
+            "array_value": ToolParameter.ToolParameterType.ARRAY,
+        }
+
     def test_convert_mcp_schema_to_parameter_preserves_allof_object_type_with_multiple_object_items(self):
         """Property-level allOf with multiple object items should still resolve to object."""
         schema = {

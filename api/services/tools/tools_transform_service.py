@@ -457,6 +457,8 @@ class ToolTransformService:
         :return: list of ToolParameter instances
         """
 
+        supported_types = {"array", "boolean", "float", "integer", "number", "object", "string"}
+
         def resolve_property_type(prop: dict[str, Any], depth: int = 0) -> str:
             """
             Resolve a JSON schema property type while guarding against cyclic or deeply nested unions.
@@ -466,15 +468,20 @@ class ToolTransformService:
             prop_type = prop.get("type")
             match prop_type:
                 case list():
-                    non_null_types = [type_name for type_name in prop_type if type_name != "null"]
+                    non_null_types = [
+                        type_name
+                        for type_name in prop_type
+                        if isinstance(type_name, str) and type_name != "null" and type_name in supported_types
+                    ]
                     if non_null_types:
                         return non_null_types[0]
-                    if prop_type:
+                    if prop_type and all(type_name == "null" for type_name in prop_type):
                         return "string"
                 case str():
                     if prop_type == "null":
                         return "string"
-                    return prop_type
+                    if prop_type in supported_types:
+                        return prop_type
 
             for union_key in ("anyOf", "oneOf"):
                 union_schemas = prop.get(union_key)
