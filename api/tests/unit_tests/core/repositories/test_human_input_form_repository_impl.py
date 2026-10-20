@@ -19,6 +19,7 @@ from models.human_input import (
     HumanInputFormRecipient,
     StandaloneWebAppRecipientPayload,
 )
+from models.human_input_contracts import FormNotFoundError, HumanInputFormRecord
 from models.human_input_delivery import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -28,8 +29,6 @@ from models.human_input_delivery import (
 )
 from models.human_input_entities import FormDefinition, UserActionConfig
 from repositories.human_input.form_repository import (
-    FormNotFoundError,
-    HumanInputFormRecord,
     HumanInputFormRepositoryImpl,
     HumanInputFormSubmissionRepository,
     _WorkspaceMemberInfo,

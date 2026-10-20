@@ -74,6 +74,14 @@ class CredentialQuery(Protocol):
         include_credential_ids: Sequence[str] = (),
     ) -> Sequence[ToolCredentialRecord]: ...
 
+    def default_tool_credential_id(self, *, workspace_id: str, provider: str) -> str | None:
+        """Return the workspace default, falling back to its oldest credential."""
+        ...
+
     def list_trigger_subscriptions(
         self, *, workspace_id: str, provider: str, actor_id: str | None
     ) -> Sequence[TriggerSubscriptionRecord]: ...
+
+    def list_model_load_balancing_credential_ids(
+        self, *, workspace_id: str, provider: str, model: str
+    ) -> Sequence[str]: ...

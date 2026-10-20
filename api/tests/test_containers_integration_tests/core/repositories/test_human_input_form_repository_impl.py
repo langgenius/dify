@@ -7,7 +7,6 @@ from uuid import uuid4
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from enums.human_input import RecipientType
 from models.account import (
     Account,
@@ -23,16 +22,18 @@ from models.human_input import (
     HumanInputForm,
     HumanInputFormRecipient,
 )
+from models.human_input_contracts import FormCreateParams
 from models.human_input_delivery import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
+    InteractiveSurfaceDeliveryMethod,
     MemberRecipient,
 )
-from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
 from models.human_input_entities import FormDefinition, HumanInputNodeData, UserActionConfig
+from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
 
 
 def _create_tenant_with_members(session: Session, member_emails: list[str]) -> tuple[Tenant, list[Account]]:
@@ -221,10 +222,10 @@ class TestHumanInputFormRepositoryImplWithContainers:
                 form_content="<p>Approve?</p>",
                 inputs=[],
                 user_actions=[UserActionConfig(id="approve", title="Approve")],
-                delivery_methods=[WebAppDeliveryMethod()],
+                delivery_methods=[InteractiveSurfaceDeliveryMethod()],
             ),
             rendered_content="<p>Approve?</p>",
-            delivery_methods=[WebAppDeliveryMethod()],
+            delivery_methods=[InteractiveSurfaceDeliveryMethod()],
             display_in_ui=True,
             resolved_default_values={},
         )

@@ -9,10 +9,11 @@ from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import PermissionEnum
 from models.oauth import DatasourceProvider
-from models.provider import ProviderCredential
+from models.provider import LoadBalancingModelConfig, ProviderCredential
 from models.provider_ids import ModelProviderID
 from models.tools import BuiltinToolProvider
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from repositories.tools.provider_repository import select_builtin_credentials
 from services.credentials.query import (
     CredentialQuery,
     DatasourceCredentialListItem,
@@ -65,6 +66,34 @@ class CredentialQueryRepository(CredentialQuery):
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    @override
+    def list_model_load_balancing_credential_ids(
+        self, *, workspace_id: str, provider: str, model: str
+    ) -> Sequence[str]:
+        # Both predefined and custom model credentials need policy validation.
+        # Only IDs are needed; publication must not fetch/decrypt credential forms.
+        names = [provider]
+        provider_id = ModelProviderID(provider)
+        if provider_id.is_langgenius():
+            names.append(provider_id.provider_name if "/" in provider else str(provider_id))
+        with self._session_factory() as session:
+            return [
+                credential_id
+                for credential_id in session.scalars(
+                    select(LoadBalancingModelConfig.credential_id)
+                    .where(
+                        LoadBalancingModelConfig.tenant_id == workspace_id,
+                        LoadBalancingModelConfig.provider_name.in_(names),
+                        LoadBalancingModelConfig.model_type == "llm",
+                        LoadBalancingModelConfig.model_name == model,
+                        LoadBalancingModelConfig.credential_id.is_not(None),
+                        LoadBalancingModelConfig.credential_id != "",
+                    )
+                    .distinct()
+                )
+                if credential_id is not None
+            ]
 
     @override
     def list_models(self, *, workspace_id: str, provider: str, actor_id: str | None) -> Sequence[ModelCredentialRecord]:
@@ -132,6 +161,15 @@ class CredentialQueryRepository(CredentialQuery):
                 )
                 for row in rows
             ]
+
+    @override
+    def default_tool_credential_id(self, *, workspace_id: str, provider: str) -> str | None:
+        with self._session_factory() as session:
+            return session.scalar(
+                select_builtin_credentials(tenant_id=workspace_id, provider_names=[provider])
+                .with_only_columns(BuiltinToolProvider.id)
+                .limit(1)
+            )
 
     @override
     def list_tools(
