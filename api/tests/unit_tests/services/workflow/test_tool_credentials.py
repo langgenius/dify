@@ -15,7 +15,7 @@ class ToolNodeFixture(TypedDict):
     data: dict[str, object]
 
 
-def tool_node(node_id: str = "tool", **overrides: object) -> ToolNodeFixture:
+def tool_node(node_id: str = "tool", /, **overrides: object) -> ToolNodeFixture:
     return {
         "id": node_id,
         "data": {
