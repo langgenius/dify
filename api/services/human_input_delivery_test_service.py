@@ -8,18 +8,18 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.workflow.human_input_adapter import (
+from extensions.ext_database import db
+from extensions.ext_mail import mail
+from graphon.runtime import VariablePool
+from libs.email_template_renderer import render_email_template
+from models import Account, TenantAccountJoin
+from models.human_input_delivery import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     ExternalRecipient,
     MemberRecipient,
 )
-from extensions.ext_database import db
-from extensions.ext_mail import mail
-from graphon.runtime import VariablePool
-from libs.email_template_renderer import render_email_template
-from models import Account, TenantAccountJoin
 from services.feature_service import FeatureService
 
 

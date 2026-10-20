@@ -4,8 +4,8 @@ from core.entities.execution_extra_content import (
     HumanInputFormDefinition,
     HumanInputFormSubmissionData,
 )
-from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from models.execution_extra_content import ExecutionContentType
+from models.human_input_entities import ParagraphInputConfig, UserActionConfig
 
 
 def test_human_input_content_defaults_and_domain_alias() -> None:

@@ -12,23 +12,16 @@ import pytest
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.human_input_adapter import DeliveryMethodType
-from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.human_input import DeliveryMethodType, FormInputType, HumanInputFormStatus, RecipientType
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowExecution
 from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.human_input import (
-    BackstageRecipientPayload,
-    HumanInputDelivery,
-    HumanInputForm,
-    HumanInputFormRecipient,
-    RecipientType,
-)
+from models.human_input import BackstageRecipientPayload, HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
+from models.human_input_entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (

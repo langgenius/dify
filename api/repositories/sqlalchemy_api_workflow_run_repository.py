@@ -34,8 +34,6 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, load_only, selectinload, sessionmaker
 
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
-from core.workflow.nodes.human_input.entities import FormDefinition
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
 )
@@ -43,6 +41,7 @@ from core.workflow.nodes.human_input.pause_reason import (
     PauseReason as DifyPauseReason,
 )
 from core.workflow.nodes.human_input.session_binding import default_session_binding
+from enums.human_input import HumanInputFormStatus
 from extensions.ext_storage import storage
 from graphon.entities.pause_reason import (
     HitlRequired,
@@ -60,6 +59,7 @@ from libs.time_parser import get_time_threshold
 from models import Message
 from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient
+from models.human_input_entities import FormDefinition
 from models.workflow import (
     WorkflowAppLog,
     WorkflowArchiveLog,

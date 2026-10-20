@@ -15,19 +15,19 @@ from core.repositories.human_input_repository import (
     HumanInputFormSubmissionRepository,
 )
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
-from core.workflow.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.session_binding import SessionBinding
+from enums.human_input import HumanInputFormStatus, ValueSourceType
+from graphon.runtime import VariablePool
+from graphon.variables.factory import build_segment
+from libs.datetime_utils import naive_utc_now
+from models.human_input import HumanInputForm
+from models.human_input_entities import (
     HumanInputNodeData,
     ParagraphInputConfig,
     SelectInputConfig,
     StringListSource,
     UserActionConfig,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
-from core.workflow.nodes.human_input.session_binding import SessionBinding
-from graphon.runtime import VariablePool
-from graphon.variables.factory import build_segment
-from libs.datetime_utils import naive_utc_now
-from models.human_input import HumanInputForm
 
 
 @dataclass(frozen=True, slots=True)

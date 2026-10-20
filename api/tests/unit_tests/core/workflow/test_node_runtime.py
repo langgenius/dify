@@ -18,14 +18,6 @@ from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
 from core.workflow import node_runtime
 from core.workflow.file_reference import parse_file_reference
-from core.workflow.human_input_adapter import (
-    DeliveryMethodType,
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    WebAppDeliveryMethod,
-    _WebAppDeliveryConfig,
-)
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -39,7 +31,7 @@ from core.workflow.node_runtime import (
     build_dify_llm_file_saver,
     resolve_dify_run_context,
 )
-from core.workflow.nodes.human_input.entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
+from enums.human_input import DeliveryMethodType
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus
@@ -52,6 +44,10 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment
 from models.base import TypeBase
 from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
+from models.human_input_delivery import EmailDeliveryConfig, EmailDeliveryMethod, EmailRecipients
+from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
+from models.human_input_delivery import _InteractiveSurfaceDeliveryConfig as _WebAppDeliveryConfig
+from models.human_input_entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
 from models.model import StorageType, UploadFile
 from models.tools import ToolFile
 from tests.workflow_test_utils import build_test_run_context

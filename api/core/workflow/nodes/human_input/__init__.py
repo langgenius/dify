@@ -1,4 +1,12 @@
-from .entities import (
+from enums.human_input import (
+    ButtonStyle,
+    FormInputType,
+    HumanInputFormKind,
+    HumanInputFormStatus,
+    TimeoutUnit,
+    ValueSourceType,
+)
+from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
@@ -12,14 +20,7 @@ from .entities import (
     UserActionConfig,
     validate_human_input_submission,
 )
-from .enums import (
-    ButtonStyle,
-    FormInputType,
-    HumanInputFormKind,
-    HumanInputFormStatus,
-    TimeoutUnit,
-    ValueSourceType,
-)
+
 from .pause_reason import DifyHITLEventType, HumanInputRequired, PauseReason
 from .session_binding import SessionBinding, default_session_binding
 

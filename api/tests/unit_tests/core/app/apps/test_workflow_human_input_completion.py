@@ -31,16 +31,8 @@ from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchem
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
-from core.workflow.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    FormDefinition,
-    HumanInputNodeData,
-    ParagraphInputConfig,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from core.workflow.workflow_entry import WorkflowEntry
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from extensions.storage.storage_type import StorageType
 from graphon.engine.ready_queue import StartTask
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
@@ -57,6 +49,14 @@ from models import Account, UploadFile
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
+from models.human_input_entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormDefinition,
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    UserActionConfig,
+)
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from services.workflow_run_agg import WorkflowRunAgg

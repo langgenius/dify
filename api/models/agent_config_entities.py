@@ -1148,3 +1148,19 @@ class WorkflowNodeJobConfig(BaseModel):
             if output.name in RESERVED_DECLARED_OUTPUT_NAMES:
                 raise ValueError(f"declared output name {output.name!r} is reserved")
         return declared_outputs
+
+
+class AgentPackageMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    description: str = ""
+    role: str = ""
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+
+
+def agent_soul_has_model(agent_soul: AgentSoulConfig) -> bool:
+    """Return whether the Agent Soul has the minimum model config required for runtime."""
+    return agent_soul.model is not None

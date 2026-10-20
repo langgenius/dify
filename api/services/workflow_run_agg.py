@@ -27,10 +27,10 @@ from core.repositories.human_input_repository import HumanInputFormRecord, Human
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime, resolve_dify_run_context
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.nodes.human_input.boundary import build_human_input_pause_reason
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from enums.human_input import HumanInputFormStatus
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from graphon.engine.layer import Layer
 from graphon.engine_events import (

@@ -16,10 +16,9 @@ from core.repositories.human_input_repository import (
     HumanInputFormRepositoryImpl,
 )
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import build_system_variables
 from core.workflow.workflow_entry import iter_dify_graph_engine_events
+from enums.human_input import HumanInputFormStatus
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
@@ -37,6 +36,7 @@ from graphon.runtime import RuntimeState, VariablePool
 from graphon.utils.condition.entities import Condition
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputForm
+from models.human_input_entities import HumanInputNodeData, UserActionConfig
 from tests.workflow_test_utils import build_test_graph_init_params
 
 WORKFLOW_EXECUTION_ID = "wf-exec-38525"

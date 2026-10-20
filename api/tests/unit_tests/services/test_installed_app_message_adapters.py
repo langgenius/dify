@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from core import telemetry
 from core.telemetry import FeedbackCreatedEvent
-from core.workflow.nodes.human_input.entities import FormDefinition, UserActionConfig
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
+from models.human_input_entities import FormDefinition, UserActionConfig
 from services.installed_app_message_adapters import InstalledAppMessageRuntime, emit_installed_app_feedback
 from services.installed_app_message_service import MessageFeedbackEvent
 
