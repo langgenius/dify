@@ -234,3 +234,23 @@ it('inherits live App user errors through multiple Reuse sources and restores Wo
   )
   expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeVisible()
 })
+
+it('shows the invalid Reuse reference on the canvas instead of a Workspace authorization error', () => {
+  mockUseCurrentToolCollection.mockReturnValue({
+    currentTools: [],
+    currCollection: { name: 'google', allow_delete: true, is_team_authorization: false },
+  })
+  const data = createNodeData()
+  const { store } = renderWorkflowComponent(<Node id="tool-node-1" data={data} />)
+  act(() => {
+    store.getState().setNodeReuseFromNode('tool-node-1', 'google', data.provider_id, {
+      id: 'removed',
+      title: 'Removed source',
+    })
+    store
+      .getState()
+      .setNodeAuthorizationTab('tool-node-1', 'google', data.provider_id, 'reuse-from-node')
+  })
+  expect(screen.getByText('workflow.panel.selectReuseNode')).toBeVisible()
+  expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
+})

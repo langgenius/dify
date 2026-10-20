@@ -385,7 +385,7 @@ describe('useChecklist', () => {
   })
 
   it.each(['workspace-auth', 'reuse-from-node'] as const)(
-    'uses App user authorization errors and restores Workspace errors in %s',
+    'uses App user authorization errors and restores the selected mode errors in %s',
     (nextTab) => {
       const { nodes, edges, options } = buildUnauthorizedToolGraph()
       const { result, store } = renderChecklist(nodes, edges, options)
@@ -408,7 +408,9 @@ describe('useChecklist', () => {
       expect(result.current).toEqual([])
       act(() => store.getState().setNodeAuthorizationTab('tool', 'google', 'google', nextTab))
       expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
-        'workflow.errorMsg.authRequired',
+        nextTab === 'reuse-from-node'
+          ? 'workflow.panel.selectReuseNode'
+          : 'workflow.errorMsg.authRequired',
       ])
     },
   )
@@ -846,6 +848,30 @@ describe('useChecklist', () => {
 })
 
 describe('useChecklistBeforePublish', () => {
+  it('rejects a deleted Reuse source using the current graph and shows a Reuse error', async () => {
+    const { nodes, edges, options } = buildUnauthorizedToolGraph()
+    const { wrapper, store } = createChecklistWrapper({ nodes, edges }, options)
+    const { result } = renderHook(
+      () => {
+        const warnings = useChecklist(useNodes<CommonNodeType>(), useEdges<CommonEdgeType>())
+        return { warnings, ...useChecklistBeforePublish() }
+      },
+      { wrapper },
+    )
+    act(() => {
+      store.getState().setNodeReuseFromNode('tool', 'google', 'google', {
+        id: 'removed',
+        title: 'Removed source',
+      })
+      store.getState().setNodeAuthorizationTab('tool', 'google', 'google', 'reuse-from-node')
+    })
+    expect(result.current.warnings.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+      'workflow.panel.selectReuseNode',
+    ])
+    await act(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
+    expect(screen.getByText(/workflow.panel.selectReuseNode/)).toBeVisible()
+  })
+
   it('checks multi-hop Reuse against the terminal App user or Workspace authorization', async () => {
     const { nodes, edges, options } = buildReusableToolGraph()
     const { wrapper, store } = createChecklistWrapper({ nodes, edges }, options)

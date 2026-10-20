@@ -35,7 +35,9 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
   const isAppUserAuth = !!authDraft
   const authErrors = isAppUserAuth ? authDraft.errors : undefined
   const authorizationWarnings: string[] = []
-  if (!isAppUserAuth && isToolAuthorizationRequired(data.provider_type, currCollection))
+  if (authorization?.status === 'invalid')
+    authorizationWarnings.push(t(($) => $['panel.selectReuseNode'], { ns: 'workflow' }))
+  else if (!isAppUserAuth && isToolAuthorizationRequired(data.provider_type, currCollection))
     authorizationWarnings.push(t(($) => $['nodes.tool.authorizationRequired'], { ns: 'workflow' }))
   if (authErrors?.methods)
     authorizationWarnings.push(t(($) => $['auth.appUser.selectMethod'], { ns: 'plugin' }))

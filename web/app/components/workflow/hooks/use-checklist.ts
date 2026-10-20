@@ -7,7 +7,6 @@ import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/ty
 import type { LLMNodeType } from '../nodes/llm/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
-import type { AppUserAuthSliceShape } from '../store/workflow/app-user-auth-slice'
 import type {
   CommonEdgeType,
   CommonNodeType,
@@ -99,17 +98,6 @@ type NodeValidator = NonNullable<
 >[BlockEnum]['checkValid']
 
 const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
-
-const getAppUserAuthDraft = (
-  node: Node,
-  nodes: Node[],
-  nodeAuthDrafts: AppUserAuthSliceShape['nodeAuthDrafts'],
-) => {
-  const authorization = resolveToolAuthorization({ node, nodes, nodeAuthDrafts })
-  return authorization?.status === 'resolved' && authorization.authorizationTab === 'app-user-auth'
-    ? authorization.appUserDraft
-    : undefined
-}
 
 const withResourceKind = (
   moreDataForCheckValid: CheckValidExtraData,
@@ -391,7 +379,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
-      const appUserAuthDraft = getAppUserAuthDraft(node!, nodes, nodeAuthDrafts)
+      const authorization = resolveToolAuthorization({ node: node!, nodes, nodeAuthDrafts })
+      const appUserAuthDraft =
+        authorization?.status === 'resolved' && authorization.authorizationTab === 'app-user-auth'
+          ? authorization.appUserDraft
+          : undefined
       let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
 
@@ -403,7 +395,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           workflowTools || [],
           language,
         )
-        if (appUserAuthDraft) moreDataForCheckValid = { ...moreDataForCheckValid, notAuthed: false }
+        if (appUserAuthDraft || authorization?.status === 'invalid')
+          moreDataForCheckValid = { ...moreDataForCheckValid, notAuthed: false }
       }
 
       if (node!.data.type === BlockEnum.DataSource)
@@ -460,6 +453,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         })
 
         const errorMessages: string[] = []
+        if (authorization?.status === 'invalid')
+          errorMessages.push(t(($) => $['panel.selectReuseNode'], { ns: 'workflow' }))
         const inlineAgentIssues = inlineAgentConfigurationIssues[node!.id]
         if (appUserAuthDraft) {
           if (appUserAuthDraft.errors?.methods)
@@ -826,7 +821,17 @@ export const useChecklistBeforePublish = () => {
           workflowTools || [],
           language,
         )
-        if (getAppUserAuthDraft(node!, nodes, nodeAuthDrafts))
+        const authorization = resolveToolAuthorization({ node: node!, nodes, nodeAuthDrafts })
+        if (authorization?.status === 'invalid') {
+          toast.error(
+            `[${node!.data.title}] ${t(($) => $['panel.selectReuseNode'], { ns: 'workflow' })}`,
+          )
+          return false
+        }
+        if (
+          authorization?.status === 'resolved' &&
+          authorization.authorizationTab === 'app-user-auth'
+        )
           moreDataForCheckValid = { ...moreDataForCheckValid, notAuthed: false }
       }
 

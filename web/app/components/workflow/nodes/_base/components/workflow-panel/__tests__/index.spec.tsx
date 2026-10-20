@@ -11,7 +11,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createRef, useImperativeHandle } from 'react'
-import { useNodes, useReactFlow } from 'reactflow'
+import ReactFlow, { ReactFlowProvider, useNodes, useReactFlow } from 'reactflow'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
@@ -24,6 +24,7 @@ import {
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
+import { useSingleRunAuthorization } from '@/app/components/workflow/hooks/use-single-run-authorization'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import codeNodeDefault from '@/app/components/workflow/nodes/code/default'
 import { BlockEnum, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
@@ -892,4 +893,86 @@ it('uses the terminal Reuse source for test-connection gating and executes witho
   )
   await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
   await waitFor(() => expect(api.run).toHaveBeenCalledOnce())
+})
+
+it('blocks an already removed Reuse source and keeps its saved display reference visible', async () => {
+  const user = userEvent.setup()
+  const { store, syncDraft } = renderPanel({
+    data: toolData,
+    tools: [toolProvider(true)],
+    initialStoreState: {
+      nodeAuthDrafts: {
+        'node-1': {
+          provider: 'Tool',
+          providerId: 'provider/tool',
+          authorizationTab: 'reuse-from-node',
+          reuseFromNode: { source: { id: 'auth-source', title: 'Source tool' } },
+        },
+      },
+    },
+  })
+  const run = () => panel().getByRole('button', { name: 'workflow.panel.runThisStep' })
+  expect(run()).toHaveAttribute('aria-disabled', 'true')
+  expect(panel().getByText('Source tool')).toBeVisible()
+  await user.hover(run())
+  expect(await screen.findByText('workflow.panel.selectReuseNode')).toBeVisible()
+  await user.click(run())
+  act(() => store.getState().setPendingSingleRun({ nodeId: 'node-1', action: 'run' }))
+  await waitFor(() => expect(store.getState().pendingSingleRun).toBeUndefined())
+  expect(api.run).not.toHaveBeenCalled()
+  expect(syncDraft).not.toHaveBeenCalled()
+})
+
+it('updates single-run authorization when a Reuse source is removed from and restored to the live graph', async () => {
+  const user = userEvent.setup()
+  const source = createNode({ id: 'auth-source', data: { ...toolData, title: 'Source tool' } })
+  const current = createNode({ id: 'node-1', data: toolData })
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [toolProvider(true)],
+    customTools: [],
+    workflowTools: [],
+  })
+  function LiveAuthorization() {
+    const { disabledReason } = useSingleRunAuthorization(current.id, toolData)
+    const graph = useReactFlow()
+    return (
+      <>
+        <output aria-label="Run authorization">{disabledReason ?? 'Ready'}</output>
+        <button
+          onClick={() => {
+            void graph.deleteElements({ nodes: [{ id: source.id }] })
+          }}
+        >
+          Delete source
+        </button>
+        <button onClick={() => graph.addNodes(source)}>Restore source</button>
+      </>
+    )
+  }
+  renderWorkflowComponent(
+    <ReactFlowProvider>
+      <ReactFlow defaultNodes={[current, source]} />
+      <LiveAuthorization />
+    </ReactFlowProvider>,
+    {
+      queryClient,
+      initialStoreState: {
+        nodeAuthDrafts: {
+          'node-1': {
+            provider: 'Tool',
+            providerId: 'provider/tool',
+            authorizationTab: 'reuse-from-node',
+            reuseFromNode: { source: { id: 'auth-source', title: 'Source tool' } },
+          },
+        },
+      },
+    },
+  )
+  const authorization = screen.getByRole('status', { name: 'Run authorization' })
+  expect(authorization).toHaveTextContent('Ready')
+  await user.click(screen.getByRole('button', { name: 'Delete source' }))
+  await waitFor(() => expect(authorization).toHaveTextContent('workflow.panel.selectReuseNode'))
+  await user.click(screen.getByRole('button', { name: 'Restore source' }))
+  await waitFor(() => expect(authorization).toHaveTextContent('Ready'))
 })

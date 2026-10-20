@@ -24,18 +24,9 @@ export const useSingleRunAuthorization = (id: string, data: Node['data']) => {
   const storedTools = useStore((state) => state.buildInTools)
   const nodes = useNodes<CommonNodeType>()
   const nodeAuthDrafts = useStore((state) => state.nodeAuthDrafts)
-  const storedDraft = nodeAuthDrafts[id]
   const collection = (builtInTools ?? storedTools)?.find((tool) =>
     matchesProviderReference(tool, data.provider_id),
   )
-  const draft =
-    isBuiltInTool &&
-    collection?.allow_delete &&
-    storedDraft &&
-    storedDraft.providerId === data.provider_id &&
-    storedDraft.provider === collection.name
-      ? storedDraft
-      : undefined
   const authorization =
     isBuiltInTool && collection?.allow_delete
       ? resolveToolAuthorization({
@@ -57,12 +48,8 @@ export const useSingleRunAuthorization = (id: string, data: Node['data']) => {
     // empty list remains empty, including after the last connection is removed.
     if (appUserDraft.draft?.testConnection?.connections.length === 0)
       disabledReason = t(($) => $['panel.configureTestRunConnection'], { ns: 'workflow' })
-  } else if (
-    draft?.authorizationTab === 'reuse-from-node' &&
-    authorization?.status !== 'resolved'
-  ) {
-    if (!draft.reuseFromNode?.source.id)
-      disabledReason = t(($) => $['panel.selectReuseNode'], { ns: 'workflow' })
+  } else if (authorization?.status === 'invalid') {
+    disabledReason = t(($) => $['panel.selectReuseNode'], { ns: 'workflow' })
   } else if (isBuiltInTool && isToolAuthorizationRequired(CollectionType.builtIn, collection)) {
     disabledReason = t(($) => $['panel.configureWorkspaceAuthorization'], { ns: 'workflow' })
   }
