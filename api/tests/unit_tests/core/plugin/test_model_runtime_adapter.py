@@ -243,6 +243,7 @@ class TestPluginModelRuntime:
         client, client_results, client_calls = _recording_model_client(monkeypatch)
         client_results["validate_provider_credentials"] = True
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         runtime.validate_provider_credentials(
             provider="langgenius/openai/openai",
@@ -288,6 +289,7 @@ class TestPluginModelRuntime:
             ]
         )
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_llm(
             provider="langgenius/openai/openai",
@@ -326,6 +328,7 @@ class TestPluginModelRuntime:
         client, client_results, client_calls = _recording_model_client(monkeypatch)
         client_results["invoke_llm"] = iter([])
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_llm(
             provider="langgenius/openai/openai",
@@ -383,6 +386,7 @@ class TestPluginModelRuntime:
         stream_result = iter([])
         client_results["invoke_llm"] = stream_result
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_llm(
             provider="langgenius/openai/openai",
@@ -422,6 +426,7 @@ class TestPluginModelRuntime:
         )
         client_results["start_llm_polling"] = polling_result
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.start_llm_polling(
             provider="langgenius/openai/openai",
@@ -465,6 +470,7 @@ class TestPluginModelRuntime:
         )
         client_results["check_llm_polling"] = polling_result
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.check_llm_polling(
             provider="langgenius/openai/openai",
@@ -513,6 +519,7 @@ class TestPluginModelRuntime:
         client, client_results, client_calls = _recording_model_client(monkeypatch)
         client_results["invoke_tts"] = iter([b"chunk"])
         runtime = PluginModelRuntime(tenant_id="tenant", user_id=None, client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_tts(
             provider="langgenius/openai/openai",
@@ -852,6 +859,7 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(
     monkeypatch.setattr(model_runtime_module, "redis_client", redis)
     client_results["get_model_schema"] = schema
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+    runtime.fetch_model_providers()
 
     result = runtime.get_model_schema(
         provider="langgenius/openai/openai",

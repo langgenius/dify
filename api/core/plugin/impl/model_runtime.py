@@ -27,12 +27,14 @@ from graphon.model_runtime.entities.llm_entities import (
 )
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingInputType, EmbeddingResult
 from graphon.model_runtime.model_providers.base.large_language_model import normalize_non_stream_runtime_result
 from graphon.model_runtime.protocols.runtime import ModelRuntime
 from graphon.model_runtime.protocols.tts_runtime import TTSChunk, TTSModelVoice
 from models.provider_ids import ModelProviderID
+from services.plugin.dispatch_identity import PluginDispatchIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +109,8 @@ class PluginModelRuntime(ModelRuntime):
 
     Provider discovery goes through ``PluginService`` so the plugin lifecycle
     methods and provider reads share one tenant-scoped cache owner.
+    Dispatch reuses package identities bound to prepared declarations rather
+    than discovering a new version after credentials have been resolved.
     """
 
     tenant_id: str
@@ -129,10 +133,23 @@ class PluginModelRuntime(ModelRuntime):
         self.user_id = user_id
         self.client = client
         self._plugin_service = plugin_service
+        self._provider_identifiers: dict[str, str] = {}
 
     @override
     def fetch_model_providers(self) -> Sequence[PluginModelProviderDeclaration]:
-        return self._plugin_service.fetch_plugin_model_providers(tenant_id=self.tenant_id, client=self.client)
+        providers = self._plugin_service.fetch_plugin_model_providers(tenant_id=self.tenant_id, client=self.client)
+        for provider in providers:
+            self.bind_provider_schema(provider)
+        return providers
+
+    def bind_provider_schema(self, provider: ProviderEntity) -> None:
+        """Retain the package identity associated with a prepared declaration."""
+        if isinstance(provider, PluginModelProviderDeclaration):
+            self._provider_identifiers[provider.provider] = provider.plugin_unique_identifier
+
+    def _dispatch_identity(self, provider: str) -> PluginDispatchIdentity:
+        identifier = self._provider_identifiers.get(str(ModelProviderID(provider)))
+        return {"plugin_unique_identifier": identifier} if identifier is not None else {}
 
     @override
     def get_provider_icon(self, *, provider: str, icon_type: str, lang: str) -> tuple[bytes, str]:
@@ -184,7 +201,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             credentials=credentials,
         )
@@ -203,7 +220,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model_type=model_type.value,
             model=model,
@@ -257,7 +274,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model_type=model_type.value,
             model=model,
@@ -330,7 +347,7 @@ class PluginModelRuntime(ModelRuntime):
                 tenant_id=self.tenant_id,
                 user_id=self.user_id,
                 plugin_id=plugin_id,
-                plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+                **self._dispatch_identity(provider),
                 provider=provider_name,
                 model=model,
                 credentials=credentials,
@@ -345,7 +362,7 @@ class PluginModelRuntime(ModelRuntime):
                 tenant_id=self.tenant_id,
                 user_id=self.user_id,
                 plugin_id=plugin_id,
-                plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+                **self._dispatch_identity(provider),
                 provider=provider_name,
                 model=model,
                 credentials=credentials,
@@ -452,7 +469,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model_type=model_type.value,
             model=model,
@@ -479,7 +496,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -504,7 +521,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -528,7 +545,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -553,7 +570,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -575,7 +592,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -601,7 +618,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -630,7 +647,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -657,7 +674,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -681,7 +698,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -704,7 +721,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -727,7 +744,7 @@ class PluginModelRuntime(ModelRuntime):
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
-            plugin_unique_identifier=self._get_provider_schema(provider).plugin_unique_identifier,
+            **self._dispatch_identity(provider),
             provider=provider_name,
             model=model,
             credentials=credentials,
@@ -755,6 +772,9 @@ class PluginModelRuntime(ModelRuntime):
         # caller id, so the cache must only collapse ``None`` into tenant scope.
         cache_user_id = TENANT_SCOPE_SCHEMA_CACHE_USER_ID if self.user_id is None else self.user_id
         cache_key = f"{self.tenant_id}:{provider}:{model_type.value}:{model}:{cache_user_id}"
+        identifier = self._provider_identifiers.get(str(ModelProviderID(provider)))
+        if identifier is not None:
+            cache_key = f"{cache_key}:plugin:{identifier}"
         sorted_credentials = sorted(credentials.items()) if credentials else []
         if not sorted_credentials:
             return cache_key

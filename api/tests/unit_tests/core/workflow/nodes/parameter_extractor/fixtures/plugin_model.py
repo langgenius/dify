@@ -104,7 +104,7 @@ class MockModelClass(PluginModelClient):
         model: str,
         credentials: dict[str, object],
         *,
-        plugin_unique_identifier: str,
+        plugin_unique_identifier: str | None = None,
     ) -> AIModelEntity | None:
         """
         Get model schema
@@ -257,6 +257,6 @@ class MockModelClass(PluginModelClient):
         stream: bool = True,
         app_id: str | None = None,
         *,
-        plugin_unique_identifier: str,
+        plugin_unique_identifier: str | None = None,
     ) -> Generator[LLMResultChunk]:
         return MockModelClass.mocked_chat_create_stream(model=model, prompt_messages=prompt_messages, tools=tools)
