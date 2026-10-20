@@ -28628,6 +28628,20 @@ Concrete contact classification resolved in one workspace.
 | ---- | ---- | ----------- | -------- |
 | HumanInputFormExpiredError |  |  |  |
 
+#### HumanInputFormFilledResponseData
+
+Data entity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action_id | string |  | Yes |
+| action_text | string |  | Yes |
+| form_id | string |  | Yes |
+| node_id | string |  | Yes |
+| node_title | string |  | Yes |
+| rendered_content | string |  | Yes |
+| submitted_data | object |  | No |
+
 #### HumanInputFormPreviewPayload
 
 | Name | Type | Description | Required |
@@ -28697,21 +28711,10 @@ Human Input node data.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| debug_mode | [DebugModeConfig](#debugmodeconfig) |  | Yes |
-| default_value | [ [DefaultValue](#defaultvalue) ] |  | No |
-| desc | string |  | No |
-| error_strategy | [ErrorStrategy](#errorstrategy) |  | No |
-| form_content | string |  | No |
-| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
-| message_template | [MessageTemplateConfig](#messagetemplateconfig) |  | Yes |
-| recipients_spec | [ [Contact](#contact)<br>[DynamicEmail](#dynamicemail)<br>[OnetimeEmail](#onetimeemail)<br>[Initiator](#initiator)<br>[AllWorkspaceContacts](#allworkspacecontacts) ] |  | Yes |
-| retry_config | [RetryConfig](#retryconfig) |  | No |
-| timeout | integer, <br>**Default:** 36 |  | No |
-| timeout_unit | [TimeoutUnit_Strict_strict_False_](#timeoutunit_strict_strict_false_) |  | No |
-| title | string |  | No |
-| type | string, <br>**Default:** human-input |  | No |
-| user_actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
-| version | string, <br>**Default:** 2 |  | No |
+| expiration_time | integer |  | Yes |
+| form_id | string |  | Yes |
+| node_id | string |  | Yes |
+| node_title | string |  | Yes |
 
 #### HumanInputPauseTypeResponse
 
