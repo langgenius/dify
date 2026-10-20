@@ -50,9 +50,16 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflow.comments.get': api.comments,
+      'apps.byAppId.workflow.comments.byCommentId.get': api.comment,
+      'apps.byAppId.workflow.comments.byCommentId.delete': api.deleteComment,
+      'apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete': api.deleteReply,
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflow.comments.get': api.comments,
       'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
