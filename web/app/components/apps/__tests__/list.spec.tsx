@@ -116,6 +116,14 @@ async function setup(
         email: 'alice@example.test',
         role: 'admin',
       },
+      {
+        id: 'creator-2',
+        name: 'Bob',
+        avatar_url: null,
+        status: 'active',
+        email: 'bob@example.test',
+        role: 'admin',
+      },
     ],
   })
   const store = createStore()
@@ -232,7 +240,7 @@ it('queries collaborators only for workflow apps when collaboration is enabled',
 })
 
 it('combines real creator and tag selections with URL filters for both catalogs', async () => {
-  const { user } = await setup('?keywords=sales&category=workflow')
+  const { user, onUrlUpdate } = await setup('?keywords=sales&category=workflow')
   const scrollTo = vi.fn()
   catalog().scrollTo = scrollTo
   await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
@@ -251,7 +259,35 @@ it('combines real creator and tag selections with URL filters for both catalogs'
     expect(api.apps).toHaveBeenLastCalledWith({ query: { ...filters, limit: 30 } }),
   )
   expect(api.starred).toHaveBeenLastCalledWith({ query: { ...filters, limit: 100 } })
+  expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('creator_ids')).toBe('creator-1')
   expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+})
+
+it('restores multiple creator selections from the URL and clears them from the list', async () => {
+  const { user, onUrlUpdate } = await setup('?creator_ids=creator-1,creator-2')
+  const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
+
+  expect(api.apps).toHaveBeenCalledWith({
+    query: expect.objectContaining({ creator_ids: ['creator-1', 'creator-2'] }),
+  })
+  await user.click(trigger)
+  expect(await screen.findByRole('option', { name: /Alice/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  expect(await screen.findByRole('option', { name: /Bob/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'app.studio.filters.reset' }))
+
+  await waitFor(() => {
+    expect(api.apps).toHaveBeenLastCalledWith({
+      query: expect.not.objectContaining({ creator_ids: expect.anything() }),
+    })
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('creator_ids')).toBe(false)
+  })
 })
 
 it('keeps previous main and starred cards while search resolves and announces empty results afterwards', async () => {

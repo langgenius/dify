@@ -39,8 +39,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
-  const { category, keywords, sort_by: sortBy } = urlQuery
-  const [creatorIDs, setCreatorIDs] = useState<string[]>([])
+  const { category, creator_ids: creatorIDs, keywords, sort_by: sortBy } = urlQuery
   const [tagIDs, setTagIDs] = useState<string[]>([])
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -101,7 +100,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   }
   const changeCreatorIDs = (nextCreatorIDs: string[]) => {
     resetCatalogScroll()
-    setCreatorIDs(nextCreatorIDs)
+    void setUrlQuery({ creator_ids: nextCreatorIDs })
   }
   const changeSortBy = (nextSortBy: AppListSortBy) => {
     resetCatalogScroll()
