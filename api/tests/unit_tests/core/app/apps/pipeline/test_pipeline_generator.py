@@ -20,6 +20,7 @@ from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.data_source.provider_service import DatasourceProviderService
+from services.workflow_run_agg import WorkflowRunAgg
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -42,6 +43,7 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 @pytest.fixture
 def generator(mocker: MockerFixture, sqlite_engine: Engine):
     gen = module.PipelineGenerator(
+        execution_driver=WorkflowRunAgg.run,
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
         datasource_providers=DatasourceProviderService(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
@@ -386,7 +388,7 @@ def test_generate_worker_handles_errors(
     )
 
     runner_instance = MagicMock()
-    runner_instance.run.side_effect = ValueError("bad")
+    runner_instance.prepare.side_effect = ValueError("bad")
     mocker.patch.object(module, "PipelineRunner", return_value=runner_instance)
 
     queue_manager = MagicMock()
@@ -422,6 +424,9 @@ def test_generate_worker_sets_system_user_id_for_external_call(
     )
 
     runner_instance = MagicMock()
+    execution_driver = mocker.patch.object(generator, "_execution_driver")
+    workflow_execution_repository = MagicMock()
+    workflow_node_execution_repository = MagicMock()
     mocker.patch.object(module, "PipelineRunner", return_value=runner_instance)
 
     generator._generate_worker(
@@ -430,11 +435,19 @@ def test_generate_worker_sets_system_user_id_for_external_call(
         queue_manager=MagicMock(),
         context=contextlib.nullcontext(),
         variable_loader=MagicMock(),
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        workflow_execution_repository=workflow_execution_repository,
+        workflow_node_execution_repository=workflow_node_execution_repository,
     )
 
-    assert module.PipelineRunner.call_args.kwargs["system_user_id"] == "session"
+    runner_kwargs = module.PipelineRunner.call_args.kwargs
+    assert runner_kwargs["system_user_id"] == "session"
+    assert runner_kwargs["execution_driver"] is execution_driver
+    assert runner_kwargs["documents"] is generator._documents
+    assert "workflow_execution_repository" not in runner_kwargs
+    assert "workflow_node_execution_repository" not in runner_kwargs
+    execution_driver.assert_called_once_with(
+        runner_instance, None, workflow_execution_repository, workflow_node_execution_repository
+    )
 
 
 def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixture, sqlite_session: Session):

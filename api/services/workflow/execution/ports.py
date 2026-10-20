@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from graphon.entities.pause_reason import HitlRequired
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from models import Account, EndUser
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
