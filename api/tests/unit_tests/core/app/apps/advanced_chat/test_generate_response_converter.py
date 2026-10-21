@@ -12,6 +12,7 @@ from core.app.entities.task_entities import (
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
     PingStreamResponse,
+    StreamEvent,
 )
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
@@ -63,7 +64,31 @@ class TestAdvancedChatGenerateResponseConverter:
 
         assert response["data"]["future_field"] == "future-value"
 
-    def test_stream_simple_response_includes_node_events(self):
+    @pytest.mark.parametrize("followed_by_event", [None, StreamEvent.WORKFLOW_FINISHED])
+    def test_stream_full_response_preserves_followed_by_event(self, followed_by_event: StreamEvent | None) -> None:
+        def stream() -> Generator[ChatbotAppStreamResponse]:
+            yield ChatbotAppStreamResponse(
+                conversation_id="c1",
+                message_id="m1",
+                created_at=1,
+                stream_response=ErrorStreamResponse(
+                    task_id="t1",
+                    err=ValueError("boom"),
+                    followed_by_event=followed_by_event,
+                ),
+            )
+
+        converted = list(AdvancedChatAppGenerateResponseConverter.convert_stream_full_response(stream()))
+        response = converted[0]
+        assert isinstance(response, dict)
+        assert response["event"] == "error"
+        if followed_by_event is None:
+            assert "followed_by_event" not in response
+        else:
+            assert response["followed_by_event"] == followed_by_event.value
+
+    @pytest.mark.parametrize("followed_by_event", [None, StreamEvent.WORKFLOW_FINISHED])
+    def test_stream_simple_response_includes_node_events(self, followed_by_event: StreamEvent | None):
         node_start = NodeStartStreamResponse(
             task_id="t1",
             workflow_run_id="r1",
@@ -115,7 +140,11 @@ class TestAdvancedChatGenerateResponseConverter:
                 conversation_id="c1",
                 message_id="m1",
                 created_at=1,
-                stream_response=ErrorStreamResponse(task_id="t1", err=ValueError("boom")),
+                stream_response=ErrorStreamResponse(
+                    task_id="t1",
+                    err=ValueError("boom"),
+                    followed_by_event=followed_by_event,
+                ),
             )
             yield ChatbotAppStreamResponse(
                 conversation_id="c1",
@@ -129,3 +158,7 @@ class TestAdvancedChatGenerateResponseConverter:
         assert converted[1]["event"] == "node_started"
         assert converted[2]["event"] == "node_finished"
         assert converted[3]["event"] == "error"
+        if followed_by_event is None:
+            assert "followed_by_event" not in converted[3]
+        else:
+            assert converted[3]["followed_by_event"] == followed_by_event.value

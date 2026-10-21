@@ -105,6 +105,8 @@ class AdvancedChatAppGenerateResponseConverter(
             if isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
+                if sub_stream_response.followed_by_event is not None:
+                    response_chunk["followed_by_event"] = sub_stream_response.followed_by_event.value
             else:
                 response_chunk.update(sub_stream_response.model_dump(mode="json"))
             yield response_chunk
@@ -143,6 +145,8 @@ class AdvancedChatAppGenerateResponseConverter(
                 case ErrorStreamResponse():
                     data = cls._error_to_stream_response(sub_stream_response.err)
                     response_chunk.update(data)
+                    if sub_stream_response.followed_by_event is not None:
+                        response_chunk["followed_by_event"] = sub_stream_response.followed_by_event.value
                 case NodeStartStreamResponse() | NodeFinishStreamResponse():
                     response_chunk.update(sub_stream_response.to_ignore_detail_dict())
                 case _:

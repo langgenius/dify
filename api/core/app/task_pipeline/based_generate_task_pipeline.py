@@ -15,6 +15,7 @@ from core.app.entities.queue_entities import (
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
     PingStreamResponse,
+    StreamEvent,
 )
 from core.errors.error import QuotaExceededError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
@@ -92,13 +93,17 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
 
         return message
 
-    def error_to_stream_response(self, e: Exception):
+    def error_to_stream_response(self, e: Exception, *, followed_by_event: StreamEvent | None = None):
         """
         Error to stream response.
         :param e: exception
         :return:
         """
-        return ErrorStreamResponse(task_id=self._application_generate_entity.task_id, err=e)
+        return ErrorStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            err=e,
+            followed_by_event=followed_by_event,
+        )
 
     def ping_stream_response(self) -> PingStreamResponse:
         """

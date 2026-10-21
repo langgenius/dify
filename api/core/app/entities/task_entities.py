@@ -111,6 +111,7 @@ class ErrorStreamResponse(StreamResponse):
 
     event: StreamEvent = StreamEvent.ERROR
     err: Exception
+    followed_by_event: StreamEvent | None = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
