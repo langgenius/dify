@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -524,6 +525,21 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert "output_type_check" not in agent_log
 
 
+def test_agent_node_run_records_process_entries_for_a_successful_run():
+    result = cast(
+        StreamCompletedEvent,
+        list(_node(agent_backend_client=PlainTextOutputBackendClient())._run())[0],
+    ).node_run_result
+
+    entries = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+
+    assert isinstance(entries, list) and len(entries) >= 1
+    assert {entry.label for entry in entries} <= {"Thinking", "shell_run", "Message"}
+    assert all(entry.node_execution_id == result.id for entry in entries)
+    assert all(entry.status == "succeeded" for entry in entries)
+    assert len({entry.message_id for entry in entries}) == len(entries)
+
+
 def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():
     events = list(
         _node(
@@ -840,6 +856,41 @@ def test_agent_node_run_maps_failed_agent_backend_run_to_node_result():
     assert result.error == "fake failure"
     assert result.error_type == "unit_test"
     assert store.saved[0][2] == SessionSnapshot(layers={})
+    assert isinstance(result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG], list)
+
+
+def test_agent_node_a_retry_replaces_the_process_entries_of_the_failed_attempt():
+    """A retried run keeps one attempt's entries, not the concatenation of all attempts."""
+
+    class RetryingOutputBackendClient(FileOutputBackendClient):
+        """First attempt returns a wrong-typed summary, second attempt succeeds."""
+
+        def __init__(self) -> None:
+            super().__init__(output_payload={"summary": 7})
+            self._attempt = 0
+
+        def create_run(self, request):  # type: ignore[override]
+            self._attempt += 1
+            if self._attempt > 1:
+                self.output_payload = {"summary": "Recovered summary"}
+            return super().create_run(request)
+
+    client = RetryingOutputBackendClient()
+    node = _node(
+        declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
+        error_strategy=ErrorStrategy.DEFAULT_VALUE,
+        agent_backend_client=client,
+    )
+
+    events = list(node._run())
+
+    result = cast(StreamCompletedEvent, events[-1]).node_run_result
+    entries = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert client.create_calls == 2
+    assert result.metadata["attempt"] == 1
+    assert len({entry.message_id for entry in entries}) == len(entries)
+    assert all("tc-0" not in json.dumps(entry.data, ensure_ascii=False, default=str) for entry in entries)
 
 
 def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
