@@ -956,7 +956,15 @@ class DifyNodeFactory(NodeFactory):
             adapt_node_config_for_graph(raw_node_config),
             resolve_node_class=self._resolve_node_class,
             validate_resolved_node_data=self._validate_resolved_node_data,
-            pre_validate_node_data=validator,
+            # Compatibility adaptation can move wrapped Tool configurations into
+            # parameters. Bind the saved raw configuration to the actual resolved
+            # implementation, rather than comparing that adapted representation
+            # with the raw digest admitted before graph initialization.
+            pre_validate_node_data=(
+                (lambda _adapted_config, resolved_class: validator(raw_node_config, resolved_class))
+                if validator is not None
+                else None
+            ),
         )
         if isinstance(context, BuilderExecutionContext):
             validate_restricted_node(

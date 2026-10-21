@@ -1,5 +1,4 @@
 from typing import Never, override
-from unittest.mock import Mock
 
 import pytest
 
@@ -43,12 +42,27 @@ class _FakeLock:
         return True
 
 
+class SchedulingBoundary:
+    def __init__(self, *, deny_access: bool = False):
+        self.deny_access = deny_access
+
+    def authorize(self, _actor, _app_id, _access):
+        if self.deny_access:
+            raise NotFoundError()
+
+    def enqueue(self, *_args, **_kwargs):
+        raise AssertionError("unavailable model must not dispatch")
+
+    def subscribe(self, _session_id):
+        raise AssertionError("unavailable model must not subscribe")
+
+
 @pytest.fixture
 def actor() -> Actor:
     return Actor(account_id="acc-1", tenant_id="t1")
 
 
-def _service(repo: Mock | InMemoryRepository) -> DifyBuilderService:
+def _service(repo: InMemoryRepository) -> DifyBuilderService:
     # enqueue is a no-op; dispatch still acquires/releases the fake lock.
     return DifyBuilderService(repo, _FakeLock(), lambda *a, **k: None)  # noqa: ARG005
 
@@ -64,9 +78,8 @@ def test_build_session_stamps_model_config(monkeypatch: pytest.MonkeyPatch, acto
     assert repo.created_fc.model_config == MC
 
 
-def test_build_session_freezes_default_model_config(monkeypatch: pytest.MonkeyPatch, actor: Actor) -> None:
-    validate = Mock(return_value=MC)
-    monkeypatch.setattr(service_mod, "validate_model_config", validate)
+def test_build_session_freezes_default_model_config(mocker, monkeypatch: pytest.MonkeyPatch, actor: Actor) -> None:
+    validate = mocker.patch.object(service_mod, "validate_model_config", return_value=MC)
     repo = _FakeRepo()
     svc = _service(repo)
     monkeypatch.setattr(svc, "get_session_view", lambda sid, a: "VIEW")  # noqa: ARG005
@@ -89,14 +102,17 @@ def test_invalid_model_config_raises_before_persist(monkeypatch: pytest.MonkeyPa
 
 
 @pytest.mark.parametrize("scenario", ["build", "edit", "fix"])
-def test_authorization_precedes_model_resolution(monkeypatch: pytest.MonkeyPatch, actor: Actor, scenario: str) -> None:
-    validate = Mock(return_value=MC)
-    monkeypatch.setattr(service_mod, "validate_model_config", validate)
-    repo = Mock()
-    svc = DifyBuilderService(repo, Mock(), Mock(), authorize_app_fn=Mock(side_effect=NotFoundError()))
+def test_authorization_precedes_model_resolution(mocker, actor: Actor, scenario: str) -> None:
+    validate = mocker.patch.object(service_mod, "validate_model_config", return_value=MC)
+    repo = InMemoryRepository()
+    mocker.spy(repo, "create_session")
+    boundary = SchedulingBoundary(deny_access=True)
+    svc = DifyBuilderService(repo, _FakeLock(), boundary.enqueue, authorize_app_fn=boundary.authorize)
     kwargs = {"failed_run_id": "run-1"} if scenario == "fix" else {"goal_text": "Build it"}
     with pytest.raises(NotFoundError):
-        getattr(svc, f"create_{scenario}_session")(app_id="app-1", actor=actor, **kwargs)
+        {"build": svc.create_build_session, "edit": svc.create_edit_session, "fix": svc.create_fix_session}[scenario](
+            app_id="app-1", actor=actor, **kwargs
+        )
     validate.assert_not_called()
     repo.create_session.assert_not_called()
 
@@ -105,18 +121,30 @@ def test_authorization_precedes_model_resolution(monkeypatch: pytest.MonkeyPatch
 @pytest.mark.parametrize("streaming", [False, True])
 @pytest.mark.parametrize("config", [None, MC])
 def test_unavailable_model_rejected_before_session_subscription_or_dispatch(
-    monkeypatch: pytest.MonkeyPatch, actor: Actor, scenario: str, streaming: bool, config: dict[str, object] | None
+    mocker, actor: Actor, scenario: str, streaming: bool, config: dict[str, object] | None
 ) -> None:
-    validate = Mock(side_effect=ModelUnavailableError("unavailable"))
-    monkeypatch.setattr(service_mod, "validate_model_config", validate)
-    repo = Mock()
-    lock = Mock()
-    enqueue = Mock()
-    subscribe = Mock()
-    authorize = Mock()
+    validate = mocker.patch.object(
+        service_mod, "validate_model_config", side_effect=ModelUnavailableError("unavailable")
+    )
+    repo = InMemoryRepository()
+    mocker.spy(repo, "create_session")
+    mocker.spy(repo, "save_run")
+    lock = _FakeLock()
+    mocker.spy(lock, "acquire")
+    boundary = SchedulingBoundary()
+    enqueue = mocker.spy(boundary, "enqueue")
+    subscribe = mocker.spy(boundary, "subscribe")
+    authorize = mocker.spy(boundary, "authorize")
     svc = DifyBuilderService(repo, lock, enqueue, subscribe_fn=subscribe, authorize_app_fn=authorize)
     mode = "fix" if scenario == "checklist" else scenario
-    create = getattr(svc, f"create_{mode}_session{'_stream' if streaming else ''}")
+    create = {
+        ("build", False): svc.create_build_session,
+        ("edit", False): svc.create_edit_session,
+        ("fix", False): svc.create_fix_session,
+        ("build", True): svc.create_build_session_stream,
+        ("edit", True): svc.create_edit_session_stream,
+        ("fix", True): svc.create_fix_session_stream,
+    }[(mode, streaming)]
     kwargs = {"goal_text": "Build it"} if mode != "fix" else {"failed_run_id": "run-1"}
     if scenario == "checklist":
         from core.dify_builder.models import ChecklistError

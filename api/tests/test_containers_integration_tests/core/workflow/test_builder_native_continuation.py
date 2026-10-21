@@ -15,6 +15,7 @@ import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import inspect, select, text
+from sqlalchemy import inspect as inspect_orm
 
 from core.dify_builder.models import Actor
 from models.account import Tenant
@@ -592,13 +593,12 @@ def test_node_inputs_storage_and_key_io_are_outside_root_write_transaction(node_
                 writing = False
 
     monkeypatch.setattr(c.store.loader, "locked", tracked_lock)
-    for target, name in (
-        (storage, "save"),
-        (storage, "load"),
-        (encrypter, "encrypt_token"),
-        (encrypter, "decrypt_token"),
+    for target, name, original in (
+        (storage, "save", storage.save),
+        (storage, "load", storage.load),
+        (encrypter, "encrypt_token", encrypter.encrypt_token),
+        (encrypter, "decrypt_token", encrypter.decrypt_token),
     ):
-        original = getattr(target, name)
 
         def outside_write_transaction(*args, _original=original, **kwargs):
             assert not writing
@@ -1725,12 +1725,18 @@ def test_actual_child_app_permission_checked_before_decrypt(continuation_case, m
     # Copy actual database-owned app/workflow metadata into a distinct app.
     with c.factory.begin() as session:
         original = session.get(App, c.context.app_id)
-        app = App(**{attr.key: getattr(original, attr.key) for attr in inspect(App).column_attrs if attr.key != "id"})
+        app = App(
+            **{
+                attr.key: inspect_orm(original).attrs[attr.key].value
+                for attr in inspect(App).column_attrs
+                if attr.key != "id"
+            }
+        )
         app.id, app.maintainer = str(uuid4()), str(uuid4())
         original_workflow = session.get(Workflow, c.context.workflow_id)
         workflow = Workflow(
             **{
-                attr.key: getattr(original_workflow, attr.key)
+                attr.key: inspect_orm(original_workflow).attrs[attr.key].value
                 for attr in inspect(Workflow).column_attrs
                 if attr.key != "id"
             }
@@ -1839,7 +1845,7 @@ def test_legacy_null_owner_fails_closed_without_decrypt(continuation_case, monke
         )
         state = NativeInvocationState(
             **{
-                attr.key: getattr(original, attr.key)
+                attr.key: inspect_orm(original).attrs[attr.key].value
                 for attr in inspect(NativeInvocationState).column_attrs
                 if attr.key != "id"
             }
@@ -1874,7 +1880,7 @@ def test_invocation_read_owner_must_be_paired(continuation_case):
         )
         state = NativeInvocationState(
             **{
-                attr.key: getattr(original, attr.key)
+                attr.key: inspect_orm(original).attrs[attr.key].value
                 for attr in inspect(NativeInvocationState).column_attrs
                 if attr.key != "id"
             }
@@ -2111,7 +2117,8 @@ def _saved_child_recovery_facts(c, child):
                 query = query.where(model.invocation_id == child.invocation_id)
             rows = session.scalars(query.order_by(model.request_id if model is NativeTestScope else model.id))
             facts[model.__tablename__] = [
-                {column.key: getattr(row, column.key) for column in inspect(model).column_attrs} for row in rows
+                {column.key: inspect_orm(row).attrs[column.key].value for column in inspect(model).column_attrs}
+                for row in rows
             ]
         scope = session.get(NativeTestScope, child.request_id)
         assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (1, 1, 2)

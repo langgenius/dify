@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from unittest.mock import Mock
 
 import pytest
 
@@ -16,7 +15,7 @@ def test_default_factory_returns_llm_agent() -> None:
 
 
 def test_override_factory_is_used_then_reset() -> None:
-    sentinel = Mock(spec=DifyBuilderAgent)
+    sentinel = LlmBuilderAgent("tenant")
     set_dify_builder_agent_factory(lambda: sentinel)
     try:
         assert build_dify_builder_agent() is sentinel

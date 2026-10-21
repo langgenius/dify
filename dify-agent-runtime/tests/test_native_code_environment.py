@@ -5,11 +5,13 @@ import json
 import os
 import runpy
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
+from importlib.machinery import ModuleSpec
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType
 from unittest.mock import patch
 
 PROBE = Path(__file__).resolve().parents[1] / "docker/native-code-environment.py"
@@ -26,14 +28,28 @@ class EnvironmentProbeTests(unittest.TestCase):
         ownership = patch.dict(
             trusted.__globals__,
             _trusted=lambda info, directory=False: trusted(
-                SimpleNamespace(st_uid=0, st_mode=info.st_mode), directory
+                os.stat_result(
+                    (
+                        info.st_mode,
+                        info.st_ino,
+                        info.st_dev,
+                        info.st_nlink,
+                        0,
+                        info.st_gid,
+                        info.st_size,
+                        info.st_atime,
+                        info.st_mtime,
+                        info.st_ctime,
+                    )
+                ),
+                directory,
             ),
         )
         ownership.start()
         self.addCleanup(ownership.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.fd = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY)
         self.addCleanup(os.close, self.fd)
 
@@ -118,29 +134,33 @@ class EnvironmentProbeTests(unittest.TestCase):
     def test_file_count_and_byte_limits_refuse(self):
         (self.root / "pkg").mkdir()
         (self.root / "pkg/a").write_bytes(b"abc")
-        with patch.dict(
-            self.probe["ContentManifest"].add_tree.__globals__, MAX_FILE_BYTES=2
+        with (
+            patch.dict(
+                self.probe["ContentManifest"].add_tree.__globals__, MAX_FILE_BYTES=2
+            ),
+            self.assertRaises(self.probe["Refusal"]),
         ):
-            with self.assertRaises(self.probe["Refusal"]):
-                self.manifest().add_tree("pkg")
-        with patch.dict(
-            self.probe["ContentManifest"].add_tree.__globals__, MAX_FILES=0
+            self.manifest().add_tree("pkg")
+        with (
+            patch.dict(self.probe["ContentManifest"].add_tree.__globals__, MAX_FILES=0),
+            self.assertRaises(self.probe["Refusal"]),
         ):
-            with self.assertRaises(self.probe["Refusal"]):
-                self.manifest().add_tree("pkg")
+            self.manifest().add_tree("pkg")
 
     def test_untrusted_ownership_refused(self):
         with self.assertRaises(self.probe["Refusal"]):
-            self.trusted(SimpleNamespace(st_uid=1000, st_mode=0o100644))
-        self.trusted(SimpleNamespace(st_uid=0, st_mode=0o100644))
+            self.trusted(os.stat_result((0o100644, 0, 0, 1, 1000, 1000, 0, 0, 0, 0)))
+        self.trusted(os.stat_result((0o100644, 0, 0, 1, 0, 0, 0, 0, 0, 0)))
 
     def test_empty_directory_traversal_is_globally_bounded(self):
         (self.root / "pkg/one/two").mkdir(parents=True)
-        with patch.dict(
-            self.probe["ContentManifest"].add_tree.__globals__, MAX_ENTRIES=2
+        with (
+            patch.dict(
+                self.probe["ContentManifest"].add_tree.__globals__, MAX_ENTRIES=2
+            ),
+            self.assertRaises(self.probe["Refusal"]),
         ):
-            with self.assertRaises(self.probe["Refusal"]):
-                self.manifest().add_tree("pkg")
+            self.manifest().add_tree("pkg")
 
     def test_file_mutation_during_hash_is_refused(self):
         target = self.root / "mutable"
@@ -152,9 +172,11 @@ class EnvironmentProbeTests(unittest.TestCase):
             target.write_bytes(b"second")
             return content
 
-        with patch("os.read", side_effect=read_and_mutate):
-            with self.assertRaises(self.probe["Refusal"]):
-                self.manifest().add_file("mutable")
+        with (
+            patch("os.read", side_effect=read_and_mutate),
+            self.assertRaises(self.probe["Refusal"]),
+        ):
+            self.manifest().add_file("mutable")
 
     def test_wrong_package_origin_refused(self):
         self.probe["require_origin"](
@@ -207,6 +229,10 @@ class EnvironmentProbeTests(unittest.TestCase):
             path = site / name
             path.mkdir(parents=True, exist_ok=True)
             (path / "__init__.py").write_bytes(b"original measured package")
+        for name, version in self.profile()["packages"].items():
+            (site / f"{name.lower()}-{version}.dist-info/METADATA").write_text(
+                f"Metadata-Version: 2.1\nName: {name}\nVersion: {version}\n"
+            )
         suffix = ".cpython-313-x86_64-linux-gnu.so"
         (site / ("markupsafe/_speedups" + suffix)).write_bytes(b"synthetic extension")
         # Prepare replacement trees before the first snapshot so the hook only
@@ -241,18 +267,14 @@ class EnvironmentProbeTests(unittest.TestCase):
             loader = self.probe["importlib"].machinery.ExtensionFileLoader(
                 name, origin(name)
             )
-            return SimpleNamespace(origin=origin(name), loader=loader)
+            return ModuleSpec(name=name, loader=loader, origin=origin(name))
 
         def import_module(name):
             if import_hook is not None and name == "jinja2":
                 import_hook(site)
-            return SimpleNamespace(__file__=origin(name))
-
-        def distribution(path):
-            name = "Jinja2" if path.name.startswith("jinja2-") else "MarkupSafe"
-            return SimpleNamespace(
-                metadata={"Name": name}, version=self.profile()["packages"][name]
-            )
+            module = ModuleType(name)
+            module.__file__ = origin(name)
+            return module
 
         def node_version(_binary):
             if node_hook is not None:
@@ -266,10 +288,10 @@ class EnvironmentProbeTests(unittest.TestCase):
                 _root_fd=root_fd,
                 node_version=node_version,
             ),
+            patch.object(sys, "platform", "linux"),
             patch.object(sys, "prefix", str(self.root)),
             patch.object(sys, "base_prefix", str(self.root)),
             patch.object(sys, "executable", str(self.root / "bin/python3.13")),
-            patch.object(sys, "flags", SimpleNamespace(isolated=True)),
             patch("platform.python_version", return_value="3.13.7"),
             patch("platform.python_implementation", return_value="CPython"),
             patch("platform.machine", return_value="x86_64"),
@@ -277,17 +299,59 @@ class EnvironmentProbeTests(unittest.TestCase):
                 "sysconfig.get_config_var",
                 side_effect=lambda key: suffix if key == "EXT_SUFFIX" else False,
             ),
-            patch("importlib.metadata.PathDistribution", side_effect=distribution),
             patch("importlib.util.find_spec", side_effect=find_spec),
             patch("importlib.import_module", side_effect=import_module),
         ):
             return collect()
 
+    def test_nonisolated_interpreter_refuses_before_dependency_discovery(self):
+        if sys.flags.isolated:
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(Path(__file__).resolve()),
+                    f"{type(self).__name__}.{self._testMethodName}",
+                    "-v",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            self.assertEqual(
+                completed.returncode, 0, completed.stdout + completed.stderr
+            )
+            self.assertIn("\nOK\n", completed.stderr)
+            return
+        with self.assertRaisesRegex(self.probe["Refusal"], "unexpected_python_origin"):
+            self.synthetic_collection()
+
+    def execute_with_isolated_interpreter(self):
+        """Run the same unittest method with actual CPython isolated flags."""
+        if sys.flags.isolated:
+            return False
+        selected = f"{type(self).__name__}.{self._testMethodName}"
+        completed = subprocess.run(
+            [sys.executable, "-I", str(Path(__file__).resolve()), selected, "-v"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        self.assertIn("Ran 1 test", completed.stderr)
+        self.assertIn("\nOK\n", completed.stderr)
+        return True
+
     def test_synthetic_collection_with_stable_ancestors(self):
+        if self.execute_with_isolated_interpreter():
+            return
         result = self.synthetic_collection()
         self.assertEqual(result["status"], "observed")
 
     def test_import_ancestor_substitution_and_restoration_refuses(self):
+        if self.execute_with_isolated_interpreter():
+            return
         seen = []
 
         def import_boundary(site):
@@ -312,6 +376,8 @@ class EnvironmentProbeTests(unittest.TestCase):
         )
 
     def test_import_ancestor_symlink_substitution_and_restoration_refuses(self):
+        if self.execute_with_isolated_interpreter():
+            return
         seen = []
 
         def import_boundary(site):
@@ -331,6 +397,8 @@ class EnvironmentProbeTests(unittest.TestCase):
         self.assertEqual(seen, [b"replacement package"])
 
     def test_node_ancestor_substitution_and_restoration_refuses(self):
+        if self.execute_with_isolated_interpreter():
+            return
         events = []
 
         def node_boundary(directory):
@@ -365,9 +433,11 @@ class EnvironmentProbeTests(unittest.TestCase):
             NODE_OPTIONS="--bad-option",
         ):
             self.assertEqual(node_version(path), "v24.20.0")
-        with patch.dict(node_version.__globals__, NODE_TIMEOUT_SECONDS=0.1):
-            with self.assertRaises(self.probe["Refusal"]):
-                node_version(self.fake_node("import time; time.sleep(5)\n"))
+        with (
+            patch.dict(node_version.__globals__, NODE_TIMEOUT_SECONDS=0.1),
+            self.assertRaises(self.probe["Refusal"]),
+        ):
+            node_version(self.fake_node("import time; time.sleep(5)\n"))
         with self.assertRaises(self.probe["Refusal"]):
             node_version(self.fake_node("import os; os.write(1, b'x' * 100000)\n"))
         with self.assertRaises(self.probe["Refusal"]):
@@ -375,14 +445,16 @@ class EnvironmentProbeTests(unittest.TestCase):
 
     def test_refusal_output_contains_no_secrets_or_capability_claims(self):
         observe = self.probe["observe"]
-        with patch.dict(os.environ, SECRET_SENTINEL="never-output-this-value"):
-            with patch.dict(
+        with (
+            patch.dict(os.environ, SECRET_SENTINEL="never-output-this-value"),
+            patch.dict(
                 observe.__globals__,
                 collect_environment=lambda: (_ for _ in ()).throw(
                     self.probe["Refusal"]("unsupported_python")
                 ),
-            ):
-                result = observe()
+            ),
+        ):
+            result = observe()
         self.assertEqual(
             result,
             {

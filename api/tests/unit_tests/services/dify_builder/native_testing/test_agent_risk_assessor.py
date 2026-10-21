@@ -1,20 +1,40 @@
-from types import SimpleNamespace
-
 import pytest
 
+from core.tools.entities.tool_entities import ToolEntity
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from services.dify_builder.native_testing.agent_operations import AgentResolvedTool
 from services.dify_builder.native_testing.agent_risk_assessor import assess_call
+from services.dify_builder.native_testing.agent_tool_declarations import AgentToolMetadata
 
 
 def call(reason):
     return assess_call(
         goal="Summarize one test message",
-        tool=SimpleNamespace(
+        tool=AgentResolvedTool(
+            provider_type="builtin",
+            credential_id="account-1",
+            credential_version="v1",
+            runtime_parameters={},
+            verified_plugin=True,
             tool_name="read_message",
             provider_id="official/mail/mail",
             account_ref="account-1",
             account_label="Test mailbox",
-            metadata=SimpleNamespace(entity=SimpleNamespace(description=SimpleNamespace(llm="Read one message by ID"))),
+            metadata=AgentToolMetadata(
+                entity=ToolEntity.model_validate(
+                    {
+                        "identity": {
+                            "name": "read_message",
+                            "author": "test",
+                            "provider": "official/mail/mail",
+                            "label": {"en_US": "Read message"},
+                        },
+                        "description": {"human": {"en_US": "Read message"}, "llm": "Read one message by ID"},
+                    }
+                ),
+                implementation_revision="test-v1",
+                requires_credentials=True,
+            ),
         ),
         target={"mailbox": "test"},
         parameters={"message_id": "message-1", "token": "private-value"},

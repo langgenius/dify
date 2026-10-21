@@ -5,9 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import asdict
-from types import SimpleNamespace
 from typing import TYPE_CHECKING, TypedDict, Unpack, cast
-from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -32,6 +30,7 @@ from models.workflow import Workflow
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision, execution_revision
 from services.dify_builder.service import DifyBuilderService
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.dify_builder.fakes import StubAgent
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph
 from tests.unit_tests.services.dify_builder.test_advance_task import (
@@ -54,6 +53,7 @@ from tests.unit_tests.services.dify_builder.test_advance_task import (
 from tests.unit_tests.services.dify_builder.test_advance_task import (
     wired as wired,  # noqa: PLC0414
 )
+from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 
 if TYPE_CHECKING:
@@ -531,10 +531,10 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
     monkeypatch.setattr(worker.session_lock, "exists", lambda _sid: False)
     monkeypatch.setattr(worker.session_lock, "acquire", lambda _sid: "queued-token")
     monkeypatch.setattr(worker.session_lock, "release", lambda _sid, token: released.append(token))
-    monkeypatch.setattr(native, "db", SimpleNamespace(engine=factory.kw["bind"]))
-    monkeypatch.setattr(native, "TraceQueueManager", MagicMock())
-    monkeypatch.setattr(native, "DifyCoreRepositoryFactory", MagicMock())
-    generator = native.WorkflowAppGenerator(execution_driver=Mock())
+    monkeypatch.setattr(native, "db", PortDatabase(factory.kw["bind"]))
+    monkeypatch.setattr(native.TraceQueueManager, "start_timer", lambda _self: None)
+    monkeypatch.setattr("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", lambda _app: None)
+    generator = native.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
     monkeypatch.setattr(generator, "_generate", lambda **kwargs: kwargs)
     monkeypatch.setattr(port, "run_draft", _capture_run(port.run_draft, runs))
 

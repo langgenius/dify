@@ -81,7 +81,7 @@ def test_delete_workflow_agent_node_bindings_is_scoped_to_tenant_and_app(sqlite_
     assert sqlite_session.get(WorkflowAgentNodeBinding, other_tenant_id) is not None
 
 
-def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest.MonkeyPatch, mocker) -> None:
     events: list[str] = []
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     other_cleanup_names = (
@@ -117,14 +117,18 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
 
     delete_bindings = MagicMock(side_effect=lambda *_args: events.append("bindings"))
     delete_workflows = MagicMock(side_effect=lambda *_args: events.append("workflows"))
-    delete_execution_requests = MagicMock(side_effect=lambda *_args: events.append("execution_requests"))
-    delete_consents = MagicMock(side_effect=lambda *_args: events.append("consents"))
+    delete_execution_requests = mocker.patch.object(
+        remove_app_task_module,
+        "_delete_builder_execution_requests",
+        side_effect=lambda *_args: events.append("execution_requests"),
+    )
+    delete_consents = mocker.patch.object(
+        remove_app_task_module,
+        "_delete_builder_real_call_consents",
+        side_effect=lambda *_args: events.append("consents"),
+    )
     monkeypatch.setattr(remove_app_task_module, "_delete_workflow_agent_node_bindings", delete_bindings)
     monkeypatch.setattr(remove_app_task_module, "_delete_app_workflows", delete_workflows)
-    monkeypatch.setattr(
-        remove_app_task_module, "_delete_builder_execution_requests", delete_execution_requests, raising=False
-    )
-    monkeypatch.setattr(remove_app_task_module, "_delete_builder_real_call_consents", delete_consents, raising=False)
 
     remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
 

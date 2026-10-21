@@ -14,11 +14,15 @@ from libs.sensitive_http_telemetry import (
     sensitive_http_telemetry,
 )
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.logging_helpers import protect_existing_log_routes
 
 
 @pytest.fixture
 def application_logging(monkeypatch):
     """Own actual app sinks and restore the original process logging configuration."""
+    from libs.sensitive_http_telemetry import _HTTP_LOGGERS
+
+    protect_existing_log_routes(monkeypatch, emitters=(*_HTTP_LOGGERS, "sqlalchemy"))
     root = logging.getLogger()
     engine = logging.getLogger("sqlalchemy.engine")
     root_handlers, root_level = root.handlers, root.level
@@ -37,9 +41,10 @@ def application_logging(monkeypatch):
     monkeypatch.setattr(ext_logging.sys, "stdout", output)
     try:
         ext_logging.init_app(DifyApp(__name__))
+        owned_handlers = root.handlers[:]
         yield output
     finally:
-        for handler in root.handlers:
+        for handler in owned_handlers:
             handler.close()
         for handler, filters in original_filters.items():
             handler.filters = filters

@@ -18,6 +18,7 @@ _MIGRATION_PATH = (
 class _MigrationModule(Protocol):
     op: Operations
     upgrade: Callable[[], None]
+    downgrade: Callable[[], None]
 
 
 def _load_migration_module() -> _MigrationModule:
@@ -142,3 +143,21 @@ def test_upgrade_replaces_runtime_sessions_with_workspace_schema() -> None:
     for table_name in ("conversations", "agent_config_drafts", "workflow_node_executions"):
         caller_columns = {column["name"] for column in inspector.get_columns(table_name)}
         assert "agent_workspace_binding_id" in caller_columns
+
+
+def test_mysql_workspace_downgrade_restores_portable_runtime_session_types() -> None:
+    from io import StringIO
+
+    module = _load_migration_module()
+    output = StringIO()
+    module.op = Operations(
+        MigrationContext.configure(dialect_name="mysql", opts={"as_sql": True, "output_buffer": output})
+    )
+    module.downgrade()
+    sql = output.getvalue()
+    assert "id CHAR(36) NOT NULL" in sql
+    assert "session_snapshot LONGTEXT NOT NULL" in sql
+    assert "composition_layer_specs LONGTEXT NOT NULL" in sql
+    assert "DEFAULT 'active'" in sql
+    assert "uuidv7()" not in sql
+    assert "::character varying" not in sql

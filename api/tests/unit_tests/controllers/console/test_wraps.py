@@ -51,6 +51,7 @@ from models.account import AccountStatus, TenantAccountRole
 from models.dataset import RateLimitLog
 from services.entities.feature_entities import LicenseStatus
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.database_fixtures import BoundDatabase
 
 
 @pytest.fixture(autouse=True)
@@ -1214,7 +1215,7 @@ class TestSystemSetup:
     ) -> scoped_session[Session]:
         """The request-scoped ``db.session`` the wrapped view and later wrappers share."""
         registry = scoped_session(sqlite_session_factory)
-        monkeypatch.setattr(wraps_module, "db", SimpleNamespace(session=registry))
+        monkeypatch.setattr(wraps_module, "db", BoundDatabase(registry))
         return registry
 
     @pytest.mark.parametrize("complete", [True, False], ids=["complete", "missing"])

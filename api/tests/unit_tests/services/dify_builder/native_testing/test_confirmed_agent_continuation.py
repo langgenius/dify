@@ -1,16 +1,21 @@
 """Ordinary Graphon checkpoint validation; no model, provider or business I/O."""
 
 import importlib
-from types import SimpleNamespace
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
 
+from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+from core.dify_builder.models import Actor
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.runtime import RuntimeState, VariablePool
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
+from tests.unit_tests.services.dify_builder.native_testing.test_observation_stream import entity as workflow_entity
 
 
 def owner():
@@ -21,15 +26,25 @@ REF = NativeTestContextRef(request_id="request", invocation_id="invocation", con
 RUN = str(uuid4())
 
 
+@dataclass
+class PausedAgentSnapshot:
+    generate_entity: WorkflowAppGenerateEntity
+    serialized_graph_runtime_state: str
+
+    def get_generate_entity(self) -> WorkflowAppGenerateEntity:
+        return self.generate_entity
+
+
 def saved_state(*, paused=True, ref=REF, run_id=RUN):
     runtime = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
     runtime.graph_execution.start()
     execution = runtime.graph_execution.get_or_create_node_execution(frame_id="root", node_id="agent")
     if paused:
         runtime.graph_execution.pause(SchedulingPause(message="Agent approval"))
-    entity = SimpleNamespace(builder_agent_execution=BuilderAgentExecutionContext(ref=ref, native_run_id=run_id))
-    state = SimpleNamespace(
-        get_generate_entity=lambda: entity,
+    entity = workflow_entity()
+    entity.builder_agent_execution = BuilderAgentExecutionContext(ref=ref, native_run_id=run_id)
+    state = PausedAgentSnapshot(
+        generate_entity=entity,
         serialized_graph_runtime_state=runtime.dumps(),
     )
     return state, execution.execution_id
@@ -96,17 +111,26 @@ def test_pending_intent_requires_actual_saved_operation_and_parent_occurrence():
 
 
 @pytest.mark.parametrize("drift", [None, "actor", "tenant", "app", "workflow", "resumed", "missing_pause", "running"])
-def test_actual_sql_parent_pause_requires_complete_owned_run_chain(sqlite_session_factory, drift):
+def test_actual_sql_parent_pause_requires_complete_owned_run_chain(sqlite_session_factory, drift, monkeypatch):
     """Real SQL predicates; C02 loader is an explicit already-authorized port."""
-    from datetime import datetime
-
     from models.dify_builder import DifyBuilderExecutionRequest
     from models.workflow import WorkflowPause, WorkflowRun
 
     ids = {name: str(uuid4()) for name in ("request", "tenant", "app", "workflow", "actor", "session", "input", "run")}
     ref = REF.model_copy(update={"request_id": ids["request"]})
-    owned = SimpleNamespace(
-        tenant_id=ids["tenant"], actor_id=ids["actor"], app_id=ids["app"], workflow_id=ids["workflow"]
+    owned = OwnedNativeTest(
+        ref=ref,
+        tenant_id=ids["tenant"],
+        actor_id=ids["actor"],
+        app_id=ids["app"],
+        workflow_id=ids["workflow"],
+        session_id=ids["session"],
+        test_input_id=ids["input"],
+        bindings={},
+        generation=0,
+        task_approved=False,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="running",
     )
     with sqlite_session_factory.begin() as sql:
         for table in (DifyBuilderExecutionRequest.__table__, WorkflowRun.__table__, WorkflowPause.__table__):
@@ -153,8 +177,12 @@ def test_actual_sql_parent_pause_requires_complete_owned_run_chain(sqlite_sessio
                     resumed_at=datetime.now() if drift == "resumed" else None,
                 )
             )
+    loader = OwnedNativeTestLoader(
+        sqlite_session_factory, actor=Actor(tenant_id=owned.tenant_id, account_id=owned.actor_id), resolver=object()
+    )
+    monkeypatch.setattr(loader, "_load", lambda *_, **__: (owned, None))
     continuation = owner().ConfirmedAgentContinuation(
-        loader=SimpleNamespace(_load=lambda *_, **__: (owned, None)),
+        loader=loader,
         store=None,
         operations=None,
         backend=None,

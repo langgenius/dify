@@ -272,7 +272,20 @@ def test_ports_expose_keyword_only_persistence_and_child_invocation_inputs():
     }
     for port, methods in expected.items():
         for name, names in methods.items():
-            params = list(inspect.signature(getattr(port, name)).parameters.values())[1:]
+            methods_by_port = {
+                NativeStatePort: {
+                    "load_context": NativeStatePort.load_context,
+                    "commit_checkpoint": NativeStatePort.commit_checkpoint,
+                    "read_checkpoint": NativeStatePort.read_checkpoint,
+                    "store_result": NativeStatePort.store_result,
+                    "load_result": NativeStatePort.load_result,
+                },
+                ChildInvocationPort: {
+                    "get_or_create": ChildInvocationPort.get_or_create,
+                    "complete": ChildInvocationPort.complete,
+                },
+            }
+            params = list(inspect.signature(methods_by_port[port][name]).parameters.values())[1:]
             assert tuple(param.name for param in params) == names
             assert all(param.kind == inspect.Parameter.KEYWORD_ONLY for param in params)
 

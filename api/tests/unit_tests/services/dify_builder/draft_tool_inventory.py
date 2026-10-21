@@ -1,12 +1,10 @@
 """ENG-1200 external daemon boundary with real declarations and credential SQL."""
 
 from dataclasses import dataclass
-from types import SimpleNamespace
 from typing import cast
 
 import pytest
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.models import Graph
 from repositories.credentials.query_repository import CredentialQueryRepository
@@ -15,6 +13,7 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     TENANT_ID,
     FakeTool,
     FakeToolDaemon,
+    InventoryDatabase,
     bind_database,
     forbid_secret_and_business_calls,
     install_fake_daemon,
@@ -45,13 +44,13 @@ def draft_tools(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Draft
     from services.dify_builder.agent import resources
 
     bind_database(monkeypatch, sqlite_engine)
-    queries = CredentialQueryRepository(session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False))
-    application = SimpleNamespace(credential_queries=queries)
+    application = resources.application_services()
+    queries = application.credential_queries
     # Preserve the actual application-services accessor even for consumers
     # imported before this fixture; replace only the external composition root.
     monkeypatch.setitem(current_app.extensions, application_module._EXTENSION_KEY, application)
     monkeypatch.setattr(resources, "application_services", application_module.application_services)
-    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(workflow_module, "db", InventoryDatabase(engine=sqlite_engine))
     auth = provider_payload(
         "acme/huddle",
         "huddle",

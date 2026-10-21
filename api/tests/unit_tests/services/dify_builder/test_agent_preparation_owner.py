@@ -1,7 +1,6 @@
-"""S1 orchestration and real Flask boundary; SQL/storage/backend doubles are explicit."""
+"""S1 boundaries with real owner/entity types, SQLite ACKs and explicit I/O ports."""
 
 from contextlib import contextmanager
-from types import SimpleNamespace
 
 import pytest
 from flask import Flask
@@ -17,6 +16,7 @@ from runtime_contracts.builder.native.agent_contracts import (
 )
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder.native_testing import state_store as state
+from tests.unit_tests.services.dify_builder import native_owner_fixtures
 
 REF = NativeTestContextRef(request_id="req", invocation_id="inv", context_digest="a" * 64)
 PARENT = AgentParentNodeRef(
@@ -37,49 +37,250 @@ WORKSPACE = AgentTestWorkspaceRef(
 CONFIG = {"composition": {"schema_version": 2, "layers": []}, "session_snapshot": None}
 
 
-class SQLDouble:
-    """One root lock namespace only; this is not a PostgreSQL race proof."""
-
-    def __init__(self):
-        self.rows = []
-        self.locked = False
-
-    def scalar(self, _query):
-        return self.rows[0] if self.rows else None
-
-    def add(self, row):
-        self.rows.append(row)
-
-    def flush(self):
-        pass
-
-    @contextmanager
-    def locked_root(self, **_kwargs):
-        assert not self.locked
-        self.locked = True
-        try:
-            yield self, SimpleNamespace(tenant_id="tenant"), None
-        finally:
-            self.locked = False
+operations_service = native_owner_fixtures.operations_service
+preparation_sql = native_owner_fixtures.preparation_sql
 
 
-def claim_store(monkeypatch):
-    sql = SQLDouble()
-    store = state.NativeExecutionStateStore(SimpleNamespace(locked=sql.locked_root))
-    prep = SimpleNamespace(
+def resolved_context(**updates):
+    from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+
+    return ResolvedNativeTestContext(
+        ref=REF,
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        graph={},
+        inputs={},
+        graph_revision="a" * 64,
+        input_revision="b" * 64,
+        resource_manifest=(),
+        generation=4,
+        root_native_run_id="workflow",
+        native_run_id="workflow",
+        parent_invocation_id=None,
+        call_depth=0,
+        budget_ref="budget",
+        cancellation_ref="cancel",
+        execution_mode="native",
+    ).model_copy(update=updates)
+
+
+def read_authority():
+    from datetime import UTC, datetime
+
+    from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+
+    return PrivateReadOwner(
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        parent_invocation_id=None,
+        context_object_id="context",
+        generation=4,
+        graph_revision="a" * 64,
+        root_revision_matches=True,
+        input_revision="b" * 64,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        cancelled=False,
+        active=True,
+        request_state="running",
+    )
+
+
+def prepared_state():
+    return state._AgentPreparation(
         parent=PARENT,
-        context=SimpleNamespace(tenant_id="tenant", native_run_id="workflow", generation=4),
+        context=resolved_context(),
+        authority=read_authority(),
         workspace=WORKSPACE,
         resource_digest="e" * 64,
         objects=[],
     )
+
+
+def payloads(session):
+    from sqlalchemy import select
+
+    return session.scalars(select(state.NativePayloadObject)).all()
+
+
+def preparation_owner():
+    from datetime import UTC, datetime
+
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
+
+    return OwnedNativeTest(
+        ref=REF,
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=4,
+        task_approved=False,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="running",
+    )
+
+
+def preparation_session(monkeypatch, operations_service, preparation_sql):
+    from datetime import UTC, datetime
+
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
+
+    loader = operations_service.loader
+    session = preparation_sql
+    owned = OwnedNativeTest(
+        ref=REF,
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=4,
+        task_approved=False,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="running",
+    )
+    from models.dify_builder_native_tests import NativeTestScope
+
+    scope = NativeTestScope(
+        tenant_id="tenant",
+        request_id="req",
+        max_calls=10,
+        max_dispatches=10,
+        max_cost_units=10,
+        generation=4,
+        task_approved=False,
+        cancelled=False,
+        expires_at=owned.expires_at,
+        budget_limits={},
+        budget_spent={},
+        profile={},
+    )
+    session.info["locked"] = False
+
+    @contextmanager
+    def locked_root(**_kwargs):
+        assert not session.info["locked"]
+        session.info["locked"] = True
+        try:
+            yield session, owned, scope
+            session.commit()
+        except BaseException:
+            session.rollback()
+            raise
+        finally:
+            session.info["locked"] = False
+
+    monkeypatch.setattr(loader, "locked", locked_root)
+    return session, owned, scope
+
+
+def node_association(monkeypatch, operations_service, context, data):
+    from graphon.runtime import InitParams
+    from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
+    from services.dify_builder.native_testing.control import marked_native_node_class
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+    from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime
+    from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+    from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
+    from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation, NativeRuntimeBridge
+    from services.workflow_runtime.agent_node import DifyAgentNode
+    from tests.unit_tests.services.dify_builder.test_effect_mock import _factory
+
+    store = operations_service.state_store
+    lifecycle = NativeTestLifecycleService(operations_service.loader, state_store=store)
+    host = NativeHostLaunch(
+        context=context,
+        dispatch_id="dispatch",
+        lifetime=NativeHostLifetime(context=context, dispatch_id="dispatch"),
+        journal=NodeOperationJournal(state=store, authorization=operations_service.bridge.authorization),
+        checkpoints=NativeCheckpointBridge(state=store, lifecycle=lifecycle),
+        fence_pending=lifecycle.fence_pending,
+        stop_sealer=lifecycle,
+        authorization=operations_service.bridge.authorization,
+        http_baseline=(1.0, 1.0, 1.0),
+    )
+
+    def unused(**_kwargs):
+        pytest.fail("Node association attempted effect collaborator construction")
+
+    bridge = NativeRuntimeBridge(
+        state=store,
+        collaborators=unused,
+        boundary_owner=host.boundary_owner,
+        control_sink=host.control_sink,
+        node_arguments=unused,
+    )
+    monkeypatch.setattr(bridge, "resolve", lambda _ref: context)
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, AGENT_BACKEND_BASE_URL="http://agent.invalid")
+    factory = _factory(frozenset())
+    node_class = marked_native_node_class(DifyAgentNode, marked=True)
+    association = NativeNodePreparation(
+        bridge=bridge, ref=context.ref, node_id="node", node_class=node_class, runtime_state=factory.runtime_state
+    )
+    node = node_class(
+        node_id="node",
+        data=data,
+        init_params=InitParams(
+            workflow_id="workflow",
+            graph_config=context.graph,
+            run_context=factory.init_params.run_context,
+            call_depth=0,
+        ),
+        runtime_state=factory.runtime_state,
+        native_control_owner=host.boundary_owner,
+        native_control_sink=host.control_sink,
+        **factory._build_agent_node_init_kwargs(node_class=DifyAgentNode),
+    )
+    association.attach(node)
+    node.bind_execution_id(PARENT.execution_id)
+    return association
+
+
+def workspace_service(monkeypatch, operations_service, prepare):
+    from shellctl.shared.schemas import NativeScopeLimits
+
+    from services.dify_builder.native_testing.agent_workspace import AgentTestWorkspaceService
+
+    service = AgentTestWorkspaceService(
+        operations_service.loader,
+        state_store=operations_service.state_store,
+        limits=NativeScopeLimits(
+            cpu_quota=1000,
+            memory_bytes=64 << 20,
+            pids=8,
+            fds=32,
+            wall_seconds=60,
+            input_bytes=1024,
+            output_bytes=4096,
+            disk_bytes=1 << 20,
+        ),
+    )
+    monkeypatch.setattr(service, "prepare", prepare)
+    return service
+
+
+def claim_store(monkeypatch, operations_service, preparation_sql):
+    sql, _owned, _scope = preparation_session(monkeypatch, operations_service, preparation_sql)
+    store = operations_service.state_store
+    prep = prepared_state()
     monkeypatch.setattr(store, "_agent_prepare", lambda **_kwargs: prep)
     monkeypatch.setattr(store, "_agent_recheck", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(store, "_agent_refresh_access", lambda *_args: None, raising=False)
     monkeypatch.setattr(store, "_agent_object", lambda *_args, **_kwargs: None)
 
     def prepare(**_kwargs):
-        assert not sql.locked, "crypto/storage must precede SQL writer"
+        assert not sql.info["locked"], "crypto/storage must precede SQL writer"
         return state.ObjectReceipt(
             "obj",
             "tenant",
@@ -96,9 +297,9 @@ def claim_store(monkeypatch):
     return store, sql
 
 
-def test_claim_observes_first_insertion_under_actual_state_owner(monkeypatch):
+def test_claim_observes_first_insertion_under_actual_state_owner(monkeypatch, operations_service, preparation_sql):
     assert hasattr(state.NativeExecutionStateStore, "claim_agent_create"), "S1 atomic create claim missing"
-    store, sql = claim_store(monkeypatch)
+    store, sql = claim_store(monkeypatch, operations_service, preparation_sql)
     first = store.claim_agent_create(
         ref=REF,
         parent_node=PARENT,
@@ -116,7 +317,7 @@ def test_claim_observes_first_insertion_under_actual_state_owner(monkeypatch):
     assert first.kind == "inserted"
     assert second.kind == "existing"
     assert first.config_ref == second.config_ref
-    assert len(sql.rows) == 1
+    assert len(payloads(sql)) == 1
     assert first.config_digest == canonical_digest(CONFIG)
     with pytest.raises(BuilderExecutionPolicyError):
         store.claim_agent_create(
@@ -128,9 +329,9 @@ def test_claim_observes_first_insertion_under_actual_state_owner(monkeypatch):
         )
 
 
-def test_storage_mutation_invalidates_final_claim(monkeypatch):
+def test_storage_mutation_invalidates_final_claim(monkeypatch, operations_service, preparation_sql):
     assert hasattr(state.NativeExecutionStateStore, "claim_agent_create"), "S1 atomic create claim missing"
-    store, sql = claim_store(monkeypatch)
+    store, sql = claim_store(monkeypatch, operations_service, preparation_sql)
 
     def refuse(*_args, **_kwargs):
         raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
@@ -144,7 +345,7 @@ def test_storage_mutation_invalidates_final_claim(monkeypatch):
             definition_receipt=AgentDefinitionReceipt("node", "s"),
             config=CONFIG,
         )
-    assert not sql.rows
+    assert not payloads(sql)
 
 
 @pytest.mark.parametrize("path", ["prepare-run", "prepared-config"])
@@ -171,7 +372,7 @@ def test_actual_flask_service_auth_stops_before_preparation_lookup(monkeypatch, 
 
 
 @pytest.mark.parametrize("mutation", ["run", "mode", "parent", "digest", "generation"])
-def test_backend_identity_is_read_outside_writer_before_bind(mutation):
+def test_backend_identity_is_read_outside_writer_before_bind(mutation, monkeypatch, operations_service):
     from dify_agent.protocol.native_testing import (
         AgentPrepareRunPayload,
         AgentRuntimeIdentity,
@@ -190,44 +391,49 @@ def test_backend_identity_is_read_outside_writer_before_bind(mutation):
     )
     calls = []
 
-    class Store:
-        def load_prepared_config(self, **_kwargs):
-            calls.append("load")
-            return config
+    def load_prepared_config(**_kwargs):
+        calls.append("load")
+        return config
 
-        def prepared_config_ref(self, **_kwargs):
-            return "cfg"
+    def bind_agent_run(**_kwargs):
+        calls.append("bind")
+        return "association"
 
-        def bind_agent_run(self, **_kwargs):
-            calls.append("bind")
-            return "association"
+    def load_context(**_kwargs):
+        return resolved_context()
 
-        def load_context(self, **_kwargs):
-            return SimpleNamespace(generation=4)
+    store = operations_service.state_store
+    monkeypatch.setattr(store, "load_prepared_config", load_prepared_config)
+    monkeypatch.setattr(store, "bind_agent_run", bind_agent_run)
+    monkeypatch.setattr(store, "load_context", load_context)
 
-    class Backend:
-        def read_run_identity_sync(self, _run_id, _selection):
-            calls.append("backend")
-            raw = {
-                "run_id": "run",
-                "execution_mode": "builder_test",
-                "parent_node": PARENT.model_dump(mode="json"),
-                "request_digest": canonical_digest(CONFIG),
-                "agent_generation": 0,
-            }
-            if mutation == "run":
-                raw["run_id"] = "foreign"
-            if mutation == "mode":
-                raw["execution_mode"] = "ordinary"
-            if mutation == "parent":
-                raw["parent_node"] = PARENT.model_dump(mode="json") | {"input_result_ref": "foreign"}
-            if mutation == "digest":
-                raw["request_digest"] = "f" * 64
-            if mutation == "generation":
-                raw["agent_generation"] = 1
-            return AgentRuntimeIdentity.model_validate(raw)
+    def read_run_identity_sync(_run_id, _selection):
+        calls.append("backend")
+        raw = {
+            "run_id": "run",
+            "execution_mode": "builder_test",
+            "parent_node": PARENT.model_dump(mode="json"),
+            "request_digest": canonical_digest(CONFIG),
+            "agent_generation": 0,
+        }
+        if mutation == "run":
+            raw["run_id"] = "foreign"
+        if mutation == "mode":
+            raw["execution_mode"] = "ordinary"
+        if mutation == "parent":
+            raw["parent_node"] = PARENT.model_dump(mode="json") | {"input_result_ref": "foreign"}
+        if mutation == "digest":
+            raw["request_digest"] = "f" * 64
+        if mutation == "generation":
+            raw["agent_generation"] = 1
+        return AgentRuntimeIdentity.model_validate(raw)
 
-    service = owner.AgentPreparationService(state_store=Store(), backend=Backend(), workspace=None, config_builder=None)
+    from dify_agent.client import Client
+
+    backend = Client(base_url="http://agent.invalid")
+    monkeypatch.setattr(backend, "read_run_identity_sync", read_run_identity_sync)
+
+    service = owner.AgentPreparationService(state_store=store, backend=backend, workspace=None, config_builder=None)
     with pytest.raises(BuilderExecutionPolicyError):
         service.bind_created_run(
             payload=AgentPrepareRunPayload(
@@ -241,7 +447,7 @@ def test_backend_identity_is_read_outside_writer_before_bind(mutation):
 
 
 @pytest.mark.parametrize("routes", [False, True])
-def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(monkeypatch, routes):
+def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(monkeypatch, routes, operations_service):
     from core.app.llm import model_access
     from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
     from services.dify_builder.native_testing.agent_runtime_config import (
@@ -260,11 +466,15 @@ def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(mon
 
     monkeypatch.setattr(model_access, "resolve_model_context_window", forbidden)
 
-    class Declarations:
-        def prepare(self, **_kwargs):
-            return PreparedAgentToolDeclarations(None, None, ())
+    def prepare(**_kwargs):
+        return PreparedAgentToolDeclarations(None, None, ())
 
-    builder = NativeAgentRuntimeConfigBuilder(loader=None, declarations=Declarations())
+    from services.dify_builder.native_testing.agent_tool_declarations import AgentToolDeclarationService
+
+    declarations = AgentToolDeclarationService()
+    monkeypatch.setattr(declarations, "prepare", prepare)
+
+    builder = NativeAgentRuntimeConfigBuilder(loader=operations_service.loader, declarations=declarations)
     soul = AgentSoulConfig.model_validate(
         {
             "model": {
@@ -291,13 +501,7 @@ def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(mon
         ),
         "s",
     )
-    context = SimpleNamespace(
-        tenant_id="tenant",
-        actor_id="actor",
-        app_id="app",
-        workflow_id="workflow-id",
-        native_run_id="workflow",
-    )
+    context = resolved_context(workflow_id="workflow-id")
     request = builder.compose(
         context=context,
         definition=definition,
@@ -331,7 +535,7 @@ def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(mon
 
 
 @pytest.mark.parametrize("kind", ["valid", "duplicate", "lost-ack", "changed-run", "during-backend"])
-def test_callback_idempotency_and_mutation_recheck(kind):
+def test_callback_idempotency_and_mutation_recheck(kind, monkeypatch, operations_service):
     from dify_agent.protocol.native_testing import (
         AgentPrepareRunPayload,
         AgentRuntimeIdentity,
@@ -354,37 +558,45 @@ def test_callback_idempotency_and_mutation_recheck(kind):
     loads = []
     mutated = []
 
-    class Store:
-        def load_context(self, **_kwargs):
-            return SimpleNamespace(generation=4)
+    def load_context(**_kwargs):
+        return resolved_context()
 
-        def load_prepared_config(self, **_kwargs):
-            loads.append(_kwargs)
-            if mutated:
-                return config.model_copy(update={"config_digest": "d" * 64})
-            return config
+    def load_prepared_config(**_kwargs):
+        loads.append(_kwargs)
+        if mutated:
+            return config.model_copy(update={"config_digest": "d" * 64})
+        return config
 
-        def bind_agent_run(self, **_kwargs):
-            association = _kwargs["association"]
-            if rows and rows[0] != association:
-                raise BuilderExecutionPolicyError("native_payload_conflict")
-            if not rows:
-                rows.append(association)
-            return "association"
+    def bind_agent_run(**_kwargs):
+        association = _kwargs["association"]
+        if rows and rows[0] != association:
+            raise BuilderExecutionPolicyError("native_payload_conflict")
+        if not rows:
+            rows.append(association)
+        return "association"
 
-    class Backend:
-        def read_run_identity_sync(self, run_id, selection):
-            if kind == "during-backend":
-                mutated.append(True)
-            return AgentRuntimeIdentity(
-                run_id=run_id,
-                execution_mode="builder_test",
-                parent_node=selection.parent_node,
-                request_digest=selection.request_digest,
-                agent_generation=0,
-            )
+    store = operations_service.state_store
+    monkeypatch.setattr(store, "load_context", load_context)
+    monkeypatch.setattr(store, "load_prepared_config", load_prepared_config)
+    monkeypatch.setattr(store, "bind_agent_run", bind_agent_run)
 
-    service = AgentPreparationService(state_store=Store(), backend=Backend(), workspace=None, config_builder=None)
+    def read_run_identity_sync(run_id, selection):
+        if kind == "during-backend":
+            mutated.append(True)
+        return AgentRuntimeIdentity(
+            run_id=run_id,
+            execution_mode="builder_test",
+            parent_node=selection.parent_node,
+            request_digest=selection.request_digest,
+            agent_generation=0,
+        )
+
+    from dify_agent.client import Client
+
+    backend = Client(base_url="http://agent.invalid")
+    monkeypatch.setattr(backend, "read_run_identity_sync", read_run_identity_sync)
+
+    service = AgentPreparationService(state_store=store, backend=backend, workspace=None, config_builder=None)
     payload = AgentPrepareRunPayload(
         parent_node=PARENT.model_dump(mode="json"),
         agent_run_id="run",
@@ -409,6 +621,8 @@ def test_callback_idempotency_and_mutation_recheck(kind):
 @pytest.mark.parametrize("mutation", ["none", "input", "context", "bound-node", "config"])
 def test_initial_preparation_uses_bound_uuid_typed_inputs_and_rechecks_every_io(
     mutation,
+    monkeypatch,
+    operations_service,
 ):
 
     from dify_agent.protocol.schemas import CreateRunRequest
@@ -429,63 +643,71 @@ def test_initial_preparation_uses_bound_uuid_typed_inputs_and_rechecks_every_io(
         }
     )
     graph = {"nodes": [{"id": "node", "data": data.model_dump(mode="json")}]}
-    context = SimpleNamespace(ref=REF, generation=4, graph=graph)
-    definition = SimpleNamespace(snapshot_id="pin", stamp="s")
+    from dataclasses import replace
+
+    from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+    from services.dify_builder.native_testing.agent_runtime_config import (
+        NativeAgentDefinition,
+        NativeAgentRuntimeConfigBuilder,
+    )
+
+    context = resolved_context(graph=graph)
+    definition = NativeAgentDefinition("node", "agent", "pin", AgentSoulConfig(), WorkflowNodeJobConfig(), "s")
     values = {"query": False, "values": {"start.rows": [1, True, "1"]}}
     current = []
     claims = []
     stored = []
+    association = node_association(monkeypatch, operations_service, context, data)
+    monkeypatch.setattr(
+        association,
+        "resolve",
+        lambda: context.model_copy(update={"generation": 5}) if "context" in current else context,
+    )
+    builder = NativeAgentRuntimeConfigBuilder(loader=operations_service.loader)
+    monkeypatch.setattr(
+        builder,
+        "load_definition",
+        lambda **_kwargs: replace(definition, snapshot_id="other") if "config" in current else definition,
+    )
+    monkeypatch.setattr(
+        builder, "typed_inputs", lambda **_kwargs: {"query": "changed", "values": {}} if "input" in current else values
+    )
 
-    class Association:
-        node_id = "node"
-        execution_id = PARENT.execution_id
-        bound_node = SimpleNamespace(node_data=data)
+    def compose(**kwargs):
+        return CreateRunRequest(
+            composition={"layers": []},
+            execution_mode="builder_test",
+            native_test_ref=REF.model_dump(mode="json"),
+            native_parent_node=kwargs["parent_node"].model_dump(mode="json"),
+            native_test_protocol_version=1,
+        )
 
-        def resolve(self):
-            return SimpleNamespace(ref=REF, generation=5, graph=graph) if "context" in current else context
+    monkeypatch.setattr(builder, "compose", compose)
 
-    class Builder:
-        def load_definition(self, **_kwargs):
-            return SimpleNamespace(snapshot_id="other") if "config" in current else definition
+    def prepare(**_kwargs):
+        current.append(mutation)
+        if mutation == "bound-node":
+            association.bound_node.node_data.agent_task = "mutated"
+        return WORKSPACE
 
-        def typed_inputs(self, **_kwargs):
-            return {"query": "changed", "values": {}} if "input" in current else values
-
-        def compose(self, **_kwargs):
-            return CreateRunRequest(
-                composition={"layers": []},
-                execution_mode="builder_test",
-                native_test_ref=REF.model_dump(mode="json"),
-                native_parent_node=_kwargs["parent_node"].model_dump(mode="json"),
-                native_test_protocol_version=1,
-            )
-
-    class Workspace:
-        def prepare(self, **_kwargs):
-            current.append(mutation)
-            if mutation == "bound-node":
-                data.agent_task = "mutated"
-            return WORKSPACE
-
-    class Store:
-        def store_node_inputs(self, **_kwargs):
-            stored.append(_kwargs)
-            return "input"
-
-        def claim_agent_create(self, **_kwargs):
-            claims.append(_kwargs)
-            return AgentCreateInserted("cfg", canonical_digest(CONFIG))
-
-    service = AgentPreparationService(Store(), None, Workspace(), Builder())
+    workspace = workspace_service(monkeypatch, operations_service, prepare)
+    store = operations_service.state_store
+    monkeypatch.setattr(store, "store_node_inputs", lambda **kwargs: stored.append(kwargs) or "input")
+    monkeypatch.setattr(
+        store,
+        "claim_agent_create",
+        lambda **kwargs: claims.append(kwargs) or AgentCreateInserted("cfg", canonical_digest(CONFIG)),
+    )
+    service = AgentPreparationService(store, None, workspace, builder)
     if mutation == "none":
-        result = service.prepare_initial(association=Association())
+        result = service.prepare_initial(association=association)
         assert result.parent_node.execution_id == PARENT.execution_id
         assert result.parent_node.input_digest == canonical_digest(values)
         assert result.claim.kind == "inserted"
         assert len(claims) == 1
     else:
         with pytest.raises(BuilderExecutionPolicyError):
-            service.prepare_initial(association=Association())
+            service.prepare_initial(association=association)
         assert not claims
     assert stored[0]["generation"] == 4
     assert stored[0]["inputs"] == values
@@ -496,22 +718,15 @@ def test_initial_preparation_uses_bound_uuid_typed_inputs_and_rechecks_every_io(
     "mutation",
     ["none", "parent", "workspace", "run", "owner", "config-ref", "resource"],
 )
-def test_private_config_read_rechecks_exact_stored_owner_and_resource_relations(monkeypatch, mutation):
-    sql = SQLDouble()
-
-    @contextmanager
-    def session_factory():
-        yield sql
-
-    loader = SimpleNamespace(locked=sql.locked_root, session_factory=session_factory)
-    store = state.NativeExecutionStateStore(loader)
-    prep = SimpleNamespace(
-        parent=PARENT,
-        context=SimpleNamespace(tenant_id="tenant", native_run_id="workflow", generation=4),
-        workspace=WORKSPACE,
-        resource_digest="e" * 64,
-        objects=[],
-    )
+def test_private_config_read_rechecks_exact_stored_owner_and_resource_relations(
+    monkeypatch,
+    mutation,
+    operations_service,
+    preparation_sql,
+):
+    sql, _owned, _scope = preparation_session(monkeypatch, operations_service, preparation_sql)
+    store = operations_service.state_store
+    prep = prepared_state()
     value = {
         "schema": "agent-config-v2",
         "parent_node": PARENT.model_dump(mode="json"),
@@ -539,7 +754,9 @@ def test_private_config_read_rechecks_exact_stored_owner_and_resource_relations(
         "a" * 64,
         canonical_digest(value),
     )
-    sql.rows = [SimpleNamespace(**vars(receipt))]
+    sql.add(state.NativePayloadObject(**vars(receipt)))
+    sql.commit()
+    monkeypatch.setattr(store.loader, "session_factory", lambda: sql)
     monkeypatch.setattr(store, "_agent_prepare", lambda **_kwargs: prep)
     monkeypatch.setattr(store, "_agent_refresh_access", lambda *_args: None)
     checked = []
@@ -610,8 +827,9 @@ def test_actual_flask_control_caps_and_validation_before_factory(monkeypatch, pa
 
 def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_and_conflict_safe(
     monkeypatch,
+    operations_service,
 ):
-    """Real Flask→HTTPX SDK wire; SQL/config/storage are explicitly bounded doubles."""
+    """Real Flask→HTTPX SDK wire with explicit identity and storage method ports."""
     import httpx
     from dify_agent.client import Client
     from dify_agent.protocol.native_testing import (
@@ -641,29 +859,28 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
     bindings = []
     reads = []
 
-    class Store:
-        def load_context(self, **_kwargs):
-            return SimpleNamespace(
-                generation=4,
-                tenant_id="tenant",
-                actor_id="actor",
-                app_id="app",
-                native_run_id="workflow",
-            )
+    def load_context(**_kwargs):
+        return resolved_context()
 
-        def load_prepared_config(self, **_kwargs):
-            return owned
+    def load_prepared_config(**_kwargs):
+        return owned
 
-        def discover_agent_run(self, **_kwargs):
-            return bindings[0] if bindings else None
+    def discover_agent_run(**_kwargs):
+        return bindings[0] if bindings else None
 
-        def bind_agent_run(self, **_kwargs):
-            selected = _kwargs["association"]
-            if bindings and selected != bindings[0]:
-                raise BuilderExecutionPolicyError("private-canary")
-            if not bindings:
-                bindings.append(selected)
-            return "association"
+    def bind_agent_run(**_kwargs):
+        selected = _kwargs["association"]
+        if bindings and selected != bindings[0]:
+            raise BuilderExecutionPolicyError("private-canary")
+        if not bindings:
+            bindings.append(selected)
+        return "association"
+
+    store = operations_service.state_store
+    monkeypatch.setattr(store, "load_context", load_context)
+    monkeypatch.setattr(store, "load_prepared_config", load_prepared_config)
+    monkeypatch.setattr(store, "discover_agent_run", discover_agent_run)
+    monkeypatch.setattr(store, "bind_agent_run", bind_agent_run)
 
     def handle(request):
         reads.append(request)
@@ -691,7 +908,7 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
             sync_http_client=http,
         ) as sdk,
     ):
-        service = AgentPreparationService(Store(), sdk, None, None)
+        service = AgentPreparationService(store, sdk, None, None)
         from services.dify_builder.native_testing.agent_lineage import (
             NativeAgentEndpointLineage,
         )
@@ -764,7 +981,7 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
     assert len(reads) == 5
 
 
-def test_config_creation_readback_cap_precedes_decryption_and_sql(monkeypatch):
+def test_config_creation_readback_cap_precedes_decryption_and_sql(monkeypatch, operations_service):
     import inspect
 
     assert "max_bytes" in inspect.signature(state.NativeExecutionStateStore.prepare_object).parameters, (
@@ -776,7 +993,7 @@ def test_config_creation_readback_cap_precedes_decryption_and_sql(monkeypatch):
     monkeypatch.setattr(state.storage, "load", lambda *_args: b"x" * (4096 + 1))
     monkeypatch.setattr(state.encrypter, "decrypt_token", lambda *_args: calls.append("decrypt"))
     with pytest.raises(BuilderExecutionPolicyError):
-        state.NativeExecutionStateStore(None).prepare_object(
+        operations_service.state_store.prepare_object(
             ref=REF,
             tenant_id="tenant",
             kind="result",
@@ -788,10 +1005,9 @@ def test_config_creation_readback_cap_precedes_decryption_and_sql(monkeypatch):
 
 
 @pytest.mark.parametrize("mutation", ["none", "outputs", "routes", "binding-kind"])
-def test_current_published_binding_must_match_graph_outputs_and_routes(monkeypatch, mutation):
-    """Real definition loader and graph renderer, explicit SQL/access stand-ins."""
+def test_current_published_binding_must_match_graph_outputs_and_routes(monkeypatch, mutation, operations_service):
+    """Real definition loader, graph renderer, ORM rows and Session query boundaries."""
     import services.dify_builder.native_testing.agent_runtime_config as config_module
-    from core.dify_builder.models import Actor
     from models.agent import (
         AgentConfigSnapshot,
         WorkflowAgentBindingType,
@@ -812,42 +1028,40 @@ def test_current_published_binding_must_match_graph_outputs_and_routes(monkeypat
     soul = AgentSoulConfig.model_validate(
         {"model": {"plugin_id": "langgenius/openai", "model_provider": "openai", "model": "test"}}
     )
-    agent = SimpleNamespace(tenant_id="tenant", active_config_snapshot_id="pin")
-    snapshot = SimpleNamespace(tenant_id="tenant", agent_id="agent", config_snapshot_dict=soul.model_dump(mode="json"))
-    binding = SimpleNamespace(
+    agent = state.Agent(id="agent", tenant_id="tenant", active_config_snapshot_id="pin")
+    snapshot = AgentConfigSnapshot(id="pin", tenant_id="tenant", agent_id="agent", config_snapshot=soul)
+    binding = WorkflowAgentNodeBinding(
+        id="binding",
+        tenant_id="tenant",
+        app_id="app",
+        workflow_id="workflow",
+        node_id="node",
         agent_id="agent",
         current_snapshot_id="pin",
-        node_job_config_dict=job.model_dump(mode="json"),
+        node_job_config=job,
         binding_type="foreign" if mutation == "binding-kind" else WorkflowAgentBindingType.ROSTER_AGENT,
     )
 
-    class Session:
-        def get(self, model, _identity):
-            return snapshot if model is AgentConfigSnapshot else agent
-
-        def scalar(self, query):
-            return binding if query.column_descriptions[0]["entity"] is WorkflowAgentNodeBinding else agent
-
-    @contextmanager
-    def sessions():
-        yield Session()
-
+    loader = operations_service.loader
+    session = loader.session_factory()
+    monkeypatch.setattr(session, "get", lambda model, _identity: snapshot if model is AgentConfigSnapshot else agent)
+    monkeypatch.setattr(
+        session,
+        "scalar",
+        lambda query: binding if query.column_descriptions[0]["entity"] is WorkflowAgentNodeBinding else agent,
+    )
+    monkeypatch.setattr(loader, "session_factory", lambda: session)
     monkeypatch.setattr(AgentBindingService, "authorize", lambda **_kwargs: None)
     monkeypatch.setattr(AgentBindingService, "recheck_access", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         config_module,
         "validate_invocation_workflow",
-        lambda *_args, **_kwargs: SimpleNamespace(version="draft", _environment_variables="[]"),
+        lambda *_args, **_kwargs: Workflow(version="draft", environment_variables=[]),
     )
-    loader = SimpleNamespace(actor=Actor(account_id="actor", tenant_id="tenant"), session_factory=sessions)
+    from models.workflow import Workflow
+
     builder = config_module.NativeAgentRuntimeConfigBuilder(loader=loader)
-    context = SimpleNamespace(
-        tenant_id="tenant",
-        actor_id="actor",
-        app_id="app",
-        workflow_id="workflow",
-        graph={"nodes": [{"id": "node", "data": data}]},
-    )
+    context = resolved_context(graph={"nodes": [{"id": "node", "data": data}]})
     if mutation == "none":
         assert builder.load_definition(context=context, node_id="node").snapshot_id == "pin"
     else:
@@ -868,7 +1082,9 @@ def test_current_published_binding_must_match_graph_outputs_and_routes(monkeypat
         ("secret_refs", "ref", "opaque-secret-reference"),
     ],
 )
-def test_composer_to_claim_shell_env_is_reference_only(monkeypatch, owner, kind, field, value):
+def test_composer_to_claim_shell_env_is_reference_only(
+    monkeypatch, owner, kind, field, value, operations_service, preparation_sql
+):
     """Actual composer + claim owner; only SQL/storage and declaration I/O are doubles."""
     from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
     from services.dify_builder.native_testing.agent_runtime_config import (
@@ -881,10 +1097,14 @@ def test_composer_to_claim_shell_env_is_reference_only(monkeypatch, owner, kind,
 
     calls = []
 
-    class Declarations:
-        def prepare(self, **_kwargs):
-            calls.append("declarations")
-            return PreparedAgentToolDeclarations(None, None, ())
+    def prepare(**_kwargs):
+        calls.append("declarations")
+        return PreparedAgentToolDeclarations(None, None, ())
+
+    from services.dify_builder.native_testing.agent_tool_declarations import AgentToolDeclarationService
+
+    declarations = AgentToolDeclarationService()
+    monkeypatch.setattr(declarations, "prepare", prepare)
 
     env = {kind: [{"name": "SERVICE_TOKEN", field: value}]}
     soul = AgentSoulConfig.model_validate(
@@ -897,7 +1117,7 @@ def test_composer_to_claim_shell_env_is_reference_only(monkeypatch, owner, kind,
             **({"env": env} if owner == "soul" else {"tools": {"cli_tools": [{"name": "tool", "env": env}]}}),
         }
     )
-    builder = NativeAgentRuntimeConfigBuilder(loader=None, declarations=Declarations())
+    builder = NativeAgentRuntimeConfigBuilder(loader=operations_service.loader, declarations=declarations)
     definition = NativeAgentDefinition(
         "node",
         "agent",
@@ -906,14 +1126,8 @@ def test_composer_to_claim_shell_env_is_reference_only(monkeypatch, owner, kind,
         WorkflowNodeJobConfig(workflow_prompt="Review"),
         "s",
     )
-    context = SimpleNamespace(
-        tenant_id="tenant",
-        actor_id="actor",
-        app_id="app",
-        workflow_id="workflow",
-        native_run_id="workflow",
-    )
-    store, sql = claim_store(monkeypatch)
+    context = resolved_context()
+    store, sql = claim_store(monkeypatch, operations_service, preparation_sql)
     original = store.prepare_object
     persisted = []
 
@@ -943,7 +1157,7 @@ def test_composer_to_claim_shell_env_is_reference_only(monkeypatch, owner, kind,
     if field == "ref":
         assert prepare().kind == "inserted"
         assert "opaque-secret-reference" in str(persisted)
-        assert len(sql.rows) == 1
+        assert len(payloads(sql)) == 1
     else:
         expected = (
             "native_agent_config_credentials" if kind == "secret_refs" else "native_agent_environment_requires_owner"
@@ -951,7 +1165,7 @@ def test_composer_to_claim_shell_env_is_reference_only(monkeypatch, owner, kind,
         with pytest.raises(BuilderExecutionPolicyError, match=expected):
             prepare()
         assert not persisted
-        assert not sql.rows
+        assert not payloads(sql)
         assert not calls, "native env refusal must precede ordinary mapping/declaration helpers"
 
 
@@ -968,7 +1182,9 @@ def test_composer_to_claim_shell_env_is_reference_only(monkeypatch, owner, kind,
         "final-access",
     ],
 )
-def test_composed_definition_receipt_survives_initial_claim_io(monkeypatch, resource, boundary):
+def test_composed_definition_receipt_survives_initial_claim_io(
+    monkeypatch, resource, boundary, operations_service, preparation_sql
+):
     """Actual initial service/composer/claim/resource checks; SQL/access/storage are doubles.
 
     Removing the composition-owned receipt comparison must admit config A after
@@ -1017,16 +1233,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(monkeypatch, reso
             }
         ]
     }
-    context = SimpleNamespace(
-        ref=REF,
-        generation=4,
-        tenant_id="tenant",
-        actor_id="actor",
-        app_id="app",
-        workflow_id="workflow",
-        native_run_id="workflow",
-        graph=graph,
-    )
+    context = resolved_context(graph=graph)
     scope = NativeScopeSpec(
         scope_id="binding",
         generation=9,
@@ -1060,30 +1267,35 @@ def test_composed_definition_receipt_survives_initial_claim_io(monkeypatch, reso
         phase="ready",
     )
     workspace = _ref(allocation)
-    snapshot = SimpleNamespace(
+    snapshot = state.AgentConfigSnapshot(
         id="pin",
         tenant_id="tenant",
         agent_id="agent",
         home_snapshot_id="home",
-        config_snapshot_dict=soul.model_dump(mode="json"),
+        config_snapshot=soul,
     )
-    published = SimpleNamespace(
+    published = state.WorkflowAgentNodeBinding(
+        id="published",
+        tenant_id="tenant",
+        app_id="app",
+        workflow_id="workflow",
+        node_id="node",
         agent_id="agent",
         current_snapshot_id="pin",
         binding_type=state.WorkflowAgentBindingType.ROSTER_AGENT,
-        node_job_config_dict=job.model_dump(mode="json"),
+        node_job_config=job,
     )
     rows = {
         state.AgentConfigSnapshot: snapshot,
-        state.Agent: SimpleNamespace(tenant_id="tenant", active_config_snapshot_id="pin"),
-        state.AgentHomeSnapshot: SimpleNamespace(
+        state.Agent: state.Agent(id="agent", tenant_id="tenant", active_config_snapshot_id="pin"),
+        state.AgentHomeSnapshot: state.AgentHomeSnapshot(
             id="home",
             tenant_id="tenant",
             agent_id="agent",
             status=state.AgentWorkingResourceStatus.ACTIVE,
             snapshot_ref="published-home",
         ),
-        state.AgentWorkspace: SimpleNamespace(
+        state.AgentWorkspace: state.AgentWorkspace(
             id="workspace",
             tenant_id="tenant",
             app_id="app",
@@ -1093,7 +1305,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(monkeypatch, reso
             status=state.AgentWorkingResourceStatus.ACTIVE,
             backend_workspace_ref=workspace.backend_workspace_ref,
         ),
-        state.AgentWorkspaceBinding: SimpleNamespace(
+        state.AgentWorkspaceBinding: state.AgentWorkspaceBinding(
             tenant_id="tenant",
             app_id="app",
             workspace_id="workspace",
@@ -1104,7 +1316,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(monkeypatch, reso
             backend_binding_ref=workspace.backend_binding_ref,
             status=state.AgentWorkingResourceStatus.ACTIVE,
         ),
-        state.NativeTestInvocation: SimpleNamespace(
+        state.NativeTestInvocation: state.NativeTestInvocation(
             active=True,
             tenant_id="tenant",
             request_id="req",
@@ -1120,44 +1332,38 @@ def test_composed_definition_receipt_survives_initial_claim_io(monkeypatch, reso
             return
         changed.append(stage)
         if resource == "snapshot":
-            snapshot.config_snapshot_dict = {
-                **snapshot.config_snapshot_dict,
-                "model": {**snapshot.config_snapshot_dict["model"], "model": "model-B"},
-            }
+            snapshot.config_snapshot = AgentSoulConfig.model_validate(
+                {
+                    **snapshot.config_snapshot_dict,
+                    "model": {**snapshot.config_snapshot_dict["model"], "model": "model-B"},
+                }
+            )
         else:
-            published.node_job_config_dict = {
-                **published.node_job_config_dict,
-                "workflow_prompt": "Task B",
-            }
+            published.node_job_config = WorkflowNodeJobConfig.model_validate(
+                {
+                    **published.node_job_config_dict,
+                    "workflow_prompt": "Task B",
+                }
+            )
 
-    class ResourceSQL(SQLDouble):
-        def get(self, model, _key):
-            return rows[model]
+    sql, owned, scope_row = preparation_session(monkeypatch, operations_service, preparation_sql)
+    original_scalar = sql.scalar
+    monkeypatch.setattr(sql, "get", lambda model, _key: rows[model])
 
-        def scalar(self, query):
-            model = query.column_descriptions[0]["entity"]
-            if model is state.NativePayloadObject:
-                return super().scalar(query)
-            return rows[model]
+    def scalar(query):
+        model = query.column_descriptions[0]["entity"]
+        return original_scalar(query) if model is state.NativePayloadObject else rows[model]
 
-    sql = ResourceSQL()
-
-    @contextmanager
-    def sessions():
-        yield sql
-
-    loader = SimpleNamespace(
-        actor=SimpleNamespace(account_id="actor", tenant_id="tenant"),
-        load=lambda **_kwargs: mutate("claim-loader"),
-        session_factory=sessions,
-        locked=sql.locked_root,
-        _load=lambda *_args, **_kwargs: (SimpleNamespace(tenant_id="tenant"), None),
-    )
-    store = state.NativeExecutionStateStore(loader)
+    monkeypatch.setattr(sql, "scalar", scalar)
+    loader = operations_service.loader
+    monkeypatch.setattr(loader, "load", lambda **_kwargs: mutate("claim-loader"))
+    monkeypatch.setattr(loader, "session_factory", lambda: sql)
+    monkeypatch.setattr(loader, "_load", lambda *_args, **_kwargs: (owned, scope_row))
+    store = operations_service.state_store
 
     def private_read(*_args):
         mutate("claim-rbac")
-        return "authority"
+        return read_authority()
 
     monkeypatch.setattr(state, "validate_private_read", private_read)
     monkeypatch.setattr(store, "_validate_node_inputs_owner", lambda *_args, **_kwargs: None)
@@ -1179,7 +1385,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(monkeypatch, reso
     persisted = []
 
     def prepare_object(**kwargs):
-        assert not sql.locked
+        assert not sql.info["locked"]
         persisted.append(kwargs["payload"])
         mutate("crypto-storage")
         return state.ObjectReceipt(
@@ -1200,7 +1406,9 @@ def test_composed_definition_receipt_survives_initial_claim_io(monkeypatch, reso
         mutate("final-access")
 
     monkeypatch.setattr(store, "_agent_refresh_access", refresh)
-    workflow = SimpleNamespace(version="published", _environment_variables="[]")
+    from models.workflow import Workflow
+
+    workflow = Workflow(version="published", environment_variables=[])
     monkeypatch.setattr(state, "validate_invocation_workflow", lambda *_args, **_kwargs: workflow)
     monkeypatch.setattr(
         config_module,
@@ -1211,27 +1419,29 @@ def test_composed_definition_receipt_survives_initial_claim_io(monkeypatch, reso
     monkeypatch.setattr(AgentBindingService, "recheck_access", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(access_service, "require_builder_agent_access", lambda **_kwargs: None)
 
-    class Declarations:
-        def prepare(self, **_kwargs):
-            return PreparedAgentToolDeclarations(None, None, ())
+    def prepare(**_kwargs):
+        return PreparedAgentToolDeclarations(None, None, ())
 
-    builder = config_module.NativeAgentRuntimeConfigBuilder(loader=loader, declarations=Declarations())
+    from services.dify_builder.native_testing.agent_tool_declarations import AgentToolDeclarationService
+
+    declarations = AgentToolDeclarationService()
+    monkeypatch.setattr(declarations, "prepare", prepare)
+
+    builder = config_module.NativeAgentRuntimeConfigBuilder(loader=loader, declarations=declarations)
     monkeypatch.setattr(builder, "typed_inputs", lambda **_kwargs: inputs)
-    association = SimpleNamespace(
-        node_id="node",
-        execution_id=PARENT.execution_id,
-        bound_node=SimpleNamespace(node_data=DifyAgentNodeData.model_validate(graph["nodes"][0]["data"])),
-        resolve=lambda: context,
+    association = node_association(
+        monkeypatch, operations_service, context, DifyAgentNodeData.model_validate(graph["nodes"][0]["data"])
     )
-    service = AgentPreparationService(store, None, SimpleNamespace(prepare=lambda **_kwargs: workspace), builder)
+    workspace_owner = workspace_service(monkeypatch, operations_service, lambda **_kwargs: workspace)
+    service = AgentPreparationService(store, None, workspace_owner, builder)
     if boundary == "none":
         result = service.prepare_initial(association=association)
         assert result.claim.kind == "inserted"
         assert "model-A" in str(persisted)
         assert "model-B" not in str(persisted)
-        assert len(sql.rows) == 1
+        assert len(payloads(sql)) == 1
     else:
         with pytest.raises(BuilderExecutionPolicyError, match="native_agent_owner_mismatch"):
             service.prepare_initial(association=association)
         assert changed == [boundary]
-        assert not sql.rows, "stale composed bytes must never receive a SQL ACK"
+        assert not payloads(sql), "stale composed bytes must never receive a SQL ACK"

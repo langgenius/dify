@@ -121,7 +121,7 @@ class NativeRepositoryObservation:
 
     @classmethod
     def bind(cls, *, repository: Any, cache: dict, context: ResolvedNativeTestContext, guard: NativeObservationGuard):
-        previous = getattr(repository, "_native_observation", None)
+        previous = repository._native_observation
         if previous is not None:
             if type(previous) is not cls:
                 guard.fail()
@@ -132,7 +132,7 @@ class NativeRepositoryObservation:
         if type(guard) is not NativeObservationGuard:
             raise NativeObservationError() from None
         with guard.persistence_scope():
-            if cache or getattr(repository, "_native_observation_started", False):
+            if cache or repository._native_observation_started:
                 guard.fail()
             return cls(repository=repository, context=context, guard=guard)
 
@@ -264,12 +264,12 @@ class NativeRepositoryObservation:
             self.guard.fail()
         WorkflowExecutionStatus(row.status)
         _identity(row.version)
-        for name in ("total_tokens", "total_steps", "exceptions_count"):
-            _count(getattr(row, name))
+        for value in (row.total_tokens, row.total_steps, row.exceptions_count):
+            _count(value)
         if canonical_json(_json(row.graph)) != canonical_json(self._graph):
             self.guard.fail()
-        for name in ("inputs", "outputs"):
-            self._values(_json(getattr(row, name)))
+        for value in (row.inputs, row.outputs):
+            self._values(_json(value))
         if row.error is not None and (type(row.error) is not str or self._error(row.error) != row.error):
             self.guard.fail()
         return row
@@ -340,8 +340,8 @@ class NativeRepositoryObservation:
             or row.triggered_from != WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
         ):
             self.guard.fail()
-        for name in ("inputs", "outputs", "process_data"):
-            self._values(_json(getattr(row, name)), process=name == "process_data")
+        for name, value in (("inputs", row.inputs), ("outputs", row.outputs), ("process_data", row.process_data)):
+            self._values(_json(value), process=name == "process_data")
         metadata = _json(row.execution_metadata) or {}
         if canonical_json(self.guard._policy._metadata(metadata)) != canonical_json(metadata):
             self.guard.fail()
@@ -426,7 +426,7 @@ class NativeRepositoryObservation:
         self._node_row(row)
         copy = WorkflowNodeExecutionModel()
         for column in inspect(WorkflowNodeExecutionModel).column_attrs:
-            setattr(copy, column.key, deepcopy(getattr(row, column.key)))
+            setattr(copy, column.key, deepcopy(inspect(row).attrs[column.key].value))
         seen = set()
         for link in row.offload_data:
             if link.type_ in seen:
@@ -481,7 +481,7 @@ class NativeRepositoryObservation:
                 self.run_row(row)
                 copied = WorkflowRun()
                 for column in inspect(WorkflowRun).column_attrs:
-                    setattr(copied, column.key, deepcopy(getattr(row, column.key)))
+                    setattr(copied, column.key, deepcopy(inspect(row).attrs[column.key].value))
             result = repository._ordinary_to_domain_model(copied)
             self.check(repository)
             repository._execution_cache[copied.id] = copied
@@ -528,7 +528,7 @@ class NativeRepositoryObservation:
             return None
         if type(row) is not model:
             raise NativeObservationError()
-        values = tuple(getattr(row, column.key) for column in inspect(model).column_attrs)
+        values = tuple(inspect(row).attrs[column.key].value for column in inspect(model).column_attrs)
         allowed = (
             str,
             int,
@@ -587,8 +587,12 @@ class NativeRepositoryObservation:
             signature = self._signature(previous)
             row.offload_data = []
             if data:
-                for name in ("inputs", "outputs", "process_data"):
-                    values = _json(getattr(row, name))
+                for name, value in (
+                    ("inputs", row.inputs),
+                    ("outputs", row.outputs),
+                    ("process_data", row.process_data),
+                ):
+                    values = _json(value)
                     with sensitive_http_telemetry(additional_emitters=_EMITTERS):
                         result = repository._ordinary_truncate_and_upload(values, row.id, ExecutionOffLoadType(name))
                     if result is not None:

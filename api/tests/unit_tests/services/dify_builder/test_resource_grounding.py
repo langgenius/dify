@@ -1,9 +1,11 @@
 """Real catalogue identities and truthful metadata ground Builder edits."""
 
-from types import SimpleNamespace
 from unittest.mock import patch
 
+from core.entities.model_entities import ModelStatus
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from services.dify_builder.agent import resources
+from tests.unit_tests.services.dify_builder.test_resources import _provider_models
 
 
 def catalogue(models):
@@ -29,10 +31,8 @@ def test_catalogue_failure_is_distinct_from_successful_empty():
 
 
 def test_model_binding_uses_exact_source_ids_without_claiming_live_health():
-    model = SimpleNamespace(
-        model="claude-fable-5-1", status="active", deprecated=False, features=[], model_properties={}
-    )
-    with catalogue([SimpleNamespace(provider="langgenius/anthropic/anthropic", models=[model])]):
+    provider = _provider_models("langgenius/anthropic/anthropic", ["claude-fable-5-1"])
+    with catalogue([provider]):
         ref = resources.list_tenant_resources("tenant").models[0]
     assert ref.binding == {"provider": "langgenius/anthropic/anthropic", "name": "claude-fable-5-1"}
     assert ref.availability["configuration"] == "configured"
@@ -41,14 +41,16 @@ def test_model_binding_uses_exact_source_ids_without_claiming_live_health():
 
 
 def test_explicitly_deprecated_models_are_not_candidates():
-    model = SimpleNamespace(model="retired", status="active", deprecated=True)
-    with catalogue([SimpleNamespace(provider="provider", models=[model])]):
+    provider = _provider_models("provider", ["retired"])
+    provider.models[0].deprecated = True
+    with catalogue([provider]):
         assert resources.list_tenant_resources("tenant").models == []
 
 
 def test_visible_model_without_configuration_is_not_ready():
-    model = SimpleNamespace(model="needs-setup", status="no-configure", deprecated=False)
-    with catalogue([SimpleNamespace(provider="provider", models=[model])]):
+    provider = _provider_models("provider", ["needs-setup"])
+    provider.models[0].status = ModelStatus.NO_CONFIGURE
+    with catalogue([provider]):
         ref = resources.list_tenant_resources("tenant").models[0]
     assert ref.readiness == "missing_config"
     assert ref.availability["runtime"] == "unverified"
@@ -661,10 +663,9 @@ def test_selected_model_preserves_declared_mode_for_compatibility():
 
     from services.dify_builder.resource_grounding import ResourceBindingError, validate_changed_resources
 
-    model = SimpleNamespace(
-        model="new", status="active", deprecated=False, features=[], model_properties={"mode": "completion"}
-    )
-    with catalogue([SimpleNamespace(provider="provider", models=[model])]):
+    provider = _provider_models("provider", ["new"])
+    provider.models[0].model_properties = {ModelPropertyKey.MODE: "completion"}
+    with catalogue([provider]):
         directory = resources.list_tenant_resources("tenant")
     graph = model_graph(name="new")  # existing chat mode cannot silently become a completion model
     with pytest.raises(ResourceBindingError, match="resource_configuration_incompatible"):

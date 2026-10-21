@@ -2,7 +2,6 @@
 
 import json
 from dataclasses import asdict
-from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import text
@@ -11,7 +10,8 @@ from sqlalchemy.orm import Session as OrmSession
 
 from core.app.app_config.entities import ModelConfig
 from core.dify_builder.models import BuildNodesResult, Graph
-from graphon.model_runtime.entities.message_entities import PromptMessage
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from models.enums import PermissionEnum
 from services.dify_builder.agent import build
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
@@ -34,8 +34,8 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
 draft_tools = installed_draft_tools
 
 
-class GeneratedPlanModel:
-    """Respond at the LLM boundary; retain the actual shared generator pipeline."""
+class GeneratedPlanResponses:
+    """Hold scripted provider responses and the observed generation requests."""
 
     def __init__(
         self, *, description: str = "User description: notify the support channel.", credential_id: object | None = None
@@ -44,7 +44,7 @@ class GeneratedPlanModel:
         self.credential_id = credential_id
         self.requests = []
 
-    def invoke_llm(self, *, prompt_messages: list[PromptMessage], **kwargs: object) -> SimpleNamespace:  # noqa: ARG002
+    def respond(self, *, prompt_messages: list[PromptMessage], **kwargs: object) -> LLMResult:  # noqa: ARG002
         self.requests.append(prompt_messages)
         prompt = prompt_messages[1].content
         assert isinstance(prompt, str)
@@ -85,17 +85,21 @@ class GeneratedPlanModel:
                 ],
                 "edges": [{"source": "s", "target": "t"}, {"source": "t", "target": "e"}],
             }
-        return SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: json.dumps(payload)), usage=None)
+        return LLMResult(
+            model="x", message=AssistantPromptMessage(content=json.dumps(payload)), usage=LLMUsage.empty_usage()
+        )
 
 
-def generate_draft(monkeypatch: pytest.MonkeyPatch, model: object) -> BuildNodesResult:
+def generate_draft(monkeypatch: pytest.MonkeyPatch, responses: GeneratedPlanResponses) -> BuildNodesResult:
     config = ModelConfig.model_validate({"provider": "anthropic", "name": "x", "mode": "chat"})
     monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: config)  # noqa: ARG005
-    monkeypatch.setattr(
-        ModelManager,
-        "for_tenant",
-        lambda **kw: SimpleNamespace(get_model_instance=lambda **kw: model),  # noqa: ARG005
-    )
+    from tests.unit_tests.core.model_fixtures import make_model_instance
+
+    model = make_model_instance(provider=config.provider, model=config.name)
+    monkeypatch.setattr(model, "invoke_llm", responses.respond)
+    manager = ModelManager.for_tenant(tenant_id=TENANT_ID)
+    monkeypatch.setattr(manager, "get_model_instance", lambda **_kwargs: model)
+    monkeypatch.setattr(ModelManager, "for_tenant", lambda **_kwargs: manager)
     return build.build_nodes(
         TENANT_ID,
         {},
@@ -114,7 +118,7 @@ def test_generated_unauthenticated_tool_has_real_schema_topology_outputs_and_vis
     draft_tools: DraftToolInventory,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    result = generate_draft(monkeypatch, GeneratedPlanModel())
+    result = generate_draft(monkeypatch, GeneratedPlanResponses())
     config = tool_config(result)
     assert (config["provider_id"], config["provider_type"], config["tool_name"]) == (AUTH_PROVIDER, "builtin", "post")
     assert config["plugin_id"] == "acme/huddle"
@@ -143,7 +147,7 @@ def test_generated_unauthenticated_tool_has_real_schema_topology_outputs_and_vis
 def test_repeated_builder_pass_does_not_duplicate_setup_note_or_overwrite_user_edits(
     draft_tools: DraftToolInventory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    model = GeneratedPlanModel()
+    model = GeneratedPlanResponses()
     first = tool_config(generate_draft(monkeypatch, model))["desc"]
     model.description = first
     second = tool_config(generate_draft(monkeypatch, model))["desc"]
@@ -169,7 +173,7 @@ def test_generated_private_credential_is_removed_without_discarding_the_installe
         user_id=ACCOUNT_B,
         visibility=PermissionEnum.ONLY_ME,
     )
-    model = GeneratedPlanModel(credential_id=private.id)
+    model = GeneratedPlanResponses(credential_id=private.id)
     result = generate_draft(monkeypatch, model)
     config = tool_config(result)
     assert not config.get("credential_id")
@@ -192,7 +196,7 @@ def test_credential_query_failure_still_binds_verified_installation_with_a_verif
         None, TENANT_ID, ["tool node posts to Huddle"], [f"{AUTH_PROVIDER}/post"], account_id=ACCOUNT_A
     )
     assert f"[{AUTH_PROVIDER}/post]" in "\n".join(bound)
-    config = tool_config(generate_draft(monkeypatch, GeneratedPlanModel()))
+    config = tool_config(generate_draft(monkeypatch, GeneratedPlanResponses()))
     assert "verif" in config["desc"].lower()
     assert draft_tools.forbidden == []
 
@@ -246,7 +250,7 @@ def test_generated_configured_tool_preserves_authorized_selection_and_user_descr
         provider=AUTH_PROVIDER,
         user_id=ACCOUNT_A,
     )
-    config = tool_config(generate_draft(monkeypatch, GeneratedPlanModel(credential_id=credential.id)))
+    config = tool_config(generate_draft(monkeypatch, GeneratedPlanResponses(credential_id=credential.id)))
     assert config["credential_id"] == credential.id
     assert config["desc"] == "User description: notify the support channel."
     assert draft_tools.forbidden == []

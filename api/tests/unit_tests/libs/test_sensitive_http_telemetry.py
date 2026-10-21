@@ -22,6 +22,7 @@ from dify_app import DifyApp
 from extensions import ext_logging
 from extensions.otel import instrumentation
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.logging_helpers import protect_existing_log_routes
 
 CANARY = "nw4-secret-query-canary"
 URL = f"https://example.invalid/private-path?token={CANARY}"
@@ -43,10 +44,14 @@ def application_logs(
     logfile = tmp_path / "application.log"
     apply_config_overrides(monkeypatch, LOG_FILE=str(logfile), LOG_LEVEL="INFO", LOG_OUTPUT_FORMAT="text", LOG_TZ="")
     owned_handlers: list[logging.Handler] = []
+    engine = logging.getLogger("sqlalchemy.engine")
+    monkeypatch.setattr(engine, "level", engine.level)
+    monkeypatch.setattr(engine, "propagate", engine.propagate)
 
     def initialize() -> tuple[io.StringIO, Path]:
         # Pytest attaches its capture handlers between setup and call phases.
         # Initialize the real app during the call, preserving those test sinks.
+        protect_existing_log_routes(monkeypatch, emitters=telemetry()._HTTP_LOGGERS)
         root.handlers = []
         monkeypatch.setattr(ext_logging.sys, "stdout", output)
         ext_logging.init_app(DifyApp(__name__))
@@ -56,7 +61,7 @@ def application_logs(
     try:
         yield initialize
     finally:
-        for handler in set(owned_handlers + root.handlers).difference(old_handlers):
+        for handler in set(owned_handlers).difference(old_handlers):
             handler.close()
         root.handlers = old_handlers
         root.setLevel(old_level)

@@ -24,7 +24,7 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
-from testcontainers.core.wait_strategies import LogMessageWaitStrategy
+from testcontainers.core.wait_strategies import ExecWaitStrategy, LogMessageWaitStrategy
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
@@ -108,7 +108,19 @@ class DifyTestContainers:
             # data in bounded tmpfs to reduce I/O from full-schema TRUNCATE cleanup.
             tmpfs={"/var/lib/postgresql/data": "rw,size=2g"},
         ).with_network(self.network)
-        self.postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
+        # The initialization server logs readiness before shutting down and
+        # accepts Unix sockets only. A real authenticated TCP query witnesses
+        # the final server; this avoids racing that temporary server's exit.
+        self.postgres.waiting_for(
+            ExecWaitStrategy(
+                [
+                    "sh",
+                    "-c",
+                    'PGPASSWORD="$POSTGRES_PASSWORD" psql --username "$POSTGRES_USER" '
+                    '--dbname "$POSTGRES_DB" --host 127.0.0.1 -tAc "SELECT 1"',
+                ]
+            ).with_startup_timeout(30)
+        )
         self.postgres.start()
         db_host = self.postgres.get_container_host_ip()
         db_port = self.postgres.get_exposed_port(5432)

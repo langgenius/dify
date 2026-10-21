@@ -3,15 +3,14 @@
 import json
 from collections.abc import Callable
 from copy import deepcopy
-from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock
 
 import pytest
 
 from core.dify_builder.models import Graph, MutationIntent
 from core.workflow.generator.types import GraphDict
-from graphon.model_runtime.entities.message_entities import PromptMessage
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from services.dify_builder.native_http_output_contract import (
     aliased_http_output,
     declares_http_output,
@@ -24,6 +23,7 @@ from services.dify_builder.native_http_output_contract import (
 from services.dify_builder.preflight import new_preflight_problems, preflight_errors, vet_intents
 from services.workflow_generation.graph_normalizers import derive_if_else_var_types
 from services.workflow_generation.runner import WorkflowGenerator
+from tests.unit_tests.core.model_fixtures import make_model_instance
 
 
 def http_graph(operator: str = "is", value: str = "private-expected-value") -> Graph:
@@ -265,35 +265,38 @@ def build_messages(
         plan_changes(nodes)
     captured: dict[str, list[PromptMessage]] = {}
 
-    def invoke_llm(*, prompt_messages: list[PromptMessage], **_kwargs: object) -> MagicMock:
+    def invoke_llm(*, prompt_messages: list[PromptMessage], **_kwargs: object) -> LLMResult:
         user = str(prompt_messages[1].content)
         node_id = next(node["id"] for node in nodes if f"id={node['id']}, type=" in user)
         captured[node_id] = prompt_messages
-        result = MagicMock()
-        result.message.get_text_content.return_value = '{"config":{}}'
-        return result
+        return LLMResult(
+            model="gpt-4o", message=AssistantPromptMessage(content='{"config":{}}'), usage=LLMUsage.empty_usage()
+        )
 
-    WorkflowGenerator._run_parallel_node_builders(
-        model_instance=SimpleNamespace(invoke_llm=invoke_llm),
-        model_parameters={},
-        provider="openai",
-        model_name="gpt-4o",
-        model_mode="chat",
-        mode="workflow",
-        instruction="Original health goal: private-goal",
-        ideal_output="",
-        plan_nodes=nodes,
-        plan_edges=[
-            {"source": "http-a", "target": "middle"},
-            {"source": "middle", "target": "consumer"},
-            {"source": "http-b", "target": "consumer"},
-        ],
-        tool_catalogue_text="",
-        tool_catalogue_entries=[],
-        start_inputs=[],
-        node_outputs=node_outputs or {},
-        current_graph=current_graph,
-    )
+    model_instance = make_model_instance(provider="openai", model="gpt-4o")
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(model_instance, "invoke_llm", invoke_llm)
+        WorkflowGenerator._run_parallel_node_builders(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Original health goal: private-goal",
+            ideal_output="",
+            plan_nodes=nodes,
+            plan_edges=[
+                {"source": "http-a", "target": "middle"},
+                {"source": "middle", "target": "consumer"},
+                {"source": "http-b", "target": "consumer"},
+            ],
+            tool_catalogue_text="",
+            tool_catalogue_entries=[],
+            start_inputs=[],
+            node_outputs=node_outputs or {},
+            current_graph=current_graph,
+        )
     return captured
 
 

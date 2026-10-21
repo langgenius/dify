@@ -145,6 +145,8 @@ def test_publish_workflow_returns_success(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     advisory: str,
+    sqlite_engine,
+    mocker,
 ) -> None:
     current_user = SimpleNamespace(id="account-1")
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
@@ -179,16 +181,10 @@ def test_publish_workflow_returns_success(
         )
     session = Mock()
     session.get.return_value = app_model
-    monkeypatch.setattr(
-        workflow_module,
-        "WorkflowService",
-        Mock(
-            return_value=SimpleNamespace(
-                prepare_draft_tool_publish=lambda **_kwargs: None,
-                publish_workflow=Mock(return_value=workflow),
-            )
-        ),
-    )
+    workflow_service = workflow_module.WorkflowService(sessionmaker(bind=sqlite_engine))
+    mocker.patch.object(workflow_service, "prepare_draft_tool_publish", return_value=None)
+    mocker.patch.object(workflow_service, "publish_workflow", return_value=workflow)
+    monkeypatch.setattr(workflow_module, "WorkflowService", lambda: workflow_service)
     monkeypatch.setattr(
         workflow_module,
         "sessionmaker",

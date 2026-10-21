@@ -85,7 +85,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
-cd "$SCRIPT_DIR/../api"
+cd "$SCRIPT_DIR/../api" || exit 1
 
 if [[ -n "${ENV_FILE}" ]]; then
   if [[ ! -f "${ENV_FILE}" ]]; then
@@ -96,6 +96,8 @@ if [[ -n "${ENV_FILE}" ]]; then
   echo "Loading environment variables from ${ENV_FILE}"
   # Export everything sourced from the env file
   set -a
+  # Environment assignments follow the repository's documented API env schema.
+  # shellcheck source=../api/.env.example
   source "${ENV_FILE}"
   set +a
 fi
@@ -124,4 +126,4 @@ echo "  Log Level: ${LOGLEVEL}"
 
 uv run \
   celery -A app.celery worker \
-  -P ${POOL} -c ${CONCURRENCY} --loglevel ${LOGLEVEL} -Q ${QUEUES}
+  -P "${POOL}" -c "${CONCURRENCY}" --loglevel "${LOGLEVEL}" -Q "${QUEUES}"

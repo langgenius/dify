@@ -8,7 +8,7 @@ back to an ordinary generator or synthesizes a successful Run.
 from __future__ import annotations
 
 from collections.abc import Callable, Generator, Iterator, Mapping
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -23,6 +23,11 @@ from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBri
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+
+
+@runtime_checkable
+class _ClosableNativeSource(Protocol):
+    def close(self) -> None: ...
 
 
 class NativeWorkflowOwner(Protocol):
@@ -278,7 +283,6 @@ class NativeGeneratorStream:
         try:
             self._events.close()
         finally:
-            close = getattr(self._source, "close", None)
-            if close is not None:
-                close()
+            if isinstance(self._source, _ClosableNativeSource):
+                self._source.close()
         self._closed = True

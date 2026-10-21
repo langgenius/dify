@@ -288,9 +288,22 @@ def _bound_request(db: Session, context: ExecutionContext, *, lock: bool) -> Dif
     row = db.scalar(statement)
     if row is None or row.context_digest != context.context_digest or row.context != context.model_dump(mode="json"):
         raise BuilderExecutionPolicyError("execution_request_mismatch")
-    for name in ("tenant_id", "app_id", "workflow_id", "actor_id", "session_id", "test_input_id"):
-        if getattr(row, name) != getattr(context, name):
-            raise BuilderExecutionPolicyError("execution_owner_mismatch")
+    if (
+        row.tenant_id,
+        row.app_id,
+        row.workflow_id,
+        row.actor_id,
+        row.session_id,
+        row.test_input_id,
+    ) != (
+        context.tenant_id,
+        context.app_id,
+        context.workflow_id,
+        context.actor_id,
+        context.session_id,
+        context.test_input_id,
+    ):
+        raise BuilderExecutionPolicyError("execution_owner_mismatch")
     return row
 
 
@@ -375,9 +388,7 @@ def _json_owner_state(owner: ExecutionOwnerSnapshot, snapshot: RestrictedAdmissi
 
 
 def _json_binding_digest(context: JsonToolExecutionContext) -> str:
-    return InstalledJsonParse(
-        **{field: getattr(context.qualified_tool, field) for field in InstalledJsonParse.__dataclass_fields__}
-    ).binding_digest
+    return InstalledJsonParse.from_binding(context.qualified_tool).binding_digest
 
 
 class BuilderExecutionPolicyService:
@@ -480,10 +491,12 @@ class BuilderExecutionPolicyService:
             assert json_state is not None
             installed = resolve_installed_json_parse(tenant_id=actor.tenant_id)
             check_execution_permission(actor, app_id, self._session_factory)
-            qualified = QualifiedJsonToolBinding(
-                node_id=json_values["admitted_nodes"][1].node_id,
-                **{name: getattr(installed, name) for name in installed.__dataclass_fields__},
-                final_parameters_digest=json_values.pop("final_parameters_digest"),
+            qualified = QualifiedJsonToolBinding.model_validate(
+                {
+                    "node_id": json_values["admitted_nodes"][1].node_id,
+                    **installed.binding_fields(),
+                    "final_parameters_digest": json_values.pop("final_parameters_digest"),
+                }
             )
             json_values["qualified_tool"] = qualified
             initial_json = JsonToolExecutionContext.model_validate({**json_values, "context_digest": "0" * 64})
@@ -891,55 +904,62 @@ class BuilderExecutionPolicyService:
                     ):
                         raise BuilderExecutionPolicyError("native_execution_owner_mismatch")
             # Raw SQL projections avoid offloaded payload I/O under the short sidecar lock.
-            run_fields = (
-                "id",
-                "tenant_id",
-                "app_id",
-                "workflow_id",
-                "created_by",
-                "created_by_role",
-                "triggered_from",
-                "type",
-                "version",
-                "graph",
-                "inputs",
-                "status",
-                "outputs",
-                "error",
-                "finished_at",
-                "total_steps",
-                "exceptions_count",
+            run_values = (
+                {
+                    "id": native.id,
+                    "tenant_id": native.tenant_id,
+                    "app_id": native.app_id,
+                    "workflow_id": native.workflow_id,
+                    "created_by": native.created_by,
+                    "created_by_role": native.created_by_role,
+                    "triggered_from": native.triggered_from,
+                    "type": native.type,
+                    "version": native.version,
+                    "graph": native.graph,
+                    "inputs": native.inputs,
+                    "status": native.status,
+                    "outputs": native.outputs,
+                    "error": native.error,
+                    "finished_at": native.finished_at,
+                    "total_steps": native.total_steps,
+                    "exceptions_count": native.exceptions_count,
+                }
+                if native is not None
+                else None
             )
-            node_fields = (
-                "id",
-                "node_execution_id",
-                "node_id",
-                "node_type",
-                "index",
-                "predecessor_node_id",
-                "status",
-                "finished_at",
-                "process_data",
-                "execution_metadata",
-                "inputs",
-                "outputs",
-                "error",
-            )
+            node_values = [
+                {
+                    "id": node.id,
+                    "node_execution_id": node.node_execution_id,
+                    "node_id": node.node_id,
+                    "node_type": node.node_type,
+                    "index": node.index,
+                    "predecessor_node_id": node.predecessor_node_id,
+                    "status": node.status,
+                    "finished_at": node.finished_at,
+                    "process_data": node.process_data,
+                    "execution_metadata": node.execution_metadata,
+                    "inputs": node.inputs,
+                    "outputs": node.outputs,
+                    "error": node.error,
+                }
+                for node in sorted(nodes, key=lambda node: (node.index, node.id))
+            ]
 
-            def projection(value, fields):
+            def projection(values):
                 return {
                     key: (
-                        getattr(value, key).isoformat()
-                        if key == "finished_at" and getattr(value, key)
-                        else getattr(value, key).value
-                        if isinstance(getattr(value, key), Enum)
-                        else getattr(value, key)
+                        value.isoformat()
+                        if key == "finished_at" and value
+                        else value.value
+                        if isinstance(value, Enum)
+                        else value
                     )
-                    for key in fields
+                    for key, value in values.items()
                 }
 
-            native_projection = projection(native, run_fields) if native is not None else None
-            node_projection = [projection(n, node_fields) for n in sorted(nodes, key=lambda n: (n.index, n.id))]
+            native_projection = projection(run_values) if run_values is not None else None
+            node_projection = [projection(values) for values in node_values]
             fingerprint = canonical_digest(
                 {
                     "completion": completion.model_dump(mode="json"),

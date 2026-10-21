@@ -8,7 +8,6 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from threading import Event, get_ident
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -32,6 +31,7 @@ from services.agent.workspace_service import AgentWorkspaceService
 from services.dify_builder.native_testing.agent_workspace import AgentTestWorkspaceService
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import AgentWorkspaceCase
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414 - shared pytest fixture
 )
@@ -206,7 +206,7 @@ def workspace_case(native_owner, no_live, monkeypatch):
         yield backend
 
     monkeypatch.setattr(AgentWorkspaceService, "_client", client)
-    yield SimpleNamespace(
+    yield AgentWorkspaceCase(
         ledger=c,
         service=service,
         ref=c.ref,

@@ -27,6 +27,7 @@ from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 from runtime_contracts.builder.execution import TrustedExecutionCompletion
 from services.dify_builder.application import execution_policy as domain
+from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, policy
 
 type Owned = tuple[sessionmaker[Session], Actor, App, Workflow, str, str]
@@ -316,7 +317,6 @@ def test_full_owner_chain_required(owned: Owned, owner: str) -> None:
 
 
 def test_owner_helpers_are_exported_once_for_shared_callers(owned: Owned, monkeypatch: pytest.MonkeyPatch) -> None:
-    from configs import dify_config
     from services.enterprise.rbac_service import RBACService
 
     factory, actor, app, workflow, sid, tid = owned
@@ -335,7 +335,7 @@ def test_owner_helpers_are_exported_once_for_shared_callers(owned: Owned, monkey
         with pytest.raises(policy().BuilderExecutionPolicyError, match="execution_owner_mismatch"):
             module.load_execution_owners(db, app_id=str(uuid4()), actor=actor)
     module.check_execution_permission(actor, app.id, factory)
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(RBACService.CheckAccess, "check", lambda *_args, **_kwargs: False)
     with pytest.raises(policy().BuilderExecutionPolicyError, match="execution_permission_denied"):
         module.check_execution_permission(actor, app.id, factory)
@@ -706,14 +706,13 @@ def test_append_verifies_fixture_node_implementation_profile_and_bound_limit(own
 def test_native_rbac_requires_both_scenes_and_allows_delegated_membership(
     owned: Owned, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from configs import dify_config
     from core.rbac import RBACPermission
     from services.enterprise.rbac_service import RBACService
 
     factory, actor, app, workflow, sid, tid = owned
     with factory.begin() as db:
         db.query(TenantAccountJoin).update({"role": TenantAccountRole.NORMAL})
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     calls = []
 
     def check(
@@ -733,7 +732,6 @@ def test_native_rbac_requires_both_scenes_and_allows_delegated_membership(
 
 
 def test_native_rbac_plain_app_maintainer_bypass_is_persisted(owned: Owned, monkeypatch: pytest.MonkeyPatch) -> None:
-    from configs import dify_config
     from services.enterprise.rbac_service import RBACService
 
     factory, actor, app, workflow, sid, tid = owned
@@ -742,7 +740,7 @@ def test_native_rbac_plain_app_maintainer_bypass_is_persisted(owned: Owned, monk
         assert stored_app is not None
         stored_app.maintainer = actor.account_id
         db.query(TenantAccountJoin).update({"role": TenantAccountRole.NORMAL})
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         RBACService.CheckAccess, "check", lambda *_args, **_kwargs: pytest.fail("maintainer bypass called RPC")
     )
@@ -753,7 +751,6 @@ def test_native_rbac_plain_app_maintainer_bypass_is_persisted(owned: Owned, monk
 def test_native_rbac_agent_app_binding_precedes_maintainer_bypass(
     owned: Owned, monkeypatch: pytest.MonkeyPatch, status: str
 ) -> None:
-    from configs import dify_config
     from models.agent import Agent, AgentScope, AgentSource, AgentStatus
     from services.enterprise.rbac_service import RBACService
 
@@ -774,7 +771,7 @@ def test_native_rbac_agent_app_binding_precedes_maintainer_bypass(
                 app_id=app.id,
             )
         )
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         RBACService.CheckAccess, "check", lambda *_args, **_kwargs: pytest.fail("Agent guard called RPC")
     )

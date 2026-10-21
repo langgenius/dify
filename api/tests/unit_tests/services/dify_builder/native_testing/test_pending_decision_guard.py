@@ -1,10 +1,15 @@
 """Post-read guard compares the complete frozen checkpoint identity."""
 
 import importlib.util
-from types import SimpleNamespace
 
 import pytest
 
+from models.dify_builder_native_tests import (
+    NativeContinuation,
+    NativeEffectOperation,
+    NativeInvocationState,
+    NativePendingAction,
+)
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTestContextRef, operation_digest
 from tests.unit_tests.services.dify_builder.native_testing.test_pending_intents import effect
@@ -71,10 +76,10 @@ def test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner(
             resolved=resolved,
             tenant_id="t",
             app_id="app",
-            pending=SimpleNamespace(**p),
-            operation=SimpleNamespace(**o),
-            state=SimpleNamespace(**s),
-            continuation=SimpleNamespace(**checkpoint),
+            pending=NativePendingAction(**p),
+            operation=NativeEffectOperation(**o),
+            state=NativeInvocationState(context_object_id="context", resolution=[], **s),
+            continuation=NativeContinuation(payload_ref="private-checkpoint", **checkpoint),
             scope_digest="e" * 64,
             expected_version=1,
         )

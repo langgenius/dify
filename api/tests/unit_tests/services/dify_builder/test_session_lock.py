@@ -15,6 +15,7 @@ import pytest
 from configs import dify_config
 from extensions.redis_names import serialize_redis_name
 from services.dify_builder import session_lock
+from tests.unit_tests.config_override import apply_config_overrides
 
 SESSION_ID = "11111111-1111-1111-1111-111111111111"
 
@@ -183,7 +184,7 @@ def test_release_frees_the_lock_when_redis_key_prefix_is_set(monkeypatch: pytest
     that serialization, release()'s eval reads the unprefixed key (always nil), the compare-del
     never matches, and the lock is never freed until its TTL expires.
     """
-    monkeypatch.setattr(dify_config, "REDIS_KEY_PREFIX", "px")
+    apply_config_overrides(monkeypatch, REDIS_KEY_PREFIX="px")
     fake = FakeRedis()
     with patch("services.dify_builder.session_lock.redis_client", fake):
         token = session_lock.acquire(SESSION_ID)

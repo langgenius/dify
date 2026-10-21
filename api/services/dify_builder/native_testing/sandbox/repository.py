@@ -14,7 +14,7 @@ from time import monotonic
 from typing import Never, Protocol
 
 from pydantic import TypeAdapter
-from sqlalchemy import or_, select, text
+from sqlalchemy import inspect, or_, select, text
 from sqlalchemy.orm import Session
 
 from models.dify_builder_native_code import NativeCodePhysicalOperation
@@ -92,7 +92,7 @@ class NativeCodePhysicalRepository:
         acquisition_owner: CodeAcquisitionOwner,
         transaction_deadline: Callable[[bool], float],
     ):
-        if acquisition_owner is None or not callable(getattr(acquisition_owner, "check_current", None)):
+        if not isinstance(acquisition_owner, CodeAcquisitionOwner) or not callable(acquisition_owner.check_current):
             raise BuilderExecutionPolicyError("native_code_acquisition_owner_required")
         if not callable(transaction_deadline):
             raise BuilderExecutionPolicyError("native_code_transaction_deadline_required")
@@ -247,7 +247,7 @@ class NativeCodePhysicalRepository:
 
     @staticmethod
     def _snapshot(row: NativeCodePhysicalOperation, ref: NativeTestContextRef) -> CodePhysicalRef:
-        data = {column.name: getattr(row, column.name) for column in row.__table__.columns}
+        data = {attribute.key: attribute.value for attribute in inspect(row).attrs}
         acquisition = CodeAcquisitionRef(
             ref=ref.model_copy(update={"invocation_id": data.pop("root_invocation_id")}),
             root_dispatch_id=data.pop("host_dispatch_id"),
@@ -386,7 +386,7 @@ class NativeCodePhysicalRepository:
             _refuse()
         actual = self._snapshot(row, owned.ref)
         for name in CodePhysicalRef.model_fields:
-            if name not in _MUTABLE and getattr(actual, name) != getattr(physical, name):
+            if name not in _MUTABLE and dict(actual)[name] != dict(physical)[name]:
                 _refuse()
         if (row.tenant_id, row.actor_id, row.request_id, row.invocation_id) != (
             owned.tenant_id,

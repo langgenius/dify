@@ -617,9 +617,9 @@ def _provider_capability(
 ) -> tuple[str, str, list[str]]:
     """Provider label, description and tags from its declaration identity."""
     identity = provider.entity.identity
-    label = _i18n_text(getattr(identity, "label", None))
-    description = _i18n_text(getattr(identity, "description", None))
-    tags = [str(tag) for tag in (getattr(identity, "tags", None) or [])]
+    label = _i18n_text(identity.label)
+    description = _i18n_text(identity.description)
+    tags = [str(tag) for tag in (identity.tags or [])]
     return label, description, tags
 
 

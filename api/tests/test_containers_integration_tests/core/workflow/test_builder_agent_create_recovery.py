@@ -34,8 +34,13 @@ def test_postgres_concurrent_reservations_allow_exactly_one_create(flask_app_wit
             binding_id=str(uuid4()),
             process_data={"workflow_agent_binding_id": scope.workflow_binding_id},
         )
-        for name in ("tenant_id", "app_id", "workflow_id", "node_id"):
-            setattr(row, name, getattr(scope, name))
+        for name, value in (
+            ("tenant_id", scope.tenant_id),
+            ("app_id", scope.app_id),
+            ("workflow_id", scope.workflow_id),
+            ("node_id", scope.node_id),
+        ):
+            setattr(row, name, value)
         row.created_by = str(uuid4())
         row.node_execution_id = str(uuid4())
         with factory.begin() as session:

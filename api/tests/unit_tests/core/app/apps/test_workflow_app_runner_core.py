@@ -5,16 +5,15 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import override
-from unittest.mock import Mock
 
 import pytest
 from pydantic import ValidationError
 
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
+    QueueHumanInputFormFilledEvent,
     QueueIterationCompletedEvent,
     QueueIterationStartEvent,
     QueueLoopCompletedEvent,
@@ -42,6 +41,7 @@ from graphon.engine_events import (
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
+    NodeRunHumanInputFormFilledEvent,
     NodeRunIterationStartedEvent,
     NodeRunIterationSucceededEvent,
     NodeRunLoopFailedEvent,
@@ -59,6 +59,7 @@ from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecution
 from graphon.graph import Graph
 from graphon.node_events import NodeRunResult
 from graphon.runtime import RuntimeState, VariablePool
+from graphon.variables.segments import StringSegment
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow
 from services.workflow_run_index import WorkflowRunIndex
@@ -75,6 +76,21 @@ def _workflow(graph: dict[str, object] | None = None) -> Workflow:
         graph=json.dumps(graph or {}, default=str),
         created_by="account",
     )
+
+
+def _workflow_graph(runner: WorkflowBasedAppRunner, state: RuntimeState | None = None) -> Graph:
+    state = state or RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
+    graph = runner._init_graph(
+        graph_config={
+            "nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}],
+            "edges": [],
+        },
+        graph_runtime_state=state,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+    return graph
 
 
 def _workflow_entry(runner: WorkflowBasedAppRunner, state: RuntimeState | None = None) -> WorkflowEntry:
@@ -346,7 +362,12 @@ class TestWorkflowBasedAppRunner:
         assert graph_config == original_config
 
     def test_ordinary_init_graph_keeps_python_mode_typed_serialization(self, monkeypatch: pytest.MonkeyPatch):
-        runner = WorkflowBasedAppRunner(queue_manager=Mock(spec=AppQueueManager), app_id="app")
+        runner = WorkflowBasedAppRunner(
+            queue_manager=WorkflowAppQueueManager(
+                task_id="serialization", user_id="account", invoke_from=InvokeFrom.DEBUGGER, app_mode="workflow"
+            ),
+            app_id="app",
+        )
         runtime_state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
         raw_graph = {
             "nodes": [
@@ -365,14 +386,19 @@ class TestWorkflowBasedAppRunner:
         original = deepcopy(raw_graph)
         captured = {}
 
+        from services.workflow_runtime.base_runner import DifyNodeFactory
+
+        original_factory = DifyNodeFactory.from_graph_init_context
+        prepared_graph = _workflow_graph(runner)
+
         def capture_context(**kwargs):
             captured["graph"] = kwargs["graph_init_context"].graph_config
-            return Mock()
+            return original_factory(**kwargs)
 
         monkeypatch.setattr(
             "services.workflow_runtime.base_runner.DifyNodeFactory.from_graph_init_context", capture_context
         )
-        monkeypatch.setattr("services.workflow_runtime.base_runner.Graph.init", lambda **_kwargs: Mock())
+        monkeypatch.setattr("services.workflow_runtime.base_runner.Graph.init", lambda **_kwargs: prepared_graph)
         runner._init_graph(
             graph_config=raw_graph,
             graph_runtime_state=runtime_state,
@@ -451,14 +477,17 @@ class TestWorkflowBasedAppRunner:
             ],
         }
         expected_graph_config = deepcopy(graph_config)
-        workflow = SimpleNamespace(tenant_id="tenant", id="workflow", graph_dict=graph_config)
+        workflow = _workflow(graph_config)
+        workflow.id = "workflow"
         user_inputs = {"question": "hello"}
         expected_user_inputs = dict(user_inputs)
         captured_graph_config = {}
 
+        prepared_graph = _workflow_graph(runner)
+
         def fake_graph_init(**kwargs):
             captured_graph_config["value"] = kwargs["graph_config"]
-            return SimpleNamespace()
+            return prepared_graph
 
         class _NodeCls:
             @staticmethod
@@ -600,10 +629,12 @@ class TestWorkflowBasedAppRunner:
             def extract_variable_selector_to_variable_mapping(graph_config, config):
                 return {}
 
+        prepared_graph = _workflow_graph(runner)
+
         def _graph_init(**kwargs):
             variable_pool = graph_runtime_state.variable_pool
             assert variable_pool.get(["sys", "conversation_id"]) is not None
-            return SimpleNamespace()
+            return prepared_graph
 
         monkeypatch.setattr(
             "services.workflow_runtime.base_runner.Graph.init",
@@ -682,6 +713,36 @@ class TestWorkflowBasedAppRunner:
         paused_event = next(event for event, _ in published if isinstance(event, QueueWorkflowPausedEvent))
         assert paused_event.paused_nodes == ["node-1"]
         assert emails
+
+    def test_handle_human_input_form_filled_event_preserves_submitted_data(self):
+        published: list[object] = []
+
+        class RecordingQueue:
+            def publish(self, event, publish_from):
+                del publish_from
+                published.append(event)
+
+        runner = WorkflowBasedAppRunner(queue_manager=RecordingQueue(), app_id="app")
+        submitted = {"decision": StringSegment(value="approve")}
+        runner.handle_event(
+            _workflow_entry(runner),
+            NodeRunHumanInputFormFilledEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.HUMAN_INPUT,
+                node_title="Human Input",
+                rendered_content="content",
+                action_id="approve",
+                action_text="Approve",
+                submitted_data=submitted,
+            ),
+        )
+        event = published[-1]
+        assert isinstance(event, QueueHumanInputFormFilledEvent)
+        assert event.form_id == "exec"
+        assert event.node_id == "node"
+        assert event.action_id == "approve"
+        assert event.submitted_data == submitted
 
     def test_handle_graph_aborted_publishes_stopped_terminal(self):
         published: list[object] = []

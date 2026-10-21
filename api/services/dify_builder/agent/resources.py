@@ -19,6 +19,7 @@ configuration proves runtime health or a supplier lifecycle state.
 
 import logging
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
 
 from pydantic import JsonValue
@@ -28,10 +29,12 @@ from sqlalchemy.orm import Session
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry, build_tool_catalogue, tool_capability_text
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from models.dataset import Dataset
 from models.provider_ids import ToolProviderID
 from runtime_contracts.builder.execution import canonical_digest
 from services.dify_builder import trace_diagnostics as diagnostics
+from services.entities.model_provider_entities import ProviderWithModelsResponse
 from services.model_provider.service import ModelProviderService
 
 logger = logging.getLogger(__name__)
@@ -78,7 +81,7 @@ class TenantResources:
     tool_source_error: str | None = None
 
 
-def _list_models(tenant_id: str) -> list[Any]:
+def _list_models(tenant_id: str) -> list[ProviderWithModelsResponse]:
     return ModelProviderService().get_models_by_model_type(tenant_id=tenant_id, model_type="llm")
 
 
@@ -234,24 +237,26 @@ def list_tenant_resources(
     def build_models():
         models: list[ResourceRef] = []
         for prov in _list_models(tenant_id):
-            for m in getattr(prov, "models", []):
-                name = getattr(m, "model", "")
-                if not name or getattr(m, "deprecated", False):
+            for m in prov.models:
+                name = m.model
+                if not name or m.deprecated:
                     continue
-                raw_status = getattr(m, "status", "unknown")
-                status = str(getattr(raw_status, "value", raw_status))
+                raw_status = m.status
+                status = str(raw_status.value if isinstance(raw_status, Enum) else raw_status)
                 if status in {"disabled", "deprecated", "retired"}:
                     continue
                 model_id = f"{prov.provider}/{name}"
-                properties = getattr(m, "model_properties", {}) or {}
-                raw_mode = properties.get("mode") if isinstance(properties, dict) else None
-                mode = str(getattr(raw_mode, "value", raw_mode)) if raw_mode is not None else ""
+                properties = m.model_properties or {}
+                raw_mode = properties.get(ModelPropertyKey.MODE) if isinstance(properties, dict) else None
+                mode = str(raw_mode.value if isinstance(raw_mode, Enum) else raw_mode) if raw_mode is not None else ""
                 contract: dict[str, JsonValue] = {}
                 if mode in {"chat", "completion"}:
                     contract["mode"] = mode
-                raw_features = getattr(m, "features", None)
+                raw_features = m.features
                 if isinstance(raw_features, list):
-                    contract["features"] = [str(getattr(feature, "value", feature)) for feature in raw_features]
+                    contract["features"] = [
+                        str(feature.value if isinstance(feature, Enum) else feature) for feature in raw_features
+                    ]
                 models.append(
                     ResourceRef(
                         id=model_id,

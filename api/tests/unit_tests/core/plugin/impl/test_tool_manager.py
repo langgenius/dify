@@ -9,16 +9,14 @@ from core.plugin.impl.exc import PluginDaemonError
 from core.plugin.impl.tool import PluginToolManager
 
 
-def _tool_provider(name: str = "provider") -> SimpleNamespace:
-    return SimpleNamespace(
-        plugin_id="org/plugin",
-        provider=name,
-        plugin_unique_identifier=f"org/plugin:0.0.1@{'0' * 64}",
-        declaration=SimpleNamespace(
-            identity=SimpleNamespace(name=name),
-            tools=[SimpleNamespace(identity=SimpleNamespace(provider=""))],
-        ),
-    )
+def _tool_provider(name: str = "provider"):
+    from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _provider
+
+    provider = _provider(plugin_id="org/plugin", provider=name, plugin_unique_identifier=f"org/plugin:0.0.1@{'0' * 64}")
+    provider.declaration.identity.name = name
+    for tool in provider.declaration.tools:
+        tool.identity.provider = ""
+    return provider
 
 
 class TestPluginToolManager:

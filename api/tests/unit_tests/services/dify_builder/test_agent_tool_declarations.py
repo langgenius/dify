@@ -2,13 +2,16 @@
 
 import importlib
 import importlib.util
-from types import SimpleNamespace
 from typing import cast
 
 import pytest
 
 from core.tools.entities.tool_entities import ToolEntity
 from models.agent_config_entities import AgentSoulToolsConfig
+from tests.unit_tests.services.dify_builder import native_owner_fixtures
+
+operations_service = native_owner_fixtures.operations_service
+preparation_sql = native_owner_fixtures.preparation_sql
 
 
 def service_module():
@@ -83,12 +86,27 @@ def test_default_plugin_metadata_path_does_not_call_dynamic_or_credential_runtim
     def forbidden(*_args, **_kwargs):
         pytest.fail("Inert declarations touched dynamic schema, decryption, or OAuth")
 
-    tool = SimpleNamespace(
-        entity=entity(), get_merged_runtime_parameters=forbidden, get_llm_parameters_json_schema=forbidden
+    from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
+    from core.tools.plugin_tool.provider import PluginToolProviderController
+    from core.tools.plugin_tool.tool import PluginTool
+
+    provider = ToolProviderEntityWithPlugin.model_validate(
+        {
+            "identity": {
+                "author": "test",
+                "name": "provider",
+                "description": {"en_US": "Provider"},
+                "icon": "icon.svg",
+                "label": {"en_US": "Provider"},
+            },
+            "credentials_schema": [{"name": "token", "type": "secret-input"}],
+            "plugin_id": "test/plugin",
+            "tools": [entity()],
+        }
     )
-    controller = SimpleNamespace(
-        need_credentials=True, plugin_unique_identifier="test/plugin@sha", get_tools=lambda: [tool]
-    )
+    controller = PluginToolProviderController(provider, "test/plugin", "test/plugin@sha", "tenant")
+    monkeypatch.setattr(PluginTool, "get_merged_runtime_parameters", forbidden)
+    monkeypatch.setattr(PluginTool, "get_llm_parameters_json_schema", forbidden)
     monkeypatch.setattr(ToolManager, "get_plugin_provider", lambda *_args: controller)
     monkeypatch.setattr(ToolManager, "get_agent_tool_runtime", forbidden)
     monkeypatch.setattr(OAuthHandler, "refresh_credentials", forbidden)
@@ -145,11 +163,10 @@ def test_default_plugin_metadata_path_does_not_call_dynamic_or_credential_runtim
         "self_fence",
     ],
 )
-def test_same_permit_validation_does_not_claim_or_spend(change):
+def test_same_permit_validation_does_not_claim_or_spend(change, monkeypatch, operations_service):
     from contextlib import contextmanager
     from copy import deepcopy
     from datetime import UTC, datetime, timedelta
-    from typing import override
 
     from models.dify_builder import DifyBuilderExecutionRequest
     from models.dify_builder_native_tests import (
@@ -171,14 +188,35 @@ def test_same_permit_validation_does_not_claim_or_spend(change):
     permit = DispatchPermit(
         permit_id="permit", attempt_id="attempt", operation_id="operation", expires_at=expiry.isoformat()
     )
-    operation = SimpleNamespace(
+    operation = NativeEffectOperation(
         id="operation",
+        tenant_id="tenant",
+        request_id=ref.request_id,
+        invocation_id=ref.invocation_id,
         operation_digest=operation_digest(effect.key),
         intent_digest=canonical_digest(effect.model_dump(mode="json")),
         scope_digest=_scope_digest(effect, trusted),
         state="claimed",
     )
-    attempt = SimpleNamespace(expires_at=expiry)
+    from models.dify_builder_native_tests import NativeEffectAttempt
+
+    attempt = NativeEffectAttempt(
+        id="attempt",
+        tenant_id="tenant",
+        request_id=ref.request_id,
+        invocation_id=ref.invocation_id,
+        operation_id="operation",
+        grant_id="grant",
+        dispatch_index=1,
+        permit_digest="a" * 64,
+        expires_at=expiry,
+        cost_units=1,
+        budget_reservation_ref="reservation",
+        execution_id="execution",
+        invocation_digest="b" * 64,
+        budget={},
+        profile={},
+    )
     if change == "intent":
         operation.intent_digest = "f" * 64
     if change == "key":
@@ -192,23 +230,47 @@ def test_same_permit_validation_does_not_claim_or_spend(change):
     if change == "permit_expiry":
         permit = permit.model_copy(update={"expires_at": (expiry + timedelta(seconds=1)).isoformat()})
 
-    request = SimpleNamespace(
-        id=ref.request_id, tenant_id="tenant", context_digest=ref.context_digest, app_id="app", workflow_id="workflow"
+    request = DifyBuilderExecutionRequest(
+        id=ref.request_id,
+        tenant_id="tenant",
+        context_digest=ref.context_digest,
+        app_id="app",
+        workflow_id="workflow",
+        actor_id="actor",
+        session_id="session",
+        test_input_id="input",
+        context={},
     )
-    scope = SimpleNamespace(tenant_id="tenant", request_id=ref.request_id, expires_at=expiry, cancelled=False)
-    state = SimpleNamespace(
+    scope = NativeTestScope(
+        tenant_id="tenant",
+        request_id=ref.request_id,
+        expires_at=expiry,
+        cancelled=False,
+        max_calls=1,
+        max_dispatches=1,
+        max_cost_units=1,
+        generation=0,
+        task_approved=False,
+        budget_limits={},
+        budget_spent={},
+        profile={},
+    )
+    state = NativeInvocationState(
         tenant_id="tenant",
         request_id=ref.request_id,
         invocation_id=ref.invocation_id,
         parent_invocation_id=None,
         app_id="app",
         workflow_id="workflow",
+        context_object_id="context-object",
+        generation=0,
+        resolution=[],
         state="running",
         pending_ids=["pending"] if change == "self_fence" else [],
         wait_reason="approval" if change == "self_fence" else None,
     )
-    invocation = SimpleNamespace(
-        tenant_id="tenant", request_id=ref.request_id, invocation_id=ref.invocation_id, active=True
+    invocation = NativeTestInvocation(
+        tenant_id="tenant", request_id=ref.request_id, invocation_id=ref.invocation_id, active=True, bindings={}
     )
     scalar_rows = {
         NativeEffectOperation: operation,
@@ -241,48 +303,55 @@ def test_same_permit_validation_does_not_claim_or_spend(change):
     def forbidden_write(*_args, **_kwargs):
         pytest.fail("validation mutated the dispatch ledger")
 
-    session = SimpleNamespace(
-        scalar=scalar,
-        scalars=scalars,
-        add=forbidden_write,
-        add_all=forbidden_write,
-        execute=forbidden_write,
-        flush=forbidden_write,
-        commit=forbidden_write,
-        delete=forbidden_write,
-    )
+    session = operations_service.loader.session_factory()
+    monkeypatch.setattr(session, "scalar", scalar)
+    monkeypatch.setattr(session, "scalars", scalars)
+    for method in ("add", "add_all", "execute", "flush", "commit", "delete"):
+        monkeypatch.setattr(session, method, forbidden_write)
     facts = (operation, attempt, request, scope, state, invocation)
-    before = deepcopy([vars(fact) for fact in facts])
+
+    def snapshot_facts():
+        return [{key: value for key, value in vars(fact).items() if key != "_sa_instance_state"} for fact in facts]
+
+    before = deepcopy(snapshot_facts())
     permit_before = permit.model_dump(mode="json")
+
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
+
+    owned = OwnedNativeTest(
+        ref=ref,
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=0,
+        task_approved=False,
+        expires_at=expiry,
+        state="running",
+    )
 
     @contextmanager
     def locked(**_kwargs):
-        yield (
-            session,
-            SimpleNamespace(tenant_id="tenant", ref=ref),
-            scope,
-        )
+        yield session, owned, scope
 
-    loader = SimpleNamespace(load=lambda **_kwargs: None, locked=locked)
-
-    class Service(EffectAuthorizationService):
-        def _permit_ref(self, _permit):
-            return ref.model_copy(update={"invocation_id": "foreign"}) if change == "owner" else ref
-
-        def _attempt(self, *_args):
-            return attempt
-
-        def _binding(self, *_args):
-            return trusted
-
-        def _claim(self, *_args):
-            pytest.fail("validation spent a second permit")
-
-        @override
-        def claim_dispatch(self, **_kwargs):
-            pytest.fail("validation consumed a physical dispatch claim")
-
-    service = Service(loader, clock=lambda: now)
+    loader = operations_service.loader
+    monkeypatch.setattr(loader, "load", lambda **_kwargs: owned)
+    monkeypatch.setattr(loader, "locked", locked)
+    service = EffectAuthorizationService(loader, clock=lambda: now)
+    monkeypatch.setattr(
+        service,
+        "_permit_ref",
+        lambda _permit: ref.model_copy(update={"invocation_id": "foreign"}) if change == "owner" else ref,
+    )
+    monkeypatch.setattr(service, "_attempt", lambda *_args: attempt)
+    monkeypatch.setattr(service, "_binding", lambda *_args: trusted)
+    monkeypatch.setattr(service, "_claim", lambda *_args: pytest.fail("validation spent a second permit"))
+    monkeypatch.setattr(
+        service, "claim_dispatch", lambda **_kwargs: pytest.fail("validation consumed a physical dispatch claim")
+    )
     assert hasattr(service, "validate_dispatch"), "Same-permit validator is missing"
     if change is None:
         assert service.validate_dispatch(ref=ref, intent=effect, permit=permit) is None
@@ -295,23 +364,60 @@ def test_same_permit_validation_does_not_claim_or_spend(change):
     else:
         with pytest.raises(BuilderExecutionPolicyError):
             service.validate_dispatch(ref=ref, intent=effect, permit=permit)
-    assert [vars(fact) for fact in facts] == before
+    assert snapshot_facts() == before
+    session.close()
     assert permit.model_dump(mode="json") == permit_before
 
 
 def test_marked_request_builder_stops_missing_ref_before_metadata():
+    from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from core.workflow.nodes.agent_v2.runtime_request_builder import (
+        WorkflowAgentRuntimeBuildContext,
         WorkflowAgentRuntimeRequestBuilder,
         WorkflowAgentRuntimeRequestBuildError,
     )
+    from graphon.runtime import VariablePool
+    from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
+    from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 
-    context = SimpleNamespace(dify_context=SimpleNamespace(native_test_required=True, native_test_ref=None))
+    context = WorkflowAgentRuntimeBuildContext(
+        dify_context=DifyRunContext(
+            tenant_id="tenant",
+            app_id="app",
+            user_id="actor",
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            native_test_required=True,
+            native_test_ref=None,
+        ),
+        workflow_id="workflow",
+        workflow_run_id="run",
+        node_id="node",
+        node_execution_id="execution",
+        variable_pool=VariablePool(),
+        binding=WorkflowAgentNodeBinding(
+            id="binding",
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            node_id="node",
+            agent_id="agent",
+            current_snapshot_id="snapshot",
+            node_job_config=WorkflowNodeJobConfig(),
+        ),
+        agent=Agent(id="agent", tenant_id="tenant", name="Agent"),
+        snapshot=AgentConfigSnapshot(
+            id="snapshot", tenant_id="tenant", agent_id="agent", version=1, config_snapshot=AgentSoulConfig()
+        ),
+        binding_id="binding",
+        backend_binding_ref="binding-ref",
+    )
     with pytest.raises(WorkflowAgentRuntimeRequestBuildError, match="authority"):
         WorkflowAgentRuntimeRequestBuilder().build(context)
 
 
 @pytest.mark.parametrize("kind", ["waiting", "stop", "recorded", "dispatch"])
-def test_private_bridge_maps_exact_decisions_without_losing_payload(kind):
+def test_private_bridge_maps_exact_decisions_without_losing_payload(kind, monkeypatch, operations_service):
     from dify_agent.protocol.native_testing import AgentEffectIntent, AgentNativeTestRef
 
     from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit, PolicyStop, RecordedResult
@@ -339,15 +445,16 @@ def test_private_bridge_maps_exact_decisions_without_losing_payload(kind):
         seen.append(kwargs)
         return decisions[kind]
 
+    monkeypatch.setattr(operations_service.bridge.authorization, "before_call", before_call)
     bridge = module.AgentNativeTestingBridge(
-        authorization=SimpleNamespace(before_call=before_call), readiness=None, materializer=None, fence=None
+        authorization=operations_service.bridge.authorization, readiness=None, materializer=None, fence=None
     )
     response = bridge.before_call(ref=ref, intent=AgentEffectIntent.model_validate(effect.model_dump(mode="json")))
     assert response.model_dump(mode="json") == decisions[kind].model_dump(mode="json")
     assert seen[0]["intent"] == effect
 
 
-def test_materialization_rejects_phase_mismatch_and_missing_fence_before_io():
+def test_materialization_rejects_phase_mismatch_and_missing_fence_before_io(monkeypatch, operations_service):
     from dify_agent.protocol.native_testing import AgentDispatchPermit, AgentEffectIntent, AgentNativeTestRef
 
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
@@ -358,11 +465,16 @@ def test_materialization_rejects_phase_mismatch_and_missing_fence_before_io():
     )
     module = importlib.import_module("services.dify_builder.native_testing.agent_bridge")
     calls = []
+    authorization = operations_service.bridge.authorization
+    monkeypatch.setattr(authorization, "validate_dispatch", lambda **_kwargs: calls.append("validated"))
+    materializer = module.NativeAgentCredentialMaterializer(
+        authorization=authorization, resolve_binding=lambda **_kwargs: pytest.fail("materialized without durable fence")
+    )
+    monkeypatch.setattr(
+        materializer, "materialize", lambda **_kwargs: pytest.fail("materialized without durable fence")
+    )
     bridge = module.AgentNativeTestingBridge(
-        authorization=SimpleNamespace(validate_dispatch=lambda **_kwargs: calls.append("validated")),
-        readiness=None,
-        materializer=SimpleNamespace(materialize=lambda **_kwargs: pytest.fail("materialized without durable fence")),
-        fence=None,
+        authorization=authorization, readiness=None, materializer=materializer, fence=None
     )
     kwargs = {
         "ref": AgentNativeTestRef(
@@ -397,17 +509,11 @@ def test_private_native_routes_require_existing_service_auth(path):
 
 
 @pytest.mark.parametrize("reason", ["approval", "configuration", "interaction"])
-def test_private_before_call_bridge_serialization_preserves_wait_reason(reason):
+def test_private_before_call_bridge_serialization_preserves_wait_reason(reason, monkeypatch, operations_service):
     from dify_agent.adapters.native_testing.client import AgentBeforeCallPayload
 
     from controllers.inner_api.agent.native_testing import AgentBeforeCallResponse
     from runtime_contracts.builder.native.contracts import ApprovalWait
-    from services.dify_builder.native_testing.agent_bridge import (
-        AgentNativeTestingBridge,
-    )
-    from services.dify_builder.native_testing.authorization import (
-        EffectAuthorizationService,
-    )
     from tests.unit_tests.services.dify_builder.native_testing.test_authorization import (
         intent,
     )
@@ -429,11 +535,11 @@ def test_private_before_call_bridge_serialization_preserves_wait_reason(reason):
         calls.append(kwargs)
         return ApprovalWait(pending_operation_id="pending", wait_reason=reason)
 
+    monkeypatch.setattr(operations_service.bridge.authorization, "before_call", before_call)
+    from services.dify_builder.native_testing.agent_bridge import AgentNativeTestingBridge
+
     bridge = AgentNativeTestingBridge(
-        authorization=cast(EffectAuthorizationService, SimpleNamespace(before_call=before_call)),
-        readiness=None,
-        materializer=None,
-        fence=None,
+        authorization=operations_service.bridge.authorization, readiness=None, materializer=None, fence=None
     )
     decision = bridge.before_call(ref=payload.ref, intent=payload.intent)
     assert AgentBeforeCallResponse(root=decision).model_dump(mode="json") == {
@@ -446,7 +552,7 @@ def test_private_before_call_bridge_serialization_preserves_wait_reason(reason):
     assert calls[0]["intent"].model_dump(mode="json") == payload.intent.model_dump(mode="json")
 
 
-def test_native_credential_phases_wait_refresh_then_business_without_double_spend():
+def test_native_credential_phases_wait_refresh_then_business_without_double_spend(monkeypatch, operations_service):
     from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit, RecordedResult
     from services.dify_builder.native_testing import agent_bridge as module
     from tests.unit_tests.services.dify_builder.native_testing.test_authorization import intent
@@ -465,21 +571,30 @@ def test_native_credential_phases_wait_refresh_then_business_without_double_spen
         permit,
         RecordedResult(operation_id="operation", result_ref="receipt"),
     ]
-    auth = SimpleNamespace(
-        before_call=lambda **kw: calls.append(("authorize", kw["intent"].kind)) or decisions.pop(0),
-        record_outcome=lambda **kw: calls.append(("outcome", kw["outcome"])),
+    from dify_agent.adapters.native_testing.client import AgentMaterialization
+
+    auth = operations_service.bridge.authorization
+    monkeypatch.setattr(
+        auth, "before_call", lambda **kw: calls.append(("authorize", kw["intent"].kind)) or decisions.pop(0)
     )
-    owner = module.NativeAgentCredentialPhases(
-        authorization=auth,
-        materializer=SimpleNamespace(
-            materialize=lambda **kw: (
-                calls.append(("refresh", kw["phase"]))
-                or SimpleNamespace(runtime_parameters={"credential_ref": "rotated"})
+    monkeypatch.setattr(auth, "record_outcome", lambda **kw: calls.append(("outcome", kw["outcome"])))
+    materializer = module.NativeAgentCredentialMaterializer(
+        authorization=auth, resolve_binding=lambda **_kwargs: pytest.fail("unexpected credential resolution")
+    )
+    monkeypatch.setattr(
+        materializer,
+        "materialize",
+        lambda **kw: (
+            calls.append(("refresh", kw["phase"]))
+            or AgentMaterialization(
+                credential_type="oauth2", credentials={}, runtime_parameters={"credential_ref": "rotated"}
             )
         ),
-        state_store=SimpleNamespace(
-            store_result=lambda **_kw: "receipt", load_result=lambda **_kw: {"credential_ref": "rotated"}
-        ),
+    )
+    monkeypatch.setattr(operations_service.state_store, "store_result", lambda **_kw: "receipt")
+    monkeypatch.setattr(operations_service.state_store, "load_result", lambda **_kw: {"credential_ref": "rotated"})
+    owner = module.NativeAgentCredentialPhases(
+        authorization=auth, materializer=materializer, state_store=operations_service.state_store
     )
     assert owner.refresh(ref="ref", intent=refresh).kind == "waiting"
     assert calls == [("authorize", "oauth")]
@@ -490,21 +605,21 @@ def test_native_credential_phases_wait_refresh_then_business_without_double_spen
     assert calls.count(("refresh", "refresh")) == 1
 
 
-def test_native_materializer_phase_rejected_before_credential_selection():
+def test_native_materializer_phase_rejected_before_credential_selection(operations_service):
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from services.dify_builder.native_testing import agent_bridge as module
     from tests.unit_tests.services.dify_builder.native_testing.test_authorization import intent
 
     assert hasattr(module, "NativeAgentCredentialMaterializer"), "Native credential materializer is missing"
     owner = module.NativeAgentCredentialMaterializer(
-        authorization=SimpleNamespace(),
+        authorization=operations_service.bridge.authorization,
         resolve_binding=lambda **_kw: pytest.fail("Phase mismatch reached credential selection"),
     )
     with pytest.raises(BuilderExecutionPolicyError, match="native_materialization_phase_mismatch"):
         owner.materialize(ref=None, intent=intent(), permit=None, tool_ref=intent().resource_ref, phase="refresh")
 
 
-def test_actual_native_materializer_uses_existing_oauth_owner_then_cas_before_business(monkeypatch):
+def test_actual_native_materializer_uses_existing_oauth_owner_then_cas_before_business(monkeypatch, operations_service):
     from core.dify_builder.models import Actor
     from core.dify_builder.real_call_consent import CredentialReference
     from core.plugin.impl.oauth import OAuthHandler
@@ -524,26 +639,51 @@ def test_actual_native_materializer_uses_existing_oauth_owner_then_cas_before_bu
         oauth_client_revision="b" * 64,
         expires_at=1,
     )
-    snapshot = SimpleNamespace(reference=reference, encrypted_credentials='{"token":"fixture"}', client="client")
-    selection = SimpleNamespace(snapshot=snapshot, owner_user_id="owner")
+    from dataclasses import replace
+
+    from services.tools.builder_credential_reference import (
+        BuilderCredentialSnapshot,
+        CredentialAccessSnapshot,
+        OAuthClientSnapshot,
+    )
+    from services.tools.builtin_tools_manage_service import BuilderCredentialRuntime
+
+    snapshot = BuilderCredentialSnapshot(
+        reference=reference,
+        encrypted_credentials='{"token":"fixture"}',
+        client=OAuthClientSnapshot(source="tenant", row_id="client", encrypted_params="{}", enabled=True),
+        access=CredentialAccessSnapshot(basis="owner", account_id="actor", tenant_id="tenant", grants=()),
+    )
+    selection = BuilderCredentialRuntime(snapshot=snapshot, owner_user_id="owner")
     binding = module.AgentCredentialBinding(
         actor, "resource", "test/plugin/provider", "credential", True, "revision", "configuration-owner"
     )
     events = []
-    controller = SimpleNamespace(plugin_unique_identifier="revision", get_credentials_schema_by_type=lambda _: [])
+    from core.tools.plugin_tool.provider import PluginToolProviderController
+    from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _provider
+
+    controller = PluginToolProviderController(
+        entity=_provider().declaration,
+        plugin_id="test/plugin",
+        plugin_unique_identifier="revision",
+        tenant_id="tenant",
+    )
+    monkeypatch.setattr(controller, "get_credentials_schema_by_type", lambda _: [])
     monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_a: controller)
     monkeypatch.setattr(module.BuiltinToolManageService, "load_builder_credential", lambda **_kw: selection)
     monkeypatch.setattr(
         module.BuiltinToolManageService, "decrypt_builder_oauth_client", lambda **_kw: {"client": "fixture"}
     )
     monkeypatch.setattr("core.helper.credential_utils.runtime_check_credential_policy_compliance", lambda **_kw: None)
-    monkeypatch.setattr(
-        "core.tools.utils.encryption.create_provider_encrypter",
-        lambda **_kw: (
-            SimpleNamespace(decrypt=lambda value: events.append("decrypt") or value, encrypt=lambda value: value),
-            None,
-        ),
+    from core.helper.provider_cache import NoOpProviderCredentialCache
+    from core.helper.provider_encryption import ProviderConfigEncrypter
+
+    encrypter = ProviderConfigEncrypter(
+        tenant_id="tenant", config=[], provider_config_cache=NoOpProviderCredentialCache()
     )
+    monkeypatch.setattr(encrypter, "decrypt", lambda value: events.append("decrypt") or value)
+    monkeypatch.setattr(encrypter, "encrypt", lambda value: value)
+    monkeypatch.setattr("core.tools.utils.encryption.create_provider_encrypter", lambda **_kw: (encrypter, None))
     monkeypatch.setattr(
         "core.helper.provider_cache.ToolProviderCredentialsCache.delete", lambda _self: events.append("cache")
     )
@@ -551,14 +691,21 @@ def test_actual_native_materializer_uses_existing_oauth_owner_then_cas_before_bu
     def refresh(**_kwargs):
         assert events[-2:] == ["claim", "decrypt"]
         events.append("refresh")
-        return SimpleNamespace(credentials={"token": "rotated-fixture"}, expires_at=4102444800)
+        from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
+
+        return PluginOAuthCredentialsResponse(credentials={"token": "rotated-fixture"}, expires_at=4102444800)
 
     def persist(**kwargs):
+        nonlocal selection
         assert events[-1] == "refresh"
         events.append("cas")
-        snapshot.reference = reference.model_copy(update={"revision": "c" * 64, "expires_at": 4102444800})
-        snapshot.encrypted_credentials = kwargs["encrypted_credentials"]
-        return snapshot.reference
+        updated = replace(
+            snapshot,
+            reference=reference.model_copy(update={"revision": "c" * 64, "expires_at": 4102444800}),
+            encrypted_credentials=kwargs["encrypted_credentials"],
+        )
+        selection = replace(selection, snapshot=updated)
+        return updated.reference
 
     monkeypatch.setattr(OAuthHandler, "refresh_credentials", lambda _self, **kw: refresh(**kw))
     monkeypatch.setattr(module.BuiltinToolManageService, "persist_native_agent_refresh", persist)
@@ -570,21 +717,17 @@ def test_actual_native_materializer_uses_existing_oauth_owner_then_cas_before_bu
         permit,
         RecordedResult(operation_id="operation", result_ref="result"),
     ]
-    auth = SimpleNamespace(
-        loader=SimpleNamespace(actor=actor, load=lambda **_kw: None),
-        validate_dispatch=lambda **_kw: None,
-        claim_dispatch=lambda **_kw: events.append("claim"),
-        before_call=lambda **_kw: decision.pop(0),
-        record_outcome=lambda **kw: events.append(kw["outcome"]),
-    )
+    auth = operations_service.bridge.authorization
+    monkeypatch.setattr(auth.loader, "load", lambda **_kw: None)
+    monkeypatch.setattr(auth, "validate_dispatch", lambda **_kw: None)
+    monkeypatch.setattr(auth, "claim_dispatch", lambda **_kw: events.append("claim"))
+    monkeypatch.setattr(auth, "before_call", lambda **_kw: decision.pop(0))
+    monkeypatch.setattr(auth, "record_outcome", lambda **kw: events.append(kw["outcome"]))
+    state_store = operations_service.state_store
+    monkeypatch.setattr(state_store, "store_result", lambda **_kw: "result")
+    monkeypatch.setattr(state_store, "load_result", lambda **_kw: {"credential_ref": "opaque"})
     materializer = module.NativeAgentCredentialMaterializer(authorization=auth, resolve_binding=lambda **_kw: binding)
-    phases = module.NativeAgentCredentialPhases(
-        authorization=auth,
-        materializer=materializer,
-        state_store=SimpleNamespace(
-            store_result=lambda **_kw: "result", load_result=lambda **_kw: {"credential_ref": "opaque"}
-        ),
-    )
+    phases = module.NativeAgentCredentialPhases(authorization=auth, materializer=materializer, state_store=state_store)
     effect = intent().model_copy(
         update={
             "kind": "oauth",
@@ -605,7 +748,7 @@ def test_actual_native_materializer_uses_existing_oauth_owner_then_cas_before_bu
     assert events.count("refresh") == events.count("cas") == events.count("claim") == 1
 
 
-def test_missing_credential_configuration_wait_precedes_business_intent(monkeypatch):
+def test_missing_credential_configuration_wait_precedes_business_intent(monkeypatch, operations_service):
     from runtime_contracts.builder.native.contracts import ApprovalWait
     from services.dify_builder.native_testing import agent_bridge as module
     from services.dify_builder.native_testing.pending_actions import NativePendingActionService
@@ -619,16 +762,35 @@ def test_missing_credential_configuration_wait_precedes_business_intent(monkeypa
             calls.append(kw) or ApprovalWait(pending_operation_id="configuration-id", wait_reason="configuration")
         ),
     )
-    auth = SimpleNamespace(
-        loader=SimpleNamespace(load=lambda **_kw: SimpleNamespace(generation=3)),
-        before_call=lambda **_kw: pytest.fail("Configuration froze an account effect"),
+    from datetime import UTC, datetime
+
+    from runtime_contracts.builder.native.contracts import NativeTestContextRef
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
+
+    auth = operations_service.bridge.authorization
+    owned = OwnedNativeTest(
+        ref=NativeTestContextRef(request_id="request", invocation_id="inv", context_digest="a" * 64),
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=3,
+        task_approved=False,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="running",
     )
+    monkeypatch.setattr(auth.loader, "load", lambda **_kw: owned)
+    monkeypatch.setattr(auth, "before_call", lambda **_kw: pytest.fail("Configuration froze an account effect"))
+    binding = module.AgentCredentialBinding(
+        auth.loader.actor, "mail.read", "test/plugin/provider", None, True, "revision", "actual-config-owner"
+    )
+    materializer = module.NativeAgentCredentialMaterializer(authorization=auth, resolve_binding=lambda **_kw: binding)
+    monkeypatch.setattr(materializer, "inspect", lambda **_kw: (binding, None))
     owner = module.NativeAgentCredentialPhases(
-        authorization=auth,
-        materializer=SimpleNamespace(
-            inspect=lambda **_kw: (SimpleNamespace(requirements_ref="actual-config-owner"), None)
-        ),
-        state_store=None,
+        authorization=auth, materializer=materializer, state_store=operations_service.state_store
     )
     assert hasattr(owner, "prepare_business"), "Readiness must precede business intent freeze"
     effect = intent()
@@ -718,8 +880,6 @@ def test_endpoint_lineage_requires_exact_envelope_before_physical_owner_refusal(
 
 
 def test_actual_llm_endpoint_rejects_known_native_omission_before_prepare(monkeypatch):
-    from unittest.mock import Mock
-
     from services.agent_llm_inner_service import AgentLLMInnerService
     from tests.unit_tests.config_override import config_overrides_context
     from tests.unit_tests.controllers.inner_api.test_agent_llm import _flask_app
@@ -731,7 +891,12 @@ def test_actual_llm_endpoint_rejects_known_native_omission_before_prepare(monkey
     app = _flask_app()
     lineage, _principal, selection, phase = owner()
     app.extensions["native_agent_endpoint_lineage"] = lineage
-    prepare = Mock(side_effect=AssertionError("Known native omission reached model preparation"))
+    preparations = []
+
+    def prepare(*args, **kwargs):
+        preparations.append((args, kwargs))
+        raise AssertionError("Known native omission reached model preparation")
+
     monkeypatch.setattr(AgentLLMInnerService, "prepare", prepare)
     with config_overrides_context(
         AGENT_BACKEND_API_TOKEN="agent-token",
@@ -748,11 +913,12 @@ def test_actual_llm_endpoint_rejects_known_native_omission_before_prepare(monkey
         )
     assert response.status_code == 409
     assert phase == ["backend"]
-    prepare.assert_not_called()
+    assert preparations == []
 
 
 def test_private_claim_route_refuses_repeated_requests_without_consuming_permit(
     monkeypatch,
+    operations_service,
 ):
     from flask import Flask
 
@@ -781,11 +947,8 @@ def test_private_claim_route_refuses_repeated_requests_without_consuming_permit(
             raise BuilderExecutionPolicyError("native_dispatch_already_claimed")
         claims.append(kw)
 
-    monkeypatch.setattr(
-        controller,
-        "agent_bridge_for_ref",
-        lambda _ref: SimpleNamespace(authorization=SimpleNamespace(claim_dispatch=claim)),
-    )
+    monkeypatch.setattr(operations_service.bridge.authorization, "claim_dispatch", claim)
+    monkeypatch.setattr(controller, "agent_bridge_for_ref", lambda _ref: operations_service.bridge)
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(bp)
@@ -845,37 +1008,70 @@ def test_private_claim_route_refuses_repeated_requests_without_consuming_permit(
 
 
 @pytest.mark.parametrize("drift", [None, "access", "client", "encrypted_credentials"])
-def test_native_refresh_cas_rechecks_detached_snapshot_before_write(monkeypatch, drift):
+def test_native_refresh_cas_rechecks_detached_snapshot_before_write(monkeypatch, drift, operations_service):
     from contextlib import contextmanager
-    from copy import copy
+    from dataclasses import replace
 
     from core.dify_builder.models import Actor
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from services.tools import builtin_tools_manage_service as module
 
     actor = Actor(account_id="actor", tenant_id="tenant")
-    snapshot = SimpleNamespace(
-        reference=SimpleNamespace(credential_type="oauth2", credential_id="credential", expires_at=1),
-        access=SimpleNamespace(grant_ids=()),
-        client=SimpleNamespace(source="tenant", row_id="client"),
+    from core.dify_builder.real_call_consent import CredentialReference
+    from models.tools import BuiltinToolProvider, ToolOAuthTenantClient
+    from services.tools.builder_credential_reference import (
+        BuilderCredentialSnapshot,
+        CredentialAccessSnapshot,
+        OAuthClientSnapshot,
+    )
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    snapshot = BuilderCredentialSnapshot(
+        reference=CredentialReference(
+            credential_id="credential",
+            provider_id="test/plugin/provider",
+            alias="test",
+            credential_type="oauth2",
+            visibility="only_me",
+            revision="a" * 64,
+            oauth_client_revision="b" * 64,
+            expires_at=1,
+        ),
+        access=CredentialAccessSnapshot(basis="owner", account_id="actor", tenant_id="tenant", grants=()),
+        client=OAuthClientSnapshot(source="tenant", row_id="client", encrypted_params="{}", enabled=True),
         encrypted_credentials="old-ciphertext",
     )
-    selected = SimpleNamespace(snapshot=snapshot, owner_user_id="owner")
-    current = copy(snapshot)
-    if drift:
-        setattr(current, drift, "changed")
+    selected = module.BuilderCredentialRuntime(snapshot=snapshot, owner_user_id="owner")
+    current = replace(snapshot)
+    if drift == "access":
+        current = replace(current, access=replace(current.access, account_id="other"))
+    elif drift == "client":
+        current = replace(current, client=replace(current.client, row_id="other"))
+    elif drift == "encrypted_credentials":
+        current = replace(current, encrypted_credentials="changed")
     reads = []
+    row = BuiltinToolProvider(name="test", tenant_id="tenant", user_id="owner", provider="test/plugin/provider")
+    row.id = "credential"
+    client = ToolOAuthTenantClient(tenant_id="tenant", plugin_id="test/plugin", provider="provider")
+    client.id = "client"
+    sessions = operations_service.loader.session_factory
+    session = sessions()
 
     def scalar(statement):
         reads.append(statement)
-        return [SimpleNamespace(id="credential", user_id="owner"), object(), "credential"][len(reads) - 1]
+        return [row, client, "credential"][len(reads) - 1]
+
+    monkeypatch.setattr(session, "scalar", scalar)
+    monkeypatch.setattr(session, "expire", lambda _row: None)
 
     @contextmanager
     def transaction():
-        yield SimpleNamespace(scalar=scalar, expire=lambda _row: None)
+        with session:
+            yield session
 
-    monkeypatch.setattr(module.session_factory, "get_session_maker", lambda: SimpleNamespace(begin=transaction))
-    monkeypatch.setattr(module.dify_config, "SECRET_KEY", "fixture-only")
+    monkeypatch.setattr(sessions, "begin", transaction)
+    monkeypatch.setattr(module.session_factory, "get_session_maker", lambda: sessions)
+    apply_config_overrides(monkeypatch, SECRET_KEY="fixture-only")
     monkeypatch.setattr(module, "select_builder_credential", lambda *_args, **_kw: current)
     kwargs = {
         "actor": actor,
@@ -986,9 +1182,26 @@ def test_workflow_factory_injects_native_declaration_preparation(monkeypatch):
     from services.workflow_runtime.node_factory import DifyNodeFactory
 
     module = service_module()
-    monkeypatch.setattr(backend_factory, "create_agent_backend_run_client", lambda **_: object())
-    factory = object.__new__(DifyNodeFactory)
-    monkeypatch.setattr(factory, "_dify_context", SimpleNamespace(builder_agent_execution=None), raising=False)
+    from core.app.entities.app_invoke_entities import UserFrom, build_dify_run_context
+    from graphon.runtime import InitParams, RuntimeState, VariablePool
+
+    client = backend_factory.create_agent_backend_run_client(base_url="http://agent.invalid")
+    monkeypatch.setattr(backend_factory, "create_agent_backend_run_client", lambda **_: client)
+    factory = DifyNodeFactory(
+        init_params=InitParams(
+            run_context=build_dify_run_context(
+                tenant_id="tenant",
+                app_id="app",
+                user_id="actor",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
+            workflow_id="workflow",
+            graph_config={"nodes": [], "edges": []},
+            call_depth=0,
+        ),
+        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0),
+    )
 
     kwargs = factory._build_agent_node_init_kwargs(node_class=DifyAgentNode)
     builder = kwargs["runtime_request_builder"]._dify_tools_builder

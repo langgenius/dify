@@ -169,18 +169,7 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
 
 
 def test_resume_appends_chunks_to_paused_answer(unbound_session: Session) -> None:
-    app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
-    application_generate_entity = SimpleNamespace(
-        app_config=app_config,
-        files=[],
-        workflow_run_id="run-1",
-        query="hello",
-        invoke_from=InvokeFrom.WEB_APP,
-        inputs={},
-        task_id="task-1",
-        trace_manager=None,
-        extras={},
-    )
+    application_generate_entity = _build_generate_entity().model_copy(update={"trace_manager": None, "extras": {}})
     queue_manager = SimpleNamespace(graph_runtime_state=None)
     conversation = pipeline_module.ConversationSnapshot(id="conversation-1", mode=AppMode.ADVANCED_CHAT)
     message = pipeline_module.MessageSnapshot(
@@ -223,17 +212,8 @@ def test_emit_message_trace_enqueues_message_trace() -> None:
     from core.ops.entities.trace_entity import TraceTaskName
 
     mock_trace_manager = mock.MagicMock()
-    app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
-    application_generate_entity = SimpleNamespace(
-        app_config=app_config,
-        files=[],
-        workflow_run_id="run-1",
-        query="hello",
-        invoke_from=InvokeFrom.WEB_APP,
-        inputs={},
-        task_id="task-1",
-        trace_manager=mock_trace_manager,
-        extras={"trace_session_id": "session-trace-1"},
+    application_generate_entity = _build_generate_entity().model_copy(
+        update={"trace_manager": mock_trace_manager, "extras": {"trace_session_id": "session-trace-1"}}
     )
     queue_manager = SimpleNamespace(graph_runtime_state=None)
     conversation = pipeline_module.ConversationSnapshot(id="conv-1", mode=AppMode.ADVANCED_CHAT)
@@ -300,17 +280,8 @@ def test_save_message_does_not_emit_trace() -> None:
     when the message is later resumed.
     """
     mock_trace_manager = mock.MagicMock()
-    app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
-    application_generate_entity = SimpleNamespace(
-        app_config=app_config,
-        files=[],
-        workflow_run_id="run-1",
-        query="hello",
-        invoke_from=InvokeFrom.WEB_APP,
-        inputs={},
-        task_id="task-1",
-        trace_manager=mock_trace_manager,
-        extras={"trace_session_id": "session-trace-1"},
+    application_generate_entity = _build_generate_entity().model_copy(
+        update={"trace_manager": mock_trace_manager, "extras": {"trace_session_id": "session-trace-1"}}
     )
     queue_manager = SimpleNamespace(graph_runtime_state=None)
     conversation = pipeline_module.ConversationSnapshot(id="conv-1", mode=AppMode.ADVANCED_CHAT)
@@ -367,18 +338,7 @@ def test_save_message_does_not_emit_trace() -> None:
 
 def test_emit_message_trace_skips_when_no_trace_manager() -> None:
     """When trace_manager is None, _emit_message_trace and _save_message must not fail."""
-    app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
-    application_generate_entity = SimpleNamespace(
-        app_config=app_config,
-        files=[],
-        workflow_run_id="run-1",
-        query="hello",
-        invoke_from=InvokeFrom.WEB_APP,
-        inputs={},
-        task_id="task-1",
-        trace_manager=None,
-        extras={},
-    )
+    application_generate_entity = _build_generate_entity().model_copy(update={"trace_manager": None, "extras": {}})
     queue_manager = SimpleNamespace(graph_runtime_state=None)
     conversation = pipeline_module.ConversationSnapshot(id="conv-1", mode=AppMode.ADVANCED_CHAT)
     message = pipeline_module.MessageSnapshot(

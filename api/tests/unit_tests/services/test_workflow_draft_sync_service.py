@@ -1,10 +1,12 @@
 import base64
 import json
 from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
+from socketio import Server
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError
+from sqlalchemy import delete, event
 from sqlalchemy.orm import Session
 
 from models.workflow import Workflow
@@ -21,6 +23,8 @@ def workflow() -> Workflow:
         app_id="app-1",
         tenant_id="tenant-1",
         version=Workflow.VERSION_DRAFT,
+        type="workflow",
+        created_by="u-1",
         graph=json.dumps({"nodes": [{"id": "new"}], "edges": []}),
         features="{}",
         updated_at=datetime(2026, 9, 20, 12, 0, 0),
@@ -28,8 +32,12 @@ def workflow() -> Workflow:
 
 
 @pytest.fixture
-def setup(workflow: Workflow) -> tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange]:
-    repository = Mock(spec=WorkflowDraftSyncRepository)
+def setup(
+    workflow: Workflow, sqlite_session: Session, mocker
+) -> tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange]:
+    repository = WorkflowDraftSyncRepository()
+    for name in ("announce", "claim", "accept", "get", "release", "clear"):
+        mocker.patch.object(repository, name)
     repository.announce.return_value = False
     repository.claim.return_value = True
     repository.accept.return_value = True
@@ -41,23 +49,36 @@ def setup(workflow: Workflow) -> tuple[WorkflowDraftSyncService, Mock, Mock, Moc
         previous_graph={"nodes": [{"id": "old"}], "edges": []},
     )
     repository.get.return_value = change
-    collaboration_repository = Mock(spec=WorkflowCollaborationRepository)
+    collaboration_repository = WorkflowCollaborationRepository()
+    for name in ("get_sid_mapping", "get_current_leader", "get_session_sids"):
+        mocker.patch.object(collaboration_repository, name)
     collaboration_repository.get_sid_mapping.return_value = {"workflow_id": "app-1", "user_id": "u-1"}
     collaboration_repository.get_current_leader.return_value = "leader"
     collaboration_repository.get_session_sids.return_value = ["follower", "leader"]
-    collaboration = Mock(spec=WorkflowCollaborationService)
-    collaboration.is_session_active.return_value = True
-    socketio = Mock()
+    socketio = Server(async_mode="threading")
+    for name in ("get_session", "call", "emit"):
+        mocker.patch.object(socketio, name)
+    collaboration = WorkflowCollaborationService(collaboration_repository, socketio)
+    mocker.patch.object(collaboration, "is_session_active", return_value=True)
     socketio.get_session.return_value = {"tenant_id": "tenant-1"}
     socketio.call.return_value = {"revision": change.revision, "update": b"accepted-update"}
-    session = MagicMock(spec=Session)
-    session.scalar.return_value = workflow
+    session = sqlite_session
+    session.add(workflow)
+    session.commit()
+    session.info["completed_transactions"] = []
+
+    def record_transaction_end(_session, transaction):
+        if transaction.parent is None:
+            session.info["completed_transactions"].append(transaction)
+
+    event.listen(session, "after_transaction_end", record_transaction_end)
+    mocker.spy(session, "scalar")
     service = WorkflowDraftSyncService(repository, collaboration_repository, collaboration, socketio)
     return service, repository, collaboration_repository, socketio, session, change
 
 
 def test_broadcasts_one_accepted_update_including_the_writer_and_replays_it_on_retry(
-    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
 ) -> None:
     service, repository, _collaboration_repository, socketio, session, change = setup
     first, status = service.sync("follower", session=session)
@@ -65,7 +86,8 @@ def test_broadcasts_one_accepted_update_including_the_writer_and_replays_it_on_r
     assert first["update"] == b"accepted-update"
     socketio.emit.assert_called_once_with("server_draft_update", first, room="app-1")
     assert socketio.call.call_args.kwargs["to"] == "leader"
-    assert session.begin.return_value.__exit__.call_count == 1
+    assert len(session.info["completed_transactions"]) == 1
+    assert not session.in_transaction()
 
     repository.get.return_value = change.model_copy(update={"update": base64.b64encode(b"accepted-update").decode()})
     second, status = service.sync("follower", session=session)
@@ -76,7 +98,7 @@ def test_broadcasts_one_accepted_update_including_the_writer_and_replays_it_on_r
 
 
 def test_retries_another_ready_client_after_the_selected_writer_times_out(
-    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
 ) -> None:
     service, _repository, _collaboration_repository, socketio, session, change = setup
     socketio.call.side_effect = [SocketIOTimeoutError(), {"revision": change.revision, "update": b"replacement"}]
@@ -90,7 +112,7 @@ def test_retries_another_ready_client_after_the_selected_writer_times_out(
 
 
 def test_drops_a_proposal_when_its_lease_or_draft_version_was_superseded(
-    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
 ) -> None:
     service, repository, _collaboration_repository, socketio, session, _change = setup
     repository.accept.return_value = False
@@ -104,7 +126,7 @@ def test_drops_a_proposal_when_its_lease_or_draft_version_was_superseded(
 
 
 def test_skips_unready_browsers_to_reach_a_ready_writer(
-    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
 ) -> None:
     service, _repository, collaboration_repository, socketio, session, change = setup
     collaboration_repository.get_session_sids.return_value = ["leader", "reconnecting", "ready"]
@@ -122,7 +144,7 @@ def test_skips_unready_browsers_to_reach_a_ready_writer(
 
 
 def test_does_not_choose_another_writer_while_a_request_is_in_flight(
-    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
 ) -> None:
     service, repository, _collaboration_repository, socketio, session, _change = setup
     repository.claim.return_value = False
@@ -134,7 +156,7 @@ def test_does_not_choose_another_writer_while_a_request_is_in_flight(
 
 
 def test_rejects_unjoined_clients_and_scopes_draft_reads_to_the_socket_tenant(
-    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
 ) -> None:
     service, _repository, collaboration_repository, socketio, session, _change = setup
     collaboration_repository.get_sid_mapping.return_value = None
@@ -143,7 +165,8 @@ def test_rejects_unjoined_clients_and_scopes_draft_reads_to_the_socket_tenant(
     socketio.get_session.assert_not_called()
 
     collaboration_repository.get_sid_mapping.return_value = {"workflow_id": "app-1", "user_id": "u-1"}
-    session.scalar.return_value = None
+    session.execute(delete(Workflow))
+    session.commit()
     assert service.sync("follower", session=session)[1] == 404
     statement = session.scalar.call_args.args[0]
     assert set(statement.compile().params.values()) == {"app-1", "tenant-1", "draft"}

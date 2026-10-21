@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import cache
 from sys import exc_info
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Literal, Protocol, cast, runtime_checkable
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -99,6 +99,7 @@ class NativeControlRefused:
     """Sink refusal contains no arbitrary diagnostics or resumable authority."""
 
 
+@runtime_checkable
 class NativeControlSink(Protocol):
     """Trusted synchronous host port, supplied explicitly by composition.
 
@@ -203,8 +204,10 @@ class _NativeControlBoundary:
         native_control_sink: NativeControlSink,
         **kwargs: Any,
     ) -> None:
-        if type(native_control_owner) is not BoundaryOwnerState or not callable(
-            getattr(native_control_sink, "record_control", None)
+        if (
+            type(native_control_owner) is not BoundaryOwnerState
+            or not isinstance(native_control_sink, NativeControlSink)
+            or not callable(native_control_sink.record_control)
         ):
             raise ValueError("native_control_owner_and_sink_required")
         self._native_control_owner = native_control_owner

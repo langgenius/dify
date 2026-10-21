@@ -12,6 +12,7 @@ from core.dify_builder.models import Action, DifyBuilderContext, EntryMode, Sess
 from core.dify_builder.state import PcState, is_terminal
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import copy_text
+from services.dify_builder.application.ports import ContinuationClassifyingAgent
 
 if TYPE_CHECKING:
     from services.dify_builder.application.runner import Env, StepResult
@@ -42,10 +43,9 @@ def prepare_continuation(
         or context.recovery_class
     ):
         return None
-    classifier = getattr(env.agent, "continuation_intent", None)
-    if not callable(classifier):
+    if not isinstance(env.agent, ContinuationClassifyingAgent):
         return None
-    intent = classifier(context, graph, text)
+    intent = env.agent.continuation_intent(context, graph, text)
     if intent not in {"edit", "test"}:
         return None
 

@@ -1725,9 +1725,8 @@ def test_ordinary_native_gmail_workflow_stays_ordinary(gmail: Gmail) -> None:
             if payload:
                 native_id = native_id or run_id_from_stream_chunk(payload)
     finally:
-        close = getattr(response, "close", None)
-        if callable(close):
-            close()
+        if hasattr(response, "close"):
+            response.close()
     runs = gmail.native_runs()
     assert [run.id for run in runs] == [native_id]
     assert runs[0].status == "succeeded"
@@ -2801,6 +2800,14 @@ def _submit_and_deliver(gmail: Gmail, deliveries: list[Delivery], kind: str) -> 
 
 def test_dispatched_recovery_survives_a_paused_old_sweep(gmail: Gmail, deliveries: list[Delivery]) -> None:
     """Real recovery/Runner gates can admit a fresh grant while an old observation is paused."""
+    # Use Fix's verification/decision gates: Build's keep_draft now completes
+    # its task, so it cannot authorize a fresh test in that completed task.
+    # The continuation mode is persisted in the same CAS context as production.
+    _state, version, context = gmail.head()
+    context.active_entry_mode = "fix"
+    SqlDifyBuilderRepository(gmail.factory).compare_and_advance(
+        gmail.session_id, version, PcState.FIX_AWAIT_VERIFY, context, []
+    )
     stranded = _stranded(gmail, deliveries)
     old_version = gmail.head()[1]
 
@@ -2824,8 +2831,6 @@ def test_dispatched_recovery_survives_a_paused_old_sweep(gmail: Gmail, deliverie
                 assert (context.confirmed_consent_id, context.confirmed_command_id) == ("", "")
                 assert context.test_input_ref == gmail.test_input_id
                 assert context.staged_repair == []
-                _submit_and_deliver(gmail, deliveries, "keep_draft")
-                gates.append(gmail.head()[0])
                 fresh.append(gmail.execute(gmail.confirmed("fresh"), key="execute-fresh"))
             return held
 
@@ -2881,11 +2886,11 @@ def test_dispatched_recovery_survives_a_paused_old_sweep(gmail: Gmail, deliverie
         }
 
     facts = run_in_host(gmail, recover_in_host, name="dispatched-recovery")
-    assert facts["gates"] == [str(PcState.BUILD_AWAIT_REPAIR), str(PcState.BUILD_REVIEW)]
+    assert facts["gates"] == [str(PcState.FIX_AWAIT_DECISION)]
     assert facts["settlements"] == [1]
     assert facts["old"] == ["failed", "launch_stranded", None, 0, 0]
     assert facts["fresh"] == ["confirmed", True, None]
-    assert facts["deliveries"] == ["run_confirmed_tool", "recovery_continue", "keep_draft", "run_confirmed_tool"]
+    assert facts["deliveries"] == ["run_confirmed_tool", "recovery_continue", "run_confirmed_tool"]
     assert facts["head_advanced"] is True
     observed = facts["observed"]
     assert isinstance(observed, Observed)
@@ -3081,7 +3086,11 @@ def console(gmail: Gmail, monkeypatch: pytest.MonkeyPatch) -> Iterator[ConsoleHa
     # Main's account migration binds this actual identity owner in create_app. The HTTP proof
     # must use that composition, including its real short repository Sessions, never inject g.
     identity = application_services().accounts.identity
-    assert getattr(gmail.app.extensions["account_identity_loader"], "__self__", None) is identity
+    from types import MethodType
+
+    loader = gmail.app.extensions["account_identity_loader"]
+    assert isinstance(loader, MethodType)
+    assert loader.__self__ is identity
     with gmail.factory.begin() as session:
         if session.scalar(select(DifySetup.version).limit(1)) is None:
             session.add(DifySetup(version="ci-authenticated-native"))

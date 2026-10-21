@@ -306,11 +306,18 @@ def test_process_trace_tasks_deletes_payload_and_counts_exhausted_retryable_disp
 
 
 @pytest.mark.parametrize("marker", [True, "false", 0, None, {}])
-def test_restricted_or_malformed_trace_policy_never_resolves_provider_but_keeps_enterprise(marker):
-    provider = MagicMock(side_effect=AssertionError("external provider resolution forbidden"))
-    enterprise = MagicMock()
-    modules = _install_trace_manager(MagicMock(), enterprise_enabled=True, enterprise_trace_cls=enterprise)
-    modules["core.ops.ops_trace_manager"].OpsTraceManager.get_ops_trace_instance = provider
+def test_restricted_or_malformed_trace_policy_never_resolves_provider_but_keeps_enterprise(marker, mocker):
+    class EnterpriseTraceBoundary:
+        def trace(self, _data):
+            raise AssertionError("trace transport must be patched")
+
+    modules = _install_trace_manager(None, enterprise_enabled=True, enterprise_trace_cls=EnterpriseTraceBoundary)
+    provider = mocker.patch.object(
+        modules["core.ops.ops_trace_manager"].OpsTraceManager,
+        "get_ops_trace_instance",
+        side_effect=AssertionError("external provider resolution forbidden"),
+    )
+    enterprise_trace = mocker.patch.object(EnterpriseTraceBoundary, "trace")
     with (
         patch.dict(sys.modules, modules),
         patch(
@@ -327,5 +334,5 @@ def test_restricted_or_malformed_trace_policy_never_resolves_provider_but_keeps_
     ):
         _run_task({"app_id": "app", "file_id": "trace"})
     provider.assert_not_called()
-    enterprise.return_value.trace.assert_called_once_with({})
+    enterprise_trace.assert_called_once_with({})
     delete.assert_called_once()

@@ -1,6 +1,7 @@
 """Source fidelity and refusal through real Build handlers and Runner persistence."""
 
 import copy
+from dataclasses import asdict
 from datetime import datetime
 from typing import override
 
@@ -148,6 +149,7 @@ def test_empty_plan_preserves_context_and_stays_at_its_waiting_gate(state: PcSta
     # emit success cards, or begin discovery/canvas/checkpoint work.
     out, stored, before, agent, repo, canvas, progress = _advance(state, [])
     assert out.current_state == state
+    stored_fields, before_fields = asdict(stored), asdict(before)
     for name in (
         "plan_items",
         "plan_title",
@@ -164,7 +166,7 @@ def test_empty_plan_preserves_context_and_stays_at_its_waiting_gate(state: PcSta
         "unknown_outcome_count",
         "staged_repair",
     ):
-        assert getattr(stored, name) == getattr(before, name), name
+        assert stored_fields[name] == before_fields[name], name
     confirmed = {**REQUIREMENTS, "currency": "EUR" if state == PcState.BUILD_GOAL_ANALYSIS else "USD"}
     assert stored.requirements == confirmed
     assert agent.calls == [("plan", GOAL, confirmed)]

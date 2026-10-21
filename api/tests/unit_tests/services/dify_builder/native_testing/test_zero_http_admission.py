@@ -5,18 +5,56 @@ units qualify no database authorization, persistence, host cleanup or external I
 """
 
 import json
+from collections.abc import Callable
 from contextlib import contextmanager
 from copy import deepcopy
-from types import SimpleNamespace
+from dataclasses import dataclass, field
 from typing import cast
 
 import httpx
 import pytest
 
 from core.dify_builder.models import Actor
+from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
+from models.model import App
+from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from services.dify_builder.execution_policy_service import ExecutionOwnerSnapshot
 from services.dify_builder.native_testing import context_binding, http_binding
 from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler
+
+
+@dataclass
+class ZeroHttpCase:
+    graph: dict
+    workflow: Workflow
+    actor: Actor
+    monkeypatch: pytest.MonkeyPatch
+    active: int = 0
+    permissions: list[tuple[str, str, str]] = field(default_factory=list)
+    owner_reads: list[dict] = field(default_factory=list)
+    workflow_reads: int = 0
+    permission_failure: int | None = None
+    workflow_failure: str | None = None
+    sessions: Callable | None = None
+    forbidden_io: Callable | None = None
+    snapshot: http_binding.NativeHttpResourceSnapshot | None = None
+    compiler: NativeAdmissionCompiler | None = None
+
+    def compile(self):
+        self.workflow.graph = json.dumps(self.graph)
+        assert self.compiler is not None
+        return self.compiler.compile(
+            actor=self.actor,
+            session_id="session",
+            test_input_id="input",
+            expected_version=1,
+            mode="native",
+            request_id="request",
+            invocation_id="invocation",
+            native_run_id="run",
+            profile=http_binding.build_native_http_profile(),
+        )
 
 
 @pytest.fixture
@@ -28,30 +66,33 @@ def zero_http_case(monkeypatch):
         ],
         "edges": [{"source": "start", "target": "end"}],
     }
-    workflow = SimpleNamespace(
+    workflow = Workflow(
+        tenant_id="tenant",
+        created_by="actor",
+        version="draft",
         id="workflow",
         app_id="app",
         graph=json.dumps(graph),
         type="workflow",
-        kind_or_standard="standard",
-        serialized_features="{}",
+        kind="standard",
+        _features="{}",
         _environment_variables="[]",
         _conversation_variables="[]",
     )
     actor = Actor(tenant_id="tenant", account_id="actor")
-    builder = SimpleNamespace(id="session", app_id="app", version=1)
-    test_input = SimpleNamespace(id="input", inputs={}, start_schema_hash="a" * 64)
-    case = SimpleNamespace(
-        graph=graph,
-        workflow=workflow,
-        actor=actor,
-        active=0,
-        permissions=[],
-        owner_reads=[],
-        workflow_reads=0,
-        permission_failure=None,
-        workflow_failure=None,
+    builder = DifyBuilderSession(
+        id="session",
+        app_id="app",
+        version=1,
+        tenant_id="tenant",
+        owner_account_id="actor",
+        entry_mode="build",
+        current_state="build.execution",
     )
+    test_input = DifyBuilderTestInput(
+        id="input", inputs={}, start_schema_hash="a" * 64, session_id="session", source="mock"
+    )
+    case = ZeroHttpCase(graph=graph, workflow=workflow, actor=actor, monkeypatch=monkeypatch)
 
     class Session:
         def get(self, model, object_id):
@@ -87,8 +128,8 @@ def zero_http_case(monkeypatch):
         assert case.active == 1
         assert kwargs == {"actor": actor, "app_id": "app", "session_id": "session", "test_input_id": "input"}
         case.owner_reads.append(kwargs)
-        return SimpleNamespace(
-            app=SimpleNamespace(id="app", mode="workflow"),
+        return ExecutionOwnerSnapshot(
+            app=App(id="app", mode="workflow", tenant_id="tenant", status="normal"),
             workflow=workflow,
             session=builder,
             test_input=test_input,
@@ -117,28 +158,12 @@ def zero_http_case(monkeypatch):
         session_factory=cast(context_binding.sessionmaker, sessions), resources=case.snapshot
     )
 
-    def compile_owned():
-        workflow.graph = json.dumps(case.graph)
-        return case.compiler.compile(
-            actor=actor,
-            session_id="session",
-            test_input_id="input",
-            expected_version=1,
-            mode="native",
-            request_id="request",
-            invocation_id="invocation",
-            native_run_id="run",
-            profile=http_binding.build_native_http_profile(),
-        )
-
-    case.compile = compile_owned
     return case
 
 
 def delivery_factory(case, context):
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from graphon.runtime import RuntimeState, VariablePool
-    from services.dify_builder.native_testing.control import BoundaryOwnerState
     from services.dify_builder.native_testing.runtime import DifyNativeRuntime, build_delivery_bridge
     from services.workflow_runtime.node_factory import DifyGraphInitContext, DifyNodeFactory
 
@@ -146,24 +171,43 @@ def delivery_factory(case, context):
         assert ref == context.ref
         return context
 
-    owner = BoundaryOwnerState(ref=context.ref)
-    runtime = SimpleNamespace(
-        # Mirrors the real runtime default; Code binding stays off for this case.
-        code_qualification=None,
-        host=SimpleNamespace(
-            boundary_owner=owner,
-            control_sink=SimpleNamespace(record_control=case.forbidden_io),
-            make_calls=case.forbidden_io,
-            register_proposals=case.forbidden_io,
-            register_http_request=case.forbidden_io,
-        ),
-        lifecycle=SimpleNamespace(
-            loader=SimpleNamespace(session_factory=case.sessions),
-            store=SimpleNamespace(load_context=load_context),
-        ),
-        _journal=SimpleNamespace(open=case.forbidden_io),
-        authorization=SimpleNamespace(before_call=case.forbidden_io),
+    from services.dify_builder.native_testing.api_service import NativeTestApiService
+    from services.dify_builder.native_testing.host_lifetime import NativeHostLifetimeRegistry
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from services.dify_builder.native_testing.runtime import DifyNativeResumeSettlement
+
+    # This unit replaces protected-object/RBAC readback, while preserving the
+    # actual delivery, host, journal, control and collaborator composition.
+    api = NativeTestApiService(
+        session_factory=case.sessions,
+        actor=case.actor,
+        resolver=http_binding.NativeHttpBindingResolver(),
+        admission=None,
+        resolution=None,
+        runtime=None,
+        disclosure=None,
     )
+    case.monkeypatch.setattr(api.store, "load_context", load_context)
+    api.lifecycle.resume_settlement = DifyNativeResumeSettlement()
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+
+    # C03/telemetry acquisition is outside this compiler/bridge unit boundary.
+    # Preserve the real inactive constructor, then explicitly activate this
+    # test-owned lifetime for the isolated Graphon execution below.
+    with case.monkeypatch.context() as construction:
+        construction.setattr(NativeHostLaunch, "bind_observation", lambda _self: None)
+        runtime = DifyNativeRuntime(
+            delivery=NativeDispatchRef(context.ref, context.generation, "dispatch"),
+            lifecycle=api.lifecycle,
+            registry=NativeHostLifetimeRegistry(),
+        )
+    runtime.registry.activate(lifetime=runtime.host.lifetime)
+    owner = runtime.host.boundary_owner
+    for method in ("make_calls", "register_proposals", "register_http_request"):
+        case.monkeypatch.setattr(runtime.host, method, case.forbidden_io)
+    case.monkeypatch.setattr(runtime.host.control_sink, "record_control", case.forbidden_io)
+    case.monkeypatch.setattr(runtime._journal, "open", case.forbidden_io)
+    case.monkeypatch.setattr(runtime.authorization, "before_call", case.forbidden_io)
     bridge = build_delivery_bridge(runtime=cast(DifyNativeRuntime, runtime))
     prepared = bridge.prepare_inputs(context)
     assert prepared.inputs == {}

@@ -239,21 +239,29 @@ def test_code_upstream_confirmation_survives_canvas_title_and_node_order_only():
 
 
 def test_selected_model_fenced_json_is_assessed_in_one_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
-    from types import SimpleNamespace
-
+    from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+    from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
     from services.dify_builder.agent import model_resolver
     from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
+    from tests.unit_tests.core.model_fixtures import make_model_instance
 
     calls = []
 
-    def invoke(**kwargs: object) -> SimpleNamespace:
+    def invoke(**kwargs: object) -> LLMResult:
         calls.append(kwargs)
         content = (
             '```json\n{"classification":"pure","risk_notice":"Parses the supplied JSON without external effects."}\n```'
         )
-        return SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: content))
+        return LLMResult(
+            model="gpt-4o",
+            prompt_messages=[],
+            message=AssistantPromptMessage(content=content),
+            usage=LLMUsage.empty_usage(),
+        )
 
-    monkeypatch.setattr(model_resolver, "resolve_model_instance", lambda *_: SimpleNamespace(invoke_llm=invoke))
+    instance = make_model_instance(provider="openai", model="gpt-4o")
+    monkeypatch.setattr(instance, "invoke_llm", invoke)
+    monkeypatch.setattr(model_resolver, "resolve_model_instance", lambda *_: instance)
     risk = assess_code(
         prepare(), reason=builder_code_reasoner(tenant_id="owned-tenant", model_config={"name": "selected"})
     )
@@ -276,19 +284,27 @@ def test_selected_model_fenced_json_is_assessed_in_one_attempt(monkeypatch: pyte
 def test_selected_model_malformed_json_is_not_automatically_retried(
     monkeypatch: pytest.MonkeyPatch, response: str
 ) -> None:
-    from types import SimpleNamespace
-
+    from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+    from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
     from services.dify_builder.agent import model_resolver
     from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
+    from tests.unit_tests.core.model_fixtures import make_model_instance
 
     calls = []
 
-    def invoke(**kwargs: object) -> SimpleNamespace:
+    def invoke(**kwargs: object) -> LLMResult:
         calls.append(kwargs)
         content = response if len(calls) == 1 else '{"classification":"pure","risk_notice":"Parser"}'
-        return SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: content))
+        return LLMResult(
+            model="gpt-4o",
+            prompt_messages=[],
+            message=AssistantPromptMessage(content=content),
+            usage=LLMUsage.empty_usage(),
+        )
 
-    monkeypatch.setattr(model_resolver, "resolve_model_instance", lambda *_: SimpleNamespace(invoke_llm=invoke))
+    instance = make_model_instance(provider="openai", model="gpt-4o")
+    monkeypatch.setattr(instance, "invoke_llm", invoke)
+    monkeypatch.setattr(model_resolver, "resolve_model_instance", lambda *_: instance)
     risk = assess_code(
         prepare(), reason=builder_code_reasoner(tenant_id="owned-tenant", model_config={"name": "selected"})
     )

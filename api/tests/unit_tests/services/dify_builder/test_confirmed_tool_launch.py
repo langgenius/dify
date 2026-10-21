@@ -12,7 +12,7 @@ contents only; PostgreSQL locking and actual native allocated IDs are CI-owned.
 import json
 import logging
 from collections.abc import Callable, Iterator, Mapping
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from types import ModuleType
 from typing import TYPE_CHECKING, Literal, NoReturn, cast, override
@@ -1578,14 +1578,19 @@ def test_terminal_outputs_are_not_copied_even_when_native_run_retains_content(co
     assert BODY_SENTINEL not in text
 
 
+@dataclass(frozen=True)
+class ConfirmedDatabase:
+    engine: object
+    session: object | None = None
+
+
 def bind_fixture_engine(monkeypatch: pytest.MonkeyPatch, owner: Owner) -> None:
     """Point the port's and WorkflowService's engine owners at the fixture SQLite engine (no Flask app)."""
-    from types import SimpleNamespace
 
     import services.dify_builder.dify_port as port_module
     import services.workflow_service as workflow_service_module
 
-    engine = SimpleNamespace(engine=owner.factory.kw["bind"])
+    engine = ConfirmedDatabase(engine=owner.factory.kw["bind"])
     monkeypatch.setattr(port_module, "_session_factory", lambda: owner.factory)
     monkeypatch.setattr(port_module, "db", engine)
     monkeypatch.setattr(workflow_service_module, "db", engine)
@@ -1600,11 +1605,11 @@ def install_native_generation(owner: Owner, monkeypatch: pytest.MonkeyPatch) -> 
     the port e2e test does. Returns the fixture native Run IDs (uuid4, not Graphon-allocated).
     """
     import threading
-    from types import SimpleNamespace
 
     from sqlalchemy.orm import Session
 
     import services.dify_builder.dify_port as port_module
+    from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
     from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
     from models.account import Account
     from models.model import App
@@ -1630,20 +1635,19 @@ def install_native_generation(owner: Owner, monkeypatch: pytest.MonkeyPatch) -> 
         with owner.factory() as db:
             workflow = db.get(Workflow, owner.workflow_id)
         assert workflow is not None
-        entity = SimpleNamespace(
+        entity = WorkflowAppGenerateEntity(
             builder_execution=builder_execution,
             files=[],
             single_iteration_run=None,
             single_loop_run=None,
             invoke_from=InvokeFrom.DEBUGGER,
-            app_config=SimpleNamespace(
-                app_id=owner.app_id, tenant_id=owner.actor.tenant_id, workflow_id=owner.workflow_id, app_mode="workflow"
-            ),
+            app_config=WorkflowAppConfigManager.get_app_config(app_model, workflow),
             user_id=owner.actor.account_id,
             inputs=dict(args["inputs"]),
             call_depth=0,
             workflow_execution_id=run_id,
             task_id="task",
+            stream=True,
         )
 
         def worker() -> None:
@@ -1710,11 +1714,11 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
 ) -> None:
     """The actual port/admission/recorder/seal/settle chain on real rows; only native generation is faked."""
     import threading
-    from types import SimpleNamespace
 
     from sqlalchemy.orm import Session
 
     import services.dify_builder.dify_port as port_module
+    from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
     from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
     from models.account import Account
     from models.model import App
@@ -1751,20 +1755,19 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
             workflow = db.get(Workflow, owner.workflow_id)
         assert workflow is not None
         # Duck-typed generate entity carrying exactly the attributes the admission reads.
-        entity = SimpleNamespace(
+        entity = WorkflowAppGenerateEntity(
             builder_execution=context,
             files=[],
             single_iteration_run=None,
             single_loop_run=None,
             invoke_from=InvokeFrom.DEBUGGER,
-            app_config=SimpleNamespace(
-                app_id=owner.app_id, tenant_id=owner.actor.tenant_id, workflow_id=owner.workflow_id, app_mode="workflow"
-            ),
+            app_config=WorkflowAppConfigManager.get_app_config(app_model, workflow),
             user_id=owner.actor.account_id,
             inputs=dict(args["inputs"]),
             call_depth=0,
             workflow_execution_id=run_id,
             task_id="task",
+            stream=True,
         )
 
         def worker() -> None:
@@ -1919,8 +1922,6 @@ def _drive_generator_draft_saving(
     token sentinels. The mutable draft-variable writer is a recorder bound to the fixture SQLite engine.
     """
     import contextlib
-    from types import SimpleNamespace
-    from unittest.mock import Mock
 
     import core.app.apps.base_app_generator as base_generator_module
     from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
@@ -1935,7 +1936,7 @@ def _drive_generator_draft_saving(
     engine = owner.factory.kw["bind"]
     writes = _DraftWrites()
     monkeypatch.setattr(base_generator_module, "DraftVariableSaverImpl", writes.writer)
-    monkeypatch.setattr(base_generator_module, "db", SimpleNamespace(engine=engine))
+    monkeypatch.setattr(base_generator_module, "db", ConfirmedDatabase(engine=engine))
     with owner.factory() as db:
         account = db.get(Account, owner.actor.account_id)
         app = db.get(App, owner.app_id)
@@ -1943,19 +1944,26 @@ def _drive_generator_draft_saving(
         assert account is not None
         assert app is not None
         assert workflow is not None
-    monkeypatch.setattr(app_generator_module, "db", SimpleNamespace(engine=engine, session=Mock()))
-    generator = WorkflowAppGenerator(execution_driver=Mock())
+    session = owner.factory()
+    monkeypatch.setattr(app_generator_module, "db", ConfirmedDatabase(engine=engine, session=session))
+
+    def forbidden_driver(*_args, **_kwargs):
+        raise AssertionError("captured generation must not execute the worker")
+
+    generator = WorkflowAppGenerator(execution_driver=forbidden_driver)
     monkeypatch.setattr(generator, "_bind_file_access_scope", lambda **_kwargs: contextlib.nullcontext())
-    monkeypatch.setattr(app_generator_module, "WorkflowAppQueueManager", lambda **kwargs: SimpleNamespace(**kwargs))
-    monkeypatch.setattr(
-        app_generator_module, "current_app", SimpleNamespace(_get_current_object=lambda: SimpleNamespace(name="flask"))
-    )
-    worker = Mock()
-    worker.is_alive.return_value = False
+    import core.app.apps.base_app_queue_manager as queue_module
+
+    monkeypatch.setattr(queue_module.redis_client, "setex", lambda *_args: True)
+    native_thread = app_generator_module.threading.Thread
     worker_kwargs: dict[str, object] = {}
 
-    def thread(**kwargs: object) -> Mock:
+    def thread(**kwargs: object):
         worker_kwargs.update(cast(dict[str, object], kwargs["kwargs"]))
+        worker = native_thread(**kwargs)
+        monkeypatch.setattr(worker, "start", lambda: None)
+        monkeypatch.setattr(worker, "is_alive", lambda: False)
+        monkeypatch.setattr(worker, "join", lambda *_args, **_kwargs: None)
         return worker
 
     monkeypatch.setattr(app_generator_module.threading, "Thread", thread)

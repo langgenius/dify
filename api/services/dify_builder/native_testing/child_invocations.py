@@ -228,6 +228,8 @@ class NativeChildInvocationService:
         if outcome.ref != child_ref or outcome.native_run_id != context.native_run_id:
             raise BuilderExecutionPolicyError("native_child_owner_mismatch")
         if outcome.status == "waiting":
+            if outcome.checkpoint_ref is None:
+                raise BuilderExecutionPolicyError("native_child_owner_mismatch")
             from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 
             context = self.store.load_context(ref=child_ref)

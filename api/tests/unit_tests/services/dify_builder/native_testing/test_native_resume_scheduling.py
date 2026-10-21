@@ -10,7 +10,6 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from threading import Thread, current_thread
 from time import monotonic
-from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -32,10 +31,17 @@ from services.dify_builder.native_testing.http_binding import (
     describe_http_resource,
     native_http_config,
 )
+from services.dify_builder.native_testing.lifecycle import NativeDispatchRef, NativeTestLifecycleService
 from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
-from services.dify_builder.native_testing.runtime import build_delivery_bridge
+from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTest
+from services.dify_builder.native_testing.runtime import (
+    DifyNativeResumeSettlement,
+    DifyNativeRuntime,
+    build_delivery_bridge,
+)
 from services.workflow_runtime.entry import WorkflowEntry
 from services.workflow_runtime.node_factory import DifyGraphInitContext, DifyNodeFactory
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import REF, Authorization, State
@@ -48,6 +54,7 @@ from tests.unit_tests.services.dify_builder.native_testing.test_http_adapter imp
     protected_application_logs as protected_application_logs,  # noqa: PLC0414 - real logging fixture
 )
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context
+from tests.unit_tests.services.dify_builder.native_testing.test_runtime_bridge import _api
 
 
 class SchedulingState(State):
@@ -101,6 +108,44 @@ class SchedulingAuthorization:
         return ledger.record_outcome(permit=permit, outcome=outcome, result_ref=result_ref)
 
 
+class SchedulingHostCase:
+    """Objects for one real Graphon scheduling generation and its host ports."""
+
+    runtime: NativeGraphRuntimeState
+    entry: WorkflowEntry
+    journal: NodeOperationJournal
+
+    def __init__(
+        self,
+        *,
+        state,
+        host: NativeHostLaunch,
+        lifetime: NativeHostLifetime,
+        registry: NativeHostLifetimeRegistry,
+        ports: DurablePorts,
+    ):
+        self.state, self.host, self.lifetime = state, host, lifetime
+        self.registry, self.ports = registry, ports
+
+
+def scheduling_owner(state):
+    context = state.context
+    return OwnedNativeTest(
+        ref=context.ref,
+        tenant_id=context.tenant_id,
+        actor_id=context.actor_id,
+        app_id=context.app_id,
+        workflow_id=context.workflow_id,
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=context.generation,
+        task_approved=True,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="active",
+    )
+
+
 def make_host(state, authorization, monkeypatch, *, snapshot=None):
     journal = NodeOperationJournal(state=state, authorization=authorization)
     if snapshot is not None:
@@ -123,7 +168,7 @@ def make_host(state, authorization, monkeypatch, *, snapshot=None):
         authorization=authorization,
         http_baseline=(timeout.connect, timeout.read, timeout.write),
     )
-    case = SimpleNamespace(state=state, host=host, lifetime=lifetime, registry=registry, ports=ports)
+    case = SchedulingHostCase(state=state, host=host, lifetime=lifetime, registry=registry, ports=ports)
     _, _, response_filter, _, _ = bind_generation(case, monkeypatch)
     guard = NativeObservationGuard(
         policy=NativeHttpObservationPolicy.qualify(context=state.context, profile=build_native_http_profile()),
@@ -142,21 +187,20 @@ def make_host(state, authorization, monkeypatch, *, snapshot=None):
             else NativeGraphRuntimeState.from_snapshot(snapshot.graph_runtime_state_json)
         )
         runtime.variable_pool.add(("start", "items"), ["one", "two"])
-        bridge = build_delivery_bridge(
-            runtime=SimpleNamespace(
-                # Mirrors the real runtime default; Code binding stays off here.
-                code_qualification=None,
-                host=host,
-                lifecycle=SimpleNamespace(
-                    store=state,
-                    loader=SimpleNamespace(
-                        load=lambda **_: SimpleNamespace(expires_at=datetime(2030, 1, 1, tzinfo=UTC))
-                    ),
-                ),
-                authorization=authorization,
-                _journal=journal,
-            )
+        api = _api()
+        monkeypatch.setattr(api.loader, "load", lambda **_: scheduling_owner(state))
+        lifecycle = NativeTestLifecycleService(
+            api.loader, state_store=state, resume_settlement=DifyNativeResumeSettlement()
         )
+        delivery_runtime = DifyNativeRuntime(
+            delivery=NativeDispatchRef(REF, state.context.generation, dispatch_id),
+            lifecycle=lifecycle,
+            registry=registry,
+        )
+        delivery_runtime.host = host
+        delivery_runtime.authorization = authorization
+        delivery_runtime._journal = journal
+        bridge = build_delivery_bridge(runtime=delivery_runtime)
         run_context = DifyRunContext(
             tenant_id=state.context.tenant_id,
             app_id=state.context.app_id,
@@ -277,7 +321,22 @@ def test_actual_http_pause_restore_dispatches_same_waiting_intent_once(monkeypat
     monkeypatch.setattr(httpx.Client, "send", send)
     monkeypatch.setattr(
         "services.dify_builder.native_testing.http_binding.validate_private_read",
-        lambda *_: SimpleNamespace(generation=state.context.generation),
+        lambda *_: PrivateReadOwner(
+            tenant_id=state.context.tenant_id,
+            actor_id=state.context.actor_id,
+            app_id=state.context.app_id,
+            workflow_id=state.context.workflow_id,
+            parent_invocation_id=None,
+            context_object_id="context",
+            generation=state.context.generation,
+            graph_revision=state.context.graph_revision,
+            root_revision_matches=True,
+            input_revision=None,
+            expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+            cancelled=False,
+            active=True,
+            request_state="running",
+        ),
     )
     monkeypatch.setattr(NativeHttpBindingProducer, "_install", lambda *_, **__: None)
     first = make_host(state, authorization, monkeypatch)

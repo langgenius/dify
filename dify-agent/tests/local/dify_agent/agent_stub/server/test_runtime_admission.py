@@ -55,7 +55,7 @@ def admission(reader):
 
 def test_issuance_requires_actual_run_and_keeps_legacy_unselected():
     c = codec()
-    assert getattr(c.decode_token(c.encode_connection_token(context())), "runtime", None) is None
+    assert c.decode_token(c.encode_connection_token(context())).runtime is None
     with pytest.raises(AgentRuntimeTransportError):
         c.encode_runtime_token(context(), run_id="run", session_id=None)
     with bind_runtime_identity(identity()):
@@ -234,9 +234,9 @@ def test_six_config_routes_only_accept_their_method(method, operation):
 
 
 def test_connect_and_delegated_download_require_same_admitted_owner():
-    from dify_agent.agent_stub.server.control_plane import AgentStubControlPlaneService, AgentStubControlPlaneError
-    from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
     from dify_agent.agent_stub.protocol.agent_stub import AgentStubFileDownloadRequest
+    from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
+    from dify_agent.agent_stub.server.control_plane import AgentStubControlPlaneError, AgentStubControlPlaneService
 
     async def exercise():
         c = codec()
@@ -358,9 +358,10 @@ def test_expiry_during_final_live_read_refuses(monkeypatch):
 
 
 def test_standalone_strict_refuses_valid_runtime_token_without_live_store():
+    from fastapi.testclient import TestClient
+
     from dify_agent.agent_stub.server.app import create_agent_stub_app
     from dify_agent.server.settings import ServerSettings
-    from fastapi.testclient import TestClient
 
     settings = ServerSettings(
         server_secret_key=base64.urlsafe_b64encode(b"x" * 32).rstrip(b"=").decode(), _env_file=None
@@ -378,7 +379,7 @@ def test_standalone_strict_refuses_valid_runtime_token_without_live_store():
 
 
 def test_runtime_token_cannot_enter_explicit_legacy_service():
-    from dify_agent.agent_stub.server.control_plane import AgentStubControlPlaneService, AgentStubControlPlaneError
+    from dify_agent.agent_stub.server.control_plane import AgentStubControlPlaneError, AgentStubControlPlaneService
 
     async def exercise():
         c = codec()
@@ -392,15 +393,15 @@ def test_runtime_token_cannot_enter_explicit_legacy_service():
 
 @pytest.mark.parametrize("file_operation", [False, True])
 def test_strict_timeout_preserves_public_error(file_operation):
+    from dify_agent.agent_stub.protocol.agent_stub import AgentStubFileUploadRequest
     from dify_agent.agent_stub.server.agent_stub_config import (
-        DifyApiAgentStubConfigRequestHandler,
         AgentStubConfigRequestError,
+        DifyApiAgentStubConfigRequestHandler,
     )
     from dify_agent.agent_stub.server.agent_stub_files import (
-        DifyApiAgentStubFileRequestHandler,
         AgentStubFileRequestError,
+        DifyApiAgentStubFileRequestHandler,
     )
-    from dify_agent.agent_stub.protocol.agent_stub import AgentStubFileUploadRequest
 
     async def exercise():
         async def reader(_):
@@ -437,8 +438,8 @@ def test_strict_timeout_preserves_public_error(file_operation):
 
 
 def test_strict_file_upload_uses_signed_context_and_final_header():
-    from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
     from dify_agent.agent_stub.protocol.agent_stub import AgentStubFileUploadRequest
+    from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 
     async def exercise():
         seen = []
@@ -502,14 +503,14 @@ def test_native_claims_refuse_before_reader_or_issuance():
 
 
 def test_confirmed_stub_token_preserves_claimed_envelope_and_config_get_forwards_it():
-    from dify_agent.runtime.native_effects import NativeDispatchEnvelope, _dispatch
-    from dify_agent.protocol.native_testing import (
-        AgentNativeTestRef,
-        AgentEffectIntent,
-        AgentOperationKey,
-        AgentDispatchPermit,
-    )
     from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
+    from dify_agent.protocol.native_testing import (
+        AgentDispatchPermit,
+        AgentEffectIntent,
+        AgentNativeTestRef,
+        AgentOperationKey,
+    )
+    from dify_agent.runtime.native_effects import NativeDispatchEnvelope, _dispatch
 
     ref = AgentNativeTestRef(
         policy_version="builder-native-test-v1",
@@ -593,10 +594,8 @@ def test_confirmed_stub_token_preserves_claimed_envelope_and_config_get_forwards
 
 
 def test_confirmed_stub_durable_reader_requires_exact_active_identity():
-    from types import SimpleNamespace
-    from unittest.mock import AsyncMock
-    from dify_agent.storage.redis_run_store import RedisRunStore
     from dify_agent.runtime.native_continuation import NativeContinuationConflict
+    from dify_agent.storage.redis_run_store import RedisRunStore
 
     selected = AgentRuntimeIdentity(
         run_id="run",
@@ -618,11 +617,22 @@ def test_confirmed_stub_durable_reader_requires_exact_active_identity():
     )
 
     async def exercise():
-        redis = SimpleNamespace(eval=AsyncMock(return_value=selected.model_dump_json()))
-        store = RedisRunStore(redis)
-        assert await store.read_active_stub_identity(selected) == selected
-        redis.eval.return_value = selected.model_copy(update={"agent_generation": 1}).model_dump_json()
-        with pytest.raises(NativeContinuationConflict):
-            await store.read_active_stub_identity(selected)
+        from unittest.mock import patch
+
+        from redis.asyncio import Redis
+
+        redis = Redis()
+        response = [selected.model_dump_json()]
+
+        async def read(*_args, **_kwargs):
+            return response[0]
+
+        with patch.object(redis, "eval", side_effect=read):
+            store = RedisRunStore(redis)
+            assert await store.read_active_stub_identity(selected) == selected
+            response[0] = selected.model_copy(update={"agent_generation": 1}).model_dump_json()
+            with pytest.raises(NativeContinuationConflict):
+                await store.read_active_stub_identity(selected)
+        await redis.aclose()
 
     asyncio.run(exercise())

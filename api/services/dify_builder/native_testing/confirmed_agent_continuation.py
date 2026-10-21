@@ -17,6 +17,7 @@ from sqlalchemy import select
 
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from extensions.ext_storage import storage
+from graphon.entities.pause_reason import SchedulingPause
 from graphon.runtime import RuntimeState
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import NativeEffectOperation, NativePayloadObject, NativePendingAction
@@ -199,10 +200,7 @@ class ConfirmedAgentContinuation:
                     NativePayloadObject.kind == "result", NativePayloadObject.logical_key.like("agent-cp:%")
                 )
             ).all()
-            receipts = [
-                ObjectReceipt(**{name: getattr(row, name) for name in ObjectReceipt.__dataclass_fields__})
-                for row in rows
-            ]
+            receipts = [ObjectReceipt.from_payload_object(row) for row in rows]
         latest = {}
         for receipt in receipts:
             value = self.store._read_object(receipt)
@@ -227,7 +225,10 @@ class ConfirmedAgentContinuation:
         """Call after consuming the actual ordinary paused stream, before disclosure."""
         context = self.store.load_context(ref=ref)
         paused = self.read_parent_pause(ref=ref)
-        reasons = {getattr(reason, "message", None) for reason in paused.runtime.graph_execution.pause_reasons}
+        reasons = {
+            reason.message if isinstance(reason, SchedulingPause) else None
+            for reason in paused.runtime.graph_execution.pause_reasons
+        }
         allowed = {"agent_tool_approval"}
         if allow_ack_recovery:
             allowed |= {

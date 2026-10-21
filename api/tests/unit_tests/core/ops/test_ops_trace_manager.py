@@ -801,11 +801,10 @@ def test_trace_queue_enqueue_error_propagates(monkeypatch: pytest.MonkeyPatch, t
         manager.enqueue_persisted_trace({"file_id": "workflow-final-run-1", "app_id": "app-id"})
 
 
-def test_restricted_trace_policy_survives_shared_queue_and_persistence(monkeypatch, trace_environment):
-    from unittest.mock import MagicMock
-
-    provider = MagicMock(side_effect=AssertionError("provider resolution forbidden"))
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", provider)
+def test_restricted_trace_policy_survives_shared_queue_and_persistence(monkeypatch, trace_environment, mocker):
+    provider = mocker.patch.object(
+        OpsTraceManager, "get_ops_trace_instance", side_effect=AssertionError("provider resolution forbidden")
+    )
     restricted = TraceQueueManager(app_id="restricted", external_tracing_disabled=True)
     provider.assert_not_called()
     restricted._enterprise_telemetry_enabled = True

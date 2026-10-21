@@ -1,10 +1,10 @@
 from collections.abc import Callable
-from types import SimpleNamespace
 
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from graphon.enums import BuiltinNodeTypes
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from services.workflow_runtime.node_factory import DifyNodeFactory
 
 
@@ -73,8 +73,8 @@ class TestDifyNodeFactory:
         )
 
         return DifyNodeFactory(
-            init_params=SimpleNamespace(run_context=run_context, workflow_id="workflow"),
-            runtime_state=SimpleNamespace(),
+            init_params=InitParams(run_context=run_context, workflow_id="workflow", graph_config={}, call_depth=0),
+            runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0),
         )
 
     def test_create_node_unknown_type(self):

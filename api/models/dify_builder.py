@@ -6,11 +6,19 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from libs.uuid_utils import uuidv7
 
-from .base import Base
+from .base import TypeBase
 from .types import AdjustedJSON, StringUUID
 
 
-class DifyBuilderSession(Base):
+class BuilderRowIdentity:
+    """Preserve ORM object identity instead of TypeBase's inherited dataclass equality."""
+
+    __eq__ = object.__eq__
+    __hash__ = object.__hash__
+    __repr__ = object.__repr__
+
+
+class DifyBuilderSession(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """
     DifyBuilder Session Model
 
@@ -27,21 +35,28 @@ class DifyBuilderSession(Base):
         sa.Index("dify_builder_session_app_idx", "app_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    # Allocation stays at INSERT; the repository can supply a domain ID before flush.
+    id: Mapped[str] = mapped_column(StringUUID, insert_default=lambda: str(uuidv7()), default=None)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     owner_account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     entry_mode: Mapped[str] = mapped_column(String(50), nullable=False)
     current_state: Mapped[str] = mapped_column(String(50), nullable=False)
-    version: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("1"))
+    version: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("1"), default=None)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), default=None
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        default=None,
     )
 
 
-class DifyBuilderSessionCommit(Base):
+class DifyBuilderSessionCommit(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """
     DifyBuilder Session Commit Model
 
@@ -56,17 +71,19 @@ class DifyBuilderSessionCommit(Base):
         sa.Index("dify_builder_session_commit_session_idx", "session_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, insert_default=lambda: str(uuidv7()), default=None)
     session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     state: Mapped[str] = mapped_column(String(50), nullable=False)
     context: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
     actor: Mapped[str] = mapped_column(String(50), nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), default=None
+    )
 
 
-class DifyBuilderSnapshot(Base):
+class DifyBuilderSnapshot(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """
     DifyBuilder Snapshot Model
 
@@ -80,15 +97,17 @@ class DifyBuilderSnapshot(Base):
         sa.Index("dify_builder_snapshot_session_idx", "session_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, insert_default=lambda: str(uuidv7()), default=None)
     session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     hash: Mapped[str] = mapped_column(String(255), nullable=False)
     graph: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), default=None
+    )
 
 
-class DifyBuilderCheckpoint(Base):
+class DifyBuilderCheckpoint(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """
     DifyBuilder Checkpoint Model
 
@@ -102,15 +121,17 @@ class DifyBuilderCheckpoint(Base):
         sa.Index("dify_builder_checkpoint_session_idx", "session_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, insert_default=lambda: str(uuidv7()), default=None)
     session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     state: Mapped[str] = mapped_column(String(50), nullable=False)
     snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), default=None
+    )
 
 
-class DifyBuilderRun(Base):
+class DifyBuilderRun(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """
     DifyBuilder Run Model
 
@@ -124,25 +145,27 @@ class DifyBuilderRun(Base):
         sa.Index("dify_builder_run_session_idx", "session_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, insert_default=lambda: str(uuidv7()), default=None)
     session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     kind: Mapped[str] = mapped_column(String(50), nullable=False)
-    dify_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    dify_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
-    per_node: Mapped[list[dict] | None] = mapped_column(AdjustedJSON, nullable=True)
-    verification: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
-    culprit_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    per_node: Mapped[list[dict] | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    verification: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    culprit_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     # Launch-failure text captured when a verify run throws before any node runs.
-    error: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
-    inputs_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    elapsed_ms: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    immutable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    error: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
+    inputs_ref: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    elapsed_ms: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    immutable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=None)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), default=None
+    )
 
 
-class DifyBuilderConversationItem(Base):
+class DifyBuilderConversationItem(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """
     DifyBuilder Conversation Item Model
 
@@ -157,17 +180,19 @@ class DifyBuilderConversationItem(Base):
         sa.Index("dify_builder_conversation_item_session_idx", "session_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, insert_default=lambda: str(uuidv7()), default=None)
     session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     seq: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     kind: Mapped[str] = mapped_column(String(50), nullable=False)
     payload: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
     at_version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), default=None
+    )
 
 
-class DifyBuilderTestInput(Base):
+class DifyBuilderTestInput(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """
     DifyBuilder Test Input Model
 
@@ -182,17 +207,19 @@ class DifyBuilderTestInput(Base):
         sa.Index("dify_builder_test_input_session_idx", "session_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, insert_default=lambda: str(uuidv7()), default=None)
     session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     source: Mapped[str] = mapped_column(String(50), nullable=False)
     inputs: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
     start_schema_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    http_fixtures: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    http_fixtures: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), default=None
+    )
 
 
-class DifyBuilderExecutionRequest(Base):
+class DifyBuilderExecutionRequest(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """Immutable prepared policy and bounded append-only runtime observations.
 
     Launch and append mutations require a row lock. Native Run rows remain
@@ -224,16 +251,18 @@ class DifyBuilderExecutionRequest(Base):
     context: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
     context_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     state: Mapped[str] = mapped_column(String(16), nullable=False, default="prepared")
-    native_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    task_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    observations: Mapped[list] = mapped_column(AdjustedJSON, nullable=False, default=list)
-    completion_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    completion_summary: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    sealed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    native_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    task_id: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    observations: Mapped[list] = mapped_column(AdjustedJSON, nullable=False, insert_default=list, default_factory=list)
+    completion_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
+    completion_summary: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), default=None
+    )
+    sealed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
 
-class DifyBuilderRealCallConsent(Base):
+class DifyBuilderRealCallConsent(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """One human-approved, one-shot real Tool call and its durable spends.
 
     ``binding`` and ``disclosure`` are frozen at preparation; ``scope_digest``
@@ -283,7 +312,7 @@ class DifyBuilderRealCallConsent(Base):
         ),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, insert_default=lambda: str(uuidv7()), default=None)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -298,33 +327,39 @@ class DifyBuilderRealCallConsent(Base):
     disclosure_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     state: Mapped[str] = mapped_column(String(16), nullable=False)
-    decision: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    execution_request_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    command_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    reserved_version: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    reserved_commit_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    decision: Mapped[str | None] = mapped_column(String(16), nullable=True, default=None)
+    execution_request_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    command_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    reserved_version: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    reserved_commit_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     prepare_key: Mapped[str] = mapped_column(String(128), nullable=False)
     prepare_body_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     prepare_receipt: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
-    confirm_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    confirm_body_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    confirm_receipt: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
-    execute_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    execute_body_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    execute_receipt: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
-    claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    refresh_claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    business_claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    confirm_key: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    confirm_body_digest: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
+    confirm_receipt: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    execute_key: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    execute_body_digest: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
+    execute_receipt: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    refresh_claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    business_claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     refresh_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
     business_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
     initial_credential_revision: Mapped[str] = mapped_column(String(64), nullable=False)
-    derived_credential_revision: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    derived_credential_revision: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
     oauth_client_revision: Mapped[str] = mapped_column(String(64), nullable=False)
-    native_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    native_node_execution_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    outcome_state: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    reason_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    native_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    native_node_execution_id: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    outcome_state: Mapped[str | None] = mapped_column(String(16), nullable=True, default=None)
+    reason_code: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), default=None
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        default=None,
     )

@@ -10,16 +10,6 @@ import pytest
 
 import dify_agent.layers.shell.layer as shell_layer_module
 import dify_agent.runtime.command_runner as command_runner_module
-from dify_agent.layers.shell import (
-    DifyShellEnvVarConfig,
-    DifyShellLayerConfig,
-)
-from dify_agent.layers.shell.layer import (
-    CompleteRemoteCommandResult,
-    DEFAULT_TERMINATE_GRACE_SECONDS,
-    ShellSession,
-    State,
-)
 from dify_agent.adapters.shell.protocols import (
     ShellCommandResult,
     ShellCommandStatus,
@@ -27,6 +17,16 @@ from dify_agent.adapters.shell.protocols import (
     ShellProviderError,
 )
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.shell import (
+    DifyShellEnvVarConfig,
+    DifyShellLayerConfig,
+)
+from dify_agent.layers.shell.layer import (
+    DEFAULT_TERMINATE_GRACE_SECONDS,
+    CompleteRemoteCommandResult,
+    ShellSession,
+    State,
+)
 from dify_agent.runtime_backend import (
     RuntimeLayout,
     RuntimeLease,
@@ -1256,8 +1256,8 @@ def test_redact_output_skips_short_jwe_values() -> None:
 
 @pytest.mark.parametrize("remote", [False, True])
 def test_native_stub_refuses_before_job_creation(remote: bool) -> None:
-    from dify_agent.runtime_backend.native_test_scope import NativeScopeLease
     from dify_agent.runtime.native_effects import NativePolicyStopped
+    from dify_agent.runtime_backend.native_test_scope import NativeScopeLease
 
     commands = FakeCommands()
     layer, _ = _layer(commands=commands)
@@ -1281,8 +1281,8 @@ def test_native_stub_refuses_before_job_creation(remote: bool) -> None:
 
 
 def test_native_required_stub_env_refuses_even_when_unconfigured() -> None:
-    from dify_agent.runtime_backend.native_test_scope import NativeScopeLease
     from dify_agent.runtime.native_effects import NativePolicyStopped
+    from dify_agent.runtime_backend.native_test_scope import NativeScopeLease
 
     commands = FakeCommands()
     layer, _ = _layer(commands=commands)
@@ -1299,6 +1299,7 @@ def test_native_required_stub_env_refuses_even_when_unconfigured() -> None:
 
 def test_strict_shell_checks_actual_deps_run_before_token_issuance() -> None:
     import httpx
+
     from dify_agent.adapters.native_testing.transport import (
         AgentRuntimeHTTPClient,
         AgentRuntimeTransportError,
@@ -1331,17 +1332,19 @@ def test_strict_shell_checks_actual_deps_run_before_token_issuance() -> None:
 
 
 def test_confirmed_shell_exit_keeps_jobs_without_unapproved_cleanup():
-    from types import SimpleNamespace
+    from pydantic_ai.run import AgentRunResult
+
     from dify_agent.layers.shell.layer import Capability
+    from tests.local.dify_agent.runtime.native_test_entities import native_effects, run_context
 
     commands = FakeCommands()
     session, _ = _layer(commands=commands)
     session.deps.layers["shell"]["state"] = State(initialized=True, job_ids=["existing-job"]).model_dump(mode="json")
-    session.deps.native_effects = SimpleNamespace(continuation=SimpleNamespace(native_test_profile="confirmed"))
+    session.deps.native_effects = native_effects(session.deps, profile="confirmed")
 
     async def handler():
-        return SimpleNamespace(output="done")
+        return AgentRunResult(output="done")
 
-    asyncio.run(Capability("shell").wrap_run(SimpleNamespace(deps=session.deps), handler=handler))
+    asyncio.run(Capability("shell").wrap_run(run_context(session.deps), handler=handler))
     assert commands.delete_calls == []
     assert session.runtime_state.job_ids == ["existing-job"]

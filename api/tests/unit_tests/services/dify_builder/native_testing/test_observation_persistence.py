@@ -12,12 +12,12 @@ import json
 import traceback
 from copy import deepcopy
 from datetime import datetime
-from types import SimpleNamespace
 from typing import cast, override
 
 import pytest
 from sqlalchemy.orm import sessionmaker
 
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.factory import OrderConfig
@@ -47,6 +47,7 @@ from graphon.node_events import NodeRunResult
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from models import WorkflowNodeExecutionTriggeredFrom
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.model import AppMode
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
 from services.file_service import FileService
@@ -232,7 +233,9 @@ def make_layer(*, guard=None, trace=None):
     runtime.variable_pool.add(["sys", "query"], SENTINEL)
     entity = WorkflowAppGenerateEntity.model_construct(
         task_id="task",
-        app_config=SimpleNamespace(app_id="app", tenant_id="tenant"),
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
+        ),
         inputs={SENTINEL: SENTINEL},
         files=[],
         user_id="actor",
@@ -518,12 +521,19 @@ def test_native_resumption_refuses_before_old_row_load_or_cache_and_run_save():
     assert notices == [1]
 
 
+class RejectRawTrace:
+    """Trace queue boundary that must never receive marked persistence events."""
+
+    def add_trace_task(self, _task):
+        pytest.fail("raw trace enqueue")
+
+
 def test_trace_owner_is_refused_before_marked_persistence_or_enqueues():
     notices = []
     module = adapters()
     guard = module.NativeObservationGuard(policy=policy(), on_failure=lambda: notices.append(1))
     with pytest.raises(module.NativeObservationError):
-        make_layer(guard=guard, trace=SimpleNamespace(add_trace_task=lambda _task: pytest.fail("trace enqueue")))
+        make_layer(guard=guard, trace=RejectRawTrace())
     assert guard.failed is True
     assert notices == [1]
 
@@ -729,9 +739,7 @@ def test_late_trace_owner_cannot_enqueue_after_marked_construction():
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None)
     layer, _, _, _, entity, _ = make_layer(guard=guard)
     layer.on_event(GraphRunStartedEvent())
-    entity.trace_manager = cast(
-        TraceQueueManager, SimpleNamespace(add_trace_task=lambda _task: pytest.fail("raw trace enqueue"))
-    )
+    entity.trace_manager = cast(TraceQueueManager, RejectRawTrace())
     with pytest.raises(adapters().NativeObservationError):
         layer.on_event(GraphRunSucceededEvent())
     assert guard.failed is True

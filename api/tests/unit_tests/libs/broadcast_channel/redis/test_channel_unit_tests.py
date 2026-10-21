@@ -1149,15 +1149,16 @@ class TestRedisShardedSubscription:
         assert result == mock_pubsub.get_sharded_message.return_value
 
     def test_get_subscription_ack_uses_target_node_for_cluster_client(
-        self, mock_pubsub: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self, mock_pubsub: MagicMock, monkeypatch: pytest.MonkeyPatch, mocker
     ):
         class DummyRedisCluster:
-            def __init__(self):
-                self.get_node_from_key = MagicMock(return_value="node-1")
+            def get_node_from_key(self, _key):
+                return "node-1"
 
         monkeypatch.setattr("libs.broadcast_channel.redis.sharded_channel.RedisCluster", DummyRedisCluster)
 
         client = DummyRedisCluster()
+        mocker.spy(client, "get_node_from_key")
         subscription = _RedisShardedSubscription(
             client=client,
             pubsub=mock_pubsub,

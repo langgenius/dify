@@ -271,7 +271,7 @@ class AgentBindingService:
             current_snapshot_id=snapshot.id,
             node_job_config=node_job,
         )
-        graph = deepcopy(workflow.graph_dict)
+        graph = deepcopy(dict(workflow.graph_dict))
         nodes = graph.setdefault("nodes", [])
         nodes[:] = [item for item in nodes if item.get("id") != node_id]
         nodes.append({"id": node_id, "data": data})

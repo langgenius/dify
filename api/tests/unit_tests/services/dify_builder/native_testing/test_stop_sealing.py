@@ -3,21 +3,56 @@
 from collections import UserList
 from contextlib import contextmanager
 from copy import deepcopy
-from types import SimpleNamespace
-from typing import cast
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import inspect
+from sqlalchemy.orm import sessionmaker
 
+from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest
-from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestInvocation
+from models.dify_builder_native_tests import (
+    NativeDispatch,
+    NativeInvocationState,
+    NativeTestInvocation,
+    NativeTestScope,
+)
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
+from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
-from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 
 REF = NativeTestContextRef(request_id="request", invocation_id="root", context_digest="a" * 64)
+
+
+def control_owner(owner_state: str) -> OwnedNativeTest:
+    return OwnedNativeTest(
+        ref=REF,
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=3,
+        task_approved=False,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state=owner_state,
+    )
+
+
+def state_snapshots(states):
+    return deepcopy(
+        [
+            tuple(inspect(row).attrs[column.key].value for column in inspect(NativeInvocationState).column_attrs)
+            for row in states
+        ]
+    )
 
 
 class Rows(UserList):
@@ -29,9 +64,22 @@ class SQLBoundary:
     """Explicit owner rows; deliberately does not pretend to evaluate SQL joins."""
 
     def __init__(self):
-        self.request = SimpleNamespace(id="request", tenant_id="tenant", state="running")
+        self.request = DifyBuilderExecutionRequest(
+            id="request",
+            tenant_id="tenant",
+            state="running",
+            app_id="app",
+            workflow_id="workflow",
+            actor_id="actor",
+            session_id="session",
+            test_input_id="input",
+            context={},
+            context_digest=REF.context_digest,
+        )
         self.states = [
-            SimpleNamespace(
+            NativeInvocationState(
+                context_object_id="context-" + identity,
+                resolution=[],
                 request_id="request",
                 tenant_id="tenant",
                 invocation_id=identity,
@@ -48,18 +96,21 @@ class SQLBoundary:
             for identity, parent in (("root", None), ("child", "root"))
         ]
         self.invocations = [
-            SimpleNamespace(request_id="request", tenant_id="tenant", invocation_id=s.invocation_id, active=True)
+            NativeTestInvocation(
+                request_id="request", tenant_id="tenant", invocation_id=s.invocation_id, active=True, bindings={}
+            )
             for s in self.states
         ]
         self.dispatches = [
-            SimpleNamespace(
+            NativeDispatch(
+                idempotency_digest="b" * 64,
                 id=identity,
                 request_id="request",
                 tenant_id="tenant",
                 invocation_id=invocation,
                 generation=3,
                 state=state,
-                claim_expires_at="retained-lease",
+                claim_expires_at=datetime(2030, 1, 1, tzinfo=UTC),
             )
             for identity, invocation, state in (("dispatch", "root", "claimed"), ("queued", "child", "queued"))
         ]
@@ -97,31 +148,51 @@ class Loader:
         self.sql = sql
         self.events = []
         self.commit_error = None
-        self.scope = SimpleNamespace(cancelled=False, generation=27)
+        self.scope = NativeTestScope(
+            cancelled=False,
+            generation=27,
+            tenant_id="tenant",
+            request_id="request",
+            task_approved=False,
+            max_calls=16,
+            max_dispatches=16,
+            max_cost_units=16,
+            expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+            budget_limits={},
+            budget_spent={},
+            profile={},
+        )
 
     @contextmanager
     def locked(self, *, ref, settlement):
         assert ref == REF
         assert settlement is True
         self.events.append("writer-enter")
-        owned = SimpleNamespace(
-            ref=ref, tenant_id="tenant", app_id="app", workflow_id="workflow", state=self.sql.request.state
-        )
+        owned = control_owner(self.sql.request.state)
         yield self.sql, owned, self.scope
         self.events.append("committed")
         if self.commit_error:
             raise self.commit_error
 
 
+@dataclass
+class StopSealCase:
+    sql: SQLBoundary
+    loader: Loader
+    lifecycle: NativeTestLifecycleService
+
+
 @pytest.fixture
-def case():
+def case(monkeypatch):
     sql = SQLBoundary()
     loader = Loader(sql)
     # These labeled boundary objects grant no physical, SQL, or storage proof.
-    lifecycle = NativeTestLifecycleService(
-        cast(OwnedNativeTestLoader, loader), state_store=cast(NativeExecutionStateStore, SimpleNamespace())
+    owner_loader = OwnedNativeTestLoader(
+        sessionmaker(), actor=Actor(tenant_id="tenant", account_id="actor"), resolver=NativeHttpBindingResolver()
     )
-    return SimpleNamespace(sql=sql, loader=loader, lifecycle=lifecycle)
+    monkeypatch.setattr(owner_loader, "locked", loader.locked)
+    lifecycle = NativeTestLifecycleService(owner_loader, state_store=NativeExecutionStateStore(owner_loader))
+    return StopSealCase(sql=sql, loader=loader, lifecycle=lifecycle)
 
 
 def seal(case, **changes):
@@ -131,14 +202,14 @@ def seal(case, **changes):
 
 
 def test_stop_seals_authority_after_commit_without_claiming_physical_cleanup(case):
-    states_before = deepcopy([vars(s) for s in case.sql.states])
+    states_before = state_snapshots(case.sql.states)
     assert seal(case) is None
     assert case.loader.events == ["writer-enter", "committed"]
     assert case.sql.request.state == "sealed"
     assert not any(s.active for s in case.sql.invocations)
-    assert [vars(s) for s in case.sql.states] == states_before
+    assert state_snapshots(case.sql.states) == states_before
     assert case.sql.dispatches[0].state == "claimed"
-    assert case.sql.dispatches[0].claim_expires_at == "retained-lease"
+    assert case.sql.dispatches[0].claim_expires_at == datetime(2030, 1, 1, tzinfo=UTC)
     assert case.sql.dispatches[1].state == "cancelled"
     assert not case.loader.scope.cancelled
 
@@ -181,18 +252,17 @@ def test_stop_rejects_orphan_dispatch_before_any_authority_or_outbox_mutation(ca
     orphan = deepcopy(case.sql.dispatches[1])
     orphan.id, orphan.invocation_id, orphan.state = "orphan-dispatch", "missing-invocation", dispatch_state
     case.sql.dispatches.append(orphan)
+    rows = [case.sql.request, case.loader.scope, *case.sql.states, *case.sql.invocations, *case.sql.dispatches]
     before = deepcopy(
-        [vars(case.sql.request), vars(case.loader.scope)]
-        + [vars(row) for row in (*case.sql.states, *case.sql.invocations, *case.sql.dispatches)]
+        [tuple(inspect(row).attrs[column.key].value for column in inspect(type(row)).column_attrs) for row in rows]
     )
 
     with pytest.raises(BuilderExecutionPolicyError, match="native_owner_mismatch"):
         seal(case)
 
-    assert (
-        [vars(case.sql.request), vars(case.loader.scope)]
-        + [vars(row) for row in (*case.sql.states, *case.sql.invocations, *case.sql.dispatches)]
-    ) == before
+    assert [
+        tuple(inspect(row).attrs[column.key].value for column in inspect(type(row)).column_attrs) for row in rows
+    ] == before
     assert case.loader.events == ["writer-enter"]
 
 
@@ -212,7 +282,7 @@ def test_sealed_request_cannot_be_finalized_as_completed_or_resumable_wait(case,
     case.sql.request.state = "sealed"
     for invocation in case.sql.invocations:
         invocation.active = False
-    owned = SimpleNamespace(ref=REF, tenant_id="tenant", state="sealed")
+    owned = control_owner("sealed")
     outcome = NativeWorkflowOutcome(
         status=status,
         ref=REF,

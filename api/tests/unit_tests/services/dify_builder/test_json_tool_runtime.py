@@ -3,9 +3,8 @@
 import json
 from collections.abc import Callable, Generator, Mapping
 from copy import deepcopy
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Never, cast
 
 import pytest
@@ -90,7 +89,7 @@ def _context(installation: InstalledJsonParse, expected: dict[str, str | bool]) 
     )
     qualified = QualifiedJsonToolBinding(
         node_id="node2",
-        **{field: getattr(installation, field) for field in installation.__dataclass_fields__},
+        **installation.binding_fields(),
         final_parameters_digest=canonical_digest(expected),
     )
     initial = JsonToolExecutionContext(
@@ -306,6 +305,19 @@ def test_final_envelope_mismatch_prevents_native_dispatch(
         list(guarded.invoke(session, "user", {**EXPECTED, "ensure_ascii": True}))
 
 
+@dataclass(frozen=True)
+class ReviewedJsonIssuer:
+    binding: JsonRuntimeBinding
+
+    def json_runtime_binding(self, **_kwargs: str) -> JsonRuntimeBinding:
+        return self.binding
+
+
+class UnqualifiedToolProvider:
+    def get_tool(self, _name: str) -> PluginTool:
+        return _native()
+
+
 def _runtime(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
@@ -313,7 +325,7 @@ def _runtime(
     expected: Mapping[str, str | bool] | None = None,
     metadata_reader: Callable[[str], InstalledJsonParse] | None = None,
     recorder: Recorder | None = None,
-    controller: PluginToolProviderController | SimpleNamespace | None = None,
+    controller: PluginToolProviderController | UnqualifiedToolProvider | None = None,
     maker: sessionmaker[Session] | None = None,
 ) -> tuple[QualifiedJsonToolNodeRuntime, Recorder]:
     expected = dict(EXPECTED if expected is None else expected)
@@ -328,7 +340,7 @@ def _runtime(
         recorder=recorder,
         metadata_reader=metadata_reader or (lambda _tenant: installed),
     )
-    issuer = SimpleNamespace(json_runtime_binding=lambda **_kwargs: binding)
+    issuer = ReviewedJsonIssuer(binding)
     controller = controller or PluginToolProviderController(
         entity=_provider().declaration,
         plugin_id=metadata.PLUGIN_ID,
@@ -481,7 +493,7 @@ def test_actual_parse_schema_drift_refuses_before_dynamic_fetch(
 def test_hardcoded_fallback_refuses_before_credential_branch(
     monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
 ) -> None:
-    fallback = SimpleNamespace(get_tool=lambda _name: _native())
+    fallback = UnqualifiedToolProvider()
     runtime, _ = _runtime(monkeypatch, sqlite_engine, controller=fallback)
     with pytest.raises(ToolRuntimeResolutionError):
         runtime.get_runtime(
@@ -610,10 +622,7 @@ def test_post_dispatch_metadata_change_prevents_receipt(monkeypatch: pytest.Monk
         reads.append(True)
         if len(reads) == 1:
             return installed
-        return InstalledJsonParse(
-            **{field: getattr(installed, field) for field in installed.__dataclass_fields__ if field != "checksum"},
-            checksum="f" * 64,
-        )
+        return replace(installed, checksum="f" * 64)
 
     class Manager:
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
@@ -756,7 +765,7 @@ def test_file_producing_output_refuses_before_all_file_owners(
     monkeypatch.setattr(ToolFileManager, "create_file_by_url", fail("create-file-by-url"))
     monkeypatch.setattr(ToolFileManager, "create_file_by_raw", fail("create-file-by-raw"))
     monkeypatch.setattr(file_manager_module.remote_fetcher, "make_request", fail("file-download"))
-    monkeypatch.setattr(file_manager_module, "storage", SimpleNamespace(save=fail("file-storage")))
+    monkeypatch.setattr(file_manager_module.storage, "save", fail("file-storage"))
     original = ToolFileMessageTransformer.transform_tool_invoke_messages
 
     def observing_transform(

@@ -1,8 +1,9 @@
-from types import SimpleNamespace
+import json
 
 import pytest
 
 from core.dify_builder.models import Graph, NodeOutput
+from models.workflow import ExecutionOffLoadType, WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowRun
 from services.dify_builder import run_mapping
 
 
@@ -32,8 +33,14 @@ def test_verification_terminal_outputs(outputs: dict[str, object] | None) -> Non
 def test_verification_node_availability_and_inputs() -> None:
     output_values: list[dict[str, object] | None] = [{}, None, {"text": None}]
     rows = [
-        SimpleNamespace(
-            node_id="tool", title="", status="succeeded", error=None, inputs_dict={"x": 0}, outputs_dict=outputs
+        WorkflowNodeExecutionModel(
+            node_id="tool",
+            title="",
+            status="succeeded",
+            error=None,
+            inputs=json.dumps({"x": 0}),
+            outputs=json.dumps(outputs) if outputs is not None else None,
+            offload_data=[],
         )
         for outputs in output_values
     ]
@@ -88,21 +95,25 @@ def test_output_evidence_container_and_retry_unknown() -> None:
 
 
 def test_verification_offloaded_outputs_are_not_complete() -> None:
-    row = SimpleNamespace(
+    row = WorkflowNodeExecutionModel(
         node_id="tool",
         title="",
         status="succeeded",
         error=None,
-        inputs_dict={},
-        outputs_dict={},
-        outputs_truncated=True,
+        inputs="{}",
+        outputs="{}",
+        offload_data=[
+            WorkflowNodeExecutionOffload(
+                tenant_id="t", app_id="a", node_execution_id="n", type_=ExecutionOffLoadType.OUTPUTS, file_id="f"
+            )
+        ],
     )
     run = run_mapping.map_run_result({"id": "native", "status": "succeeded"}, [row])
     assert run.per_node[0].outputs_available is False
 
 
 def test_verification_native_missing_outputs_stays_unavailable() -> None:
-    row = SimpleNamespace(id="native", status="succeeded", outputs=None, outputs_dict={})
+    row = WorkflowRun(id="native", status="succeeded", outputs=None)
     assert run_mapping.run_result_data_from_run_row(row)["outputs"] is None
 
 
@@ -291,16 +302,22 @@ def test_native_agent_offloaded_outputs_do_not_prove_key_absence() -> None:
     from services.dify_builder.output_evidence import collect_output_findings
 
     native_rows = [
-        SimpleNamespace(
+        WorkflowNodeExecutionModel(
             node_id="tool",
             title="",
             status="succeeded",
             error=None,
-            inputs_dict={},
-            outputs_dict={},
-            outputs_truncated=True,
+            inputs="{}",
+            outputs="{}",
+            offload_data=[
+                WorkflowNodeExecutionOffload(
+                    tenant_id="t", app_id="a", node_execution_id="n", type_=ExecutionOffLoadType.OUTPUTS, file_id="f"
+                )
+            ],
         ),
-        SimpleNamespace(node_id="end", title="", status="succeeded", error=None, inputs_dict={}, outputs_dict={}),
+        WorkflowNodeExecutionModel(
+            node_id="end", title="", status="succeeded", error=None, inputs="{}", outputs="{}", offload_data=[]
+        ),
     ]
     run = run_mapping.map_run_result({"id": "native", "status": "succeeded"}, native_rows)
     finding = collect_output_findings(native_agent_graph(), run.per_node)[0]

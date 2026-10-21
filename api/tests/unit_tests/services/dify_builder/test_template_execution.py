@@ -39,7 +39,7 @@ from tests.unit_tests.services.dify_builder.test_execution_policy_service import
 
 
 @pytest.fixture(autouse=True)
-def no_jinja_compilation(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+def no_jinja_compilation(mocker) -> Iterator[None]:
     """Restricted rendering interprets finite AST only; lex/parse stay real."""
     from jinja2 import Environment, Template, debug
 
@@ -50,8 +50,9 @@ def no_jinja_compilation(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         (debug, ("rewrite_traceback_stack", "fake_traceback")),
     ):
         for name in names:
-            spy = Mock(side_effect=AssertionError(f"Jinja compilation/rendering reached: {name}"))
-            monkeypatch.setattr(owner, name, spy)
+            spy = mocker.patch.object(
+                owner, name, side_effect=AssertionError(f"Jinja compilation/rendering reached: {name}")
+            )
             spies.append(spy)
     yield
     # Assert even if a renderer catches the forbidden call and reports failure.

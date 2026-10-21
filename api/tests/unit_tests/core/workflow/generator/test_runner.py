@@ -12,8 +12,8 @@ import re
 import threading
 import time
 from copy import deepcopy
+from decimal import Decimal
 from itertools import permutations
-from types import SimpleNamespace
 from typing import Any, ClassVar, cast, override
 from unittest.mock import MagicMock, patch
 
@@ -23,6 +23,7 @@ from jinja2 import Template
 from core.workflow.generator.prompts.node_builder_prompts import format_node_outputs_section
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from services.workflow_generation.runner import WorkflowGenerator, _find_planned_tool_entry, _parse_node_outputs
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -4490,10 +4491,19 @@ class TestWorkflowGeneratorStructuredErrors:
         # Exactly TWO calls — no third retry, no builder call.
         assert model_instance.invoke_llm.call_count == 2
 
-    def test_planner_invalid_json_emits_invalid_json_code(self):
+    def test_planner_invalid_json_emits_invalid_json_code(self, monkeypatch):
         # Stable code on the JSON-parse failure path so the FE can localise.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.return_value = _llm_result("definitely not json")
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+        from tests.unit_tests.core.model_fixtures import make_model_instance
+
+        model_instance = make_model_instance(provider="openai", model="gpt-4o")
+        response = LLMResult(
+            model="gpt-4o",
+            prompt_messages=[],
+            message=AssistantPromptMessage(content="definitely not json"),
+            usage=LLMUsage.empty_usage(),
+        )
+        monkeypatch.setattr(model_instance, "invoke_llm", lambda **_kwargs: response)
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
             model_parameters={},
@@ -5439,9 +5449,15 @@ class TestWorkflowGeneratorStream:
         assert result["mode"] == "workflow"
         assert [n["data"]["type"] for n in result["graph"]["nodes"]] == ["start", "llm", "end"]
 
-    def test_stream_planner_failure_emits_only_result(self):
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = RuntimeError("planner exploded")
+    def test_stream_planner_failure_emits_only_result(self, monkeypatch):
+        from tests.unit_tests.core.model_fixtures import make_model_instance
+
+        model_instance = make_model_instance(provider="openai", model="gpt-4o")
+
+        def failed(**_kwargs):
+            raise RuntimeError("planner exploded")
+
+        monkeypatch.setattr(model_instance, "invoke_llm", failed)
 
         events = list(
             WorkflowGenerator.generate_workflow_graph_stream(
@@ -7253,16 +7269,19 @@ class TestResponseMetadata:
     @staticmethod
     def _invoke(responses, *, parameters, validate=None):
         from graphon.model_runtime.entities.message_entities import UserPromptMessage
+        from tests.unit_tests.core.model_fixtures import make_model_instance
 
-        model = MagicMock()
-        model.invoke_llm.side_effect = responses
-        return WorkflowGenerator._invoke_and_parse_json(
-            model_instance=model,
-            messages=[UserPromptMessage(content="private-prompt-sentinel")],
-            model_parameters=parameters,
-            stage="Planner",
-            validate=validate,
-        )
+        model = make_model_instance(provider="openai", model="gpt-4o")
+        selected = iter(responses)
+        patcher = patch.object(model, "invoke_llm", side_effect=lambda **_kwargs: next(selected))
+        with patcher:
+            return WorkflowGenerator._invoke_and_parse_json(
+                model_instance=model,
+                messages=[UserPromptMessage(content="private-prompt-sentinel")],
+                model_parameters=parameters,
+                stage="Planner",
+                validate=validate,
+            )
 
     @staticmethod
     def _records(caplog):
@@ -7320,19 +7339,23 @@ class TestResponseMetadata:
                 "prompt_tokens=unavailable completion_tokens=unavailable total_tokens=unavailable",
             ),
             (
-                SimpleNamespace(prompt_tokens=True, completion_tokens="7"),
+                LLMUsage.empty_usage().model_copy(
+                    update={"prompt_tokens": True, "completion_tokens": "7", "total_tokens": None}
+                ),
                 {"max_tokens": True},
                 "requested_max_tokens=unavailable effective_provider_limit=unavailable "
                 "prompt_tokens=unavailable completion_tokens=unavailable total_tokens=unavailable",
             ),
             (
-                MagicMock(),
-                {"max_tokens": MagicMock()},
+                Decimal(7),
+                {"max_tokens": Decimal(7)},
                 "requested_max_tokens=unavailable effective_provider_limit=unavailable "
                 "prompt_tokens=unavailable completion_tokens=unavailable total_tokens=unavailable",
             ),
             (
-                SimpleNamespace(prompt_tokens=0, completion_tokens=2.5, total_tokens=7),
+                LLMUsage.empty_usage().model_copy(
+                    update={"prompt_tokens": 0, "completion_tokens": 2.5, "total_tokens": 7}
+                ),
                 {"max_tokens": "4096"},
                 "requested_max_tokens=unavailable effective_provider_limit=unavailable "
                 "prompt_tokens=0 completion_tokens=unavailable total_tokens=7",
@@ -7342,9 +7365,12 @@ class TestResponseMetadata:
     def test_metadata_unavailable_counters_are_not_coerced(self, usage, parameters, expected, caplog):
         from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
-        response = SimpleNamespace(message=AssistantPromptMessage(content="{}"))
-        if usage is not None:
-            response.usage = usage
+        response = LLMResult(
+            model="gpt-4o",
+            prompt_messages=[],
+            message=AssistantPromptMessage(content="{}"),
+            usage=LLMUsage.empty_usage(),
+        ).model_copy(update={"usage": usage})
         caplog.set_level("INFO", logger="services.workflow_generation.runner")
         assert self._invoke([response], parameters=parameters) == {}
         assert self._records(caplog) == [
@@ -7357,7 +7383,12 @@ class TestResponseMetadata:
         from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
         from services.workflow_generation.runner import _StageJSONError
 
-        response = SimpleNamespace(message=AssistantPromptMessage(content="private-response-sentinel"))
+        response = LLMResult(
+            model="gpt-4o",
+            prompt_messages=[],
+            message=AssistantPromptMessage(content="private-response-sentinel"),
+            usage=LLMUsage.empty_usage(),
+        ).model_copy(update={"usage": None})
         caplog.set_level("INFO", logger="services.workflow_generation.runner")
         with patch(
             "services.workflow_generator_response.json_repair.loads", side_effect=ValueError("private-parser-sentinel")

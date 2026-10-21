@@ -2,12 +2,11 @@
 
 import dataclasses
 import json
-from types import SimpleNamespace
 
 import httpx
 import pytest
 from dify_agent.client import Client
-from dify_agent.protocol import CreateRunRequest, RunComposition
+from dify_agent.protocol import CreateRunRequest, CreateRunResponse, RunComposition
 from sqlalchemy.orm import sessionmaker
 
 from clients.agent_backend import AgentBackendTransportError, DifyAgentBackendRunClient
@@ -54,15 +53,18 @@ def test_create_intent_is_committed_before_transport_and_survives_service_restar
     assert restarted.process_data(scope=_scope())["kept"] == "value"
 
 
-def test_recovery_needs_no_executable_request_and_never_posts(recovery):
+def test_recovery_needs_no_executable_request_and_never_posts(recovery, mocker):
     assert recovery.recover_existing(scope=_scope(), client=None, on_persisted=lambda _data: None) is None
     recovery.reserve(scope=_scope(), attempt=0, key="saved", digest="a" * 64)
     seen = []
-    response = SimpleNamespace(run_id="original-child")
-    client = SimpleNamespace(lookup_run=lambda request: seen.append(request) or response)
+    response = CreateRunResponse(run_id="original-child", status="succeeded")
+    client = DifyAgentBackendRunClient(Client(base_url="http://test.invalid"))
+    mocker.patch.object(client, "lookup_run", side_effect=lambda request: seen.append(request) or response)
+    create = mocker.patch.object(client, "create_run", side_effect=AssertionError("recovery must not post"))
     assert recovery.recover_existing(scope=_scope(), client=client, on_persisted=lambda _data: None) is response
     assert [(item.idempotency_key, item.request_digest) for item in seen] == [("saved", "a" * 64)]
     assert recovery.process_data(scope=_scope())["agent_create_attempts"][0]["child_run_id"] == "original-child"
+    create.assert_not_called()
 
 
 @pytest.mark.parametrize("field", ["tenant_id", "app_id", "workflow_id", "workflow_run_id", "node_id", "execution_id"])

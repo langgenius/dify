@@ -1,8 +1,8 @@
 from datetime import datetime
 from types import ModuleType
-from unittest.mock import Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Run, RunVerification, Session, Turn
 from core.dify_builder.state import PcState
@@ -23,6 +23,22 @@ FLOWS = [
     (handlers_edit, EntryMode.EDIT, PcState.EDIT_REVIEW, "publish_workflow", "run_affected_tests"),
     (handlers_fix, EntryMode.FIX, PcState.FIX_AWAIT_DECISION, "publish", "run_verify"),
 ]
+
+REVIEW_HANDLERS = {
+    handlers_build: handlers_build.handle_review,
+    handlers_edit: handlers_edit.handle_review,
+    handlers_fix: handlers_fix.handle_await_decision,
+}
+TEST_HANDLERS = {
+    handlers_build: handlers_build.handle_test_and_repair,
+    handlers_edit: handlers_edit.handle_test_affected_paths,
+    handlers_fix: handlers_fix.handle_verify,
+}
+ENTRY_HANDLERS = {
+    handlers_build: handlers_build.handle_execution,
+    handlers_edit: handlers_edit.handle_apply_changes,
+    handlers_fix: handlers_fix.handle_await_verify,
+}
 
 
 def fixture(
@@ -61,7 +77,7 @@ def test_publish_verification_direct_boundaries(
     if status != "missing":
         repo.save_run(run.session_id, run)
     fc = DifyBuilderContext(verify_run_id=run.id)
-    decision = getattr(module, "handle_review", None) or module.handle_await_decision
+    decision = REVIEW_HANDLERS[module]
     assert decision(env, turn, s, fc).next == s.current_state
     assert module.handle_publish(env, turn, s, fc).next == s.current_state
     assert not dify.published
@@ -73,7 +89,7 @@ def test_verification_retest_route_clears_previous(flow: tuple[ModuleType, Entry
     assert turn.action is not None
     turn.action.kind = flow[4]
     fc = DifyBuilderContext(verify_run_id="old")
-    decision = getattr(module, "handle_review", None) or module.handle_await_decision
+    decision = REVIEW_HANDLERS[module]
     result = decision(env, turn, s, fc)
     assert result.context.verify_run_id == ""
     assert result.next in {PcState.BUILD_AWAIT_TESTDATA, PcState.EDIT_AWAIT_TESTDATA, PcState.FIX_AWAIT_TESTDATA}
@@ -81,6 +97,7 @@ def test_verification_retest_route_clears_previous(flow: tuple[ModuleType, Entry
 
 @pytest.mark.parametrize("flow", FLOWS)
 def test_verification_latest_attempt_and_truthful_outputs(
+    mocker: MockerFixture,
     flow: tuple[ModuleType, EntryMode, PcState, str, str],
 ) -> None:
     module, dify, repo, env, s, turn = fixture(flow)
@@ -93,12 +110,8 @@ def test_verification_latest_attempt_and_truthful_outputs(
         executed_node_ids=["end"],
         no_output_dead_branch=False,
     )
-    dify.run_draft = Mock(return_value=Run(status="succeeded", verification=evidence))
-    handler = (
-        getattr(module, "handle_test_and_repair", None)
-        or getattr(module, "handle_test_affected_paths", None)
-        or module.handle_verify
-    )
+    mocker.patch.object(dify, "run_draft", return_value=Run(status="succeeded", verification=evidence))
+    handler = TEST_HANDLERS[module]
     fc = saved_test_context(env.repo, s.id)
     first = handler(env, turn, s, fc)
     assert first.context.verify_run_id == first.run.id
@@ -113,7 +126,9 @@ def test_verification_latest_attempt_and_truthful_outputs(
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_publish_verification_positive_and_final_race(flow: tuple[ModuleType, EntryMode, PcState, str, str]) -> None:
+def test_publish_verification_positive_and_final_race(
+    mocker: MockerFixture, flow: tuple[ModuleType, EntryMode, PcState, str, str]
+) -> None:
     from core.dify_builder.errors import HashMismatchError
     from tests.unit_tests.core.dify_builder.fakes import successful_verification
 
@@ -130,9 +145,9 @@ def test_publish_verification_positive_and_final_race(flow: tuple[ModuleType, En
     )
     repo.save_run(s.id, run)
     fc = DifyBuilderContext(verify_run_id=run.id)
-    decision = getattr(module, "handle_review", None) or module.handle_await_decision
+    decision = REVIEW_HANDLERS[module]
     assert decision(env, turn, s, fc).next in {PcState.BUILD_PUBLISH, PcState.EDIT_PUBLISH, PcState.FIX_PUBLISH}
-    dify.publish = Mock(side_effect=HashMismatchError("changed"))
+    mocker.patch.object(dify, "publish", side_effect=HashMismatchError("changed"))
     assert module.handle_publish(env, turn, s, fc).next == s.current_state
     dify.publish.assert_called_once_with(
         s.app_id,
@@ -144,6 +159,7 @@ def test_publish_verification_positive_and_final_race(flow: tuple[ModuleType, En
 
 @pytest.mark.parametrize("flow", FLOWS)
 def test_verification_unresolved_output_never_invents_repair(
+    mocker: MockerFixture,
     flow: tuple[ModuleType, EntryMode, PcState, str, str],
 ) -> None:
     from core.dify_builder.models import OutputFinding
@@ -166,12 +182,8 @@ def test_verification_unresolved_output_never_invents_repair(
         executed_node_ids=["tool", "end"],
         no_output_dead_branch=False,
     )
-    dify.run_draft = Mock(return_value=Run(status="succeeded", verification=evidence))
-    handler = (
-        getattr(module, "handle_test_and_repair", None)
-        or getattr(module, "handle_test_affected_paths", None)
-        or module.handle_verify
-    )
+    mocker.patch.object(dify, "run_draft", return_value=Run(status="succeeded", verification=evidence))
+    handler = TEST_HANDLERS[module]
     fc = saved_test_context(env.repo, s.id)
     out = handler(env, turn, s, fc)
     assert out.run.status == "succeeded"
@@ -187,11 +199,7 @@ def test_verification_failed_card_preserves_execution_outcome(
 ) -> None:
     module, dify, repo, env, s, turn = fixture(flow)
     dify.verify_pass = False
-    handler = (
-        getattr(module, "handle_test_and_repair", None)
-        or getattr(module, "handle_test_affected_paths", None)
-        or module.handle_verify
-    )
+    handler = TEST_HANDLERS[module]
     result = handler(env, turn, s, saved_test_context(env.repo, s.id))
     card = next(i.payload for i in result.items if i.kind == "test_result")
     assert card["outcome"] == "execution_failed"
@@ -204,26 +212,19 @@ def test_verification_new_attempt_entry_clears_old_evidence(
     module, _dify, _repo, env, session, turn = fixture(flow)
     assert turn.action is not None
     turn.action.kind = flow[4]
-    handler = (
-        getattr(module, "handle_execution", None)
-        or getattr(module, "handle_apply_changes", None)
-        or module.handle_await_verify
-    )
+    handler = ENTRY_HANDLERS[module]
     result = handler(env, turn, session, DifyBuilderContext(verify_run_id="old"))
     assert result.context.verify_run_id == ""
 
 
 @pytest.mark.parametrize("flow", FLOWS)
 def test_verification_unbound_success_reply_requires_retest(
+    mocker: MockerFixture,
     flow: tuple[ModuleType, EntryMode, PcState, str, str],
 ) -> None:
     module, dify, _repo, env, session, turn = fixture(flow)
-    dify.run_draft = Mock(return_value=Run(status="succeeded"))
-    handler = (
-        getattr(module, "handle_test_and_repair", None)
-        or getattr(module, "handle_test_affected_paths", None)
-        or module.handle_verify
-    )
+    mocker.patch.object(dify, "run_draft", return_value=Run(status="succeeded"))
+    handler = TEST_HANDLERS[module]
     result = handler(env, turn, session, saved_test_context(env.repo, session.id))
     reply = next(english_text(item.payload["reply_text"]) for item in result.items if item.kind == "assistant_turn")
     assert "Execution safety requires review" in reply
@@ -233,7 +234,7 @@ def test_verification_unbound_success_reply_requires_retest(
 @pytest.mark.parametrize("flow", FLOWS)
 @pytest.mark.parametrize("failure_mode", ["native", "launch", "invalid_prepared_input"])
 def test_verification_input_failure_retains_latest_persisted_attempt(
-    flow: tuple[ModuleType, EntryMode, PcState, str, str], failure_mode: str
+    mocker: MockerFixture, flow: tuple[ModuleType, EntryMode, PcState, str, str], failure_mode: str
 ) -> None:
     from core.dify_builder.models import TestInput
     from services.dify_builder.application.runner import Runner
@@ -263,18 +264,16 @@ def test_verification_input_failure_retains_latest_persisted_attempt(
     repo.save_run(session.id, prior)
     repo.create_session(session, DifyBuilderContext(verify_run_id=prior.id, test_input_ref=test_input.id), [])
     native_error = "File variable not found for selector: ['start', 'document']"
-    dify.run_draft = Mock(
+    mocker.patch.object(
+        dify,
+        "run_draft",
         return_value=Run(
             status="failed", dify_run_id="dify-run-1", error=native_error, verification=failed_verification(dify)
-        )
+        ),
     )
     if failure_mode == "launch":
         dify.run_draft.side_effect = ValueError("query is required in input form")
-    handler = (
-        getattr(module, "handle_test_and_repair", None)
-        or getattr(module, "handle_test_affected_paths", None)
-        or module.handle_verify
-    )
+    handler = TEST_HANDLERS[module]
     runner = Runner(env, {working_state: handler, waiting_state: module.handle_await_testdata})
     runner.advance(session.id, Turn(actor=turn.actor))
 
@@ -339,11 +338,12 @@ def test_verification_input_failure_retains_latest_persisted_attempt(
 
 @pytest.mark.parametrize("flow", FLOWS)
 def test_verification_prelaunch_input_gate_still_clears_prior_evidence(
+    mocker: MockerFixture,
     flow: tuple[ModuleType, EntryMode, PcState, str, str],
 ) -> None:
     module, dify, _repo, env, session, turn = fixture(flow)
     dify.app_mode = "advanced-chat"
-    dify.run_draft = Mock()
+    mocker.patch.object(dify, "run_draft")
     turn.action = Action(kind="provide_testdata", payload={"mode": "provide", "inputs": {"sys.query": ""}})
     result = module.handle_await_testdata(
         env, turn, session, DifyBuilderContext(verify_run_id="older-run", test_input_ref="older-input")

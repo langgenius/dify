@@ -134,8 +134,11 @@ def _children(node: nodes.Node, declared: frozenset[str]) -> Iterator[nodes.Node
             _refuse()
         yield node.node
         return
+    fields = dict(nodes.Node.iter_fields(node))
     for field in _FIELDS[kind]:
-        value = getattr(node, field)
+        if field not in fields:
+            _refuse()
+        value = fields[field]
         if isinstance(value, nodes.Node):
             yield value
         elif type(value) is list:

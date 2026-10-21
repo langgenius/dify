@@ -15,10 +15,10 @@ structured-output schemas, or session snapshots become asynchronous
 
 import asyncio
 import logging
-from dataclasses import replace
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
-from typing import Protocol
+from dataclasses import replace
+from typing import Protocol, runtime_checkable
 
 from dify_agent.adapters.native_testing.transport import (
     AgentRuntimeHTTPClient,
@@ -26,22 +26,30 @@ from dify_agent.adapters.native_testing.transport import (
     bind_runtime_identity,
 )
 from dify_agent.protocol.native_testing import (
-    AgentRuntimeIdentity,
-    AgentNativeTestRef,
-    ReadAgentRuntimeIdentity,
     NATIVE_TEST_CAPABILITIES,
+    AgentNativeTestRef,
+    AgentRuntimeIdentity,
     AgentRuntimeIdentitySeed,
     ContinuationClaim,
     ContinueRunRequest,
     NativeTestCapabilities,
     NativeTestProtocolUnsupported,
+    ReadAgentRuntimeIdentity,
     executable_request_digest,
     require_native_test_capabilities,
 )
-from dify_agent.protocol.schemas import AgentRunUsage, CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
-from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.protocol.run_recovery import LookupRunRequest, create_run_fingerprint
+from dify_agent.protocol.schemas import (
+    AgentRunUsage,
+    CancelRunRequest,
+    CancelRunResponse,
+    CreateRunRequest,
+    CreateRunResponse,
+    RunStatus,
+)
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.cancellation import RunCancellationIntent
+from dify_agent.runtime.confirmed_continuation import ConfirmedNativeContinuationOwner
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.event_coalescer import (
     DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
@@ -69,6 +77,17 @@ class SchedulerStoppingError(RuntimeError):
 
 class RunCancellationConflictError(RuntimeError):
     """Raised when a run exists but a different terminal state already won."""
+
+
+@runtime_checkable
+class IdempotentRunStore(Protocol):
+    """Existing keyed-create storage API needed for capability advertisement."""
+
+    async def claim_run(
+        self, *, selection: LookupRunRequest, identity: AgentRuntimeIdentitySeed | None = None
+    ) -> RunCreateClaim: ...
+
+    async def lookup_run(self, selection: LookupRunRequest) -> CreateRunResponse: ...
 
 
 class RunStore(RunEventSink, Protocol):
@@ -182,7 +201,8 @@ class RunScheduler:
             native_owner is not None
             and (services.inner_api_key or services.plugin_daemon_api_key)
             and not (
-                getattr(native_owner, "profile", None) == "confirmed"
+                isinstance(native_owner, ConfirmedNativeContinuationOwner)
+                and native_owner.profile == "confirmed"
                 and isinstance(services.confirmed_api_http_client, AgentRuntimeHTTPClient)
             )
         ):
@@ -207,8 +227,9 @@ class RunScheduler:
         capabilities = self.native_owner.capabilities if self.native_owner is not None else NATIVE_TEST_CAPABILITIES
         if (
             self.services.confirmed_api_http_client is not None
-            and callable(getattr(self.store, "claim_run", None))
-            and callable(getattr(self.store, "lookup_run", None))
+            and isinstance(self.store, IdempotentRunStore)
+            and callable(self.store.claim_run)
+            and callable(self.store.lookup_run)
         ):
             return capabilities.model_copy(update={"features": capabilities.features | {"create-idempotency-v1"}})
         return capabilities

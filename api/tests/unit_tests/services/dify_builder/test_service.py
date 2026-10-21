@@ -1613,7 +1613,11 @@ def test_create_stream_closes_subscription_when_state_serialization_fails(
     monkeypatch.setattr(service_module, "asdict", lambda _view: (_ for _ in ()).throw(RuntimeError("projection")))
 
     with pytest.raises(RuntimeError, match="projection"):
-        getattr(svc, method_name)(app_id=APP_ID, actor=actor, **kwargs)
+        {
+            "create_build_session_stream": svc.create_build_session_stream,
+            "create_edit_session_stream": svc.create_edit_session_stream,
+            "create_fix_session_stream": svc.create_fix_session_stream,
+        }[method_name](app_id=APP_ID, actor=actor, **kwargs)
 
     assert subscription.closed is True
 

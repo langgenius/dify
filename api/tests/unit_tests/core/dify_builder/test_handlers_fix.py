@@ -8,7 +8,6 @@ cases (``## ---- checklist-fix flow ----``).
 from dataclasses import replace
 from datetime import datetime
 from typing import NoReturn, Unpack
-from unittest.mock import Mock
 
 from core.dify_builder.contract import PreflightContextCard, PreflightIssue
 from core.dify_builder.models import (
@@ -1517,7 +1516,9 @@ _UNFED_AGGREGATOR_REASON = (
 )
 
 
-def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason() -> None:
+def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason(
+    mocker,
+) -> None:
     """Parity with Edit's refusal. ``propose_repair`` already refused to stage a
     batch the semantic guards condemned -- but it surfaced BLIND: the reason
     lived on ``fc.risk`` and was shown to nobody, so the human at the gate saw
@@ -1528,7 +1529,7 @@ def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason() -> Non
     s = _session()
     fc = DifyBuilderContext()
     written: list[object] = []
-    env.fake_dify.apply_repair = Mock(side_effect=lambda *a, **k: written.append((a, k)))
+    mocker.patch.object(env.fake_dify, "apply_repair", side_effect=lambda *a, **k: written.append((a, k)))
 
     def propose_repair(diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
         _ = diagnosis, graph
@@ -1572,7 +1573,9 @@ def test_a_staged_repair_still_carries_no_error_card() -> None:
     assert turns[-1].payload["cards"] == []
 
 
-def test_missing_test_input_ref_requests_test_data_without_launch() -> None:
+def test_missing_test_input_ref_requests_test_data_without_launch(
+    mocker,
+) -> None:
     from services.dify_builder.application.handlers_fix import handle_verify
 
     env, repo = _new_env()
@@ -1584,7 +1587,7 @@ def test_missing_test_input_ref_requests_test_data_without_launch() -> None:
         current_state=PcState.FIX_VERIFY,
     )
     calls = []
-    env.fake_dify.run_draft = Mock(side_effect=lambda *args, **_kwargs: calls.append(args))
+    mocker.patch.object(env.fake_dify, "run_draft", side_effect=lambda *args, **_kwargs: calls.append(args))
     result = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
     assert result.next == PcState.FIX_AWAIT_TESTDATA
     assert not calls

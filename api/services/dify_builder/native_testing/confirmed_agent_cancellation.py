@@ -48,7 +48,7 @@ class ConfirmedAgentCancellation:
     def _objects(self, sql, ref, tenant_id):
         return sorted(
             (
-                asdict(ObjectReceipt(**{name: getattr(row, name) for name in ObjectReceipt.__dataclass_fields__}))
+                asdict(ObjectReceipt.from_payload_object(row))
                 for row in sql.scalars(owner_query(NativePayloadObject, ref, tenant_id))
             ),
             key=itemgetter("id"),

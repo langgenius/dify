@@ -25,6 +25,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _deterministic_json_dump,
     _filter_by_offload_type,
     _find_first,
+    _InputsOutputsTruncationResult,
     _replace_or_append_offload,
 )
 from graphon.entities import WorkflowNodeExecution
@@ -323,8 +324,10 @@ def test_agent_create_receipt_survives_stale_terminal_and_offload_write(
     if write == "terminal":
         repo.save(execution)
     else:
-        truncated = SimpleNamespace(
-            truncated_value={"result": "truncated"}, offload=_offload(ExecutionOffLoadType.PROCESS_DATA)
+        truncated = _InputsOutputsTruncationResult(
+            file=_upload_file(),
+            truncated_value={"result": "truncated"},
+            offload=_offload(ExecutionOffLoadType.PROCESS_DATA),
         )
         monkeypatch.setattr(repo, "_truncate_and_upload", lambda *_: truncated if write == "offload" else None)
         repo.save_execution_data(execution)
@@ -360,7 +363,8 @@ def test_offload_preserves_ack_committed_during_upload(monkeypatch, sqlite_sessi
         with sqlite_session_factory() as session, session.begin():
             row = session.get(WorkflowNodeExecutionModel, execution.id)
             row.process_data = json.dumps({"agent_create_attempts": [{**attempt, "child_run_id": "child"}]})
-        return SimpleNamespace(
+        return _InputsOutputsTruncationResult(
+            file=_upload_file(),
             truncated_value={"large": "...", "agent_create_attempts": "..."},
             offload=_offload(ExecutionOffLoadType.PROCESS_DATA),
         )

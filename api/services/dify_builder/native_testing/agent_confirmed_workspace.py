@@ -268,7 +268,7 @@ def build_confirmed_agent_preparation(*, actor, backend):
     )
 
 
-def load_confirmed_agent_parent(*, service, ref, execution_id):
+def load_confirmed_agent_parent(*, state_store, ref, execution_id):
     """Find original typed input identity; absence never overwrites a saved input.
 
     The independent node-input logical key exists before child-create reservation.
@@ -277,7 +277,7 @@ def load_confirmed_agent_parent(*, service, ref, execution_id):
     from models.dify_builder_native_tests import NativePayloadObject
     from runtime_contracts.builder.native.agent_contracts import AgentParentNodeRef
 
-    loader = service.state_store.loader
+    loader = state_store.loader
     owned = loader.load(ref=ref)
     with loader.session_factory() as session:
         row = session.scalar(
@@ -307,12 +307,12 @@ def load_confirmed_agent_parent(*, service, ref, execution_id):
         if configs:
             raise BuilderExecutionPolicyError("native_agent_input_unavailable")
         return None
-    inputs = service.state_store.load_result(ref=ref, result_ref=input_ref)
+    inputs = state_store.load_result(ref=ref, result_ref=input_ref)
     parent = AgentParentNodeRef(
         ref=ref, execution_id=execution_id, input_result_ref=input_ref, input_digest=canonical_digest(inputs)
     )
     if configs:
-        config = service.state_store.load_prepared_config(ref=ref, parent_node=parent, config_ref=None)
+        config = state_store.load_prepared_config(ref=ref, parent_node=parent, config_ref=None)
         if config.parent_node != parent:
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
     loader.load(ref=ref)

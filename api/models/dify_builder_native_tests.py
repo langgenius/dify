@@ -8,27 +8,29 @@ are a resumable projection.
 from datetime import datetime
 
 import sqlalchemy as sa
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 
 from libs.uuid_utils import uuidv7
-from models.base import Base
+from models.base import TypeBase
+from models.dify_builder import BuilderRowIdentity
 from models.types import AdjustedJSON, StringUUID
 
 
-class RequestOwner:
+class RequestOwner(MappedAsDataclass, kw_only=True, eq=False, repr=False):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     request_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
 
-class InvocationOwner(RequestOwner):
+class InvocationOwner(RequestOwner, kw_only=True, eq=False, repr=False):
     invocation_id: Mapped[str] = mapped_column(sa.String(128), nullable=False)
 
 
-class Identity:
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuidv7()))
+class Identity(MappedAsDataclass, kw_only=True, eq=False, repr=False):
+    # Keep ledger IDs insert-generated while accepting caller-preallocated identities.
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, insert_default=lambda: str(uuidv7()), default=None)
 
 
-class Quota:
+class Quota(MappedAsDataclass, kw_only=True, eq=False, repr=False):
     max_calls: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     max_dispatches: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     max_cost_units: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
@@ -47,7 +49,7 @@ def quota_check(name: str) -> sa.CheckConstraint:
     )
 
 
-class NativeTestScope(Quota, Base):
+class NativeTestScope(Quota, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     __tablename__ = "dify_builder_native_scopes"
     __table_args__ = (
         quota_check("native_scope_quota"),
@@ -64,7 +66,7 @@ class NativeTestScope(Quota, Base):
     profile: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
 
 
-class NativeTestInvocation(Identity, InvocationOwner, Base):
+class NativeTestInvocation(Identity, InvocationOwner, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     __tablename__ = "dify_builder_native_invocations"
     __table_args__ = (sa.UniqueConstraint("tenant_id", "request_id", "invocation_id", name="native_invocation_owner"),)
     active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False)
@@ -75,7 +77,9 @@ class NativeTestInvocation(Identity, InvocationOwner, Base):
     bindings: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
 
 
-class NativeEffectGrant(Identity, RequestOwner, Quota, Base):
+class NativeEffectGrant(
+    Identity, RequestOwner, Quota, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False
+):
     __tablename__ = "dify_builder_native_grants"
     __table_args__ = (
         sa.UniqueConstraint("tenant_id", "request_id", "scope_digest", name="native_grant_scope"),
@@ -88,7 +92,9 @@ class NativeEffectGrant(Identity, RequestOwner, Quota, Base):
     actor_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
 
-class NativeEffectOperation(Identity, InvocationOwner, Base):
+class NativeEffectOperation(
+    Identity, InvocationOwner, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False
+):
     __tablename__ = "dify_builder_native_operations"
     __table_args__ = (
         sa.UniqueConstraint(
@@ -103,10 +109,10 @@ class NativeEffectOperation(Identity, InvocationOwner, Base):
     intent_digest: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     scope_digest: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     state: Mapped[str] = mapped_column(sa.String(16), nullable=False)
-    result_ref: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
+    result_ref: Mapped[str | None] = mapped_column(sa.String(128), nullable=True, default=None)
 
 
-class NativeEffectAttempt(Identity, InvocationOwner, Base):
+class NativeEffectAttempt(Identity, InvocationOwner, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     __tablename__ = "dify_builder_native_attempts"
     __table_args__ = (
         sa.UniqueConstraint("operation_id", "dispatch_index", name="native_attempt_dispatch"),
@@ -127,7 +133,9 @@ class NativeEffectAttempt(Identity, InvocationOwner, Base):
     profile: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
 
 
-class NativeEffectDispatchClaim(Identity, InvocationOwner, Base):
+class NativeEffectDispatchClaim(
+    Identity, InvocationOwner, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False
+):
     """One physical-owner consumption of an already-spent attempt, never replayed."""
 
     __tablename__ = "dify_builder_native_effect_dispatch_claims"
@@ -140,7 +148,7 @@ class NativeEffectDispatchClaim(Identity, InvocationOwner, Base):
     claimed_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
 
 
-class NativeEffectOutcome(Identity, InvocationOwner, Base):
+class NativeEffectOutcome(Identity, InvocationOwner, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     __tablename__ = "dify_builder_native_outcomes"
     __table_args__ = (
         sa.UniqueConstraint("attempt_id", name="native_outcome_attempt"),
@@ -150,10 +158,10 @@ class NativeEffectOutcome(Identity, InvocationOwner, Base):
     operation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     attempt_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     outcome: Mapped[str] = mapped_column(sa.String(16), nullable=False)
-    result_ref: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
+    result_ref: Mapped[str | None] = mapped_column(sa.String(128), nullable=True, default=None)
 
 
-class NativeContinuation(Identity, InvocationOwner, Base):
+class NativeContinuation(Identity, InvocationOwner, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     __tablename__ = "dify_builder_native_continuations"
     __table_args__ = (
         sa.UniqueConstraint("request_id", "invocation_id", "generation", name="native_continuation_generation"),
@@ -165,7 +173,7 @@ class NativeContinuation(Identity, InvocationOwner, Base):
     payload_ref: Mapped[str] = mapped_column(sa.String(128), nullable=False)
 
 
-class NativePendingAction(Identity, InvocationOwner, Base):
+class NativePendingAction(Identity, InvocationOwner, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     __tablename__ = "dify_builder_native_pending_actions"
     __table_args__ = (
         sa.UniqueConstraint(
@@ -190,10 +198,10 @@ class NativePendingAction(Identity, InvocationOwner, Base):
     reference: Mapped[str] = mapped_column(sa.String(128), nullable=False)
     owner_ref: Mapped[str] = mapped_column(sa.String(128), nullable=False)
     owner_version: Mapped[str] = mapped_column(sa.String(128), nullable=False)
-    operation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    operation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
 
-class NativePayloadObject(Identity, InvocationOwner, Base):
+class NativePayloadObject(Identity, InvocationOwner, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """SQL acknowledgement of an encrypted immutable object, after storage readback."""
 
     __tablename__ = "dify_builder_native_payload_objects"
@@ -209,7 +217,9 @@ class NativePayloadObject(Identity, InvocationOwner, Base):
     value_digest: Mapped[str] = mapped_column(sa.String(64), nullable=False)
 
 
-class NativeInvocationState(Identity, InvocationOwner, Base):
+class NativeInvocationState(
+    Identity, InvocationOwner, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False
+):
     """Current local execution facts.
 
     While running, a real wait_reason with validated current pending_ids is an
@@ -231,24 +241,24 @@ class NativeInvocationState(Identity, InvocationOwner, Base):
             name="native_state_status",
         ),
     )
-    app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     context_object_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    parent_invocation_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
-    parent_operation_digest: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
-    child_identity_digest: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
+    parent_invocation_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True, default=None)
+    parent_operation_digest: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
+    child_identity_digest: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
     generation: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     state: Mapped[str] = mapped_column(sa.String(16), nullable=False)
-    checkpoint_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
+    checkpoint_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True, default=None)
     pending_ids: Mapped[list] = mapped_column(AdjustedJSON, nullable=False)
-    wait_reason: Mapped[str | None] = mapped_column(sa.String(16), nullable=True)
-    outcome: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    wait_reason: Mapped[str | None] = mapped_column(sa.String(16), nullable=True, default=None)
+    outcome: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
     resolution: Mapped[list] = mapped_column(AdjustedJSON, nullable=False)
-    cancellation_key: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
+    cancellation_key: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
     cleanup_complete: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
 
 
-class NativeDispatch(Identity, InvocationOwner, Base):
+class NativeDispatch(Identity, InvocationOwner, BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """Durable outbox and single worker claim. Publish acknowledgements are advisory."""
 
     __tablename__ = "dify_builder_native_dispatches"
@@ -263,5 +273,5 @@ class NativeDispatch(Identity, InvocationOwner, Base):
     generation: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     idempotency_digest: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     state: Mapped[str] = mapped_column(sa.String(16), nullable=False)
-    checkpoint_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
-    claim_expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    checkpoint_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True, default=None)
+    claim_expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)

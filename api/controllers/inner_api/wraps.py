@@ -158,8 +158,8 @@ def agent_endpoint_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if (
-            getattr(g, "agent_runtime_admitted", False)
-            and getattr(g, "agent_runtime_request", None) is cast(LocalProxy, request)._get_current_object()
+            g.get("agent_runtime_admitted", False)
+            and g.get("agent_runtime_request") is cast(LocalProxy, request)._get_current_object()
         ):
             return view(*args, **kwargs)
         return authenticated_legacy(*args, **kwargs)

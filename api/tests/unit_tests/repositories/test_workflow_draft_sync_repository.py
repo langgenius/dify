@@ -1,5 +1,4 @@
 import json
-from unittest.mock import Mock
 
 import pytest
 
@@ -9,11 +8,11 @@ from repositories.workflow_draft_sync_repository import ServerDraftChange, Workf
 
 @pytest.mark.parametrize("previous", [None, {"nodes": [], "edges": []}])
 def test_graphs_stay_opaque_to_lua_and_round_trip_without_changing_values(
-    previous: dict[str, object] | None, monkeypatch: pytest.MonkeyPatch
+    previous: dict[str, object] | None, monkeypatch: pytest.MonkeyPatch, mocker
 ) -> None:
-    redis = Mock()
-    redis.eval.return_value = 1
-    monkeypatch.setattr(repo_module, "redis_client", redis)
+    redis = repo_module.redis_client
+    mocker.patch.object(redis, "eval", return_value=1)
+    mocker.patch.object(redis, "get")
     monkeypatch.setattr(repo_module, "serialize_redis_name", lambda key: f"prefix:{key}")
     repository = WorkflowDraftSyncRepository()
     change = ServerDraftChange(

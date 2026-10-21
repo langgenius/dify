@@ -2,7 +2,6 @@
 
 from collections.abc import Callable
 from datetime import datetime
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -39,7 +38,7 @@ from tests.unit_tests.core.dify_builder.fakes import (
         (handle_verify, PcState.FIX_VERIFY, EntryMode.FIX),
     ],
 )
-def test_all_test_flows_forward_native_events(handler: Handler, state: PcState, mode: EntryMode) -> None:
+def test_all_test_flows_forward_native_events(mocker, handler: Handler, state: PcState, mode: EntryMode) -> None:
     port = FakeDifyPort()
     port.workflow_events = [
         {"event": "workflow_started", "workflow_run_id": "run-1", "data": {"inputs": {"query": "hello"}}},
@@ -56,7 +55,7 @@ def test_all_test_flows_forward_native_events(handler: Handler, state: PcState, 
     )
     session = Session(id="real-session", app_id="app", tenant_id="tenant", entry_mode=mode, current_state=state)
     context = saved_test_context(env.repo, session.id)
-    port.run_draft = MagicMock(wraps=port.run_draft)
+    mocker.spy(port, "run_draft")
 
     handler(
         env,
@@ -94,6 +93,7 @@ def test_all_test_flows_forward_native_events(handler: Handler, state: PcState, 
     ],
 )
 def test_structural_repair_is_committed_before_a_separate_retest(
+    mocker,
     registry: Callable[[], dict[PcState, Handler]],
     mode: EntryMode,
     repair_state: PcState,
@@ -102,7 +102,7 @@ def test_structural_repair_is_committed_before_a_separate_retest(
     review_state: PcState,
 ) -> None:
     port = FakeEditDifyPort()
-    port.run_draft = MagicMock(wraps=port.run_draft)
+    mocker.spy(port, "run_draft")
     repo = InMemoryRepository()
     env = Env(dify=port, agent=StubAgent(), repo=repo, now=lambda: datetime.min)
     session = Session(app_id="app", tenant_id="tenant", entry_mode=mode, current_state=repair_state)
@@ -136,9 +136,11 @@ def test_structural_repair_is_committed_before_a_separate_retest(
     port.run_draft.assert_called_once()
 
 
-def test_edit_unknown_result_does_not_stage_a_failure_or_repair() -> None:
+def test_edit_unknown_result_does_not_stage_a_failure_or_repair(
+    mocker,
+) -> None:
     port = FakeEditDifyPort()
-    port.run_draft = MagicMock(return_value=Run(status="running", dify_run_id="run-1"))
+    mocker.patch.object(port, "run_draft", return_value=Run(status="running", dify_run_id="run-1"))
     env = Env(dify=port, agent=StubAgent(), repo=InMemoryRepository(), now=lambda: datetime.min)
     session = Session(
         app_id="app", tenant_id="tenant", entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS

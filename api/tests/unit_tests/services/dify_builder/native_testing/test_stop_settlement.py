@@ -2,27 +2,27 @@
 
 from threading import Event, Thread
 from time import monotonic
-from types import SimpleNamespace
 
 import pytest
 
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
-from services.dify_builder.native_testing.control import BoundaryOwnerState, NativeControlRecord, NativePolicyStop
+from services.dify_builder.native_testing.control import NativeControlRecord, NativePolicyStop
 from services.dify_builder.native_testing.stop_settlement import NativeEvidenceReadGate
 
 
 def gate_case():
-    ref = NativeTestContextRef(request_id="request", invocation_id="invocation", context_digest="a" * 64)
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
+
+    case = LaunchCase()
+    ref = case.state.context.ref
     record = NativeControlRecord(
         control=NativePolicyStop(ref=ref, reason_code="effect_denied"),
         node_id="http",
         native_execution_id="execution",
         carrier_ref="carrier",
     )
-    owner = BoundaryOwnerState(ref=ref)
+    owner = case.host.boundary_owner
     owner._begin(record)
-    host = SimpleNamespace(boundary_owner=owner, lifetime=SimpleNamespace(unknown=False))
-    return NativeEvidenceReadGate(host), owner, record
+    return NativeEvidenceReadGate(case.host), owner, record
 
 
 def test_stop_waits_for_active_read_and_nested_read_finishes_without_deadlock():

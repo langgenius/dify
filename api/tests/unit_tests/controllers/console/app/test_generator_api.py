@@ -610,11 +610,12 @@ def test_generate_instruction_suggestions_no_default_model_returns_empty(monkeyp
     """Task 1c (ii): a missing default model degrades to an empty list, never raising."""
     from core.llm_generator import llm_generator as llm_gen_module
 
-    mock_manager = MagicMock()
-    mock_manager.for_tenant.return_value.get_default_model_instance.side_effect = ProviderTokenNotInitError(
-        "no default model"
-    )
-    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+    _instance, manager = _improvement_model(monkeypatch, "")
+
+    def unavailable(**_kwargs):
+        raise ProviderTokenNotInitError("no default model")
+
+    monkeypatch.setattr(manager, "get_default_model_instance", unavailable)
 
     result = llm_gen_module.LLMGenerator.generate_workflow_instruction_suggestions(tenant_id="t1", mode="workflow")
 
@@ -679,15 +680,28 @@ _EXPANDED_INSTRUCTION = (
 )
 
 
+def _improvement_model(monkeypatch: pytest.MonkeyPatch, reply: str):
+    from core.llm_generator import llm_generator as llm_gen_module
+    from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+    from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+    from tests.unit_tests.core.model_fixtures import make_model_instance
+
+    manager = llm_gen_module.ModelManager.for_tenant(tenant_id="t1")
+    instance = make_model_instance(provider="openai", model="gpt-4o")
+    response = LLMResult(
+        model="gpt-4o", prompt_messages=[], message=AssistantPromptMessage(content=reply), usage=LLMUsage.empty_usage()
+    )
+    monkeypatch.setattr(instance, "invoke_llm", lambda **_kwargs: response)
+    monkeypatch.setattr(manager, "get_default_model_instance", lambda **_kwargs: instance)
+    monkeypatch.setattr(llm_gen_module.ModelManager, "for_tenant", lambda **_kwargs: manager)
+    return instance, manager
+
+
 def test_improve_instruction_expands_a_short_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
     """The default model's rewrite is returned once it clears the echo/shrink checks."""
     from core.llm_generator import llm_generator as llm_gen_module
 
-    instance = MagicMock()
-    instance.invoke_llm.return_value.message.get_text_content.return_value = _EXPANDED_INSTRUCTION
-    mock_manager = MagicMock()
-    mock_manager.for_tenant.return_value.get_default_model_instance.return_value = instance
-    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+    _improvement_model(monkeypatch, _EXPANDED_INSTRUCTION)
 
     result = llm_gen_module.LLMGenerator.improve_workflow_instruction(
         tenant_id="t1", instruction=_SHORT_INSTRUCTION, mode="workflow"
@@ -700,11 +714,7 @@ def test_improve_instruction_strips_fences_and_quotes(monkeypatch: pytest.Monkey
     """A fenced or quoted rewrite is unwrapped -- the field holds plain text."""
     from core.llm_generator import llm_generator as llm_gen_module
 
-    instance = MagicMock()
-    instance.invoke_llm.return_value.message.get_text_content.return_value = f'```text\n"{_EXPANDED_INSTRUCTION}"\n```'
-    mock_manager = MagicMock()
-    mock_manager.for_tenant.return_value.get_default_model_instance.return_value = instance
-    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+    _improvement_model(monkeypatch, f'```text\n"{_EXPANDED_INSTRUCTION}"\n```')
 
     result = llm_gen_module.LLMGenerator.improve_workflow_instruction(
         tenant_id="t1", instruction=_SHORT_INSTRUCTION, mode="workflow"
@@ -727,11 +737,7 @@ def test_improve_instruction_reports_no_change_when_it_did_not_improve(
     """An echo, a shrink, or blank output all mean "no improvement" -- never a raise."""
     from core.llm_generator import llm_generator as llm_gen_module
 
-    instance = MagicMock()
-    instance.invoke_llm.return_value.message.get_text_content.return_value = reply
-    mock_manager = MagicMock()
-    mock_manager.for_tenant.return_value.get_default_model_instance.return_value = instance
-    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+    _improvement_model(monkeypatch, reply)
 
     result = llm_gen_module.LLMGenerator.improve_workflow_instruction(
         tenant_id="t1", instruction=_SHORT_INSTRUCTION, mode="workflow"
@@ -744,11 +750,12 @@ def test_improve_instruction_no_default_model_returns_empty(monkeypatch: pytest.
     """A missing default model degrades to "no improvement", never raising."""
     from core.llm_generator import llm_generator as llm_gen_module
 
-    mock_manager = MagicMock()
-    mock_manager.for_tenant.return_value.get_default_model_instance.side_effect = ProviderTokenNotInitError(
-        "no default model"
-    )
-    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+    _instance, manager = _improvement_model(monkeypatch, "")
+
+    def unavailable(**_kwargs):
+        raise ProviderTokenNotInitError("no default model")
+
+    monkeypatch.setattr(manager, "get_default_model_instance", unavailable)
 
     result = llm_gen_module.LLMGenerator.improve_workflow_instruction(
         tenant_id="t1", instruction=_SHORT_INSTRUCTION, mode="workflow"
@@ -761,11 +768,12 @@ def test_improve_instruction_llm_error_returns_empty(monkeypatch: pytest.MonkeyP
     """An LLM failure is swallowed: the caller keeps the user's own text."""
     from core.llm_generator import llm_generator as llm_gen_module
 
-    instance = MagicMock()
-    instance.invoke_llm.side_effect = RuntimeError("upstream exploded")
-    mock_manager = MagicMock()
-    mock_manager.for_tenant.return_value.get_default_model_instance.return_value = instance
-    monkeypatch.setattr(llm_gen_module, "ModelManager", mock_manager)
+    instance, _manager = _improvement_model(monkeypatch, "")
+
+    def failed(**_kwargs):
+        raise RuntimeError("upstream exploded")
+
+    monkeypatch.setattr(instance, "invoke_llm", failed)
 
     result = llm_gen_module.LLMGenerator.improve_workflow_instruction(
         tenant_id="t1", instruction=_SHORT_INSTRUCTION, mode="workflow"

@@ -1,7 +1,6 @@
 """Plan snapshots retain their own overview across pagination and serialization."""
 
 from copy import deepcopy
-from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
@@ -13,6 +12,8 @@ from core.dify_builder.contract import AssistantTurnItem, ExecutionProgress
 from core.dify_builder.models import Actor, ConversationItem, DifyBuilderContext, EntryMode, Session
 from core.dify_builder.state import PcState
 from services.dify_builder.repository import SqlDifyBuilderRepository
+from services.dify_builder.service import DifyBuilderService
+from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 
 
 def test_plan_history_pages_preserve_snapshots_and_cursors(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -53,10 +54,7 @@ def test_plan_history_pages_preserve_snapshots_and_cursors(monkeypatch: pytest.M
             ]
         )
     repo.create_session(session, DifyBuilderContext(), items)
-    service = MagicMock()
-    service.get_conversation_page.side_effect = lambda session_id, _actor, **kwargs: repo.list_conversation_page(
-        session_id, **kwargs
-    )
+    service = DifyBuilderService(repo, FakeSessionLock(), lambda *_args: None)
     monkeypatch.setattr(controller, "build_service", lambda: service)
     actor = Actor(account_id=session.owner_account_id, tenant_id=session.tenant_id)
 

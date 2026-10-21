@@ -5,7 +5,7 @@ from typing import Literal
 import pytest
 
 from core.dify_builder.models import Run, RunVerification
-from services.dify_builder.application import verification
+from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix, verification
 from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 
 
@@ -102,6 +102,7 @@ def test_denial_ids_block_even_when_native_failed_or_proof_incomplete(
     "outcome", ["execution_blocked", "native_failed", "execution_evidence_unknown", "simulation_completed"]
 )
 def test_handlers_keep_denials_out_of_review_and_repair(
+    mocker,
     flow: str,
     outcome: Literal[
         "restricted_execution_completed",
@@ -113,14 +114,12 @@ def test_handlers_keep_denials_out_of_review_and_repair(
     | None,
 ) -> None:
     import importlib
-    from unittest.mock import Mock
 
     from core.dify_builder.models import Turn
     from core.dify_builder.state import PcState
     from tests.unit_tests.core.dify_builder.fakes import saved_test_context
 
     helpers = importlib.import_module(f"tests.unit_tests.core.dify_builder.test_handlers_{flow}")
-    handlers = importlib.import_module(f"services.dify_builder.application.handlers_{flow}")
     env, repo = helpers._new_env()
     state = {
         "build": PcState.BUILD_TEST_AND_REPAIR,
@@ -133,12 +132,13 @@ def test_handlers_keep_denials_out_of_review_and_repair(
     if outcome == "native_failed":
         raw.status = "failed"
     env.dify.run_draft = lambda *_a, **_kw: raw
-    env.agent.diagnose = Mock(side_effect=AssertionError("policy is not a business bug"))
-    env.agent.propose_repair = Mock(side_effect=AssertionError("policy is not a business bug"))
-    handler = getattr(
-        handlers,
-        {"build": "handle_test_and_repair", "edit": "handle_test_affected_paths", "fix": "handle_verify"}[flow],
-    )
+    mocker.patch.object(env.agent, "diagnose", side_effect=AssertionError("policy is not a business bug"))
+    mocker.patch.object(env.agent, "propose_repair", side_effect=AssertionError("policy is not a business bug"))
+    handler = {
+        "build": handlers_build.handle_test_and_repair,
+        "edit": handlers_edit.handle_test_affected_paths,
+        "fix": handlers_fix.handle_verify,
+    }[flow]
     result = handler(env, Turn(actor=helpers._actor()), session, context)
     assert result.next not in {PcState.BUILD_REVIEW, PcState.EDIT_REVIEW}
     assert not result.context.staged_repair
@@ -151,8 +151,9 @@ def test_handlers_keep_denials_out_of_review_and_repair(
     env.agent.propose_repair.assert_not_called()
 
 
-def test_fix_diagnose_does_not_diagnose_persisted_policy_denial() -> None:
-    from unittest.mock import Mock
+def test_fix_diagnose_does_not_diagnose_persisted_policy_denial(
+    mocker,
+) -> None:
 
     from core.dify_builder.models import DifyBuilderContext, Turn
     from core.dify_builder.state import PcState
@@ -165,23 +166,21 @@ def test_fix_diagnose_does_not_diagnose_persisted_policy_denial() -> None:
     run.id = "denied"
     run.status = "failed"
     repo.save_run(session.id, run)
-    env.agent.diagnose = Mock(side_effect=AssertionError("must not diagnose policy"))
+    mocker.patch.object(env.agent, "diagnose", side_effect=AssertionError("must not diagnose policy"))
     result = handle_diagnose(env, Turn(actor=_actor()), session, DifyBuilderContext(failed_run_id="denied"))
     assert result.next == PcState.FIX_AWAIT_DECISION
     env.agent.diagnose.assert_not_called()
 
 
 @pytest.mark.parametrize("flow", ["build", "edit", "fix"])
-def test_generic_verification_exception_never_enters_diagnosis(flow: str) -> None:
+def test_generic_verification_exception_never_enters_diagnosis(mocker, flow: str) -> None:
     import importlib
-    from unittest.mock import Mock
 
     from core.dify_builder.models import Turn
     from core.dify_builder.state import PcState
     from tests.unit_tests.core.dify_builder.fakes import saved_test_context
 
     helpers = importlib.import_module(f"tests.unit_tests.core.dify_builder.test_handlers_{flow}")
-    handlers = importlib.import_module(f"services.dify_builder.application.handlers_{flow}")
     env, repo = helpers._new_env()
     session = helpers._session(
         current_state={
@@ -190,13 +189,14 @@ def test_generic_verification_exception_never_enters_diagnosis(flow: str) -> Non
             "fix": PcState.FIX_VERIFY,
         }[flow]
     )
-    env.dify.run_draft = Mock(side_effect=RuntimeError("setup failed"))
-    env.agent.diagnose = Mock(side_effect=AssertionError("missing proof"))
-    env.agent.propose_repair = Mock(side_effect=AssertionError("missing proof"))
-    handler = getattr(
-        handlers,
-        {"build": "handle_test_and_repair", "edit": "handle_test_affected_paths", "fix": "handle_verify"}[flow],
-    )
+    mocker.patch.object(env.dify, "run_draft", side_effect=RuntimeError("setup failed"))
+    mocker.patch.object(env.agent, "diagnose", side_effect=AssertionError("missing proof"))
+    mocker.patch.object(env.agent, "propose_repair", side_effect=AssertionError("missing proof"))
+    handler = {
+        "build": handlers_build.handle_test_and_repair,
+        "edit": handlers_edit.handle_test_affected_paths,
+        "fix": handlers_fix.handle_verify,
+    }[flow]
     result = handler(env, Turn(actor=helpers._actor()), session, saved_test_context(repo, session.id))
     assert verification.is_execution_policy_blocker(result.run)
     env.agent.diagnose.assert_not_called()

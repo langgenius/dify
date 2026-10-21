@@ -10,7 +10,6 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Barrier
 from time import monotonic
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -20,6 +19,7 @@ from alembic.operations import Operations
 from alembic.script import ScriptDirectory
 from shellctl.shared.schemas import NativeScopeLimits, NativeScopeSpec
 from sqlalchemy import func, insert, select, text
+from sqlalchemy import inspect as inspect_orm
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from models.dify_builder_native_code import NativeCodePhysicalOperation
@@ -46,6 +46,10 @@ from services.dify_builder.native_testing.sandbox.contracts import (
 )
 from services.dify_builder.native_testing.sandbox.repository import (
     NativeCodePhysicalRepository,
+)
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    CodeDispatchIdentity,
+    PhysicalCodeCase,
 )
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_dispatch_claims import (
     migrated_dispatch_claims as migrated_dispatch_claims,  # noqa: PLC0414 - pytest fixture
@@ -238,7 +242,7 @@ def code_case(ledger_case, physical_migration):
         "profile_digest": "d" * 64,
         "physical_deadline": now + timedelta(seconds=15),
     }
-    return SimpleNamespace(case=case, repo=repo, current=current, args=args)
+    return PhysicalCodeCase(case=case, repo=repo, current=current, args=args)
 
 
 def count_rows(t):
@@ -275,7 +279,7 @@ def test_job_association_and_input_fence_are_visible_before_return(code_case):
     p = t.repo.reserve_scope(**t.args)
     t.repo.ack_scope(physical=p, scope_id=p.scope_id, generation=1)
     bound = t.repo.bind(physical=p, intent=t.args["intent"], permit=t.args["permit"])
-    identity = SimpleNamespace(operation_ref=p.operation_id, scope_id=p.scope_id, generation=1)
+    identity = CodeDispatchIdentity(operation_ref=p.operation_id, scope_id=p.scope_id, generation=1)
     bound.reserve_dispatch(identity, payload_digest=p.payload_digest, profile_digest=p.profile_digest)
     bound.associate_job(identity, "job_1")
     with t.case.factory() as session:
@@ -447,7 +451,7 @@ def test_foreign_pk_is_enforced_by_postgresql(code_case):
     # fresh scope and all unique owner references exercises the actual FK.
     with t.case.factory() as session:
         row = session.get(NativeCodePhysicalOperation, p.id)
-        values = {column.name: getattr(row, column.name) for column in row.__table__.columns}
+        values = {column.name: inspect_orm(row).attrs[column.name].value for column in row.__table__.columns}
     for name in (
         "id",
         "operation_id",
@@ -497,7 +501,7 @@ def test_individually_valid_foreign_keys_do_not_prove_same_owner_chain(code_case
     p = t.repo.reserve_scope(**t.args)
     with t.case.factory.begin() as session:
         original = session.get(NativeCodePhysicalOperation, p.id)
-        physical_values = {c.name: getattr(original, c.name) for c in original.__table__.columns}
+        physical_values = {c.name: inspect_orm(original).attrs[c.name].value for c in original.__table__.columns}
         alternatives = []
         for _ in range(2):
             operation_id, attempt_id, claim_id = (str(uuid4()) for _ in range(3))
@@ -529,7 +533,9 @@ def test_individually_valid_foreign_keys_do_not_prove_same_owner_chain(code_case
                 ),
             ):
                 original_owner = session.get(model, source_id)
-                values = {c.name: getattr(original_owner, c.name) for c in original_owner.__table__.columns}
+                values = {
+                    c.name: inspect_orm(original_owner).attrs[c.name].value for c in original_owner.__table__.columns
+                }
                 session.execute(insert(model).values(**(values | changes)))
             alternatives.append((operation_id, attempt_id, claim_id, operation_digest_value))
         second, third = alternatives

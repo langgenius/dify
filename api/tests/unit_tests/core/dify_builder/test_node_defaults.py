@@ -7,12 +7,21 @@ through the engine node data class that consumes it, pinned in BOTH directions:
 no structural field is missing, and no PURPOSE field is fabricated.
 """
 
-import importlib
-
 import pytest
 from pydantic import ValidationError
 
 from core.dify_builder.node_defaults import default_config, default_config_or_empty
+from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from graphon.nodes.answer.entities import AnswerNodeData
+from graphon.nodes.code.entities import CodeNodeData
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.http_request.entities import HttpRequestNodeData
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.template_transform.entities import TemplateTransformNodeData
+from graphon.nodes.tool.entities import ToolNodeData
+from graphon.nodes.variable_aggregator.entities import VariableAggregatorNodeData
 
 
 def test_default_config_start_matches_fe_default() -> None:
@@ -248,7 +257,19 @@ _ENGINE_EXPECTATIONS: list[tuple[str, str, str, set[str]]] = [
 def test_the_engine_reports_exactly_the_purpose_fields_as_missing(
     node_type: str, module_name: str, class_name: str, expected_missing: set[str]
 ) -> None:
-    data_class = getattr(importlib.import_module(module_name), class_name)
+    data_class = {
+        ("graphon.nodes.start.entities", "StartNodeData"): StartNodeData,
+        ("graphon.nodes.llm.entities", "LLMNodeData"): LLMNodeData,
+        ("graphon.nodes.code.entities", "CodeNodeData"): CodeNodeData,
+        ("graphon.nodes.http_request.entities", "HttpRequestNodeData"): HttpRequestNodeData,
+        ("graphon.nodes.end.entities", "EndNodeData"): EndNodeData,
+        ("graphon.nodes.answer.entities", "AnswerNodeData"): AnswerNodeData,
+        ("core.workflow.nodes.knowledge_retrieval.entities", "KnowledgeRetrievalNodeData"): KnowledgeRetrievalNodeData,
+        ("graphon.nodes.template_transform.entities", "TemplateTransformNodeData"): TemplateTransformNodeData,
+        ("graphon.nodes.variable_aggregator.entities", "VariableAggregatorNodeData"): VariableAggregatorNodeData,
+        ("graphon.nodes.question_classifier.entities", "QuestionClassifierNodeData"): QuestionClassifierNodeData,
+        ("graphon.nodes.tool.entities", "ToolNodeData"): ToolNodeData,
+    }[(module_name, class_name)]
     payload = {"type": node_type, "title": "T", **default_config(node_type)}
 
     if not expected_missing:

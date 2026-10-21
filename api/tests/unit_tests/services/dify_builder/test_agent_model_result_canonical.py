@@ -2,7 +2,6 @@
 
 import copy
 import json
-from types import SimpleNamespace
 
 import pytest
 from dify_agent.adapters.llm.provider import ProtectedModelChunkReceipt
@@ -13,14 +12,16 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from models.dify_builder_native_tests import NativeEffectOperation
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_json
 from runtime_contracts.builder.native.contracts import operation_digest
-from services.dify_builder.native_testing.agent_operations import AgentOperationService
+from tests.unit_tests.services.dify_builder import native_owner_fixtures
 from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
+
+operations_service = native_owner_fixtures.operations_service
 
 
 @pytest.mark.parametrize("with_tool_history", [False, True])
 @pytest.mark.parametrize("repeated_prompt", [False, True])
 def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_accepting_replacement(
-    sqlite_session_factory, monkeypatch, with_tool_history, repeated_prompt
+    sqlite_session_factory, monkeypatch, with_tool_history, repeated_prompt, operations_service
 ):
     pending = envelope()
     messages = (
@@ -77,18 +78,21 @@ def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_acceptin
             )
             sql.commit()
 
-    service = AgentOperationService(
-        loader=SimpleNamespace(
-            load=lambda **_kwargs: SimpleNamespace(tenant_id="tenant"), session_factory=sqlite_session_factory
-        ),
-        state_store=SimpleNamespace(
-            store_result=store, load_result=lambda **kwargs: copy.deepcopy(stored[kwargs["result_ref"]])
-        ),
-        assessor=object(),
+    from dataclasses import replace
+
+    from services.dify_builder.native_testing.agent_bridge import api_ref
+    from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import preparation_owner
+
+    service = operations_service
+    owned = replace(preparation_owner(), ref=api_ref(pending.ref))
+    monkeypatch.setattr(service.loader, "load", lambda **_kwargs: owned)
+    monkeypatch.setattr(service.loader, "session_factory", sqlite_session_factory)
+    monkeypatch.setattr(service.state_store, "store_result", store)
+    monkeypatch.setattr(
+        service.state_store, "load_result", lambda **kwargs: copy.deepcopy(stored[kwargs["result_ref"]])
     )
-    service.bridge.authorization = SimpleNamespace(
-        claim_dispatch=lambda **kwargs: claims.append(kwargs), record_outcome=completed
-    )
+    monkeypatch.setattr(service.bridge.authorization, "claim_dispatch", lambda **kwargs: claims.append(kwargs))
+    monkeypatch.setattr(service.bridge.authorization, "record_outcome", completed)
     monkeypatch.setattr(service, "validate_model", lambda **_kwargs: None)
     monkeypatch.setattr(service, "_endpoint", lambda _ref: None)
 
@@ -120,17 +124,15 @@ def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_acceptin
     assert calls == ["provider"]
 
 
-def test_actual_oversized_model_output_stops_before_yield_and_keeps_unknown_without_replay(monkeypatch):
+def test_actual_oversized_model_output_stops_before_yield_and_keeps_unknown_without_replay(
+    monkeypatch, operations_service
+):
     pending = envelope()
     claims, outcomes, stores, calls = [], [], [], []
-    service = AgentOperationService(
-        loader=object(),
-        state_store=SimpleNamespace(store_result=lambda **kwargs: stores.append(kwargs)),
-        assessor=object(),
-    )
-    service.bridge.authorization = SimpleNamespace(
-        claim_dispatch=lambda **kwargs: claims.append(kwargs), record_outcome=lambda **kwargs: outcomes.append(kwargs)
-    )
+    service = operations_service
+    monkeypatch.setattr(service.state_store, "store_result", lambda **kwargs: stores.append(kwargs))
+    monkeypatch.setattr(service.bridge.authorization, "claim_dispatch", lambda **kwargs: claims.append(kwargs))
+    monkeypatch.setattr(service.bridge.authorization, "record_outcome", lambda **kwargs: outcomes.append(kwargs))
     monkeypatch.setattr(service, "validate_model", lambda **_kwargs: None)
 
     def provider():

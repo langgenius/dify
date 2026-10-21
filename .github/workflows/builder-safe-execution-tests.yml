@@ -72,7 +72,16 @@ on:
       test_scope:
         description: Select a focused lane; all always runs on build branch pushes
         type: choice
-        options: [all, native-agent, native-catalog, native-continuation, native-console, native-dispatch, native-postgres]
+        options:
+          [
+            all,
+            native-agent,
+            native-catalog,
+            native-continuation,
+            native-console,
+            native-dispatch,
+            native-postgres,
+          ]
         default: all
 permissions:
   contents: read
@@ -80,6 +89,44 @@ concurrency:
   group: builder-safe-execution-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  native-migration-dialects:
+    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all' || inputs.test_scope == 'native-postgres'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - run: uv sync --project api --dev --locked
+      - name: Real PostgreSQL and MySQL evidence protections
+        run: >-
+          uv run --project api --no-sync pytest --no-cov -q
+          api/tests/test_containers_integration_tests/migrations/test_builder_native_migration_dialects.py
+          --junitxml=builder-migration-dialects.xml
+      - name: Require both real dialect cases
+        if: always()
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          cases = list(ET.parse("builder-migration-dialects.xml").getroot().iter("testcase"))
+          expected = {
+              "test_native_migrations_preserve_checks_and_evidence_on_both_databases[postgresql]",
+              "test_native_migrations_preserve_checks_and_evidence_on_both_databases[mysql]",
+          }
+          assert len(cases) == 2
+          assert {case.get("name") for case in cases} == expected
+          assert all(case.find(tag) is None for case in cases for tag in ("skipped", "failure", "error"))
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: builder-migration-dialects
+          path: builder-migration-dialects.xml
   native-postgres:
     if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all' || inputs.test_scope == 'native-postgres'))
     runs-on: ubuntu-24.04
@@ -118,7 +165,7 @@ jobs:
                   "test_composed_prelaunch_refusals_have_no_native_id": 6,
                   "test_composed_worker_reload_trace_race_refuses": 1,
                   "test_composed_effective_default_binding": 1,
-                  "test_async_native_repositories_without_delivered_saves_stay_unknown": 1,
+                  "test_async_node_saves_without_delivery_stay_unknown": 1,
                   "test_ordinary_native_scalar_execution_remains_ordinary": 1,
                   "test_composed_class_replacement_refuses_before_native_validation": 1,
                   "test_composed_http_retry_receipts_and_recorder_poison": 2,
@@ -510,11 +557,11 @@ jobs:
                                                                           'test_ensure_snippet_start_node_in_worker_applies_snippet_start_injection': 1,
                                                                           'test_ensure_snippet_start_node_in_worker_returns_snippet_workflow_when_snippet_missing': 1,
                                                                           'test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup': 1,
-                                                                          'test_generate_appends_pause_layer_and_forwards_state': 1,
+                                                                          'test_generate_forwards_pause_configuration_and_state': 1,
                                                                           'test_generate_includes_parent_trace_context_in_extras': 1,
                                                                           'test_resume_delegates_to_generate': 1,
                                                                           'test_resume_path_runs_worker_with_runtime_state': 1},
-           'tests.unit_tests.core.app.apps.test_workflow_app_runner_core.TestWorkflowBasedAppRunner': {'test_get_graph_and_variable_pool_for_single_node_run': 1,
+           'tests.unit_tests.core.app.apps.test_workflow_app_runner_core.TestWorkflowBasedAppRunner': {'test_get_graph_and_variable_pool_for_single_node_run_does_not_mutate_inputs': 1,
                                                                                                        'test_get_graph_and_variable_pool_for_single_node_run_does_not_mutate_inputs': 1,
                                                                                                        'test_get_graph_and_variable_pool_for_single_node_run_includes_trace_session_id': 1,
                                                                                                        'test_get_graph_and_variable_pool_preloads_constructor_variables_before_graph_init': 1,
@@ -1341,6 +1388,44 @@ jobs:
               "test_the_fix_reprompt_quotes_the_engines_own_words": 1,
               "test_the_repair_prompt_states_the_handle_rule_and_shows_the_handles": 1
           }
+          # Exact additions/expanded cases after main integration; retain existing cases.
+          for module, functions in {'tests.unit_tests.services.dify_builder.test_agent_tool_declarations': {'test_workflow_factory_injects_native_declaration_preparation': 1}}.items():
+              a3_expected.setdefault(module, {}).update(functions)
+          for module, functions in {'tests.unit_tests.core.app.apps.test_workflow_app_generator': {'test_actual_generation_marks_configuration_failure_before_worker_dispatch': 1,
+                                                                          'test_generate_forwards_pause_configuration_and_state': 1,
+                                                                          'test_worker_executes_and_persists_a_workflow_through_the_injected_driver': 1},
+           'tests.unit_tests.core.app.apps.test_workflow_app_runner_core.TestWorkflowBasedAppRunner': {'test_container_queue_events_preserve_lifecycle_and_ancestor_metadata': 4,
+                                                                                                       'test_init_graph_preserves_container_execution_scopes': 3,
+                                                                                                       'test_nested_engine_events_retain_both_container_ancestors': 3,
+                                                                                                       'test_single_container_debugging_preserves_descendants': 9},
+           'tests.unit_tests.core.repositories.test_sqlalchemy_workflow_node_execution_repository': {'test_resume_history_includes_paused_nodes_without_changing_default_reads': 4},
+           'tests.unit_tests.core.workflow.nodes.agent_v2.test_dify_tools_builder': {'test_native_layers_without_an_injected_preparer_fail_closed': 1,
+                                                                                     'test_ordinary_layers_do_not_use_an_injected_native_preparer': 1},
+           'tests.unit_tests.services.dify_builder.native_testing.test_agent_risk_assessor': {'test_shell_assessment_uses_configured_assets_and_actual_script': 1},
+           'tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_commands': {'test_public_pause_read_refreshes_callback_and_preserves_only_live_owned_resume': 16},
+           'tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion': {'test_edit_terminal_failure_or_decline_preserves_edit_family_without_execution': 2,
+                                                                                                     'test_edit_terminal_projection_refuses_stale_unknown_or_wrong_task_family': 5,
+                                                                                                     'test_edit_terminal_success_closes_same_attempt_in_edit_review_once': 4},
+           'tests.unit_tests.services.dify_builder.test_agent_model_result_canonical': {'test_actual_oversized_model_output_stops_before_yield_and_keeps_unknown_without_replay': 1,
+                                                                                        'test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_accepting_replacement': 4},
+           'tests.unit_tests.services.dify_builder.test_agent_operation_owner': {'test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth': 5},
+           'tests.unit_tests.services.dify_builder.test_code_risk_assessment': {'test_code_reasoner_uses_session_language_instead_of_old_goal_language': 1,
+                                                                                'test_code_risk_language_is_bound_to_snapshot_without_translating_source': 1},
+           'tests.unit_tests.services.dify_builder.test_confirmed_full_run': {'test_closed_preparation_failure_is_not_reconciled_as_a_dispatched_run': 1,
+                                                                              'test_error_after_observed_dispatch_remains_unknown': 1,
+                                                                              'test_failed_native_plugin_resource_uses_actual_historical_graph': 1,
+                                                                              'test_observed_preparation_failure_is_failed_and_never_redispatched': 1,
+                                                                              'test_preparation_failure_identifies_only_the_observed_resource_nodes': 1},
+           'tests.unit_tests.services.dify_builder.test_edit_cognition': {'test_edit_exposes_approved_insertion_plan_and_preserves_receipt_contract': 1,
+                                                                          'test_edit_refuses_partial_added_node_when_its_wiring_is_rejected': 2,
+                                                                          'test_edit_retry_can_correct_added_node_wiring_to_existing_anchor': 1,
+                                                                          'test_edit_retry_cannot_remove_rejected_wiring_and_keep_same_isolated_addition': 1,
+                                                                          'test_edit_rule_labels_receive_explicit_session_language_and_preserve_business_value': 1,
+                                                                          'test_edit_still_allows_intentional_isolated_draft_addition': 1},
+           'tests.unit_tests.services.dify_builder.test_trace_diagnostics': {'test_native_preparation_diagnostic_is_persisted_with_handler_reply': 1,
+                                                                             'test_resource_binding_refusal_retains_safe_code_and_target_without_private_message': 1},
+           'tests.unit_tests.services.test_app_generate_service_in_process': {'test_pre_generator_tool_admission_failure_has_qualified_preparation_boundary': 4}}.items():
+              a4_expected.setdefault(module, {}).update(functions)
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
@@ -1474,6 +1559,67 @@ jobs:
                   "test_json_non_success_evidence_allows_exact_false_seal_and_legacy_coercion_is_unchanged": 1,
               },
           }
+          # Exact additions/expanded cases after main integration; retain existing cases.
+          for module, functions in {'tests.unit_tests.core.dify_builder.test_execution_policy': {'test_admission_rejects_unsupported_effect_shapes': 12,
+                                                                        'test_all_submitted_values_must_be_scalars': 4,
+                                                                        'test_canonical_digests_reject_nonfinite_and_surrogates_preserve_array_order': 1,
+                                                                        'test_citation_display_absent_or_empty_metadata_compatibility': 2,
+                                                                        'test_citation_display_flag_never_admits_enabled_external_features': 5,
+                                                                        'test_citation_display_flag_never_admits_retrieval_model_or_tool_nodes': 3,
+                                                                        'test_citation_display_metadata_rejects_non_boolean_or_unknown_shape': 9,
+                                                                        'test_confirmed_completion_cannot_be_constructed_without_complete_confirmed_shape': 9,
+                                                                        'test_confirmed_evidence_literals_and_sanitized_action_metadata': 1,
+                                                                        'test_exact_implementation_identity_precedes_native_validation': 1,
+                                                                        'test_fixture_strict_integer_and_immutable': 1,
+                                                                        'test_http_default_finite_number_preserves_raw_binding': 4,
+                                                                        'test_http_default_large_integer_refused_before_native_validation': 4,
+                                                                        'test_invalid_fixture_rejected': 8,
+                                                                        'test_known_native_disabled_defaults_pass': 3,
+                                                                        'test_malformed_graph_identifiers_are_sanitized_refusals': 3,
+                                                                        'test_native_start_end_identity_and_raw_digest_binding': 1,
+                                                                        'test_normal_workflow_citation_display_metadata_admits_native_template': 2,
+                                                                        'test_raw_metadata_denied': 3,
+                                                                        'test_restricted_summary_cannot_carry_confirmed_metadata': 5,
+                                                                        'test_trusted_completion_accepts_either_context_variant_and_rejects_unknown_tags': 1,
+                                                                        'test_unknown_or_malformed_disabled_feature_forms_refuse': 4,
+                                                                        'test_untrusted_fixture_decoder_is_strict_and_sanitized': 1},
+           'tests.unit_tests.core.dify_builder.test_verification': {'test_confirmed_card_has_ids_status_and_reasons_but_no_native_content': 3,
+                                                                    'test_confirmed_success_is_publishable_only_when_sealed_and_revision_exact': 1,
+                                                                    'test_observed_preparation_failure_has_specific_copy_without_entering_repair': 1,
+                                                                    'test_unknown_execution_asks_for_reconciliation_instead_of_rerun': 1,
+                                                                    'test_verification_evidence_denies': 4,
+                                                                    'test_verification_policy_denies': 6,
+                                                                    'test_verification_present_null_and_unknown_are_reviewable': 3},
+           'tests.unit_tests.services.dify_builder.test_execution_policy_service': {'test_all_handlers_persist_actual_server_stamp': 3,
+                                                                                    'test_append_verifies_fixture_node_implementation_profile_and_bound_limit': 1,
+                                                                                    'test_canonical_native_owner_and_proof_mutations': 14,
+                                                                                    'test_complete_non_success_native_status_remains_native_failed': 3,
+                                                                                    'test_fixture_stamp_lineage_stale_reuse_and_malformed_persistence': 1,
+                                                                                    'test_full_owner_chain_required': 7,
+                                                                                    'test_http_receipts_and_unknown_first_precedence': 6,
+                                                                                    'test_incomplete_proof_seals_unknown': 5,
+                                                                                    'test_launch_exactly_once_and_observation_binding': 1,
+                                                                                    'test_malformed_snapshot_refusal_is_sanitized_before_revision': 15,
+                                                                                    'test_metadata_refusal_precedes_revision_access': 4,
+                                                                                    'test_native_predecessor_corroborates_chain_when_present': 9,
+                                                                                    'test_native_rbac_agent_app_binding_precedes_maintainer_bypass': 2,
+                                                                                    'test_native_rbac_plain_app_maintainer_bypass_is_persisted': 1,
+                                                                                    'test_native_rbac_requires_both_scenes_and_allows_delegated_membership': 1,
+                                                                                    'test_null_predecessor_http_retry_requires_all_attempt_proof': 5,
+                                                                                    'test_null_predecessor_prefix_requires_failed_or_stopped_run': 4,
+                                                                                    'test_optional_predecessor_change_cannot_rewrite_sealed_evidence': 1,
+                                                                                    'test_owned_preparation_binds_both_inputs_and_does_not_infer_mock_mode': 1,
+                                                                                    'test_owner_helpers_are_exported_once_for_shared_callers': 1,
+                                                                                    'test_raw_tracing_refusal_in_prepare_and_fixture_stamp_precedes_revision': 1,
+                                                                                    'test_revalidation_refuses_changed_execution': 11,
+                                                                                    'test_seal_requires_authoritative_native_rows_and_is_idempotent': 1,
+                                                                                    'test_seal_revalidates_constructed_preworker_origin': 5,
+                                                                                    'test_sealed_append_and_tampered_full_context_refused': 1,
+                                                                                    'test_supplied_workflow_identity_cannot_disagree_with_owned_row': 2},
+           'tests.unit_tests.services.dify_builder.test_template_presentation': {'test_known_template_refusal_has_actionable_scene_without_native_content': 5,
+                                                                                 'test_template_refusal_clears_staged_repairs_and_cannot_publish': 1,
+                                                                                 'test_unknown_policy_reason_uses_fixed_sanitized_fallback': 1}}.items():
+              json_contract_expected.setdefault(module, {}).update(functions)
           for module, expected in {json_policy_module: json_policy_expected, **json_contract_expected, **json_runtime_expected}.items():
               actual = {}
               for classname, name in identities:

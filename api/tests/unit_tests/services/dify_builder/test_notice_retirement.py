@@ -3,7 +3,6 @@
 from dataclasses import asdict
 from datetime import datetime
 from typing import cast
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -17,8 +16,9 @@ from services.dify_builder.application.handlers_edit import handle_publish as pu
 from services.dify_builder.application.handlers_fix import handle_publish as publish_fix
 from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort, Repository
 from services.dify_builder.application.runner import Env, Handler, Runner
-from services.dify_builder.service import DifyBuilderService, SessionLock
+from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent, seed_verified_run
+from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 
 
 @pytest.mark.parametrize(
@@ -56,8 +56,7 @@ def test_recovery_reason_is_in_the_decision_and_old_history_keeps_its_watermark(
         ),
     ]
     repo.create_session(session, DifyBuilderContext(recovery_class=recovery_class, reply_language="ja"), history)
-    lock = MagicMock(spec=SessionLock)
-    lock.exists.return_value = False
+    lock = FakeSessionLock()
     service = DifyBuilderService(cast(Repository, repo), lock, lambda *_args: None)
 
     view = service.get_session_view(session.id, actor)

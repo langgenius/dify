@@ -9,21 +9,25 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import io
+import json
 import logging
+import sys
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from threading import current_thread
 from time import monotonic
 from typing import TypedDict, cast
-from unittest.mock import Mock
 
 import pytest
 from flask import Flask, current_app, has_app_context
+from sqlalchemy.orm import Session
 
 from context.flask_app_context import capture_flask_context
 from graphon.runtime import VariablePool
 from libs import sensitive_http_telemetry as telemetry
+from models.workflow import Workflow
+from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime, NativeHostLifetimeRegistry
@@ -37,6 +41,10 @@ from tests.unit_tests.services.dify_builder.native_testing.test_observation_priv
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context as sample_context
 
 
+def _refuse_protected_input(**_kwargs):
+    raise AssertionError("protected input effect must not begin")
+
+
 def contexts():
     name = "services.dify_builder.native_testing.context_runtime"
     assert importlib.util.find_spec(name) is not None, "bounded native execution context is missing"
@@ -45,6 +53,11 @@ def contexts():
 
 def protect_logs(monkeypatch):
     """Test-only application sink setup; production never installs/toggles filters."""
+    from services.dify_builder.native_testing.context_runtime import NATIVE_LOG_EMITTERS
+    from services.dify_builder.native_testing.observation_repository import _EMITTERS
+    from tests.unit_tests.logging_helpers import protect_existing_log_routes
+
+    protect_existing_log_routes(monkeypatch, emitters=telemetry._HTTP_LOGGERS + NATIVE_LOG_EMITTERS + _EMITTERS)
     output = io.StringIO()
     handler = logging.StreamHandler(output)
     handler.addFilter(telemetry.SensitiveHttpLogFilter())
@@ -60,19 +73,25 @@ def component_guard(*, on_failure=lambda: None):
 
 
 def qualified_host(case):
-    authorization = Mock()
+    authorization = EffectAuthorizationService(case.store.loader)
     journal = NodeOperationJournal(state=case.store, authorization=authorization)
     life = NativeHostLifetime(context=case.context, dispatch_id="initial-observation")
     registry = NativeHostLifetimeRegistry()
     registry.activate(lifetime=life)  # Fixture handoff, no durable claim proof.
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import (
+        DurablePorts,
+        NoCheckpointLifecycle,
+    )
+
+    durable = DurablePorts()
     host = NativeHostLaunch(
         context=case.context,
         dispatch_id=life.dispatch_id,
         lifetime=life,
         journal=journal,
-        checkpoints=NativeCheckpointBridge(state=case.store, lifecycle=Mock()),
-        fence_pending=Mock(),
-        stop_sealer=Mock(),
+        checkpoints=NativeCheckpointBridge(state=case.store, lifecycle=NoCheckpointLifecycle()),
+        fence_pending=durable.fence_pending,
+        stop_sealer=durable,
         authorization=authorization,
         http_baseline=(1, 1, 1),
     )
@@ -197,7 +216,6 @@ def bind_component_observation(case, monkeypatch):
 
 @pytest.mark.parametrize("feature", ["tts", "files", "trace", "hitl"])
 def test_initial_preflight_refuses_unqualified_routes_before_worker(monkeypatch, feature):
-    from types import SimpleNamespace
 
     from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
     from tests.unit_tests.services.dify_builder.native_testing.test_host_generation_wiring import generate_fixture
@@ -206,9 +224,9 @@ def test_initial_preflight_refuses_unqualified_routes_before_worker(monkeypatch,
     generator, arguments = generate_fixture(case, monkeypatch)
     bind_component_observation(case, monkeypatch)
     entity = arguments["application_generate_entity"]
-    arguments["workflow"] = SimpleNamespace(features_dict={})
+    arguments["workflow"] = Workflow(features="{}")
     if feature == "tts":
-        arguments["workflow"].features_dict = {"text_to_speech": {"enabled": True}}
+        arguments["workflow"].features = json.dumps({"text_to_speech": {"enabled": True}})
     elif feature == "files":
         entity.files = [object()]
     elif feature == "trace":
@@ -225,7 +243,6 @@ def test_initial_preflight_refuses_unqualified_routes_before_worker(monkeypatch,
 
 def test_actual_generate_passes_same_guard_to_queue_and_pipeline_before_worker(monkeypatch):
     from threading import Event
-    from types import SimpleNamespace
 
     from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
     from tests.unit_tests.services.dify_builder.native_testing.test_host_generation_wiring import generate_fixture
@@ -233,7 +250,7 @@ def test_actual_generate_passes_same_guard_to_queue_and_pipeline_before_worker(m
     case = LaunchCase()
     generator, arguments = generate_fixture(case, monkeypatch)
     guard = bind_component_observation(case, monkeypatch)
-    arguments["workflow"] = SimpleNamespace(features_dict={})
+    arguments["workflow"] = Workflow(features="{}")
     seen = []
     done = Event()
 
@@ -316,6 +333,8 @@ def supported_engine(*, kind, mode, monkeypatch, commands=None, graph=None):
 
     import httpx
 
+    from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+    from core.workflow.node_runtime import DifyFileReferenceFactory
     from graphon.engine import Engine
     from graphon.engine.command import InMemoryChannel
     from graphon.entities.base_node_data import BaseNodeData
@@ -396,6 +415,15 @@ def supported_engine(*, kind, mode, monkeypatch, commands=None, graph=None):
 
         get = head = post = put = delete = patch = request
 
+    file_references = DifyFileReferenceFactory(
+        DifyRunContext(
+            tenant_id=context.tenant_id,
+            app_id=context.app_id,
+            user_id=context.actor_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+    )
     originals = (StartNode, EndNode, HttpRequestNode, IterationNode, IterationStartNode, LoopNode, LoopStartNode)
 
     @dataclass
@@ -426,7 +454,7 @@ def supported_engine(*, kind, mode, monkeypatch, commands=None, graph=None):
                     "http_client": Client(),
                     "file_manager": RefusingNativeHttpFiles(),
                     "tool_file_manager_factory": lambda: None,
-                    "file_reference_factory": Mock(),
+                    "file_reference_factory": file_references,
                 }
             return cast(Callable[..., Node[BaseNodeData]], cls)(
                 node_id=node_config["id"],
@@ -518,8 +546,7 @@ def test_actual_supported_loop_dispatcher_condition_error_is_protected(monkeypat
         lease.release_after_exit()
 
 
-def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(case, monkeypatch):
-    from types import SimpleNamespace
+def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(case, monkeypatch, mocker):
 
     from core.app.entities.app_invoke_entities import InvokeFrom
     from models.account import Account
@@ -530,13 +557,13 @@ def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(case
 
     protect_logs(monkeypatch)
     host = qualified_host(case)
-    prepare = Mock(side_effect=AssertionError("protected input effect must not begin"))
+    prepare = mocker.spy(sys.modules[__name__], "_refuse_protected_input")
     bridge = NativeRuntimeBridge(
         state=case.store,
-        collaborators=Mock(),
+        collaborators=_refuse_protected_input,
         boundary_owner=host.boundary_owner,
         control_sink=host.control_sink,
-        node_arguments=Mock(),
+        node_arguments=_refuse_protected_input,
         prepare_inputs=prepare,
     )
     context = case.context
@@ -549,13 +576,13 @@ def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(case
         return actual_factory(**kwargs)
 
     monkeypatch.setattr(observation_owner, "create_http_observation_guard", changed_profile)
+    account = Account(name="Native actor", email="native@example.test")
+    account.id = context.actor_id
     with pytest.raises(NativeObservationError, match="^native_observation_failed$"):
         WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
-            app_model=cast(App, SimpleNamespace(id=context.app_id, tenant_id=context.tenant_id)),
-            workflow=cast(
-                Workflow, SimpleNamespace(id=context.workflow_id, graph_dict=context.graph, features_dict={})
-            ),
-            user=cast(Account, SimpleNamespace(id=context.actor_id)),
+            app_model=App(id=context.app_id, tenant_id=context.tenant_id),
+            workflow=Workflow(id=context.workflow_id, graph=json.dumps(context.graph), features="{}"),
+            user=account,
             args={"inputs": context.inputs},
             streaming=True,
             call_depth=0,
@@ -597,7 +624,7 @@ def test_actual_handle_response_builds_same_guard_pipeline_and_converter(monkeyp
         native_observation=guard,
     )
     assert len(seen) == 1
-    saver.assert_not_called()
+    assert saver.calls == []
 
 
 def test_same_guard_rechecks_exact_state_without_holding_host_lock(case, monkeypatch):
@@ -627,7 +654,11 @@ def test_same_guard_rechecks_exact_state_without_holding_host_lock(case, monkeyp
     assert host.native_observation is guard
     assert locks
     assert host._journal is not None
-    host._journal._state = Mock(load_context=lambda **_kwargs: case.context)
+    from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+
+    other_state = NativeExecutionStateStore(case.store.loader)
+    monkeypatch.setattr(other_state, "load_context", lambda **_kwargs: case.context)
+    host._journal._state = other_state
     with pytest.raises(NativeObservationError):
         _ = host.native_observation
     assert host.lifetime.unknown
@@ -741,7 +772,6 @@ def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(m
     import contextvars
     from contextlib import nullcontext
     from threading import Thread
-    from types import SimpleNamespace
 
     from pydantic import BaseModel, ValidationError
 
@@ -769,10 +799,10 @@ def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(m
         workflow_repository=workflow_repo,
         node_repository=node_repo,
     )
-    workflow = SimpleNamespace(graph_dict=case.state.context.graph)
-    monkeypatch.setattr(
-        module.session_factory, "create_session", lambda: nullcontext(SimpleNamespace(scalar=lambda _query: workflow))
-    )
+    workflow = Workflow(graph=json.dumps(case.state.context.graph))
+    session = Session()
+    monkeypatch.setattr(session, "scalar", lambda _query: workflow)
+    monkeypatch.setattr(module.session_factory, "create_session", lambda: session)
     published = []
     actual_publish = queue.publish_error
 
@@ -833,16 +863,23 @@ def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(m
 def test_initial_host_binds_current_profile_without_native_activity(case, monkeypatch):
     """Actual pre-claim observation composition, labeled owner/object doubles."""
     protect_logs(monkeypatch)
-    authorization = Mock()
+    authorization = EffectAuthorizationService(case.store.loader)
     lifetime = NativeHostLifetime(context=case.context, dispatch_id="initial-observation")
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import (
+        DurablePorts,
+        NoCheckpointLifecycle,
+    )
+
+    durable = DurablePorts()
+
     host = NativeHostLaunch(
         context=case.context,
         dispatch_id=lifetime.dispatch_id,
         lifetime=lifetime,
         journal=NodeOperationJournal(state=case.store, authorization=authorization),
-        checkpoints=NativeCheckpointBridge(state=case.store, lifecycle=Mock()),
-        fence_pending=Mock(),
-        stop_sealer=Mock(),
+        checkpoints=NativeCheckpointBridge(state=case.store, lifecycle=NoCheckpointLifecycle()),
+        fence_pending=durable.fence_pending,
+        stop_sealer=DurablePorts(),
         authorization=authorization,
         http_baseline=(1, 1, 1),
     )

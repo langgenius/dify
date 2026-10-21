@@ -1,7 +1,6 @@
 """Normal confirmed workspace references confer neither isolation nor allocation."""
 
 from dataclasses import asdict
-from types import SimpleNamespace
 
 import pytest
 
@@ -20,6 +19,10 @@ from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.agent_contracts import AgentTestWorkspaceRef
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from tests.unit_tests.services.dify_builder import native_owner_fixtures
+
+operations_service = native_owner_fixtures.operations_service
+preparation_sql = native_owner_fixtures.preparation_sql
 
 
 @pytest.mark.parametrize(
@@ -37,7 +40,7 @@ from runtime_contracts.builder.native.contracts import NativeTestContextRef
         ("home", "home_tenant"),
     ],
 )
-def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch, home_id, drift):
+def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch, home_id, drift, sqlite_session):
     from services.agent import access_service
     from services.agent.workspace_service import AgentWorkspaceService
     from services.dify_builder.native_testing import agent_confirmed_workspace as module
@@ -62,7 +65,11 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
         home_snapshot_id=home_id,
         workspace_generation=0,
     )
-    context = SimpleNamespace(
+    from models.agent import AgentWorkspaceBinding, WorkflowAgentNodeBinding
+    from models.workflow import Workflow
+    from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import preparation_owner, resolved_context
+
+    context = resolved_context(
         ref=NativeTestContextRef(request_id="request", invocation_id="inv", context_digest="a" * 64),
         tenant_id="tenant",
         app_id="app",
@@ -76,9 +83,19 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
         },
     )
     rows = {
-        DifyBuilderExecutionRequest: SimpleNamespace(context={"profile": {"profile_id": "builder-agent-confirmed-v1"}}),
-        WorkflowRun: SimpleNamespace(tenant_id="tenant", app_id="app", workflow_id="workflow", created_by="actor"),
-        WorkflowNodeExecutionModel: SimpleNamespace(
+        DifyBuilderExecutionRequest: DifyBuilderExecutionRequest(
+            id="request",
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            actor_id="actor",
+            session_id="session",
+            test_input_id="input",
+            context_digest="a" * 64,
+            context={"profile": {"profile_id": "builder-agent-confirmed-v1"}},
+        ),
+        WorkflowRun: WorkflowRun(tenant_id="tenant", app_id="app", workflow_id="workflow", created_by="actor"),
+        WorkflowNodeExecutionModel: WorkflowNodeExecutionModel(
             tenant_id="tenant",
             app_id="app",
             workflow_id="workflow",
@@ -86,20 +103,20 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
             node_id="node",
             agent_workspace_binding_id="binding",
         ),
-        AgentWorkspace: SimpleNamespace(backend_workspace_ref="ordinary-workspace"),
-        AgentConfigSnapshot: SimpleNamespace(
+        AgentWorkspace: AgentWorkspace(backend_workspace_ref="ordinary-workspace"),
+        AgentConfigSnapshot: AgentConfigSnapshot(
             id="snapshot",
             tenant_id="tenant",
             agent_id="agent",
             home_snapshot_id=home_id,
-            config_snapshot_dict=AgentSoulConfig().model_dump(mode="json"),
+            config_snapshot=AgentSoulConfig(),
         ),
-        AgentHomeSnapshot: SimpleNamespace(
+        AgentHomeSnapshot: AgentHomeSnapshot(
             id=home_id, tenant_id="tenant", agent_id="agent", status=AgentWorkingResourceStatus.ACTIVE
         ),
-        Agent: SimpleNamespace(tenant_id="tenant", active_config_snapshot_id="snapshot"),
+        Agent: Agent(tenant_id="tenant", active_config_snapshot_id="snapshot"),
     }
-    binding = SimpleNamespace(
+    binding = AgentWorkspaceBinding(
         workspace_id="workspace",
         agent_id="agent",
         base_home_snapshot_id=home_id,
@@ -109,12 +126,12 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
     )
     calls = []
     monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", lambda **kwargs: calls.append(kwargs) or binding)
-    monkeypatch.setattr(
-        module, "validate_invocation_workflow", lambda *_args, **_kwargs: SimpleNamespace(version="draft")
-    )
+    monkeypatch.setattr(module, "validate_invocation_workflow", lambda *_args, **_kwargs: Workflow(version="draft"))
     monkeypatch.setattr(access_service, "require_builder_agent_access", lambda **_kwargs: None)
-    node_binding = SimpleNamespace(node_job_config_dict=WorkflowNodeJobConfig().model_dump(mode="json"))
-    session = SimpleNamespace(get=lambda model, _identifier: rows[model], scalar=lambda _query: node_binding)
+    node_binding = WorkflowAgentNodeBinding(node_job_config=WorkflowNodeJobConfig())
+    session = sqlite_session
+    monkeypatch.setattr(session, "get", lambda model, _identifier: rows[model])
+    monkeypatch.setattr(session, "scalar", lambda _query: node_binding)
     if drift == "profile":
         rows[DifyBuilderExecutionRequest].context["profile"]["profile_id"] = "isolated"
     elif drift == "run_owner":
@@ -133,7 +150,7 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
         rows[AgentHomeSnapshot].tenant_id = "foreign"
     kwargs = {
         "session": session,
-        "owned": object(),
+        "owned": preparation_owner(),
         "context": context,
         "allocation": {"scope": asdict(scope), "workspace": workspace_ref.model_dump(mode="json")},
     }
@@ -152,8 +169,9 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
 @pytest.mark.parametrize(
     ("input_present", "config_present"), [(False, False), (True, False), (True, True), (False, True)]
 )
-def test_parent_discovery_reuses_input_identity_and_never_writes(input_present, config_present):
-    from contextlib import contextmanager
+def test_parent_discovery_reuses_input_identity_and_never_writes(
+    input_present, config_present, monkeypatch, operations_service
+):
 
     from runtime_contracts.builder.execution import canonical_digest
     from services.dify_builder.native_testing.agent_confirmed_workspace import load_confirmed_agent_parent
@@ -162,22 +180,50 @@ def test_parent_discovery_reuses_input_identity_and_never_writes(input_present, 
     inputs = {"query": "original dynamic input"}
     calls = []
 
-    @contextmanager
-    def sessions():
-        yield SimpleNamespace(
-            scalar=lambda _query: SimpleNamespace(id="original-input") if input_present else None,
-            scalars=lambda _query: ["config"] if config_present else [],
-        )
+    from dataclasses import replace
 
-    loader = SimpleNamespace(load=lambda **_kwargs: SimpleNamespace(tenant_id="tenant"), session_factory=sessions)
+    from models.dify_builder_native_tests import NativePayloadObject
+    from runtime_contracts.builder.native.agent_contracts import AgentPreparedConfig
+    from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import WORKSPACE, preparation_owner
+
+    loader = operations_service.loader
+    store = operations_service.state_store
+    owned = replace(preparation_owner(), ref=ref)
+    monkeypatch.setattr(loader, "load", lambda **_kwargs: owned)
+    execution = "a46d79e6-0ae1-4e19-90af-5b58e9a496f3"
+    with loader.session_factory.begin() as session:
+        for identifier, logical_key in ([("original-input", "node-input:" + execution)] if input_present else []) + (
+            [("config", "agent-config:stored")] if config_present else []
+        ):
+            session.add(
+                NativePayloadObject(
+                    id=identifier,
+                    tenant_id="tenant",
+                    request_id="request",
+                    invocation_id="inv",
+                    kind="result",
+                    logical_key=logical_key,
+                    storage_key=identifier,
+                    payload_digest="a" * 64,
+                    value_digest="b" * 64,
+                )
+            )
 
     def prepared(**kwargs):
         calls.append(kwargs["parent_node"])
-        return SimpleNamespace(parent_node=kwargs["parent_node"])
+        return AgentPreparedConfig(
+            parent_node=kwargs["parent_node"],
+            workflow_native_run_id="workflow",
+            workspace=WORKSPACE,
+            config_ref="config",
+            config_digest="a" * 64,
+            config={},
+        )
 
-    store = SimpleNamespace(loader=loader, load_result=lambda **_kwargs: inputs, load_prepared_config=prepared)
+    monkeypatch.setattr(store, "load_result", lambda **_kwargs: inputs)
+    monkeypatch.setattr(store, "load_prepared_config", prepared)
     execution = "a46d79e6-0ae1-4e19-90af-5b58e9a496f3"
-    kwargs = {"service": SimpleNamespace(state_store=store), "ref": ref, "execution_id": execution}
+    kwargs = {"state_store": store, "ref": ref, "execution_id": execution}
     if config_present and not input_present:
         with pytest.raises(BuilderExecutionPolicyError, match="native_agent_input_unavailable"):
             load_confirmed_agent_parent(**kwargs)

@@ -5,6 +5,7 @@ import pytest
 from pytest_mock import MockerFixture
 from werkzeug import Request
 
+from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
 from core.plugin.impl.oauth import OAuthHandler
 
 # SYNTHETIC values in the proposed server-only contract shape; not deployed daemon support.
@@ -73,7 +74,7 @@ class TestOAuthHandler:
 
         def fake_stream[**P](*args: P.args, **kwargs: P.kwargs):
             captured_data.update(kwargs["data"])
-            return iter([SimpleNamespace(credentials={"token": "abc"}, metadata={}, expires_at=1)])
+            return iter([PluginOAuthCredentialsResponse(credentials={"token": "abc"}, metadata={}, expires_at=1)])
 
         stream_mock = mocker.patch.object(
             handler, "_request_with_plugin_daemon_response_stream", side_effect=fake_stream
@@ -113,7 +114,9 @@ class TestOAuthHandler:
         stream_mock = mocker.patch.object(
             handler,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(credentials={"token": "new"}, metadata={}, expires_at=1)]),
+            return_value=iter(
+                [PluginOAuthCredentialsResponse(credentials={"token": "new"}, metadata={}, expires_at=1)]
+            ),
         )
 
         response = handler.refresh_credentials(
@@ -149,7 +152,9 @@ class TestOAuthHandler:
         stream_mock = mocker.patch.object(
             handler,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(credentials={"token": "new"}, metadata={}, expires_at=1)]),
+            return_value=iter(
+                [PluginOAuthCredentialsResponse(credentials={"token": "new"}, metadata={}, expires_at=1)]
+            ),
         )
 
         handler.refresh_credentials(
@@ -173,7 +178,9 @@ class TestOAuthHandler:
         stream_mock = mocker.patch.object(
             handler,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(credentials={"token": "new"}, metadata={}, expires_at=1)]),
+            return_value=iter(
+                [PluginOAuthCredentialsResponse(credentials={"token": "new"}, metadata={}, expires_at=1)]
+            ),
         )
 
         handler.refresh_credentials(

@@ -2,7 +2,7 @@ import json
 from collections.abc import Callable
 from copy import deepcopy
 from operator import itemgetter
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -12,10 +12,11 @@ from core.dify_builder.state import PcState
 from graphon.variables import SecretVariable, StringVariable
 from models.workflow import Workflow
 from services.app.console_gateway import _CHATFLOW_STARTER_GRAPH
-from services.dify_builder.application.ports import Repository
 from services.dify_builder.graph_ops import apply_connect, apply_create_node
 from services.dify_builder.revision import executable_graph_revision, execution_revision, merge_canvas_presentation
-from services.dify_builder.service import DifyBuilderService, SessionLock
+from services.dify_builder.service import DifyBuilderService
+from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository
+from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 
 
 @pytest.fixture
@@ -174,7 +175,7 @@ def _save_canvas_layout(workflow: Workflow) -> None:
     [(PcState.FIX_AWAIT_APPROVAL, "approve_repair"), (PcState.FIX_AWAIT_VERIFY, "run_verify")],
 )
 def test_actions_accept_canvas_save_after_builder_writes_graph(
-    builder_workflow: Workflow, state: PcState, kind: str
+    mocker, builder_workflow: Workflow, state: PcState, kind: str
 ) -> None:
     session = Session(
         id="session-1",
@@ -185,29 +186,35 @@ def test_actions_accept_canvas_save_after_builder_writes_graph(
         current_state=state,
         version=1,
     )
-    repo = MagicMock(spec=Repository)
-    repo.get_session.return_value = (
-        session,
-        DifyBuilderContext(
-            last_snapshot_hash=execution_revision(builder_workflow),
-            staged_repair=[
-                MutationIntent(
-                    op="set_node_config",
-                    args={"node_id": "code", "path": "code", "value": "def main(): return {'result': 'repaired'}"},
-                )
-            ]
-            if kind == "approve_repair"
-            else [],
+    repo = InMemoryRepository()
+    mocker.patch.object(
+        repo,
+        "get_session",
+        return_value=(
+            session,
+            DifyBuilderContext(
+                last_snapshot_hash=execution_revision(builder_workflow),
+                staged_repair=[
+                    MutationIntent(
+                        op="set_node_config",
+                        args={"node_id": "code", "path": "code", "value": "def main(): return {'result': 'repaired'}"},
+                    )
+                ]
+                if kind == "approve_repair"
+                else [],
+            ),
         ),
     )
-    repo.get_latest_conversation_item.return_value = None
-    lock = MagicMock(spec=SessionLock)
-    lock.exists.return_value = False
-    enqueued = MagicMock()
+    lock = FakeSessionLock()
+    enqueued = []
+
+    def enqueue(*args):
+        enqueued.append(args)
+
     service = DifyBuilderService(
         repo,
         lock,
-        enqueued,
+        enqueue,
         get_app_revision_fn=lambda _app_id, _actor: execution_revision(builder_workflow),
     )
     actor = Actor(account_id=session.owner_account_id, tenant_id=session.tenant_id)
@@ -225,7 +232,7 @@ def test_actions_accept_canvas_save_after_builder_writes_graph(
     assert result.app_revision is not None
     assert result.app_revision.conflicted is False
     assert result.app_revision.current == view.app_revision.current
-    enqueued.assert_called_once_with(session.id, action, actor, lock.acquire.return_value)
+    assert enqueued == [(session.id, action, actor, lock._held[session.id])]
 
     # Even if the client fetches the latest revision, an actual code edit must
     # still conflict with the configuration that Builder planned against.
@@ -238,10 +245,12 @@ def test_actions_accept_canvas_save_after_builder_writes_graph(
     action.base_app_revision = execution_revision(builder_workflow)
     with pytest.raises(ConflictError, match="draft changed outside Builder"):
         service.submit_action(session.id, actor, action)
-    assert enqueued.call_count == 1
+    assert len(enqueued) == 1
 
 
-def test_chatflow_requirements_accept_canvas_node_reordering() -> None:
+def test_chatflow_requirements_accept_canvas_node_reordering(
+    mocker,
+) -> None:
     workflow = Workflow(
         tenant_id="tenant-1",
         graph=json.dumps(_CHATFLOW_STARTER_GRAPH),
@@ -258,19 +267,25 @@ def test_chatflow_requirements_accept_canvas_node_reordering() -> None:
         current_state=PcState.BUILD_GOAL_ANALYSIS,
         version=2,
     )
-    repo = MagicMock(spec=Repository)
-    repo.get_session.return_value = (
-        session,
-        DifyBuilderContext(last_snapshot_hash=execution_revision(workflow)),
+    repo = InMemoryRepository()
+    mocker.patch.object(
+        repo,
+        "get_session",
+        return_value=(
+            session,
+            DifyBuilderContext(last_snapshot_hash=execution_revision(workflow)),
+        ),
     )
-    repo.get_latest_conversation_item.return_value = None
-    lock = MagicMock(spec=SessionLock)
-    lock.exists.return_value = False
-    enqueued = MagicMock()
+    lock = FakeSessionLock()
+    enqueued = []
+
+    def enqueue(*args):
+        enqueued.append(args)
+
     service = DifyBuilderService(
         repo,
         lock,
-        enqueued,
+        enqueue,
         get_app_revision_fn=lambda _app_id, _actor: execution_revision(workflow),
     )
     actor = Actor(account_id=session.owner_account_id, tenant_id=session.tenant_id)
@@ -294,7 +309,7 @@ def test_chatflow_requirements_accept_canvas_node_reordering() -> None:
     assert result.app_revision is not None
     assert result.app_revision.conflicted is False
     assert result.app_revision.current == view.app_revision.current
-    enqueued.assert_called_once_with(session.id, action, actor, lock.acquire.return_value)
+    assert enqueued == [(session.id, action, actor, lock._held[session.id])]
 
     llm["data"]["prompt_template"][0]["text"] = "An actual configuration edit"
     workflow.graph = json.dumps(graph)
@@ -303,7 +318,7 @@ def test_chatflow_requirements_accept_canvas_node_reordering() -> None:
     action.base_app_revision = execution_revision(workflow)
     with pytest.raises(ConflictError, match="draft changed outside Builder"):
         service.submit_action(session.id, actor, action)
-    assert enqueued.call_count == 1
+    assert len(enqueued) == 1
 
 
 def test_canvas_hydration_and_transient_state_preserve_revision(workflow: Workflow) -> None:

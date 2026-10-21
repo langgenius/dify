@@ -421,11 +421,12 @@ class TestDifyNodeFactoryResolveContext:
 
 class TestDifyNodeFactoryCreateNode:
     @pytest.fixture
-    def factory(self):
+    def factory(self, mocker):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory._native_runtime = None
         factory.init_params = sentinel.init_params
-        factory.runtime_state = MagicMock(spec=RuntimeState, variable_pool=MagicMock())
+        factory.runtime_state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
+        mocker.patch.object(VariablePool, "get")
         factory._dify_context = DifyRunContext(
             builder_execution=None,
             tenant_id="tenant-id",
@@ -1141,9 +1142,10 @@ class TestDifyNodeFactoryCreateNode:
 
 class TestDifyNodeFactoryRetrieverAttachmentAccess:
     @pytest.fixture
-    def factory(self):
+    def factory(self, mocker):
         factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.runtime_state = MagicMock(spec=RuntimeState, variable_pool=MagicMock())
+        factory.runtime_state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
+        mocker.patch.object(VariablePool, "get")
         return factory
 
     def test_retriever_attachment_loader_is_typed_for_llm_node_data_only(self):
@@ -1226,7 +1228,7 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
 
 class TestDifyNodeFactoryModelInstance:
     @pytest.fixture
-    def factory(self):
+    def factory(self, mocker):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory._llm_credentials_provider = sentinel.credentials_provider
         factory._llm_model_factory = sentinel.model_factory
@@ -1271,7 +1273,7 @@ class TestDifyNodeFactoryModelInstance:
 
 class TestDifyNodeFactoryMemory:
     @pytest.fixture
-    def factory(self):
+    def factory(self, mocker):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory._dify_context = DifyRunContext(
             tenant_id="tenant-id",
@@ -1280,7 +1282,8 @@ class TestDifyNodeFactoryMemory:
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
         )
-        factory.runtime_state = MagicMock(spec=RuntimeState, variable_pool=MagicMock())
+        factory.runtime_state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
+        mocker.patch.object(VariablePool, "get")
         return factory
 
     def test_returns_none_when_memory_is_not_configured(self, factory):
@@ -1399,10 +1402,11 @@ class TestNodeConfigErrorsNameTheNode:
     }
 
     @pytest.fixture
-    def factory(self):
+    def factory(self, mocker):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.init_params = sentinel.init_params
-        factory.runtime_state = MagicMock(spec=RuntimeState, variable_pool=MagicMock())
+        factory.runtime_state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
+        mocker.patch.object(VariablePool, "get")
         factory._dify_context = DifyRunContext(
             tenant_id="tenant-id",
             app_id="app-id",
@@ -1602,10 +1606,12 @@ class TestConfirmedToolFactory:
         factory, graph, reserved, run_id = _confirmed_factory(consent_owner)
         resolved: list[tuple[object, ...]] = []
 
-        def resolve(*_args: object, confirmed_guard: object = None, **_kwargs: object) -> SimpleNamespace:
+        def resolve(*_args: object, confirmed_guard: object = None, **_kwargs: object):
             row = consent_owner.consent_row(reserved.consent_id)
             resolved.append((row.state, row.native_run_id, row.native_node_execution_id, confirmed_guard))
-            return SimpleNamespace(confirmed_guard=confirmed_guard)
+            from tests.unit_tests.core.tools.plugin_tool.test_confirmed_plugin_tool import _tool
+
+            return _tool(confirmed_guard)
 
         monkeypatch.setattr(ToolManager, "get_workflow_tool_runtime", resolve)
         nodes = [factory.create_node(copy.deepcopy(node)) for node in graph["nodes"]]

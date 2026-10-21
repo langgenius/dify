@@ -210,6 +210,7 @@ async def test_non_plugin_core_arguments_remain_unprepared(provider_type, provid
 @pytest.mark.parametrize("transfer", ["local_file", "tool_file", "datasource_file"])
 async def test_ordinary_plugin_canonical_file_uses_current_run_download_owner(transfer):
     import base64
+
     from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient, bind_runtime_identity
     from dify_agent.protocol.native_testing import AgentRuntimeIdentity
 
@@ -275,23 +276,25 @@ async def test_ordinary_plugin_canonical_file_uses_current_run_download_owner(tr
 
 
 @pytest.mark.anyio
-async def test_ordinary_plugin_sandbox_path_reuses_shell_stub_upload_then_download():
-    from types import SimpleNamespace
+async def test_ordinary_plugin_sandbox_path_reuses_shell_stub_upload_then_download(monkeypatch):
     from dify_agent.layers.dify_plugin.tools_layer import _FILE_UPLOAD_BEGIN, _FILE_UPLOAD_END
 
     calls = []
 
-    class ShellBoundary:
-        async def run_remote_script_complete(self, script, *, timeout, inject_agent_stub_env):
-            calls.append("upload")
-            assert "['dify-agent', 'file', 'upload', \"/sandbox/sample.txt\"]" in script
-            assert timeout == 60.0 and inject_agent_stub_env is True
-            return SimpleNamespace(
-                exit_code=0,
-                output=_FILE_UPLOAD_BEGIN
-                + json.dumps({"transfer_method": "tool_file", "reference": "uploaded-ref"})
-                + _FILE_UPLOAD_END,
-            )
+    from dify_agent.adapters.shell.protocols import CompleteShellCommandResult
+    from dify_agent.layers.shell.layer import DifyShellLayerConfig, ShellSession
+    from dify_agent.layers.shell.layer import State as ShellState
+
+    async def upload(self, script, *, timeout, inject_agent_stub_env):
+        calls.append("upload")
+        assert "['dify-agent', 'file', 'upload', \"/sandbox/sample.txt\"]" in script
+        assert timeout == 60.0 and inject_agent_stub_env is True
+        output = (
+            _FILE_UPLOAD_BEGIN
+            + json.dumps({"transfer_method": "tool_file", "reference": "uploaded-ref"})
+            + _FILE_UPLOAD_END
+        )
+        return CompleteShellCommandResult("upload", "exited", True, 0, output, True, None, len(output))
 
     def handler(request):
         calls.append(request.url.path)
@@ -307,7 +310,13 @@ async def test_ordinary_plugin_sandbox_path_reuses_shell_stub_upload_then_downlo
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         deps = _ordinary_deps(_ordinary_config(shell="shell"), client)
-        deps.resources.shells["shell"] = ShellBoundary()
+        deps.layers["shell"] = {
+            "config": DifyShellLayerConfig().model_dump(mode="json"),
+            "state": ShellState().model_dump(mode="json"),
+        }
+        shell = ShellSession("shell", deps)
+        monkeypatch.setattr(ShellSession, "run_remote_script_complete", upload)
+        deps.resources.shells["shell"] = shell
         await invoke_native_tool(
             deps, Toolset("core_tools"), "search", {"query": "live", "input": "/sandbox/sample.txt"}
         )
@@ -391,7 +400,7 @@ async def test_shared_direct_select_preparation_currently_loses_multiple_metadat
 async def test_core_native_early_refusal_precedes_file_preparation_and_io():
     from dify_agent.protocol.native_testing import AgentNativeTestRef
     from dify_agent.runtime.native_continuation import NativeContinuation, NativePolicyStopped
-    from dify_agent.runtime.native_effects import NativeEffectSession, NativeEffectDispatcher
+    from dify_agent.runtime.native_effects import NativeEffectDispatcher, NativeEffectSession
 
     class UnusedOwner:
         async def before_call(self, **kwargs):
@@ -464,11 +473,11 @@ async def test_plugin_file_current_run_missing_refuses_without_legacy_fallback()
     ],
 )
 async def test_api_payload_validation_error_is_not_relabelled_as_preparation_error(provider_type, provider_id):
-    from types import SimpleNamespace
 
     from pydantic import ValidationError
 
     from dify_agent.layers.dify_core_tools.client import DifyCoreToolsClient
+    from tests.local.dify_agent.runtime.native_test_entities import run_context
 
     config = _ordinary_config(provider_type, provider_id)
     async with httpx.AsyncClient(
@@ -485,4 +494,4 @@ async def test_api_payload_validation_error_is_not_relabelled_as_preparation_err
         # Extra keys are intentionally retained by preparation. The real API
         # request model, rather than preparation, owns JSON payload validation.
         with pytest.raises(ValidationError):
-            await tool.function(SimpleNamespace(deps=deps), query="live", extra=object())
+            await tool.function(run_context(deps), query="live", extra=object())

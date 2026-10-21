@@ -171,33 +171,42 @@ def test_agent_plan_to_parallel_builder_to_valid_end_graph(monkeypatch):
 
 
 def _run_agent_model_responses(responses):
-    from types import SimpleNamespace
-    from unittest.mock import MagicMock
+    from unittest.mock import patch
+
+    from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+    from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+    from tests.unit_tests.core.model_fixtures import make_model_instance
 
     results = [
-        SimpleNamespace(message=SimpleNamespace(get_text_content=lambda text=text: text), usage=None)
+        LLMResult(
+            model="fixture",
+            prompt_messages=[],
+            message=AssistantPromptMessage(content=text),
+            usage=LLMUsage.empty_usage(),
+        )
         for text in responses
     ]
-    model = SimpleNamespace(invoke_llm=MagicMock(side_effect=results))
-    result = WorkflowGenerator._run_node_builder(
-        model_instance=model,
-        model_parameters={},
-        provider="fixture",
-        model_name="fixture",
-        model_mode="chat",
-        mode_section="workflow",
-        instruction="Use only the confirmed published Agent binding",
-        ideal_output="",
-        target_node={"id": "node2", "node_type": "agent", "label": "Reviewer", "purpose": "Review contract"},
-        plan_json="{}",
-        tool_catalogue_text="",
-        tool_catalogue_entries=[],
-        start_inputs=[],
-        node_outputs={"node2": ["risks", "summary"]},
-        node_types={"node2": "agent"},
-        existing_node=None,
-    )
-    return result, model
+    model = make_model_instance(provider="fixture", model="fixture")
+    with patch.object(model, "invoke_llm", side_effect=results) as invoke:
+        result = WorkflowGenerator._run_node_builder(
+            model_instance=model,
+            model_parameters={},
+            provider="fixture",
+            model_name="fixture",
+            model_mode="chat",
+            mode_section="workflow",
+            instruction="Use only the confirmed published Agent binding",
+            ideal_output="",
+            target_node={"id": "node2", "node_type": "agent", "label": "Reviewer", "purpose": "Review contract"},
+            plan_json="{}",
+            tool_catalogue_text="",
+            tool_catalogue_entries=[],
+            start_inputs=[],
+            node_outputs={"node2": ["risks", "summary"]},
+            node_types={"node2": "agent"},
+            existing_node=None,
+        )
+    return result, invoke
 
 
 def _observed_bad_native_config():
@@ -229,8 +238,8 @@ def test_real_agent_response_parser_corrects_both_observed_schema_errors_in_one_
     canonical["agent_declared_outputs"][0]["array_item"] = {"type": "string"}
     result, model = _run_agent_model_responses([json.dumps({"config": bad}), json.dumps({"config": canonical})])
     assert result == canonical
-    assert model.invoke_llm.call_count == 2
-    correction = json.loads(model.invoke_llm.call_args_list[1].kwargs["prompt_messages"][-1].content)
+    assert model.call_count == 2
+    correction = json.loads(model.call_args_list[1].kwargs["prompt_messages"][-1].content)
     assert correction["code"] == "INVALID_SCHEMA"
     assert "version" in correction["detail"]
     assert "string_type" in correction["detail"]
@@ -262,7 +271,7 @@ def test_legacy_agent_builder_config_does_not_enter_native_schema_correction():
     legacy = {"version": "1", "agent_strategy_name": "legacy-fixture"}
     result, model = _run_agent_model_responses([json.dumps({"config": legacy})])
     assert result == legacy
-    assert model.invoke_llm.call_count == 1
+    assert model.call_count == 1
 
 
 def test_agent_system_schema_example_validates_with_native_owners():

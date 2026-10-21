@@ -173,7 +173,7 @@ class World:
 
 
 @pytest.fixture(autouse=True)
-def forbidden_effects(monkeypatch: pytest.MonkeyPatch) -> dict[str, Mock]:
+def forbidden_effects(mocker) -> dict[str, Mock]:
     """Selection is metadata only: any secret/runtime/provider owner call fails the test."""
     from core.helper import encrypter
     from core.helper.provider_encryption import ProviderConfigEncrypter
@@ -206,9 +206,8 @@ def forbidden_effects(monkeypatch: pytest.MonkeyPatch) -> dict[str, Mock]:
     ]
     spies: dict[str, Mock] = {}
     for owner, name in targets:
-        spy = Mock(side_effect=AssertionError("unexpected effect"))
-        monkeypatch.setattr(owner, name, spy)
-        spies[f"{getattr(owner, '__name__', owner)}.{name}"] = spy
+        spy = mocker.patch.object(owner, name, side_effect=AssertionError("unexpected effect"))
+        spies[f"{type(owner).__name__}.{name}"] = spy
     return spies
 
 
@@ -550,16 +549,16 @@ def test_uncanonicalizable_row_provider_is_unavailable(world: World) -> None:
     refused(world, "credential_reference_unavailable")
 
 
-@pytest.mark.parametrize("credential_id", [str(uuid4()), "", "x" * 129])
+@pytest.mark.parametrize("credential_id", [pytest.param(str(uuid4()), id="unknown-uuid"), "", "x" * 129])
 def test_unknown_or_malformed_credential_id_is_unavailable(world: World, credential_id: str) -> None:
     refused(world, "credential_reference_unavailable", credential_id=credential_id)
 
 
-def _session_that_must_not_query() -> Mock:
+def _session_that_must_not_query(mocker) -> Session:
     # Any SQL would reach PostgreSQL's native UUID column; refusal must precede it.
-    db = Mock(spec=Session)
+    db = Session()
     for name in ("scalar", "scalars", "execute", "get", "query"):
-        getattr(db, name).side_effect = AssertionError("unexpected query")
+        mocker.patch.object(db, name, side_effect=AssertionError("unexpected query"))
     return db
 
 
@@ -582,8 +581,8 @@ VALID_UUID = "6f1c3b0e-8a3d-4c2b-9f4e-2d7a1b5c9e10"
         "6f1c3b0e-8a3d-4c2b-9f4e-2d7a1b5c9e10'; --",
     ],
 )
-def test_noncanonical_credential_uuid_refuses_before_any_query(credential_id: str) -> None:
-    db = _session_that_must_not_query()
+def test_noncanonical_credential_uuid_refuses_before_any_query(credential_id: str, mocker) -> None:
+    db = _session_that_must_not_query(mocker)
     with pytest.raises(BuilderExecutionPolicyError) as raised:
         BuiltinToolManageService.resolve_builder_reference(
             db=db,
@@ -598,10 +597,10 @@ def test_noncanonical_credential_uuid_refuses_before_any_query(credential_id: st
     db.scalar.assert_not_called()
 
 
-def test_canonical_credential_uuid_reaches_the_query_without_validating_actor_ids() -> None:
+def test_canonical_credential_uuid_reaches_the_query_without_validating_actor_ids(mocker) -> None:
     # Actor/tenant identities are not credential UUIDs; only credential_id is checked.
-    db = Mock(spec=Session)
-    db.scalar.return_value = None
+    db = Session()
+    mocker.patch.object(db, "scalar", return_value=None)
     with pytest.raises(BuilderExecutionPolicyError, match="credential_reference_unavailable"):
         BuiltinToolManageService.resolve_builder_reference(
             db=db,

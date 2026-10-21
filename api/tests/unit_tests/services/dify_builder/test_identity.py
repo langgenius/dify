@@ -2,14 +2,11 @@
 
 These services do NO authorization of their own; ``load_app``'s tenant check
 is the only gate standing between an ``Actor`` and another tenant's app. Both
-helpers are exercised against a mocked ``session`` (``session.get(Model, id)``)
--- no DB.
+helpers read persisted rows through a real SQLite session.
 """
 
-from types import SimpleNamespace
-from unittest.mock import Mock
-
 import pytest
+from sqlalchemy.orm import Session
 
 from core.dify_builder.errors import NotFoundError
 from core.dify_builder.models import Actor
@@ -22,48 +19,52 @@ def _actor(account_id: str = "acc-1", tenant_id: str = "tenant-1") -> Actor:
     return Actor(account_id=account_id, tenant_id=tenant_id)
 
 
-def test_resolve_account_returns_account_on_hit() -> None:
-    account = SimpleNamespace(id="acc-1")
-    session = Mock()
-    session.get.return_value = account
+def test_resolve_account_returns_account_on_hit(sqlite_session: Session, mocker) -> None:
+    session = sqlite_session
+    account = Account(name="Actor", email="actor@example.test")
+    account.id = "acc-1"
+    session.add(account)
+    session.flush()
+    get = mocker.spy(session, "get")
 
     result = resolve_account(session, _actor(account_id="acc-1"))
 
     assert result is account
-    session.get.assert_called_once_with(Account, "acc-1")
+    get.assert_called_once_with(Account, "acc-1")
 
 
-def test_resolve_account_raises_not_found_on_miss() -> None:
-    session = Mock()
-    session.get.return_value = None
+def test_resolve_account_raises_not_found_on_miss(sqlite_session: Session) -> None:
+    session = sqlite_session
 
     with pytest.raises(NotFoundError):
         resolve_account(session, _actor(account_id="acc-missing"))
 
 
-def test_load_app_returns_app_on_tenant_match() -> None:
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-    session = Mock()
-    session.get.return_value = app
+def test_load_app_returns_app_on_tenant_match(sqlite_session: Session, mocker) -> None:
+    session = sqlite_session
+    app = App(id="app-1", tenant_id="tenant-1", name="Draft", mode="workflow", enable_site=False, enable_api=False)
+    session.add(app)
+    session.flush()
+    get = mocker.spy(session, "get")
 
     result = load_app(session, "app-1", _actor(tenant_id="tenant-1"))
 
     assert result is app
-    session.get.assert_called_once_with(App, "app-1")
+    get.assert_called_once_with(App, "app-1")
 
 
-def test_load_app_raises_not_found_on_tenant_mismatch() -> None:
-    app = SimpleNamespace(id="app-1", tenant_id="other-tenant")
-    session = Mock()
-    session.get.return_value = app
+def test_load_app_raises_not_found_on_tenant_mismatch(sqlite_session: Session) -> None:
+    session = sqlite_session
+    app = App(id="app-1", tenant_id="other-tenant", name="Draft", mode="workflow", enable_site=False, enable_api=False)
+    session.add(app)
+    session.flush()
 
     with pytest.raises(NotFoundError):
         load_app(session, "app-1", _actor(tenant_id="tenant-1"))
 
 
-def test_load_app_raises_not_found_on_absent() -> None:
-    session = Mock()
-    session.get.return_value = None
+def test_load_app_raises_not_found_on_absent(sqlite_session: Session) -> None:
+    session = sqlite_session
 
     with pytest.raises(NotFoundError):
         load_app(session, "does-not-exist", _actor())

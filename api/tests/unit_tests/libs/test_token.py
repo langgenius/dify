@@ -20,16 +20,24 @@ class MockRequest:
     path: str = "/console/api/test"
 
 
-def test_extract_access_token():
+@pytest.mark.parametrize("secure", [False, True])
+def test_extract_access_token(config_overrides, secure):
+    scheme = "https" if secure else "http"
+    config_overrides(
+        CONSOLE_WEB_URL=f"{scheme}://console.example.invalid",
+        CONSOLE_API_URL=f"{scheme}://api.example.invalid",
+        COOKIE_DOMAIN="",
+    )
+
     def _mock_request(headers: dict[str, str], cookies: dict[str, str], args: dict[str, str]) -> Request:
         return cast(Request, MockRequest(headers, cookies, args))
 
     test_cases = [
         (_mock_request({"Authorization": "Bearer 123"}, {}, {}), "123", "123"),
-        (_mock_request({}, {COOKIE_NAME_ACCESS_TOKEN: "123"}, {}), "123", None),
+        (_mock_request({}, {token._real_cookie_name(COOKIE_NAME_ACCESS_TOKEN): "123"}, {}), "123", None),
         (_mock_request({}, {}, {}), None, None),
         (_mock_request({"Authorization": "Bearer_aaa 123"}, {}, {}), None, None),
-        (_mock_request({}, {COOKIE_NAME_WEBAPP_ACCESS_TOKEN: "123"}, {}), None, "123"),
+        (_mock_request({}, {token._real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN): "123"}, {}), None, "123"),
     ]
     for request, expected_console, expected_webapp in test_cases:
         assert extract_access_token(request) == expected_console

@@ -2,7 +2,6 @@
 
 import json
 from collections.abc import Sequence
-from types import SimpleNamespace
 from typing import Never
 
 import pytest
@@ -17,6 +16,7 @@ from runtime_contracts.builder.presentation import copy_text
 from services.dify_builder.serde import context_from_dict, context_to_dict
 from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository
+from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 
 
 def _service(
@@ -27,7 +27,7 @@ def _service(
         app_id="app", tenant_id="tenant", owner_account_id="account", entry_mode=EntryMode.BUILD, current_state=state
     )
     repo.create_session(session, context, list(items))
-    return DifyBuilderService(repo, SimpleNamespace(exists=lambda _: False), lambda *_: None), session
+    return DifyBuilderService(repo, FakeSessionLock(), lambda *_: None), session
 
 
 def _actor() -> Actor:

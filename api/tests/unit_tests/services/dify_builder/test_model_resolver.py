@@ -1,12 +1,12 @@
-from types import SimpleNamespace
-from unittest.mock import Mock
+from dataclasses import dataclass, field
 
 import pytest
 
 from core.dify_builder.errors import BadRequestError, ModelUnavailableError
 from core.dify_builder.models import Graph, Inputs
-from graphon.model_runtime.entities.model_entities import ModelType
+from core.model_manager import ModelInstance, ModelManager
 from services.dify_builder.agent import model_resolver
+from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 
 MC = {
     "provider": "openai",
@@ -16,47 +16,52 @@ MC = {
 }
 
 
-class _FakeManager:
-    def __init__(self, *, fail: bool = False, active: bool = True) -> None:
-        self._fail = fail
-        self.default_used = False
-        self.explicit_args: tuple[str, str, str, str] | None = None
-        self.lookup = Mock(return_value=SimpleNamespace(model_properties={"mode": "chat"}) if active else None)
-        self.instance = SimpleNamespace(
-            provider="openai",
-            model_name="gpt-4o",
-            provider_model_bundle=SimpleNamespace(configuration=SimpleNamespace(get_provider_model=self.lookup)),
-        )
+@dataclass
+class ModelSelection:
+    manager: ModelManager
+    instance: ModelInstance
+    default_used: bool = False
+    explicit_args: tuple[str, str, str, str] | None = None
+    lookup_calls: list[dict[str, object]] = field(default_factory=list)
 
-    def get_model_instance(
-        self, *, tenant_id: str, provider: str, model_type: ModelType, model: str
-    ) -> SimpleNamespace:
-        if self._fail:
+
+def _manager(monkeypatch: pytest.MonkeyPatch, *, fail: bool = False, active: bool = True) -> ModelSelection:
+    manager = ModelManager.for_tenant(tenant_id="t1")
+    instance = make_model_instance(provider="openai", model="gpt-4o")
+    selection = ModelSelection(manager, instance)
+    model = make_model_config(provider="openai", model="gpt-4o", mode="chat").model_schema
+    model.model_properties = {"mode": "chat"}
+
+    def lookup(**kwargs):
+        selection.lookup_calls.append(kwargs)
+        return model if active else None
+
+    def explicit(*, tenant_id, provider, model_type, model):
+        if fail:
             raise ValueError("provider not configured")
-        self.explicit_args = (tenant_id, provider, str(model_type), model)
-        return self.instance
+        selection.explicit_args = (tenant_id, provider, str(model_type), model)
+        return instance
 
-    def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> SimpleNamespace:  # noqa: ARG002
-        self.default_used = True
-        if self._fail:
+    def default(**_kwargs):
+        selection.default_used = True
+        if fail:
             raise ValueError("default model not configured")
-        return self.instance
+        return instance
 
-    def get_default_provider_model_name(self, *, tenant_id: str, model_type: ModelType) -> tuple[str, str]:  # noqa: ARG002
-        return ("anthropic", "claude-sonnet-5")
-
-
-def _patch_manager(monkeypatch: pytest.MonkeyPatch, manager: _FakeManager | Mock) -> None:
     monkeypatch.setattr(
-        model_resolver.ModelManager,
-        "for_tenant",
-        staticmethod(lambda tenant_id, user_id=None: manager),  # noqa: ARG005
+        type(instance.provider_model_bundle.configuration),
+        "get_provider_model",
+        lambda _self, **kwargs: lookup(**kwargs),
     )
+    monkeypatch.setattr(manager, "get_model_instance", explicit)
+    monkeypatch.setattr(manager, "get_default_model_instance", default)
+    monkeypatch.setattr(manager, "get_default_provider_model_name", lambda **_kwargs: ("anthropic", "claude-sonnet-5"))
+    monkeypatch.setattr(model_resolver.ModelManager, "for_tenant", lambda *_args, **_kwargs: manager)
+    return selection
 
 
 def test_resolve_explicit_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    mgr = _FakeManager()
-    _patch_manager(monkeypatch, mgr)
+    mgr = _manager(monkeypatch)
     inst = model_resolver.resolve_model_instance("t1", MC)
     assert inst is mgr.instance
     assert mgr.explicit_args is not None
@@ -66,8 +71,7 @@ def test_resolve_explicit_model(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_resolve_falls_back_to_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    mgr = _FakeManager()
-    _patch_manager(monkeypatch, mgr)
+    mgr = _manager(monkeypatch)
     assert model_resolver.resolve_model_instance("t1", None) is mgr.instance
     assert mgr.default_used
 
@@ -76,7 +80,7 @@ def test_resolve_falls_back_to_default(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_validate_raises_model_unavailable_on_unresolvable(
     monkeypatch: pytest.MonkeyPatch, config: Graph | Inputs | None
 ) -> None:
-    _patch_manager(monkeypatch, _FakeManager(fail=True))
+    _manager(monkeypatch, fail=True)
     with pytest.raises(ModelUnavailableError):
         model_resolver.validate_model_config("t1", config)
 
@@ -85,27 +89,25 @@ def test_validate_raises_model_unavailable_on_unresolvable(
 def test_validate_rejects_inactive_or_missing_model(
     monkeypatch: pytest.MonkeyPatch, config: Graph | Inputs | None
 ) -> None:
-    _patch_manager(monkeypatch, _FakeManager(active=False))
+    _manager(monkeypatch, active=False)
     with pytest.raises(ModelUnavailableError):
         model_resolver.validate_model_config("t1", config)
 
 
 @pytest.mark.parametrize("config", [MC, None, {}])
 def test_validate_freezes_resolved_active_model(monkeypatch: pytest.MonkeyPatch, config: Graph | Inputs | None) -> None:
-    mgr = _FakeManager()
-    _patch_manager(monkeypatch, mgr)
+    mgr = _manager(monkeypatch)
     result = model_resolver.validate_model_config("t1", config)
     assert result == {**MC, "completion_params": MC["completion_params"] if config else {}}
-    mgr.lookup.assert_called_once_with(model_type=model_resolver.ModelType.LLM, model="gpt-4o", only_active=True)
+    assert mgr.lookup_calls == [{"model_type": model_resolver.ModelType.LLM, "model": "gpt-4o", "only_active": True}]
 
 
 def test_invalid_model_shape_is_bad_request_without_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
-    manager = Mock()
-    _patch_manager(monkeypatch, manager)
+    manager = _manager(monkeypatch)
     with pytest.raises(BadRequestError) as exc:
         model_resolver.validate_model_config("t1", {"name": "missing-provider"})
     assert not isinstance(exc.value, ModelUnavailableError)
-    manager.get_model_instance.assert_not_called()
+    assert manager.explicit_args is None
 
 
 def test_resolved_names_explicit() -> None:
@@ -113,7 +115,7 @@ def test_resolved_names_explicit() -> None:
 
 
 def test_resolved_names_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    _patch_manager(monkeypatch, _FakeManager())
+    _manager(monkeypatch)
     assert model_resolver.resolved_model_names("t1", None) == {"provider": "anthropic", "name": "claude-sonnet-5"}
 
 

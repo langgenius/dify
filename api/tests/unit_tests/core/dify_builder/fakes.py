@@ -493,6 +493,7 @@ class StubAgent(DifyBuilderAgent):
 
     def __init__(self, risk_level: str = "low") -> None:
         self.risk_level = risk_level
+        self.learn_calls = 0
         self.edit_intent_calls: list[tuple[list[str], str | None]] = []
 
     @override
@@ -558,7 +559,7 @@ class StubAgent(DifyBuilderAgent):
     def learn_from_build(
         self, goal_text: str, requirements: dict[str, object], plan_items: list[str], built_node_ids: list[str]
     ) -> str:
-        self.learn_calls = getattr(self, "learn_calls", 0) + 1
+        self.learn_calls += 1
         return "stub-skill"
 
     def analyze_impact(self, _goal_text, _graph, *, reply_language=None):  # noqa: ARG002
@@ -576,7 +577,6 @@ class StubAgent(DifyBuilderAgent):
         last_edit_rejection=None,
         approved_plan=None,  # noqa: ARG002
     ):
-        self.edit_intent_calls = getattr(self, "edit_intent_calls", [])
         self.edit_intent_calls.append((list(edit_target_node_ids), last_edit_rejection))
         return []
 

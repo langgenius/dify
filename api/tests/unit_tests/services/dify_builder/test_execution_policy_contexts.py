@@ -101,9 +101,7 @@ def test_native_json_factory_constructs_tool_with_typed_run_context(prepared_jso
 def test_json_completion_receipt_is_recorded_without_http_fixture_fields(prepared_json: PreparedJson) -> None:
     context = prepared_json.context
     binding = context.qualified_tool
-    installation = InstalledJsonParse(
-        **{name: getattr(binding, name) for name in InstalledJsonParse.__dataclass_fields__}
-    )
+    installation = InstalledJsonParse.from_binding(binding)
     receipt = BuilderExecutionObservation(
         observation_id="native-node",
         invocation_id="native-node",

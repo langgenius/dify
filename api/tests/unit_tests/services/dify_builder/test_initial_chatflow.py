@@ -5,7 +5,6 @@ import json
 from dataclasses import asdict
 from datetime import datetime
 from typing import cast, override
-from unittest.mock import Mock
 
 import pytest
 
@@ -117,7 +116,7 @@ def _generated_chatflow(initial_graph: Graph) -> Graph:
 
 
 @pytest.fixture
-def generator(monkeypatch: pytest.MonkeyPatch, initial_graph: Graph) -> Mock:
+def generator(monkeypatch: pytest.MonkeyPatch, initial_graph: Graph):
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
@@ -130,35 +129,46 @@ def generator(monkeypatch: pytest.MonkeyPatch, initial_graph: Graph) -> Mock:
             {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
         ),
     )
-    generate = Mock(return_value={"graph": _generated_chatflow(initial_graph), "error": "", "errors": []})
+    calls, responses = [], []
+
+    def generate(**kwargs):
+        calls.append(kwargs)
+        return (
+            responses.pop(0) if responses else {"graph": _generated_chatflow(initial_graph), "error": "", "errors": []}
+        )
+
     monkeypatch.setattr(build.WorkflowGeneratorService, "generate_workflow_graph", generate)
-    return generate
+    return calls, responses
 
 
-def test_chatflow_generation_accepts_answer_and_uses_the_actual_mode(generator: Mock) -> None:
+def test_chatflow_generation_accepts_answer_and_uses_the_actual_mode(generator) -> None:
+    calls, _responses = generator
     result = build.build_nodes("tenant", {}, ["Reply to the user"], mode="advanced-chat")
     assert result.error == ""
     assert [i.args["node_type"] for i in result.intents if i.op == "create_node"] == ["start", "llm", "answer"]
-    assert generator.call_args is not None
-    assert generator.call_args.kwargs["mode"] == "advanced-chat"
-    assert "'answer' node" in generator.call_args.kwargs["instruction"]
-    assert "Do NOT use 'end' nodes" in generator.call_args.kwargs["instruction"]
+    assert calls
+    assert calls[-1]["mode"] == "advanced-chat"
+    assert "'answer' node" in calls[-1]["instruction"]
+    assert "Do NOT use 'end' nodes" in calls[-1]["instruction"]
 
 
-def test_chatflow_retry_rejects_a_workflow_terminal(generator: Mock, initial_graph: Graph) -> None:
+def test_chatflow_retry_rejects_a_workflow_terminal(generator, initial_graph: Graph) -> None:
     wrong = _generated_chatflow(initial_graph)
     wrong["nodes"][2]["data"] = {"type": "end", "title": "End", "outputs": []}
     errors: list[dict[str, str]] = []
-    generator.side_effect = [
-        {"graph": wrong, "error": "", "errors": errors},
-        {"graph": _generated_chatflow(initial_graph), "error": "", "errors": errors},
-    ]
+    calls, responses = generator
+    responses.extend(
+        [
+            {"graph": wrong, "error": "", "errors": errors},
+            {"graph": _generated_chatflow(initial_graph), "error": "", "errors": errors},
+        ]
+    )
     result = build.build_nodes("tenant", {}, ["Reply"], mode="advanced-chat")
     assert result.intents
-    assert generator.call_count == 2
-    assert all(call.kwargs["mode"] == "advanced-chat" for call in generator.call_args_list)
-    assert generator.call_args is not None
-    retry = generator.call_args.kwargs["instruction"]
+    assert len(calls) == 2
+    assert all(call["mode"] == "advanced-chat" for call in calls)
+    assert calls
+    retry = calls[-1]["instruction"]
     assert "answer" in retry
     assert "Do NOT use 'end' nodes" in retry
 
@@ -240,7 +250,19 @@ def test_failed_generation_keeps_the_initial_template(initial_graph: Graph) -> N
 
 
 def test_chatflow_mode_reaches_planning_capability_checks_and_generation(monkeypatch: pytest.MonkeyPatch) -> None:
-    planner, gap, generate = Mock(return_value=None), Mock(return_value=""), Mock(return_value=BuildNodesResult())
+    planner_calls, gap_calls, generation_calls = [], [], []
+
+    def planner(*_args, **kwargs):
+        planner_calls.append(kwargs)
+
+    def gap(*_args, **kwargs):
+        gap_calls.append(kwargs)
+        return ""
+
+    def generate(*_args, **kwargs):
+        generation_calls.append(kwargs)
+        return BuildNodesResult()
+
     monkeypatch.setattr(build, "propose_plan_v1", planner)
     monkeypatch.setattr(build, "assess_capability_gap", gap)
     monkeypatch.setattr(build, "build_nodes", generate)
@@ -250,20 +272,18 @@ def test_chatflow_mode_reaches_planning_capability_checks_and_generation(monkeyp
     agent.propose_plan_v1({}, goal_text="Reply")
     agent.assess_capability_gap(["Reply"], [], goal_text="Reply", requirements={})
     agent.build_nodes(["Reply"])
-    assert planner.call_args is not None
-    assert gap.call_args is not None
-    assert generate.call_args is not None
-    assert (
-        planner.call_args.kwargs["mode"]
-        == gap.call_args.kwargs["mode"]
-        == generate.call_args.kwargs["mode"]
-        == "advanced-chat"
-    )
+    assert planner_calls
+    assert gap_calls
+    assert generation_calls
+    assert planner_calls[-1]["mode"] == gap_calls[-1]["mode"] == generation_calls[-1]["mode"] == "advanced-chat"
 
 
 def test_chatflow_planning_and_capability_prompts_use_answer_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
-    planner = Mock(
-        return_value=json.dumps(
+    calls = []
+
+    def planner(*_args, **kwargs):
+        calls.append(kwargs)
+        return json.dumps(
             {
                 "title": "Chat assistant",
                 "input_summary": "A message",
@@ -271,16 +291,19 @@ def test_chatflow_planning_and_capability_prompts_use_answer_nodes(monkeypatch: 
                 "plan": ["answer node replies to the user"],
             }
         )
-    )
-    gap = Mock(return_value={"gap": ""})
+
+    def gap(*_args, **kwargs):
+        calls.append(kwargs)
+        return {"gap": ""}
+
     monkeypatch.setattr(build.llm, "invoke_text", planner)
     monkeypatch.setattr(build.llm, "invoke_json", gap)
     assert build.propose_plan_v1(object(), {}, goal_text="Reply", mode="advanced-chat") is not None
     assert build.assess_capability_gap(object(), ["Reply"], [], mode="advanced-chat") == ""
-    for call in (planner.call_args, gap.call_args):
-        assert call is not None
-        assert '- "answer"' in call.kwargs["system"]
-        assert '- "end"' not in call.kwargs["system"]
+    assert len(calls) == 2
+    for call in calls:
+        assert '- "answer"' in call["system"]
+        assert '- "end"' not in call["system"]
 
 
 def test_worker_resolves_the_persisted_app_mode_before_constructing_the_agent(
@@ -301,7 +324,13 @@ def test_worker_resolves_the_persisted_app_mode_before_constructing_the_agent(
         current_state=PcState.BUILD_CAPABILITY_CHECK,
     )
     repo.create_session(session, DifyBuilderContext(goal_text="Build a chat assistant"), [])
-    factory = Mock(wraps=task.build_dify_builder_agent)
+    original_factory = task.build_dify_builder_agent
+    factory_calls = []
+
+    def factory(*args, **kwargs):
+        factory_calls.append(kwargs)
+        return original_factory(*args, **kwargs)
+
     events: list[dict[str, object]] = []
     monkeypatch.setattr(task, "_build_repo", lambda: repo)
     monkeypatch.setattr(task, "WorkflowServiceDifyPort", lambda: port)
@@ -314,8 +343,8 @@ def test_worker_resolves_the_persisted_app_mode_before_constructing_the_agent(
     task.advance_session(
         session.id, asdict(Action(kind="start_build", base_version=session.version)), asdict(actor), "token"
     )
-    assert factory.call_args is not None
-    assert factory.call_args.kwargs["app_mode"] == "advanced-chat"
+    assert factory_calls
+    assert factory_calls[-1]["app_mode"] == "advanced-chat"
     assert repo.get_session(session.id)[0].current_state == PcState.BUILD_GOAL_ANALYSIS
     assert events[-1]["kind"] == "command_finished"
 

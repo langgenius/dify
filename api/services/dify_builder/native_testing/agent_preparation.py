@@ -82,7 +82,7 @@ class AgentPreparationService:
         bound_data = node.node_data.model_dump(mode="json")
         if node.node_data != expected_node:
             raise BuilderExecutionPolicyError("native_agent_config_mismatch")
-        inputs = self.config_builder.typed_inputs(association=association, definition=definition)
+        inputs = self.config_builder.typed_inputs(runtime_state=association.runtime_state, definition=definition)
         execution_id = association.execution_id
         input_ref = self.state_store.store_node_inputs(
             ref=context.ref,
@@ -113,7 +113,8 @@ class AgentPreparationService:
             or association.resolve() != context
             or association.execution_id != execution_id
             or self.config_builder.load_definition(context=context, node_id=association.node_id) != definition
-            or self.config_builder.typed_inputs(association=association, definition=definition) != inputs
+            or self.config_builder.typed_inputs(runtime_state=association.runtime_state, definition=definition)
+            != inputs
         ):
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         config = request.model_dump(mode="json", include={"composition", "session_snapshot"})

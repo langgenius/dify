@@ -9,13 +9,32 @@ from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.dify_builder.models import ApplyResult, Graph, MutationIntent
+from models.workflow import Workflow
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import PreflightError
 from services.dify_builder.revision import execution_revision
-from tests.unit_tests.services.dify_builder.test_dify_port import _actor, _configure_session_get, _workflow
+from tests.unit_tests.services.dify_builder.test_dify_port import (
+    PortDatabase,
+    TrackedPortSession,
+    _account,
+    _actor,
+    _app,
+    _configure_session_get,
+    _workflow,
+)
 from tests.unit_tests.services.dify_builder.test_native_http_output_contract import http_graph
+
+
+@pytest.fixture
+def mock_session(sqlite_engine, mocker) -> Iterator[TrackedPortSession]:
+    with TrackedPortSession(sqlite_engine, expire_on_commit=False) as session:
+        for name in ("get", "refresh", "commit"):
+            mocker.spy(session, name)
+        yield session
+
 
 _START: Graph = {"id": "node1", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}}
 # ``comparison_operator`` must be one of graphon's SupportedComparisonOperator
@@ -37,32 +56,25 @@ _BROKEN_IF_ELSE_CONFIG = {
 }
 
 
-@pytest.fixture
-def mock_session() -> MagicMock:
-    session = MagicMock()
-    session.__enter__.return_value = session
-    session.__exit__.return_value = False
-    return session
-
-
 @pytest.fixture(autouse=True)
-def _mock_db() -> Iterator[None]:
-    with patch("services.dify_builder.dify_port.db"), patch("services.dify_builder.dify_port.set_login_user"):
+def _mock_db(sqlite_engine, monkeypatch) -> Iterator[None]:
+    monkeypatch.setattr("services.dify_builder.dify_port.db", PortDatabase(sqlite_engine))
+    with patch("services.dify_builder.dify_port.set_login_user"):
         yield
 
 
 @pytest.fixture(autouse=True)
-def _mock_sessionmaker(mock_session: MagicMock) -> Iterator[MagicMock]:
-    with patch("services.dify_builder.dify_port.sessionmaker") as ctor:
-        ctor.return_value = MagicMock(return_value=mock_session)
-        yield ctor
+def _mock_sessionmaker(mock_session: Session, monkeypatch) -> None:
+    monkeypatch.setattr("services.dify_builder.dify_port._session_factory", lambda: lambda: mock_session)
 
 
-def _apply(mock_session: MagicMock, graph_dict: Graph, intents: list[MutationIntent]) -> tuple[ApplyResult, MagicMock]:
-    _configure_session_get(mock_session, account=MagicMock(id="acc-1"), app=MagicMock(id="app-1", tenant_id="tenant-1"))
-    workflow = _workflow(graph_dict=graph_dict, features_dict={})
+def _apply(mock_session: Session, graph_dict: Graph, intents: list[MutationIntent]) -> tuple[ApplyResult, MagicMock]:
+    _configure_session_get(mock_session, account=_account(), app=_app())
+    workflow = _workflow(session=mock_session, graph_dict=graph_dict, features_dict={})
     with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
-        mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
+        mock_ws_cls.return_value.get_draft_workflow.side_effect = lambda _app, *, session: session.get(
+            Workflow, workflow.id
+        )
         mock_ws_cls.return_value.sync_draft_workflow.return_value = _workflow(graph_dict=graph_dict)
         result = WorkflowServiceDifyPort().apply_repair(
             "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
@@ -70,7 +82,7 @@ def _apply(mock_session: MagicMock, graph_dict: Graph, intents: list[MutationInt
     return result, mock_ws_cls.return_value.sync_draft_workflow
 
 
-def test_apply_repair_refuses_numeric_http_status_string_operator_before_sync(mock_session: MagicMock) -> None:
+def test_apply_repair_refuses_numeric_http_status_string_operator_before_sync(mock_session: Session) -> None:
     graph = http_graph("=", "200")
     original = deepcopy(graph)
     intent = MutationIntent(
@@ -90,7 +102,7 @@ def test_apply_repair_refuses_numeric_http_status_string_operator_before_sync(mo
     assert graph == original
 
 
-def test_apply_repair_preserves_unrelated_existing_numeric_http_operator_exemption(mock_session: MagicMock) -> None:
+def test_apply_repair_preserves_unrelated_existing_numeric_http_operator_exemption(mock_session: Session) -> None:
     graph: Graph = dict(http_graph())
     intent = MutationIntent(op="set_node_config", args={"node_id": "start", "path": "title", "value": "Begin"})
 
@@ -102,7 +114,7 @@ def test_apply_repair_preserves_unrelated_existing_numeric_http_operator_exempti
     )
 
 
-def test_a_repair_that_would_not_start_is_rejected_before_it_is_written(mock_session: MagicMock) -> None:
+def test_a_repair_that_would_not_start_is_rejected_before_it_is_written(mock_session: Session) -> None:
     intents = [
         MutationIntent(
             op="create_node", args={"node_type": "if-else", "node_id": "node2", "config": _BROKEN_IF_ELSE_CONFIG}
@@ -126,7 +138,7 @@ def test_a_preflight_rejection_is_the_core_draft_would_not_start_error() -> None
     assert issubclass(PreflightError, ValueError)
 
 
-def test_a_pre_existing_broken_node_the_repair_does_not_touch_does_not_veto_it(mock_session: MagicMock) -> None:
+def test_a_pre_existing_broken_node_the_repair_does_not_touch_does_not_veto_it(mock_session: Session) -> None:
     broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
     fix_elsewhere = [MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Begin"})]
 
@@ -136,7 +148,7 @@ def test_a_pre_existing_broken_node_the_repair_does_not_touch_does_not_veto_it(m
     sync.assert_called_once()
 
 
-def test_a_repair_that_heals_the_broken_node_is_written(mock_session: MagicMock) -> None:
+def test_a_repair_that_heals_the_broken_node_is_written(mock_session: Session) -> None:
     broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
     healed_cases = json.loads(json.dumps(_BROKEN_IF_ELSE_CONFIG["cases"]))
     healed_cases[0]["conditions"][0]["comparison_operator"] = "="
@@ -149,7 +161,7 @@ def test_a_repair_that_heals_the_broken_node_is_written(mock_session: MagicMock)
     assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "="
 
 
-def test_apply_repair_coerces_a_numeric_condition_value_before_the_preflight(mock_session: MagicMock) -> None:
+def test_apply_repair_coerces_a_numeric_condition_value_before_the_preflight(mock_session: Session) -> None:
     """The ESQ1-285 flip-flop: a Fix/Edit repair writes ``"value": 60`` (the
     generator never produced this intent, so the shared postprocess never saw
     it). The chokepoint normalizes it, and the preflight then passes."""
@@ -174,7 +186,7 @@ def test_apply_repair_coerces_a_numeric_condition_value_before_the_preflight(moc
     assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] == "60"
 
 
-def test_apply_repair_canonicalizes_an_ascii_comparison_operator_before_the_preflight(mock_session: MagicMock) -> None:
+def test_apply_repair_canonicalizes_an_ascii_comparison_operator_before_the_preflight(mock_session: Session) -> None:
     """F4 cause (a): the Edit LLM rewrote an if-else's ``cases`` with ``">="``,
     which graphon's ``SupportedComparisonOperator`` refuses -- so the whole
     batch was rejected and the session parked at ``edit.plan_approval``.
@@ -201,7 +213,7 @@ def test_apply_repair_canonicalizes_an_ascii_comparison_operator_before_the_pref
     assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "≥"
 
 
-def test_apply_repair_still_rejects_an_ambiguous_equality_operator(mock_session: MagicMock) -> None:
+def test_apply_repair_still_rejects_an_ambiguous_equality_operator(mock_session: Session) -> None:
     """``==`` is ambiguous between graphon's number equality (``=``) and its
     string equality (``is``), exactly like the word form ``equals``. Healing it
     would silently pick one comparison; it must keep failing loudly instead."""
@@ -224,7 +236,7 @@ def test_apply_repair_still_rejects_an_ambiguous_equality_operator(mock_session:
     assert "comparison_operator" in str(excinfo.value)
 
 
-def test_apply_repair_fills_http_body_item_types_before_the_preflight(mock_session: MagicMock) -> None:
+def test_apply_repair_fills_http_body_item_types_before_the_preflight(mock_session: Session) -> None:
     body = {"type": "json", "data": [{"key": "", "value": '{"a": 1}'}]}  # one item, no ``type``
     http: Graph = {
         "id": "node4",
@@ -249,7 +261,7 @@ def test_apply_repair_fills_http_body_item_types_before_the_preflight(mock_sessi
     assert kwargs["graph"]["nodes"][1]["data"]["body"]["data"][0]["type"] == "text"
 
 
-def test_apply_repair_counts_a_node_the_chokepoint_normalizer_heals_as_changed(mock_session: MagicMock) -> None:
+def test_apply_repair_counts_a_node_the_chokepoint_normalizer_heals_as_changed(mock_session: Session) -> None:
     """The chokepoint normalizers scan every node in the graph, not just the
     ones an intent named: a repair that only touches node1's title can still
     heal an UNTOUCHED node's numeric condition value as a side effect.
@@ -291,7 +303,7 @@ def _http_create_intent(node_id: str, authorization: Graph) -> MutationIntent:
     return MutationIntent(op="create_node", args={"node_type": "http-request", "node_id": node_id, "config": config})
 
 
-def test_apply_repair_heals_an_authorization_without_type_and_writes(mock_session: MagicMock) -> None:
+def test_apply_repair_heals_an_authorization_without_type_and_writes(mock_session: Session) -> None:
     """The live E2E crash: this shape made the preflight raise KeyError out of
     ``apply_repair`` and failed the Build session. The chokepoint normalizer
     now fills the type, so the repair is written."""
@@ -305,7 +317,7 @@ def test_apply_repair_heals_an_authorization_without_type_and_writes(mock_sessio
     assert written["data"]["authorization"]["type"] == "api-key"
 
 
-def test_apply_repair_unwraps_a_nested_parameter_extractor_query_before_the_preflight(mock_session: MagicMock) -> None:
+def test_apply_repair_unwraps_a_nested_parameter_extractor_query_before_the_preflight(mock_session: Session) -> None:
     """Blocker A: a Fix/Edit repair writes a parameter-extractor ``query`` as
     an array of selector arrays (``[["sys", "query"]]``); graphon's
     ``ParameterExtractorNodeData.query`` is ``list[str]``, one selector, and
@@ -332,7 +344,7 @@ def test_apply_repair_unwraps_a_nested_parameter_extractor_query_before_the_pref
     assert written["data"]["query"] == ["sys", "query"]
 
 
-def test_apply_repair_rejects_a_crashing_node_it_cannot_heal_instead_of_raising_it(mock_session: MagicMock) -> None:
+def test_apply_repair_rejects_a_crashing_node_it_cannot_heal_instead_of_raising_it(mock_session: Session) -> None:
     """A shape no normalizer heals (a present but invalid ``type`` also makes
     graphon raise KeyError) is a preflight PROBLEM -- a PreflightError the
     handlers already catch -- never a KeyError that ends the session."""
@@ -342,7 +354,7 @@ def test_apply_repair_rejects_a_crashing_node_it_cannot_heal_instead_of_raising_
         _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
 
 
-def test_apply_repair_writes_a_template_transform_the_llm_created_without_variables(mock_session: MagicMock) -> None:
+def test_apply_repair_writes_a_template_transform_the_llm_created_without_variables(mock_session: Session) -> None:
     """F4 cause (b): the Edit LLM created a ``template-transform`` carrying only
     ``title`` and ``template``. ``TemplateTransformNodeData.variables`` is
     required with no default, so the preflight refused the WHOLE batch and the
@@ -370,7 +382,7 @@ def test_apply_repair_writes_a_template_transform_the_llm_created_without_variab
     assert written["data"]["template"] == "excellent"
 
 
-def test_a_repair_that_leaves_its_own_culprit_invalid_is_refused_not_applied(mock_session: MagicMock) -> None:
+def test_a_repair_that_leaves_its_own_culprit_invalid_is_refused_not_applied(mock_session: Session) -> None:
     """The silent false success the location key cannot see, and the reason a
     node the batch WROTE gets no exemption at all.
 
@@ -393,7 +405,7 @@ def test_a_repair_that_leaves_its_own_culprit_invalid_is_refused_not_applied(moc
     assert "klingon" in str(excinfo.value)  # names the value it just wrote, not the one it replaced
 
 
-def test_a_repair_that_only_half_fixes_the_node_it_wrote_is_refused_too(mock_session: MagicMock) -> None:
+def test_a_repair_that_only_half_fixes_the_node_it_wrote_is_refused_too(mock_session: Session) -> None:
     """Same rule, the other shape: the repair genuinely improves ``node2`` (it
     adds the missing ``varType``) but leaves the operator invalid. Improved is
     not startable, and writing it would still produce a draft that dies at
@@ -407,7 +419,7 @@ def test_a_repair_that_only_half_fixes_the_node_it_wrote_is_refused_too(mock_ses
         _apply(mock_session, {"nodes": [_START, broken], "edges": []}, repair)
 
 
-def test_a_node_the_healer_touched_is_still_not_a_node_this_batch_wrote(mock_session: MagicMock) -> None:
+def test_a_node_the_healer_touched_is_still_not_a_node_this_batch_wrote(mock_session: Session) -> None:
     """``heal_nodes_for_preflight`` scans EVERY node, so its returned ids are
     folded into ``changed_nodes`` for the change set. They must NOT widen the set
     the preflight holds answerable: a node the healer merely normalized is not a
@@ -439,7 +451,7 @@ def test_a_node_the_healer_touched_is_still_not_a_node_this_batch_wrote(mock_ses
     sync.assert_called_once()  # ...and its untouched, unhealed defect still did not veto the write
 
 
-def test_wiring_an_already_broken_node_is_still_written(mock_session: MagicMock) -> None:
+def test_wiring_an_already_broken_node_is_still_written(mock_session: Session) -> None:
     """The port's own copy of the ``connect`` exclusion. ``node2`` is refused as
     it stands and this batch only adds an EDGE to it -- ``apply_connect`` reports
     both endpoints as changed (right for the change set), but an edge cannot
@@ -474,7 +486,7 @@ def test_wiring_an_already_broken_node_is_still_written(mock_session: MagicMock)
 )
 @pytest.mark.parametrize("op", ["create_node", "insert_between"])
 def test_direct_write_refuses_first_phase_additions_before_sync(
-    mock_session: MagicMock, node_type: str, config: Graph, op: str
+    mock_session: Session, node_type: str, config: Graph, op: str
 ) -> None:
     graph: Graph = {
         "nodes": [_START, {"id": "end", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}}],
@@ -513,7 +525,7 @@ def test_direct_write_refuses_first_phase_additions_before_sync(
         ("agent", {"version": "2", "agent_node_kind": "dify_agent"}),
     ],
 )
-def test_direct_write_refuses_disguised_type_conversion(mock_session: MagicMock, node_type: str, config: Graph) -> None:
+def test_direct_write_refuses_disguised_type_conversion(mock_session: Session, node_type: str, config: Graph) -> None:
     graph: Graph = {
         "nodes": [
             {
@@ -541,7 +553,7 @@ def test_direct_write_refuses_disguised_type_conversion(mock_session: MagicMock,
         sync.assert_not_called()
 
 
-def test_direct_write_refuses_retrieval_binding_change(mock_session: MagicMock) -> None:
+def test_direct_write_refuses_retrieval_binding_change(mock_session: Session) -> None:
     graph: Graph = {
         "nodes": [
             {
@@ -566,7 +578,7 @@ def test_direct_write_refuses_retrieval_binding_change(mock_session: MagicMock) 
         sync.assert_not_called()
 
 
-def test_direct_write_refuses_legacy_agent_to_native_new_agent_conversion(mock_session: MagicMock) -> None:
+def test_direct_write_refuses_legacy_agent_to_native_new_agent_conversion(mock_session: Session) -> None:
     graph: Graph = {"nodes": [{"id": "a", "type": "custom", "data": {"type": "agent", "title": "Legacy"}}], "edges": []}
     intents = [
         MutationIntent(op="set_node_config", args={"node_id": "a", "path": "version", "value": "2"}),
@@ -582,7 +594,7 @@ def test_direct_write_refuses_legacy_agent_to_native_new_agent_conversion(mock_s
 
 @pytest.mark.parametrize("node_id", ["node1", "agent", "hitl"])
 def test_direct_write_retains_historical_nodes_and_allows_permitted_repairs(
-    mock_session: MagicMock, node_id: str
+    mock_session: Session, node_id: str
 ) -> None:
     from tests.unit_tests.services.dify_builder.test_preflight import _human_input_graph
 
@@ -613,7 +625,7 @@ def test_direct_write_retains_historical_nodes_and_allows_permitted_repairs(
 
 
 @pytest.mark.parametrize("node_type", ["knowledge-retrieval", "human-input", "agent"])
-def test_direct_write_preserves_already_present_create_replay(mock_session: MagicMock, node_type: str) -> None:
+def test_direct_write_preserves_already_present_create_replay(mock_session: Session, node_type: str) -> None:
     graph: Graph = {"nodes": [{"id": "existing", "type": "custom", "data": {"type": node_type}}], "edges": []}
     intent = MutationIntent(op="create_node", args={"node_type": node_type, "node_id": "existing", "config": {}})
 
@@ -623,7 +635,7 @@ def test_direct_write_preserves_already_present_create_replay(mock_session: Magi
     sync.assert_not_called()
 
 
-def test_direct_write_allows_edge_only_wiring_without_retrieval_config_changes(mock_session: MagicMock) -> None:
+def test_direct_write_allows_edge_only_wiring_without_retrieval_config_changes(mock_session: Session) -> None:
     retrieval = {
         "id": "r",
         "type": "custom",

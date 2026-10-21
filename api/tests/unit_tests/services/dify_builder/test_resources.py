@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
@@ -29,16 +28,33 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
 )
 
 
+def _provider_models(provider: str, models: list[str]):
+    from core.entities.model_entities import ModelStatus, ProviderModelWithStatusEntity
+    from graphon.model_runtime.entities.common_entities import I18nObject
+    from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
+    from services.entities.model_provider_entities import CustomConfigurationStatus, ProviderWithModelsResponse
+
+    return ProviderWithModelsResponse(
+        tenant_id="t1",
+        provider=provider,
+        label=I18nObject(en_US=provider),
+        status=CustomConfigurationStatus.ACTIVE,
+        models=[
+            ProviderModelWithStatusEntity(
+                model=name,
+                label=I18nObject(en_US=name),
+                model_type=ModelType.LLM,
+                fetch_from=FetchFrom.PREDEFINED_MODEL,
+                model_properties={},
+                status=ModelStatus.ACTIVE,
+            )
+            for name in models
+        ],
+    )
+
+
 def test_list_tenant_resources_normalizes_all_three_kinds() -> None:
     from services.dify_builder.agent import resources
-
-    @dataclass
-    class _Model:
-        model: str
-
-    class _ProvResp:
-        def __init__(self, p: str, ms: list[str]) -> None:
-            self.provider, self.models = p, [_Model(m) for m in ms]
 
     class _DS:
         def __init__(self, i: str, n: str) -> None:
@@ -51,7 +67,7 @@ def test_list_tenant_resources_normalizes_all_three_kinds() -> None:
         "description": "",
     }
     with (
-        patch.object(resources, "_list_models", return_value=[_ProvResp("anthropic", ["claude-opus-4-8"])]),
+        patch.object(resources, "_list_models", return_value=[_provider_models("anthropic", ["claude-opus-4-8"])]),
         patch.object(resources, "_list_datasets", return_value=[_DS("kb-1", "Company KB")]),
         patch.object(resources, "_list_tools", return_value=[tool_record]),
     ):
@@ -232,16 +248,8 @@ def test_authorization_lookup_failure_is_never_reported_ready(caplog: pytest.Log
 def test_list_tenant_resources_logs_when_a_source_fails(caplog: pytest.LogCaptureFixture) -> None:
     from services.dify_builder.agent import resources
 
-    @dataclass
-    class _Model:
-        model: str
-
-    class _ProvResp:
-        def __init__(self, p: str, ms: list[str]) -> None:
-            self.provider, self.models = p, [_Model(m) for m in ms]
-
     with (
-        patch.object(resources, "_list_models", return_value=[_ProvResp("anthropic", ["claude-opus-4-8"])]),
+        patch.object(resources, "_list_models", return_value=[_provider_models("anthropic", ["claude-opus-4-8"])]),
         patch.object(resources, "_list_datasets", side_effect=RuntimeError("db down")),
         patch.object(resources, "_list_tools", return_value=[]),
         caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.resources"),
@@ -537,19 +545,13 @@ def test_a_plugin_daemon_outage_keeps_hardcoded_tools_in_the_inventory(
 def test_models_and_datasets_keep_their_semantics_for_an_actor(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import resources
 
-    @dataclass
-    class _Model:
-        model: str
-
-    class _ProvResp:
-        def __init__(self, p: str, ms: list[str]) -> None:
-            self.provider, self.models = p, [_Model(m) for m in ms]
-
     class _DS:
         def __init__(self, i: str, n: str) -> None:
             self.id, self.name = i, n
 
-    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [_ProvResp("anthropic", ["claude-opus-4-8"])])
+    monkeypatch.setattr(
+        resources, "_list_models", lambda _tenant_id: [_provider_models("anthropic", ["claude-opus-4-8"])]
+    )
     monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [_DS("kb-1", "Company KB")])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
 

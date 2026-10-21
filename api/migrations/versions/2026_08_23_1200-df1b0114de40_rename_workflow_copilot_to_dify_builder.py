@@ -3,7 +3,7 @@
 Project rename: "Workflow Copilot" -> "Dify Builder". Renames the 7 feature
 tables created in b28a1b2fbf4d, plus their primary-key/unique constraints and
 indexes, so the schema matches the renamed ORM models (``models.dify_builder``).
-Pure metadata renames (ALTER ... RENAME) — no data is moved. Postgres.
+Pure metadata renames (ALTER ... RENAME) — no data is moved.
 
 Revision ID: df1b0114de40
 Revises: b28a1b2fbf4d
@@ -64,20 +64,39 @@ def _un_rename(new: str) -> str:
     return new.replace(_NEW, _OLD, 1)
 
 
+# MySQL index names are local to their table; primary keys are always named PRIMARY.
+_INDEX_TABLES = dict(zip(_INDEXES, [_rename(_TABLES[0]), *map(_rename, _TABLES)], strict=True))
+
+
+def _rename_index(table: str, old: str, new: str) -> None:
+    if op.get_bind().dialect.name == "mysql":
+        op.execute(f"ALTER TABLE {table} RENAME INDEX {old} TO {new}")
+    else:
+        op.execute(f'ALTER INDEX "{old}" RENAME TO "{new}"')
+
+
+def _rename_constraint(table: str, old: str, new: str) -> None:
+    if op.get_bind().dialect.name == "mysql":
+        if not old.endswith("_pkey"):
+            _rename_index(table, old, new)
+    else:
+        op.execute(f'ALTER TABLE "{table}" RENAME CONSTRAINT "{old}" TO "{new}"')
+
+
 def upgrade():
     # Tables first, so the constraint renames below can reference the new names.
     for old in _TABLES:
         op.rename_table(old, _rename(old))
     for idx in _INDEXES:
-        op.execute(f'ALTER INDEX "{idx}" RENAME TO "{_rename(idx)}"')
+        _rename_index(_INDEX_TABLES[idx], idx, _rename(idx))
     for cname, new_table in _CONSTRAINTS:
-        op.execute(f'ALTER TABLE "{new_table}" RENAME CONSTRAINT "{cname}" TO "{_rename(cname)}"')
+        _rename_constraint(new_table, cname, _rename(cname))
 
 
 def downgrade():
     for cname, new_table in _CONSTRAINTS:
-        op.execute(f'ALTER TABLE "{new_table}" RENAME CONSTRAINT "{_rename(cname)}" TO "{cname}"')
+        _rename_constraint(new_table, _rename(cname), cname)
     for idx in _INDEXES:
-        op.execute(f'ALTER INDEX "{_rename(idx)}" RENAME TO "{idx}"')
+        _rename_index(_INDEX_TABLES[idx], _rename(idx), idx)
     for old in _TABLES:
         op.rename_table(_rename(old), old)

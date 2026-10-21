@@ -2,9 +2,9 @@
 
 from copy import deepcopy
 from datetime import datetime
-from unittest.mock import Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.dify_builder.models import (
     Action,
@@ -57,7 +57,7 @@ FLOWS = [
         EntryMode.BUILD,
         PcState.BUILD_EXECUTION,
         "run_test",
-        "handle_execution",
+        handlers_build.handle_execution,
         PcState.BUILD_AWAIT_TESTDATA,
     ),
     (
@@ -65,7 +65,7 @@ FLOWS = [
         EntryMode.EDIT,
         PcState.EDIT_APPLY_CHANGES,
         "run_affected_tests",
-        "handle_apply_changes",
+        handlers_edit.handle_apply_changes,
         PcState.EDIT_AWAIT_TESTDATA,
     ),
     (
@@ -73,14 +73,14 @@ FLOWS = [
         EntryMode.FIX,
         PcState.FIX_AWAIT_VERIFY,
         "run_verify",
-        "handle_await_verify",
+        handlers_fix.handle_await_verify,
         PcState.FIX_AWAIT_TESTDATA,
     ),
 ]
 RUN_HANDLERS = {
-    handlers_build: "handle_test_and_repair",
-    handlers_edit: "handle_test_affected_paths",
-    handlers_fix: "handle_verify",
+    handlers_build: handlers_build.handle_test_and_repair,
+    handlers_edit: handlers_edit.handle_test_affected_paths,
+    handlers_fix: handlers_fix.handle_verify,
 }
 
 
@@ -105,7 +105,7 @@ def test_run_test_shows_the_form_again_while_a_side_effect_is_unconfirmed(flow):
     module, _dify, repo, env, session, turn = _fixture(flow)
     fc = saved_test_context(repo, session.id)
 
-    result = getattr(module, flow[4])(env, turn, session, fc)
+    result = flow[4](env, turn, session, fc)
 
     assert result.next == flow[5]
     form = next(item.payload for item in result.items if item.kind == "form")
@@ -126,7 +126,7 @@ def test_explicit_run_requires_a_fresh_confirmation_even_after_a_previous_approv
     module, _dify, repo, env, session, turn = _fixture(flow)
     fc = saved_test_context(repo, session.id, effect_confirmation={"slack": _signature("slack")})
 
-    result = getattr(module, flow[4])(env, turn, session, fc)
+    result = flow[4](env, turn, session, fc)
 
     assert result.next == flow[5]
     form = next(item.payload for item in result.items if item.kind == "form")
@@ -137,13 +137,13 @@ def test_explicit_run_requires_a_fresh_confirmation_even_after_a_previous_approv
 def test_nothing_to_disclose_keeps_the_existing_gate(flow):
     module, _dify, repo, env, session, turn = _fixture(flow, disclosed=False)
 
-    result = getattr(module, flow[4])(env, turn, session, saved_test_context(repo, session.id))
+    result = flow[4](env, turn, session, saved_test_context(repo, session.id))
 
     assert result.next != flow[5]
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_ticked_box_is_recorded_and_kept_out_of_the_start_inputs(flow):
+def test_ticked_box_is_recorded_and_kept_out_of_the_start_inputs(mocker: MockerFixture, flow):
     module, dify, repo, env, session, _turn = _fixture(flow)
     turn = Turn(
         actor=Actor(account_id="a", tenant_id="t"),
@@ -153,15 +153,15 @@ def test_ticked_box_is_recorded_and_kept_out_of_the_start_inputs(flow):
         ),
     )
     fc = DifyBuilderContext()
-    getattr(module, flow[4])(env, _turn, session, fc)
+    flow[4](env, _turn, session, fc)
 
     result = module.handle_await_testdata(env, turn, session, fc)
 
     assert result.context.effect_confirmation == {"slack": _signature("slack")}
     assert repo.get_test_input(result.context.test_input_ref).inputs == {}
 
-    dify.run_draft = Mock(return_value=Run(status="succeeded"))
-    getattr(module, RUN_HANDLERS[module])(env, turn, session, result.context)
+    mocker.patch.object(dify, "run_draft", return_value=Run(status="succeeded"))
+    RUN_HANDLERS[module](env, turn, session, result.context)
     assert dify.run_draft.call_args.kwargs["effect_confirmation"] == {"slack": _signature("slack")}
 
 
@@ -178,7 +178,7 @@ def test_old_checkbox_redisplays_changed_targets_instead_of_confirming_them(flow
     )
     dify.effect_disclosure = disclose(graph, {"slack": "Ops bot"}, account_bindings={"slack": "credential-a"})
     fc = DifyBuilderContext()
-    getattr(module, flow[4])(env, turn, session, fc)
+    flow[4](env, turn, session, fc)
     fc = context_from_dict(context_to_dict(fc))
     if change == "endpoint":
         graph["nodes"][-1]["data"]["url"] = "https://x.io/b"
@@ -236,7 +236,7 @@ def test_user_entered_start_target_is_bound_without_rejecting_an_intentional_inp
 
     monkeypatch.setattr(dify, "disclose_effects", disclosure)
     fc = DifyBuilderContext()
-    getattr(module, flow[4])(env, turn, session, fc)
+    flow[4](env, turn, session, fc)
     turn.action = Action(
         kind="provide_testdata", payload={"inputs": {"host": "a.example.com", confirm_field_key("hook"): True}}
     )

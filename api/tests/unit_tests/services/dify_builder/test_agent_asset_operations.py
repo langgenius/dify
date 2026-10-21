@@ -1,16 +1,51 @@
 """Confirmed published assets retain config and one durable shell authority."""
 
-from types import SimpleNamespace
-
 import pytest
+from dify_agent.protocol.native_testing import AgentNativeTestRef
 
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from runtime_contracts.builder.native.agent_contracts import AgentPreparedConfig
+from services.dify_builder.native_testing.agent_lineage import NativeAgentEndpointContext
 from services.dify_builder.native_testing.agent_runtime_config import (
     NativeAgentDefinition,
     NativeAgentRuntimeConfigBuilder,
 )
 from services.dify_builder.native_testing.agent_tool_declarations import PreparedAgentToolDeclarations
-from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import PARENT, WORKSPACE
+from tests.unit_tests.services.dify_builder import native_owner_fixtures
+from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import (
+    PARENT,
+    WORKSPACE,
+    preparation_owner,
+    preparation_session,
+    resolved_context,
+)
+
+operations_service = native_owner_fixtures.operations_service
+preparation_sql = native_owner_fixtures.preparation_sql
+
+
+def protected_config(config=None):
+    return AgentPreparedConfig(
+        parent_node=PARENT,
+        workflow_native_run_id="workflow",
+        workspace=WORKSPACE,
+        config_ref="config",
+        config_digest="a" * 64,
+        config={} if config is None else config,
+    )
+
+
+def endpoint_context(config):
+    return NativeAgentEndpointContext(
+        ref=AgentNativeTestRef.model_validate(PARENT.ref.model_dump(mode="json")),
+        config=config,
+        association=None,
+        native_test_profile="confirmed",
+    )
+
+
+def definition():
+    return NativeAgentDefinition("node", "agent", "snapshot", AgentSoulConfig(), WorkflowNodeJobConfig(), "s")
 
 
 @pytest.mark.parametrize(
@@ -22,19 +57,19 @@ from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import 
         {"tools": {"cli_tools": [{"name": "jq", "install_commands": ["command -v jq"]}]}},
     ],
 )
-def test_confirmed_composer_keeps_published_config_and_shell(assets):
+def test_confirmed_composer_keeps_published_config_and_shell(assets, monkeypatch, operations_service):
     soul = AgentSoulConfig.model_validate(
         {"model": {"plugin_id": "langgenius/openai", "model_provider": "openai", "model": "test"}, **assets}
     )
+    from services.dify_builder.native_testing.agent_tool_declarations import AgentToolDeclarationService
+
+    declarations = AgentToolDeclarationService()
+    monkeypatch.setattr(declarations, "prepare", lambda **_kwargs: PreparedAgentToolDeclarations(None, None, ()))
     builder = NativeAgentRuntimeConfigBuilder(
-        loader=None,
-        profile="confirmed",
-        declarations=SimpleNamespace(prepare=lambda **_kwargs: PreparedAgentToolDeclarations(None, None, ())),
+        loader=operations_service.loader, profile="confirmed", declarations=declarations
     )
     request = builder.compose(
-        context=SimpleNamespace(
-            tenant_id="tenant", actor_id="actor", app_id="app", workflow_id="workflow", native_run_id="workflow"
-        ),
+        context=resolved_context(),
         definition=NativeAgentDefinition("node", "agent", "pin", soul, WorkflowNodeJobConfig(), "s"),
         parent_node=PARENT,
         workspace=WORKSPACE,
@@ -57,22 +92,23 @@ def test_confirmed_composer_keeps_published_config_and_shell(assets):
 @pytest.mark.parametrize(
     "mutation", ["none", "binding", "shell", "runtime", "kind", "asset", "composition", "prepared"]
 )
-def test_shell_intent_uses_exact_protected_composition_and_current_workspace(monkeypatch, mutation):
+def test_shell_intent_uses_exact_protected_composition_and_current_workspace(
+    monkeypatch, mutation, operations_service, preparation_sql
+):
     from contextlib import contextmanager
 
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from services.dify_builder.native_testing import agent_confirmed_workspace
-    from services.dify_builder.native_testing.agent_operations import AgentOperationService
 
     layers = [
         {"name": "shell", "config": {"runtime": "runtime"}},
         {"name": "runtime", "config": {"backend_binding_ref": "scope"}},
         {"name": "config", "config": {"mentioned_file_names": ["reference.txt"]}},
     ]
-    prepared = SimpleNamespace(
-        config={"composition": {"layers": layers}}, workspace=WORKSPACE, parent_node=PARENT, config_ref="config"
-    )
-    endpoint = SimpleNamespace(config=prepared)
+    prepared = protected_config({"composition": {"layers": layers}})
+    # The protected DTO detaches nested JSON; mutate its actual protected composition.
+    layers = prepared.config["composition"]["layers"]
+    endpoint = endpoint_context(prepared)
     if mutation == "binding":
         layers[1]["config"]["backend_binding_ref"] = "foreign"
     if mutation == "composition":
@@ -88,19 +124,24 @@ def test_shell_intent_uses_exact_protected_composition_and_current_workspace(mon
     if mutation == "asset":
         layers[2]["config"]["mentioned_file_names"] = []
 
+    from dataclasses import replace
+
+    sql, owned, scope = preparation_session(monkeypatch, operations_service, preparation_sql)
+    owned = replace(owned, bindings={agent_confirmed_workspace.ALLOCATION: {}})
+
     @contextmanager
     def locked(**_kwargs):
-        yield object(), SimpleNamespace(bindings={agent_confirmed_workspace.ALLOCATION: {}}), object()
+        yield sql, owned, scope
 
-    service = AgentOperationService(
-        loader=SimpleNamespace(locked=locked),
-        state_store=SimpleNamespace(
-            load_prepared_config=lambda **_kwargs: object() if mutation == "prepared" else prepared
-        ),
-        assessor=None,
+    service = operations_service
+    monkeypatch.setattr(service.loader, "locked", locked)
+    monkeypatch.setattr(
+        service.state_store,
+        "load_prepared_config",
+        lambda **_kwargs: prepared.model_copy(update={"config_ref": "other"}) if mutation == "prepared" else prepared,
     )
     monkeypatch.setattr(service, "_endpoint", lambda _ref: endpoint)
-    monkeypatch.setattr(service, "_definition", lambda **_kwargs: (object(), object()))
+    monkeypatch.setattr(service, "_definition", lambda **_kwargs: (resolved_context(), definition()))
     monkeypatch.setattr(
         agent_confirmed_workspace, "current_confirmed_workspace", lambda **_kwargs: (WORKSPACE, "stamp")
     )
@@ -120,35 +161,54 @@ def test_shell_intent_uses_exact_protected_composition_and_current_workspace(mon
     ("claimed", "outcome", "allowed"),
     [(False, None, False), (True, "unknown", False), (True, "completed", False), (True, None, True)],
 )
-def test_stub_read_requires_claimed_unsettled_shell_operation(monkeypatch, claimed, outcome, allowed):
-    from contextlib import contextmanager
+def test_stub_read_requires_claimed_unsettled_shell_operation(
+    monkeypatch, claimed, outcome, allowed, operations_service
+):
 
     from models.dify_builder_native_tests import NativeEffectDispatchClaim
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-    from services.dify_builder.native_testing.agent_operations import AgentOperationService
     from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
 
     wire = envelope()
     wire = wire.model_copy(update={"intent": wire.intent.model_copy(update={"kind": "shell"})})
 
-    @contextmanager
-    def sessions():
-        yield SimpleNamespace(
-            scalar=lambda query: (
-                (object() if claimed else None)
-                if query.column_descriptions[0]["entity"] is NativeEffectDispatchClaim
-                else outcome
-            )
-        )
+    from dataclasses import replace
+    from datetime import UTC, datetime
 
-    owned = SimpleNamespace(tenant_id="tenant", ref=PARENT.ref)
-    service = AgentOperationService(
-        loader=SimpleNamespace(load=lambda **_kwargs: owned, session_factory=sessions), state_store=None, assessor=None
-    )
-    endpoint = object()
+    from models.dify_builder_native_tests import NativeEffectOutcome
+    from services.dify_builder.native_testing.agent_bridge import api_ref
+
+    service = operations_service
+    owned = replace(preparation_owner(), ref=api_ref(wire.ref))
+    monkeypatch.setattr(service.loader, "load", lambda **_kwargs: owned)
+    with service.loader.session_factory.begin() as session:
+        if claimed:
+            session.add(
+                NativeEffectDispatchClaim(
+                    tenant_id="tenant",
+                    request_id=wire.ref.request_id,
+                    invocation_id=wire.ref.invocation_id,
+                    operation_id=wire.permit.operation_id,
+                    attempt_id=wire.permit.attempt_id,
+                    claimed_at=datetime.now(UTC),
+                )
+            )
+        if outcome:
+            session.add(
+                NativeEffectOutcome(
+                    tenant_id="tenant",
+                    request_id=wire.ref.request_id,
+                    invocation_id=wire.ref.invocation_id,
+                    operation_id=wire.permit.operation_id,
+                    attempt_id=wire.permit.attempt_id,
+                    outcome=outcome,
+                    result_ref="result" if outcome == "completed" else None,
+                )
+            )
+    endpoint = endpoint_context(protected_config())
     monkeypatch.setattr(service, "_endpoint", lambda _ref: endpoint)
     monkeypatch.setattr(service, "revalidate", lambda **_kwargs: None)
-    service.bridge.authorization = SimpleNamespace(validate_dispatch=lambda **_kwargs: None)
+    monkeypatch.setattr(service.bridge.authorization, "validate_dispatch", lambda **_kwargs: None)
     if allowed:
         assert service.validate_claimed_shell(envelope=wire) is endpoint
     else:
@@ -157,11 +217,12 @@ def test_stub_read_requires_claimed_unsettled_shell_operation(monkeypatch, claim
 
 
 @pytest.mark.parametrize(("destructive", "changed"), [(False, False), (True, False), (False, True)])
-def test_shell_revalidation_refuses_destructive_or_changed_intent_before_claim(monkeypatch, destructive, changed):
+def test_shell_revalidation_refuses_destructive_or_changed_intent_before_claim(
+    monkeypatch, destructive, changed, operations_service
+):
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from runtime_contracts.builder.native.contracts import operation_digest
     from services.dify_builder.native_testing.agent_bridge import api_intent, api_ref
-    from services.dify_builder.native_testing.agent_operations import AgentOperationService
     from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
 
     wire = envelope()
@@ -174,12 +235,23 @@ def test_shell_revalidation_refuses_destructive_or_changed_intent_before_claim(m
     )
     descriptor = {
         "shell_boundary": "shell_run",
-        "composition_digest": "config-digest",
-        "workspace": {"binding_id": "binding"},
+        "composition_digest": "a" * 64,
+        "workspace": WORKSPACE.model_dump(mode="json"),
     }
-    owned = SimpleNamespace(bindings={"_agent_operations_v1": {operation_digest(effect.key): descriptor}})
-    service = AgentOperationService(
-        loader=SimpleNamespace(load=lambda **_kwargs: owned), state_store=None, assessor=None
+    from dataclasses import replace
+
+    from services.dify_builder.native_testing.agent_operations import AgentCallAssessment
+
+    owned = replace(preparation_owner(), bindings={"_agent_operations_v1": {operation_digest(effect.key): descriptor}})
+    service = operations_service
+    monkeypatch.setattr(service.loader, "load", lambda **_kwargs: owned)
+    assessment = AgentCallAssessment(
+        action="Run configured shell",
+        account_label=None,
+        target_summary={},
+        parameters_summary={},
+        risk_notice="Runs one configured command",
+        destructive=destructive,
     )
     monkeypatch.setattr(
         service,
@@ -187,23 +259,13 @@ def test_shell_revalidation_refuses_destructive_or_changed_intent_before_claim(m
         lambda **_kwargs: (
             effect.model_copy(update={"parameters": {"changed": True}}) if changed else effect,
             None,
-            SimpleNamespace(destructive=destructive),
+            assessment,
         ),
     )
     monkeypatch.setattr(
         service,
         "_shell",
-        lambda **_kwargs: (
-            None,
-            SimpleNamespace(snapshot_id="snapshot"),
-            SimpleNamespace(
-                config=SimpleNamespace(
-                    config_digest="config-digest",
-                    workspace=SimpleNamespace(model_dump=lambda **_kwargs: {"binding_id": "binding"}),
-                )
-            ),
-            {},
-        ),
+        lambda **_kwargs: (resolved_context(), definition(), endpoint_context(protected_config()), {}),
     )
     if destructive or changed:
         with pytest.raises(BuilderExecutionPolicyError):
@@ -212,20 +274,23 @@ def test_shell_revalidation_refuses_destructive_or_changed_intent_before_claim(m
         assert service.revalidate(ref=api_ref(wire.ref), intent=effect) is None
 
 
-def test_runtime_shell_result_commits_before_return_and_preserves_exact_key(monkeypatch):
-    from services.dify_builder.native_testing.agent_operations import AgentOperationService
+def test_runtime_shell_result_commits_before_return_and_preserves_exact_key(monkeypatch, operations_service):
     from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
 
     wire = envelope()
     wire = wire.model_copy(update={"intent": wire.intent.model_copy(update={"kind": "shell"})})
     events = []
-    store = SimpleNamespace(
-        store_result=lambda **_kwargs: events.append(("store", _kwargs["result"])) or "saved-result"
+    service = operations_service
+    monkeypatch.setattr(
+        service.state_store,
+        "store_result",
+        lambda **_kwargs: events.append(("store", _kwargs["result"])) or "saved-result",
     )
-    service = AgentOperationService(loader=None, state_store=store, assessor=None)
     monkeypatch.setattr(service, "validate_claimed_shell", lambda **_kwargs: events.append("validated"))
-    service.bridge.authorization = SimpleNamespace(
-        record_outcome=lambda **_kwargs: events.append(("outcome", _kwargs["outcome"], _kwargs["result_ref"]))
+    monkeypatch.setattr(
+        service.bridge.authorization,
+        "record_outcome",
+        lambda **_kwargs: events.append(("outcome", _kwargs["outcome"], _kwargs["result_ref"])),
     )
     result = service.store_result(
         ref=wire.ref, key=wire.intent.key, result={"exit_code": 0}, native_dispatch=wire.model_dump(mode="json")
@@ -234,12 +299,13 @@ def test_runtime_shell_result_commits_before_return_and_preserves_exact_key(monk
     assert events == ["validated", ("store", {"exit_code": 0}), ("outcome", "completed", "saved-result")]
 
 
-def test_saved_shell_operation_revalidates_for_public_approval_without_runtime_request(monkeypatch):
+def test_saved_shell_operation_revalidates_for_public_approval_without_runtime_request(
+    monkeypatch, operations_service, preparation_sql
+):
     from contextlib import contextmanager
 
     from runtime_contracts.builder.native.agent_contracts import AgentPreparedConfig
     from services.dify_builder.native_testing import agent_confirmed_workspace
-    from services.dify_builder.native_testing.agent_operations import AgentOperationService
 
     config = AgentPreparedConfig(
         parent_node=PARENT,
@@ -258,16 +324,19 @@ def test_saved_shell_operation_revalidates_for_public_approval_without_runtime_r
         },
     )
 
+    from dataclasses import replace
+
+    sql, owned, scope = preparation_session(monkeypatch, operations_service, preparation_sql)
+    owned = replace(owned, bindings={agent_confirmed_workspace.ALLOCATION: {}})
+
     @contextmanager
     def locked(**_kwargs):
-        yield object(), SimpleNamespace(bindings={agent_confirmed_workspace.ALLOCATION: {}}), object()
+        yield sql, owned, scope
 
-    service = AgentOperationService(
-        loader=SimpleNamespace(locked=locked),
-        state_store=SimpleNamespace(load_prepared_config=lambda **_kwargs: config),
-        assessor=None,
-    )
-    monkeypatch.setattr(service, "_definition", lambda **_kwargs: (object(), object()))
+    service = operations_service
+    monkeypatch.setattr(service.loader, "locked", locked)
+    monkeypatch.setattr(service.state_store, "load_prepared_config", lambda **_kwargs: config)
+    monkeypatch.setattr(service, "_definition", lambda **_kwargs: (resolved_context(), definition()))
     monkeypatch.setattr(
         agent_confirmed_workspace, "current_confirmed_workspace", lambda **_kwargs: (WORKSPACE, "stamp")
     )

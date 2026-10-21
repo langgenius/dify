@@ -4,7 +4,6 @@ import json
 from collections.abc import Iterator, Mapping
 from threading import Thread
 from typing import Never
-from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -20,7 +19,7 @@ from tests.unit_tests.services.dify_builder.test_execution_policy_service import
 
 
 @pytest.fixture
-def effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[MagicMock]]:
+def effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
     import services.workflow_runtime.workflow_generator as generator
     from core.helper import encrypter
     from core.helper.code_executor.code_executor import CodeExecutor
@@ -30,11 +29,12 @@ def effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[MagicMock]]:
     from core.tools.tool_manager import ToolManager
     from factories import file_factory
 
-    spies = []
+    calls: list[str] = []
     for owner, name in (
         (file_factory, "build_from_mappings"),
         (file_factory, "build_from_mapping"),
-        (generator, "TraceQueueManager"),
+        (generator.TraceQueueManager, "start_timer"),
+        (OpsTraceManager, "get_ops_trace_instance"),
         (ToolManager, "get_workflow_tool_runtime"),
         (OAuthHandler, "refresh_credentials"),
         (encrypter, "decrypt_token"),
@@ -42,12 +42,14 @@ def effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[MagicMock]]:
         (ModelManager, "get_model_instance"),
         (CodeExecutor, "execute_code"),
     ):
-        spy = MagicMock(side_effect=AssertionError(f"forbidden effect: {name}"))
-        monkeypatch.setattr(owner, name, spy)
-        spies.append(spy)
-    yield spies
-    for spy in spies:
-        spy.assert_not_called()
+
+        def forbidden(*_args: object, effect_name: str = name, **_kwargs: object) -> Never:
+            calls.append(effect_name)
+            raise AssertionError(f"forbidden effect: {effect_name}")
+
+        monkeypatch.setattr(owner, name, forbidden)
+    yield calls
+    assert calls == []
 
 
 @pytest.mark.parametrize(
@@ -81,10 +83,22 @@ def test_port_refuses_unsupported_before_native_generation_or_secrets(
         inputs["extra"] = float("inf")
     monkeypatch.setattr(module, "_session_factory", lambda: factory)
     monkeypatch.setattr(module, "load_app", lambda *_: app)
-    monkeypatch.setattr(module, "resolve_account", lambda *_: MagicMock())
+    from models.account import Account
+
+    account = Account(name="Owner", email="owner@example.invalid")
+    account.id = actor.account_id
+    monkeypatch.setattr(module, "resolve_account", lambda *_: account)
     monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
-    native = MagicMock(side_effect=AssertionError("native generator forbidden"))
-    secret = MagicMock(side_effect=AssertionError("revision may resolve environment secrets"))
+    calls = []
+
+    def native(*_args, **_kwargs):
+        calls.append("native")
+        raise AssertionError("native generator forbidden")
+
+    def secret(*_args, **_kwargs):
+        calls.append("secret")
+        raise AssertionError("revision may resolve environment secrets")
+
     monkeypatch.setattr(module.AppGenerateService, "generate", native)
     monkeypatch.setattr(module, "execution_revision", secret)
     result = module.WorkflowServiceDifyPort().run_draft(
@@ -93,8 +107,7 @@ def test_port_refuses_unsupported_before_native_generation_or_secrets(
     assert result.dify_run_id == ""
     assert result.execution_refusal is not None
     assert result.execution_refusal.safety_outcome == "unsupported_safe_execution"
-    native.assert_not_called()
-    secret.assert_not_called()
+    assert calls == []
 
 
 @pytest.mark.parametrize(
@@ -122,14 +135,19 @@ def test_port_uses_native_defaults_numbers_and_sanitization(
     monkeypatch.setattr(module, "_session_factory", lambda: factory)
     monkeypatch.setattr(module, "set_login_user", lambda _: None)
     monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
-    native = MagicMock(return_value={})
+    calls = []
+
+    def native(**kwargs):
+        calls.append(kwargs)
+        return {}
+
     monkeypatch.setattr(module.AppGenerateService, "generate", native)
     result = module.WorkflowServiceDifyPort().run_draft(
         app.id, actor, submitted, lambda _: None, session_id=sid, test_input_id=tid
     )
     assert result.dify_run_id == ""
-    assert native.call_args.kwargs["args"]["inputs"] == expected
-    marker = native.call_args.kwargs["builder_execution"]
+    assert calls[0]["args"]["inputs"] == expected
+    marker = calls[0]["builder_execution"]
     assert marker.effective_inputs_digest == scalar_inputs_digest(expected)
     assert marker.submitted_inputs_digest == scalar_inputs_digest(submitted)
 
@@ -138,8 +156,6 @@ def test_port_uses_native_defaults_numbers_and_sanitization(
 def test_native_generator_revalidates_its_normalized_effective_inputs(
     owned: Owned, monkeypatch: pytest.MonkeyPatch, inputs: dict[str, object], expected: dict[str, object]
 ) -> None:
-    from types import SimpleNamespace
-
     import services.workflow_runtime.workflow_generator as module
     from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
     from core.app.apps.base_app_generator import BaseAppGenerator
@@ -182,10 +198,10 @@ def test_native_generator_revalidates_its_normalized_effective_inputs(
         effective_inputs=effective,
     )
     launch = _BuilderExecutionLaunch(service, marker)
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=factory.kw["bind"]))
-    monkeypatch.setattr(module, "TraceQueueManager", MagicMock())
-    monkeypatch.setattr(module, "DifyCoreRepositoryFactory", MagicMock())
-    generator = module.WorkflowAppGenerator(execution_driver=Mock())
+    from services.workflow_run_agg import WorkflowRunAgg
+
+    monkeypatch.setattr(type(module.db), "engine", property(lambda _db: factory.kw["bind"]))
+    generator = module.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
     monkeypatch.setattr(generator, "_generate", lambda **kwargs: kwargs)
     result = generator.generate(
         app_model=app,
@@ -257,8 +273,6 @@ def test_port_preserves_worker_policy_refusal_without_allocating_native_result(
 def test_postflight_rejects_raw_changes_before_secret_revision(
     owned: Owned, monkeypatch: pytest.MonkeyPatch, metadata: str
 ) -> None:
-    from types import SimpleNamespace
-
     import services.dify_builder.dify_port as module
     from core.dify_builder.models import Run, RunVerification
     from models.model import App
@@ -273,7 +287,12 @@ def test_postflight_rejects_raw_changes_before_secret_revision(
             setattr(db.get(Workflow, workflow.id), f"_{metadata}_variables", '{"secret":{}}')
     monkeypatch.setattr(module, "_session_factory", lambda: factory)
     monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda _, session: session.get(Workflow, workflow.id))
-    revision = MagicMock(side_effect=AssertionError("raw changes must be denied before revision resolves secrets"))
+    revisions = []
+
+    def revision(*_args, **_kwargs):
+        revisions.append(True)
+        raise AssertionError("raw changes must be denied before revision resolves secrets")
+
     monkeypatch.setattr(module, "execution_revision", revision)
     run = Run(
         status="succeeded",
@@ -286,13 +305,11 @@ def test_postflight_rejects_raw_changes_before_secret_revision(
             no_output_dead_branch=False,
         ),
     )
-    result = module.WorkflowServiceDifyPort()._bind_run(
-        (run, SimpleNamespace(graph_dict=workflow.graph_dict)), app.id, actor, "a" * 64, "b" * 64
-    )
+    result = module.WorkflowServiceDifyPort()._bind_run((run, workflow), app.id, actor, "a" * 64, "b" * 64)
     assert result.execution_refusal is not None
     assert result.verification is not None
     assert result.verification.execution_revision == ""
-    revision.assert_not_called()
+    assert revisions == []
 
 
 @pytest.mark.parametrize("change", ["environment", "file_default", "tracing"])
@@ -328,11 +345,18 @@ def test_direct_restricted_generator_admits_raw_before_config_and_normalization(
             }
         ]
         workflow.graph = json.dumps(graph)
-    config = MagicMock(side_effect=AssertionError("config forbidden before raw admission"))
+    configs = []
+
+    def config(*_args, **_kwargs):
+        configs.append(True)
+        raise AssertionError("config forbidden before raw admission")
+
     monkeypatch.setattr(module.WorkflowAppConfigManager, "get_app_config", config)
     launch = _BuilderExecutionLaunch(BuilderExecutionPolicyService(factory), marker)
+    from services.workflow_run_agg import WorkflowRunAgg
+
     with pytest.raises(BuilderExecutionPolicyError):
-        module.WorkflowAppGenerator(execution_driver=Mock()).generate(
+        module.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
             app_model=app,
             workflow=workflow,
             user=account,
@@ -343,7 +367,7 @@ def test_direct_restricted_generator_admits_raw_before_config_and_normalization(
             builder_execution=marker,
             builder_execution_admit=launch,
         )
-    config.assert_not_called()
+    assert configs == []
 
 
 @pytest.mark.parametrize("alive_at_snapshot", [False, True])
@@ -591,7 +615,11 @@ def test_final_seal_failure_returns_unsealed_unknown_without_allocation_identity
     monkeypatch.setattr(module, "set_login_user", lambda _: None)
     monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
     monkeypatch.setattr(module.AppGenerateService, "generate", lambda **_: {})
-    monkeypatch.setattr(module.BuilderExecutionPolicyService, "seal", MagicMock(side_effect=RuntimeError("storage")))
+
+    def seal(*_args, **_kwargs):
+        raise RuntimeError("storage")
+
+    monkeypatch.setattr(module.BuilderExecutionPolicyService, "seal", seal)
     run = module.WorkflowServiceDifyPort().run_draft(
         app.id, actor, {"n": "41"}, lambda _: None, session_id=sid, test_input_id=tid
     )
@@ -616,6 +644,9 @@ def test_invalid_worker_candidate_latches_unknown(owned: Owned, invalid: str) ->
 
     context = prepare_inputs(owned)
     launch = _BuilderExecutionLaunch(service_module().BuilderExecutionPolicyService(owned[0]), context)
+    from services.dify_builder.execution_policy_service import ServiceExecutionRecorder
+
+    foreign_recorder = ServiceExecutionRecorder(BuilderExecutionPolicyService(owned[0]), context, "foreign", "task")
     errors: list[str] = []
 
     def worker() -> None:
@@ -632,7 +663,7 @@ def test_invalid_worker_candidate_latches_unknown(owned: Owned, invalid: str) ->
                 context=context.model_copy(update={"request_id": "foreign"}) if invalid == "context" else context,
                 native_run_id="allocated",
                 task_id="task",
-                recorder=MagicMock() if invalid == "recorder" else None,
+                recorder=foreign_recorder if invalid == "recorder" else None,
                 worker_thread=threading.main_thread() if invalid == "thread" else threading.current_thread(),
                 exit_kind="failed" if invalid == "conflicting_exit" else "returned",
             )

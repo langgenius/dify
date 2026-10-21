@@ -7,15 +7,15 @@ cleanup, actual Agent execution or whole-chain qualification.
 
 import json
 from contextlib import contextmanager
-from types import SimpleNamespace
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
+from dify_agent.client import Client
 from dify_agent.protocol.execution_binding import CreateExecutionBindingResponse
 from shellctl.shared.schemas import NativeScopeLimits
 from sqlalchemy import select
 
+from clients.agent_backend import DifyAgentBackendRunClient
 from libs.key_providers import generate_key_pair
 from models.account import Tenant
 from models.agent import (
@@ -56,6 +56,10 @@ from services.dify_builder.native_testing.repository import (
     native_workflow_revision,
 )
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    AgentAssociationCase,
+    NormalAgentParent,
+)
 from tests.test_containers_integration_tests.core.workflow.test_builder_agent_workspace import (
     native_owner as native_owner,  # noqa: PLC0414
 )
@@ -79,11 +83,11 @@ CANARY = "PRIVATE_A5_PROTECTED_BYTES_CANARY_81ac"
 
 
 @pytest.fixture
-def association_case(native_owner, no_live, migrated_continuation_tables, monkeypatch, request):
+def association_case(mocker, native_owner, no_live, migrated_continuation_tables, monkeypatch, request):
     from extensions.ext_database import db
 
     assert migrated_continuation_tables is None
-    legacy_confirmed = getattr(request, "param", None) == "legacy_confirmed"
+    legacy_confirmed = hasattr(request, "param") and request.param == "legacy_confirmed"
     # The workspace fixture supplies only allocation identities. S1 resource
     # checks require real roster publication and complete native node data.
     # Establish these rows before raw_ledger_case stamps graph/owner revisions.
@@ -198,7 +202,9 @@ def association_case(native_owner, no_live, migrated_continuation_tables, monkey
 
     @contextmanager
     def backend():
-        yield SimpleNamespace(create_execution_binding_sync=create)
+        client = Client(base_url="http://127.0.0.1:1")
+        mocker.patch.object(client, "create_execution_binding_sync", side_effect=create)
+        yield client
 
     monkeypatch.setattr(AgentWorkspaceService, "_client", backend)
     service = AgentTestWorkspaceService(
@@ -222,7 +228,7 @@ def association_case(native_owner, no_live, migrated_continuation_tables, monkey
     parent = AgentParentNodeRef(
         ref=ref, execution_id=execution_id, input_result_ref=input_ref, input_digest=canonical_digest(typed_inputs)
     )
-    return SimpleNamespace(
+    return AgentAssociationCase(
         factory=ledger.factory,
         loader=loader,
         store=store,
@@ -334,14 +340,13 @@ def test_real_encrypted_association_checkpoint_roundtrip_preserves_nonempty_priv
 
 
 @pytest.mark.parametrize("fault", ["changed-run", "foreign-checkpoint"])
-def test_real_immutable_agent_selection_refuses_without_new_private_write(association_case, monkeypatch, fault):
+def test_real_immutable_agent_selection_refuses_without_new_private_write(mocker, association_case, fault):
     from extensions.ext_storage import storage
 
     c = association_case
     association, args = waiting(c)
     wait = c.store.store_agent_wait(**args)
-    save = Mock(side_effect=AssertionError("unexpected new encrypted write"))
-    monkeypatch.setattr(storage, "save", save)
+    save = mocker.patch.object(storage, "save", side_effect=AssertionError("unexpected new encrypted write"))
 
     def refuse():
         if fault == "changed-run":
@@ -374,7 +379,7 @@ def test_real_current_workspace_retirement_blocks_selected_checkpoint_read(assoc
         c.store.read_checkpoint(ref=c.ref, checkpoint=cp)
 
 
-def test_real_post_commit_ack_loss_reuses_private_object_without_rewrite(association_case, monkeypatch):
+def test_real_post_commit_ack_loss_reuses_private_object_without_rewrite(mocker, association_case, monkeypatch):
     from extensions.ext_storage import storage
 
     c = association_case
@@ -393,8 +398,7 @@ def test_real_post_commit_ack_loss_reuses_private_object_without_rewrite(associa
     monkeypatch.setattr(c.loader, "locked", commit_then_lose)
     with pytest.raises(BuilderExecutionPolicyError, match="native_agent_state_unavailable"):
         c.store.store_agent_wait(**args)
-    save = Mock(wraps=storage.save)
-    monkeypatch.setattr(storage, "save", save)
+    save = mocker.spy(storage, "save")
     recovered = c.store.store_agent_wait(**args)
     save.assert_not_called()
     assert (
@@ -402,7 +406,7 @@ def test_real_post_commit_ack_loss_reuses_private_object_without_rewrite(associa
     )
 
 
-def test_real_second_node_occurrence_cannot_share_temporary_single_workspace(association_case, monkeypatch):
+def test_real_second_node_occurrence_cannot_share_temporary_single_workspace(mocker, association_case):
     from extensions.ext_storage import storage
 
     c = association_case
@@ -413,8 +417,9 @@ def test_real_second_node_occurrence_cannot_share_temporary_single_workspace(ass
     parent = AgentParentNodeRef(
         ref=c.ref, execution_id=second, input_result_ref=input_ref, input_digest=canonical_digest(inputs)
     )
-    save = Mock(side_effect=AssertionError("second occurrence wrote new private Agent state"))
-    monkeypatch.setattr(storage, "save", save)
+    save = mocker.patch.object(
+        storage, "save", side_effect=AssertionError("second occurrence wrote new private Agent state")
+    )
     with pytest.raises(BuilderExecutionPolicyError, match="native_agent_single_workspace_limit"):
         c.store.store_agent_config(
             ref=c.ref, parent_node=parent, expected_invocation_generation=0, config={"second": True}
@@ -477,7 +482,7 @@ def test_real_queued_agent_checkpoint_is_readable_before_single_dispatch_claim(a
 
 @pytest.mark.parametrize("guard_change", ["none", "canvas", "execution", "input", "actor", "target"])
 def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
-    association_case, native_owner, monkeypatch, guard_change
+    mocker, association_case, native_owner, monkeypatch, guard_change
 ):
     """Actual normal SQL/crypto owners; only backend allocation is a no-I/O fixture."""
     from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
@@ -564,7 +569,9 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
                 binding_ref="ordinary:" + request.binding_id, workspace_ref="ordinary:" + request.workspace_id
             )
 
-        yield SimpleNamespace(create_execution_binding_sync=create)
+        client = Client(base_url="http://127.0.0.1:1")
+        mocker.patch.object(client, "create_execution_binding_sync", side_effect=create)
+        yield client
 
     monkeypatch.setattr(AgentWorkspaceService, "_client", normal_backend)
     scope = WorkflowAgentSessionScope(
@@ -579,7 +586,9 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
         agent_config_snapshot_id=snapshot_id,
     )
     stored = WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(scope, home_snapshot_id=None)
-    service = build_confirmed_agent_preparation(actor=actor, backend=SimpleNamespace())
+    service = build_confirmed_agent_preparation(
+        actor=actor, backend=DifyAgentBackendRunClient(Client(base_url="http://127.0.0.1:1"))
+    )
     store, ref = service.state_store, context.ref
     inputs = {"typed": [True, 1, "1"]}
     input_ref = store.store_node_inputs(ref=ref, generation=0, native_execution_id=execution_id, inputs=inputs)
@@ -633,7 +642,7 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
         checkpoint=checkpoint,
         backend_wait_event_id="1234-0",
     )
-    normal = SimpleNamespace(ref=ref, context=context, parent=parent)
+    normal = NormalAgentParent(ref=ref, context=context, parent=parent)
     saved = store.commit_checkpoint(ref=ref, generation=0, payload=payload(normal, wait))
     with factory.begin() as session:
         state = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id))

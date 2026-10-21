@@ -93,7 +93,7 @@ case ${1:-} in
       /usr/bin/python3 "$GITHUB_WORKSPACE/.github/scripts/builder-native-runtime-canary.py"
     sudo systemctl daemon-reload
     sudo systemctl start "$unit"
-    for attempt in $(seq 1 30); do
+    for _ in $(seq 1 30); do
       if printf 'header = "Authorization: Bearer %s"\n' "$token" | curl --fail --silent --config - http://127.0.0.1:5005/healthz >/dev/null; then
         assert_manager_subgroup
         exit 0
@@ -122,7 +122,7 @@ case ${1:-} in
     owned_fixture
     require_manager_subgroup_support
     sudo systemctl restart "$unit"
-    for attempt in $(seq 1 30); do
+    for _ in $(seq 1 30); do
       if printf 'header = "Authorization: Bearer %s"\n' "${SHELLCTL_NATIVE_TEST_TOKEN:?native supervisor token required}" | curl --fail --silent --config - http://127.0.0.1:5005/healthz >/dev/null; then
         assert_manager_subgroup
         exit 0

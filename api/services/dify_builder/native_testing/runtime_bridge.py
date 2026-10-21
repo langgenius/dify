@@ -16,7 +16,12 @@ from graphon.nodes.base.node import Node
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import NativeStatePort, ResolvedNativeTestContext
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable, resolve_native_context
-from services.dify_builder.native_testing.control import BoundaryOwnerState, NativeControlSink, marked_native_node_class
+from services.dify_builder.native_testing.control import (
+    BoundaryOwnerState,
+    NativeControlSink,
+    _NativeControlBoundary,
+    marked_native_node_class,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,8 +74,10 @@ class NativeRuntimeBridge:
         node_arguments: NativeNodeArguments,
         prepare_inputs: Callable[[ResolvedNativeTestContext], NativePreparedInputs] | None = None,
     ):
-        if type(boundary_owner) is not BoundaryOwnerState or not callable(
-            getattr(control_sink, "record_control", None)
+        if (
+            type(boundary_owner) is not BoundaryOwnerState
+            or not isinstance(control_sink, NativeControlSink)
+            or not callable(control_sink.record_control)
         ):
             raise NativeContextUnavailable("native_control_unavailable")
         self._boundary_owner = boundary_owner
@@ -116,7 +123,19 @@ class NativeRuntimeBridge:
         )
         bundle = self._collaborators(association=prepared)
         if not isinstance(bundle, NativeCollaborators) or any(
-            getattr(bundle, field) is None for field in NativeCollaborators.__dataclass_fields__
+            value is None
+            for value in (
+                bundle.http,
+                bundle.model,
+                bundle.tool,
+                bundle.retrieval,
+                bundle.file,
+                bundle.code,
+                bundle.jinja,
+                bundle.agent,
+                bundle.human_input,
+                bundle.data_source,
+            )
         ):
             raise NativeContextUnavailable("native_collaborator_unavailable")
         arguments = dict(
@@ -198,8 +217,9 @@ class NativeNodePreparation:
             or node.id != self.node_id
             or node.runtime_state is not self._runtime_state
             # These are Dify control-mixin fields, never Graphon worker/frame internals.
-            or getattr(node, "_native_control_owner", None) is not self._bridge._boundary_owner
-            or getattr(node, "_native_control_sink", None) is not self._bridge._control_sink
+            or not isinstance(node, _NativeControlBoundary)
+            or node._native_control_owner is not self._bridge._boundary_owner
+            or node._native_control_sink is not self._bridge._control_sink
         ):
             raise NativeContextUnavailable("native_node_mismatch")
         if self.ref != self._bridge._boundary_owner.ref:

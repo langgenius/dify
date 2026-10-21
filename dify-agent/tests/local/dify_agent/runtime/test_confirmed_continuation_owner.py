@@ -111,6 +111,7 @@ async def checkpoint_storage(durable):
         yield None, "run"
         return
     from redis.asyncio import Redis
+
     from dify_agent.storage.redis_run_store import RedisRunStore
 
     redis = Redis.from_url(os.environ["DIFY_AGENT_NATIVE_TEST_REDIS_URL"])
@@ -331,7 +332,7 @@ def test_real_sdk_confirmed_owner_wait_restore_and_exact_single_dispatch(decisio
 
 def test_confirmed_scheduler_keeps_ordinary_legacy_services_and_uses_strict_run_client():
     from dify_agent.runtime.run_scheduler import RunScheduler
-    from types import SimpleNamespace
+    from dify_agent.server.schemas import RunRecord
 
     async def exercise():
         owner_class = owner_type()
@@ -352,13 +353,13 @@ def test_confirmed_scheduler_keeps_ordinary_legacy_services_and_uses_strict_run_
                 store=None, services=services, native_owner=owner_class(http_client=strict, base_url="http://api")
             )
             marked_runner = scheduler._default_runner_factory(
-                SimpleNamespace(run_id="run"), request(), is_cancelled=lambda: False
+                RunRecord(run_id="run", status="running"), request(), is_cancelled=lambda: False
             )
             assert marked_runner.services.dify_api_http_client is strict
             assert marked_runner.services.inner_api_key == ""
             assert marked_runner.services.plugin_daemon_api_key == ""
             ordinary_runner = scheduler._default_runner_factory(
-                SimpleNamespace(run_id="ordinary"),
+                RunRecord(run_id="ordinary", status="running"),
                 CreateRunRequest(composition={"layers": []}),
                 is_cancelled=lambda: False,
             )
@@ -429,8 +430,8 @@ def test_confirmed_profile_requires_bounded_create_identity():
 
 
 def test_ordinary_legacy_run_keeps_its_existing_unbound_transport_scope():
-    from dify_agent.runtime.run_scheduler import RunScheduler
     from dify_agent.adapters.native_testing.transport import AgentRuntimeTransportError, current_runtime_identity
+    from dify_agent.runtime.run_scheduler import RunScheduler
 
     async def exercise():
         async with (
@@ -894,10 +895,12 @@ def test_confirmed_scheduler_advances_restored_shell_owner_generation_and_reject
 @pytest.mark.parametrize("boundary", ["bootstrap", "config_pull"])
 @pytest.mark.parametrize("decision", ["dispatch", "recorded", "mismatch", "unknown", "external"])
 def test_confirmed_wrap_run_stage_consumes_restored_decision_once(monkeypatch, boundary, decision):
-    from types import SimpleNamespace
     from copy import deepcopy
-    from dify_agent.layers.shell.layer import Capability as ShellCapability, ShellSession
-    from dify_agent.layers.config.layer import Capability as ConfigCapability, _ConfigContext
+
+    from dify_agent.layers.config.layer import Capability as ConfigCapability
+    from dify_agent.layers.config.layer import _ConfigContext
+    from dify_agent.layers.shell.layer import Capability as ShellCapability
+    from dify_agent.layers.shell.layer import ShellSession
     from dify_agent.runtime.native_continuation import NativeApprovalSuspended
 
     async def exercise():
@@ -1007,7 +1010,18 @@ def test_confirmed_wrap_run_stage_consumes_restored_decision_once(monkeypatch, b
 
         async def bootstrap(self, script, *, cwd):
             calls.append("physical-io")
-            return SimpleNamespace(exit_code=0, output_complete=True)
+            from dify_agent.adapters.shell.protocols import CompleteShellCommandResult
+
+            return CompleteShellCommandResult(
+                job_id="job",
+                status="exited",
+                done=True,
+                exit_code=0,
+                output="",
+                output_complete=True,
+                incomplete_reason=None,
+                offset=0,
+            )
 
         async def pull(self, *, script, target_kind):
             calls.append("physical-io")
@@ -1034,15 +1048,19 @@ def test_confirmed_wrap_run_stage_consumes_restored_decision_once(monkeypatch, b
                     run_id="run",
                     native_effects=continuation.capabilities[0].session,
                 )
-                deps.resources.leases["runtime"] = SimpleNamespace(layout=SimpleNamespace(workspace_dir="/workspace"))
+                from pydantic_ai.run import AgentRunResult
+
+                from tests.local.dify_agent.runtime.native_test_entities import native_lease, run_context
+
+                deps.resources.leases["runtime"] = native_lease()
 
                 async def terminal():
-                    return SimpleNamespace(output="done")
+                    return AgentRunResult(output="done")
 
                 async def config():
-                    return await ConfigCapability("config").wrap_run(SimpleNamespace(deps=deps), handler=terminal)
+                    return await ConfigCapability("config").wrap_run(run_context(deps), handler=terminal)
 
-                result = await ShellCapability("shell").wrap_run(SimpleNamespace(deps=deps), handler=config)
+                result = await ShellCapability("shell").wrap_run(run_context(deps), handler=config)
                 assert result.output == "done"
                 if boundary == "config_pull":
                     assert deps.layers["config"]["state"]["pulled_file_outputs"] == {"proof": "/workspace/proof"}

@@ -1,6 +1,5 @@
 import pytest
 
-from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from graphon.engine_events import NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
@@ -12,6 +11,7 @@ from graphon.runtime import InitParams, RuntimeState, VariablePool
 from services.dify_builder.effect_mock import MOCKED_PROCESS_KEY, mocked_node_class
 from services.workflow_runtime.agent_node import DifyAgentNode
 from services.workflow_runtime.node_factory import DifyNodeFactory
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _factory(mocked: frozenset[str]) -> DifyNodeFactory:
@@ -77,8 +77,8 @@ def _agent_config(**data: object) -> dict[str, object]:
 
 
 def test_mocked_agent_needs_no_backend_client_or_native_constructor(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", None)
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_USE_FAKE", False)
+    apply_config_overrides(monkeypatch, AGENT_BACKEND_BASE_URL=None)
+    apply_config_overrides(monkeypatch, AGENT_BACKEND_USE_FAKE=False)
 
     def forbidden(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("mocked Agent must not initialize native clients or resources")
@@ -126,7 +126,7 @@ def test_legacy_agent_mock_start_event_preserves_strategy_without_presentation_r
 def test_mocked_agent_preserves_declared_output_shapes_without_fabricating_files(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_USE_FAKE", True)
+    apply_config_overrides(monkeypatch, AGENT_BACKEND_USE_FAKE=True)
     node = _factory(frozenset({"agent"})).create_node(
         _agent_config(
             agent_declared_outputs=[
@@ -156,7 +156,7 @@ def test_mocked_agent_preserves_declared_output_shapes_without_fabricating_files
 
 
 def test_mocked_agent_selects_a_configured_route_for_downstream_execution(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_USE_FAKE", True)
+    apply_config_overrides(monkeypatch, AGENT_BACKEND_USE_FAKE=True)
     node = _factory(frozenset({"agent"})).create_node(
         _agent_config(
             agent_output_routes={
@@ -180,7 +180,7 @@ def test_mocked_agent_selects_a_configured_route_for_downstream_execution(monkey
 def test_agent_routes_reject_node_default_value_in_both_real_and_mock_runs(
     monkeypatch: pytest.MonkeyPatch, mocked: frozenset[str]
 ) -> None:
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_USE_FAKE", True)
+    apply_config_overrides(monkeypatch, AGENT_BACKEND_USE_FAKE=True)
     config = _agent_config(
         error_strategy=ErrorStrategy.DEFAULT_VALUE,
         agent_output_routes={

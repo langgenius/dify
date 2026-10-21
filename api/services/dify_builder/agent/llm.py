@@ -76,11 +76,15 @@ def _complete(model_instance, messages, model_parameters, stop, on_reasoning: Re
         raise
     native_reasoning = _direct_reasoning(result)
     _emit_reasoning(on_reasoning, native_reasoning)
-    message = getattr(result, "message", None)
-    if message is None or not hasattr(message, "get_text_content"):
+    try:
+        get_text_content = result.message.get_text_content
+    except AttributeError:
+        diagnostics.report("response_schema_invalid")
+        raise LlmError("model returned an invalid blocking response") from None
+    if not callable(get_text_content):
         diagnostics.report("response_schema_invalid")
         raise LlmError("model returned an invalid blocking response")
-    clean_text, tagged_reasoning = split_reasoning(message.get_text_content(), "separated")
+    clean_text, tagged_reasoning = split_reasoning(get_text_content(), "separated")
     if tagged_reasoning and tagged_reasoning != native_reasoning:
         _emit_reasoning(on_reasoning, tagged_reasoning)
     if not clean_text.strip():

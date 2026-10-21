@@ -106,8 +106,8 @@ def _authorize_runtime_config_read(
 ) -> None:
     """Spend no second permit; revalidate the claimed parent operation before reads."""
     context = (
-        getattr(g, "agent_runtime_context", None)
-        if getattr(g, "agent_runtime_request", None) is cast(LocalProxy, request)._get_current_object()
+        g.get("agent_runtime_context")
+        if g.get("agent_runtime_request") is cast(LocalProxy, request)._get_current_object()
         else None
     )
     if context is None:
@@ -117,7 +117,7 @@ def _authorize_runtime_config_read(
     from services.dify_builder.native_testing.agent_operations import agent_operations_for_ref
 
     try:
-        envelope = getattr(g, "agent_runtime_dispatch", None)
+        envelope = g.get("agent_runtime_dispatch")
         if envelope is None:
             raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
         validate_config_read(

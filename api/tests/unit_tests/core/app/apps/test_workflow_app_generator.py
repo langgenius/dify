@@ -3,7 +3,6 @@
 import contextlib
 import contextvars
 import json
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -286,9 +285,7 @@ def test_generate_includes_parent_trace_context_in_extras(
         "services.workflow_runtime.workflow_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
         create_workflow_node_execution_repository,
     )
-    monkeypatch.setattr(
-        "services.workflow_runtime.workflow_generator.db", SimpleNamespace(engine=sqlite_session.get_bind())
-    )
+    monkeypatch.setattr(type(app_generator_module.db), "engine", property(lambda _db: sqlite_session.get_bind()))
     monkeypatch.setattr(generator, "_prepare_user_inputs", lambda *, user_inputs, **kwargs: user_inputs)
 
     captured = {}
@@ -341,7 +338,7 @@ def test_confirmed_agent_generator_keeps_preallocated_identity(monkeypatch, sqli
 
     generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
     app, workflow, _ = _persist_generator_rows(sqlite_session)
-    account = MagicMock(spec=Account)
+    account = Account(name="Actor", email="actor@example.invalid")
     account.id = "actor"
     context = marker()
     captured = {}
@@ -350,7 +347,7 @@ def test_confirmed_agent_generator_keeps_preallocated_identity(monkeypatch, sqli
         app_generator_module.WorkflowAppConfigManager, "get_app_config", lambda **_: _app_config(app, workflow)
     )
     monkeypatch.setattr(app_generator_module.file_factory, "build_from_mappings", lambda **_: [])
-    monkeypatch.setattr(app_generator_module, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    monkeypatch.setattr(type(app_generator_module.db), "engine", property(lambda _db: sqlite_session.get_bind()))
     monkeypatch.setattr(generator, "_prepare_user_inputs", lambda *, user_inputs, **_: user_inputs)
     monkeypatch.setattr(generator, "_generate", lambda **kw: captured.update(kw))
     kwargs = {
@@ -388,7 +385,7 @@ def test_confirmed_agent_resume_keeps_original_context_and_run(monkeypatch, sqli
     )
     # Exercise the persisted carrier, including reconstruction of transient tracing.
     entity = WorkflowAppGenerateEntity.model_validate_json(entity.model_dump_json())
-    user = MagicMock(spec=Account)
+    user = Account(name="Actor", email="actor@example.invalid")
     user.id = entity.user_id
     if not valid:
         entity.invoke_from = InvokeFrom.SERVICE_API
@@ -401,8 +398,8 @@ def test_confirmed_agent_resume_keeps_original_context_and_run(monkeypatch, sqli
         "user": user,
         "application_generate_entity": entity,
         "graph_runtime_state": _runtime_state(),
-        "workflow_execution_repository": MagicMock(),
-        "workflow_node_execution_repository": MagicMock(),
+        "workflow_execution_repository": _repositories(sessionmaker(sqlite_session.get_bind()), app, end_user)[0],
+        "workflow_node_execution_repository": _repositories(sessionmaker(sqlite_session.get_bind()), app, end_user)[1],
     }
     if not valid:
         with pytest.raises(BuilderExecutionPolicyError):
@@ -675,28 +672,32 @@ def test_builder_worker_refuses_draft_changed_after_confirmation_before_runner(
     monkeypatch.setattr(
         app_generator_module, "preserve_flask_contexts", lambda *args, **kwargs: contextlib.nullcontext()
     )
-    monkeypatch.setattr(app_generator_module, "session_factory", SimpleNamespace(create_session=sqlite_session_factory))
+    monkeypatch.setattr(app_generator_module.session_factory, "create_session", sqlite_session_factory)
     reached = []
 
-    def first_node(**kwargs):
-        reached.append(kwargs)
-        return SimpleNamespace(run=lambda: None)
+    def prepare(runner):
+        reached.append(runner)
 
-    monkeypatch.setattr(app_generator_module, "WorkflowAppRunner", first_node)
-    queue = MagicMock()
+    monkeypatch.setattr(app_generator_module.WorkflowAppRunner, "prepare", prepare)
+    queue = WorkflowAppQueueManager(
+        task_id="task", user_id=entity.user_id, invoke_from=entity.invoke_from, app_mode=app.mode
+    )
+    errors = []
+    monkeypatch.setattr(queue, "publish_error", lambda error, *_args: errors.append(error))
     repositories = _repositories(sqlite_session_factory, app, end_user)
     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)._generate_worker(
         flask_app=Flask(__name__),
         application_generate_entity=entity,
         queue_manager=queue,
-        context=SimpleNamespace(),
-        variable_loader=SimpleNamespace(),
+        context=contextvars.copy_context(),
+        variable_loader=DUMMY_VARIABLE_LOADER,
         workflow_execution_repository=repositories[0],
         workflow_node_execution_repository=repositories[1],
     )
 
     assert reached == []
-    assert queue.publish_error.call_args.args[0].reason_code == "stale_execution_revision"
+    assert len(errors) == 1
+    assert errors[0].reason_code == "stale_execution_revision"
 
 
 def test_actual_generation_marks_configuration_failure_before_worker_dispatch(
@@ -706,10 +707,14 @@ def test_actual_generation_marks_configuration_failure_before_worker_dispatch(
     from services.dify_builder.native_launch_observation import NativeLaunchObservation
 
     app, workflow, user = _persist_generator_rows(sqlite_session)
+
+    def unavailable():
+        raise ConnectionRefusedError("private plugin schema service")
+
     monkeypatch.setattr(
         app_generator_module.WorkflowAppConfigManager,
         "get_app_config",
-        MagicMock(side_effect=ConnectionRefusedError("private plugin schema service")),
+        lambda **_kwargs: unavailable(),
     )
     observation = NativeLaunchObservation()
     with observation.track(), pytest.raises(ConnectionRefusedError):

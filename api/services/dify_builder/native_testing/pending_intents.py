@@ -244,7 +244,7 @@ class PendingDecisionGuard(FrozenDTO):
         workflow = validate_invocation_workflow(
             session, tenant_id=owned.tenant_id, app_id=self.invocation_app_id, workflow_id=self.invocation_workflow_id
         )
-        revision_context = getattr(owned, "revision_context", None)
+        revision_context = owned.revision_context
         revision = (
             admitted_workflow_revision(workflow, revision_context)
             if revision_context
@@ -319,7 +319,11 @@ class PendingDecisionGuard(FrozenDTO):
         receipt = self.receipt.model_copy(
             update={
                 "pending": tuple(
-                    project_pending_decision(item, grant=grants.get(item.scope_digest), now=utc_now())
+                    project_pending_decision(
+                        item,
+                        grant=grants.get(item.scope_digest) if item.scope_digest is not None else None,
+                        now=utc_now(),
+                    )
                     for item in self.receipt.pending
                 ),
                 "decision_public_revision": decision_public_revision(request.observations) + 1,

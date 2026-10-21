@@ -5,13 +5,14 @@ from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Never, override
-from unittest.mock import Mock
 
 import pytest
 from pydantic import Field, ValidationError
 
 from core.dify_builder.models import Graph
-from graphon.runtime import VariablePool
+from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
+from graphon.nodes.tool.tool_node import ToolNode
+from graphon.runtime import RuntimeState, VariablePool
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError, RestrictedAdmissionSnapshot
 from services.dify_builder.json_tool_execution import (
     QualifiedJsonToolBinding,
@@ -19,6 +20,7 @@ from services.dify_builder.json_tool_execution import (
     resolve_json_parameters,
     validate_json_parameters,
 )
+from tests.workflow_test_utils import build_test_graph_init_params
 
 _GRAPH = Path(__file__).resolve().parents[3] / "fixtures/workflow/builder_restricted/json_parse_owned_graph.json"
 
@@ -61,6 +63,18 @@ def add_native_editor_metadata(graph: Graph) -> Graph:
     )
     graph["nodes"][2]["data"]["outputs"][0]["value_type"] = "string"
     return graph
+
+
+def _native_parameter_node(graph: Graph) -> ToolNode:
+    init_params = build_test_graph_init_params(graph_config=graph)
+    return ToolNode(
+        node_id="node2",
+        data=ToolNode.validate_node_data(_tool(graph)),
+        init_params=init_params,
+        runtime_state=RuntimeState(workflow_id=init_params.workflow_id, variable_pool=VariablePool(), start_at=0.0),
+        tool_file_manager=DifyToolFileManager(init_params.run_context),
+        runtime=DifyToolNodeRuntime(init_params.run_context),
+    )
 
 
 def test_reviewed_pure_mixed_graph_admits_exact_native_chain(json_graph: Graph) -> None:
@@ -499,7 +513,11 @@ def test_native_generation_and_log_read_only_declared_start_values(json_graph: G
     parameters = (ToolRuntimeParameter("content", required=True), ToolRuntimeParameter("json_filter", required=True))
     for for_log in (False, True):
         generated = ToolNode._generate_parameters(
-            Mock(spec=ToolNode), tool_parameters=parameters, variable_pool=pool, node_data=native_data, for_log=for_log
+            _native_parameter_node(json_graph),
+            tool_parameters=parameters,
+            variable_pool=pool,
+            node_data=native_data,
+            for_log=for_log,
         )
         assert generated == expected
     assert pool.reads == [("node1", "payload"), ("node1", "json_path")] * 2
@@ -527,7 +545,7 @@ def test_native_jsonpath_constant_cannot_read_non_start_value(json_graph: Graph)
     assert admit_json_workflow(snapshot_for(json_graph)).tool_node_id == "node2"
     native_data = ToolNode.validate_node_data(_tool(json_graph))
     generated = ToolNode._generate_parameters(
-        Mock(spec=ToolNode),
+        _native_parameter_node(json_graph),
         tool_parameters=(
             ToolRuntimeParameter("content", required=True),
             ToolRuntimeParameter("json_filter", required=True),

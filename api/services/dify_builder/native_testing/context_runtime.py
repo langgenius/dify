@@ -79,6 +79,11 @@ def native_flask_worker_scope(*, host: NativeHostLaunch, flask_app: Flask, conte
             variable.reset(token)
 
 
+class _NativeContextManagers(local):
+    def __init__(self) -> None:
+        self.stack: list[AbstractContextManager[None]] = []
+
+
 class NativeExecutionContext:
     """Reentrant public execution context; every entry restores prior tokens."""
 
@@ -88,7 +93,7 @@ class NativeExecutionContext:
             raise NativeObservationError() from None
         self._captured = cast(ExecutionContext | FlaskExecutionContext, captured)
         self._guard = guard
-        self._local = local()
+        self._local = _NativeContextManagers()
 
     @contextmanager
     def enter(self) -> Generator[None]:
@@ -108,10 +113,7 @@ class NativeExecutionContext:
     def __enter__(self) -> NativeExecutionContext:
         manager = self.enter()
         manager.__enter__()
-        stack = getattr(self._local, "stack", None)
-        if stack is None:
-            stack = self._local.stack = []
-        stack.append(manager)
+        self._local.stack.append(manager)
         return self
 
     def __exit__(self, *args: Any) -> None:

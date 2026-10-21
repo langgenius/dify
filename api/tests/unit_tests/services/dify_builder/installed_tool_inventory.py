@@ -17,7 +17,6 @@ import copy
 import json
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
-from types import SimpleNamespace
 from typing import NoReturn, cast
 from urllib.parse import urlsplit
 
@@ -32,7 +31,6 @@ from models.credential_permission import CredentialPermission
 from models.credential_permission import CredentialType as CredentialPermissionType
 from models.enums import PermissionEnum
 from models.tools import BuiltinToolProvider
-from repositories.credentials.query_repository import CredentialQueryRepository
 
 TENANT_ID = "aaaaaaaa-0000-4000-8000-000000000001"
 OTHER_TENANT_ID = "aaaaaaaa-0000-4000-8000-000000000002"
@@ -41,6 +39,11 @@ ACCOUNT_B = "bbbbbbbb-0000-4000-8000-00000000000b"
 ACCOUNT_C = "bbbbbbbb-0000-4000-8000-00000000000c"
 
 SECRET_MARKER = "ENCRYPTED-SECRET-MUST-NOT-BE-READ"
+
+
+@dataclass(frozen=True)
+class InventoryDatabase:
+    engine: Engine
 
 
 @dataclass(frozen=True)
@@ -331,14 +334,20 @@ def install_fake_daemon(monkeypatch: pytest.MonkeyPatch, daemon: FakeToolDaemon)
 def bind_database(monkeypatch: pytest.MonkeyPatch, engine: Engine) -> None:
     """Point inventory database handles and its credential query owner at SQLite."""
     import core.tools.tool_manager as tool_manager_module
+    from configs import dify_config
+    from extensions.ext_application_services import build_application_services
+    from extensions.ext_redis import redis_client
     from services.dify_builder.agent import resources
 
-    database = SimpleNamespace(engine=engine)
+    database = InventoryDatabase(engine=engine)
     monkeypatch.setattr(resources, "db", database, raising=False)
-    credential_queries = CredentialQueryRepository(session_factory=sessionmaker(bind=engine, expire_on_commit=False))
-    monkeypatch.setattr(
-        resources, "application_services", lambda: SimpleNamespace(credential_queries=credential_queries)
+    services = build_application_services(
+        database_client=sessionmaker(bind=engine, expire_on_commit=False),
+        deployment_edition=dify_config.DEPLOYMENT_EDITION,
+        initialization_password="",
+        redis=redis_client,
     )
+    monkeypatch.setattr(resources, "application_services", lambda: services)
     monkeypatch.setattr(tool_manager_module, "db", database)
 
 
@@ -425,7 +434,7 @@ def forbid_secret_and_business_calls(monkeypatch: pytest.MonkeyPatch) -> list[st
         (ToolManager, "get_tool_runtime"),
     ]
     for owner, attribute in targets:
-        monkeypatch.setattr(owner, attribute, _forbidden(f"{getattr(owner, '__name__', owner)}.{attribute}"))
+        monkeypatch.setattr(owner, attribute, _forbidden(f"{owner.__name__}.{attribute}"))
     import core.tools.tool_manager as tool_manager_module
 
     for attribute in ("create_provider_encrypter", "create_tool_provider_encrypter"):

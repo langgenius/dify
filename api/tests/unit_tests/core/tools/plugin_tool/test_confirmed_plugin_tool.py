@@ -7,8 +7,9 @@ server-only contract values; they say nothing about deployed daemon support.
 """
 
 from collections.abc import Generator, Iterator, Mapping
+from contextlib import ExitStack
 from dataclasses import dataclass
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -23,6 +24,11 @@ from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_engine import ToolEngine
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.dify_builder.application.gmail_read_policy import normalize_get_message_parameters
+from services.dify_builder.real_call_consent_service import ServiceConfirmedToolGuard
+from tests.unit_tests.core.tools import test_confirmed_tool_runtime as runtime_fixtures
+
+owned = runtime_fixtures.owned
+consent_owner = runtime_fixtures.consent_owner
 
 # SYNTHETIC values in the exact proposed contract shape; never a qualified artifact.
 SYNTHETIC_HEADERS = {
@@ -34,7 +40,7 @@ APPROVED = {"message_id": "18cab_1", "include_body": False, "include_attachments
 SECRET_SENTINEL = "unit-secret-sentinel-7f3a"
 
 
-def test_plugin_tool_rejects_after_cast_before_manager_invoke() -> None:
+def test_plugin_tool_rejects_after_cast_before_manager_invoke(guard_factory) -> None:
     approved = normalize_get_message_parameters(
         {"message_id": "18cab_1", "include_body": False, "include_attachments": False}
     )
@@ -43,8 +49,7 @@ def test_plugin_tool_rejects_after_cast_before_manager_invoke() -> None:
         if normalize_get_message_parameters(parameters) != approved:
             raise BuilderExecutionPolicyError("consent_scope_changed")
 
-    guard = Mock()
-    guard.before_invoke.side_effect = check
+    guard = guard_factory(check)
     entity = ToolEntity(
         identity=ToolIdentity(
             author="langgenius",
@@ -104,7 +109,9 @@ def _entity() -> ToolEntity:
     )
 
 
-def _tool(guard: Mock | None, *, runtime_parameters: dict[str, object] | None = None) -> PluginTool:
+def _tool(
+    guard: ServiceConfirmedToolGuard | None, *, runtime_parameters: dict[str, object] | None = None
+) -> PluginTool:
     runtime = ToolRuntime(
         tenant_id="tenant",
         credential_type=CredentialType.OAUTH2,
@@ -125,18 +132,28 @@ def _tool(guard: Mock | None, *, runtime_parameters: dict[str, object] | None = 
     )
 
 
-def _exact_guard() -> Mock:
-    """Consent callback spy that admits only the exact approved final envelope."""
-    approved = normalize_get_message_parameters(APPROVED)
-    guard = Mock()
+@pytest.fixture
+def guard_factory(consent_owner):
+    """Observe actual guard methods at the consent callback boundary."""
+    with ExitStack() as stack:
 
-    def check(parameters: Mapping[str, object]) -> None:
-        if normalize_get_message_parameters(parameters) != approved:
-            raise BuilderExecutionPolicyError("consent_scope_changed")
+        def create(check=None):
+            approved = normalize_get_message_parameters(APPROVED)
+            if check is None:
 
-    guard.before_invoke.side_effect = check
-    guard.dispatch_headers.return_value = dict(SYNTHETIC_HEADERS)
-    return guard
+                def check(parameters):
+                    if normalize_get_message_parameters(parameters) != approved:
+                        raise BuilderExecutionPolicyError("consent_scope_changed")
+
+            _, binding = runtime_fixtures.claimed(consent_owner)
+            guard = runtime_fixtures.guard_for(consent_owner, binding)
+            stack.enter_context(patch.object(guard, "before_invoke", side_effect=check))
+            stack.enter_context(patch.object(guard, "dispatch_headers", return_value=dict(SYNTHETIC_HEADERS)))
+            stack.enter_context(patch.object(guard, "observe_json"))
+            stack.enter_context(patch.object(guard, "finish_stream"))
+            return guard
+
+        yield create
 
 
 def _success_messages() -> list[ToolInvokeMessage]:
@@ -206,8 +223,8 @@ def _invoke(
 # --- final envelope through ToolEngine ------------------------------------------------------
 
 
-def test_tool_engine_merge_is_checked_lazily_before_transport() -> None:
-    guard = _exact_guard()
+def test_tool_engine_merge_is_checked_lazily_before_transport(guard_factory) -> None:
+    guard = guard_factory()
     # An extra runtime value merged by ToolEngine (and Tool.invoke) widens the final envelope.
     tool = _tool(guard, runtime_parameters={"format": "raw"})
     transport = Transport(_success_messages())
@@ -233,8 +250,8 @@ def test_tool_engine_merge_is_checked_lazily_before_transport() -> None:
     guard.finish_stream.assert_not_called()
 
 
-def test_tool_engine_exact_envelope_dispatches_once_with_pinned_headers() -> None:
-    guard = _exact_guard()
+def test_tool_engine_exact_envelope_dispatches_once_with_pinned_headers(guard_factory) -> None:
+    guard = guard_factory()
     tool = _tool(guard)
     transport = Transport(_success_messages())
     with (
@@ -283,8 +300,10 @@ def test_tool_engine_exact_envelope_dispatches_once_with_pinned_headers() -> Non
         ),
     ],
 )
-def test_unexpected_output_is_refused_before_it_reaches_file_transformation(unexpected: ToolInvokeMessage) -> None:
-    guard = _exact_guard()
+def test_unexpected_output_is_refused_before_it_reaches_file_transformation(
+    unexpected: ToolInvokeMessage, guard_factory
+) -> None:
+    guard = guard_factory()
     transport = Transport([_success_messages()[0], unexpected, _success_messages()[2]])
     seen: list[ToolInvokeMessage] = []
 
@@ -311,8 +330,8 @@ def _variable(name: str, value: object, *, stream: bool = False) -> ToolInvokeMe
     )
 
 
-def test_audited_message_id_variable_is_forwarded_once_without_observation() -> None:
-    guard = _exact_guard()
+def test_audited_message_id_variable_is_forwarded_once_without_observation(guard_factory) -> None:
+    guard = guard_factory()
     transport = Transport([_variable("message_id", "18cab_1"), _success_messages()[2]])
     messages = _invoke(_tool(guard), transport)
     assert [m.type for m in messages] == [ToolInvokeMessage.MessageType.VARIABLE, ToolInvokeMessage.MessageType.JSON]
@@ -333,8 +352,8 @@ def test_audited_message_id_variable_is_forwarded_once_without_observation() -> 
     ],
     ids=["other-name", "mismatched-id", "non-string", "list-value", "streamed", "duplicate"],
 )
-def test_unaudited_variable_is_refused_before_it_is_yielded(variables: list[ToolInvokeMessage]) -> None:
-    guard = _exact_guard()
+def test_unaudited_variable_is_refused_before_it_is_yielded(variables: list[ToolInvokeMessage], guard_factory) -> None:
+    guard = guard_factory()
     transport = Transport([_success_messages()[0], *variables, _success_messages()[2]])
     seen: list[ToolInvokeMessage] = []
 
@@ -357,8 +376,8 @@ def test_unaudited_variable_is_refused_before_it_is_yielded(variables: list[Tool
     guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
 
 
-def test_consumer_cancellation_finishes_unknown_once_without_reconstruction() -> None:
-    guard = _exact_guard()
+def test_consumer_cancellation_finishes_unknown_once_without_reconstruction(guard_factory) -> None:
+    guard = guard_factory()
     transport = Transport(_success_messages())
     with (
         Session() as session,
@@ -377,19 +396,27 @@ def test_consumer_cancellation_finishes_unknown_once_without_reconstruction() ->
 
 def test_native_transport_error_stays_native_and_never_reaches_builder_metadata(
     caplog: pytest.LogCaptureFixture,
+    guard_factory,
 ) -> None:
-    guard = _exact_guard()
+    guard = guard_factory()
     transport = Transport(_success_messages(), fail_after=1)
     with pytest.raises(RuntimeError, match=SECRET_SENTINEL):
         _invoke(_tool(guard), transport)
     guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
     # Nothing the guard received, and nothing logged, carries the native error text.
-    assert SECRET_SENTINEL not in repr(guard.mock_calls)
+    assert SECRET_SENTINEL not in repr(
+        [
+            guard.before_invoke.mock_calls,
+            guard.dispatch_headers.mock_calls,
+            guard.observe_json.mock_calls,
+            guard.finish_stream.mock_calls,
+        ]
+    )
     assert SECRET_SENTINEL not in caplog.text
 
 
-def test_dispatch_header_failure_after_business_claim_is_unknown_not_retried() -> None:
-    guard = _exact_guard()
+def test_dispatch_header_failure_after_business_claim_is_unknown_not_retried(guard_factory) -> None:
+    guard = guard_factory()
     guard.dispatch_headers.return_value = {**SYNTHETIC_HEADERS, "X-Dify-Confirmed-Dispatch": "v2"}
     transport = Transport(_success_messages())
     with pytest.raises(BuilderExecutionPolicyError, match="confirmed_dispatch_headers_invalid"):
@@ -402,8 +429,8 @@ def test_dispatch_header_failure_after_business_claim_is_unknown_not_retried() -
 # --- guard lifecycle and ordinary compatibility -------------------------------------------
 
 
-def test_fork_preserves_guard_outside_runtime_and_serialization() -> None:
-    guard = _exact_guard()
+def test_fork_preserves_guard_outside_runtime_and_serialization(guard_factory) -> None:
+    guard = guard_factory()
     tool = _tool(guard)
     forked = tool.fork_tool_runtime(ToolRuntime(tenant_id="tenant", credentials={"access_token": "unit-token"}))
     assert isinstance(forked, PluginTool)

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, cast
 
 from core.app.entities import queue_entities as q
+from core.app.entities.app_invoke_entities import AppGenerateEntity
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.runtime import RuntimeState
@@ -37,11 +38,11 @@ _SUPPORTED: set[type[q.AppQueueEvent]] = {
 }
 
 
-def require_native_observation(*, guard: NativeObservationGuard | None, entity: Any = None) -> None:
+def require_native_observation(
+    *, guard: NativeObservationGuard | None, entity: AppGenerateEntity | None = None
+) -> None:
     """Require an exact healthy guard before any marked adapter setup."""
-    marked = entity is not None and (
-        getattr(entity, "native_test_required", False) or getattr(entity, "native_test_ref", None) is not None
-    )
+    marked = entity is not None and (entity.native_test_required or entity.native_test_ref is not None)
     if guard is None and not marked:
         return
     if type(guard) is not NativeObservationGuard:
@@ -194,8 +195,9 @@ def project_native_queue_event[E: q.AppQueueEvent](
             if cls.__name__.startswith("QueueLoop") and node[0] != "loop":
                 guard.fail()
         fields: dict[str, Any] = {}
+        raw_fields = dict(event)
         for name in cls.model_fields:
-            value = getattr(event, name)
+            value = raw_fields[name]
             if name == "event":
                 continue
             if name == "node_execution_snapshots" and cls is q.QueueWorkflowStartedEvent:

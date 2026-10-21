@@ -4,18 +4,17 @@
 strings; their mappings and per-node rows supply presentation data, not
 trusted execution evidence or publication authority. These mapping functions
 are pure — no DB, no services, no I/O — so tests use
-``SimpleNamespace`` stand-ins for the node-execution rows instead of the
-real ``WorkflowNodeExecutionModel``.
+real ``WorkflowRun`` and ``WorkflowNodeExecutionModel`` rows without persistence.
 """
 
 import json
 from dataclasses import replace
-from types import SimpleNamespace
 
 import pytest
 
 from core.dify_builder.models import Graph, NodeEvent, NodeOutput, Run
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from services.dify_builder.application.verification import (
     is_execution_policy_blocker,
     publication_decision,
@@ -46,15 +45,16 @@ def _node_exec(
     error: str | None = None,
     outputs_dict: dict[str, object] | None = None,
     inputs_dict: dict[str, object] | None = None,
-) -> SimpleNamespace:
-    return SimpleNamespace(
+) -> WorkflowNodeExecutionModel:
+    return WorkflowNodeExecutionModel(
         node_id=node_id,
         node_type=node_type,
         title=title,
         status=status,
         error=error,
-        outputs_dict=outputs_dict or {},
-        inputs_dict=inputs_dict or {},
+        outputs=json.dumps(outputs_dict or {}),
+        inputs=json.dumps(inputs_dict or {}),
+        offload_data=[],
     )
 
 
@@ -387,7 +387,7 @@ def test_a_frame_with_no_run_id_yields_empty_string() -> None:
 
 
 def test_run_row_maps_to_the_shape_map_run_result_expects() -> None:
-    row = SimpleNamespace(
+    row = WorkflowRun(
         id="run-1",
         status=WorkflowExecutionStatus.SUCCEEDED,
         error=None,
@@ -569,7 +569,16 @@ def test_result_mapping_cannot_promote_untrusted_safety_claims(source: str, stat
         projected = run_result_data_from_terminal_chunk(chunk)
         assert projected is not None
     else:
-        projected = run_result_data_from_run_row(SimpleNamespace(**data, outputs_dict=data["outputs"]))
+        projected = run_result_data_from_run_row(
+            WorkflowRun(
+                id=data["id"],
+                status=data["status"],
+                outputs=json.dumps(data["outputs"]),
+                error=data["error"],
+                elapsed_time=data["elapsed_time"],
+                total_tokens=data["total_tokens"],
+            )
+        )
     run = map_run_result(projected, [_node_exec("end", "end", "End", WorkflowNodeExecutionStatus.SUCCEEDED)])
 
     assert run.dify_run_id == "run-1"
