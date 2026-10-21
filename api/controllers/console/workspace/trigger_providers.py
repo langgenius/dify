@@ -41,7 +41,6 @@ from core.trigger.entities.api_entities import (
     TriggerProviderSubscriptionApiEntity,
 )
 from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
-from core.trigger.trigger_manager import TriggerManager
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
@@ -163,47 +162,46 @@ register_response_schema_models(
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/icon")
 class TriggerProviderIconApi(Resource):
-    # response-contract:ignore binary trigger provider icon
-    @console_ns.response(200, "Trigger provider icon")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str, provider: str):
-        return TriggerManager.get_trigger_plugin_icon(tenant_id=tenant_id, provider_id=provider)
+    # response-contract:ignore legacy JSON string containing the icon URL
+    @console_ns.response(HTTPStatus.OK, "Trigger provider icon")
+    @console_account_admission()
+    def get(self, context: RequestContext, provider: str) -> str:
+        return application_services().workspaces.trigger_providers.get_icon(
+            tenant_id=context.active_workspace_id, provider_id=TriggerProviderID(provider)
+        )
 
 
 @console_ns.route("/workspaces/current/triggers")
 class TriggerProviderListApi(Resource):
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger providers retrieved successfully",
         console_ns.models[TriggerProviderListResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str):
+    @console_account_admission()
+    def get(self, context: RequestContext) -> list[dict[str, Any]]:
         """List all trigger providers for the current tenant"""
-        return dump_response(TriggerProviderListResponse, TriggerProviderService.list_trigger_providers(tenant_id))
+        return TriggerProviderListResponse(
+            application_services().workspaces.trigger_providers.list(tenant_id=context.active_workspace_id),
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/info")
 class TriggerProviderInfoApi(Resource):
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger provider retrieved successfully",
         console_ns.models[TriggerProviderApiEntity.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str, provider: str):
+    @console_account_admission()
+    def get(self, context: RequestContext, provider: str) -> dict[str, Any]:
         """Get info for a trigger provider"""
-        provider_entity = TriggerProviderService.get_trigger_provider(tenant_id, TriggerProviderID(provider))
-        return provider_entity.model_dump(mode="json")
+        return dump_response(
+            TriggerProviderApiEntity,
+            application_services().workspaces.trigger_providers.get(
+                tenant_id=context.active_workspace_id, provider_id=TriggerProviderID(provider)
+            ),
+        )
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/list")

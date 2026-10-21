@@ -21,6 +21,8 @@ from services.trigger.oauth_gateway import (
     TriggerOAuthBuilderGateway,
 )
 from services.trigger.oauth_service import TriggerOAuthService
+from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.provider_query import TriggerProviderQuery
 from services.workspace.gateways import (
     DeploymentWorkspaceCreationPolicy,
     DeploymentWorkspaceFeatureGateway,
@@ -56,6 +58,7 @@ class WorkspaceServices:
     invitations: WorkspaceInvitationService
     identity: WorkspaceIdentityGateway
     resource_cleanup: WorkspaceResourceCleanupService
+    trigger_providers: TriggerProviderQuery
     trigger_oauth_clients: TriggerOAuthClientService
     trigger_oauth: TriggerOAuthService
 
@@ -94,10 +97,10 @@ def build_workspace_services(
     registration: InvitedAccountRegistration,
     invitation_tokens: RedisInvitationTokenStore,
 ) -> WorkspaceServices:
-    trigger_providers = PluginTriggerOAuthGateway(oauth=OAuthHandler())
+    trigger_oauth_provider = PluginTriggerOAuthGateway(oauth=OAuthHandler())
     trigger_oauth_clients = TriggerOAuthClientService(
         clients=TriggerOAuthClientRepository(session_factory=database_client),
-        providers=trigger_providers,
+        providers=trigger_oauth_provider,
     )
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
@@ -131,10 +134,11 @@ def build_workspace_services(
             datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
             agent_resources=WorkspaceResourceCleanupRepository(session_factory=database_client),
         ),
+        trigger_providers=PluginTriggerProviderQuery(),
         trigger_oauth_clients=trigger_oauth_clients,
         trigger_oauth=TriggerOAuthService(
             clients=trigger_oauth_clients,
-            providers=trigger_providers,
+            providers=trigger_oauth_provider,
             contexts=OAuthProxyContextGateway(),
             builders=TriggerOAuthBuilderGateway(),
         ),

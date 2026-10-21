@@ -33,6 +33,7 @@ from services.trigger.oauth_gateway import (
     TriggerOAuthBuilderGateway,
 )
 from services.trigger.oauth_service import TriggerOAuthService
+from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.workspace.contracts import CreatedWorkspace, WorkspaceMembership
 from services.workspace.provisioning_service import WorkspaceProvisioningService
 from services.workspace.service import WorkspaceQueryService, WorkspaceService
@@ -61,6 +62,7 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
         invitations=Mock(),
         identity=Mock(),
         resource_cleanup=Mock(),
+        trigger_providers=PluginTriggerProviderQuery(),
         trigger_oauth_clients=oauth_clients,
         trigger_oauth=TriggerOAuthService(
             clients=oauth_clients,

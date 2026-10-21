@@ -164,25 +164,6 @@ def _patch_identity_encryption(mocker) -> Mock:
     return cache
 
 
-def test_provider_manager_entities_are_forwarded(mocker, trigger_db: TriggerDatabase) -> None:
-    provider = Mock()
-    provider.to_api_entity.return_value = {"provider": "ok"}
-    _patch_provider(mocker, provider)
-    provider_b = Mock()
-    provider_b.to_api_entity.return_value = {"provider": "other"}
-    mocker.patch.object(
-        service_module.TriggerManager, "list_all_trigger_providers", return_value=[provider, provider_b]
-    )
-
-    assert TriggerProviderService.get_trigger_provider(trigger_db.tenant_id, trigger_db.provider_id) == {
-        "provider": "ok"
-    }
-    assert TriggerProviderService.list_trigger_providers(trigger_db.tenant_id) == [
-        {"provider": "ok"},
-        {"provider": "other"},
-    ]
-
-
 def test_list_subscriptions_empty_state(trigger_db: TriggerDatabase) -> None:
     assert (
         TriggerProviderService.list_trigger_provider_subscriptions(

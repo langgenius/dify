@@ -21,10 +21,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.plugin.plugin_service import PluginService
 from core.tools.utils.system_encryption import decrypt_system_params
-from core.trigger.entities.api_entities import (
-    TriggerProviderApiEntity,
-    TriggerProviderSubscriptionApiEntity,
-)
+from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
@@ -57,16 +54,6 @@ class TriggerProviderService:
     # Trigger provider
     ##########################
     __MAX_TRIGGER_PROVIDER_COUNT__ = 10
-
-    @classmethod
-    def get_trigger_provider(cls, tenant_id: str, provider: TriggerProviderID) -> TriggerProviderApiEntity:
-        """Get info for a trigger provider"""
-        return TriggerManager.get_trigger_provider(tenant_id, provider).to_api_entity()
-
-    @classmethod
-    def list_trigger_providers(cls, tenant_id: str) -> list[TriggerProviderApiEntity]:
-        """List all trigger providers for the current tenant"""
-        return [provider.to_api_entity() for provider in TriggerManager.list_all_trigger_providers(tenant_id)]
 
     @classmethod
     def list_trigger_provider_subscriptions(
