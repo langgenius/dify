@@ -11,11 +11,14 @@ const { uploadImage } = vi.hoisted(() => ({
   uploadImage: vi.fn<() => Promise<PostFilesUploadResponse>>(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    files: { upload: { post: { mutationOptions: () => ({ mutationFn: uploadImage }) } } },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'files.upload.post': uploadImage }),
+  }
+})
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 

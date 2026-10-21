@@ -364,5 +364,6 @@
   "agentDetail.versionHistory.filter": "Фильтровать версии",
   "agentDetail.versionHistory.restore": "Восстановить",
   "agentDetail.versionHistory.versionName": "Версия {{version}}",
-  "agentDetail.versionHistory.viewOnly": "Только просмотр"
+  "agentDetail.versionHistory.viewOnly": "Только просмотр",
+  "exportAgent": "Экспортировать агента"
 }

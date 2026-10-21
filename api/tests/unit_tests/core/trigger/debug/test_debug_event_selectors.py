@@ -271,7 +271,7 @@ class TestCreateEventPoller:
     def test_raises_for_unknown_type(self) -> None:
         wf = _workflow_with_node(BuiltinNodeTypes.START)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="unable to create event poller for node type start") as exc_info:
             create_event_poller(wf, "t1", "u1", "a1", "n1")
 
         assert str(exc_info.value) == "unable to create event poller for node type start"
@@ -281,7 +281,7 @@ class TestCreateEventPoller:
 
         with (
             patch.object(Workflow, "get_node_config_by_id", return_value=None),
-            pytest.raises(ValueError),
+            pytest.raises(ValueError, match="\\('Node data not found for node %s', 'n1'\\)"),
         ):
             create_event_poller(wf, "t1", "u1", "a1", "n1")
 

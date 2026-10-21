@@ -364,5 +364,6 @@
   "agentDetail.versionHistory.filter": "Sürümleri filtrele",
   "agentDetail.versionHistory.restore": "Geri yükle",
   "agentDetail.versionHistory.versionName": "Sürüm {{version}}",
-  "agentDetail.versionHistory.viewOnly": "Yalnızca görüntüle"
+  "agentDetail.versionHistory.viewOnly": "Yalnızca görüntüle",
+  "exportAgent": "Ajanı dışa aktar"
 }

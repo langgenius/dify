@@ -1,4 +1,5 @@
 import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
@@ -92,7 +93,8 @@ describe('EducationVerifyFlow', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('renders the generic error state when verification fails', async () => {
+  it('retries a failed verification and navigates after recovery', async () => {
+    const user = userEvent.setup()
     mockRequestVerification.mockRejectedValue(createHttpError(new Response(null, { status: 503 })))
 
     renderFlow({})
@@ -100,8 +102,11 @@ describe('EducationVerifyFlow', () => {
     expect(
       await screen.findByRole('heading', { name: 'common.errorBoundary.title' }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }),
-    ).toBeInTheDocument()
+    mockRequestVerification.mockResolvedValue({ token: 'retry-token' })
+    await user.click(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }))
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith('/education/apply?token=retry-token'),
+    )
+    expect(mockRequestVerification).toHaveBeenCalledTimes(2)
   })
 })

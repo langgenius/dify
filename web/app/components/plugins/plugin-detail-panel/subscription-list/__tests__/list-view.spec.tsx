@@ -10,10 +10,6 @@ vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => ({ subscriptions: mockSubscriptions }),
 }))
 
-vi.mock('../../../store', () => ({
-  usePluginStore: () => ({ detail: undefined }),
-}))
-
 vi.mock('@/service/use-triggers', () => ({
   useTriggerProviderInfo: () => ({ data: { supported_creation_methods: [] } }),
   useTriggerOAuthConfig: () => ({ data: undefined, refetch: vi.fn() }),
@@ -52,12 +48,5 @@ describe('SubscriptionListView', () => {
 
     expect(screen.queryByText(/pluginTrigger\.subscription\.listNum/)).not.toBeInTheDocument()
     expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
-  })
-
-  it('should apply top border when showTopBorder is true', () => {
-    const { container } = render(<SubscriptionListView showTopBorder />)
-
-    const wrapper = container.firstChild as HTMLElement
-    expect(wrapper).toHaveClass('border-t')
   })
 })

@@ -45,30 +45,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
   ),
 }))
 
-vi.mock('../../../../panel/chat-variable-panel/components/bool-value', () => ({
-  default: ({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) => (
-    <button onClick={() => onChange(!value)}>{value ? 'true' : 'false'}</button>
-  ),
-}))
-
-vi.mock('../../../if-else/components/condition-list/condition-operator', () => ({
-  default: ({ value, onSelect }: { value: string; onSelect: (value: string) => void }) => (
-    <button onClick={() => onSelect(ComparisonOperator.notEqual)}>
-      operator:
-      {value}
-    </button>
-  ),
-}))
-
-vi.mock('../sub-variable-picker', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <button onClick={() => onChange('size')}>
-      sub-variable:
-      {value}
-    </button>
-  ),
-}))
-
 describe('FilterCondition', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -97,10 +73,11 @@ describe('FilterCondition', () => {
       />,
     )
 
-    expect(screen.getByText(/operator:/)).toBeInTheDocument()
-    expect(screen.getByText(/sub-variable:/)).toBeInTheDocument()
-
-    await user.click(screen.getByRole('combobox'))
+    await user.click(
+      await screen.findByRole('combobox', {
+        name: 'workflow.nodes.listFilter.filterConditionComparisonValue',
+      }),
+    )
     await user.click(screen.getByText('workflowLogic.nodes.ifElse.optionName.image'))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -129,7 +106,7 @@ describe('FilterCondition', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'false' }))
+    await user.click(screen.getByText('True'))
 
     expect(onChange).toHaveBeenCalledWith({
       key: 'enabled',
@@ -138,7 +115,7 @@ describe('FilterCondition', () => {
     })
   })
 
-  it('should render a supported variable input, apply focus styles, and filter vars by expected type', async () => {
+  it('should update a file name condition and accept only string variable references', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
@@ -172,7 +149,7 @@ describe('FilterCondition', () => {
       value: 'draft next',
     })
 
-    const config = mockUseAvailableVarList.mock.calls[0]?.[1] as unknown as {
+    const config = mockUseAvailableVarList.mock.calls[0]?.[1] as {
       filterVar: (varPayload: { type: VarType }) => boolean
     }
     expect(config.filterVar({ type: VarType.string })).toBe(true)
@@ -198,7 +175,10 @@ describe('FilterCondition', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'sub-variable:' }))
+    await user.click(
+      await screen.findByRole('combobox', { name: 'workflow.nodes.listFilter.filterConditionKey' }),
+    )
+    await user.click(screen.getByRole('option', { name: 'size' }))
 
     expect(onChange).toHaveBeenCalledWith({
       key: 'size',
@@ -296,5 +276,38 @@ describe('FilterCondition', () => {
     )
 
     expect(screen.getByText('Select value')).toBeInTheDocument()
+  })
+  it('prevents boolean and sub-variable changes in read-only mode', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <FilterCondition
+        condition={{ key: 'enabled', comparison_operator: ComparisonOperator.equal, value: false }}
+        varType={VarType.boolean}
+        onChange={onChange}
+        hasSubVariable={false}
+        readOnly
+        nodeId="node-1"
+      />,
+    )
+    await user.click(screen.getByText('True'))
+    expect(onChange).not.toHaveBeenCalled()
+    rerender(
+      <FilterCondition
+        condition={{ key: 'size', comparison_operator: ComparisonOperator.largerThan, value: 5 }}
+        varType={VarType.file}
+        onChange={onChange}
+        hasSubVariable
+        readOnly
+        nodeId="node-1"
+      />,
+    )
+    const subVariable = await screen.findByRole('combobox', {
+      name: 'workflow.nodes.listFilter.filterConditionKey',
+    })
+    expect(subVariable).toBeDisabled()
+    await user.click(subVariable)
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

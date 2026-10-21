@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -54,13 +55,17 @@ class WorkflowEventsQuery(BaseModel):
 class OpenApiWorkflowEventsApi(Resource):
     @endpoint(
         op="get.run.event",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.SSE,
-        summary="Stream the events of a workflow run",
+        summary="Stream the events of a workflow run; `task_id` takes the workflow run id",
         examples=(
-            Example(title="Follow the events of a running task", input={"app_id": "<app_id>", "task_id": "<task_id>"}),
+            Example(
+                title="Follow the events of a workflow run by its run id",
+                input={"app_id": "<app_id>", "task_id": "<workflow_run_id>"},
+            ),
             Example(
                 title="Keep the stream open across a human-input pause",
-                input={"app_id": "<app_id>", "task_id": "<task_id>", "continue_on_pause": True},
+                input={"app_id": "<app_id>", "task_id": "<workflow_run_id>", "continue_on_pause": True},
             ),
         ),
         requirements=(
@@ -124,11 +129,8 @@ class OpenApiWorkflowEventsApi(Resource):
             event_generator = _generate_finished_events
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
-            if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
-            else:
-                generator = WorkflowAppGenerator()
+            generator: type[BaseAppGenerator]
+            generator = AdvancedChatAppGenerator if app_mode == AppMode.ADVANCED_CHAT else WorkflowAppGenerator
 
             include_state_snapshot = query.include_state_snapshot
             continue_on_pause = query.continue_on_pause

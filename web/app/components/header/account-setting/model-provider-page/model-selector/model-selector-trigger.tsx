@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type { ModelSelectorModel, ModelSelectorProvider, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -17,6 +18,7 @@ import ModelName from '../model-name'
 import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-added-card/use-credential-panel-state'
 
 type ModelSelectorTriggerProps = {
+  ref?: Ref<HTMLButtonElement>
   'aria-labelledby'?: string
   currentProvider?: ModelSelectorProvider
   currentModel?: ModelSelectorModel
@@ -35,6 +37,7 @@ type ModelSelectorTriggerProps = {
 }
 
 function ModelSelectorTrigger({
+  ref,
   'aria-labelledby': labelledBy,
   currentProvider,
   currentModel,
@@ -107,6 +110,7 @@ function ModelSelectorTrigger({
   const trigger = (
     <Tooltip>
       <TooltipTrigger
+        ref={ref}
         disabled={!triggerTooltipLabel || isDisabled}
         render={
           <PopoverTrigger
@@ -251,7 +255,7 @@ function ModelSelectorTrigger({
     </Tooltip>
   )
 
-  if (!showClear) return trigger
+  if (!onClear) return trigger
 
   return (
     <div
@@ -261,19 +265,21 @@ function ModelSelectorTrigger({
       )}
     >
       {trigger}
-      <IconButton
-        aria-label={clearLabel ?? t(($) => $['operation.reset'], { ns: 'common' })}
-        size="sm"
-        disabled={isDisabled}
-        onClick={onClear}
-        className={cn(
-          'pointer-events-none absolute top-1/2 -translate-y-1/2 opacity-0 group-focus-within/model-selector-clearable:pointer-events-auto group-focus-within/model-selector-clearable:opacity-100 group-hover/model-selector-clearable:pointer-events-auto group-hover/model-selector-clearable:opacity-100',
-          'text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset',
-          shape === 'split' ? 'right-1' : size === 'small' ? 'right-4.5' : 'right-5',
-        )}
-      >
-        <span aria-hidden="true" className="i-ri-close-circle-fill size-4" />
-      </IconButton>
+      {showClear && (
+        <IconButton
+          aria-label={clearLabel ?? t(($) => $['operation.reset'], { ns: 'common' })}
+          size="sm"
+          disabled={isDisabled}
+          onClick={onClear}
+          className={cn(
+            'pointer-events-none absolute top-1/2 -translate-y-1/2 opacity-0 group-focus-within/model-selector-clearable:pointer-events-auto group-focus-within/model-selector-clearable:opacity-100 group-hover/model-selector-clearable:pointer-events-auto group-hover/model-selector-clearable:opacity-100',
+            'text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset',
+            shape === 'split' ? 'right-1' : size === 'small' ? 'right-4.5' : 'right-5',
+          )}
+        >
+          <span aria-hidden="true" className="i-ri-close-circle-fill size-4" />
+        </IconButton>
+      )}
     </div>
   )
 }

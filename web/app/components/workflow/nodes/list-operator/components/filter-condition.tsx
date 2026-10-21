@@ -143,7 +143,12 @@ const ValueInput = ({
         disabled={readOnly}
         onValueChange={(value) => value && onChange(value)}
       >
-        <SelectTrigger className="h-8 grow text-[13px]">
+        <SelectTrigger
+          aria-label={t(($) => $['nodes.listFilter.filterConditionComparisonValue'], {
+            ns: 'workflow',
+          })}
+          className="h-8 grow text-[13px]"
+        >
           {selectedOption?.name ?? 'Select value'}
         </SelectTrigger>
         <SelectContent>
@@ -159,7 +164,7 @@ const ValueInput = ({
   }
 
   if (isBoolean) {
-    return <BoolValue value={condition.value as boolean} onChange={onChange} />
+    return <BoolValue disabled={readOnly} value={condition.value as boolean} onChange={onChange} />
   }
 
   if (supportVariableInput) {
@@ -213,7 +218,7 @@ const FilterCondition: FC<Props> = ({
     ComparisonOperator.allOf,
   ]
 
-  const { t } = useTranslation(['workflowLogic', 'workflowIntegrations'])
+  const { t } = useTranslation(['workflowLogic', 'workflowIntegrations', 'workflow'])
 
   const expectedVarType = getExpectedVarType(condition, varType)
   const supportVariableInput = !!expectedVarType
@@ -263,6 +268,7 @@ const FilterCondition: FC<Props> = ({
     <div>
       {hasSubVariable && (
         <SubVariablePicker
+          disabled={readOnly}
           className="mb-2"
           value={condition.key}
           onChange={handleSubVariableChange}

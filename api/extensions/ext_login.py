@@ -31,9 +31,25 @@ logger = logging.getLogger(__name__)
 type LoginUser = Account | EndUser
 type AccountLoader = Callable[[str], Account | None]
 
+ACCOUNT_ONLY_ADMISSION_ATTR = "__account_only_admission__"
+
 
 def bind_account_loader(app: Flask, loader: AccountLoader) -> None:
     app.extensions["account_identity_loader"] = loader
+
+
+def bind_account_only_loader(app: Flask, loader: AccountLoader) -> None:
+    """Bind identity lookup for explicitly account-scoped Console resources."""
+    app.extensions["account_only_identity_loader"] = loader
+
+
+def _console_account_loader() -> AccountLoader:
+    view = current_app.view_functions.get(request.endpoint or "")
+    resource = getattr(view, "view_class", None)
+    handler = getattr(resource, request.method.lower(), None)
+    if getattr(handler, ACCOUNT_ONLY_ADMISSION_ATTR, False):
+        return cast(AccountLoader, current_app.extensions["account_only_identity_loader"])
+    return load_account
 
 
 def load_account(account_id: str) -> Account | None:
@@ -108,7 +124,7 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
         if not user_id:
             raise Unauthorized("Invalid Authorization token.")
 
-        logged_in_account = load_account(user_id)
+        logged_in_account = _console_account_loader()(user_id)
         return logged_in_account
     elif request.blueprint == "openapi":
         # Account-branch device-flow approval routes (approve / deny /
@@ -199,7 +215,7 @@ def unauthorized_handler() -> Response:
     # Keep this as a concrete `Response`; `DifyLoginManager.unauthorized()` narrows
     # Flask-Login's callback contract based on this override.
     return Response(
-        json.dumps({"code": "unauthorized", "message": "Unauthorized."}),
+        json.dumps({"code": "unauthorized", "message": "Unauthorized.", "status": 401}),
         status=401,
         content_type="application/json",
     )

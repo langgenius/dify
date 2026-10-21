@@ -1,12 +1,16 @@
-import type { DataSet, RelatedAppResponse } from '@/models/datasets'
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  RelatedAppListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { screen } from '@testing-library/react'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailSection from '../dataset-detail-section'
 
 let mockPathname = '/datasets/dataset-1/documents'
-let mockDataset: DataSet | undefined
-let mockRelatedApps: RelatedAppResponse | undefined
+let mockDataset: DatasetDetailWithPartialMembersResponse | undefined
+let mockRelatedApps: RelatedAppListResponse | undefined
 let mockIsRbacEnabled = true
 const mockConsoleState = vi.hoisted(() => ({
   current: {
@@ -15,15 +19,23 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: {
-      rbac_enabled: mockIsRbacEnabled,
-    },
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  const input = { params: { dataset_id: 'dataset-1' } }
+  queryClient.setQueryData(consoleQuery.datasets.byDatasetId.get.queryKey({ input }), mockDataset)
+  queryClient.setQueryData(
+    consoleQuery.datasets.byDatasetId.relatedApps.get.queryKey({ input }),
+    mockRelatedApps,
+  )
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { rbac_enabled: mockIsRbacEnabled },
   })
+}
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
+  useSelectedLayoutSegment: () => null,
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -31,28 +43,17 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetDetail: () => ({ data: mockDataset, refetch: vi.fn() }),
-  useDatasetRelatedApps: () => ({ data: mockRelatedApps }),
-}))
-
 vi.mock('../dataset-info', () => ({
   default: () => <div>dataset info</div>,
-}))
-
-vi.mock('../nav-link', () => ({
-  default: ({ name, href, disabled }: { name: string; href: string; disabled?: boolean }) => {
-    if (disabled) return <button disabled>{name}</button>
-
-    return <a href={href}>{name}</a>
-  },
 }))
 
 vi.mock('../../datasets/extra-info', () => ({
   default: () => <div>dataset extra info</div>,
 }))
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse =>
   ({
     id: 'dataset-1',
     name: 'Camera Technical Spec',
@@ -82,7 +83,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
     enable_api: true,
     permission_keys: [DatasetACLPermission.Edit],
     ...overrides,
-  }) as DataSet
+  }) as DatasetDetailWithPartialMembersResponse
 
 describe('DatasetDetailSection', () => {
   beforeEach(() => {
@@ -96,7 +97,7 @@ describe('DatasetDetailSection', () => {
     }
   })
 
-  it('should hide dataset stats and API access when dataset edit permission is missing', () => {
+  it('hides dataset statistics without edit permission', () => {
     mockDataset = createDataset({
       permission_keys: [DatasetACLPermission.Readonly],
     })

@@ -15,25 +15,25 @@ export const zEnvironmentStatus = z.enum([
   'ENVIRONMENT_STATUS_DELETING',
 ])
 
-export const zApplicationInteractionStatus = z.enum([
-  'APPLICATION_INTERACTION_STATUS_UNSPECIFIED',
-  'APPLICATION_INTERACTION_STATUS_RUNNING',
-  'APPLICATION_INTERACTION_STATUS_SUCCEEDED',
-  'APPLICATION_INTERACTION_STATUS_FAILED',
-  'APPLICATION_INTERACTION_STATUS_PARTIAL_SUCCEEDED',
-  'APPLICATION_INTERACTION_STATUS_STOPPED',
-  'APPLICATION_INTERACTION_STATUS_PAUSED',
+export const zAppRunnerLogStatus = z.enum([
+  'APP_RUNNER_LOG_STATUS_UNSPECIFIED',
+  'APP_RUNNER_LOG_STATUS_RUNNING',
+  'APP_RUNNER_LOG_STATUS_SUCCEEDED',
+  'APP_RUNNER_LOG_STATUS_FAILED',
+  'APP_RUNNER_LOG_STATUS_PARTIAL_SUCCEEDED',
+  'APP_RUNNER_LOG_STATUS_STOPPED',
+  'APP_RUNNER_LOG_STATUS_PAUSED',
 ])
 
-export const zApplicationInteractionSource = z.enum([
-  'APPLICATION_INTERACTION_SOURCE_UNSPECIFIED',
-  'APPLICATION_INTERACTION_SOURCE_WEB_APP',
-  'APPLICATION_INTERACTION_SOURCE_SERVICE_API',
-  'APPLICATION_INTERACTION_SOURCE_TRIGGER',
-  'APPLICATION_INTERACTION_SOURCE_EXPLORE',
-  'APPLICATION_INTERACTION_SOURCE_DEBUGGER',
-  'APPLICATION_INTERACTION_SOURCE_VALIDATION',
-  'APPLICATION_INTERACTION_SOURCE_OPENAPI',
+export const zAppRunnerLogSource = z.enum([
+  'APP_RUNNER_LOG_SOURCE_UNSPECIFIED',
+  'APP_RUNNER_LOG_SOURCE_WEB_APP',
+  'APP_RUNNER_LOG_SOURCE_SERVICE_API',
+  'APP_RUNNER_LOG_SOURCE_TRIGGER',
+  'APP_RUNNER_LOG_SOURCE_EXPLORE',
+  'APP_RUNNER_LOG_SOURCE_DEBUGGER',
+  'APP_RUNNER_LOG_SOURCE_VALIDATION',
+  'APP_RUNNER_LOG_SOURCE_OPENAPI',
 ])
 
 export const zEnvironmentMode = z.enum([
@@ -386,11 +386,11 @@ export const zError = z.object({
       'APPDEPLOY_TOOL_PROVIDER_NOT_INSTALLED',
       'APPDEPLOY_MODEL_PROVIDER_NOT_INSTALLED',
       'APPDEPLOY_MODEL_TYPE_UNSUPPORTED',
-      'APPDEPLOY_CREDENTIAL_MISMATCH',
       'APPDEPLOY_APP_RUNNER_JOIN_TOKEN_REQUIRED',
       'APPDEPLOY_INVALID_WORKFLOW_ID',
       'APPDEPLOY_INVALID_DEPLOYMENT_VERSION_ID',
       'APPDEPLOY_DEVELOPER_API_URL_NOT_CONFIGURED',
+      'APPDEPLOY_INVALID_CREDENTIAL_SELECTION',
       'APPDEPLOY_UNAUTHORIZED',
       'APPDEPLOY_FORBIDDEN',
       'APPDEPLOY_APP_RUNNER_AUTH_REQUIRED',
@@ -402,7 +402,6 @@ export const zError = z.object({
       'APPDEPLOY_REVISION_NOT_FOUND',
       'APPDEPLOY_ROLLBACK_TARGET_NOT_FOUND',
       'APPDEPLOY_APP_NOT_FOUND',
-      'APPDEPLOY_CREDENTIAL_NOT_FOUND',
       'APPDEPLOY_ENVIRONMENT_WEB_APP_SETTING_NOT_FOUND',
       'APPDEPLOY_ACCESS_SUBJECT_NOT_FOUND',
       'APPDEPLOY_API_KEY_NOT_FOUND',
@@ -455,6 +454,8 @@ export const zError = z.object({
       'APPDEPLOY_RESOURCE_NOT_APPLICABLE_FOR_MODE',
       'APPDEPLOY_ENVIRONMENT_CPU_POOL_BELOW_ALLOCATED',
       'APPDEPLOY_CHAT_CONTEXT_TOO_LARGE',
+      'APPDEPLOY_REVISION_RETIRED',
+      'APPDEPLOY_CREDENTIAL_DENIED_BY_POLICY',
       'APPDEPLOY_FILE_GRANT_UNAVAILABLE',
       'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED',
       'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED',
@@ -481,7 +482,7 @@ export const zError = z.object({
   detailCode: z.string().optional(),
 })
 
-export const zGetApplicationInteractionSummaryResponse = z.object({
+export const zGetAppRunnerLogSummaryResponse = z.object({
   totalCount: z.string(),
   failedCount: z.string(),
   lookbackStart: z.iso.datetime(),
@@ -897,17 +898,17 @@ export const zWorkflowVersion = z.object({
   dsl_hash: z.string().optional(),
 })
 
-export const zApplicationInteraction = z.object({
+export const zAppRunnerLog = z.object({
   id: z.string(),
   timestamp: z.iso.datetime(),
-  status: zApplicationInteractionStatus,
+  status: zAppRunnerLogStatus,
   durationSeconds: z.number(),
   totalTokens: z.string(),
   workspace: zNamedRef,
   environment: zNamedRef,
   app: zNamedRef,
   operator: zNamedRef.optional(),
-  source: zApplicationInteractionSource,
+  source: zAppRunnerLogSource,
   version: zWorkflowVersion.optional(),
   traceId: z.string().optional(),
   error: z.string().optional(),
@@ -974,14 +975,15 @@ export const zEnvironmentDeployment = z.object({
   environment: zDeploymentEnvironment,
   deployment: zEnvironmentDeploymentState.optional(),
   access: zEnvironmentAccess,
+  deployment_id: z.string(),
 })
 
 export const zGetEnvironmentDeploymentResponse = z.object({
   environment_deployment: zEnvironmentDeployment,
 })
 
-export const zListApplicationInteractionsResponse = z.object({
-  data: z.array(zApplicationInteraction),
+export const zListAppRunnerLogsResponse = z.object({
+  data: z.array(zAppRunnerLog),
   nextPageToken: z.string().optional(),
   previousPageToken: z.string().optional(),
 })
@@ -1016,7 +1018,7 @@ export const zPagination = z.object({
     .optional(),
 })
 
-export const zListApplicationInteractionAppsResponse = z.object({
+export const zListAppRunnerLogAppsResponse = z.object({
   data: z.array(zNamedRef),
   pagination: zPagination,
 })
@@ -1029,6 +1031,7 @@ export const zListDeploymentOperationsResponse = z.object({
 export const zListEnvironmentDeployedAppsResponse = z.object({
   data: z.array(zEnvironmentDeployedApp),
   pagination: zPagination,
+  workspaceOptions: z.array(zNamedRef),
 })
 
 export const zListEnvironmentsResponse = z.object({
@@ -1131,6 +1134,7 @@ export const zEnvironmentDeployedAppWritable = z.object({
 export const zListEnvironmentDeployedAppsResponseWritable = z.object({
   data: z.array(zEnvironmentDeployedAppWritable),
   pagination: zPagination,
+  workspaceOptions: z.array(zNamedRef),
 })
 
 export const zUpdateEnvironmentDeployedAppResourcesResponseWritable = z.object({

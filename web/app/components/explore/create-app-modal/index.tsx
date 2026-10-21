@@ -1,13 +1,23 @@
 'use client'
+
 import type {
   AppDetailWithSite,
   UpdateAppPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -29,7 +39,6 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -49,7 +58,7 @@ export type CreateAppModalProps = {
   onHide: () => void
 }
 
-const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 const CreateAppModal = ({
   show = false,
@@ -68,7 +77,6 @@ const CreateAppModal = ({
   confirmLoading,
   onHide,
 }: CreateAppModalProps) => {
-  const nameInputId = React.useId()
   const descriptionInputId = React.useId()
   const maxActiveRequestsInputId = React.useId()
   const { t } = useTranslation(['app', 'common', 'explore'])
@@ -200,38 +208,24 @@ const CreateAppModal = ({
             handleSubmit()
           }}
           backdropProps={{ forceRender: true }}
-          className="px-8"
         >
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          {isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
-              {t(($) => $.editAppTitle, { ns: 'app' })}
-            </DialogTitle>
-          )}
-          {!isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
-              {t(($) => $['appCustomize.title'], { ns: 'explore', name: appName })}
-            </DialogTitle>
-          )}
-          <div className="mb-9">
+          <DialogHeader>
+            {isEditModal && <DialogTitle>{t(($) => $.editAppTitle, { ns: 'app' })}</DialogTitle>}
+            {!isEditModal && (
+              <DialogTitle>
+                {t(($) => $['appCustomize.title'], { ns: 'explore', name: appName })}
+              </DialogTitle>
+            )}
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
+          </DialogHeader>
+          <DialogBody>
             {/* icon & name */}
-            <div className="pt-2">
-              <label
-                htmlFor={nameInputId}
-                className="block py-2 text-sm leading-5 font-medium text-text-primary"
-              >
+            <Fieldset className="pt-2">
+              <FieldsetLegend className="mb-0 block py-2 text-sm leading-5 font-medium text-text-primary">
                 {t(($) => $['newApp.captionName'], { ns: 'app' })}
-              </label>
+              </FieldsetLegend>
               <div className="flex items-center justify-between space-x-2">
                 <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
                   <IconPickerTrigger
@@ -242,15 +236,17 @@ const CreateAppModal = ({
                   </IconPickerTrigger>
                   <IconPickerContent />
                 </IconPicker>
-                <Input
-                  id={nameInputId}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
-                  className="h-10 grow"
-                />
+                <Field name="name" className="grow">
+                  <Input
+                    aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+                    className="h-10 grow"
+                  />
+                </Field>
               </div>
-            </div>
+            </Fieldset>
             {/* description */}
             <div className="pt-2">
               <label
@@ -269,23 +265,21 @@ const CreateAppModal = ({
             </div>
             {/* answer icon */}
             {isEditModal &&
-              (appMode === AppModeEnum.CHAT ||
-                appMode === AppModeEnum.ADVANCED_CHAT ||
-                appMode === AppModeEnum.AGENT_CHAT) && (
-                <div className="pt-2">
+              (appMode === 'chat' || appMode === 'advanced-chat' || appMode === 'agent-chat') && (
+                <Field name="use_icon_as_answer_icon" className="gap-0 pt-2">
                   <div className="flex items-center justify-between">
-                    <div className="py-2 text-sm leading-5 font-medium text-text-primary">
+                    <FieldLabel className="py-2 text-sm leading-5 font-medium text-text-primary">
                       {t(($) => $['answerIcon.title'], { ns: 'app' })}
-                    </div>
+                    </FieldLabel>
                     <Switch
                       checked={useIconAsAnswerIcon}
                       onCheckedChange={(v) => setUseIconAsAnswerIcon(v)}
                     />
                   </div>
-                  <p className="body-xs-regular text-text-tertiary">
+                  <FieldDescription className="py-0">
                     {t(($) => $['answerIcon.descriptionInExplore'], { ns: 'app' })}
-                  </p>
-                </div>
+                  </FieldDescription>
+                </Field>
               )}
             {isEditModal && (
               <div className="pt-2">
@@ -312,12 +306,15 @@ const CreateAppModal = ({
               </div>
             )}
             {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}
-          </div>
-          <div className="flex flex-row-reverse">
+          </DialogBody>
+          <DialogFooter>
+            <Button className="w-24" onClick={onHide}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
             <Button
               loading={confirmLoading}
               disabled={submitDisabled}
-              className="ml-2 w-24"
+              className="w-24"
               variant="primary"
               onClick={handleSubmit}
             >
@@ -334,10 +331,7 @@ const CreateAppModal = ({
                 ))}
               </KbdGroup>
             </Button>
-            <Button className="w-24" onClick={onHide}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

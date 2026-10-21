@@ -364,5 +364,6 @@
   "agentDetail.versionHistory.filter": "ກັ່ນຕອງເວີຊັນ",
   "agentDetail.versionHistory.restore": "ຄືນຄ່າ (Restore)",
   "agentDetail.versionHistory.versionName": "ເວີຊັນ {{version}}",
-  "agentDetail.versionHistory.viewOnly": "ເບິ່ງໄດ້ຢ່າງດຽວ"
+  "agentDetail.versionHistory.viewOnly": "ເບິ່ງໄດ້ຢ່າງດຽວ",
+  "exportAgent": "ສົ່ງອອກ Agent"
 }

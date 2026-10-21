@@ -67,7 +67,7 @@ class MockTable:
         id_idx = column_names.index("id")
         for row in values:
             doc_id = row[id_idx]
-            _mock_tables[self._table_name][doc_id] = dict(zip(column_names, row))
+            _mock_tables[self._table_name][doc_id] = dict(zip(column_names, row, strict=False))
 
     def search_vector(self, vector, column, distance_method, output_name):
         return MockSearchQuery(self._table_name, "vector")

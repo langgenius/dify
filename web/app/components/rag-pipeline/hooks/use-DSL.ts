@@ -1,9 +1,11 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { ExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -17,10 +19,11 @@ type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowD
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation(['app'])
   const { eventEmitter } = useEventEmitterContextContext()
+  const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const workflowStore = useWorkflowStore()
   const { mutateAsync: exportPipeline, isPending: isExporting } = useMutation({
     mutationFn: async (include: boolean) => {
-      const { pipelineId, knowledgeName } = workflowStore.getState()
+      const { knowledgeName } = workflowStore.getState()
       if (!pipelineId) return false
 
       let syncFailed = false
@@ -57,7 +60,6 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     [t, isExporting, exportPipeline],
   )
   const exportCheck = useCallback(async () => {
-    const { pipelineId } = workflowStore.getState()
     if (!pipelineId) return
     try {
       const workflowDraft = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
@@ -77,7 +79,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     } catch {
       toast.error(t(($) => $.exportFailed, { ns: 'app' }))
     }
-  }, [eventEmitter, handleExportDSL, t, workflowStore])
+  }, [eventEmitter, handleExportDSL, t, pipelineId])
   return {
     exportCheck,
     handleExportDSL,

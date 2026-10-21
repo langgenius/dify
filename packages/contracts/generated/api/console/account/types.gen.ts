@@ -8,6 +8,16 @@ export type AvatarUrlResponse = {
   avatar_url: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type AccountAvatarPayload = {
   avatar: string
 }
@@ -27,6 +37,11 @@ export type AccountResponse = {
   timezone?: string | null
 }
 
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status: 400
+}
+
 export type ChangeEmailSendPayload = {
   email: string
   language?: string | null
@@ -39,12 +54,47 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
+export type InvalidEmailError = ErrorResponse & {
+  code: 'invalid_email'
+  status: 400
+}
+
+export type InvalidOrExpiredTokenError = ErrorResponse & {
+  code: 'invalid_or_expired_token'
+  status: 400
+}
+
+export type EmailChangeRateLimitExceededError = ErrorResponse & {
+  code: 'email_change_rate_limit_exceeded'
+  status: 429
+}
+
+export type EmailSendIpLimitError = ErrorResponse & {
+  code: 'email_send_ip_limit'
+  status: 429
+}
+
 export type CheckEmailUniquePayload = {
   email: string
 }
 
 export type SimpleResultResponse = {
   result: string
+}
+
+export type AccountInFreezeError = ErrorResponse & {
+  code: 'account_in_freeze'
+  status: 400
+}
+
+export type EmailAlreadyInUseError = ErrorResponse & {
+  code: 'email_already_in_use'
+  status: 400
+}
+
+export type EmailDomainSuspendedError = ErrorResponse & {
+  code: 'email_domain_suspended'
+  status: 400
 }
 
 export type ChangeEmailResetPayload = {
@@ -64,14 +114,34 @@ export type VerificationTokenResponse = {
   token: string
 }
 
+export type EmailCodeError = ErrorResponse & {
+  code: 'email_code_error'
+  status: 400
+}
+
+export type EmailChangeLimitError = ErrorResponse & {
+  code: 'email_change_limit'
+  status: 429
+}
+
 export type AccountDeletePayload = {
   code: string
   token: string
 }
 
+export type InvalidAccountDeletionCodeError = ErrorResponse & {
+  code: 'invalid_account_deletion_code'
+  status: 400
+}
+
 export type AccountDeletionFeedbackPayload = {
   email: string
   feedback: string
+}
+
+export type EmailCodeAccountDeletionRateLimitExceededError = ErrorResponse & {
+  code: 'email_code_account_deletion_rate_limit_exceeded'
+  status: 429
 }
 
 export type EducationStatusResponse = {
@@ -91,6 +161,11 @@ export type EducationActivateResponse = {
   message: string
 }
 
+export type EducationActivateLimitError = ErrorResponse & {
+  code: 'education_activate_limit'
+  status: 429
+}
+
 export type EducationAutocompleteResponse = {
   curr_page?: number | null
   data?: Array<string>
@@ -101,10 +176,30 @@ export type EducationVerifyResponse = {
   token?: string | null
 }
 
+export type EducationVerifyLimitError = ErrorResponse & {
+  code: 'education_verify_limit'
+  status: 429
+}
+
 export type AccountInitPayload = {
   interface_language: string
   invitation_code?: string | null
   timezone: string
+}
+
+export type AccountAlreadyInitedError = ErrorResponse & {
+  code: 'account_already_inited'
+  status: 400
+}
+
+export type InvalidInvitationCodeError = ErrorResponse & {
+  code: 'invalid_invitation_code'
+  status: 400
+}
+
+export type MissingInvitationCodeError = ErrorResponse & {
+  code: 'missing_invitation_code'
+  status: 400
 }
 
 export type AccountIntegrateListResponse = {
@@ -129,6 +224,76 @@ export type AccountPasswordPayload = {
   repeat_new_password: string
 }
 
+export type CurrentPasswordIncorrectError = ErrorResponse & {
+  code: 'current_password_incorrect'
+  status: 400
+}
+
+export type InvalidAccountPasswordError = ErrorResponse & {
+  code: 'invalid_account_password'
+  status: 400
+}
+
+export type PersonalAccessTokenResourceCandidateResponse = {
+  data: Array<PersonalAccessTokenResourceResponse>
+  has_more: boolean
+  next_cursor: number | null
+}
+
+export type PersonalAccessTokenWorkspaceCandidateResponse = {
+  data: Array<PersonalAccessTokenWorkspaceResponse>
+  has_more: boolean
+  next_cursor: number | null
+}
+
+export type PersonalAccessTokenListResponse = {
+  data: Array<PersonalAccessTokenResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type PersonalAccessTokenCreatePayload = {
+  expiration?: '180_days' | '30_days' | '365_days' | '90_days' | 'never'
+  name: string
+  resource_scope?: PersonalAccessTokenResourceScopePayload
+  workspace_scope?: PersonalAccessTokenWorkspaceScopePayload
+}
+
+export type PersonalAccessTokenResponse = {
+  created_at: string
+  expires_at: string | null
+  id: string
+  last_used_at: string | null
+  name: string
+  resource_count: number
+  resource_scope_mode: 'all' | 'none' | 'selected'
+  secret_last_four: string
+  status: 'access_issue' | 'active' | 'expired'
+  unavailable_count: number
+  version: number
+  workspace_count: number
+  workspace_scope_mode: 'all' | 'none' | 'selected'
+}
+
+export type PersonalAccessTokenDetailResponse = {
+  resources: Array<PersonalAccessTokenResourceResponse>
+  token: PersonalAccessTokenResponse
+  workspaces: Array<PersonalAccessTokenWorkspaceResponse>
+}
+
+export type PersonalAccessTokenUpdatePayload = {
+  name: string
+  resource_scope?: PersonalAccessTokenResourceScopePayload | null
+  version: number
+  workspace_scope?: PersonalAccessTokenWorkspaceScopePayload | null
+}
+
+export type PersonalAccessTokenSecretResponse = {
+  secret: string
+}
+
 export type AccountProfilePatchPayload = {
   avatar?: string
   interface_language?: string
@@ -146,6 +311,41 @@ export type AccountIntegrateResponse = {
   is_bound: boolean
   link?: string | null
   provider: string
+}
+
+export type PersonalAccessTokenResourceResponse = {
+  app_runners?: Array<PersonalAccessTokenResourceResponse>
+  available: boolean
+  display_name: string
+  parent_app_id?: string | null
+  reason: string | null
+  resource_id: string
+  resource_type: 'app' | 'app_runner' | 'dataset'
+  workspace_id: string
+  workspace_name: string
+}
+
+export type PersonalAccessTokenWorkspaceResponse = {
+  available: boolean
+  display_name: string
+  reason: string | null
+  role: string | null
+  workspace_id: string
+}
+
+export type PersonalAccessTokenResourceScopePayload = {
+  mode?: 'all' | 'none' | 'selected'
+  resources?: Array<PersonalAccessTokenResourcePayload>
+}
+
+export type PersonalAccessTokenWorkspaceScopePayload = {
+  mode?: 'all' | 'none' | 'selected'
+  workspace_ids?: Array<string>
+}
+
+export type PersonalAccessTokenResourcePayload = {
+  resource_id: string
+  resource_type: 'app' | 'app_runner' | 'dataset'
 }
 
 export type AccountResponseWritable = {
@@ -171,6 +371,12 @@ export type GetAccountAvatarData = {
   url: '/account/avatar'
 }
 
+export type GetAccountAvatarErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountAvatarError = GetAccountAvatarErrors[keyof GetAccountAvatarErrors]
+
 export type GetAccountAvatarResponses = {
   200: AvatarUrlResponse
 }
@@ -184,6 +390,13 @@ export type PostAccountAvatarData = {
   url: '/account/avatar'
 }
 
+export type PostAccountAvatarErrors = {
+  400: AccountNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountAvatarError = PostAccountAvatarErrors[keyof PostAccountAvatarErrors]
+
 export type PostAccountAvatarResponses = {
   200: AccountResponse
 }
@@ -196,6 +409,15 @@ export type PostAccountChangeEmailData = {
   query?: never
   url: '/account/change-email'
 }
+
+export type PostAccountChangeEmailErrors = {
+  400: AccountNotFoundError | InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
+  429: EmailChangeRateLimitExceededError | EmailSendIpLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailError =
+  PostAccountChangeEmailErrors[keyof PostAccountChangeEmailErrors]
 
 export type PostAccountChangeEmailResponses = {
   200: SimpleResultDataResponse
@@ -211,6 +433,14 @@ export type PostAccountChangeEmailCheckEmailUniqueData = {
   url: '/account/change-email/check-email-unique'
 }
 
+export type PostAccountChangeEmailCheckEmailUniqueErrors = {
+  400: AccountInFreezeError | EmailAlreadyInUseError | EmailDomainSuspendedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailCheckEmailUniqueError =
+  PostAccountChangeEmailCheckEmailUniqueErrors[keyof PostAccountChangeEmailCheckEmailUniqueErrors]
+
 export type PostAccountChangeEmailCheckEmailUniqueResponses = {
   200: SimpleResultResponse
 }
@@ -224,6 +454,20 @@ export type PostAccountChangeEmailResetData = {
   query?: never
   url: '/account/change-email/reset'
 }
+
+export type PostAccountChangeEmailResetErrors = {
+  400:
+    | AccountInFreezeError
+    | AccountNotFoundError
+    | EmailAlreadyInUseError
+    | EmailDomainSuspendedError
+    | InvalidOrExpiredTokenError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailResetError =
+  PostAccountChangeEmailResetErrors[keyof PostAccountChangeEmailResetErrors]
 
 export type PostAccountChangeEmailResetResponses = {
   200: AccountResponse
@@ -239,6 +483,15 @@ export type PostAccountChangeEmailValidityData = {
   url: '/account/change-email/validity'
 }
 
+export type PostAccountChangeEmailValidityErrors = {
+  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
+  429: EmailChangeLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailValidityError =
+  PostAccountChangeEmailValidityErrors[keyof PostAccountChangeEmailValidityErrors]
+
 export type PostAccountChangeEmailValidityResponses = {
   200: VerificationTokenResponse
 }
@@ -253,6 +506,13 @@ export type PostAccountDeleteData = {
   url: '/account/delete'
 }
 
+export type PostAccountDeleteErrors = {
+  400: InvalidAccountDeletionCodeError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountDeleteError = PostAccountDeleteErrors[keyof PostAccountDeleteErrors]
+
 export type PostAccountDeleteResponses = {
   200: SimpleResultResponse
 }
@@ -265,6 +525,13 @@ export type PostAccountDeleteFeedbackData = {
   query?: never
   url: '/account/delete/feedback'
 }
+
+export type PostAccountDeleteFeedbackErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountDeleteFeedbackError =
+  PostAccountDeleteFeedbackErrors[keyof PostAccountDeleteFeedbackErrors]
 
 export type PostAccountDeleteFeedbackResponses = {
   200: SimpleResultResponse
@@ -280,6 +547,15 @@ export type GetAccountDeleteVerifyData = {
   url: '/account/delete/verify'
 }
 
+export type GetAccountDeleteVerifyErrors = {
+  400: AccountNotFoundError | ErrorResponse
+  429: EmailCodeAccountDeletionRateLimitExceededError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAccountDeleteVerifyError =
+  GetAccountDeleteVerifyErrors[keyof GetAccountDeleteVerifyErrors]
+
 export type GetAccountDeleteVerifyResponses = {
   200: SimpleResultDataResponse
 }
@@ -294,6 +570,12 @@ export type GetAccountEducationData = {
   url: '/account/education'
 }
 
+export type GetAccountEducationErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountEducationError = GetAccountEducationErrors[keyof GetAccountEducationErrors]
+
 export type GetAccountEducationResponses = {
   200: EducationStatusResponse
 }
@@ -307,6 +589,14 @@ export type PostAccountEducationData = {
   query?: never
   url: '/account/education'
 }
+
+export type PostAccountEducationErrors = {
+  400: AccountNotFoundError | ErrorResponse
+  429: EducationActivateLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountEducationError = PostAccountEducationErrors[keyof PostAccountEducationErrors]
 
 export type PostAccountEducationResponses = {
   200: EducationActivateResponse
@@ -326,6 +616,13 @@ export type GetAccountEducationAutocompleteData = {
   url: '/account/education/autocomplete'
 }
 
+export type GetAccountEducationAutocompleteErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountEducationAutocompleteError =
+  GetAccountEducationAutocompleteErrors[keyof GetAccountEducationAutocompleteErrors]
+
 export type GetAccountEducationAutocompleteResponses = {
   200: EducationAutocompleteResponse
 }
@@ -339,6 +636,15 @@ export type GetAccountEducationVerifyData = {
   query?: never
   url: '/account/education/verify'
 }
+
+export type GetAccountEducationVerifyErrors = {
+  400: AccountNotFoundError | ErrorResponse
+  429: EducationVerifyLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAccountEducationVerifyError =
+  GetAccountEducationVerifyErrors[keyof GetAccountEducationVerifyErrors]
 
 export type GetAccountEducationVerifyResponses = {
   200: EducationVerifyResponse
@@ -354,6 +660,18 @@ export type PostAccountInitData = {
   url: '/account/init'
 }
 
+export type PostAccountInitErrors = {
+  400:
+    | AccountAlreadyInitedError
+    | AccountNotFoundError
+    | InvalidInvitationCodeError
+    | MissingInvitationCodeError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountInitError = PostAccountInitErrors[keyof PostAccountInitErrors]
+
 export type PostAccountInitResponses = {
   200: SimpleResultResponse
 }
@@ -366,6 +684,12 @@ export type GetAccountIntegratesData = {
   query?: never
   url: '/account/integrates'
 }
+
+export type GetAccountIntegratesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountIntegratesError = GetAccountIntegratesErrors[keyof GetAccountIntegratesErrors]
 
 export type GetAccountIntegratesResponses = {
   200: AccountIntegrateListResponse
@@ -381,6 +705,14 @@ export type PostAccountInterfaceLanguageData = {
   url: '/account/interface-language'
 }
 
+export type PostAccountInterfaceLanguageErrors = {
+  400: AccountNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountInterfaceLanguageError =
+  PostAccountInterfaceLanguageErrors[keyof PostAccountInterfaceLanguageErrors]
+
 export type PostAccountInterfaceLanguageResponses = {
   200: AccountResponse
 }
@@ -394,6 +726,14 @@ export type PostAccountInterfaceThemeData = {
   query?: never
   url: '/account/interface-theme'
 }
+
+export type PostAccountInterfaceThemeErrors = {
+  400: AccountNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountInterfaceThemeError =
+  PostAccountInterfaceThemeErrors[keyof PostAccountInterfaceThemeErrors]
 
 export type PostAccountInterfaceThemeResponses = {
   200: AccountResponse
@@ -409,6 +749,13 @@ export type PostAccountNameData = {
   url: '/account/name'
 }
 
+export type PostAccountNameErrors = {
+  400: AccountNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountNameError = PostAccountNameErrors[keyof PostAccountNameErrors]
+
 export type PostAccountNameResponses = {
   200: AccountResponse
 }
@@ -422,6 +769,17 @@ export type PostAccountPasswordData = {
   url: '/account/password'
 }
 
+export type PostAccountPasswordErrors = {
+  400:
+    | AccountNotFoundError
+    | CurrentPasswordIncorrectError
+    | InvalidAccountPasswordError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountPasswordError = PostAccountPasswordErrors[keyof PostAccountPasswordErrors]
+
 export type PostAccountPasswordResponses = {
   200: AccountResponse
 }
@@ -429,12 +787,209 @@ export type PostAccountPasswordResponses = {
 export type PostAccountPasswordResponse =
   PostAccountPasswordResponses[keyof PostAccountPasswordResponses]
 
+export type GetAccountPersonalAccessTokenResourcesData = {
+  body?: never
+  path?: never
+  query?: {
+    cursor?: number
+    keyword?: string
+    limit?: number
+  }
+  url: '/account/personal-access-token-resources'
+}
+
+export type GetAccountPersonalAccessTokenResourcesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountPersonalAccessTokenResourcesError =
+  GetAccountPersonalAccessTokenResourcesErrors[keyof GetAccountPersonalAccessTokenResourcesErrors]
+
+export type GetAccountPersonalAccessTokenResourcesResponses = {
+  200: PersonalAccessTokenResourceCandidateResponse
+}
+
+export type GetAccountPersonalAccessTokenResourcesResponse =
+  GetAccountPersonalAccessTokenResourcesResponses[keyof GetAccountPersonalAccessTokenResourcesResponses]
+
+export type GetAccountPersonalAccessTokenWorkspacesData = {
+  body?: never
+  path?: never
+  query?: {
+    cursor?: number
+    keyword?: string
+    limit?: number
+  }
+  url: '/account/personal-access-token-workspaces'
+}
+
+export type GetAccountPersonalAccessTokenWorkspacesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountPersonalAccessTokenWorkspacesError =
+  GetAccountPersonalAccessTokenWorkspacesErrors[keyof GetAccountPersonalAccessTokenWorkspacesErrors]
+
+export type GetAccountPersonalAccessTokenWorkspacesResponses = {
+  200: PersonalAccessTokenWorkspaceCandidateResponse
+}
+
+export type GetAccountPersonalAccessTokenWorkspacesResponse =
+  GetAccountPersonalAccessTokenWorkspacesResponses[keyof GetAccountPersonalAccessTokenWorkspacesResponses]
+
+export type GetAccountPersonalAccessTokensData = {
+  body?: never
+  path?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
+  url: '/account/personal-access-tokens'
+}
+
+export type GetAccountPersonalAccessTokensErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountPersonalAccessTokensError =
+  GetAccountPersonalAccessTokensErrors[keyof GetAccountPersonalAccessTokensErrors]
+
+export type GetAccountPersonalAccessTokensResponses = {
+  200: PersonalAccessTokenListResponse
+}
+
+export type GetAccountPersonalAccessTokensResponse =
+  GetAccountPersonalAccessTokensResponses[keyof GetAccountPersonalAccessTokensResponses]
+
+export type PostAccountPersonalAccessTokensData = {
+  body: PersonalAccessTokenCreatePayload
+  headers?: {
+    'Idempotency-Key'?: string
+  }
+  path?: never
+  query?: never
+  url: '/account/personal-access-tokens'
+}
+
+export type PostAccountPersonalAccessTokensErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountPersonalAccessTokensError =
+  PostAccountPersonalAccessTokensErrors[keyof PostAccountPersonalAccessTokensErrors]
+
+export type PostAccountPersonalAccessTokensResponses = {
+  201: PersonalAccessTokenResponse
+}
+
+export type PostAccountPersonalAccessTokensResponse =
+  PostAccountPersonalAccessTokensResponses[keyof PostAccountPersonalAccessTokensResponses]
+
+export type DeleteAccountPersonalAccessTokensByTokenIdData = {
+  body?: never
+  path: {
+    token_id: string
+  }
+  query?: never
+  url: '/account/personal-access-tokens/{token_id}'
+}
+
+export type DeleteAccountPersonalAccessTokensByTokenIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAccountPersonalAccessTokensByTokenIdError =
+  DeleteAccountPersonalAccessTokensByTokenIdErrors[keyof DeleteAccountPersonalAccessTokensByTokenIdErrors]
+
+export type DeleteAccountPersonalAccessTokensByTokenIdResponses = {
+  204: void
+}
+
+export type DeleteAccountPersonalAccessTokensByTokenIdResponse =
+  DeleteAccountPersonalAccessTokensByTokenIdResponses[keyof DeleteAccountPersonalAccessTokensByTokenIdResponses]
+
+export type GetAccountPersonalAccessTokensByTokenIdData = {
+  body?: never
+  path: {
+    token_id: string
+  }
+  query?: never
+  url: '/account/personal-access-tokens/{token_id}'
+}
+
+export type GetAccountPersonalAccessTokensByTokenIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountPersonalAccessTokensByTokenIdError =
+  GetAccountPersonalAccessTokensByTokenIdErrors[keyof GetAccountPersonalAccessTokensByTokenIdErrors]
+
+export type GetAccountPersonalAccessTokensByTokenIdResponses = {
+  200: PersonalAccessTokenDetailResponse
+}
+
+export type GetAccountPersonalAccessTokensByTokenIdResponse =
+  GetAccountPersonalAccessTokensByTokenIdResponses[keyof GetAccountPersonalAccessTokensByTokenIdResponses]
+
+export type PatchAccountPersonalAccessTokensByTokenIdData = {
+  body: PersonalAccessTokenUpdatePayload
+  path: {
+    token_id: string
+  }
+  query?: never
+  url: '/account/personal-access-tokens/{token_id}'
+}
+
+export type PatchAccountPersonalAccessTokensByTokenIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchAccountPersonalAccessTokensByTokenIdError =
+  PatchAccountPersonalAccessTokensByTokenIdErrors[keyof PatchAccountPersonalAccessTokensByTokenIdErrors]
+
+export type PatchAccountPersonalAccessTokensByTokenIdResponses = {
+  200: PersonalAccessTokenDetailResponse
+}
+
+export type PatchAccountPersonalAccessTokensByTokenIdResponse =
+  PatchAccountPersonalAccessTokensByTokenIdResponses[keyof PatchAccountPersonalAccessTokensByTokenIdResponses]
+
+export type PostAccountPersonalAccessTokensByTokenIdSecretData = {
+  body?: never
+  path: {
+    token_id: string
+  }
+  query?: never
+  url: '/account/personal-access-tokens/{token_id}/secret'
+}
+
+export type PostAccountPersonalAccessTokensByTokenIdSecretErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountPersonalAccessTokensByTokenIdSecretError =
+  PostAccountPersonalAccessTokensByTokenIdSecretErrors[keyof PostAccountPersonalAccessTokensByTokenIdSecretErrors]
+
+export type PostAccountPersonalAccessTokensByTokenIdSecretResponses = {
+  200: PersonalAccessTokenSecretResponse
+}
+
+export type PostAccountPersonalAccessTokensByTokenIdSecretResponse =
+  PostAccountPersonalAccessTokensByTokenIdSecretResponses[keyof PostAccountPersonalAccessTokensByTokenIdSecretResponses]
+
 export type GetAccountProfileData = {
   body?: never
   path?: never
   query?: never
   url: '/account/profile'
 }
+
+export type GetAccountProfileErrors = {
+  400: AccountNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAccountProfileError = GetAccountProfileErrors[keyof GetAccountProfileErrors]
 
 export type GetAccountProfileResponses = {
   200: AccountResponse
@@ -449,6 +1004,13 @@ export type PatchAccountProfileData = {
   url: '/account/profile'
 }
 
+export type PatchAccountProfileErrors = {
+  400: AccountNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchAccountProfileError = PatchAccountProfileErrors[keyof PatchAccountProfileErrors]
+
 export type PatchAccountProfileResponses = {
   200: AccountResponse
 }
@@ -462,6 +1024,13 @@ export type PostAccountTimezoneData = {
   query?: never
   url: '/account/timezone'
 }
+
+export type PostAccountTimezoneErrors = {
+  400: AccountNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountTimezoneError = PostAccountTimezoneErrors[keyof PostAccountTimezoneErrors]
 
 export type PostAccountTimezoneResponses = {
   200: AccountResponse

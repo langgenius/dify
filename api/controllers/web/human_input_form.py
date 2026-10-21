@@ -23,11 +23,19 @@ from core.workflow.nodes.human_input.entities import FormInputConfig, UserAction
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import RateLimiter, dump_response, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
 from models.model import App, AppMode, Site
 from services.feature_service import FeatureService
-from services.human_input_service import Form, FormNotFoundError, HumanInputService
+from services.human_input_service import (
+    Form,
+    FormExpiredError,
+    FormNotFoundError,
+    FormSubmittedError,
+    HumanInputService,
+    InvalidFormDataError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +109,7 @@ _FORM_UPLOAD_TOKEN_RATE_LIMITER = RateLimiter(
 class HumanInputFormUploadTokenApi(Resource):
     """API for issuing HITL upload tokens for active human input forms."""
 
+    @error_responses(FormExpiredError, FormSubmittedError, WebFormRateLimitExceededError)
     @web_ns.doc("create_human_input_form_upload_token")
     @web_ns.doc(description="Issue an upload token for an active human input form")
     @web_ns.doc(params={"form_token": "Human input form token"})
@@ -130,8 +139,8 @@ class HumanInputFormUploadTokenApi(Resource):
 
         try:
             token = application_services().human_input_file_uploads.issue_upload_token(form_token)
-        except FormNotFoundError:
-            raise NotFoundError("Form not found")
+        except FormNotFoundError as caught_error:
+            raise NotFoundError("Form not found") from caught_error
 
         return HumanInputUploadTokenResponse(
             upload_token=token.upload_token, expires_at=to_timestamp(token.expires_at)
@@ -144,6 +153,7 @@ class HumanInputFormApi(Resource):
 
     # NOTE(QuantumGhost): this endpoint is unauthenticated on purpose for now.
 
+    @error_responses(FormExpiredError, FormSubmittedError, WebFormRateLimitExceededError)
     @web_ns.doc("get_human_input_form")
     @web_ns.doc(description="Get a human input form definition by token")
     @web_ns.doc(params={"form_token": "Human input form token"})
@@ -205,6 +215,7 @@ class HumanInputFormApi(Resource):
             ),
         )
 
+    @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError, WebFormRateLimitExceededError)
     @web_ns.expect(web_ns.models[HumanInputFormSubmitPayload.__name__])
     @web_ns.doc("submit_human_input_form")
     @web_ns.doc(description="Submit a human input form by token")
@@ -260,8 +271,8 @@ class HumanInputFormApi(Resource):
                 form_data=payload.inputs,
                 submission_end_user_id=None,
             )
-        except FormNotFoundError:
-            raise NotFoundError("Form not found")
+        except FormNotFoundError as caught_error:
+            raise NotFoundError("Form not found") from caught_error
 
         return HumanInputFormSubmitResponse().model_dump(mode="json"), 200
 

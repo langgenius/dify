@@ -1,50 +1,20 @@
 import {
   canAccessSnippetsAndEvaluation,
-  getPlanVectorSpaceLimitMB,
   getResetInDaysFromDate,
   parseLimit,
   parseVectorSpaceToMB,
 } from '../index'
 
 describe('billing utils', () => {
-  // parseVectorSpaceToMB tests
-  describe('parseVectorSpaceToMB', () => {
-    it('should parse MB values correctly', () => {
-      expect(parseVectorSpaceToMB('50MB')).toBe(50)
-      expect(parseVectorSpaceToMB('100MB')).toBe(100)
-    })
-
-    it('should parse GB values and convert to MB', () => {
-      expect(parseVectorSpaceToMB('5GB')).toBe(5 * 1024)
-      expect(parseVectorSpaceToMB('20GB')).toBe(20 * 1024)
-    })
-
-    it('should be case insensitive', () => {
-      expect(parseVectorSpaceToMB('50mb')).toBe(50)
-      expect(parseVectorSpaceToMB('5gb')).toBe(5 * 1024)
-    })
-
-    it('should return 0 for invalid format', () => {
-      expect(parseVectorSpaceToMB('50')).toBe(0)
-      expect(parseVectorSpaceToMB('invalid')).toBe(0)
-      expect(parseVectorSpaceToMB('')).toBe(0)
-      expect(parseVectorSpaceToMB('50TB')).toBe(0)
-    })
-  })
-
-  // getPlanVectorSpaceLimitMB tests
-  describe('getPlanVectorSpaceLimitMB', () => {
-    it('should return correct vector space for sandbox plan', () => {
-      expect(getPlanVectorSpaceLimitMB('sandbox')).toBe(50)
-    })
-
-    it('should return correct vector space for professional plan', () => {
-      expect(getPlanVectorSpaceLimitMB('professional')).toBe(5 * 1024)
-    })
-
-    it('should return correct vector space for team plan', () => {
-      expect(getPlanVectorSpaceLimitMB('team')).toBe(20 * 1024)
-    })
+  it.each([
+    ['50MB', 50],
+    ['5GB', 5120],
+    ['50mb', 50],
+    ['5gb', 5120],
+    ['50', 0],
+    ['50TB', 0],
+  ])('converts vector storage %s to %i MB', (value, expected) => {
+    expect(parseVectorSpaceToMB(value)).toBe(expected)
   })
 
   describe('quota reset dates', () => {

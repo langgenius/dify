@@ -6,25 +6,23 @@ import type {
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
+import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { selectPipelineStepParameters } from '@/app/components/rag-pipeline/utils/query-select'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { CrawlStep } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
-import { useGetDataSourceAuth } from '@/service/use-datasource'
-import {
-  useDraftPipelinePreProcessingParams,
-  usePublishedPipelinePreProcessingParams,
-} from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import Header from '../base/header'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import CrawledResult from './base/crawled-result'
@@ -67,22 +65,24 @@ const WebsiteCrawl = ({
       })),
     )
 
-  const { data: dataSourceAuth } = useGetDataSourceAuth({
-    pluginId: nodeData.plugin_id,
-    provider: nodeData.provider_name,
-  })
+  const { data: dataSourceAuth } = useQuery(
+    consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
+      input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
+    }),
+  )
 
   const dataSourceStore = useDataSourceStore()
 
-  const usePreProcessingParams = useRef(
-    !isInPipeline ? usePublishedPipelinePreProcessingParams : useDraftPipelinePreProcessingParams,
-  )
-  const { data: paramsConfig, isFetching: isFetchingParams } = usePreProcessingParams.current(
-    {
-      pipeline_id: pipelineId!,
-      node_id: nodeId,
-    },
-    !!pipelineId && !!nodeId,
+  const preProcessingParamsOptions = {
+    input: { params: { pipeline_id: pipelineId! }, query: { node_id: nodeId } },
+    enabled: !!pipelineId && !!nodeId,
+    select: selectPipelineStepParameters,
+  }
+  const workflows = consoleQuery.rag.pipelines.byPipelineId.workflows
+  const { data: paramsConfig, isFetching: isFetchingParams } = useQuery(
+    isInPipeline
+      ? workflows.draft.preProcessing.parameters.get.queryOptions(preProcessingParamsOptions)
+      : workflows.published.preProcessing.parameters.get.queryOptions(preProcessingParamsOptions),
   )
 
   const isInit = step === CrawlStep.init

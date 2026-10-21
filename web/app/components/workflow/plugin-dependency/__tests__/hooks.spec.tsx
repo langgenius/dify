@@ -1,69 +1,59 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook } from '@testing-library/react'
+import type { CheckDependenciesResult } from '@dify/contracts/api/console/apps/types.gen'
+import { act } from '@testing-library/react'
 import { createHttpError } from '@/service/http-error'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { usePluginDependencies } from '../hooks'
 import { useStore } from '../store'
 
 const mocks = vi.hoisted(() => ({
-  request: vi.fn(),
+  request: vi.fn<(...args: unknown[]) => Promise<Response>>(),
   error: vi.fn(),
-  pipeline: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      imports: {
-        byAppId: {
-          checkDependencies: {
-            get: {
-              mutationOptions: ({ context }: { context: { silent: boolean } }) => ({
-                mutationFn: (input: unknown) => mocks.request(input, context),
-              }),
-            },
-          },
-        },
-      },
-    },
-  },
-}))
-vi.mock('@/service/use-pipeline', () => ({
-  useCheckPipelineDependencies: () => ({ mutateAsync: mocks.pipeline }),
-}))
+vi.mock('@/service/base', () => ({ request: mocks.request }))
 vi.mock('@/app/notifications', () => ({ toast: { error: mocks.error } }))
 
-function renderDependencies() {
-  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
-  return renderHook(usePluginDependencies, {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    ),
-  })
-}
-
 describe('usePluginDependencies', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('stores generated dependencies with nullable versions and clears an omitted dependency list', async () => {
-    const dependency = {
-      type: 'marketplace',
-      value: { marketplace_plugin_unique_identifier: 'plugin-1', version: null },
-    }
-    mocks.request
-      .mockResolvedValueOnce({ leaked_dependencies: [dependency] })
-      .mockResolvedValueOnce({})
-    const { result } = renderDependencies()
-    await act(async () =>
-      expect(await result.current.handleCheckPluginDependencies('app-1')).toBe(true),
-    )
-    expect(useStore.getState().dependencies).toEqual([
-      { ...dependency, value: { ...dependency.value, version: undefined } },
-    ])
-    expect(mocks.request).toHaveBeenCalledWith({ params: { app_id: 'app-1' } }, { silent: true })
-    await act(async () => result.current.handleCheckPluginDependencies('app-1'))
-    expect(useStore.getState().dependencies).toEqual([])
+  beforeEach(() => {
+    mocks.request.mockReset()
+    useStore.getState().setDependencies([])
   })
+
+  it.each([
+    { resource: 'app', isPipeline: false, path: '/apps/imports/resource-1/check-dependencies' },
+    {
+      resource: 'pipeline',
+      isPipeline: true,
+      path: '/rag/pipelines/imports/resource-1/check-dependencies',
+    },
+  ])(
+    'stores $resource dependencies with nullable versions and clears an omitted list',
+    async ({ isPipeline, path }) => {
+      const dependency = {
+        type: 'marketplace',
+        value: { marketplace_plugin_unique_identifier: 'plugin-1', version: null },
+      } satisfies NonNullable<CheckDependenciesResult['leaked_dependencies']>[number]
+      mocks.request
+        .mockResolvedValueOnce(Response.json({ leaked_dependencies: [dependency] }))
+        .mockResolvedValueOnce(Response.json({}))
+      const { result } = renderHookWithConsoleQuery(usePluginDependencies)
+      await act(async () =>
+        expect(await result.current.handleCheckPluginDependencies('resource-1', isPipeline)).toBe(
+          true,
+        ),
+      )
+      expect(useStore.getState().dependencies).toEqual([
+        { ...dependency, value: { ...dependency.value, version: undefined } },
+      ])
+      expect(mocks.request).toHaveBeenCalledWith(
+        expect.stringContaining(path),
+        expect.any(Object),
+        expect.objectContaining({ fetchCompat: true, ...(!isPipeline && { silent: true }) }),
+      )
+      await act(async () => result.current.handleCheckPluginDependencies('resource-1', isPipeline))
+      expect(useStore.getState().dependencies).toEqual([])
+    },
+  )
 
   it.each([
     [new TypeError('Network unavailable'), 'Network unavailable'],
@@ -73,22 +63,19 @@ describe('usePluginDependencies', () => {
       }),
       'Dependency check unavailable',
     ],
-  ])(
-    'reports a request failure once without rejecting the completed import',
-    async (error, description) => {
-      useStore.getState().setDependencies([
-        {
-          type: 'marketplace',
-          value: { marketplace_plugin_unique_identifier: 'previous-app-plugin' },
-        },
-      ])
-      mocks.request.mockRejectedValue(error)
-      const { result } = renderDependencies()
-      await act(async () =>
-        expect(await result.current.handleCheckPluginDependencies('app-1')).toBe(false),
-      )
-      expect(mocks.error).toHaveBeenCalledExactlyOnceWith('common.error', { description })
-      expect(useStore.getState().dependencies).toEqual([])
-    },
-  )
+  ])('reports app dependency errors and clears stale dependencies', async (error, description) => {
+    useStore.getState().setDependencies([
+      {
+        type: 'marketplace',
+        value: { marketplace_plugin_unique_identifier: 'previous-app-plugin' },
+      },
+    ])
+    mocks.request.mockRejectedValue(error)
+    const { result } = renderHookWithConsoleQuery(usePluginDependencies)
+    await act(async () =>
+      expect(await result.current.handleCheckPluginDependencies('app-1')).toBe(false),
+    )
+    expect(mocks.error).toHaveBeenCalledExactlyOnceWith('common.error', { description })
+    expect(useStore.getState().dependencies).toEqual([])
+  })
 })

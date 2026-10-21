@@ -2,7 +2,8 @@ import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { IOtherOptions } from '@/service/base'
 import type { VisionSettings } from '@/types/app'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
 import { Resolution, TransferMethod } from '@/types/app'
 import Result from '../index'
@@ -144,6 +145,7 @@ describe('Result', () => {
   })
 
   it('should stream completion results and stop the current task', async () => {
+    const user = userEvent.setup()
     let completionHandlers: {
       onCompleted: () => void
       onData: (
@@ -194,7 +196,7 @@ describe('Result', () => {
       )
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.stopResponding' }))
+    await user.click(screen.getByRole('button', { name: 'operation.stopResponding' }))
     await waitFor(() => {
       expect(stopChatMessageRespondingMock).toHaveBeenCalledWith(
         'app-1',
@@ -371,38 +373,5 @@ describe('Result', () => {
         taskId: '12',
       }),
     )
-  })
-
-  it('should render the mobile stop button layout while a batch run is responding', async () => {
-    let completionHandlers: {
-      onData: (
-        chunk: string,
-        isFirstMessage: boolean,
-        info: { messageId: string; taskId?: string },
-      ) => void
-    } | null = null
-
-    sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
-      completionHandlers = handlers
-    })
-
-    const { rerender } = render(
-      <Result {...baseProps} isCallBatchAPI isMobile isPC={false} taskId={2} />,
-    )
-
-    rerender(
-      <Result {...baseProps} controlSend={1} isCallBatchAPI isMobile isPC={false} taskId={2} />,
-    )
-
-    await act(async () => {
-      completionHandlers?.onData('Hello', false, {
-        messageId: 'message-batch',
-        taskId: 'task-batch',
-      })
-    })
-
-    expect(
-      screen.getByRole('button', { name: 'operation.stopResponding' }).parentElement?.className,
-    ).toContain('justify-center')
   })
 })

@@ -12,8 +12,8 @@ import { useTranslation } from 'react-i18next'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import ModelIcon from '../model-icon'
+import { getCanAddedModels } from './hooks/get-custom-models'
 import { useAuth } from './hooks/use-auth'
-import { useCanAddedModels } from './hooks/use-custom-models'
 
 type AddCustomModelProps = {
   provider: ModelProvider
@@ -36,7 +36,7 @@ const AddCustomModel = ({
     setLocalOpen(nextOpen)
     onOpenChange?.(nextOpen)
   }
-  const canAddedModels = useCanAddedModels(provider)
+  const canAddedModels = getCanAddedModels(provider)
   const noModels = !canAddedModels.length
   const { canUseCredential, canCreateCredential } = useCredentialPermissions()
   const { handleOpenModal: handleOpenModalForAddNewCustomModel } = useAuth(
@@ -119,15 +119,16 @@ const AddCustomModel = ({
         <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="max-h-76 overflow-y-auto p-1">
             {canAddedModels.map((model) => (
-              <div
+              <button
+                type="button"
                 key={model.model}
                 className={cn(
-                  'flex h-8 items-center rounded-lg px-2',
+                  'flex h-8 w-full items-center rounded-lg px-2 text-left',
                   canUseCredential
                     ? 'cursor-pointer hover:bg-state-base-hover'
                     : 'cursor-not-allowed opacity-50',
                 )}
-                aria-disabled={!canUseCredential}
+                disabled={!canUseCredential}
                 onClick={() => {
                   if (!canUseCredential) return
 
@@ -147,12 +148,13 @@ const AddCustomModel = ({
                 >
                   {model.model}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
           {!notAllowCustomCredential && canCreateCredential && (
-            <div
-              className="flex cursor-pointer items-center border-t border-t-divider-subtle p-3 system-xs-medium text-text-accent-light-mode-only"
+            <button
+              type="button"
+              className="flex w-full cursor-pointer items-center border-t border-t-divider-subtle p-3 system-xs-medium text-text-accent-light-mode-only"
               onClick={() => {
                 setOpen(false)
                 handleOpenModalForAddNewCustomModel()
@@ -160,7 +162,7 @@ const AddCustomModel = ({
             >
               <span className="mr-1 i-ri-add-line size-4" />
               {t(($) => $['modelProvider.auth.addNewModel'], { ns: 'modelProvider' })}
-            </div>
+            </button>
           )}
         </div>
       </PopoverContent>

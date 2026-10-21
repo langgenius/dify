@@ -8,24 +8,23 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.workflow.nodes.agent.agent_node import AgentNode
 from core.workflow.nodes.agent.entities import AgentNodeData
 from core.workflow.nodes.agent.events import AgentLogEvent, NodeRunAgentLogEvent
-from graphon.entities import GraphInitParams
+from graphon.engine_events import NodeRunStreamChunkEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.graph_events import NodeRunStreamChunkEvent
 from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 
 
 def test_dispatch_converts_agent_events_and_delegates_other_events() -> None:
     node = AgentNode(
         node_id="node-id",
         data=AgentNodeData(title="Agent"),
-        graph_init_params=GraphInitParams(
+        init_params=InitParams(
             workflow_id="workflow-id",
             graph_config={},
             run_context={},
             call_depth=0,
         ),
-        graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
+        runtime_state=RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0),
         strategy_resolver=MagicMock(),
         presentation_provider=MagicMock(),
         runtime_support=MagicMock(),
@@ -96,7 +95,7 @@ def test_run_continues_when_tool_snapshot_capture_fails(caplog: pytest.LogCaptur
             agent_strategy_provider_name="provider",
             agent_strategy_name="strategy",
         ),
-        graph_init_params=GraphInitParams(
+        init_params=InitParams(
             workflow_id="workflow-id",
             graph_config={},
             run_context={
@@ -110,7 +109,7 @@ def test_run_continues_when_tool_snapshot_capture_fails(caplog: pytest.LogCaptur
             },
             call_depth=0,
         ),
-        graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
+        runtime_state=RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0),
         strategy_resolver=strategy_resolver,
         presentation_provider=presentation_provider,
         runtime_support=runtime_support,

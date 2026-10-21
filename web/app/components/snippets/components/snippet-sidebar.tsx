@@ -1,7 +1,8 @@
 'use client'
 
 import type { InputVar } from '@/app/components/workflow/types'
-import type { SnippetDetail, SnippetInputField, SnippetSection } from '@/models/snippet'
+import type { InputVar as PipelineInputVar } from '@/models/pipeline'
+import type { SnippetDetail, SnippetSection } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 import { isEqual } from 'es-toolkit/predicate'
 import { useCallback, useMemo, useState } from 'react'
@@ -18,24 +19,24 @@ import { SnippetPlaceholderIcon } from './snippet-placeholder-icon'
 type SnippetSidebarProps = {
   snippet: SnippetDetail
   section?: SnippetSection
-  fields: SnippetInputField[]
+  fields: PipelineInputVar[]
   readonly: boolean
-  onFieldsChange?: (fields: SnippetInputField[]) => void
+  onFieldsChange?: (fields: PipelineInputVar[]) => void
 }
 
 type SnippetSidebarContentProps = SnippetSidebarProps & {
   className?: string
 }
 
-const toWorkflowInputVar = (field: SnippetInputField): InputVar => ({
+const toWorkflowInputVar = (field: PipelineInputVar): InputVar => ({
   ...field,
-  type: field.type as unknown as InputVar['type'],
+  type: field.type as InputVar['type'],
 })
 
-const toSnippetInputField = (field: InputVar): SnippetInputField => ({
+const toSnippetInputField = (field: InputVar): PipelineInputVar => ({
   ...field,
   label: typeof field.label === 'string' ? field.label : field.label.variable,
-  type: field.type as unknown as SnippetInputField['type'],
+  type: field.type as PipelineInputVar['type'],
 })
 
 export const SnippetSidebarContent = ({
@@ -59,13 +60,13 @@ export const SnippetSidebarContent = ({
   }, [])
 
   const validateFields = useCallback(
-    (nextFields: SnippetInputField[]) => {
+    (nextFields: PipelineInputVar[]) => {
       let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
       let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
       if (hasDuplicateStr(nextFields.map((item) => item.variable))) {
         errorMsgKey = 'varKeyError.keyAlreadyExists'
         typeName = 'variableConfig.varName'
-      } else if (hasDuplicateStr(nextFields.map((item) => item.label as string))) {
+      } else if (hasDuplicateStr(nextFields.map((item) => item.label))) {
         errorMsgKey = 'varKeyError.keyAlreadyExists'
         typeName = 'variableConfig.labelName'
       }

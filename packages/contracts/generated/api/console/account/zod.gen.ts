@@ -10,6 +10,22 @@ export const zAvatarUrlResponse = z.object({
 })
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * AccountAvatarPayload
  */
 export const zAccountAvatarPayload = z.object({
@@ -35,6 +51,18 @@ export const zAccountResponse = z.object({
 })
 
 /**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ChangeEmailSendPayload
  */
 export const zChangeEmailSendPayload = z.object({
@@ -53,6 +81,54 @@ export const zSimpleResultDataResponse = z.object({
 })
 
 /**
+ * InvalidEmailError
+ *
+ * The email address is not valid.
+ */
+export const zInvalidEmailError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_email'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidOrExpiredTokenError
+ *
+ * The token is invalid or has expired.
+ */
+export const zInvalidOrExpiredTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_or_expired_token'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailChangeRateLimitExceededError
+ *
+ * Too many email change emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zEmailChangeRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_change_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * EmailSendIpLimitError
+ *
+ * Too many emails have been sent from this IP address recently. Please try again later.
+ */
+export const zEmailSendIpLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_send_ip_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * CheckEmailUniquePayload
  */
 export const zCheckEmailUniquePayload = z.object({
@@ -65,6 +141,42 @@ export const zCheckEmailUniquePayload = z.object({
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * AccountInFreezeError
+ *
+ * This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
+ */
+export const zAccountInFreezeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_in_freeze'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailAlreadyInUseError
+ *
+ * A user with this email already exists.
+ */
+export const zEmailAlreadyInUseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_already_in_use'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailDomainSuspendedError
+ *
+ * This email domain has been suspended.
+ */
+export const zEmailDomainSuspendedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_domain_suspended'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ChangeEmailResetPayload
@@ -93,6 +205,30 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
+ * EmailCodeError
+ *
+ * Email code is invalid or expired.
+ */
+export const zEmailCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailChangeLimitError
+ *
+ * Too many failed email change attempts. Please try again in 24 hours.
+ */
+export const zEmailChangeLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_change_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * AccountDeletePayload
  */
 export const zAccountDeletePayload = z.object({
@@ -101,12 +237,36 @@ export const zAccountDeletePayload = z.object({
 })
 
 /**
+ * InvalidAccountDeletionCodeError
+ *
+ * Invalid account deletion code.
+ */
+export const zInvalidAccountDeletionCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_account_deletion_code'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AccountDeletionFeedbackPayload
  */
 export const zAccountDeletionFeedbackPayload = z.object({
   email: z.string(),
   feedback: z.string(),
 })
+
+/**
+ * EmailCodeAccountDeletionRateLimitExceededError
+ *
+ * Too many account deletion emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zEmailCodeAccountDeletionRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_account_deletion_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * EducationStatusResponse
@@ -135,6 +295,18 @@ export const zEducationActivateResponse = z.object({
 })
 
 /**
+ * EducationActivateLimitError
+ *
+ * Rate limit exceeded
+ */
+export const zEducationActivateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('education_activate_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * EducationAutocompleteResponse
  */
 export const zEducationAutocompleteResponse = z.object({
@@ -151,6 +323,18 @@ export const zEducationVerifyResponse = z.object({
 })
 
 /**
+ * EducationVerifyLimitError
+ *
+ * Rate limit exceeded
+ */
+export const zEducationVerifyLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('education_verify_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * AccountInitPayload
  */
 export const zAccountInitPayload = z.object({
@@ -158,6 +342,42 @@ export const zAccountInitPayload = z.object({
   invitation_code: z.string().nullish(),
   timezone: z.string(),
 })
+
+/**
+ * AccountAlreadyInitedError
+ *
+ * The account has been initialized. Please refresh the page.
+ */
+export const zAccountAlreadyInitedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_already_inited'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidInvitationCodeError
+ *
+ * Invalid invitation code.
+ */
+export const zInvalidInvitationCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_invitation_code'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * MissingInvitationCodeError
+ *
+ * Invitation code is required.
+ */
+export const zMissingInvitationCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('missing_invitation_code'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * AccountInterfaceLanguagePayload
@@ -187,6 +407,67 @@ export const zAccountPasswordPayload = z.object({
   new_password: z.string(),
   password: z.string().nullish(),
   repeat_new_password: z.string(),
+})
+
+/**
+ * CurrentPasswordIncorrectError
+ *
+ * Current password is incorrect.
+ */
+export const zCurrentPasswordIncorrectError = zErrorResponse.and(
+  z.object({
+    code: z.literal('current_password_incorrect'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidAccountPasswordError
+ *
+ * The password does not satisfy the account password policy.
+ */
+export const zInvalidAccountPasswordError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_account_password'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PersonalAccessTokenResponse
+ */
+export const zPersonalAccessTokenResponse = z.object({
+  created_at: z.iso.datetime(),
+  expires_at: z.iso.datetime().nullable(),
+  id: z.string(),
+  last_used_at: z.iso.datetime().nullable(),
+  name: z.string(),
+  resource_count: z.int(),
+  resource_scope_mode: z.enum(['all', 'none', 'selected']),
+  secret_last_four: z.string(),
+  status: z.enum(['access_issue', 'active', 'expired']),
+  unavailable_count: z.int(),
+  version: z.int(),
+  workspace_count: z.int(),
+  workspace_scope_mode: z.enum(['all', 'none', 'selected']),
+})
+
+/**
+ * PersonalAccessTokenListResponse
+ */
+export const zPersonalAccessTokenListResponse = z.object({
+  data: z.array(zPersonalAccessTokenResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * PersonalAccessTokenSecretResponse
+ */
+export const zPersonalAccessTokenSecretResponse = z.object({
+  secret: z.string(),
 })
 
 /**
@@ -224,6 +505,106 @@ export const zAccountIntegrateResponse = z.object({
  */
 export const zAccountIntegrateListResponse = z.object({
   data: z.array(zAccountIntegrateResponse),
+})
+
+/**
+ * PersonalAccessTokenResourceResponse
+ */
+export const zPersonalAccessTokenResourceResponse = z.object({
+  app_runners: z.array(z.lazy((): any => zPersonalAccessTokenResourceResponse)).optional(),
+  available: z.boolean(),
+  display_name: z.string(),
+  parent_app_id: z.string().nullish(),
+  reason: z.string().nullable(),
+  resource_id: z.string(),
+  resource_type: z.enum(['app', 'app_runner', 'dataset']),
+  workspace_id: z.string(),
+  workspace_name: z.string(),
+})
+
+/**
+ * PersonalAccessTokenResourceCandidateResponse
+ */
+export const zPersonalAccessTokenResourceCandidateResponse = z.object({
+  data: z.array(zPersonalAccessTokenResourceResponse),
+  has_more: z.boolean(),
+  next_cursor: z.int().nullable(),
+})
+
+/**
+ * PersonalAccessTokenWorkspaceResponse
+ */
+export const zPersonalAccessTokenWorkspaceResponse = z.object({
+  available: z.boolean(),
+  display_name: z.string(),
+  reason: z.string().nullable(),
+  role: z.string().nullable(),
+  workspace_id: z.string(),
+})
+
+/**
+ * PersonalAccessTokenWorkspaceCandidateResponse
+ */
+export const zPersonalAccessTokenWorkspaceCandidateResponse = z.object({
+  data: z.array(zPersonalAccessTokenWorkspaceResponse),
+  has_more: z.boolean(),
+  next_cursor: z.int().nullable(),
+})
+
+/**
+ * PersonalAccessTokenDetailResponse
+ */
+export const zPersonalAccessTokenDetailResponse = z.object({
+  resources: z.array(zPersonalAccessTokenResourceResponse),
+  token: zPersonalAccessTokenResponse,
+  workspaces: z.array(zPersonalAccessTokenWorkspaceResponse),
+})
+
+/**
+ * PersonalAccessTokenWorkspaceScopePayload
+ */
+export const zPersonalAccessTokenWorkspaceScopePayload = z.object({
+  mode: z.enum(['all', 'none', 'selected']).optional().default('all'),
+  workspace_ids: z.array(z.uuid()).optional(),
+})
+
+/**
+ * PersonalAccessTokenResourcePayload
+ */
+export const zPersonalAccessTokenResourcePayload = z.object({
+  resource_id: z.uuid(),
+  resource_type: z.enum(['app', 'app_runner', 'dataset']),
+})
+
+/**
+ * PersonalAccessTokenResourceScopePayload
+ */
+export const zPersonalAccessTokenResourceScopePayload = z.object({
+  mode: z.enum(['all', 'none', 'selected']).optional().default('all'),
+  resources: z.array(zPersonalAccessTokenResourcePayload).optional(),
+})
+
+/**
+ * PersonalAccessTokenCreatePayload
+ */
+export const zPersonalAccessTokenCreatePayload = z.object({
+  expiration: z
+    .enum(['180_days', '30_days', '365_days', '90_days', 'never'])
+    .optional()
+    .default('90_days'),
+  name: z.string().min(1).max(255),
+  resource_scope: zPersonalAccessTokenResourceScopePayload.optional(),
+  workspace_scope: zPersonalAccessTokenWorkspaceScopePayload.optional(),
+})
+
+/**
+ * PersonalAccessTokenUpdatePayload
+ */
+export const zPersonalAccessTokenUpdatePayload = z.object({
+  name: z.string().min(1).max(255),
+  resource_scope: zPersonalAccessTokenResourceScopePayload.nullish(),
+  version: z.int().gte(1),
+  workspace_scope: zPersonalAccessTokenWorkspaceScopePayload.nullish(),
 })
 
 /**
@@ -373,6 +754,90 @@ export const zPostAccountPasswordBody = zAccountPasswordPayload
  * Success
  */
 export const zPostAccountPasswordResponse = zAccountResponse
+
+export const zGetAccountPersonalAccessTokenResourcesQuery = z.object({
+  cursor: z.int().gte(0).optional().default(0),
+  keyword: z.string().max(100).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Available resources
+ */
+export const zGetAccountPersonalAccessTokenResourcesResponse =
+  zPersonalAccessTokenResourceCandidateResponse
+
+export const zGetAccountPersonalAccessTokenWorkspacesQuery = z.object({
+  cursor: z.int().gte(0).optional().default(0),
+  keyword: z.string().max(100).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Available workspaces
+ */
+export const zGetAccountPersonalAccessTokenWorkspacesResponse =
+  zPersonalAccessTokenWorkspaceCandidateResponse
+
+export const zGetAccountPersonalAccessTokensQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * Personal access tokens
+ */
+export const zGetAccountPersonalAccessTokensResponse = zPersonalAccessTokenListResponse
+
+export const zPostAccountPersonalAccessTokensBody = zPersonalAccessTokenCreatePayload
+
+export const zPostAccountPersonalAccessTokensHeaders = z.object({
+  'Idempotency-Key': z.string().max(128).optional(),
+})
+
+/**
+ * Personal access token created
+ */
+export const zPostAccountPersonalAccessTokensResponse = zPersonalAccessTokenResponse
+
+export const zDeleteAccountPersonalAccessTokensByTokenIdPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Personal access token revoked
+ */
+export const zDeleteAccountPersonalAccessTokensByTokenIdResponse = z.void()
+
+export const zGetAccountPersonalAccessTokensByTokenIdPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Saved scopes
+ */
+export const zGetAccountPersonalAccessTokensByTokenIdResponse = zPersonalAccessTokenDetailResponse
+
+export const zPatchAccountPersonalAccessTokensByTokenIdBody = zPersonalAccessTokenUpdatePayload
+
+export const zPatchAccountPersonalAccessTokensByTokenIdPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Updated scopes
+ */
+export const zPatchAccountPersonalAccessTokensByTokenIdResponse = zPersonalAccessTokenDetailResponse
+
+export const zPostAccountPersonalAccessTokensByTokenIdSecretPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Complete personal access token
+ */
+export const zPostAccountPersonalAccessTokensByTokenIdSecretResponse =
+  zPersonalAccessTokenSecretResponse
 
 /**
  * Success

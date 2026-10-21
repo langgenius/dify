@@ -306,7 +306,9 @@ export class ChatClient extends DifyClient {
   listAnnotations(options?: AnnotationListOptions): Promise<DifyResponse<AnnotationResponse>> {
     ensureOptionalInt(options?.page, 'page')
     ensureOptionalInt(options?.limit, 'limit')
-    ensureOptionalString(options?.keyword, 'keyword')
+    if (options?.keyword !== '') {
+      ensureOptionalString(options?.keyword, 'keyword')
+    }
     return this.http.request({
       method: 'GET',
       path: '/apps/annotations',

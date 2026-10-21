@@ -13,7 +13,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
 import AppInfoHeader from './app-info/app-info-header'
@@ -71,11 +70,9 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     if (!appDetail || !systemFeatures || !currentUserId) return []
 
     const appId = appDetail.id
-    const isWorkflowApp =
-      appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
-    const supportsAnnotations =
-      appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
-    const supportsResourceAccess = appDetail.mode !== AppModeEnum.AGENT
+    const isWorkflowApp = appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat'
+    const supportsAnnotations = appDetail.mode !== 'workflow' && appDetail.mode !== 'completion'
+    const supportsResourceAccess = appDetail.mode !== 'agent'
     const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
       currentUserId,
       resourceMaintainer: appDetail.maintainer,
@@ -94,7 +91,7 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
             },
           ]
         : []),
-      ...(appDetail.mode === AppModeEnum.WORKFLOW && appACLCapabilities.canViewLayout
+      ...(appDetail.mode === 'workflow' && appACLCapabilities.canViewLayout
         ? [
             {
               name: t(($) => $.title, { ns: 'evaluation' }),
@@ -196,11 +193,8 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
             expand={expand}
             appName={appTitle}
             modeLabel={appDetail ? getAppModeLabel(appDetail.mode, t) : undefined}
-            iconType={appDetail?.icon_type}
-            icon={appDetail?.icon ?? undefined}
-            background={appDetail?.icon_background}
-            imageUrl={appDetail?.icon_url}
             operationGroups={[]}
+            icon={appDetail}
           />
         )}
       </div>

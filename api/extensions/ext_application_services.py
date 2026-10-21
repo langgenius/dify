@@ -35,6 +35,7 @@ from extensions.application_services.knowledge import (
     build_dataset_api_key_service,
     build_knowledge_services,
 )
+from extensions.application_services.personal_access_token import build_personal_access_token_service
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
@@ -69,6 +70,7 @@ from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
@@ -139,6 +141,11 @@ from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
+from services.network_access_group_gateway import (
+    BillingNetworkAccessGroupEntitlementGateway,
+    NetworkAccessGroupGateway,
+)
+from services.network_access_group_service import NetworkAccessGroupService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.oauth_device_adapters import (
@@ -155,6 +162,8 @@ from services.oauth_device_application_service import (
 )
 from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
+from services.openapi_execution_service import OpenApiExecutionService
+from services.personal_access_token_service import PersonalAccessTokenService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
@@ -167,6 +176,7 @@ from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
 from services.retention.workflow_run.archive_download_adapters import (
+    dispatch_workflow_run_archive_deletion_task,
     dispatch_workflow_run_archive_download_task,
     sign_workflow_run_archive_download_url,
 )
@@ -258,6 +268,8 @@ class ApplicationServices:
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
     resource_access_tokens: ResourceAccessTokenService
+    personal_access_tokens: PersonalAccessTokenService
+    openapi_executions: OpenApiExecutionService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
     app_mcp_servers: AppMCPServerService
@@ -292,6 +304,7 @@ class ApplicationServices:
     init_validation: InitValidationService
     installed_apps: InstalledAppServices
     notifications: NotificationService
+    network_access_groups: NetworkAccessGroupService
     step_by_step_tour: StepByStepTourService
     recommended_app_queries: RecommendedAppQueryService
     recommended_app_packages: RecommendedAppPackageService
@@ -504,6 +517,7 @@ def build_application_services(
         activation_accounts=activation_accounts,
     )
     workspace_services = build_workspace_services(
+        database_client=database_client,
         workspaces=workspace_repository,
         accounts=accounts,
         files=file_service,
@@ -539,6 +553,12 @@ def build_application_services(
             dataset_access=dataset_dependencies.access,
         ),
         resource_access_tokens=build_resource_access_token_service(database_client=database_client),
+        personal_access_tokens=build_personal_access_token_service(
+            database_client=database_client, apps=apps.console, datasets=knowledge.datasets
+        ),
+        openapi_executions=OpenApiExecutionService(
+            runs=lambda: DifyAPIRepositoryFactory.create_api_workflow_run_repository(database_client),
+        ),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
@@ -657,6 +677,16 @@ def build_application_services(
         notifications=NotificationService(
             notifications=BillingNotificationGateway(),
         ),
+        network_access_groups=NetworkAccessGroupService(
+            control_plane=NetworkAccessGroupGateway(
+                base_url=dify_config.NETWORK_ACCESS_API_URL,
+                fallback_base_url=BillingService.base_url,
+                secret_key=BillingService.secret_key,
+            ),
+            apps=SQLAlchemyNetworkAccessGroupAppRepository(session_factory=database_client),
+            memberships=workspace_repository,
+            entitlement=BillingNetworkAccessGroupEntitlementGateway(),
+        ),
         step_by_step_tour=StepByStepTourService(
             accounts=accounts,
             states=SQLAlchemyStepByStepTourStateRepository(session_factory=database_client),
@@ -677,6 +707,7 @@ def build_application_services(
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
             dispatcher=dispatch_workflow_run_archive_download_task,
             sign_download_url=sign_workflow_run_archive_download_url,
+            deletion_dispatcher=dispatch_workflow_run_archive_deletion_task,
         ),
         workflow_runs=WorkflowRunService(
             workflow_runs=workflow_run_repository,
@@ -720,7 +751,7 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
-    from extensions.ext_login import bind_account_loader
+    from extensions.ext_login import bind_account_loader, bind_account_only_loader
 
     services = build_application_services(
         database_client=get_session_maker(),
@@ -730,6 +761,7 @@ def init_app(app: Flask) -> None:
     )
     app.extensions[_EXTENSION_KEY] = services
     bind_account_loader(app, services.accounts.identity.load_user)
+    bind_account_only_loader(app, services.accounts.identity.get_account_by_id)
 
 
 def application_services() -> ApplicationServices:

@@ -184,13 +184,6 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
     (item) =>
       sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
   )
-  const imageUrl =
-    agent?.icon_type === 'image'
-      ? agent.icon_url
-      : agent?.icon_type === 'link'
-        ? agent.icon
-        : undefined
-  const iconType = imageUrl ? 'image' : agent?.icon_type
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
@@ -213,14 +206,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
         >
           <div className={cn('shrink-0', expand && 'mr-2')}>
             <span aria-hidden>
-              <AppIcon
-                size="large"
-                rounded
-                iconType={iconType}
-                icon={agent?.icon_type === 'emoji' ? (agent.icon ?? undefined) : undefined}
-                background={agent?.icon_background}
-                imageUrl={imageUrl}
-              />
+              <AppIcon size="large" shape="circle" icon={agent} />
             </span>
           </div>
           <div

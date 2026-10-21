@@ -18,7 +18,6 @@ import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
 } from '@/service/workflow-queries'
-import { AppModeEnum } from '@/types/app'
 
 type UsePublishControllerParams = Pick<
   AppPublisherProps,
@@ -67,11 +66,8 @@ export function usePublishController({
   const queryClient = useQueryClient()
   const workflowStore = use(WorkflowContext)
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
-  const isWorkflowApp = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
-  const isChatApp =
-    appMode === AppModeEnum.CHAT ||
-    appMode === AppModeEnum.AGENT_CHAT ||
-    appMode === AppModeEnum.COMPLETION
+  const isWorkflowApp = appMode === 'workflow' || appMode === 'advanced-chat'
+  const isChatApp = appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
   const {
     data: publishedWorkflow,
     isError: isPublishedWorkflowError,

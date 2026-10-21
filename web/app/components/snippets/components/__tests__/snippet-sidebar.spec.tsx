@@ -1,5 +1,6 @@
 import type { InputVar } from '@/app/components/workflow/types'
-import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
+import type { InputVar as SnippetInputField } from '@/models/pipeline'
+import type { SnippetDetail } from '@/models/snippet'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'

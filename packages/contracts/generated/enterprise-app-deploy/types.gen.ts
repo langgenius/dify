@@ -16,33 +16,30 @@ export const EnvironmentStatus = {
 
 export type EnvironmentStatus = (typeof EnvironmentStatus)[keyof typeof EnvironmentStatus]
 
-export const ApplicationInteractionStatus = {
-  APPLICATION_INTERACTION_STATUS_UNSPECIFIED: 'APPLICATION_INTERACTION_STATUS_UNSPECIFIED',
-  APPLICATION_INTERACTION_STATUS_RUNNING: 'APPLICATION_INTERACTION_STATUS_RUNNING',
-  APPLICATION_INTERACTION_STATUS_SUCCEEDED: 'APPLICATION_INTERACTION_STATUS_SUCCEEDED',
-  APPLICATION_INTERACTION_STATUS_FAILED: 'APPLICATION_INTERACTION_STATUS_FAILED',
-  APPLICATION_INTERACTION_STATUS_PARTIAL_SUCCEEDED:
-    'APPLICATION_INTERACTION_STATUS_PARTIAL_SUCCEEDED',
-  APPLICATION_INTERACTION_STATUS_STOPPED: 'APPLICATION_INTERACTION_STATUS_STOPPED',
-  APPLICATION_INTERACTION_STATUS_PAUSED: 'APPLICATION_INTERACTION_STATUS_PAUSED',
+export const AppRunnerLogStatus = {
+  APP_RUNNER_LOG_STATUS_UNSPECIFIED: 'APP_RUNNER_LOG_STATUS_UNSPECIFIED',
+  APP_RUNNER_LOG_STATUS_RUNNING: 'APP_RUNNER_LOG_STATUS_RUNNING',
+  APP_RUNNER_LOG_STATUS_SUCCEEDED: 'APP_RUNNER_LOG_STATUS_SUCCEEDED',
+  APP_RUNNER_LOG_STATUS_FAILED: 'APP_RUNNER_LOG_STATUS_FAILED',
+  APP_RUNNER_LOG_STATUS_PARTIAL_SUCCEEDED: 'APP_RUNNER_LOG_STATUS_PARTIAL_SUCCEEDED',
+  APP_RUNNER_LOG_STATUS_STOPPED: 'APP_RUNNER_LOG_STATUS_STOPPED',
+  APP_RUNNER_LOG_STATUS_PAUSED: 'APP_RUNNER_LOG_STATUS_PAUSED',
 } as const
 
-export type ApplicationInteractionStatus =
-  (typeof ApplicationInteractionStatus)[keyof typeof ApplicationInteractionStatus]
+export type AppRunnerLogStatus = (typeof AppRunnerLogStatus)[keyof typeof AppRunnerLogStatus]
 
-export const ApplicationInteractionSource = {
-  APPLICATION_INTERACTION_SOURCE_UNSPECIFIED: 'APPLICATION_INTERACTION_SOURCE_UNSPECIFIED',
-  APPLICATION_INTERACTION_SOURCE_WEB_APP: 'APPLICATION_INTERACTION_SOURCE_WEB_APP',
-  APPLICATION_INTERACTION_SOURCE_SERVICE_API: 'APPLICATION_INTERACTION_SOURCE_SERVICE_API',
-  APPLICATION_INTERACTION_SOURCE_TRIGGER: 'APPLICATION_INTERACTION_SOURCE_TRIGGER',
-  APPLICATION_INTERACTION_SOURCE_EXPLORE: 'APPLICATION_INTERACTION_SOURCE_EXPLORE',
-  APPLICATION_INTERACTION_SOURCE_DEBUGGER: 'APPLICATION_INTERACTION_SOURCE_DEBUGGER',
-  APPLICATION_INTERACTION_SOURCE_VALIDATION: 'APPLICATION_INTERACTION_SOURCE_VALIDATION',
-  APPLICATION_INTERACTION_SOURCE_OPENAPI: 'APPLICATION_INTERACTION_SOURCE_OPENAPI',
+export const AppRunnerLogSource = {
+  APP_RUNNER_LOG_SOURCE_UNSPECIFIED: 'APP_RUNNER_LOG_SOURCE_UNSPECIFIED',
+  APP_RUNNER_LOG_SOURCE_WEB_APP: 'APP_RUNNER_LOG_SOURCE_WEB_APP',
+  APP_RUNNER_LOG_SOURCE_SERVICE_API: 'APP_RUNNER_LOG_SOURCE_SERVICE_API',
+  APP_RUNNER_LOG_SOURCE_TRIGGER: 'APP_RUNNER_LOG_SOURCE_TRIGGER',
+  APP_RUNNER_LOG_SOURCE_EXPLORE: 'APP_RUNNER_LOG_SOURCE_EXPLORE',
+  APP_RUNNER_LOG_SOURCE_DEBUGGER: 'APP_RUNNER_LOG_SOURCE_DEBUGGER',
+  APP_RUNNER_LOG_SOURCE_VALIDATION: 'APP_RUNNER_LOG_SOURCE_VALIDATION',
+  APP_RUNNER_LOG_SOURCE_OPENAPI: 'APP_RUNNER_LOG_SOURCE_OPENAPI',
 } as const
 
-export type ApplicationInteractionSource =
-  (typeof ApplicationInteractionSource)[keyof typeof ApplicationInteractionSource]
+export type AppRunnerLogSource = (typeof AppRunnerLogSource)[keyof typeof AppRunnerLogSource]
 
 export const EnvironmentMode = {
   ENVIRONMENT_MODE_UNSPECIFIED: 'ENVIRONMENT_MODE_UNSPECIFIED',
@@ -200,17 +197,17 @@ export type AppEnvironment = {
   in_use: boolean
 }
 
-export type ApplicationInteraction = {
+export type AppRunnerLog = {
   id: string
   timestamp: string
-  status: ApplicationInteractionStatus
+  status: AppRunnerLogStatus
   durationSeconds: number
   totalTokens: string
   workspace: NamedRef
   environment: NamedRef
   app: NamedRef
   operator?: NamedRef
-  source: ApplicationInteractionSource
+  source: AppRunnerLogSource
   version?: WorkflowVersion
   traceId?: string
   error?: string
@@ -424,6 +421,7 @@ export type EnvironmentDeployment = {
   environment: DeploymentEnvironment
   deployment?: EnvironmentDeploymentState
   access: EnvironmentAccess
+  deployment_id: string
 }
 
 export type EnvironmentDeploymentOperation = {
@@ -553,11 +551,11 @@ export type Error = {
     | 'APPDEPLOY_TOOL_PROVIDER_NOT_INSTALLED'
     | 'APPDEPLOY_MODEL_PROVIDER_NOT_INSTALLED'
     | 'APPDEPLOY_MODEL_TYPE_UNSUPPORTED'
-    | 'APPDEPLOY_CREDENTIAL_MISMATCH'
     | 'APPDEPLOY_APP_RUNNER_JOIN_TOKEN_REQUIRED'
     | 'APPDEPLOY_INVALID_WORKFLOW_ID'
     | 'APPDEPLOY_INVALID_DEPLOYMENT_VERSION_ID'
     | 'APPDEPLOY_DEVELOPER_API_URL_NOT_CONFIGURED'
+    | 'APPDEPLOY_INVALID_CREDENTIAL_SELECTION'
     | 'APPDEPLOY_UNAUTHORIZED'
     | 'APPDEPLOY_FORBIDDEN'
     | 'APPDEPLOY_APP_RUNNER_AUTH_REQUIRED'
@@ -569,7 +567,6 @@ export type Error = {
     | 'APPDEPLOY_REVISION_NOT_FOUND'
     | 'APPDEPLOY_ROLLBACK_TARGET_NOT_FOUND'
     | 'APPDEPLOY_APP_NOT_FOUND'
-    | 'APPDEPLOY_CREDENTIAL_NOT_FOUND'
     | 'APPDEPLOY_ENVIRONMENT_WEB_APP_SETTING_NOT_FOUND'
     | 'APPDEPLOY_ACCESS_SUBJECT_NOT_FOUND'
     | 'APPDEPLOY_API_KEY_NOT_FOUND'
@@ -622,6 +619,8 @@ export type Error = {
     | 'APPDEPLOY_RESOURCE_NOT_APPLICABLE_FOR_MODE'
     | 'APPDEPLOY_ENVIRONMENT_CPU_POOL_BELOW_ALLOCATED'
     | 'APPDEPLOY_CHAT_CONTEXT_TOO_LARGE'
+    | 'APPDEPLOY_REVISION_RETIRED'
+    | 'APPDEPLOY_CREDENTIAL_DENIED_BY_POLICY'
     | 'APPDEPLOY_FILE_GRANT_UNAVAILABLE'
     | 'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED'
     | 'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED'
@@ -646,7 +645,7 @@ export type Error = {
   detailCode?: string
 }
 
-export type GetApplicationInteractionSummaryResponse = {
+export type GetAppRunnerLogSummaryResponse = {
   totalCount: string
   failedCount: string
   lookbackStart: string
@@ -699,13 +698,13 @@ export type ListAppEnvironmentsResponse = {
   data: Array<AppEnvironment>
 }
 
-export type ListApplicationInteractionAppsResponse = {
+export type ListAppRunnerLogAppsResponse = {
   data: Array<NamedRef>
   pagination: Pagination
 }
 
-export type ListApplicationInteractionsResponse = {
-  data: Array<ApplicationInteraction>
+export type ListAppRunnerLogsResponse = {
+  data: Array<AppRunnerLog>
   nextPageToken?: string
   previousPageToken?: string
 }
@@ -722,6 +721,7 @@ export type ListEnvironmentApiKeysResponse = {
 export type ListEnvironmentDeployedAppsResponse = {
   data: Array<EnvironmentDeployedApp>
   pagination: Pagination
+  workspaceOptions: Array<NamedRef>
 }
 
 export type ListEnvironmentDeploymentsResponse = {
@@ -1054,6 +1054,7 @@ export type GetEnvironmentResponseWritable = {
 export type ListEnvironmentDeployedAppsResponseWritable = {
   data: Array<EnvironmentDeployedAppWritable>
   pagination: Pagination
+  workspaceOptions: Array<NamedRef>
 }
 
 export type ListEnvironmentsResponseWritable = {

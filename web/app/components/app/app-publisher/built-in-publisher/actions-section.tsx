@@ -4,7 +4,6 @@ import type { WorkflowKind } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { AppModeEnum } from '@/types/app'
 import SuggestedAction from '../suggested-action'
 import WorkflowToolAction from '../workflow-tool-action'
 
@@ -73,7 +72,7 @@ export function PublisherActionsSection({
 
   const hasPublishedVersion = Boolean(publishedAt)
   const showOpenWebApp = !hasTriggerNode
-  const showWorkflowTool = appMode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
+  const showWorkflowTool = appMode === 'workflow' && !hasHumanInputNode && !hasTriggerNode
   const navigationDisabled = !hasPublishedVersion
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)

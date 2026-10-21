@@ -1,5 +1,5 @@
 'use client'
-import type { InitialDocumentDetail } from '@/models/pipeline'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
 import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,14 +9,16 @@ import EmbeddingProcess from './embedding-process'
 
 type ProcessingProps = {
   batchId: string
-  documents: InitialDocumentDetail[]
+  documents: PipelineDocument[]
 }
 
 const Processing = ({ batchId, documents }: ProcessingProps) => {
   const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const docLink = useDocLink()
   const datasetId = useDatasetDetailContextWithSelector((s) => s.dataset?.id)
-  const indexingType = useDatasetDetailContextWithSelector((s) => s.dataset?.indexing_technique)
+  const indexingType = useDatasetDetailContextWithSelector(
+    (s) => s.dataset?.indexing_technique ?? undefined,
+  )
   const retrievalMethod = useDatasetDetailContextWithSelector(
     (s) => s.dataset?.retrieval_model_dict?.search_method,
   )

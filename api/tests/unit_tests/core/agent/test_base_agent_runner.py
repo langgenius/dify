@@ -42,6 +42,7 @@ from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.tool_fixtures import make_runtime_tool
 from tests.unit_tests.core.model_fixtures import make_model_config
 
@@ -239,6 +240,7 @@ def runner(
     mocker.patch.object(model_instance.model_type_instance, "get_model_schema", return_value=None)
 
     return BaseAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
         session=sqlite_session,
         tenant_id="tenant",
         application_generate_entity=_app_generate(app_config=app_config),
@@ -611,6 +613,41 @@ def test_organize_history_reconstructs_tool_flows(
     assert any(isinstance(item, module.AssistantPromptMessage) for item in result)
 
 
+def test_organize_history_reuses_stable_tool_call_ids(
+    runner: BaseAgentRunner,
+    sqlite_session: Session,
+) -> None:
+    message = _message(message_id="m2")
+    thought = _thought(
+        thought_id="thought-1",
+        message_id=message.id,
+        tool="tool1;tool2",
+        tool_input=json.dumps({"tool1": {}, "tool2": {}}),
+        observation=json.dumps({"tool1": "o1", "tool2": "o2"}),
+    )
+    _persist_history(sqlite_session, message, thoughts=[thought])
+
+    first = runner.organize_agent_history([], session=sqlite_session)
+    second = runner.organize_agent_history([], session=sqlite_session)
+
+    def tool_call_ids(messages: list[module.PromptMessage]) -> tuple[list[str], list[str]]:
+        call_ids = [
+            tool_call.id
+            for prompt in messages
+            if isinstance(prompt, module.AssistantPromptMessage)
+            for tool_call in prompt.tool_calls or []
+        ]
+        response_ids = [prompt.tool_call_id for prompt in messages if isinstance(prompt, module.ToolPromptMessage)]
+        return call_ids, response_ids
+
+    first_call_ids, first_response_ids = tool_call_ids(first)
+    second_call_ids, second_response_ids = tool_call_ids(second)
+
+    assert first_call_ids == second_call_ids
+    assert first_call_ids == first_response_ids == second_response_ids
+    assert len(set(first_call_ids)) == 2
+
+
 def test_organize_history_without_tool_name(runner: BaseAgentRunner, sqlite_session: Session) -> None:
     message = _message(message_id="m3")
     thought = _thought(thought_id="thought-1", message_id=message.id, tool=None)
@@ -710,6 +747,7 @@ def test_init_uses_real_session_for_count_and_dependencies(
     message = _message(message_id="msg1")
 
     initialized = BaseAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
         session=sqlite_session,
         tenant_id="tenant",
         application_generate_entity=app_generate,

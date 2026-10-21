@@ -17,6 +17,7 @@ class RequestContext(NamedTuple):
 
     Anonymous admission uses empty ``account_id`` and ``active_workspace_id`` values.
     ``resource_app_ids`` is absent for account callers; an empty set admits no apps.
+    ``personal_app_ids`` limits account visibility to PAT selections; None adds no restriction.
     """
 
     request_id: str
@@ -25,6 +26,7 @@ class RequestContext(NamedTuple):
     active_workspace_id: str
     remote_ip: str | None = None
     resource_app_ids: frozenset[str] | None = None
+    personal_app_ids: frozenset[str] | None = None
 
 
 class AccountRequestContext(NamedTuple):

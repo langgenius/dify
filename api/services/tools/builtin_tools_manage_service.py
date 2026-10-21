@@ -213,7 +213,7 @@ class BuiltinToolManageService:
                 # create a new credential. partial-member access is handled by RBAC.
 
             except Exception as e:
-                raise ValueError(str(e))
+                raise ValueError(str(e)) from e
         return {"result": "success"}
 
     @staticmethod
@@ -303,10 +303,11 @@ class BuiltinToolManageService:
 
                     session.add(db_provider)
                     session.flush()
+                    credential_id = db_provider.id
             except Exception as e:
-                raise ValueError(str(e))
+                raise ValueError(str(e)) from e
 
-        return {"result": "success"}
+        return {"result": "success", "id": credential_id}
 
     @staticmethod
     def create_tool_encrypter(
@@ -570,7 +571,7 @@ class BuiltinToolManageService:
                 try:
                     oauth_params = decrypt_system_params(system_client.encrypted_oauth_params)
                 except Exception as e:
-                    raise ValueError(f"Error decrypting system oauth params: {e}")
+                    raise ValueError(f"Error decrypting system oauth params: {e}") from e
 
             return oauth_params
 

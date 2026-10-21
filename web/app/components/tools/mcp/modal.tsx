@@ -1,11 +1,21 @@
 'use client'
+
 import type { FC } from 'react'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
@@ -37,14 +47,13 @@ type MCPModalConfirmPayload = {
   server_url: string
   icon_type: AppIconType
   icon: string
-  icon_background?: string | null
+  icon_background?: string
   server_identifier: string
   headers?: Record<string, string>
   is_dynamic_registration?: boolean
   authentication?: {
-    client_id?: string
+    client_id: string
     client_secret?: string
-    grant_type?: string
   }
   configuration: {
     timeout: number
@@ -146,21 +155,16 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
 
   return (
     <>
-      <button
-        type="button"
-        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        onClick={onHide}
-      >
-        <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
-      </button>
-      <DialogTitle className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
-        {!isCreate
-          ? t(($) => $['mcp.modal.editTitle'], { ns: 'tools' })
-          : t(($) => $['mcp.modal.title'], { ns: 'tools' })}
-      </DialogTitle>
+      <DialogHeader>
+        <DialogTitle>
+          {!isCreate
+            ? t(($) => $['mcp.modal.editTitle'], { ns: 'tools' })
+            : t(($) => $['mcp.modal.title'], { ns: 'tools' })}
+        </DialogTitle>
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
 
-      <div className="space-y-5 py-3">
+      <DialogBody className="space-y-5">
         {/* Server URL */}
         <div>
           <div className="mb-1 flex h-6 items-center">
@@ -205,24 +209,39 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
                 render={
                   <IconButton
                     aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
-                    className="group/edit-icon size-14 rounded-2xl p-0"
+                    className="group/edit-icon relative size-14 rounded-2xl p-0"
                   >
-                    <IconPickerIcon
-                      innerIcon={
-                        shouldUseMcpIconForAppIcon(
-                          state.appIcon.type,
-                          state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
-                        ) ? (
-                          <span
-                            aria-hidden
-                            className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
-                          />
-                        ) : undefined
-                      }
-                      size="xxl"
-                      className="relative rounded-2xl"
-                      showEditIcon
-                    />
+                    <>
+                      {shouldUseMcpIconForAppIcon(
+                        state.appIcon.type,
+                        state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
+                      ) ? (
+                        <Avatar
+                          aria-hidden="true"
+                          className="size-14 rounded-2xl border-[0.5px] border-divider-regular"
+                        >
+                          <AvatarFallback
+                            className="text-text-primary-on-surface"
+                            style={{
+                              background:
+                                state.appIcon.type === 'emoji'
+                                  ? state.appIcon.background || '#FFEAD5'
+                                  : '#FFEAD5',
+                            }}
+                          >
+                            <span className="i-custom-vender-other-mcp size-8" />
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <IconPickerIcon size="xxl" />
+                      )}
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+                      >
+                        <span className="i-ri-edit-line size-8 text-text-primary-on-surface" />
+                      </span>
+                    </>
                   </IconButton>
                 }
               />
@@ -329,17 +348,16 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
             onSseReadTimeoutChange={actions.setSseReadTimeout}
           />
         )}
-      </div>
+      </DialogBody>
 
-      {/* Actions */}
-      <div className="flex flex-row-reverse pt-5">
-        <Button disabled={isSubmitDisabled} className="ml-2" variant="primary" onClick={submit}>
+      <DialogFooter>
+        <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
+        <Button disabled={isSubmitDisabled} variant="primary" onClick={submit}>
           {data
             ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
             : t(($) => $['mcp.modal.confirm'], { ns: 'tools' })}
         </Button>
-        <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
-      </div>
+      </DialogFooter>
     </>
   )
 }
@@ -361,7 +379,7 @@ const MCPModal: FC<DuplicateAppModalProps> = ({ data, show, onConfirm, onHide })
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-130! border-none p-6 text-left align-middle">
+      <DialogContent className="w-130">
         <MCPModalContent key={formKey} data={data} onConfirm={onConfirm} onHide={onHide} />
       </DialogContent>
     </Dialog>

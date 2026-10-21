@@ -1290,7 +1290,7 @@ def test_stale_previous_node_refs_are_ignored_when_workflow_prompt_has_no_fronte
 
 def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_context():
     first_reference = build_file_reference(record_id="tool-file-1")
-    second_reference = build_file_reference(record_id="tool-file-2")
+    build_file_reference(record_id="tool-file-2")
 
     class FileArrayVariablePool(FakeVariablePool):
         def get(self, selector):

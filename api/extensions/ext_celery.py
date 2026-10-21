@@ -183,6 +183,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
         "tasks.evaluation_task",  # evaluation run execution
+        "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -262,8 +263,7 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
-        imports.append("schedule.check_upgradable_plugin_task")
-        imports.append("tasks.process_tenant_plugin_autoupgrade_check_task")
+        imports.extend(("schedule.check_upgradable_plugin_task", "tasks.process_tenant_plugin_autoupgrade_check_task"))
         beat_schedule["check_upgradable_plugin_task"] = {
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
             "schedule": crontab(minute="*/15"),

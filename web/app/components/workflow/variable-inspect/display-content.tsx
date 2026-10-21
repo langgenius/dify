@@ -1,4 +1,3 @@
-import type { VarType } from '../types'
 import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,7 +13,7 @@ import { PreviewType, ViewMode } from './types'
 
 type DisplayContentProps = {
   previewType: PreviewType
-  varType: VarType
+  varType: string
   schemaType?: string
   mdString?: string
   jsonString?: string

@@ -186,6 +186,18 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         return _invitation_token_adapter.validate_json(data)
 
     @override
+    def consume_membership(self, invitation: InvitationLookup) -> bool:
+        key = self._invitation_token_key(invitation.token)
+        ttl = self._redis.pttl(key)
+        if ttl <= 0:
+            return False
+        return bool(self._redis.set(self._membership_used_key(invitation.token), "1", nx=True, px=ttl))
+
+    @override
+    def is_membership_consumed(self, invitation: InvitationLookup) -> bool:
+        return self._redis.get(self._membership_used_key(invitation.token)) == b"1"
+
+    @override
     def revoke(self, invitation: InvitationLookup) -> None:
         if invitation.workspace_id is not None and invitation.email is not None:
             self._redis.delete(self._workspace_invitation_key(invitation))
@@ -195,6 +207,10 @@ class RedisInvitationTokenStore(InvitationTokenStore):
     @staticmethod
     def _invitation_token_key(token: str) -> str:
         return f"member_invite:token:{token}"
+
+    @classmethod
+    def _membership_used_key(cls, token: str) -> str:
+        return f"{cls._invitation_token_key(token)}:membership_used"
 
     @staticmethod
     def _workspace_invitation_key(invitation: InvitationLookup) -> str:
