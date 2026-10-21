@@ -23,5 +23,5 @@ class MatrixoneVectorTest(AbstractVectorTest):
         assert len(ids) == 1
 
 
-def test_matrixone_vector(setup_mock_redis):
+def test_matrixone_vector(setup_real_redis):
     MatrixoneVectorTest().run_all_tests()

@@ -27,5 +27,5 @@ class OracleVectorTest(AbstractVectorTest):
         assert len(hits_by_full_text) == 0
 
 
-def test_oraclevector(setup_mock_redis):
+def test_oraclevector(setup_real_redis):
     OracleVectorTest().run_all_tests()
