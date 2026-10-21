@@ -53,7 +53,8 @@ def _dispatch_upgrade_checks(scheduled_at: float, producer_id: str | None = None
     """Read one anchored window and publish its eligible checks at absolute deadlines.
 
     Preconditions: scheduled_at is the original Unix timestamp of this Beat invocation.
-    Postconditions: no database transaction spans marketplace I/O or pacing sleeps.
+    Postconditions: no database transaction spans marketplace I/O or publication, and the
+    producer never sleeps between batches; later batches are published with a countdown.
     A publish failure cancels only its own pending reservation and propagates, allowing
     the caller to retry without redoing completed or already queued strategies.
     """
@@ -109,6 +110,10 @@ def _dispatch_upgrade_checks(scheduled_at: float, producer_id: str | None = None
     coordinator = get_upgrade_check_coordinator()
     for batch_index, i in enumerate(range(0, total_strategies, DISPATCH_BATCH_SIZE), start=1):
         batch_strategies = strategies[i : i + DISPATCH_BATCH_SIZE]
+        # Preserve absolute batch pacing without holding a worker execution slot during
+        # the interval. Celery owns the delayed delivery, including redelivery, and
+        # publishing time consumes the budget instead of being added to every delay.
+        batch_target = start_at + (batch_index - 1) * batch_interval_time
         for strategy in batch_strategies:
             reservation = coordinator.reserve(
                 tenant_id=strategy.tenant_id,
@@ -131,6 +136,7 @@ def _dispatch_upgrade_checks(scheduled_at: float, producer_id: str | None = None
                         ),
                         headers={check_task.COORDINATION_HEADER: reservation.model_dump_json()},
                         expires=datetime.fromtimestamp(reservation.deadline, UTC),
+                        countdown=max(0.0, batch_target - time.perf_counter()),
                     )
                 except Exception:
                     try:
@@ -139,12 +145,6 @@ def _dispatch_upgrade_checks(scheduled_at: float, producer_id: str | None = None
                         logger.exception("failed to cancel plugin check reservation for tenant %s", strategy.tenant_id)
                     raise
                 coordinator.mark_queued(reservation)
-
-        # Publishing time consumes the budget instead of being added to every sleep.
-        if batch_index < batch_chunk_count:
-            remaining = start_at + batch_index * batch_interval_time - time.perf_counter()
-            if remaining > 0:
-                time.sleep(remaining)
 
     end_at = time.perf_counter()
     click.echo(
