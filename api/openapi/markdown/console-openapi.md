@@ -14635,7 +14635,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Remove custom OAuth client configuration**
+**Remove the workspace's custom OAuth client configuration**
 
 #### Parameters
 
@@ -14651,7 +14651,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Get OAuth client configuration for a provider**
+**Get the masked OAuth client configuration for a provider**
 
 #### Parameters
 
@@ -14664,10 +14664,11 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client retrieved successfully | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Configure custom OAuth client for a provider**
+**Configure the workspace's custom OAuth client for a provider**
 
 #### Parameters
 
@@ -14686,6 +14687,8 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerOauthClientChangedError](#triggeroauthclientchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
@@ -28180,6 +28183,22 @@ the app is not allowed to be trial.
 | params | object |  | Yes |
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
+
+#### TriggerOauthClientChangedError
+
+The trigger OAuth client configuration changed. Reload it before saving again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthClientChangedError |  | The trigger OAuth client configuration changed. Reload it before saving again. |  |
+
+#### TriggerOauthClientConfigInvalidError
+
+The stored trigger OAuth client configuration is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthClientConfigInvalidError |  | The stored trigger OAuth client configuration is invalid. |  |
 
 #### TriggerProviderApiEntity
 
