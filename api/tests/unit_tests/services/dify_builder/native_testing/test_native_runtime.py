@@ -1499,7 +1499,9 @@ def test_same_worker_reclaims_over_128_closed_consumed_requests_but_keeps_unknow
     def background() -> None:
         entered.set()
         try:
-            assert release.wait(15)
+            # The live-thread witness belongs to the test's finally release,
+            # including when the 130 real acquisitions run slowly under CI.
+            assert release.wait()
         finally:
             live.host.lifetime.thread_finished(thread=current_thread())
 
