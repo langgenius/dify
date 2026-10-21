@@ -37,12 +37,41 @@ def test_workflow_tool_caller_merge_joins_knowledge_fs_and_main_heads() -> None:
     assert merge.down_revision == ("36036059b930", "a8c3e7f4b912")
 
 
-def test_dataset_api_token_binding_resource_type_follows_main_head() -> None:
+def test_clean_legacy_agent_soul_files_keeps_main_parent() -> None:
+    scripts = ScriptDirectory(str(_MIGRATION_PATH.parents[1]))
+    current = scripts.get_revision("fbdfcf5f5a6e")
+    assert current is not None
+    # Databases on main already applied this revision on 89919253ca7a; re-parenting it onto the
+    # KnowledgeFS merge would make Alembic treat the whole KnowledgeFS chain as applied.
+    assert current.down_revision == "89919253ca7a"
+
+
+def test_dataset_api_token_binding_resource_type_merges_main_and_knowledge_fs() -> None:
     scripts = ScriptDirectory(str(_MIGRATION_PATH.parents[1]))
     current = scripts.get_revision("9a4e7d1c2b60")
     assert current is not None
-    # KnowledgeFS migrations after the agent-drive merge sit linearly on main's head, so the
-    # dataset_api_token_bindings table they alter already exists.
-    assert current.down_revision == "f1d3c5b7a902"
-    applied_before = {revision.revision for revision in scripts.iterate_revisions("f1d3c5b7a902", "base")}
-    assert "c3f1a9b2e6d4" in applied_before
+    assert current.down_revision == ("f1d3c5b7a902", "c4d8e2f7a1b6")
+    applied_before = {
+        revision.revision for revision in scripts.iterate_revisions(("f1d3c5b7a902", "c4d8e2f7a1b6"), "base")
+    }
+    assert {"c3f1a9b2e6d4", "a4e7c2f91b30", "e6b4a2c9d731"} <= applied_before
+
+
+def test_upgrade_from_main_head_applies_knowledge_fs_chain_before_token_bindings() -> None:
+    scripts = ScriptDirectory(str(_MIGRATION_PATH.parents[1]))
+    applied_on_main = {revision.revision for revision in scripts.iterate_revisions("a8c3e7f4b912", "base")}
+    pending = [
+        revision.revision
+        for revision in reversed(list(scripts.iterate_revisions("heads", "base")))
+        if revision.revision not in applied_on_main
+    ]
+
+    assert pending[0] == "a4e7c2f91b30"
+    assert pending.index("e6b4a2c9d731") < pending.index("c4d8e2f7a1b6") < pending.index("9a4e7d1c2b60")
+    assert pending[-1] == "d7b9e1f3a5c2"
+
+
+def test_branch_deployed_databases_keep_knowledge_fs_chain_applied() -> None:
+    scripts = ScriptDirectory(str(_MIGRATION_PATH.parents[1]))
+    applied = {revision.revision for revision in scripts.iterate_revisions("d7b9e1f3a5c2", "base")}
+    assert {"a4e7c2f91b30", "e6b4a2c9d731", "c4d8e2f7a1b6", "fbdfcf5f5a6e", "a8c3e7f4b912"} <= applied

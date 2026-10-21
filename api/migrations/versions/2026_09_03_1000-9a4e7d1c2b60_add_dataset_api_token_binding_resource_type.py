@@ -1,7 +1,7 @@
 """add resource_type to dataset_api_token_bindings
 
 Revision ID: 9a4e7d1c2b60
-Revises: f1d3c5b7a902
+Revises: f1d3c5b7a902, c4d8e2f7a1b6
 Create Date: 2026-09-03 10:00:00.000000
 
 Legacy knowledge bases (``datasets``) and KnowledgeFS spaces (``knowledge_fs_control_spaces``)
@@ -21,7 +21,9 @@ from models.types import StringUUID
 
 # revision identifiers, used by Alembic.
 revision = "9a4e7d1c2b60"
-down_revision = "f1d3c5b7a902"
+# Also merges the KnowledgeFS chain: the foreign key below needs knowledge_fs_control_spaces,
+# and main's fbdfcf5f5a6e keeps its original parent so upgrades from main still apply the chain.
+down_revision = ("f1d3c5b7a902", "c4d8e2f7a1b6")
 branch_labels = None
 depends_on = None
 
