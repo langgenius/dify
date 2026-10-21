@@ -1,8 +1,11 @@
 import hashlib
 import inspect
-from collections.abc import Callable
+import time
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from unittest.mock import call, patch
 
+import gevent
 import pymysql
 import pytest
 from flask import Flask
@@ -14,6 +17,7 @@ from libs.external_api import ExternalApi
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 from services.knowledge_fs.text_store import TextIndexPendingError
+from services.knowledge_fs.vector_store import VectorResult
 from services.tidb_binding_service import TidbBindingPendingError
 
 PAYLOAD = {
@@ -25,6 +29,83 @@ PAYLOAD = {
     },
     "ids": ["018f0d60-7a49-7cc2-9c1b-5b36f18f0004"],
 }
+
+
+@pytest.mark.parametrize("deadline", ["invalid", "NaN", "1.5", "-1", "9" * 30])
+def test_search_rejects_invalid_deadline_before_provider_io(app: Flask, deadline: str) -> None:
+    handler = KnowledgeFSTextApi()
+    with (
+        app.test_request_context(
+            json={**PAYLOAD, "operation": "search", "query": "refund"},
+            headers={"X-Knowledge-FS-Deadline-Ms": deadline},
+        ),
+        patch("controllers.inner_api.knowledge_fs.texts.configured_text_client") as client,
+    ):
+        with pytest.raises(BadRequest):
+            inspect.unwrap(handler.post)(handler)
+        client.assert_not_called()
+
+
+def test_search_rejects_expired_deadline_before_provider_io(app: Flask) -> None:
+    handler = KnowledgeFSTextApi()
+    with (
+        app.test_request_context(
+            json={**PAYLOAD, "operation": "search", "query": "refund"},
+            headers={"X-Knowledge-FS-Deadline-Ms": str(int(time.time() * 1000) - 1)},
+        ),
+        patch("controllers.inner_api.knowledge_fs.texts.configured_text_client") as client,
+    ):
+        with pytest.raises(ServiceUnavailable):
+            inspect.unwrap(handler.post)(handler)
+        client.assert_not_called()
+
+
+def test_legacy_search_without_deadline_is_still_bounded(app: Flask) -> None:
+    handler = KnowledgeFSTextApi()
+    with (
+        app.test_request_context(json={**PAYLOAD, "operation": "search", "query": "refund"}),
+        patch("controllers.inner_api.knowledge_fs.texts.configured_text_client") as client,
+        patch(
+            "controllers.inner_api.knowledge_fs.texts.execute_text_request",
+            return_value={"points": [], "matches": []},
+        ),
+    ):
+        assert inspect.unwrap(handler.post)(handler) == {"points": [], "matches": []}
+        assert 49 < client.call_args.kwargs["deadline"].remaining() <= 50
+
+
+@pytest.mark.parametrize("stage", ["connect", "query"])
+def test_search_deadline_interrupts_stalled_backend_and_runs_cleanup(app: Flask, stage: str) -> None:
+    cleaned_up = False
+
+    @contextmanager
+    def stalled_client(*_args: object, **_kwargs: object) -> Generator[object]:
+        nonlocal cleaned_up
+        try:
+            if stage == "connect":
+                gevent.sleep(1)
+            yield object()
+        finally:
+            cleaned_up = True
+
+    def execute(*_args: object) -> VectorResult:
+        gevent.sleep(1)
+        return {"points": [], "matches": []}
+
+    handler = KnowledgeFSTextApi()
+    started = time.monotonic()
+    with (
+        app.test_request_context(
+            json={**PAYLOAD, "operation": "search", "query": "refund"},
+            headers={"X-Knowledge-FS-Deadline-Ms": str(int(time.time() * 1000) + 50)},
+        ),
+        patch("controllers.inner_api.knowledge_fs.texts.configured_text_client", stalled_client),
+        patch("controllers.inner_api.knowledge_fs.texts.execute_text_request", execute),
+    ):
+        with pytest.raises(ServiceUnavailable):
+            inspect.unwrap(handler.post)(handler)
+    assert cleaned_up
+    assert time.monotonic() - started < 0.5
 
 
 def test_text_controller_rejects_unauthenticated_requests(app: Flask) -> None:

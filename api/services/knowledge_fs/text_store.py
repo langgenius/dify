@@ -6,16 +6,19 @@ owns indexing/ranking only; no provider may broaden that supplied scope.
 
 import hashlib
 import json
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from services.knowledge_fs.text_store_diagnostics import text_backend_stage
 from services.knowledge_fs.vector_store import Identifier, VectorResult, VectorStoreUnavailableError
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from typing import Protocol
+
+    from services.knowledge_fs.text_search_deadline import TextSearchDeadline
 
     class TextClient(Protocol):
         def execute(self, payload: "TextPayload") -> VectorResult: ...
@@ -79,7 +82,9 @@ class TextIndexPendingError(Exception):
 
 
 @contextmanager
-def configured_text_client(tenant_id: str, *, allow_create: bool = False) -> "Generator[TextClient]":
+def configured_text_client(
+    tenant_id: str, *, allow_create: bool = False, deadline: "TextSearchDeadline | None" = None
+) -> "Generator[TextClient]":
 
     from configs import dify_config
     from services.knowledge_fs.text_store_native import ElasticsearchTextStore, QdrantTextStore, WeaviateTextStore
@@ -90,11 +95,17 @@ def configured_text_client(tenant_id: str, *, allow_create: bool = False) -> "Ge
     if dify_config.VECTOR_STORE == "tidb_on_qdrant":
         from services.knowledge_fs.text_store_tidb import TidbTextStore
 
-        store = TidbTextStore.from_tenant(tenant_id, allow_create=allow_create)
+        store = TidbTextStore.from_tenant(tenant_id, allow_create=allow_create, deadline=deadline)
         try:
             yield store
-        finally:
-            store.close()
+        except BaseException:
+            # Preserve the original provider failure/cancellation if cleanup also fails.
+            with suppress(Exception):
+                store.close()
+            raise
+        else:
+            with text_backend_stage("close"):
+                store.close()
         return
     with configured_vector_client(tenant_id, allow_create=allow_create) as native:
         if isinstance(native, ElasticsearchVectorStore):
@@ -112,7 +123,13 @@ def configured_text_client(tenant_id: str, *, allow_create: bool = False) -> "Ge
 
 
 def execute_text_request(client: "TextClient", payload: TextPayload) -> VectorResult:
-    result = client.execute(payload)
+    with text_backend_stage(payload.operation):
+        result = client.execute(payload)
+    with text_backend_stage("validate_response"):
+        return _validate_text_result(result, payload)
+
+
+def _validate_text_result(result: VectorResult, payload: TextPayload) -> VectorResult:
     # Validate backend results at the trust boundary, including readback checksums.
     if payload.operation == "get":
         ids: set[str] = set()

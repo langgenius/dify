@@ -1,4 +1,6 @@
+import re
 import ssl
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from unittest.mock import patch
@@ -362,3 +364,79 @@ def test_missing_cloud_endpoint_config_and_missing_cluster_fail_closed(config_ov
         with pytest.raises(VectorStoreUnavailableError, match="unavailable"):
             _sql_endpoint("missing")
     _sql_endpoint.cache_clear()
+
+
+def test_search_connection_and_each_sql_share_the_remaining_deadline(tenant_binding: TidbAuthBinding) -> None:
+    from services.knowledge_fs.text_search_deadline import TextSearchDeadline
+
+    with (
+        patch("services.knowledge_fs.text_search_deadline.time.monotonic", return_value=100) as clock,
+        patch("services.tidb_binding_service.resolve_tidb_auth_binding", return_value=tenant_binding),
+        patch("services.knowledge_fs.text_store_tidb._sql_endpoint", return_value=("tenant.test", 4000)),
+        patch("pymysql.connect") as connect,
+    ):
+        deadline = TextSearchDeadline.from_epoch_ms(None)
+        clock.return_value = 147
+        store = TidbTextStore.from_tenant(A, allow_create=False, deadline=deadline)
+        assert connect.call_args.kwargs["connect_timeout"] <= 3
+        assert connect.call_args.kwargs["read_timeout"] <= 3
+        assert connect.call_args.kwargs["write_timeout"] <= 3
+        connection = connect.return_value
+        cursor = connection.cursor.return_value.__enter__.return_value
+        cursor.fetchone.return_value = (1,)
+        cursor.fetchall.return_value = list[tuple[object, ...]]()
+        budgets: list[int] = []
+
+        def query(sql: str, *_args: object) -> None:
+            match = re.search(r"MAX_EXECUTION_TIME\((\d+)\)", sql)
+            assert match is not None, sql
+            budgets.append(int(match.group(1)))
+            assert connection._read_timeout <= 150 - clock.return_value
+            clock.return_value += 0.5
+
+        cursor.execute.side_effect = query
+        assert store.execute(request("search", ids=[A], query="refund")) == {"points": [], "matches": []}
+        assert len(budgets) == 3
+        assert 0 < budgets[2] < budgets[1] < budgets[0] < 3_000
+        store.close()
+        connection.close.assert_called_once()
+        assert connection._write_timeout <= 0.1
+
+
+def test_search_deadline_closes_real_pymysql_socket_when_server_never_replies(
+    tenant_binding: TidbAuthBinding, config_overrides: Callable[..., None]
+) -> None:
+    from gevent.socket import socketpair
+
+    from services.knowledge_fs.text_search_deadline import TextSearchDeadline, TextSearchTimeoutError
+
+    config_overrides(VECTOR_STORE="tidb_on_qdrant")
+    client_socket, server_socket = socketpair()
+    connection = pymysql.Connection(defer_connect=True)
+    # Use the real driver packet reader with an already connected cooperative socket;
+    # the peer deliberately never sends a SQL response.
+    connection._sock = client_socket  # type: ignore[attr-defined]
+    connection._rfile = client_socket.makefile("rb")  # type: ignore[attr-defined]
+    connection._next_seq_id = 0  # type: ignore[attr-defined]
+    connection.server_status = 0  # type: ignore[attr-defined]
+    started = time.monotonic()
+    try:
+        with (
+            patch("services.tidb_binding_service.resolve_tidb_auth_binding", return_value=tenant_binding),
+            patch("services.knowledge_fs.text_store_tidb._sql_endpoint", return_value=("tenant.test", 4000)),
+            patch("pymysql.connect", return_value=connection),
+        ):
+            deadline = TextSearchDeadline.from_epoch_ms(int(time.time() * 1000) + 50)
+            with pytest.raises((TextSearchTimeoutError, pymysql.err.OperationalError)):
+                with deadline.enforce(), configured_text_client(A, deadline=deadline) as client:
+                    execute_text_request(client, request("search", ids=[A], query="refund"))
+        assert time.monotonic() - started < 0.5
+        assert not connection.open
+        server_socket.settimeout(0.5)
+        packets = bytearray()
+        while chunk := server_socket.recv(65536):
+            packets.extend(chunk)
+        assert b"MAX_EXECUTION_TIME" in packets
+    finally:
+        server_socket.close()
+        client_socket.close()
