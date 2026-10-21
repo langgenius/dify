@@ -954,6 +954,52 @@ def test_append_workflow_export_data_reports_missing_selected_workflow(
         )
 
 
+@pytest.mark.parametrize("include_secret", [False, True])
+def test_workflow_export_filters_test_credentials_but_keeps_personal_requirements(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, include_secret: bool
+) -> None:
+    node_data = {
+        "type": "tool",
+        "provider_type": "builtin",
+        "provider_id": "langgenius/mail/mail",
+        "credential_source": "end_user",
+        "credential_id": None,
+        "test_credential_id": "workspace-test-credential",
+        "end_user_auth": {"allowed_credential_types": ["oauth2", "api-key"], "purpose": "Read mail."},
+    }
+    reuse_data = {"type": "tool", "credential_source": "reuse_node", "reuse_node_id": "personal"}
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {"id": "personal", "data": node_data},
+                {"id": "reuse", "data": reuse_data},
+            ],
+            "edges": [],
+        }
+    )
+    monkeypatch.setattr(AppDslService, "_load_export_workflow", Mock(return_value=workflow))
+    monkeypatch.setattr(AppDslService, "_extract_dependencies_from_workflow", Mock(return_value=[]))
+    monkeypatch.setattr(
+        "services.app_dsl_service.AgentDslService.export_workflow_packages",
+        lambda _self, **kwargs: (kwargs["graph"], {}),
+    )
+    exported: dict = {}
+
+    AppDslService._append_workflow_export_data(
+        export_data=exported,
+        app_model=_app(mode=AppMode.WORKFLOW),
+        include_secret=include_secret,
+        session=sqlite_session,
+    )
+
+    exported_data = exported["workflow"]["graph"]["nodes"][0]["data"]
+    assert ("test_credential_id" in exported_data) is include_secret
+    assert exported_data["end_user_auth"] == node_data["end_user_auth"]
+    assert exported_data["credential_source"] == "end_user"
+    assert exported["workflow"]["graph"]["nodes"][1]["data"] == reuse_data
+    assert workflow.graph_dict["nodes"][0]["data"] == node_data
+
+
 @pytest.mark.parametrize(
     "mode",
     [AppMode.AGENT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION],
