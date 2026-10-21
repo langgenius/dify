@@ -68,7 +68,7 @@ function createServerConsoleOpenAPILink(
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getServerConsoleApiPrefix,
     headers: getServerConsoleRequestHeaders,
-    fetch: async (request, init) => {
+    fetch: async (request, init, options) => {
       if (request.body && !request.headers.has('content-type'))
         request.headers.set('Content-Type', 'application/json')
 
@@ -80,6 +80,7 @@ function createServerConsoleOpenAPILink(
         cache: 'no-store',
       })
       if (isHttpErrorStatus(response.status)) throw await httpErrorFromResponse(response)
+      options.context.onResponseHeaders?.(response.headers)
       return response
     },
     interceptors: [

@@ -4,6 +4,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -24,14 +25,14 @@ vi.mock('@/context/permission-state', async () => {
 
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
-    queryKey: ['account-profile'],
+    queryKey: consoleQueryKey('account.profile.get'),
     queryFn: async () => ({ profile: { id: 'user-1' } }),
   }),
 }))
 
 vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
+    queryKey: consoleQueryKey('systemFeatures.get'),
     queryFn: async () => ({ rbac_enabled: true }),
   }),
 }))

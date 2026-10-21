@@ -124,7 +124,7 @@ catalog:
   '@tanstack/form-core': 1.33.5
   '@tanstack/query-core': 5.104.4
   '@tanstack/react-form': 1.33.5
-  '@tanstack/react-hotkeys': 0.13.0
+  '@tanstack/react-hotkeys': 0.16.0
   '@tanstack/react-query': 5.104.4
   '@tanstack/react-virtual': 3.14.21
   '@testing-library/dom': 10.4.2
@@ -143,6 +143,7 @@ catalog:
   '@types/react-dom': 19.3.0
   '@types/sortablejs': 1.15.9
   '@typescript-eslint/parser': 8.71.2
+  '@typescript-eslint/utils': 8.71.2
   '@typescript/native': npm:typescript@7.0.2
   '@vitejs/plugin-react': 6.1.2
   '@vitejs/plugin-rsc': 0.5.38
@@ -153,6 +154,7 @@ catalog:
   agentation: 3.1.2
   ahooks: 3.10.0
   ajv: 8.20.0
+  axe-core: 4.13.0
   bowser: 2.14.1
   c12: 4.0.0-rc.2
   chokidar: 5.0.0
@@ -207,6 +209,7 @@ catalog:
   jotai-tanstack-query: 0.11.0
   js-cookie: 3.0.8
   js-yaml: 5.5.0
+  jsonc-eslint-parser: 3.3.0
   jsonschema: 1.5.0
   katex: 0.17.0
   knip: 6.42.0

@@ -110,6 +110,7 @@ export const getBaseOptions = (): RequestInit => ({
   redirect: 'follow',
 })
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 async function base<T>(
   url: string,
   options: FetchOptionType = {},
@@ -221,6 +222,7 @@ async function base<T>(
  * Includes credentials, Authorization (if available), and CSRF header
  * so the request is authenticated, matching the headers sent by the
  * standard `base()` fetch wrapper.
+ * @deprecated New keepalive transports require a scoped lint exception.
  */
 export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
   const headers = new Headers({

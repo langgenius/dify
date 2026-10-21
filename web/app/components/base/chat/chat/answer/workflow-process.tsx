@@ -1,8 +1,11 @@
 import type { ChatItem, WorkflowProcess } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useState } from 'react'
+import { useStore as useAtomStore } from 'jotai'
+import { use, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
@@ -16,12 +19,16 @@ type WorkflowProcessProps = {
 }
 const WorkflowProcessItem = ({
   data,
+  item,
   expand = false,
   hideInfo = false,
   hideProcessDetail = false,
   readonly = false,
 }: WorkflowProcessProps) => {
   const { t } = useTranslation(['workflow'])
+  const workflowStore = use(WorkflowContext)
+  const atomStore = useAtomStore()
+  const appId = workflowStore ? atomStore.get(editorAppIdAtom) : undefined
   const [collapse, setCollapse] = useState(!expand)
   const running = data.status === WorkflowRunningStatus.Running
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
@@ -135,7 +142,13 @@ const WorkflowProcessItem = ({
           )}
           {data.tracing.length > 0 && (
             <TracingPanel
+              key={item?.workflow_run_id}
               list={data.tracing}
+              workflowRun={
+                appId && item?.workflow_run_id
+                  ? { appId, runId: item.workflow_run_id, status: data.status }
+                  : undefined
+              }
               hideNodeInfo={hideInfo}
               hideNodeProcessDetail={hideProcessDetail}
             />

@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { renderWithConsoleQuery as renderWithConsole } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -29,12 +30,12 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
+  systemFeaturesQueryOptions: () => ({ queryKey: consoleQueryKey('systemFeatures.get') }),
 }))
 
 function render(ui: ReactElement) {
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(['system-features'], {
+  queryClient.setQueryData(consoleQueryKey('systemFeatures.get'), {
     webapp_auth: { enabled: true },
     rbac_enabled: true,
   })

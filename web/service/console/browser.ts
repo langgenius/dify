@@ -14,16 +14,18 @@ import { normalizeConsoleOpenAPIURL } from './openapi-url'
 function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClientContext> {
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: () => new URL(API_PREFIX, window.location.origin),
-    fetch: (input, init, options) => {
+    fetch: async (input, init, options) => {
       const requestInit = options.context.keepalive ? { ...init, keepalive: true } : init
       const normalizedURL = normalizeConsoleOpenAPIURL(input.url)
       const normalizedRequest =
         normalizedURL === input.url ? input : new Request(normalizedURL, input)
-      return request(normalizedURL, requestInit, {
+      const response = await request<Response>(normalizedURL, requestInit, {
         fetchCompat: true,
         request: normalizedRequest,
         silent: options.context.silent,
       })
+      options.context.onResponseHeaders?.(response.headers)
+      return response
     },
     interceptors: [validateDefinedErrors(contract), onError((error) => reportClientError(error))],
   })

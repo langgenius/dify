@@ -172,17 +172,13 @@ export type HumanInputFormPreviewPayload = {
 }
 
 export type HumanInputFormPreviewResponse = {
-  actions?: Array<{
-    [key: string]: unknown
-  }>
+  actions?: Array<UserActionConfig>
   display_in_ui?: boolean | null
   expiration_time?: number | null
   form_content: string
   form_id: string
   form_token?: string | null
-  inputs?: Array<{
-    [key: string]: unknown
-  }>
+  inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
   resolved_default_values?: {
@@ -980,6 +976,10 @@ export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
 }
 
+export type WorkflowToolNodeExecutionListResponse = {
+  data: Array<WorkflowToolNodeExecutionResponse>
+}
+
 export type SandboxListResponse = {
   entries?: Array<SandboxFileEntryResponse>
   path: string
@@ -1122,9 +1122,7 @@ export type WorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
+export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type DefaultBlockConfigResponse = {
   [key: string]: unknown
@@ -1665,6 +1663,26 @@ export type AdvancedChatWorkflowRunForListResponse = {
   total_tokens?: number | null
   version?: string | null
 }
+
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type FormInputConfig =
+  | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+  | ({
+      type: 'select'
+    } & SelectInputConfig)
+  | ({
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
 
 export type ShallowJsonValue =
   | string
@@ -2239,6 +2257,33 @@ export type SimpleEndUser = {
   type: string
 }
 
+export type WorkflowToolNodeExecutionResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  execution_metadata?: unknown
+  extras?: unknown
+  finished_at?: number | null
+  id: string
+  index?: number | null
+  inputs?: unknown
+  inputs_truncated?: boolean | null
+  node_execution_id?: string | null
+  node_id?: string | null
+  node_type?: string | null
+  outputs?: unknown
+  outputs_truncated?: boolean | null
+  predecessor_node_id?: string | null
+  process_data?: unknown
+  process_data_truncated?: boolean | null
+  retry_index?: number | null
+  status?: string | null
+  title?: string | null
+}
+
 export type SandboxFileEntryResponse = {
   mtime?: number | null
   name: string
@@ -2317,6 +2362,13 @@ export type WorkflowDailyTerminalsStatisticItem = {
 export type WorkflowDailyTokenCostStatisticItem = {
   date: string
   token_count: number
+}
+
+export type DefaultBlockConfigItemResponse = {
+  config: {
+    [key: string]: unknown
+  }
+  type: string
 }
 
 export type WorkflowConversationVariableResponse = {
@@ -2830,6 +2882,37 @@ export type WorkflowOnlineUser = {
   avatar?: string | null
   user_id: string
   username: string
+}
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
 }
 
 export type AgentToolCallResponse = {
@@ -3595,25 +3678,17 @@ export type AppUserInputFormConfigResponse = {
   [key: string]: unknown
 }
 
-export type UserActionConfig = {
-  button_style?: ButtonStyle
-  id: string
-  title: string
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
 }
 
-export type FormInputConfig =
-  | ({
-      type: 'paragraph'
-    } & ParagraphInputConfig)
-  | ({
-      type: 'select'
-    } & SelectInputConfig)
-  | ({
-      type: 'file'
-    } & FileInputConfig)
-  | ({
-      type: 'file-list'
-    } & FileListInputConfig)
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
 
 export type AppProviderAgentToolPayload = {
   credential_id?: string | null
@@ -4156,36 +4231,7 @@ export type AppVectorSettingResponse = {
   [key: string]: unknown
 }
 
-export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
-
-export type ParagraphInputConfig = {
-  default?: StringSource | null
-  output_variable_name: string
-  type?: 'paragraph'
-}
-
-export type SelectInputConfig = {
-  option_source: StringListSource
-  output_variable_name: string
-  type?: 'select'
-}
-
-export type FileInputConfig = {
-  allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<FileType>
-  allowed_file_upload_methods?: Array<FileTransferMethod>
-  output_variable_name: string
-  type?: 'file'
-}
-
-export type FileListInputConfig = {
-  allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<FileType>
-  allowed_file_upload_methods?: Array<FileTransferMethod>
-  number_limits?: number
-  output_variable_name: string
-  type?: 'file-list'
-}
+export type ValueSourceType = 'constant' | 'variable'
 
 export type AppLegacyDatasetSelectionPayload = {
   enabled?: boolean | null
@@ -4268,18 +4314,6 @@ export type AgentSoulDifyToolCredentialRef = {
   type?: 'provider' | 'tool'
 }
 
-export type StringSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: string
-}
-
-export type StringListSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: Array<string>
-}
-
 export type AgentModerationIoConfig = {
   enabled?: boolean
   preset_response?: string | null
@@ -4317,8 +4351,6 @@ export type AgentKnowledgeWeightedScoreConfig = {
   weight_type?: string | null
   [key: string]: unknown
 }
-
-export type ValueSourceType = 'constant' | 'variable'
 
 export type AgentKnowledgeMetadataCondition = {
   comparison_operator:
@@ -7421,6 +7453,32 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse =
   GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses]
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenData = {
+  body?: never
+  path: {
+    app_id: string
+    node_execution_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-runs/{run_id}/node-executions/{node_execution_id}/children'
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenError =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors]
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses = {
+  200: WorkflowToolNodeExecutionListResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponse =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses]
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesData = {
   body?: never

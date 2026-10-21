@@ -51,6 +51,7 @@ from models.dataset import (
     DocumentSegment,
     ExternalKnowledgeBindings,
     Pipeline,
+    build_built_in_field_values,
 )
 from models.enums import (
     DatasetRuntimeMode,
@@ -2884,17 +2885,15 @@ class DocumentService:
             doc_language=document_language,
             need_summary=need_summary,
         )
-        doc_metadata = {}
         if dataset.built_in_field_enabled:
-            doc_metadata = {
-                BuiltInField.document_name: name,
-                BuiltInField.uploader: account.name,
-                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.source: data_source_type,
-            }
-        if doc_metadata:
-            document.doc_metadata = doc_metadata
+            now = naive_utc_now()
+            document.doc_metadata = build_built_in_field_values(
+                document_name=name,
+                uploader=account.name,
+                upload_date=now,
+                last_update_date=now,
+                data_source_type=data_source_type,
+            )
         return document
 
     @staticmethod

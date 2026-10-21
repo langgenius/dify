@@ -1,11 +1,23 @@
 """Tests for Celery SSL configuration."""
 
 import ssl
+from collections.abc import Iterator
 from importlib import import_module
 from unittest.mock import MagicMock, patch
 
+import pytest
+from celery.contrib.testing.app import TestApp, setup_default_app
+
 from enums import DeploymentEdition
 from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
+
+
+@pytest.fixture(autouse=True)
+def restore_celery_app_state() -> Iterator[None]:
+    # init_app replaces Celery's process-wide current/default app. Restore both
+    # so later shared tasks do not enter this module's Flask app context.
+    with setup_default_app(TestApp()):
+        yield
 
 
 class TestCelerySSLConfiguration:

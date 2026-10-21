@@ -46,7 +46,9 @@ const api = vi.hoisted(() => ({
   ssePost: vi.fn<typeof import('@/service/base').ssePost>(),
   sseGet: vi.fn<typeof import('@/service/base').sseGet>(),
   post: vi.fn<typeof import('@/service/base').post>(),
-  stop: vi.fn<typeof import('@/service/workflow').stopWorkflowRun>(),
+  stop: vi.fn<
+    typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.tasks.byTaskId.stop.post
+  >(),
   inspect: vi.fn<typeof import('@/service/workflow').fetchAllInspectVars>(),
   track: vi.fn<typeof import('@/app/components/base/amplitude').trackEvent>(),
   playAudio: vi.fn(),
@@ -59,6 +61,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflowRuns.tasks.byTaskId.stop.post': api.stop,
       'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
       'apps.byAppId.workflows.draft.conversationVariables.get': async () => ({ items: [] }),
       'apps.byAppId.workflows.draft.environmentVariables.get': async () => ({ items: [] }),
@@ -76,7 +79,6 @@ vi.mock('@/service/base', async (importOriginal) => ({
 }))
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
-  stopWorkflowRun: api.stop,
   fetchAllInspectVars: api.inspect,
 }))
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: api.track }))
@@ -382,7 +384,11 @@ it('stops an identified task through the stop endpoint', async () => {
   assert(callbacks?.onWorkflowStarted)
   act(() => callbacks.onWorkflowStarted?.(started))
   act(() => result.current.run.handleStopRun('task-1'))
-  expect(api.stop).toHaveBeenCalledExactlyOnceWith('/apps/app-1/workflow-runs/tasks/task-1/stop')
+  await waitFor(() =>
+    expect(api.stop).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', task_id: 'task-1' },
+    }),
+  )
   expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Stopped)
 })
 

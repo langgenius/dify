@@ -188,6 +188,7 @@ it('creates an annotation from the empty page and displays the saved record', as
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(await screen.findByRole('checkbox', { name: 'New question' })).toBeVisible()
   expect(screen.getByRole('cell', { name: 'New answer' })).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   expect(api.add).toHaveBeenCalledExactlyOnceWith({
     params: { app_id: 'app-id' },
     body: { question: 'New question', answer: 'New answer' },
@@ -226,6 +227,7 @@ it('keeps a failed batch deletion open for retry and clears the selection after 
   await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
   expect(screen.queryByText('appAnnotation.batchAction.selected')).not.toBeInTheDocument()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   expect(api.batchRemove).toHaveBeenCalledTimes(2)
   expect(api.batchRemove).toHaveBeenLastCalledWith({
     params: { app_id: 'app-id' },
@@ -255,6 +257,7 @@ it('saves edits from the detail drawer and shows them when reopened', async () =
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(await screen.findByRole('checkbox', { name: 'Edited question' })).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
   expect(
     within(
@@ -279,6 +282,7 @@ it('removes an annotation through its detail drawer and closes it', async () => 
   await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   expect(api.remove).toHaveBeenCalledExactlyOnceWith({
     params: { app_id: 'app-id', annotation_id: item.id },
   })

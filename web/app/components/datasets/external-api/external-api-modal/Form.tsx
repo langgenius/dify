@@ -1,4 +1,4 @@
-import type { FC, FormEventHandler } from 'react'
+import type { FC, SubmitEventHandler } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
@@ -9,7 +9,7 @@ import { useDocLink } from '@/context/i18n'
 
 type FormProps = {
   id: string
-  onSubmit: FormEventHandler<HTMLFormElement>
+  onSubmit: SubmitEventHandler<HTMLFormElement>
   className?: string
   itemClassName?: string
   fieldLabelClassName?: string

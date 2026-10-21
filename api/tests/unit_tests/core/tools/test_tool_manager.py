@@ -612,7 +612,7 @@ def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_da
         workflow_app_id=workflow_provider.app_id,
         workflow_as_tool_id=provider_id,
         version=workflow_provider.version,
-        workflow_entities={},
+        workflow_id="00000000-0000-0000-0000-000000000003",
         workflow_call_depth=0,
         entity=ToolEntity(
             identity=ToolIdentity(author="test", name="wf", label=I18nObject(en_US="Workflow"), provider=provider_id),

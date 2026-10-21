@@ -30,6 +30,7 @@ import {
   ensureCurrentWorkspaceQuery,
   seedCurrentWorkspaceQuery,
 } from '@/test/console/current-workspace'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import {
   createSystemFeaturesFixture,
@@ -59,8 +60,8 @@ type CurrentWorkspaceQueryProvider = {
   }
 }
 
-const fallbackTrialModelsQueryKey = ['console', 'trialModels', 'get'] as const
-const fallbackAppDslVersionQueryKey = ['console', 'appDslVersion', 'get'] as const
+const fallbackTrialModelsQueryKey = consoleQueryKey('trialModels.get')
+const fallbackAppDslVersionQueryKey = consoleQueryKey('appDslVersion.get')
 
 const getTrialModelsQueryKey = () => {
   const trialModelsQuery = (consoleQuery as { trialModels?: TrialModelsQueryProvider }).trialModels

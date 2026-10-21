@@ -333,8 +333,8 @@ catalogs:
       specifier: 1.33.5
       version: 1.33.5
     '@tanstack/react-hotkeys':
-      specifier: 0.13.0
-      version: 0.13.0
+      specifier: 0.16.0
+      version: 0.16.0
     '@tanstack/react-query':
       specifier: 5.104.4
       version: 5.104.4
@@ -387,6 +387,9 @@ catalogs:
       specifier: 1.15.9
       version: 1.15.9
     '@typescript-eslint/parser':
+      specifier: 8.71.2
+      version: 8.71.2
+    '@typescript-eslint/utils':
       specifier: 8.71.2
       version: 8.71.2
     '@typescript/native':
@@ -578,6 +581,9 @@ catalogs:
     js-yaml:
       specifier: 5.5.0
       version: 5.5.0
+    jsonc-eslint-parser:
+      specifier: 3.3.0
+      version: 3.3.0
     jsonschema:
       specifier: 1.5.0
       version: 1.5.0
@@ -799,12 +805,9 @@ importers:
 
   .:
     devDependencies:
-      '@eslint-react/eslint-plugin':
-        specifier: 'catalog:'
-        version: 5.28.1(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
-      '@eslint/markdown':
-        specifier: 'catalog:'
-        version: 8.0.3(supports-color@11.0.0)
+      '@dify/tooling':
+        specifier: workspace:*
+        version: link:packages/tooling
       '@iconify-json/heroicons':
         specifier: 'catalog:'
         version: 1.2.3
@@ -814,18 +817,9 @@ importers:
       '@iconify-json/ri':
         specifier: 'catalog:'
         version: 1.2.10
-      '@shadcn/lint':
-        specifier: 'catalog:'
-        version: 0.2.1(@typescript-eslint/parser@8.71.2(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0))(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
-      '@tanstack/eslint-plugin-query':
-        specifier: 'catalog:'
-        version: 5.104.4(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.9
-      '@typescript-eslint/parser':
-        specifier: 'catalog:'
-        version: 8.71.2(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
       '@typescript/native':
         specifier: 'catalog:'
         version: typescript@7.0.2
@@ -835,48 +829,6 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.13.0(jiti@2.7.0)(supports-color@11.0.0)
-      eslint-config-flat-gitignore:
-        specifier: 'catalog:'
-        version: 2.4.0(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
-      eslint-markdown:
-        specifier: 'catalog:'
-        version: 0.19.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
-      eslint-plugin-antfu:
-        specifier: 'catalog:'
-        version: 3.2.3(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
-      eslint-plugin-better-tailwindcss:
-        specifier: 'catalog:'
-        version: 4.9.1(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(happy-dom@20.14.6)(jiti@2.7.0)(playwright@1.64.1)(tsx@4.23.13)(yaml@2.9.1)))(tailwindcss@4.3.3)
-      eslint-plugin-jsdoc:
-        specifier: 'catalog:'
-        version: 65.3.12(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
-      eslint-plugin-jsonc:
-        specifier: 'catalog:'
-        version: 3.4.2(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
-      eslint-plugin-markdown-preferences:
-        specifier: 'catalog:'
-        version: 0.42.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
-      eslint-plugin-n:
-        specifier: 'catalog:'
-        version: 18.5.0(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
-      eslint-plugin-no-barrel-files:
-        specifier: 'catalog:'
-        version: 2.2.0(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
-      eslint-plugin-perfectionist:
-        specifier: 'catalog:'
-        version: 5.12.1(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
-      eslint-plugin-pnpm:
-        specifier: 'catalog:'
-        version: 1.9.1(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
-      eslint-plugin-regexp:
-        specifier: 'catalog:'
-        version: 3.3.1(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
-      eslint-plugin-storybook:
-        specifier: 'catalog:'
-        version: 10.6.2(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
-      eslint-plugin-yml:
-        specifier: 'catalog:'
-        version: 3.9.0(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
       knip:
         specifier: 'catalog:'
         version: 6.42.0
@@ -1135,7 +1087,7 @@ importers:
         version: 4.3.3(@voidzero-dev/vite-plus-core@1.3.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       '@tanstack/react-hotkeys':
         specifier: 'catalog:'
-        version: 0.13.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.16.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-virtual':
         specifier: 'catalog:'
         version: 3.14.21(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1337,6 +1289,94 @@ importers:
         specifier: 'catalog:'
         version: 1.3.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(happy-dom@20.14.6)(jiti@2.7.0)(playwright@1.64.1)(tsx@4.23.13)(yaml@2.9.1)
 
+  packages/tooling:
+    dependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 5.28.1(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+      '@eslint/markdown':
+        specifier: 'catalog:'
+        version: 8.0.3(supports-color@11.0.0)
+      '@shadcn/lint':
+        specifier: 'catalog:'
+        version: 0.2.1(@typescript-eslint/parser@8.71.2(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0))(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
+      '@tanstack/eslint-plugin-query':
+        specifier: 'catalog:'
+        version: 5.104.4(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+      '@tsslint/compat-eslint':
+        specifier: 'catalog:'
+        version: 3.1.4(@typescript/typescript6@6.0.2)
+      '@tsslint/config':
+        specifier: 'catalog:'
+        version: 3.1.4(@tsslint/compat-eslint@3.1.4(@typescript/typescript6@6.0.2))
+      '@typescript-eslint/parser':
+        specifier: 'catalog:'
+        version: 8.71.2(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+      eslint-config-flat-gitignore:
+        specifier: 'catalog:'
+        version: 2.4.0(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
+      eslint-markdown:
+        specifier: 'catalog:'
+        version: 0.19.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
+      eslint-plugin-antfu:
+        specifier: 'catalog:'
+        version: 3.2.3(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
+      eslint-plugin-better-tailwindcss:
+        specifier: 'catalog:'
+        version: 4.9.1(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(oxlint@1.88.0(oxlint-tsgolint@7.0.2004)(vite-plus@1.3.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(happy-dom@20.14.6)(jiti@2.7.0)(playwright@1.64.1)(tsx@4.23.13)(yaml@2.9.1)))(tailwindcss@4.3.3)
+      eslint-plugin-jsdoc:
+        specifier: 'catalog:'
+        version: 65.3.12(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+      eslint-plugin-jsonc:
+        specifier: 'catalog:'
+        version: 3.4.2(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
+      eslint-plugin-markdown-preferences:
+        specifier: 'catalog:'
+        version: 0.42.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+      eslint-plugin-n:
+        specifier: 'catalog:'
+        version: 18.5.0(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
+      eslint-plugin-no-barrel-files:
+        specifier: 'catalog:'
+        version: 2.2.0(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+      eslint-plugin-perfectionist:
+        specifier: 'catalog:'
+        version: 5.12.1(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+      eslint-plugin-pnpm:
+        specifier: 'catalog:'
+        version: 1.9.1(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
+      eslint-plugin-regexp:
+        specifier: 'catalog:'
+        version: 3.3.1(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
+      eslint-plugin-storybook:
+        specifier: 'catalog:'
+        version: 10.6.2(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+      eslint-plugin-yml:
+        specifier: 'catalog:'
+        version: 3.9.0(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))
+      typescript:
+        specifier: 'catalog:'
+        version: '@typescript/typescript6@6.0.2'
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.3.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(happy-dom@20.14.6)(jiti@2.7.0)(playwright@1.64.1)(tsx@4.23.13)(yaml@2.9.1)
+    devDependencies:
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.9
+      '@typescript-eslint/utils':
+        specifier: 'catalog:'
+        version: 8.71.2(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+      jsonc-eslint-parser:
+        specifier: 'catalog:'
+        version: 3.3.0
+      vite:
+        specifier: 'catalog:'
+        version: '@voidzero-dev/vite-plus-core@1.3.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)'
+
   packages/tsconfig: {}
 
   sdks/nodejs-client:
@@ -1454,7 +1494,7 @@ importers:
         version: 1.33.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-hotkeys':
         specifier: 'catalog:'
-        version: 0.13.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.16.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.104.4(@types/react@19.3.0)(react@19.3.1)
@@ -1690,6 +1730,9 @@ importers:
       '@dify/iconify-collections':
         specifier: workspace:*
         version: link:../packages/iconify-collections
+      '@dify/tooling':
+        specifier: workspace:*
+        version: link:../packages/tooling
       '@dify/tsconfig':
         specifier: workspace:*
         version: link:../packages/tsconfig
@@ -1750,12 +1793,6 @@ importers:
       '@tsslint/cli':
         specifier: 'catalog:'
         version: 3.1.4(@tsslint/compat-eslint@3.1.4(@typescript/typescript6@6.0.2))(@typescript/typescript6@6.0.2)
-      '@tsslint/compat-eslint':
-        specifier: 'catalog:'
-        version: 3.1.4(@typescript/typescript6@6.0.2)
-      '@tsslint/config':
-        specifier: 'catalog:'
-        version: 3.1.4(@tsslint/compat-eslint@3.1.4(@typescript/typescript6@6.0.2))
       '@types/js-cookie':
         specifier: 'catalog:'
         version: 3.0.6
@@ -1792,6 +1829,9 @@ importers:
       agentation:
         specifier: 'catalog:'
         version: 3.1.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      axe-core:
+        specifier: 4.13.0
+        version: 4.13.0
       code-inspector-plugin:
         specifier: 'catalog:'
         version: 1.6.6(supports-color@11.0.0)
@@ -4635,8 +4675,8 @@ packages:
   '@tanstack/form-core@1.33.5':
     resolution: {integrity: sha512-3dfx9MBP0aq5sXKteikG629X9oviptrQj0IFRk9YGcb+lB7Kv5x8S17oOSk1wUWgjQZ4xVJEMbKwOAODymocgA==}
 
-  '@tanstack/hotkeys@0.11.0':
-    resolution: {integrity: sha512-uFKTuknj3sNp5ERoxsI0ISMMOVw3KmSkgy2iIcp19QR/zheYm7bkwzNndMv5NDAqhXpavOn6h4A6HPVJFCBXPg==}
+  '@tanstack/hotkeys@0.17.0':
+    resolution: {integrity: sha512-HhgfF+Wqz3ofCQaDHXSkItRbLXmigoHsxJsQGbGc3Kgu/gunwcFLqVubfoUmdRK/YN7fuZYN2vEOk3oMGxSWTg==}
     engines: {node: '>=20'}
 
   '@tanstack/pacer-lite@0.1.1':
@@ -4655,8 +4695,8 @@ packages:
       '@tanstack/react-start':
         optional: true
 
-  '@tanstack/react-hotkeys@0.13.0':
-    resolution: {integrity: sha512-+iF7bQe1YegbMa/mL7Zl490OXjSuGLlu2IPYd2YcvdeI8OcTHfdENPrRNk7PklWQ2WAIJjCVxMXiQ/Uiq8fzIQ==}
+  '@tanstack/react-hotkeys@0.16.0':
+    resolution: {integrity: sha512-mP1ZFjBdqllK5xrUU2BGi2ZAryrVmgCAsWSEVJWq1w+qkxRNZ+c5h+J7+99sTwhVa2dLIgnJwE2PzITSopUZnA==}
     engines: {node: '>=20'}
     peerDependencies:
       react: '>=16.8'
@@ -11753,7 +11793,7 @@ snapshots:
       '@tanstack/pacer-lite': 0.1.1
       '@tanstack/store': 0.11.2
 
-  '@tanstack/hotkeys@0.11.0':
+  '@tanstack/hotkeys@0.17.0':
     dependencies:
       '@tanstack/store': 0.11.2
 
@@ -11769,9 +11809,9 @@ snapshots:
     transitivePeerDependencies:
       - react-dom
 
-  '@tanstack/react-hotkeys@0.13.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@tanstack/react-hotkeys@0.16.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@tanstack/hotkeys': 0.11.0
+      '@tanstack/hotkeys': 0.17.0
       '@tanstack/react-store': 0.11.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
@@ -17027,7 +17067,7 @@ time:
   '@tanstack/form-core@1.33.5': '2026-08-11T12:45:38.255Z'
   '@tanstack/query-core@5.104.4': '2026-10-17T17:54:27.802Z'
   '@tanstack/react-form@1.33.5': '2026-08-11T12:45:38.642Z'
-  '@tanstack/react-hotkeys@0.13.0': '2026-10-04T05:10:59.975Z'
+  '@tanstack/react-hotkeys@0.16.0': '2026-10-19T18:24:08.957Z'
   '@tanstack/react-query@5.104.4': '2026-10-17T17:55:14.077Z'
   '@tanstack/react-virtual@3.14.21': '2026-10-16T11:19:18.479Z'
   '@testing-library/dom@10.4.2': '2026-09-13T18:08:36.116Z'
@@ -17046,6 +17086,7 @@ time:
   '@types/react@19.3.0': '2026-09-09T18:08:49.750Z'
   '@types/sortablejs@1.15.9': '2025-10-24T04:31:45.132Z'
   '@typescript-eslint/parser@8.71.2': '2026-10-12T17:11:57.903Z'
+  '@typescript-eslint/utils@8.71.2': '2026-10-12T17:09:24.822Z'
   '@typescript/typescript6@6.0.2': '2026-07-06T18:06:47.459Z'
   '@vitejs/plugin-react@6.1.2': '2026-10-05T10:08:27.143Z'
   '@vitejs/plugin-rsc@0.5.38': '2026-10-15T02:02:18.001Z'
@@ -17057,6 +17098,7 @@ time:
   agentation@3.1.2: '2026-09-22T02:41:05.110Z'
   ahooks@3.10.0: '2026-09-06T01:59:54.024Z'
   ajv@8.20.0: '2026-04-24T15:22:16.529Z'
+  axe-core@4.13.0: '2026-08-05T16:53:07.262Z'
   bowser@2.14.1: '2026-02-08T22:04:35.837Z'
   c12@4.0.0-rc.2: '2026-09-22T23:44:24.160Z'
   chokidar@5.0.0: '2025-11-25T23:28:06.854Z'
@@ -17111,6 +17153,7 @@ time:
   jotai@3.0.1: '2026-09-29T14:18:19.043Z'
   js-cookie@3.0.8: '2026-05-29T10:51:39.065Z'
   js-yaml@5.5.0: '2026-10-15T23:28:37.500Z'
+  jsonc-eslint-parser@3.3.0: '2026-08-08T01:15:58.520Z'
   jsonschema@1.5.0: '2025-01-07T15:09:11.287Z'
   katex@0.17.0: '2026-05-22T08:06:26.967Z'
   knip@6.42.0: '2026-10-18T13:44:32.638Z'

@@ -539,6 +539,14 @@ progress:
   that event. Both cursor forms remain exclusive resume cursors, so the server
   does not resend a terminal event that the supplied cursor already excludes.
 
+Both event endpoints replay with nonblocking `XREAD`, which supports exclusive
+resume cursors on Redis 6.0, including 6.0.14. `0-0` starts at the earliest
+retained event. Polling returns at most `limit` events; an empty page preserves
+the supplied `after` as `next_cursor`. SSE switches to blocking reads after
+replay is exhausted. Both endpoints return `404` when the run record is missing.
+This read-command compatibility does not define the platform's full Redis
+support matrix; the Redis deployment constraints above still apply.
+
 Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
 `run_succeeded`. Failed runs end with `run_failed`, and accepted cancellations
 end with `run_cancelled`. Each run can append at most one of these terminal
