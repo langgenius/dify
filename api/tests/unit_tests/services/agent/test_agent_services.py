@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, call
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -1254,7 +1255,7 @@ def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
 
 
 def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mocker: MockerFixture
 ):
     session = sqlite_session
     agent = Agent(
@@ -1322,12 +1323,13 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(
     source_binding_id = "binding-1"
     build_draft.agent_workspace_binding_id = source_binding_id
     session.commit()
-    create_home = MagicMock(
+    create_home = mocker.patch.object(
+        AgentHomeSnapshotService,
+        "create_for_build_apply",
         return_value=AgentHomeSnapshot(
             tenant_id="tenant-1", agent_id="agent-1", id="home-build", snapshot_ref="backend-home-build"
-        )
+        ),
     )
-    monkeypatch.setattr(AgentHomeSnapshotService, "create_for_build_apply", create_home)
     retire_binding = MagicMock()
     enqueue_collection = MagicMock()
     monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
@@ -1605,6 +1607,7 @@ def test_build_apply_checkpoints_binding_updates_normal_draft_then_collects(
 def test_build_apply_retires_normal_preview_binding_before_replacing_draft_home(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     session = sqlite_session
     agent = Agent(
@@ -1680,13 +1683,11 @@ def test_build_apply_retires_normal_preview_binding_before_replacing_draft_home(
     session.commit()
     lifecycle: list[str] = []
     event.listen(session, "after_commit", lambda _session: lifecycle.append("commit"))
-    monkeypatch.setattr(
+    mocker.patch.object(
         AgentHomeSnapshotService,
         "create_for_build_apply",
-        MagicMock(
-            return_value=AgentHomeSnapshot(
-                tenant_id="tenant-1", agent_id="agent-1", snapshot_ref="backend-home", id="home-applied"
-            )
+        return_value=AgentHomeSnapshot(
+            tenant_id="tenant-1", agent_id="agent-1", snapshot_ref="backend-home", id="home-applied"
         ),
     )
     monkeypatch.setattr(AgentComposerService, "_save_agent_draft", MagicMock(return_value=normal_draft))
@@ -1775,6 +1776,7 @@ def test_build_apply_validates_before_resolving_or_snapshotting_sandbox(
 def test_build_apply_without_model_snapshots_source_sandbox_and_updates_normal_draft(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     session = sqlite_session
     agent = Agent(
@@ -1809,15 +1811,16 @@ def test_build_apply_without_model_snapshots_source_sandbox_and_updates_normal_d
     )
     session.add_all([agent, build_draft])
     session.commit()
-    create_home = MagicMock(
+    create_home = mocker.patch.object(
+        AgentHomeSnapshotService,
+        "create_for_build_apply",
         return_value=AgentHomeSnapshot(
             tenant_id="tenant-1", agent_id="agent-1", id="home-new", snapshot_ref="backend-home-new"
-        )
+        ),
     )
     validate_knowledge = MagicMock()
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda _payload: None)
     monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", validate_knowledge)
-    monkeypatch.setattr(AgentHomeSnapshotService, "create_for_build_apply", create_home)
     monkeypatch.setattr(AgentComposerService, "_save_agent_draft", lambda **_kwargs: normal_draft)
     monkeypatch.setattr(AgentComposerService, "_agent_soul_matches_active_config", lambda **_kwargs: False)
     monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock())
@@ -1889,7 +1892,7 @@ def test_build_apply_requires_retained_sandbox_before_creating_home(
 
 
 def test_build_apply_fails_when_locked_source_cannot_be_retired(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mocker: MockerFixture
 ) -> None:
     session = sqlite_session
     agent = Agent(
@@ -1926,13 +1929,11 @@ def test_build_apply_fails_when_locked_source_cannot_be_retired(
     session.commit()
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda _payload: None)
     monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", lambda **_kwargs: None)
-    monkeypatch.setattr(
+    mocker.patch.object(
         AgentHomeSnapshotService,
         "create_for_build_apply",
-        MagicMock(
-            return_value=AgentHomeSnapshot(
-                tenant_id="tenant-1", agent_id="agent-1", id="home-new", snapshot_ref="backend-home-new"
-            )
+        return_value=AgentHomeSnapshot(
+            tenant_id="tenant-1", agent_id="agent-1", id="home-new", snapshot_ref="backend-home-new"
         ),
     )
     monkeypatch.setattr(AgentComposerService, "_save_agent_draft", MagicMock(return_value=normal_draft))
@@ -2341,7 +2342,7 @@ def test_load_agent_soul_for_debug_requires_existing_build_draft(sqlite_session:
 
 
 def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mocker: MockerFixture
 ):
     session = sqlite_session
     agent = Agent(
@@ -2394,12 +2395,13 @@ def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(
     )
     session.add_all([agent, build_draft, normal_draft, active_version])
     session.commit()
-    create_home = MagicMock(
+    create_home = mocker.patch.object(
+        AgentHomeSnapshotService,
+        "create_for_build_apply",
         return_value=AgentHomeSnapshot(
             tenant_id="tenant-1", agent_id="agent-1", id="home-build", snapshot_ref="backend-home-build"
-        )
+        ),
     )
-    monkeypatch.setattr(AgentHomeSnapshotService, "create_for_build_apply", create_home)
     monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock())
     monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", MagicMock())
 
@@ -5163,7 +5165,7 @@ class TestAgentAppBackingAgent:
         )
 
     def test_reset_build_conversation_retires_build_draft_binding(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mocker: MockerFixture
     ):
         session = sqlite_session
         agent = Agent(
@@ -5197,7 +5199,9 @@ class TestAgentAppBackingAgent:
         )
         session.add_all([agent, mapping, build_draft])
         session.commit()
-        get_active_binding = MagicMock(
+        get_active_binding = mocker.patch.object(
+            AgentWorkspaceService,
+            "get_active_binding",
             return_value=AgentWorkspaceBinding(
                 tenant_id="tenant-1",
                 app_id="app-1",
@@ -5206,11 +5210,10 @@ class TestAgentAppBackingAgent:
                 agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
                 backend_binding_ref="backend-binding-1",
                 agent_id=agent.id,
-            )
+            ),
         )
         retire_binding = MagicMock(return_value="binding-1")
         enqueue_collection = MagicMock()
-        monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_active_binding)
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
         monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
 
@@ -5236,7 +5239,7 @@ class TestAgentAppBackingAgent:
         )
 
     def test_preview_rotation_commit_failure_rolls_back_before_enqueue(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mocker: MockerFixture
     ):
         session = sqlite_session
         agent = Agent(
@@ -5267,19 +5270,17 @@ class TestAgentAppBackingAgent:
             "before_commit",
             lambda _session: (_ for _ in ()).throw(RuntimeError("commit failed")),
         )
-        monkeypatch.setattr(
+        mocker.patch.object(
             AgentWorkspaceService,
             "get_active_binding",
-            MagicMock(
-                return_value=AgentWorkspaceBinding(
-                    tenant_id="tenant-1",
-                    app_id="app-1",
-                    workspace_id="workspace-1",
-                    agent_config_version_id="snapshot-1",
-                    agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-                    backend_binding_ref="backend-binding-1",
-                    agent_id=agent.id,
-                )
+            return_value=AgentWorkspaceBinding(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                workspace_id="workspace-1",
+                agent_config_version_id="snapshot-1",
+                agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                backend_binding_ref="backend-binding-1",
+                agent_id=agent.id,
             ),
         )
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock(return_value="binding-1"))
@@ -5297,7 +5298,7 @@ class TestAgentAppBackingAgent:
         enqueue_collection.assert_not_called()
 
     def test_build_reset_commit_failure_rolls_back_before_enqueue(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mocker: MockerFixture
     ):
         session = sqlite_session
         agent = Agent(
@@ -5343,7 +5344,9 @@ class TestAgentAppBackingAgent:
 
         event.listen(session, "before_commit", fail_commit)
         event.listen(session, "after_rollback", rollback)
-        get_active_binding = MagicMock(
+        get_active_binding = mocker.patch.object(
+            AgentWorkspaceService,
+            "get_active_binding",
             return_value=AgentWorkspaceBinding(
                 tenant_id="tenant-1",
                 app_id="app-1",
@@ -5352,9 +5355,8 @@ class TestAgentAppBackingAgent:
                 agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
                 backend_binding_ref="backend-binding-1",
                 agent_id=agent.id,
-            )
+            ),
         )
-        monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_active_binding)
         retire_binding = MagicMock(side_effect=lambda **_kwargs: events.append("retire") or "binding-1")
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
         enqueue_collection = MagicMock()
@@ -6504,7 +6506,9 @@ class TestWorkflowAgentDraftBindingSync:
         assert session.get(WorkflowAgentNodeBinding, existing_binding.id) is existing_binding
         assert not session.new
 
-    def test_clones_inline_binding_for_agent_owned_by_another_node(self, monkeypatch, sqlite_session: Session):
+    def test_clones_inline_binding_for_agent_owned_by_another_node(
+        self, monkeypatch, sqlite_session: Session, mocker: MockerFixture
+    ):
         session = sqlite_session
         workflow = Workflow(
             id="workflow-1",
@@ -6546,7 +6550,9 @@ class TestWorkflowAgentDraftBindingSync:
         )
         session.add(agent)
         session.commit()
-        clone = MagicMock(
+        clone = mocker.patch.object(
+            WorkflowAgentPublishService,
+            "_clone_inline_graph_binding_for_node",
             return_value=(
                 Agent(
                     tenant_id="tenant-1",
@@ -6556,9 +6562,8 @@ class TestWorkflowAgentDraftBindingSync:
                     id="cloned-agent",
                 ),
                 "cloned-snapshot",
-            )
+            ),
         )
-        monkeypatch.setattr(WorkflowAgentPublishService, "_clone_inline_graph_binding_for_node", clone)
 
         WorkflowAgentPublishService.sync_agent_bindings_for_draft(
             session=session,
