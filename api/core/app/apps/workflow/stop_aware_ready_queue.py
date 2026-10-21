@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from queue import Empty
 from typing import final
 
 from core.app.apps.execution_coordinator import is_app_task_stop_flag_set
@@ -13,10 +14,11 @@ from graphon.runtime.ready_queue import ReadyQueue
 
 @final
 class StopAwareReadyQueue:
-    """Reject newly ready nodes once the run has been stopped.
+    """Reject ready nodes once the run has been stopped.
 
-    Graph execution still enqueues successors after abort. Drop those puts so
-    later nodes do not start; the in-flight node can finish.
+    Graph execution can enqueue successors after abort, and workers can already
+    have nodes queued when a stop is requested. Reject both cases so later nodes
+    do not start; an in-flight node can finish.
     """
 
     def __init__(
@@ -39,7 +41,11 @@ class StopAwareReadyQueue:
         self._inner.put(item)
 
     def get(self, timeout: float | None = None) -> ReadyTask:
-        return self._inner.get(timeout=timeout)
+        item = self._inner.get(timeout=timeout)
+        if self._should_reject():
+            self._inner.task_done()
+            raise Empty
+        return item
 
     def task_done(self) -> None:
         self._inner.task_done()
