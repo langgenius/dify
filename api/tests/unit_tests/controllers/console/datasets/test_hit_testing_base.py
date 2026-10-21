@@ -308,7 +308,6 @@ class TestPerformHitTesting:
                 "retrieve",
                 side_effect=Exception("boom"),
             ),
-            pytest.raises(InternalServerError, match="boom"),
         ):
             with pytest.raises(InternalServerError) as exc_info:
                 DatasetsHitTestingBase.perform_hit_testing(Mock(), dataset, {"query": "hello"}, account, "tenant-1")

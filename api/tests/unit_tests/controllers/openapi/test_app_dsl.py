@@ -253,14 +253,16 @@ def test_import_refuses_a_graph_with_errors_and_hints_the_check(
     import_calls = _recorded_import(monkeypatch, app_query_services)
 
     api = AppDslImportApi()
-    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
-        with pytest.raises(DslInvalid) as exc_info:
-            cast(_EndpointView, api.post).__handler__(
-                api,
-                _CONTEXT,
-                workspace_id="workspace-1",
-                body=AppDslImportPayload(mode="yaml-content", yaml_content=_dsl("workflow", _START, _ANSWER)),
-            )
+    with (
+        app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"),
+        pytest.raises(DslInvalid) as exc_info,
+    ):
+        cast(_EndpointView, api.post).__handler__(
+            api,
+            _CONTEXT,
+            workspace_id="workspace-1",
+            body=AppDslImportPayload(mode="yaml-content", yaml_content=_dsl("workflow", _START, _ANSWER)),
+        )
 
     assert import_calls == []
     assert [(d.type, d.loc) for d in exc_info.value.details or []] == [
@@ -421,9 +423,11 @@ def test_a_draft_changed_during_the_save_answers_draft_changed(
     monkeypatch.setattr(app_query_services.apps.imports, "import_app", changed)
     monkeypatch.setattr(app_query_services.apps.imports, "confirm_import", changed)
 
-    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
-        with pytest.raises(DraftChanged) as exc_info:
-            cast(_EndpointView, api.post).__handler__(api, _CONTEXT, **kwargs)
+    with (
+        app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"),
+        pytest.raises(DraftChanged) as exc_info,
+    ):
+        cast(_EndpointView, api.post).__handler__(api, _CONTEXT, **kwargs)
 
     assert exc_info.value.code == 409
 
@@ -458,14 +462,16 @@ def test_import_refuses_malformed_graphs(
     import_calls = _recorded_import(monkeypatch, app_query_services)
 
     api = AppDslImportApi()
-    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
-        with pytest.raises(DslInvalid) as exc_info:
-            cast(_EndpointView, api.post).__handler__(
-                api,
-                _CONTEXT,
-                workspace_id="workspace-1",
-                body=AppDslImportPayload(mode="yaml-content", yaml_content=_raw_dsl(graph)),
-            )
+    with (
+        app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"),
+        pytest.raises(DslInvalid) as exc_info,
+    ):
+        cast(_EndpointView, api.post).__handler__(
+            api,
+            _CONTEXT,
+            workspace_id="workspace-1",
+            body=AppDslImportPayload(mode="yaml-content", yaml_content=_raw_dsl(graph)),
+        )
 
     assert import_calls == []
     assert {d.type for d in exc_info.value.details or []} == {IssueCode.GRAPH_INVALID}

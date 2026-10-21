@@ -196,8 +196,10 @@ def test_configure_default_models_task_reports_initialization_failure(monkeypatc
     import tasks.install_default_plugins_task as task_module
 
     apply_config_overrides(monkeypatch, NEW_USER_DEFAULT_MODELS="")
-    with patch.object(
-        task_module.ModelProviderService, "initialize_default_llm", side_effect=RuntimeError("unavailable")
+    with (
+        patch.object(
+            task_module.ModelProviderService, "initialize_default_llm", side_effect=RuntimeError("unavailable")
+        ),
+        pytest.raises(RuntimeError, match="Failed to initialize defaults for tenant tenant-1; model types: llm"),
     ):
-        with pytest.raises(RuntimeError, match="Failed to initialize defaults for tenant tenant-1; model types: llm"):
-            task_module.configure_default_models_task.run("tenant-1", None)
+        task_module.configure_default_models_task.run("tenant-1", None)
