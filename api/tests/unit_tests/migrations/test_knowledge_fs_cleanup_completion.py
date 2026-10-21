@@ -68,3 +68,37 @@ def test_cleanup_completion_migration_matches_model_and_is_symmetric() -> None:
 
     assert {column["name"] for column in sa.inspect(engine).get_columns(table_name)} == columns_before
     assert not (_COMPLETION_COLUMNS & columns_before)
+
+
+def test_cleanup_completion_downgrade_keeps_completed_rows_as_started() -> None:
+    engine = sa.create_engine("sqlite:///:memory:")
+    modules = [_load(path) for path in _MIGRATION_PATHS]
+    for module in modules:
+        _run(module, engine, "upgrade")
+    with engine.begin() as connection:
+        connection.execute(
+            sa.text(
+                "INSERT INTO knowledge_fs_cleanup_authorizations ("
+                "id, tenant_id, ledger_id, request_id, plan_schema_version, plan_digest, targets,"
+                " readiness_evidence, requested_by_account_id, requested_at, readiness_ledger_cas_version,"
+                " status, approved_by_account_id, approved_at, approval_expires_at, approved_ledger_cas_version,"
+                " started_by_account_id, started_at, started_ledger_cas_version, completed_by_account_id,"
+                " completed_at, completion_evidence, completed_ledger_cas_version"
+                ") VALUES ("
+                "'auth-1', 'tenant-1', 'ledger-1', 'request-1', 'v1', 'sha256:plan', '[]', '{}', 'account-1',"
+                " '2026-07-21 10:00:00', 1, 'completed', 'account-2', '2026-07-21 11:00:00',"
+                " '2026-07-22 11:00:00', 2, 'account-1', '2026-07-21 12:00:00', 3, 'account-1',"
+                " '2026-07-21 13:00:00', '{\"deleted\": 1}', 4)"
+            )
+        )
+
+    _run(modules[-1], engine, "downgrade")
+
+    with engine.connect() as connection:
+        row = connection.execute(
+            sa.text(
+                "SELECT status, started_by_account_id, started_ledger_cas_version"
+                " FROM knowledge_fs_cleanup_authorizations WHERE id = 'auth-1'"
+            )
+        ).one()
+    assert tuple(row) == ("started", "account-1", 3)

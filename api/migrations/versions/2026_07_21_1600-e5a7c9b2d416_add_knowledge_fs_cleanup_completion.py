@@ -79,6 +79,17 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # The previous schema has no completed state. A completed authorization already carries the
+    # full started evidence, so it becomes the started row it was before completion; the
+    # completion evidence leaves with its columns either way.
+    op.execute(
+        sa.text(
+            "UPDATE knowledge_fs_cleanup_authorizations"
+            " SET status = 'started', completed_by_account_id = NULL, completed_at = NULL,"
+            " completion_evidence = NULL, completed_ledger_cas_version = NULL"
+            " WHERE status = 'completed'"
+        )
+    )
     with op.batch_alter_table("knowledge_fs_cleanup_authorizations", schema=None) as batch_op:
         batch_op.drop_constraint("kfs_cleanup_authorization_completion_time_ck", type_="check")
         batch_op.drop_constraint("kfs_cleanup_authorization_status_fields_ck", type_="check")
