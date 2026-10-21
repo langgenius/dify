@@ -281,7 +281,7 @@ export default function AccountSetting({
             <ScrollAreaViewport
               ref={scrollContainerRef}
               style={{ overflowX: 'hidden' }}
-              className="min-h-0 flex-1 overscroll-contain"
+              className="min-h-0 flex-1 overscroll-contain focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
             >
               <ScrollAreaContent
                 style={{ minWidth: 0 }}
