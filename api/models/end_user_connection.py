@@ -6,31 +6,15 @@ the foreign keys here only enforce the credential namespace and Provider.
 """
 
 from datetime import datetime
-from enum import StrEnum
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
+from constants.end_user_connections import ConnectionCredentialType, ConnectionStatus, OAuthClientSource
 from libs.datetime_utils import naive_utc_now
 
 from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, LongText, StringUUID
-
-
-class ConnectionCredentialType(StrEnum):
-    API_KEY = "api-key"
-    OAUTH2 = "oauth2"
-
-
-class ConnectionStatus(StrEnum):
-    CONNECTED = "connected"
-    RECONNECT_REQUIRED = "reconnect_required"
-    INVALID = "invalid"
-
-
-class OAuthClientSource(StrEnum):
-    WORKSPACE = "workspace"
-    PLATFORM = "platform"
 
 
 class EndUserConnection(DefaultFieldsDCMixin, TypeBase):

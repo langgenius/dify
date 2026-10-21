@@ -137,6 +137,20 @@ forbidden_modules =
     libs.rsa
 allow_indirect_imports = True
 
+[importlinter:contract:end-user-connection-policy-boundary]
+name = EndUser Connection contracts and policies are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.end_user_connections
+forbidden_modules =
+    controllers
+    extensions
+    repositories
+    models
+    flask
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:machinery-framework-boundary]
 name = API machinery is framework neutral
 type = forbidden
