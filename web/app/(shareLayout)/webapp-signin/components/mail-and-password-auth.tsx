@@ -5,7 +5,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   navigateAfterWebAppLogin,
@@ -23,6 +23,7 @@ import { encryptPassword } from '@/utils/encryption'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
+import styles from './mail-and-password-auth.module.css'
 
 type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
@@ -36,6 +37,10 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [password, setPassword] = useState('')
+  const [emailAutofilled, setEmailAutofilled] = useState(false)
+  const [passwordAutofilled, setPasswordAutofilled] = useState(false)
+  const emailInputRef = useRef<HTMLInputElement>(null)
+  const passwordInputRef = useRef<HTMLInputElement>(null)
 
   const [isLoading, setIsLoading] = useState(false)
   const redirectUrl = searchParams.get('redirect_url')
@@ -47,20 +52,22 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   }, [redirectUrl, router])
 
   const handleEmailPasswordLogin = async () => {
+    const currentEmail = emailInputRef.current?.value ?? email
+    const currentPassword = passwordInputRef.current?.value ?? password
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
-    if (!email) {
+    if (!currentEmail) {
       toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
       return
     }
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(currentEmail)) {
       toast.error(t(($) => $['error.emailInValid'], { ns: 'login' }))
       return
     }
-    if (!password?.trim()) {
+    if (!currentPassword.trim()) {
       toast.error(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
       return
     }
@@ -68,8 +75,8 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
     try {
       setIsLoading(true)
       const loginData = {
-        email,
-        password: encryptPassword(password),
+        email: currentEmail,
+        password: encryptPassword(currentPassword),
         remember_me: true,
       }
 
@@ -115,8 +122,14 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         </FieldLabel>
         <div className="mt-1">
           <Input
-            value={email}
-            onValueChange={setEmail}
+            ref={emailInputRef}
+            defaultValue={emailFromLink}
+            onValueChange={(value) => {
+              setEmail(value)
+              setEmailAutofilled(false)
+            }}
+            onAnimationStart={() => setEmailAutofilled(true)}
+            className={styles.autofillAware}
             id="email"
             type="email"
             autoComplete="email"
@@ -142,8 +155,14 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         </div>
         <InputGroup className="mt-1">
           <InputGroupInput
-            value={password}
-            onValueChange={setPassword}
+            ref={passwordInputRef}
+            defaultValue=""
+            onValueChange={(value) => {
+              setPassword(value)
+              setPasswordAutofilled(false)
+            }}
+            onAnimationStart={() => setPasswordAutofilled(true)}
+            className={styles.autofillAware}
             id="password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
@@ -169,7 +188,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         <Button
           type="submit"
           variant="primary"
-          disabled={isLoading || !email || !password}
+          disabled={isLoading || (!email && !emailAutofilled) || (!password && !passwordAutofilled)}
           className="w-full"
         >
           {t(($) => $.signBtn, { ns: 'login' })}

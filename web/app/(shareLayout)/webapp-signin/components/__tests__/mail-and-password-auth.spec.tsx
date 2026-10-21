@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MailAndPasswordAuth from '../mail-and-password-auth'
 
@@ -69,6 +69,64 @@ describe('MailAndPasswordAuth', () => {
         body: {
           email: 'user@example.com',
           password: 'c3Ryb25nLXBhc3N3b3Jk',
+          remember_me: true,
+        },
+      })
+    })
+  })
+
+  it('enables login and submits credentials autofilled without input events', async () => {
+    const user = userEvent.setup()
+    render(<MailAndPasswordAuth isEmailSetup />)
+
+    const emailInput = screen.getByRole('textbox', { name: 'login.email' })
+    const passwordInput = screen.getByLabelText('login.password', { exact: true })
+    const submitButton = screen.getByRole('button', { name: 'login.signBtn' })
+    const setNativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+
+    setNativeValue?.call(emailInput, 'autofilled@example.com')
+    setNativeValue?.call(passwordInput, 'autofilled-password')
+    fireEvent.animationStart(emailInput)
+    fireEvent.animationStart(passwordInput)
+
+    expect(submitButton).toBeEnabled()
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(webAppLoginMock).toHaveBeenCalledWith({
+        url: '/login',
+        body: {
+          email: 'autofilled@example.com',
+          password: 'YXV0b2ZpbGxlZC1wYXNzd29yZA==',
+          remember_me: true,
+        },
+      })
+    })
+  })
+
+  it('submits current input values when autofill is detected before values are readable', async () => {
+    const user = userEvent.setup()
+    render(<MailAndPasswordAuth isEmailSetup />)
+
+    const emailInput = screen.getByRole('textbox', { name: 'login.email' })
+    const passwordInput = screen.getByLabelText('login.password', { exact: true })
+    const submitButton = screen.getByRole('button', { name: 'login.signBtn' })
+    const setNativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+
+    fireEvent.animationStart(emailInput)
+    fireEvent.animationStart(passwordInput)
+    expect(submitButton).toBeEnabled()
+
+    setNativeValue?.call(emailInput, 'autofilled@example.com')
+    setNativeValue?.call(passwordInput, 'autofilled-password')
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(webAppLoginMock).toHaveBeenCalledWith({
+        url: '/login',
+        body: {
+          email: 'autofilled@example.com',
+          password: 'YXV0b2ZpbGxlZC1wYXNzd29yZA==',
           remember_me: true,
         },
       })
