@@ -52,21 +52,6 @@ class FakeRedis:
         self.commands.append(("get", key))
         return self.values.get(key)
 
-    async def xadd(
-        self,
-        key: str,
-        fields: Mapping[str, object],
-        *,
-        maxlen: int | None = None,
-        approximate: bool = True,
-    ) -> str:
-        self.commands.append(("xadd", key, dict(fields), maxlen, approximate))
-        return self._append_stream_entry(key, fields, maxlen=maxlen)
-
-    def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> "FakeRedisPipeline":
-        self.commands.append(("pipeline", transaction, shard_hint))
-        return FakeRedisPipeline(self)
-
     def _append_stream_entry(
         self,
         key: str,
@@ -112,8 +97,22 @@ class FakeRedis:
         self.commands.append(("expire", key, seconds))
         return True
 
-    async def eval(self, script: str, numkeys: int, *keys_and_args: object) -> list[object]:
+    async def xrange(
+        self, key: str, *, min: str = "-", count: int | None = None
+    ) -> list[tuple[str, dict[str, object]]]:
+        self.commands.append(("xrange", key, min, count))
+        entries = [entry for entry in self.streams.get(key, []) if self._is_after_min(entry[0], min)]
+        if count is not None:
+            return entries[:count]
+        return entries
+
+    async def eval(self, script: str, numkeys: int, *keys_and_args: object) -> object:
         self.commands.append(("eval", script, numkeys, *keys_and_args))
+        if 'local event_id = redis.call("XADD", KEYS[1], "MAXLEN", "~", ARGV[1]' in script:
+            events_key = cast(str, keys_and_args[0])
+            max_length = int(cast(str, keys_and_args[3]))
+            payload = cast(str, keys_and_args[4])
+            return self._append_stream_entry(events_key, {"payload": payload}, maxlen=max_length)
         if self.eval_result is None:
             raise AssertionError("test must configure FakeRedis.eval_result")
         return list(self.eval_result)
@@ -122,42 +121,6 @@ class FakeRedis:
     def _stream_id_value(event_id: str) -> tuple[int, int]:
         timestamp, sequence = event_id.split("-", maxsplit=1)
         return int(timestamp), int(sequence)
-
-
-class FakeRedisPipeline:
-    redis: FakeRedis
-    results: list[object]
-
-    def __init__(self, redis: FakeRedis) -> None:
-        self.redis = redis
-        self.results = []
-
-    async def __aenter__(self) -> "FakeRedisPipeline":
-        return self
-
-    async def __aexit__(self, exc_type: object, exc: object, traceback: object) -> None:
-        del exc_type, exc, traceback
-
-    def xadd(
-        self,
-        key: str,
-        fields: Mapping[str, object],
-        *,
-        maxlen: int | None = None,
-        approximate: bool = True,
-    ) -> "FakeRedisPipeline":
-        self.redis.commands.append(("xadd", key, dict(fields), maxlen, approximate))
-        self.results.append(self.redis._append_stream_entry(key, fields, maxlen=maxlen))
-        return self
-
-    def expire(self, key: str, seconds: int) -> "FakeRedisPipeline":
-        self.redis.commands.append(("expire", key, seconds))
-        self.results.append(True)
-        return self
-
-    async def execute(self) -> list[object]:
-        self.redis.commands.append(("execute",))
-        return list(self.results)
 
 
 def _terminal_event(
@@ -230,16 +193,17 @@ def test_request_cancellation_maps_eval_result_and_arguments() -> None:
     assert status == "running"
     eval_command = redis.commands[-1]
     assert eval_command[0] == "eval"
-    assert eval_command[2] == 3
-    assert eval_command[3:6] == (
+    assert eval_command[2] == 4
+    assert eval_command[3:7] == (
         "test:runs:run-1:record",
         "test:runs:run-1:cancel-intent",
         "test:runs:run-1:events",
+        "test:runs:run-1:idempotency",
     )
-    intent_payload = json.loads(cast(str, eval_command[6]))
+    intent_payload = json.loads(cast(str, eval_command[7]))
     assert intent_payload["reason"] == "workflow_aborted"
     assert intent_payload["message"] == "workflow stopped"
-    assert eval_command[7] == "60"
+    assert eval_command[8] == "60"
     assert '"MAXLEN", "1"' in cast(str, eval_command[1])
 
 
@@ -264,13 +228,14 @@ def test_finalize_cancellation_maps_eval_result_and_arguments() -> None:
 
     assert result == RunFinalizationResult(applied=True, status="cancelled", event_id="7-0")
     eval_command = redis.commands[-1]
-    assert eval_command[2] == 3
-    assert eval_command[3:6] == (
+    assert eval_command[2] == 4
+    assert eval_command[3:7] == (
         "test:runs:run-1:record",
         "test:runs:run-1:cancel-intent",
         "test:runs:run-1:events",
+        "test:runs:run-1:idempotency",
     )
-    payload = json.loads(cast(str, eval_command[9]))
+    payload = json.loads(cast(str, eval_command[10]))
     assert "id" not in payload
     assert payload["type"] == "run_cancelled"
     assert payload["data"]["reason"] == "workflow_aborted"
@@ -279,8 +244,8 @@ def test_finalize_cancellation_maps_eval_result_and_arguments() -> None:
     assert payload["data"]["usage"]["prompt_tokens"] == 13
     assert payload["data"]["usage"]["completion_tokens"] == 8
     assert payload["data"]["usage"]["total_tokens"] == 21
-    assert eval_command[10] == "60"
-    assert eval_command[11] == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
+    assert eval_command[11] == "60"
+    assert eval_command[12] == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
     assert '"MAXLEN", "~", ARGV[6]' in cast(str, eval_command[1])
 
 
@@ -301,17 +266,19 @@ def test_finalize_failed_run_maps_eval_result_and_arguments() -> None:
 
     assert result == RunFinalizationResult(applied=True, status="failed", event_id="8-0")
     eval_command = redis.commands[-1]
-    assert eval_command[3:6] == (
+    assert eval_command[2] == 4
+    assert eval_command[3:7] == (
         "test:runs:run-1:record",
         "test:runs:run-1:events",
         "test:runs:run-1:cancel-intent",
+        "test:runs:run-1:idempotency",
     )
-    assert eval_command[6] == "failed"
-    assert eval_command[8:12] == ("1", "model failed", "1", "agent_run_limit_exceeded")
-    payload = json.loads(cast(str, eval_command[12]))
+    assert eval_command[7] == "failed"
+    assert eval_command[9:13] == ("1", "model failed", "1", "agent_run_limit_exceeded")
+    payload = json.loads(cast(str, eval_command[13]))
     assert payload["data"]["error_type"] == "agent_run_limit_exceeded"
-    assert eval_command[13] == str(DEFAULT_RUN_RETENTION_SECONDS)
-    assert eval_command[14] == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
+    assert eval_command[14] == str(DEFAULT_RUN_RETENTION_SECONDS)
+    assert eval_command[15] == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
     assert '"MAXLEN", "~", ARGV[9]' in cast(str, eval_command[1])
 
 
@@ -382,22 +349,19 @@ def test_append_event_serializes_typed_event_without_id_and_expires_run_keys() -
     event_id = asyncio.run(store.append_event(RunStartedEvent(id="local", run_id="run-1")))
 
     assert event_id == "1-0"
-    pipeline_commands = [command for command in redis.commands if command[0] == "pipeline"]
-    assert len(pipeline_commands) == 1
-    assert pipeline_commands[0][1] is True
-    xadd_commands = [command for command in redis.commands if command[0] == "xadd"]
-    assert len(xadd_commands) == 1
-    fields = xadd_commands[0][2]
-    assert isinstance(fields, dict)
-    assert '"id"' not in str(fields["payload"])
-    assert '"type":"run_started"' in str(fields["payload"])
-    assert xadd_commands[0][3:] == (DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, True)
-    expire_commands = {command for command in redis.commands if command[0] == "expire"}
-    assert expire_commands == {
-        ("expire", "test:runs:run-1:events", 60),
-        ("expire", "test:runs:run-1:record", 60),
-    }
-    assert ("execute",) in redis.commands
+    eval_command = redis.commands[-1]
+    assert eval_command[0] == "eval"
+    assert eval_command[2] == 3
+    assert eval_command[3:6] == (
+        "test:runs:run-1:events",
+        "test:runs:run-1:record",
+        "test:runs:run-1:idempotency",
+    )
+    payload = cast(str, eval_command[7])
+    assert '"id"' not in payload
+    assert '"type":"run_started"' in payload
+    assert eval_command[6] == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
+    assert eval_command[8] == "60"
 
 
 def test_append_event_keeps_only_the_configured_number_of_entries() -> None:
@@ -416,8 +380,9 @@ def test_append_event_keeps_only_the_configured_number_of_entries() -> None:
     asyncio.run(scenario())
 
     assert len(redis.streams["test:runs:run-1:events"]) == 2
-    xadd_commands = [command for command in redis.commands if command[0] == "xadd"]
-    assert all(command[3:] == (2, True) for command in xadd_commands)
+    append_commands = [command for command in redis.commands if command[0] == "eval"]
+    assert len(append_commands) == 3
+    assert all(command[6] == "2" for command in append_commands)
 
 
 def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> None:

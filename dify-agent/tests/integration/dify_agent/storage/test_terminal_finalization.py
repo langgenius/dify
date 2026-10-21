@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Iterator
+import hashlib
 import shutil
 import socket
 import subprocess
@@ -28,7 +29,7 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.run_scheduler import RunScheduler
-from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_record_key
+from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_idempotency_key, run_record_key
 from dify_agent.storage.redis_run_store import IdempotencyConflictError, RedisRunStore
 
 
@@ -79,6 +80,56 @@ def test_idempotent_run_admission_is_atomic_across_redis_clients(redis_url: str)
         finally:
             await first_client.aclose()
             await second_client.aclose()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("refresh_path", ["event", "cancel_intent", "finalize", "finalize_cancel"])
+def test_active_run_refresh_restores_expired_idempotency_claim(redis_url: str, refresh_path: str) -> None:
+    async def scenario() -> None:
+        client = Redis.from_url(redis_url)
+        prefix = f"idempotency-retention-{uuid4().hex}"
+        key = "long-running-request"
+        store = RedisRunStore(client, prefix=prefix, run_retention_seconds=60)
+        try:
+            original, created = await store.create_run_idempotent(
+                idempotency_key=key,
+                request_fingerprint="fingerprint-a",
+            )
+            assert created is True
+
+            if refresh_path == "finalize_cancel":
+                await store.request_cancellation(original.run_id, CancelRunRequest(reason="test"))
+            # Model the idempotency claim expiring while its active run and
+            # per-run metadata remain live due to a refreshed run-retention TTL.
+            claim_key = run_idempotency_key(prefix, hashlib.sha256(key.encode()).hexdigest())
+            await client.delete(claim_key)
+
+            if refresh_path == "event":
+                _ = await store.append_event(RunStartedEvent(run_id=original.run_id))
+            elif refresh_path == "cancel_intent":
+                await store.request_cancellation(original.run_id, CancelRunRequest(reason="test"))
+            elif refresh_path == "finalize":
+                await store.finalize_run(
+                    RunSucceededEvent(
+                        run_id=original.run_id,
+                        data=RunSucceededEventData(output="done", session_snapshot=SessionSnapshot(layers={})),
+                    )
+                )
+            else:
+                intent = await store.get_cancellation_intent(original.run_id)
+                assert intent is not None
+                await store.finalize_cancellation(original.run_id, intent)
+
+            retried, created = await store.create_run_idempotent(
+                idempotency_key=key,
+                request_fingerprint="fingerprint-a",
+            )
+
+            assert created is False
+            assert retried.run_id == original.run_id
+        finally:
+            await client.aclose()
 
     asyncio.run(scenario())
 
