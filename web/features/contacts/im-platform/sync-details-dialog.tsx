@@ -158,7 +158,10 @@ export function ContactImSyncDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-180 max-h-[calc(100dvh-2rem)] w-[693px] flex-col overflow-hidden! p-0!">
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="flex h-180 max-h-[calc(100dvh-2rem)] w-[693px] flex-col overflow-hidden! p-0!"
+      >
         <DialogClose
           render={
             <IconButton
