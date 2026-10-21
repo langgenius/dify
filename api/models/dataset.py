@@ -17,7 +17,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from libs.datetime_utils import ensure_naive_utc
 from libs.uuid_utils import uuidv7
-from models.base import Base, TypeBase
+from models.base import TypeBase
 from models.enums import (
     CollectionBindingType,
     CreatorUserRole,
