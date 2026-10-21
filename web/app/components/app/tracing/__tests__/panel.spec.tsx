@@ -2,12 +2,12 @@ import type {
   AppMode,
   TraceProviderCapabilitiesResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
@@ -48,9 +48,9 @@ function mockServer(
   const writes: Array<{ method: string; body: unknown }> = []
   request.mockImplementation(async (_url, _init, { request: sent }) => {
     const url = new URL(sent.url)
-    if (url.pathname.endsWith('/features'))
+    if (url.pathname.endsWith('/system-features'))
       return Response.json(
-        zGetFeaturesResponse.parse({ agent_tracing_api_collection_enabled: agentTracingEnabled }),
+        createSystemFeaturesFixture({ agent_tracing_api_collection_enabled: agentTracingEnabled }),
       )
     if (url.pathname.endsWith('/trace-capabilities')) return Response.json(capabilities)
     if (url.pathname.endsWith('/trace')) {
@@ -192,8 +192,56 @@ describe('Tracing overview panel', () => {
         screen.queryByRole('switch', { name: 'app.tracing.captureAgent' }),
       ).not.toBeInTheDocument()
       expect(requested('/trace-capabilities')).toEqual([])
+      expect(requested('/features')).toEqual([])
     },
   )
+
+  it('keeps the last-known enabled deployment settings after a system-features refresh fails', async () => {
+    const writes = mockServer()
+    const { client } = renderPanel({ searchParams: 'tracing=configure', mode: 'workflow' })
+    const user = userEvent.setup()
+    await expandCapture(user)
+    expect(screen.getByRole('switch', { name: 'app.tracing.captureAgent' })).toBeChecked()
+
+    const server = request.getMockImplementation()!
+    request.mockImplementation(async (...args) => {
+      if (new URL(args[2].request.url).pathname.endsWith('/system-features'))
+        throw await httpErrorFromResponse(
+          Response.json({ message: 'System features unavailable' }, { status: 500 }),
+        )
+      return server(...args)
+    })
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: consoleQuery.systemFeatures.get.queryKey() })
+    })
+
+    expect(requested('/system-features')).toHaveLength(2)
+    expect(screen.getByRole('switch', { name: 'app.tracing.captureAgent' })).toBeChecked()
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+    expect(writes).toEqual([])
+    expect(requested('/features')).toEqual([])
+  })
+
+  it('does not report a disabled deployment when the initial system-features request fails', async () => {
+    mockServer()
+    const server = request.getMockImplementation()!
+    request.mockImplementation(async (...args) => {
+      if (new URL(args[2].request.url).pathname.endsWith('/system-features'))
+        throw await httpErrorFromResponse(
+          Response.json({ message: 'System features unavailable' }, { status: 500 }),
+        )
+      return server(...args)
+    })
+    renderPanel({ searchParams: 'tracing=configure', mode: 'workflow' })
+
+    await screen.findByRole('group', { name: 'app.tracing.langfuse.title' })
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'app.tracing.captureTitle' }),
+    ).not.toBeInTheDocument()
+    expect(requested('/trace-capabilities')).toEqual([])
+    expect(requested('/features')).toEqual([])
+  })
 
   it('keeps Workflow capture policy read-only without fetching provider credentials', async () => {
     const writes = mockServer()
