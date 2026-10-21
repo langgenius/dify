@@ -72,7 +72,6 @@ export default interface Resources {
     'personalAccessToken.allWorkspaces': 'All workspaces'
     'personalAccessToken.allowed': 'Allowed'
     'personalAccessToken.appRunner': 'App Runner'
-    'personalAccessToken.callApps': 'Call apps'
     'personalAccessToken.conflict': 'This token changed elsewhere. Reload the latest version before saving.'
     'personalAccessToken.copyNow': "Copy it now. You won't see it again."
     'personalAccessToken.createButton': 'Create token'
@@ -87,7 +86,6 @@ export default interface Resources {
     'personalAccessToken.editTitle': 'Edit personal access token'
     'personalAccessToken.effectiveAccess': 'Effective access follows your account permissions.'
     'personalAccessToken.excludedAccess': '{{items}} excluded because access is no longer available.'
-    'personalAccessToken.excludedCount': '{{count}} unavailable items excluded.'
     'personalAccessToken.expiration': 'Expiration'
     'personalAccessToken.expired': 'Expired'
     'personalAccessToken.expires': 'Expires'
