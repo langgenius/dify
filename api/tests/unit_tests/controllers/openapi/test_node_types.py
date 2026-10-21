@@ -64,8 +64,10 @@ def test_http_request_default_body_carries_an_empty_data_list(
     assert response.default_config["retry_config"] == graphon_default["retry_config"]
 
 
-def test_keys_the_default_already_has_are_kept(describe: Callable[[str], NodeTypeDetailResponse]) -> None:
-    graphon_default = HttpRequestNode.get_default_config()
+def test_keys_the_default_already_has_are_kept(
+    describe: Callable[[str], NodeTypeDetailResponse], sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    graphon_default = WorkflowService(sqlite_session_factory).get_default_block_config(BuiltinNodeTypes.HTTP_REQUEST)
     graphon_timeout = cast(Mapping[str, object], cast(Mapping[str, object], graphon_default["config"])["timeout"])
 
     response = describe(BuiltinNodeTypes.HTTP_REQUEST)

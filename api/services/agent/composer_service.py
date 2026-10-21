@@ -836,6 +836,7 @@ class AgentComposerService:
             if retired_binding_id is None:
                 raise AgentBuildSandboxNotFoundError()
             build_draft.agent_workspace_binding_id = None
+        config_snapshot = AgentSoulConfig.model_validate(normal_draft.config_snapshot_dict)
         if build_draft is None:
             build_draft = AgentConfigDraft(
                 tenant_id=tenant_id,
@@ -844,11 +845,13 @@ class AgentComposerService:
                 account_id=account_id,
                 draft_owner_key=account_id,
                 created_by=account_id,
+                config_snapshot=config_snapshot,
             )
             session.add(build_draft)
+        else:
+            build_draft.config_snapshot = config_snapshot
         build_draft.base_snapshot_id = normal_draft.base_snapshot_id
         build_draft.home_snapshot_id = normal_draft.home_snapshot_id
-        build_draft.config_snapshot = AgentSoulConfig.model_validate(normal_draft.config_snapshot_dict)
         build_draft.updated_by = account_id
         session.flush()
         return cls._serialize_build_draft_state(build_draft), retired_binding_id
@@ -1728,6 +1731,7 @@ class AgentComposerService:
                 workflow_id=workflow_id,
                 workflow_version=_DRAFT_WORKFLOW_VERSION,
                 node_id=node_id,
+                binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
                 node_job_config=WorkflowNodeJobConfig(),
                 created_by=account_id,
             )
