@@ -2457,7 +2457,9 @@ def test_recovery_continue_retry_carries_the_working_states_access_tier() -> Non
         (PcState.FIX_AWAIT_DECISION, EntryMode.FIX, "publish", "run_validation"),
     ],
 )
-@pytest.mark.parametrize("status", ["failed", "running", "legacy", "missing", "foreign", "stale", "succeeded"])
+@pytest.mark.parametrize(
+    "status", ["failed", "running", "legacy", "missing", "foreign", "stale", "stale_after_view", "succeeded"]
+)
 def test_publish_verification_projection_and_submit(
     repo: SqlDifyBuilderRepository,
     lock: FakeSessionLock,
@@ -2493,17 +2495,27 @@ def test_publish_verification_projection_and_submit(
         )
     if status != "missing":
         repo.save_run("66666666-6666-6666-6666-666666666666" if status == "foreign" else s.id, run)
+    identity = ["rev", "graph"]
     svc = DifyBuilderService(
         repo,
         lock,
         lambda sid, action, actor, token: enqueued.append((sid, action, actor, token)),
-        get_verification_identity_fn=lambda *_: ("rev", "graph"),
+        get_verification_identity_fn=lambda *_: (identity[0], identity[1]),
     )
     view = svc.get_session_view(s.id, _actor())
     publish_id = "publish_fix" if action == "publish" else action
-    assert (publish_id in [a.id for a in view.actions]) is (status == "succeeded")
-    if status != "succeeded":
-        assert retest in [a.id for a in view.actions]
+    assert (publish_id in [a.id for a in view.actions]) is (status in {"succeeded", "stale_after_view"})
+    if status == "stale_after_view":
+        identity[0] = "new-revision"
+    if status == "succeeded":
+        assert retest not in [a.id for a in view.actions]
+        svc.submit_action(s.id, _actor(), Action(kind=action, base_version=s.version))
+        assert len(enqueued) == 1
+        assert enqueued[0][0] == s.id
+        assert enqueued[0][1].kind == action
+    else:
+        if status != "stale_after_view":
+            assert retest in [a.id for a in view.actions]
         with pytest.raises(BadRequestError, match="verification"):
             svc.submit_action(s.id, _actor(), Action(kind=action, base_version=s.version))
         assert not enqueued

@@ -83,6 +83,7 @@ from services.dify_builder.effect_presentation import (
     effects_note,
     with_effects_note,
 )
+from services.dify_builder.execution_messages import change_scope_label
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +279,7 @@ def confirmed_tool_test(
         immutable=True,
     )
     fc.verify_run_id = run.id
-    card = result_card(run)
+    card = result_card(run, reply_language=fc.reply_language)
     if card.outcome == "execution_succeeded_needs_review":
         progress.complete(run_step)
         reply = CONFIRMED_COMPLETED_REPLY
@@ -1064,7 +1065,7 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     if is_execution_policy_blocker(failed):
         fc.diagnosis = None
         fc.staged_repair = []
-        card = result_card(failed)
+        card = result_card(failed, reply_language=fc.reply_language)
         items = append_card(fc, card)
         items += append_assistant(
             env,
@@ -1209,7 +1210,13 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
         s,
         fc,
         text_parts(
-            copy_text(BuilderCopyId.REPAIR_CHANGES_APPLIED, count=len(changes), scope=scope), "\n", change_lines
+            copy_text(
+                BuilderCopyId.REPAIR_CHANGES_APPLIED,
+                count=len(changes),
+                scope=change_scope_label(scope, fc.reply_language),
+            ),
+            "\n",
+            change_lines,
         ),
         execution=execution,
     )
@@ -1422,7 +1429,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     if is_execution_policy_blocker(run) or native_service_failure(run):
         fc.diagnosis = None
         fc.staged_repair = []
-        card = result_card(run)
+        card = result_card(run, reply_language=fc.reply_language)
         items = append_card(fc, card)
         execution = progress.finish()
         items += append_assistant(
@@ -1482,7 +1489,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         run.culprit_node_id = dead_end_branch_node_id(graph, result.per_node)
         items = append_card(
             fc,
-            result_card(run)
+            result_card(run, reply_language=fc.reply_language)
             if run.verification
             else TestResultCard(status="failed", failure_reason=NO_OUTPUT_BODY, dify_run_id=run.dify_run_id),
         )
@@ -1491,7 +1498,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             env,
             s,
             fc,
-            (result_card(run).failure_reason or NO_OUTPUT_BODY),
+            (result_card(run, reply_language=fc.reply_language).failure_reason or NO_OUTPUT_BODY),
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -1516,12 +1523,16 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         return gated
     items = append_card(
         fc,
-        result_card(run),
+        result_card(run, reply_language=fc.reply_language),
     )
     progress.finish()
     if run.status == "succeeded":
         items += append_assistant(
-            env, s, fc, text_parts(SUCCESS_REPLY, " ", result_card(run).review_note or ""), cards=["test_result"]
+            env,
+            s,
+            fc,
+            text_parts(SUCCESS_REPLY, " ", result_card(run, reply_language=fc.reply_language).review_note or ""),
+            cards=["test_result"],
         )
     return StepResult(
         next=PcState.FIX_AWAIT_DECISION,

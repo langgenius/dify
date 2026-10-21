@@ -79,6 +79,7 @@ from services.dify_builder.application.verification import (
     is_execution_policy_blocker,
     result_card,
 )
+from services.dify_builder.execution_messages import change_scope_label
 from services.dify_builder.plan import WorkflowPlan, make_plan_card, store_plan
 from services.dify_builder.plan_failure import edit_planning_failed
 
@@ -583,7 +584,13 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         env,
         s,
         fc,
-        text_parts(copy_text(BuilderCopyId.EDIT_APPLIED, count=len(changes), scope=scope), "\n", change_lines),
+        text_parts(
+            copy_text(
+                BuilderCopyId.EDIT_APPLIED, count=len(changes), scope=change_scope_label(scope, fc.reply_language)
+            ),
+            "\n",
+            change_lines,
+        ),
         execution=execution,
         turn_id=progress.operation_id,
     )
@@ -786,7 +793,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     if is_execution_policy_blocker(run) or native_service_failure(run):
         fc.diagnosis = None
         fc.staged_repair = []
-        card = result_card(run)
+        card = result_card(run, reply_language=fc.reply_language)
         items = append_card(fc, card)
         execution = progress.finish()
         items += append_assistant(
@@ -815,7 +822,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         run.culprit_node_id = dead_end_branch_node_id(graph, per_node)
         test_items = append_card(
             fc,
-            result_card(run)
+            result_card(run, reply_language=fc.reply_language)
             if run.verification
             else TestResultCard(status="failed", failure_reason=NO_OUTPUT_BODY, dify_run_id=run.dify_run_id),
         )
@@ -824,7 +831,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             env,
             s,
             fc,
-            (result_card(run).failure_reason or NO_OUTPUT_BODY),
+            (result_card(run, reply_language=fc.reply_language).failure_reason or NO_OUTPUT_BODY),
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -840,14 +847,14 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     if status == "succeeded":
         test_items = append_card(
             fc,
-            result_card(run),
+            result_card(run, reply_language=fc.reply_language),
         )
         execution = progress.finish()
         turn_items = append_assistant(
             env,
             s,
             fc,
-            text_parts(SUCCESS_REPLY, " ", result_card(run).review_note or ""),
+            text_parts(SUCCESS_REPLY, " ", result_card(run, reply_language=fc.reply_language).review_note or ""),
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -901,7 +908,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         fc.test_input_ref = ""
         test_items = append_card(
             fc,
-            replace(result_card(run), failure_reason=test_failure_reason(run)),
+            replace(result_card(run, reply_language=fc.reply_language), failure_reason=test_failure_reason(run)),
         )
         card, reply = testdata_form(
             env,
@@ -948,7 +955,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         fc.risk = Risk(level="high", reason="model not configured", has_external_side_effect=False)
         test_items = append_card(
             fc,
-            replace(result_card(run), failure_reason=model_error),
+            replace(result_card(run, reply_language=fc.reply_language), failure_reason=model_error),
         )
         execution = progress.finish()
         turn_items = append_assistant(
@@ -986,7 +993,9 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         # wrong thing. Stop and hand the decision back (no staged repair).
         fc.diagnosis = diagnosis
         fc.staged_repair = []
-        test_items = append_card(fc, replace(result_card(run), failure_reason=test_failure_reason(run)))
+        test_items = append_card(
+            fc, replace(result_card(run, reply_language=fc.reply_language), failure_reason=test_failure_reason(run))
+        )
         execution = progress.finish()
         stuck_items = append_assistant(
             env,
@@ -1013,7 +1022,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     fc.risk = risk
     test_items = append_card(
         fc,
-        replace(result_card(run), failure_reason=test_failure_reason(run)),
+        replace(result_card(run, reply_language=fc.reply_language), failure_reason=test_failure_reason(run)),
     )
     proposed = [f"{i.op} {i.args.get('node_id', '')}".strip() for i in intents]
     execution = progress.finish()
@@ -1132,7 +1141,13 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             env,
             s,
             fc,
-            text_parts(copy_text(BuilderCopyId.REPAIR_APPLIED, count=len(changes), scope=scope), "\n", change_lines),
+            text_parts(
+                copy_text(
+                    BuilderCopyId.REPAIR_APPLIED, count=len(changes), scope=change_scope_label(scope, fc.reply_language)
+                ),
+                "\n",
+                change_lines,
+            ),
             execution=execution,
             turn_id=progress.operation_id,
         )
