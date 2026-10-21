@@ -1,20 +1,22 @@
 """Owner HTTP boundary tests: synthetic responses are not A7 acceptance."""
 
 from time import monotonic
+from typing import NoReturn
 
 import httpx
 import pytest
+from httpx._models import Response
 
 
 def test_scope_http_owner_closes_response_and_disables_redirects_and_retries(
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from services.dify_builder.native_testing.sandbox import scope_client as module
 
-    seen = []
+    seen: list[tuple[str, str, dict[str, object]]] = []
     response = httpx.Response(200, content=b'{"status":"destroyed"}')
 
-    def request(method, url, **kwargs):
+    def request(method: str, url: str, **kwargs: object) -> Response:
         seen.append((method, url, kwargs))
         return response
 
@@ -45,10 +47,10 @@ def test_scope_http_owner_closes_response_and_disables_redirects_and_retries(
         "/v1/test-scopes/code_" + "a" * 32 + "/jobs/../other",
     ],
 )
-def test_scope_http_owner_refuses_alternate_paths_before_io(path, monkeypatch):
+def test_scope_http_owner_refuses_alternate_paths_before_io(path: str, monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.native_testing.sandbox import scope_client as module
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: object, **kwargs: object) -> NoReturn:
         del args, kwargs
         pytest.fail("unexpected outbound request")
 

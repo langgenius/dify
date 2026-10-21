@@ -1599,13 +1599,23 @@ def test_a_repair_that_answers_the_guard_on_the_retry_is_staged_as_normal() -> N
     assert risk.level == "high"  # structural, so it goes to the approval gate -- but it IS staged
 
 
-def test_repair_receives_native_failure_rule_without_inventing_a_stop_policy():
+def test_repair_receives_native_failure_rule_without_inventing_a_stop_policy() -> None:
     """Fix only knows diagnosis/config; it must retain known failure and fallback semantics."""
 
     class RecordingInstance(_FakeInstance):
-        def invoke_llm(self, **kwargs):
-            self.messages = kwargs["prompt_messages"]
-            return super().invoke_llm(**kwargs)
+        def invoke_llm(
+            self,
+            *,
+            prompt_messages: list[PromptMessage],
+            model_parameters: dict[str, object] | None = None,
+            stop: list[str] | None = None,
+            stream: bool = True,
+            **kwargs: object,
+        ) -> _Result:
+            self.messages = prompt_messages
+            return super().invoke_llm(
+                prompt_messages=prompt_messages, model_parameters=model_parameters, stop=stop, stream=stream, **kwargs
+            )
 
     model = RecordingInstance(['{"intents": [], "risk": {"level": "low"}}'])
     graph = deepcopy(_RG)

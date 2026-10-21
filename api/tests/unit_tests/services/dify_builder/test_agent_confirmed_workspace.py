@@ -3,6 +3,7 @@
 from dataclasses import asdict
 
 import pytest
+import sqlalchemy.orm
 
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope
 from models.agent import (
@@ -17,8 +18,9 @@ from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from runtime_contracts.builder.native.agent_contracts import AgentTestWorkspaceRef
+from runtime_contracts.builder.native.agent_contracts import AgentParentNodeRef, AgentTestWorkspaceRef
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.agent_operations import AgentOperationService
 from tests.unit_tests.services.dify_builder import native_owner_fixtures
 
 operations_service = native_owner_fixtures.operations_service
@@ -40,7 +42,9 @@ preparation_sql = native_owner_fixtures.preparation_sql
         ("home", "home_tenant"),
     ],
 )
-def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch, home_id, drift, sqlite_session):
+def test_current_normal_workspace_requires_complete_sql_owner_chain(
+    monkeypatch: pytest.MonkeyPatch, home_id: str | None, drift: None | str, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     from services.agent import access_service
     from services.agent.workspace_service import AgentWorkspaceService
     from services.dify_builder.native_testing import agent_confirmed_workspace as module
@@ -124,7 +128,7 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
         agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
         backend_binding_ref="ordinary-binding",
     )
-    calls = []
+    calls: list[dict[str, object]] = []
     monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", lambda **kwargs: calls.append(kwargs) or binding)
     monkeypatch.setattr(module, "validate_invocation_workflow", lambda *_args, **_kwargs: Workflow(version="draft"))
     monkeypatch.setattr(access_service, "require_builder_agent_access", lambda **_kwargs: None)
@@ -133,21 +137,35 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
     monkeypatch.setattr(session, "get", lambda model, _identifier: rows[model])
     monkeypatch.setattr(session, "scalar", lambda _query: node_binding)
     if drift == "profile":
-        rows[DifyBuilderExecutionRequest].context["profile"]["profile_id"] = "isolated"
+        record = rows[DifyBuilderExecutionRequest]
+        assert isinstance(record, DifyBuilderExecutionRequest)
+        record.context["profile"]["profile_id"] = "isolated"
     elif drift == "run_owner":
-        rows[WorkflowRun].created_by = "foreign"
+        record = rows[WorkflowRun]
+        assert isinstance(record, WorkflowRun)
+        record.created_by = "foreign"
     elif drift == "snapshot":
-        rows[Agent].active_config_snapshot_id = "new-snapshot"
+        record = rows[Agent]
+        assert isinstance(record, Agent)
+        record.active_config_snapshot_id = "new-snapshot"
     elif drift == "backend_workspace":
-        rows[AgentWorkspace].backend_workspace_ref = "foreign-workspace"
+        record = rows[AgentWorkspace]
+        assert isinstance(record, AgentWorkspace)
+        record.backend_workspace_ref = "foreign-workspace"
     elif drift == "binding_home":
         binding.base_home_snapshot_id = "foreign-home"
     elif drift == "snapshot_home":
-        rows[AgentConfigSnapshot].home_snapshot_id = "foreign-home"
+        record = rows[AgentConfigSnapshot]
+        assert isinstance(record, AgentConfigSnapshot)
+        record.home_snapshot_id = "foreign-home"
     elif drift == "home_status":
-        rows[AgentHomeSnapshot].status = AgentWorkingResourceStatus.RETIRED
+        record = rows[AgentHomeSnapshot]
+        assert isinstance(record, AgentHomeSnapshot)
+        record.status = AgentWorkingResourceStatus.RETIRED
     elif drift == "home_tenant":
-        rows[AgentHomeSnapshot].tenant_id = "foreign"
+        record = rows[AgentHomeSnapshot]
+        assert isinstance(record, AgentHomeSnapshot)
+        record.tenant_id = "foreign"
     kwargs = {
         "session": session,
         "owned": preparation_owner(),
@@ -155,7 +173,9 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
         "allocation": {"scope": asdict(scope), "workspace": workspace_ref.model_dump(mode="json")},
     }
     if drift is None:
-        actual, stamp = module.current_confirmed_workspace(**kwargs)
+        actual, stamp = module.current_confirmed_workspace(
+            session=kwargs["session"], owned=kwargs["owned"], context=kwargs["context"], allocation=kwargs["allocation"]
+        )
         assert actual == workspace_ref
         assert len(stamp) == 64
         assert calls[0]["expected_owner_scope"] == scope.workspace_owner
@@ -163,22 +183,30 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
         assert not actual.backend_binding_ref.startswith("native:")
     else:
         with pytest.raises(BuilderExecutionPolicyError):
-            module.current_confirmed_workspace(**kwargs)
+            module.current_confirmed_workspace(
+                session=kwargs["session"],
+                owned=kwargs["owned"],
+                context=kwargs["context"],
+                allocation=kwargs["allocation"],
+            )
 
 
 @pytest.mark.parametrize(
     ("input_present", "config_present"), [(False, False), (True, False), (True, True), (False, True)]
 )
 def test_parent_discovery_reuses_input_identity_and_never_writes(
-    input_present, config_present, monkeypatch, operations_service
-):
+    input_present: bool,
+    config_present: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    operations_service: AgentOperationService,
+) -> None:
 
     from runtime_contracts.builder.execution import canonical_digest
     from services.dify_builder.native_testing.agent_confirmed_workspace import load_confirmed_agent_parent
 
     ref = NativeTestContextRef(request_id="request", invocation_id="inv", context_digest="a" * 64)
     inputs = {"query": "original dynamic input"}
-    calls = []
+    calls: list[AgentParentNodeRef] = []
 
     from dataclasses import replace
 
@@ -209,10 +237,10 @@ def test_parent_discovery_reuses_input_identity_and_never_writes(
                 )
             )
 
-    def prepared(**kwargs):
-        calls.append(kwargs["parent_node"])
+    def prepared(*, parent_node: AgentParentNodeRef, **_kwargs: object) -> AgentPreparedConfig:
+        calls.append(parent_node)
         return AgentPreparedConfig(
-            parent_node=kwargs["parent_node"],
+            parent_node=parent_node,
             workflow_native_run_id="workflow",
             workspace=WORKSPACE,
             config_ref="config",
@@ -226,12 +254,19 @@ def test_parent_discovery_reuses_input_identity_and_never_writes(
     kwargs = {"state_store": store, "ref": ref, "execution_id": execution}
     if config_present and not input_present:
         with pytest.raises(BuilderExecutionPolicyError, match="native_agent_input_unavailable"):
-            load_confirmed_agent_parent(**kwargs)
+            load_confirmed_agent_parent(
+                state_store=kwargs["state_store"], ref=kwargs["ref"], execution_id=kwargs["execution_id"]
+            )
     else:
-        actual = load_confirmed_agent_parent(**kwargs)
+        actual = load_confirmed_agent_parent(
+            state_store=kwargs["state_store"], ref=kwargs["ref"], execution_id=kwargs["execution_id"]
+        )
         if input_present:
+            assert actual is not None
             assert actual.input_result_ref == "original-input"
+            assert actual is not None
             assert actual.input_digest == canonical_digest(inputs)
+            assert actual is not None
             assert actual.execution_id == execution
             assert calls == ([actual] if config_present else [])
         else:

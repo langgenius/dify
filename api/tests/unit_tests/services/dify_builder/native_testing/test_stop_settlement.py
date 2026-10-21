@@ -5,11 +5,11 @@ from time import monotonic
 
 import pytest
 
-from services.dify_builder.native_testing.control import NativeControlRecord, NativePolicyStop
+from services.dify_builder.native_testing.control import BoundaryOwnerState, NativeControlRecord, NativePolicyStop
 from services.dify_builder.native_testing.stop_settlement import NativeEvidenceReadGate
 
 
-def gate_case():
+def gate_case() -> tuple[NativeEvidenceReadGate, BoundaryOwnerState, NativeControlRecord]:
     from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
 
     case = LaunchCase()
@@ -25,12 +25,12 @@ def gate_case():
     return NativeEvidenceReadGate(case.host), owner, record
 
 
-def test_stop_waits_for_active_read_and_nested_read_finishes_without_deadlock():
+def test_stop_waits_for_active_read_and_nested_read_finishes_without_deadlock() -> None:
     gate, owner, record = gate_case()
     outer, pending, nested, release, sealed = (Event() for _ in range(5))
-    errors = []
+    errors: list[BaseException] = []
 
-    def reader():
+    def reader() -> None:
         try:
             with gate.read():
                 outer.set()
@@ -47,7 +47,7 @@ def test_stop_waits_for_active_read_and_nested_read_finishes_without_deadlock():
         except BaseException as error:
             errors.append(error)
 
-    def stop():
+    def stop() -> None:
         try:
             pending.set()
             gate.begin_stop(record=record, deadline=monotonic() + 2)
@@ -76,7 +76,7 @@ def test_stop_waits_for_active_read_and_nested_read_finishes_without_deadlock():
 
 
 @pytest.mark.parametrize("acknowledged", [False, True])
-def test_refused_or_unaccepted_ack_cannot_open_evidence_reads(acknowledged):
+def test_refused_or_unaccepted_ack_cannot_open_evidence_reads(acknowledged: bool) -> None:
     gate, _owner, record = gate_case()
     gate.begin_stop(record=record, deadline=monotonic() + 0.03)
     gate.finish_stop(record=record, acknowledged=acknowledged)

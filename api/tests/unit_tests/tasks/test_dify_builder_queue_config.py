@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 import pytest
 
@@ -10,7 +11,13 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_QUEUE_PATTERN = re.compile(r'^\s*(?:QUEUES|DEFAULT_QUEUES)="([^"]+,.*?)"$', re.MULTILINE)
 
 
+@runtime_checkable
+class QueuedTask(Protocol):
+    queue: str
+
+
 def test_advance_task_uses_dedicated_queue() -> None:
+    assert isinstance(advance_session, QueuedTask)
     assert advance_session.queue == DIFY_BUILDER_QUEUE
 
 

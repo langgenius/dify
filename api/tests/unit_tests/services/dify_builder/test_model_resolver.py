@@ -5,6 +5,7 @@ import pytest
 from core.dify_builder.errors import BadRequestError, ModelUnavailableError
 from core.dify_builder.models import Graph, Inputs
 from core.model_manager import ModelInstance, ModelManager
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from services.dify_builder.agent import model_resolver
 from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 
@@ -30,19 +31,19 @@ def _manager(monkeypatch: pytest.MonkeyPatch, *, fail: bool = False, active: boo
     instance = make_model_instance(provider="openai", model="gpt-4o")
     selection = ModelSelection(manager, instance)
     model = make_model_config(provider="openai", model="gpt-4o", mode="chat").model_schema
-    model.model_properties = {"mode": "chat"}
+    model.model_properties = {ModelPropertyKey.MODE: "chat"}
 
-    def lookup(**kwargs):
+    def lookup(**kwargs: object) -> AIModelEntity | None:
         selection.lookup_calls.append(kwargs)
         return model if active else None
 
-    def explicit(*, tenant_id, provider, model_type, model):
+    def explicit(*, tenant_id: str, provider: str, model_type: ModelType, model: str) -> ModelInstance:
         if fail:
             raise ValueError("provider not configured")
         selection.explicit_args = (tenant_id, provider, str(model_type), model)
         return instance
 
-    def default(**_kwargs):
+    def default(**_kwargs: object) -> ModelInstance:
         selection.default_used = True
         if fail:
             raise ValueError("default model not configured")

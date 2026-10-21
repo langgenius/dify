@@ -96,10 +96,10 @@ def test_respond_keeps_dynamic_history_and_ignores_legacy_notices(monkeypatch: p
     assert deltas == ["动态 ", "response"]
 
 
-def test_completed_draft_history_can_be_reported_without_claiming_a_new_action(monkeypatch):
+def test_completed_draft_history_can_be_reported_without_claiming_a_new_action(monkeypatch: pytest.MonkeyPatch) -> None:
     captured = {}
 
-    def stream(_model, *, system, user, **_kwargs):
+    def stream(_model: object, *, system: str, user: str, **_kwargs: object) -> Iterator[str]:
         captured.update(system=system, user=user)
         return iter(["The confirmed changes were applied and kept as a draft."])
 

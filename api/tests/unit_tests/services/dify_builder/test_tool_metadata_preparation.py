@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 
 from core.tools.errors import ToolProviderCredentialValidationError
@@ -15,8 +17,10 @@ GRAPH = {
 }
 
 
-def test_unavailable_tool_inventory_is_not_successfully_empty_or_uninstalled(monkeypatch):
-    def unavailable(_tenant, *, on_source_error=None):
+def test_unavailable_tool_inventory_is_not_successfully_empty_or_uninstalled(monkeypatch: pytest.MonkeyPatch) -> None:
+    def unavailable(
+        _tenant: object, *, on_source_error: Callable[[str], None] | None = None
+    ) -> list[dict[str, bool | str]]:
         if on_source_error:
             on_source_error("plugin_inventory")
         return []
@@ -30,14 +34,16 @@ def test_unavailable_tool_inventory_is_not_successfully_empty_or_uninstalled(mon
         assert observation.resource_for(caught.value) == ("tool", PROVIDER, "parse")
 
 
-def test_successfully_empty_tool_inventory_retains_uninstalled_classification(monkeypatch):
+def test_successfully_empty_tool_inventory_retains_uninstalled_classification(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(setup, "build_tool_catalogue", lambda _tenant, **_kwargs: [])
     with pytest.raises(ToolProviderCredentialValidationError, match="not verified as installed"):
         setup.admit_draft_tool_setup(tenant_id="tenant", graph=GRAPH, actor_id="actor")
 
 
-def test_partial_inventory_failure_keeps_matching_credential_free_tool_usable(monkeypatch):
-    def partial(_tenant, *, on_source_error=None):
+def test_partial_inventory_failure_keeps_matching_credential_free_tool_usable(monkeypatch: pytest.MonkeyPatch) -> None:
+    def partial(
+        _tenant: object, *, on_source_error: Callable[[str], None] | None = None
+    ) -> list[dict[str, bool | str]]:
         if on_source_error:
             on_source_error("unrelated_provider")
         return [

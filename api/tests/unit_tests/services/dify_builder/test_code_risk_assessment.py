@@ -1,11 +1,16 @@
 """Code facts must never turn absent reasoning or private inputs into authority."""
 
 import json
+from typing import Never
 
 import pytest
+from pydantic import JsonValue
+
+from core.dify_builder.models import Graph
+from services.dify_builder.code_risk_assessment import CodeFacts
 
 
-def graph(source="return value", selector=None):
+def graph(source: str = "return value", selector: list[str] | None = None) -> Graph:
     return {
         "nodes": [
             {"id": "start", "data": {"type": "start", "variables": []}},
@@ -24,7 +29,9 @@ def graph(source="return value", selector=None):
     }
 
 
-def prepare(g=None, inputs=None, **kw):
+def prepare(
+    g: Graph | None = None, inputs: dict[str, JsonValue] | None = None, *, reply_language: str = ""
+) -> CodeFacts:
     from services.dify_builder.code_risk_assessment import code_facts
 
     return code_facts(
@@ -33,21 +40,21 @@ def prepare(g=None, inputs=None, **kw):
         goal_text="Parse the supplied value",
         model_config={"name": "chosen"},
         scope_binding="scope",
-        **kw,
+        reply_language=reply_language,
     )["code"]
 
 
 @pytest.mark.parametrize(
     ("left", "right"), [(True, "true"), ([1, 2], "[1, 2]"), (None, "null"), ({"type": "file", "id": "f"}, "f")]
 )
-def test_code_facts_bind_original_typed_values_without_sharing_them(left, right):
+def test_code_facts_bind_original_typed_values_without_sharing_them(left: JsonValue, right: str) -> None:
     a, b = prepare(inputs={"value": left}), prepare(inputs={"value": right})
     assert a.digest != b.digest
     assert a.model_facts["inputs"][0]["present"] is True
     assert a.model_facts["inputs"][0]["runtime_type"] != b.model_facts["inputs"][0]["runtime_type"]
 
 
-def test_missing_input_is_distinct_from_null_and_canvas_is_not_new_execution():
+def test_missing_input_is_distinct_from_null_and_canvas_is_not_new_execution() -> None:
     from copy import deepcopy
 
     a = prepare()
@@ -59,7 +66,7 @@ def test_missing_input_is_distinct_from_null_and_canvas_is_not_new_execution():
     assert a.digest != prepare(graph("send(value)")).digest
 
 
-def test_model_facts_hide_body_file_and_credentials_and_notice_is_sanitized():
+def test_model_facts_hide_body_file_and_credentials_and_notice_is_sanitized() -> None:
     from services.dify_builder.code_risk_assessment import assess_code
 
     source = 'token = "source-secret"\nrequests.post("https://u:p@example.com/send?key=private#frag", data=value)'
@@ -67,9 +74,9 @@ def test_model_facts_hide_body_file_and_credentials_and_notice_is_sanitized():
         graph(source),
         inputs={"value": {"body": "private-body", "file": {"url": "https://file-secret"}, "password": "input-secret"}},
     )
-    calls = []
+    calls: list[object] = []
 
-    def reason(value):
+    def reason(value: dict[str, object]) -> dict[str, str]:
         calls.append(value)
         return {
             "classification": "side_effect",
@@ -93,7 +100,7 @@ def test_model_facts_hide_body_file_and_credentials_and_notice_is_sanitized():
         {"classification": "invented", "risk_notice": "safe"},
     ],
 )
-def test_invalid_reasoning_is_unavailable_never_pure(response):
+def test_invalid_reasoning_is_unavailable_never_pure(response: dict[str, JsonValue]) -> None:
     from services.dify_builder.code_risk_assessment import assess_code
 
     result = assess_code(prepare(), reason=lambda _: response)
@@ -101,12 +108,12 @@ def test_invalid_reasoning_is_unavailable_never_pure(response):
     assert "unavailable" in result.risk_notice
 
 
-def test_oversize_and_failed_reasoning_are_unavailable_without_retry():
+def test_oversize_and_failed_reasoning_are_unavailable_without_retry() -> None:
     from services.dify_builder.code_risk_assessment import assess_code
 
-    calls = []
+    calls: list[object] = []
 
-    def reason(_):
+    def reason(_: object) -> Never:
         calls.append(1)
         raise TimeoutError
 
@@ -126,7 +133,9 @@ def test_oversize_and_failed_reasoning_are_unavailable_without_retry():
         ("unknown", "side_effect", True, True),
     ],
 )
-def test_same_code_type_uses_prepared_reasoning_for_actual_choice(classification, tier, confirmation_needed, mocked):
+def test_same_code_type_uses_prepared_reasoning_for_actual_choice(
+    classification: str, tier: str, confirmation_needed: bool, mocked: bool
+) -> None:
     from services.dify_builder.code_risk_assessment import assess_code
     from services.dify_builder.effect_disclosure import disclose
     from services.dify_builder.effect_presentation import effects_note
@@ -140,7 +149,7 @@ def test_same_code_type_uses_prepared_reasoning_for_actual_choice(classification
     }[classification]
     facts = prepare(graph(source))
 
-    def reason(model_facts):
+    def reason(model_facts: dict[str, object]) -> dict[str, str]:
         assert model_facts["code"] == source
         return {"classification": classification, "risk_notice": "Concrete Code risk"}
 
@@ -158,16 +167,17 @@ def test_same_code_type_uses_prepared_reasoning_for_actual_choice(classification
     assert effects_note(disclosure) is not None
 
 
-def test_missing_or_changed_code_snapshot_cannot_accept_forged_confirmation():
+def test_missing_or_changed_code_snapshot_cannot_accept_forged_confirmation() -> None:
     from services.dify_builder.code_risk_assessment import assess_code
     from services.dify_builder.effect_disclosure import disclose
 
     facts = prepare(inputs={"value": True})
     assessment = assess_code(facts, reason=lambda _: {"classification": "pure", "risk_notice": "Parser"})
-    for snapshots, digests in [
+    cases: list[tuple[dict[str, dict[str, object]], dict[str, str]]] = [
         ({}, {}),
         ({"code": assessment.model_dump()}, {"code": prepare(inputs={"value": "true"}).digest}),
-    ]:
+    ]
+    for snapshots, digests in cases:
         disclosure = disclose(graph(), code_risk_assessments=snapshots, code_facts_digests=digests)
         code = next(item for item in disclosure.items if item.node_id == "code")
         assert not code.confirmable
@@ -176,7 +186,7 @@ def test_missing_or_changed_code_snapshot_cannot_accept_forged_confirmation():
 
 
 @pytest.mark.parametrize(("language", "expected"), [("en", "simulate"), ("zh-Hans", "模拟")])
-def test_unavailable_reply_is_human_and_actionable_in_session_language(language, expected):
+def test_unavailable_reply_is_human_and_actionable_in_session_language(language: str, expected: str) -> None:
     from services.dify_builder.effect_disclosure import disclose
     from services.dify_builder.effect_presentation import effects_note
     from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
@@ -187,7 +197,7 @@ def test_unavailable_reply_is_human_and_actionable_in_session_language(language,
     assert "deletes data" not in reply
 
 
-def test_persisted_projection_rejects_extra_source_and_historical_missing_entries():
+def test_persisted_projection_rejects_extra_source_and_historical_missing_entries() -> None:
     from core.dify_builder.models import DifyBuilderContext
     from services.dify_builder.code_risk_assessment import assess_code
     from services.dify_builder.serde import context_from_dict, context_to_dict
@@ -205,7 +215,7 @@ def test_persisted_projection_rejects_extra_source_and_historical_missing_entrie
     assert context_from_dict({}).code_risk_assessments == {}
 
 
-def test_file_declared_type_is_projected_without_file_url_or_content():
+def test_file_declared_type_is_projected_without_file_url_or_content() -> None:
     g = graph()
     g["nodes"][0]["data"]["variables"] = [{"variable": "value", "type": "file"}]
     facts = prepare(g, inputs={"value": {"transfer_method": "remote_url", "url": "https://private-file.example"}})
@@ -215,7 +225,7 @@ def test_file_declared_type_is_projected_without_file_url_or_content():
     assert "private-file" not in json.dumps(facts.model_facts)
 
 
-def test_code_upstream_confirmation_survives_canvas_title_and_node_order_only():
+def test_code_upstream_confirmation_survives_canvas_title_and_node_order_only() -> None:
     from copy import deepcopy
 
     from services.dify_builder.code_risk_assessment import assess_code
@@ -245,7 +255,7 @@ def test_selected_model_fenced_json_is_assessed_in_one_attempt(monkeypatch: pyte
     from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
     from tests.unit_tests.core.model_fixtures import make_model_instance
 
-    calls = []
+    calls: list[object] = []
 
     def invoke(**kwargs: object) -> LLMResult:
         calls.append(kwargs)
@@ -290,7 +300,7 @@ def test_selected_model_malformed_json_is_not_automatically_retried(
     from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
     from tests.unit_tests.core.model_fixtures import make_model_instance
 
-    calls = []
+    calls: list[object] = []
 
     def invoke(**kwargs: object) -> LLMResult:
         calls.append(kwargs)
@@ -312,7 +322,7 @@ def test_selected_model_malformed_json_is_not_automatically_retried(
     assert len(calls) == 1
 
 
-def test_notice_redaction_retains_task_credential_provenance_without_storing_task():
+def test_notice_redaction_retains_task_credential_provenance_without_storing_task() -> None:
     from services.dify_builder.code_risk_assessment import assess_code, code_facts
 
     facts = code_facts(
@@ -329,7 +339,7 @@ def test_notice_redaction_retains_task_credential_provenance_without_storing_tas
     assert "goal-secret" not in json.dumps(risk.model_dump())
 
 
-def test_code_risk_language_is_bound_to_snapshot_without_translating_source():
+def test_code_risk_language_is_bound_to_snapshot_without_translating_source() -> None:
     english = prepare(reply_language="en")
     chinese = prepare(reply_language="zh-Hans")
     assert english.digest != chinese.digest
@@ -337,13 +347,13 @@ def test_code_risk_language_is_bound_to_snapshot_without_translating_source():
     assert english.model_facts["code"] == chinese.model_facts["code"]
 
 
-def test_code_reasoner_uses_session_language_instead_of_old_goal_language(monkeypatch):
+def test_code_reasoner_uses_session_language_instead_of_old_goal_language(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import llm, model_resolver
     from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
 
-    captured = {}
+    captured: dict[str, object] = {}
 
-    def invoke(_model, **kwargs):
+    def invoke(_model: object, **kwargs: object) -> str:
         captured.update(kwargs)
         return '{"classification":"pure","risk_notice":"仅在内存中整理文本。"}'
 
@@ -354,5 +364,7 @@ def test_code_reasoner_uses_session_language_instead_of_old_goal_language(monkey
         reason=builder_code_reasoner(tenant_id="tenant", model_config={"name": "selected"}),
     )
     assert result.status == "assessed"
+    assert isinstance(captured["system"], str)
     assert "Write risk_notice in zh-Hans" in captured["system"]
+    assert isinstance(captured["user"], str)
     assert "Parse the supplied value" in captured["user"]

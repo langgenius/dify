@@ -11,6 +11,7 @@ from typing import Never, override
 from unittest.mock import Mock
 
 import pytest
+import pytest_mock
 import yaml
 
 from core.dify_builder.models import Graph
@@ -39,7 +40,7 @@ from tests.unit_tests.services.dify_builder.test_execution_policy_service import
 
 
 @pytest.fixture(autouse=True)
-def no_jinja_compilation(mocker) -> Iterator[None]:
+def no_jinja_compilation(mocker: pytest_mock.MockerFixture) -> Iterator[None]:
     """Restricted rendering interprets finite AST only; lex/parse stay real."""
     from jinja2 import Environment, Template, debug
 

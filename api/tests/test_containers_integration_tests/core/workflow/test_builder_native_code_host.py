@@ -7,36 +7,54 @@ This cannot qualify A7 isolation, destructive cleanup, or live SSRF routing.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Protocol
 
-def test_real_gevent_graph_worker_joins_code_loop(db_session_with_containers):
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from runtime_contracts.builder.native.contracts import (
+        EffectIntent,
+    )
+    from services.dify_builder.native_testing.host_execution import HostBoundCodeCalls
+
+
+class NativeThreadHandle(Protocol):
+    def is_done(self) -> bool: ...
+
+
+def test_real_gevent_graph_worker_joins_code_loop(db_session_with_containers: Session) -> None:
     _launch(db_session_with_containers, "joined")
 
 
 def test_late_code_exit_after_node_worker_exit_remains_unknown(
-    db_session_with_containers,
-):
+    db_session_with_containers: Session,
+) -> None:
     _launch(db_session_with_containers, "late")
 
 
 def test_real_gevent_cancelled_scope_call_keeps_cleanup_owned(
-    db_session_with_containers,
-):
+    db_session_with_containers: Session,
+) -> None:
     _launch(db_session_with_containers, "cancelled")
 
 
-def _launch(session, mode):
+def _launch(session: Session, mode: str) -> None:
     import json
     import os
     import subprocess
     import sys
     from pathlib import Path
 
+    from sqlalchemy import Engine
+
+    from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+
     # Executing this file directly gives Python its fixture directory rather
     # than the API import root. Preserve any caller paths after the API root.
     api_root = str(Path(__file__).resolve().parents[4])
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(filter(None, (api_root, env.get("PYTHONPATH"))))
-    url = session.get_bind().url.render_as_string(hide_password=False)
+    url = require_instance(session.get_bind(), Engine).url.render_as_string(hide_password=False)
     result = subprocess.run(
         [sys.executable, str(Path(__file__).resolve()), mode],
         env=env,
@@ -50,7 +68,8 @@ def _launch(session, mode):
     assert f"CODE_HOST_PROCESS_PASS:{mode}" in result.stdout
 
 
-def _process(mode):
+def _process(mode: str) -> None:
+    import asyncio
     import json
     import sys
     import threading
@@ -66,11 +85,16 @@ def _process(mode):
 
     from graphon.engine.layer import Layer
     from graphon.engine.worker.worker import Worker
+    from graphon.engine_events.base import EngineEvent
+    from graphon.entities.base_node_data import BaseNodeData
+    from graphon.nodes.base.node import Node
+    from services.code_execution.native_scope_transport import NativeCodeIdentity
     from services.dify_builder.native_testing.control import NativePolicyStop
     from services.dify_builder.native_testing.sandbox import sync_bridge
     from services.dify_builder.native_testing.sandbox.host import (
         NativeCodeHostOperation,
     )
+    from services.dify_builder.native_testing.sandbox.scope_client import CodeHttpRequest
     from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import (
         REF,
     )
@@ -88,17 +112,21 @@ def _process(mode):
     native_lock = get_original("_thread", "allocate_lock")
     release = native_lock()
     release.acquire()
-    loops, handles, sql_threads, node_threads, hub_checks = [], [], [], [], []
+    loops: list[asyncio.AbstractEventLoop] = []
+    handles: list[NativeThreadHandle] = []
+    sql_threads: list[threading.Thread] = []
+    node_threads: list[threading.Thread] = []
+    hub_checks: list[int] = []
     original_loop = sync_bridge._Loop
 
     class CheckedLoop(original_loop):
-        def __init__(self):
+        def __init__(self) -> None:
             assert get_hub_if_exists() is None
             super().__init__()
             assert get_hub_if_exists() is None
 
         @override
-        def close(self):
+        def close(self) -> None:
             assert get_hub_if_exists() is None
             super().close()
             assert get_hub_if_exists() is None
@@ -112,11 +140,17 @@ def _process(mode):
                 case = code_case()
                 calls, intent, dispatch, _owner, _events, _prefix = composed(case, patch)
                 entry, _ = native_entry(case, patch)
-                errors = []
+                errors: list[str] = []
                 if mode == "late":
                     original_settle = NativeCodeHostOperation.settle
 
-                    async def delayed_settlement(self, identity, *, succeeded, _settle=original_settle):
+                    async def delayed_settlement(
+                        self: NativeCodeHostOperation,
+                        identity: NativeCodeIdentity,
+                        *,
+                        succeeded: bool,
+                        _settle=original_settle,
+                    ) -> None:
                         await _settle(self, identity, succeeded=succeeded)
                         # Exact destruction is already observed; actual native
                         # work remains live until coordinator releases this gate.
@@ -127,17 +161,23 @@ def _process(mode):
                 if mode == "cancelled":
                     original_stall_service = NativeCodeHostOperation._service
 
-                    def stalled_service(self, kind, payload, _service=original_stall_service):
-                        if kind == "http" and payload.path.endswith("/input"):
-                            self.owner.host.request_close(reason="cancel")
-                            gevent.sleep(0.03)
+                    def stalled_service(
+                        self: NativeCodeHostOperation, kind: str, payload: object, _service=original_stall_service
+                    ) -> object:
+                        if kind == "http":
+                            assert isinstance(payload, CodeHttpRequest)
+                            if payload.path.endswith("/input"):
+                                self.owner.host.request_close(reason="cancel")
+                                gevent.sleep(0.03)
                         return _service(self, kind, payload)
 
                     patch.setattr(NativeCodeHostOperation, "_service", stalled_service)
 
                 original_service = NativeCodeHostOperation._service
 
-                def checked_service(self, kind, payload, _service=original_service):
+                def checked_service(
+                    self: NativeCodeHostOperation, kind: str, payload: object, _service=original_service
+                ) -> object:
                     worker = threading.current_thread()
                     assert isinstance(worker, Worker)
                     if kind == "check":
@@ -150,26 +190,26 @@ def _process(mode):
 
                 class CodeWitness(Layer):
                     @override
-                    def on_graph_start(self):
+                    def on_graph_start(self) -> None:
                         pass
 
                     @override
-                    def on_graph_end(self, error):
+                    def on_graph_end(self, error: Exception | None) -> None:
                         pass
 
                     @override
-                    def on_event(self, event):
+                    def on_event(self, event: EngineEvent) -> None:
                         pass
 
                     @override
                     def on_node_run_start(
                         self,
-                        node,
-                        _calls=calls,
-                        _intent=intent,
+                        node: Node[BaseNodeData],
+                        _calls: HostBoundCodeCalls = calls,
+                        _intent: EffectIntent = intent,
                         _dispatch=dispatch,
                         _errors=errors,
-                    ):
+                    ) -> None:
                         if node.id != "start":
                             return
                         node_threads.append(threading.current_thread())

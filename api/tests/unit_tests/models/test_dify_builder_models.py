@@ -6,6 +6,7 @@ values (`id`, `version`, timestamps) populate on flush, and the
 """
 
 from collections.abc import Iterator
+from typing import cast
 
 import pytest
 from sqlalchemy import create_engine
@@ -45,16 +46,14 @@ def session(engine: Engine) -> Iterator[Session]:
         yield session
 
 
-def _make_session(**overrides: object) -> DifyBuilderSession:
-    kwargs: dict[str, object] = {
-        "app_id": APP_ID,
-        "tenant_id": TENANT_ID,
-        "owner_account_id": ACCOUNT_ID,
-        "entry_mode": "chat",
-        "current_state": "idle",
-    }
-    kwargs.update(overrides)
-    return DifyBuilderSession(**kwargs)
+def _make_session() -> DifyBuilderSession:
+    return DifyBuilderSession(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode="chat",
+        current_state="idle",
+    )
 
 
 def test_dify_builder_session_defaults_populate_on_flush(session: Session) -> None:
@@ -167,7 +166,8 @@ def test_run_and_test_input_round_trip(session: Session) -> None:
         kind="verify",
         dify_run_id="run-123",
         status="succeeded",
-        per_node={"node-1": "ok"},
+        # Preserve this legacy JSON shape: the round trip must not coerce it.
+        per_node=cast(list[dict[str, object]], {"node-1": "ok"}),
         culprit_node_id=None,
         inputs_ref="ref-1",
         tokens=42,

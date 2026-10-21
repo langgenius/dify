@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import PermissionEnum
+from services.entities.model_provider_entities import ProviderWithModelsResponse
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     ACCOUNT_A,
     ACCOUNT_B,
@@ -28,7 +29,7 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
 )
 
 
-def _provider_models(provider: str, models: list[str]):
+def _provider_models(provider: str, models: list[str]) -> ProviderWithModelsResponse:
     from core.entities.model_entities import ModelStatus, ProviderModelWithStatusEntity
     from graphon.model_runtime.entities.common_entities import I18nObject
     from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType

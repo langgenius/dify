@@ -1,34 +1,41 @@
 """Concrete opaque HTTP policy and actual native semantic attestation, offline only."""
 
-import importlib
-import importlib.util
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
-from types import ModuleType
-from typing import cast
+from typing import NoReturn, cast
 
 import httpx
 import pytest
 from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.models import Actor
+from graphon.http import HttpResponse
 from graphon.nodes.http_request import HttpRequestNode
-from graphon.nodes.http_request.entities import HttpRequestNodeData
+from graphon.nodes.http_request.entities import HttpRequestNodeData, Response
 from graphon.runtime import VariablePool
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
-from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
-from services.dify_builder.native_testing.http_adapter import NativeHttpIntentPort
+from runtime_contracts.builder.native.contracts import DispatchPermit, EffectIntent, JsonValue, NativeTestContextRef
+from runtime_contracts.builder.native.runtime_contracts import NativeStatePort
+from services.dify_builder.native_testing import http_binding as http_binding_module
+from services.dify_builder.native_testing.call_adapter import NativeCallAdapter, ScalarAuthorizationPort
+from services.dify_builder.native_testing.http_adapter import (
+    NativeHttpIntentPort,
+    PreparedHttpBinding,
+    PreparedHttpRequest,
+    ScalarCallPort,
+)
 from services.dify_builder.native_testing.http_binding import (
     DeferredNativeHttpClient,
     NativeHttpBindingProducer,
     NativeHttpBindingResolver,
+    NativeHttpPreparedObserver,
 )
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation, NativeRuntimeBridge
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import Authorization, State
 from tests.unit_tests.services.dify_builder.native_testing.test_http_adapter import (
     protected_application_logs as protected_application_logs,  # noqa: PLC0414 - shared pytest fixture
@@ -38,19 +45,18 @@ from tests.unit_tests.services.dify_builder.native_testing.test_runtime_bridge i
 
 @dataclass
 class ConcreteHttpCase:
-    m: ModuleType
     producer: NativeHttpBindingProducer
     state: State
     auth: Authorization
     journal: NodeOperationJournal
     association: NativeNodePreparation
     node: HttpRequestNode
-    events: list
+    events: list[tuple[object, ...]]
     uuid: str
-    raw: dict
+    raw: dict[str, JsonValue]
     owned: OwnedNativeTest
     reply: Callable[[httpx.Request], httpx.Response] | None = None
-    prepared: list = field(default_factory=list)
+    prepared: list[PreparedHttpBinding] = field(default_factory=list)
     sent: list[httpx.Request] = field(default_factory=list)
     client: DeferredNativeHttpClient | None = None
 
@@ -59,13 +65,7 @@ class NonCallableHttpCalls:
     call: None = None
 
 
-def owner():
-    name = "services.dify_builder.native_testing.http_binding"
-    assert importlib.util.find_spec(name) is not None, "concrete HTTP binding owner missing"
-    return importlib.import_module(name)
-
-
-def data(**changes):
+def data(**changes: JsonValue) -> dict[str, JsonValue]:
     return {
         "type": "http-request",
         "version": "1",
@@ -80,8 +80,8 @@ def data(**changes):
     }
 
 
-def test_profile_has_explicit_shared_accounting_and_caps():
-    m = owner()
+def test_profile_has_explicit_shared_accounting_and_caps() -> None:
+    m = http_binding_module
     p = m.build_native_http_profile()
     assert p.profile_id == p.implementation_revision == "builder-native-http-opaque-v1"
     assert p.limits == {"calls": 16, "dispatches": 16, "cost_units": 16}
@@ -91,8 +91,8 @@ def test_profile_has_explicit_shared_accounting_and_caps():
     assert m.http_policy()["additional_budget"] == {}
 
 
-def test_resource_projection_is_real_versioned_metadata_without_literals():
-    m = owner()
+def test_resource_projection_is_real_versioned_metadata_without_literals() -> None:
+    m = http_binding_module
     descriptor = m.describe_http_resource(
         node_id="http", raw=data(), workflow_revision="a" * 64, app_id="app", workflow_id="workflow"
     )
@@ -117,15 +117,15 @@ def test_resource_projection_is_real_versioned_metadata_without_literals():
         {"body": {"type": "binary", "data": [{"type": "file", "file": ["node", "file"]}]}},
     ],
 )
-def test_unqualified_variants_refuse_before_native_preparation(change):
+def test_unqualified_variants_refuse_before_native_preparation(change: dict[str, JsonValue]) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
-        owner().describe_http_resource(
+        http_binding_module.describe_http_resource(
             node_id="http", raw=data(**change), workflow_revision="a" * 64, app_id="app", workflow_id="workflow"
         )
 
 
-def test_offline_native_attestation_keeps_json_types_and_refuses_tamper():
-    m = owner()
+def test_offline_native_attestation_keeps_json_types_and_refuses_tamper() -> None:
+    m = http_binding_module
     expected = m.native_http_request(raw=data(), variable_pool=VariablePool())
     assert expected["json"] == {"secret": "SENTINEL", "flag": True}
     from services.dify_builder.native_testing.http_adapter import NativeHttpClient
@@ -149,16 +149,16 @@ def test_offline_native_attestation_keeps_json_types_and_refuses_tamper():
             m.attest_http_request(request=changed, raw=data(), variable_pool=VariablePool())
 
 
-def test_concrete_producer_and_deferred_entry_exist_without_factory_activation():
-    m = owner()
+def test_concrete_producer_and_deferred_entry_exist_without_factory_activation() -> None:
+    m = http_binding_module
     assert hasattr(m, "NativeHttpBindingProducer"), "actual per-occurrence producer missing"
     assert hasattr(m, "NativeHttpBindingResolver"), "current metadata resolver missing"
     assert hasattr(m, "DeferredNativeHttpClient"), "deferred actual HTTP owner missing"
     assert hasattr(m, "NativeHttpDisclosure"), "opaque disclosure owner missing"
 
 
-def test_strict_file_collaborator_never_synthesizes_empty_file_outputs():
-    m = owner()
+def test_strict_file_collaborator_never_synthesizes_empty_file_outputs() -> None:
+    m = http_binding_module
     files = m.RefusingNativeHttpFiles()
     for call in (lambda: files.download(object()), lambda: files.create_file_by_raw(object()), lambda: files()):
         with pytest.raises(BuilderExecutionPolicyError, match="native_http_files_unsupported"):
@@ -166,7 +166,7 @@ def test_strict_file_collaborator_never_synthesizes_empty_file_outputs():
 
 
 @pytest.fixture
-def concrete_case(monkeypatch):
+def concrete_case(monkeypatch: pytest.MonkeyPatch) -> ConcreteHttpCase:
     from copy import deepcopy
     from uuid import uuid4
 
@@ -176,7 +176,7 @@ def concrete_case(monkeypatch):
     from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation
     from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import REF, Authorization, State
 
-    m = owner()
+    m = http_binding_module
 
     class InputState(State):
         """Explicit C03 input stand-in; encrypted SQL/storage owner is covered only by CI."""
@@ -193,13 +193,16 @@ def concrete_case(monkeypatch):
         update={"graph": graph, "graph_revision": "a" * 64, "resource_manifest": (descriptor,)}
     )
 
-    def store_inputs(**kwargs):
-        events.append(("input_ack", kwargs["native_execution_id"]))
-        ref = "node-input:" + kwargs["native_execution_id"]
-        old = state.values.setdefault(ref, deepcopy(kwargs["inputs"]))
-        if canonical_digest(old) != canonical_digest(kwargs["inputs"]):
+    def store_inputs(
+        *, ref: NativeTestContextRef, generation: int, native_execution_id: str, inputs: dict[str, JsonValue]
+    ) -> str:
+        del ref, generation
+        events.append(("input_ack", native_execution_id))
+        input_ref = "node-input:" + native_execution_id
+        old = state.values.setdefault(input_ref, deepcopy(inputs))
+        if canonical_digest(old) != canonical_digest(inputs):
             raise BuilderExecutionPolicyError("native_payload_conflict")
-        return ref
+        return input_ref
 
     state.store_node_inputs = store_inputs
     runtime = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
@@ -211,7 +214,7 @@ def concrete_case(monkeypatch):
         node_arguments=lambda **_kwargs: pytest.fail("producer test requested runtime arguments"),
     )
     association = NativeNodePreparation(
-        bridge=cast(NativeRuntimeBridge, bridge),
+        bridge=bridge,
         ref=REF,
         node_id="http",
         node_class=marked_native_node_class(HttpRequestNode, marked=True),
@@ -249,7 +252,7 @@ def concrete_case(monkeypatch):
         state="running",
     )
 
-    def load(**_kwargs):
+    def load(**_kwargs: object) -> OwnedNativeTest:
         events.append(("load",))
         return owned
 
@@ -272,16 +275,17 @@ def concrete_case(monkeypatch):
     )
     monkeypatch.setattr(m, "validate_private_read", lambda *_args: authority)
     journal = NodeOperationJournal(state=state, authorization=auth)
-    producer = m.NativeHttpBindingProducer(association=association, loader=loader, state_store=state, journal=journal)
+    producer = m.NativeHttpBindingProducer(
+        association=association, loader=loader, state_store=cast(NativeExecutionStateStore, state), journal=journal
+    )
 
-    def install(**_kw):
+    def install(**_kw: object) -> None:
         events.append(("install",))
         assert any(event[0] == "input_ack" for event in events)
 
     monkeypatch.setattr(producer, "_install", install)
     return ConcreteHttpCase(
         owned=owned,
-        m=m,
         producer=producer,
         state=state,
         auth=auth,
@@ -294,7 +298,7 @@ def concrete_case(monkeypatch):
     )
 
 
-def test_concrete_prebound_entry_has_zero_protected_io(concrete_case):
+def test_concrete_prebound_entry_has_zero_protected_io(concrete_case: ConcreteHttpCase) -> None:
     c = concrete_case
     from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
 
@@ -303,13 +307,13 @@ def test_concrete_prebound_entry_has_zero_protected_io(concrete_case):
     assert c.events == []
 
 
-def test_actual_node_typed_input_ack_precedes_journal_and_install(concrete_case):
+def test_actual_node_typed_input_ack_precedes_journal_and_install(concrete_case: ConcreteHttpCase) -> None:
     c = concrete_case
     c.node.bind_execution_id(c.uuid)
     c.producer.begin()
     from services.dify_builder.native_testing.http_adapter import NativeHttpClient
 
-    args = c.m.native_http_request(raw=c.raw, variable_pool=c.association.runtime_state.variable_pool)
+    args = http_binding_module.native_http_request(raw=c.raw, variable_pool=c.association.runtime_state.variable_pool)
     client = NativeHttpClient(
         ref=c.association.ref,
         calls=cast(NativeCallAdapter, object()),
@@ -330,7 +334,7 @@ def test_actual_node_typed_input_ack_precedes_journal_and_install(concrete_case)
     assert again.intent == binding.intent
 
 
-def test_actual_node_mutation_refuses_before_input_ack(concrete_case):
+def test_actual_node_mutation_refuses_before_input_ack(concrete_case: ConcreteHttpCase) -> None:
     c = concrete_case
     c.node.bind_execution_id(c.uuid)
     c.node.node_data.url = "https://other.example/secret"
@@ -340,7 +344,7 @@ def test_actual_node_mutation_refuses_before_input_ack(concrete_case):
 
 
 @pytest.fixture
-def physical_http(concrete_case, monkeypatch):
+def physical_http(concrete_case: ConcreteHttpCase, monkeypatch: pytest.MonkeyPatch) -> Generator[ConcreteHttpCase]:
     import httpx
 
     from core.helper import ssrf_proxy
@@ -352,7 +356,7 @@ def physical_http(concrete_case, monkeypatch):
         200, content=b'{"ok":true}', headers={"Content-Type": "application/json"}, request=request
     )
 
-    def transport(request):
+    def transport(request: httpx.Request) -> httpx.Response:
         sent.append(request)
         assert c.reply is not None
         return c.reply(request)
@@ -363,10 +367,10 @@ def physical_http(concrete_case, monkeypatch):
     # C02/C03 ports plus actual node/Executor/journal and offline MockTransport.
     c.prepared = []
 
-    def on_prepared(*, binding):
+    def on_prepared(*, binding: PreparedHttpBinding) -> None:
         c.prepared.append(binding)
 
-    c.client = c.m.DeferredNativeHttpClient(
+    c.client = http_binding_module.DeferredNativeHttpClient(
         producer=c.producer,
         authorization=c.auth,
         calls_factory=NativeCallAdapter,
@@ -377,21 +381,22 @@ def physical_http(concrete_case, monkeypatch):
     lower.close()
 
 
-def invoke_native_executor(c):
+def invoke_native_executor(c: ConcreteHttpCase) -> Response:
+    assert c.client is not None
     from graphon.nodes.http_request.executor import Executor
 
     return Executor(
         node_data=HttpRequestNodeData.model_validate(c.raw),
-        timeout=c.m.native_http_config().default_timeout(),
+        timeout=http_binding_module.native_http_config().default_timeout(),
         variable_pool=c.association.runtime_state.variable_pool,
-        http_request_config=c.m.native_http_config(),
+        http_request_config=http_binding_module.native_http_config(),
         max_retries=0,
         http_client=c.client,
-        file_manager=c.m.RefusingNativeHttpFiles(),
+        file_manager=http_binding_module.RefusingNativeHttpFiles(),
     ).invoke()
 
 
-def test_real_deferred_native_scalar_http_complete_then_same_key_replay(physical_http):
+def test_real_deferred_native_scalar_http_complete_then_same_key_replay(physical_http: ConcreteHttpCase) -> None:
     c = physical_http
     first = invoke_native_executor(c)
     assert first.text == '{"ok":true}'
@@ -405,7 +410,7 @@ def test_real_deferred_native_scalar_http_complete_then_same_key_replay(physical
     assert len([e for e in c.events if e[0] == "claim"]) == 1
 
 
-def test_real_deferred_native_wait_keeps_private_journal_and_zero_dispatch(physical_http):
+def test_real_deferred_native_wait_keeps_private_journal_and_zero_dispatch(physical_http: ConcreteHttpCase) -> None:
     from runtime_contracts.builder.native.contracts import ApprovalWait
     from services.dify_builder.native_testing.control import NativeApprovalWait
 
@@ -419,13 +424,13 @@ def test_real_deferred_native_wait_keeps_private_journal_and_zero_dispatch(physi
     assert journal.result_refs == ()
 
 
-def test_disclosure_only_validated_origin_typed_lengths_and_opaque_notice(concrete_case):
+def test_disclosure_only_validated_origin_typed_lengths_and_opaque_notice(concrete_case: ConcreteHttpCase) -> None:
     c = concrete_case
     c.node.bind_execution_id(c.uuid)
     c.producer.begin()
     from services.dify_builder.native_testing.http_adapter import NativeHttpClient
 
-    args = c.m.native_http_request(raw=c.raw, variable_pool=c.association.runtime_state.variable_pool)
+    args = http_binding_module.native_http_request(raw=c.raw, variable_pool=c.association.runtime_state.variable_pool)
     request = NativeHttpClient(
         ref=c.association.ref,
         calls=cast(NativeCallAdapter, object()),
@@ -434,35 +439,39 @@ def test_disclosure_only_validated_origin_typed_lengths_and_opaque_notice(concre
         max_response_bytes=1048576,
     )._prepare("POST", args.pop("url"), args)
     intent = c.producer.prepare(request=request, hop=0, previous_response=None).intent
-    target, summary = c.m.http_disclosure_summary(intent=intent, descriptor=c.state.context.resource_manifest[0])
+    target, summary = http_binding_module.http_disclosure_summary(
+        intent=intent, descriptor=c.state.context.resource_manifest[0]
+    )
     assert target == {"method": "POST", "origin": "https://example.com"}
-    assert "SENTINEL" not in str((target, summary, c.m.OPACITY_NOTICE))
+    assert "SENTINEL" not in str((target, summary, http_binding_module.OPACITY_NOTICE))
     assert summary["request_digest"] == canonical_digest(request.material())
     assert summary["redacted_fields"] == ["path", "query", "body", "headers"]
-    assert "internal actions are unknown" in c.m.OPACITY_NOTICE
+    assert "internal actions are unknown" in http_binding_module.OPACITY_NOTICE
 
 
-def test_current_classification_does_not_echo_stored_flags(concrete_case, monkeypatch):
+def test_current_classification_does_not_echo_stored_flags(
+    concrete_case: ConcreteHttpCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     c = concrete_case
     from runtime_contracts.builder.native.contracts import OperationKey, operation_digest
     from services.dify_builder.native_testing.repository import NativeBinding
 
     key = OperationKey(invocation_id=c.association.ref.invocation_id, occurrence_path=(c.uuid,), cursor=0)
     desc = c.state.context.resource_manifest[0]
-    frozen = c.m._classified_binding(
+    frozen = http_binding_module._classified_binding(
         intent_digest="b" * 64, execution_id=c.uuid, descriptor=desc, manifest_digest="c" * 64
     )
     stored = frozen.model_copy(
         update={"isolated": True, "cost_units": 0, "destructive": True, "approval_scope": "batch"}
     )
     owned = replace(c.owned, ref=c.association.ref, bindings={operation_digest(key): stored.model_dump(mode="json")})
-    monkeypatch.setattr(c.m, "_current_metadata", lambda **_kw: (c.raw, desc, "c" * 64))
-    current = c.m.NativeHttpBindingResolver().resolve_binding(session=object(), owned=owned, key=key)
+    monkeypatch.setattr(http_binding_module, "_current_metadata", lambda **_kw: (c.raw, desc, "c" * 64))
+    current = http_binding_module.NativeHttpBindingResolver().resolve_binding(session=object(), owned=owned, key=key)
     assert current == frozen
     assert current != NativeBinding.model_validate(owned.bindings[operation_digest(key)])
 
 
-def test_actual_wait_exports_one_call_proposal_from_scope_expiry(physical_http):
+def test_actual_wait_exports_one_call_proposal_from_scope_expiry(physical_http: ConcreteHttpCase) -> None:
     from datetime import UTC, datetime
 
     from runtime_contracts.builder.native.contracts import ApprovalWait
@@ -484,16 +493,16 @@ def test_actual_wait_exports_one_call_proposal_from_scope_expiry(physical_http):
     }
 
 
-def test_current_registry_replacement_cannot_keep_pinned_http_qualification(monkeypatch):
+def test_current_registry_replacement_cannot_keep_pinned_http_qualification(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(HttpRequestNode, "get_node_type_classes_mapping", lambda: {"http-request": {"1": object}})
     with pytest.raises(BuilderExecutionPolicyError, match="native_http_resource_unsupported"):
-        owner().describe_http_resource(
+        http_binding_module.describe_http_resource(
             node_id="http", raw=data(), workflow_revision="a" * 64, app_id="app", workflow_id="workflow"
         )
 
 
-def test_deferred_zero_redirect_cap_never_sends_second_destination(physical_http):
+def test_deferred_zero_redirect_cap_never_sends_second_destination(physical_http: ConcreteHttpCase) -> None:
     import httpx
 
     from services.dify_builder.native_testing.control import NativePolicyStop
@@ -509,13 +518,13 @@ def test_deferred_zero_redirect_cap_never_sends_second_destination(physical_http
     assert c.sent[0].url.host == "example.com"
 
 
-def test_deferred_actual_response_cap_refuses_without_truncated_success(physical_http):
+def test_deferred_actual_response_cap_refuses_without_truncated_success(physical_http: ConcreteHttpCase) -> None:
     import httpx
 
     from services.dify_builder.native_testing.control import NativePolicyStop
 
     c = physical_http
-    cap = c.m.http_policy()["max_response_bytes"]
+    cap = http_binding_module.http_policy()["max_response_bytes"]
     c.reply = lambda request: httpx.Response(200, content=b"a" * (cap + 1), request=request)
     with pytest.raises(NativePolicyStop) as stopped:
         invoke_native_executor(c)
@@ -534,8 +543,10 @@ def test_deferred_actual_response_cap_refuses_without_truncated_success(physical
         ({"type": "json", "data": [{"type": "text", "value": "true"}]}, None, True),
     ],
 )
-def test_literal_empty_text_and_scalar_json_keep_actual_native_semantics(body, content, json_value):
-    m = owner()
+def test_literal_empty_text_and_scalar_json_keep_actual_native_semantics(
+    body: dict[str, JsonValue], content: bytes | None, json_value: JsonValue
+) -> None:
+    m = http_binding_module
     from services.dify_builder.native_testing.http_adapter import NativeHttpClient
 
     raw = data(body=body)
@@ -552,9 +563,9 @@ def test_literal_empty_text_and_scalar_json_keep_actual_native_semantics(body, c
     m.attest_http_request(request=request, raw=raw, variable_pool=VariablePool())
 
 
-def test_ignored_none_body_file_selector_is_still_outside_qualified_resource():
+def test_ignored_none_body_file_selector_is_still_outside_qualified_resource() -> None:
     with pytest.raises(BuilderExecutionPolicyError, match="native_http_resource_unsupported"):
-        owner().describe_http_resource(
+        http_binding_module.describe_http_resource(
             node_id="http",
             raw=data(body={"type": "none", "data": [{"type": "file", "file": ["environment", "secret"]}]}),
             workflow_revision="a" * 64,
@@ -563,7 +574,7 @@ def test_ignored_none_body_file_selector_is_still_outside_qualified_resource():
         )
 
 
-def test_known_destructive_binding_retains_existing_hard_denial(concrete_case):
+def test_known_destructive_binding_retains_existing_hard_denial(concrete_case: ConcreteHttpCase) -> None:
     from services.dify_builder.native_testing.authorization import task_grant_allowed, validate_binding
 
     c = concrete_case
@@ -571,7 +582,9 @@ def test_known_destructive_binding_retains_existing_hard_denial(concrete_case):
     c.producer.begin()
     from services.dify_builder.native_testing.http_adapter import NativeHttpClient
 
-    arguments = c.m.native_http_request(raw=c.raw, variable_pool=c.association.runtime_state.variable_pool)
+    arguments = http_binding_module.native_http_request(
+        raw=c.raw, variable_pool=c.association.runtime_state.variable_pool
+    )
     prepared = NativeHttpClient(
         ref=c.association.ref,
         calls=cast(NativeCallAdapter, object()),
@@ -580,7 +593,7 @@ def test_known_destructive_binding_retains_existing_hard_denial(concrete_case):
         max_response_bytes=1048576,
     )._prepare("POST", arguments.pop("url"), arguments)
     intent = c.producer.prepare(request=prepared, hop=0, previous_response=None).intent
-    binding = c.m._classified_binding(
+    binding = http_binding_module._classified_binding(
         intent_digest=canonical_digest(intent.model_dump(mode="json")),
         execution_id=c.uuid,
         descriptor=c.state.context.resource_manifest[0],
@@ -592,8 +605,8 @@ def test_known_destructive_binding_retains_existing_hard_denial(concrete_case):
         validate_binding(intent, prohibited)
 
 
-def test_identical_graph_revision_in_another_workflow_is_a_different_qualification():
-    m = owner()
+def test_identical_graph_revision_in_another_workflow_is_a_different_qualification() -> None:
+    m = http_binding_module
     first = m.describe_http_resource(
         node_id="http", raw=data(), workflow_revision="a" * 64, app_id="app", workflow_id="workflow"
     )
@@ -605,14 +618,20 @@ def test_identical_graph_revision_in_another_workflow_is_a_different_qualificati
     assert canonical_digest(first) != canonical_digest(child)
 
 
-def test_qualified_http_manifest_selects_operation_consent_and_rejects_legacy_projection(concrete_case):
+def test_qualified_http_manifest_selects_operation_consent_and_rejects_legacy_projection(
+    concrete_case: ConcreteHttpCase,
+) -> None:
     from copy import deepcopy
 
     c = concrete_case
     descriptor = c.state.context.resource_manifest[0]
-    assert descriptor["policy"].get("approval_scope") == "operation"
+    policy = descriptor["policy"]
+    assert isinstance(policy, dict)
+    assert policy.get("approval_scope") == "operation"
     old_descriptor = deepcopy(descriptor)
-    old_descriptor["policy"].pop("approval_scope", None)
+    old_policy = old_descriptor["policy"]
+    assert isinstance(old_policy, dict)
+    old_policy.pop("approval_scope", None)
     assert canonical_digest(old_descriptor) != canonical_digest(descriptor)
     c.state.context = c.state.context.model_copy(update={"resource_manifest": (old_descriptor,)})
     c.node.bind_execution_id(c.uuid)
@@ -620,7 +639,9 @@ def test_qualified_http_manifest_selects_operation_consent_and_rejects_legacy_pr
         c.producer.begin()
 
 
-def test_identical_request_native_occurrences_have_independent_http_confirmation_scopes(concrete_case, monkeypatch):
+def test_identical_request_native_occurrences_have_independent_http_confirmation_scopes(
+    concrete_case: ConcreteHttpCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from uuid import uuid4
 
     from graphon.runtime import InitParams, RuntimeState
@@ -630,9 +651,11 @@ def test_identical_request_native_occurrences_have_independent_http_confirmation
     c = concrete_case
     c.node.bind_execution_id(c.uuid)
 
-    def intent_for(producer):
+    def intent_for(producer: NativeHttpBindingProducer) -> EffectIntent:
         producer.begin()
-        arguments = c.m.native_http_request(raw=c.raw, variable_pool=producer.association.runtime_state.variable_pool)
+        arguments = http_binding_module.native_http_request(
+            raw=c.raw, variable_pool=producer.association.runtime_state.variable_pool
+        )
         from services.dify_builder.native_testing.http_adapter import NativeHttpClient
 
         request = NativeHttpClient(
@@ -659,16 +682,19 @@ def test_identical_request_native_occurrences_have_independent_http_confirmation
             workflow_id="workflow", graph_config=c.state.context.graph, run_context={}, call_depth=0
         ),
         runtime_state=runtime,
-        http_request_config=c.m.native_http_config(),
+        http_request_config=http_binding_module.native_http_config(),
         http_client=object(),
-        file_manager=c.m.RefusingNativeHttpFiles(),
-        tool_file_manager_factory=c.m.RefusingNativeHttpFiles(),
-        file_reference_factory=c.m.RefusingNativeHttpFiles(),
+        file_manager=http_binding_module.RefusingNativeHttpFiles(),
+        tool_file_manager_factory=http_binding_module.RefusingNativeHttpFiles(),
+        file_reference_factory=http_binding_module.RefusingNativeHttpFiles(),
     )
     second.attach(node)
     node.bind_execution_id(str(uuid4()))
-    producer = c.m.NativeHttpBindingProducer(
-        association=second, loader=c.producer.loader, state_store=c.state, journal=c.journal
+    producer = http_binding_module.NativeHttpBindingProducer(
+        association=second,
+        loader=c.producer.loader,
+        state_store=cast(NativeExecutionStateStore, c.state),
+        journal=c.journal,
     )
     monkeypatch.setattr(producer, "_install", c.producer._install)
     repeated = intent_for(producer)
@@ -676,7 +702,7 @@ def test_identical_request_native_occurrences_have_independent_http_confirmation
     assert first.input_digest == repeated.input_digest
     assert first.key != repeated.key
     classified = [
-        c.m._classified_binding(
+        http_binding_module._classified_binding(
             intent_digest=canonical_digest(effect.model_dump(mode="json")),
             execution_id=effect.key.occurrence_path[0],
             descriptor=c.state.context.resource_manifest[0],
@@ -688,38 +714,60 @@ def test_identical_request_native_occurrences_have_independent_http_confirmation
     assert classified[0].approval_scope == classified[1].approval_scope == "operation"
 
 
-def test_host_seams_use_exact_factory_owners_and_actual_prepared_binding(physical_http, monkeypatch):
+def test_host_seams_use_exact_factory_owners_and_actual_prepared_binding(
+    physical_http: ConcreteHttpCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     c = physical_http
-    created, produced, observed, called = [], [], [], []
+    created: list[dict[str, object]] = []
+    produced: list[PreparedHttpBinding] = []
+    observed: list[PreparedHttpBinding] = []
+    called: list[tuple[NativeTestContextRef, EffectIntent]] = []
     prepare = c.producer.prepare
 
-    def actual_prepare(**kwargs):
-        binding = prepare(**kwargs)
+    def actual_prepare(
+        *, request: PreparedHttpRequest, hop: int, previous_response: HttpResponse | None
+    ) -> PreparedHttpBinding:
+        binding = prepare(request=request, hop=hop, previous_response=previous_response)
         produced.append(binding)
         return binding
 
     monkeypatch.setattr(c.producer, "prepare", actual_prepare)
 
-    def factory(**kwargs):
-        created.append(kwargs)
-        adapter = NativeCallAdapter(**kwargs)
+    @dataclass
+    class Calls:
+        adapter: NativeCallAdapter
 
-        class Calls:
-            def call(self, *, ref, intent, dispatch):
-                assert observed == [produced[0]]
-                assert not any(e[0] in {"authorize", "claim"} for e in c.events)
-                called.append((ref, intent))
-                return adapter.call(ref=ref, intent=intent, dispatch=dispatch)
+        def call(
+            self, *, ref: NativeTestContextRef, intent: EffectIntent, dispatch: Callable[[DispatchPermit], JsonValue]
+        ) -> JsonValue:
+            assert observed == [produced[0]]
+            assert not any(e[0] in {"authorize", "claim"} for e in c.events)
+            called.append((ref, intent))
+            return self.adapter.call(ref=ref, intent=intent, dispatch=dispatch)
 
-        return Calls()
+    def factory(
+        *,
+        state: NativeStatePort,
+        authorization: ScalarAuthorizationPort,
+        journal: NodeOperationJournal,
+        max_result_bytes: int,
+    ) -> Calls:
+        created.append(
+            {"state": state, "authorization": authorization, "journal": journal, "max_result_bytes": max_result_bytes}
+        )
+        return Calls(
+            NativeCallAdapter(
+                state=state, authorization=authorization, journal=journal, max_result_bytes=max_result_bytes
+            )
+        )
 
-    def observe(*, binding):
+    def observe(*, binding: PreparedHttpBinding) -> None:
         assert binding is produced[0]
         assert not any(e[0] in {"authorize", "claim"} for e in c.events)
         assert c.sent == []
         observed.append(binding)
 
-    c.client = c.m.DeferredNativeHttpClient(
+    c.client = http_binding_module.DeferredNativeHttpClient(
         producer=c.producer, authorization=c.auth, calls_factory=factory, on_prepared=observe
     )
     assert invoke_native_executor(c).text == '{"ok":true}'
@@ -737,18 +785,21 @@ def test_host_seams_use_exact_factory_owners_and_actual_prepared_binding(physica
 
 
 @pytest.mark.parametrize("ack", [False, True, 0, "accepted", object()], ids=["false", "true", "zero", "text", "object"])
-def test_host_seams_prepared_observer_requires_actual_none(physical_http, ack):
+def test_host_seams_prepared_observer_requires_actual_none(physical_http: ConcreteHttpCase, ack: object) -> None:
     from services.dify_builder.native_testing.control import NativePolicyStop
 
     c = physical_http
     seen = []
 
-    def observe(*, binding):
+    def observe(*, binding: PreparedHttpBinding) -> object:
         seen.append(binding)
         return ack
 
-    c.client = c.m.DeferredNativeHttpClient(
-        producer=c.producer, authorization=c.auth, calls_factory=NativeCallAdapter, on_prepared=observe
+    c.client = http_binding_module.DeferredNativeHttpClient(
+        producer=c.producer,
+        authorization=c.auth,
+        calls_factory=NativeCallAdapter,
+        on_prepared=cast(NativeHttpPreparedObserver, observe),
     )
     with pytest.raises(NativePolicyStop) as stopped:
         invoke_native_executor(c)
@@ -758,16 +809,16 @@ def test_host_seams_prepared_observer_requires_actual_none(physical_http, ack):
     assert c.sent == []
 
 
-def test_host_seams_observer_exception_refuses_before_scalar_authority(physical_http):
+def test_host_seams_observer_exception_refuses_before_scalar_authority(physical_http: ConcreteHttpCase) -> None:
     from services.dify_builder.native_testing.control import NativePolicyStop
 
     c = physical_http
 
-    def observe(*, binding):
-        assert type(binding) is c.m.PreparedHttpBinding
+    def observe(*, binding: PreparedHttpBinding) -> None:
+        assert type(binding) is http_binding_module.PreparedHttpBinding
         raise RuntimeError("SENTINEL")
 
-    c.client = c.m.DeferredNativeHttpClient(
+    c.client = http_binding_module.DeferredNativeHttpClient(
         producer=c.producer, authorization=c.auth, calls_factory=NativeCallAdapter, on_prepared=observe
     )
     with pytest.raises(NativePolicyStop) as stopped:
@@ -779,14 +830,14 @@ def test_host_seams_observer_exception_refuses_before_scalar_authority(physical_
 
 
 @pytest.mark.parametrize("malformed", [None, object(), NonCallableHttpCalls()], ids=["none", "object", "no-call"])
-def test_host_seams_invalid_factory_owner_has_no_fallback(physical_http, malformed):
+def test_host_seams_invalid_factory_owner_has_no_fallback(physical_http: ConcreteHttpCase, malformed: object) -> None:
     from services.dify_builder.native_testing.control import NativePolicyStop
 
     c = physical_http
-    c.client = c.m.DeferredNativeHttpClient(
+    c.client = http_binding_module.DeferredNativeHttpClient(
         producer=c.producer,
         authorization=c.auth,
-        calls_factory=lambda **_kwargs: malformed,
+        calls_factory=lambda **_kwargs: cast(ScalarCallPort, malformed),
         on_prepared=lambda **_kwargs: pytest.fail("invalid calls reached preparation"),
     )
     with pytest.raises(NativePolicyStop) as stopped:
@@ -796,15 +847,15 @@ def test_host_seams_invalid_factory_owner_has_no_fallback(physical_http, malform
     assert c.sent == []
 
 
-def test_host_seams_factory_exception_has_no_fallback(physical_http):
+def test_host_seams_factory_exception_has_no_fallback(physical_http: ConcreteHttpCase) -> None:
     from services.dify_builder.native_testing.control import NativePolicyStop
 
     c = physical_http
 
-    def factory(**_kwargs):
+    def factory(**_kwargs: object) -> NoReturn:
         raise RuntimeError("SENTINEL")
 
-    c.client = c.m.DeferredNativeHttpClient(
+    c.client = http_binding_module.DeferredNativeHttpClient(
         producer=c.producer, authorization=c.auth, calls_factory=factory, on_prepared=lambda **_kwargs: None
     )
     with pytest.raises(NativePolicyStop) as stopped:
@@ -817,7 +868,7 @@ def test_host_seams_factory_exception_has_no_fallback(physical_http):
 
 @pytest.mark.parametrize("boundary", ["factory", "observer"])
 @pytest.mark.parametrize("category", ["wait", "stop"])
-def test_host_seams_preserve_typed_controls(physical_http, boundary, category):
+def test_host_seams_preserve_typed_controls(physical_http: ConcreteHttpCase, boundary: str, category: str) -> None:
     from services.dify_builder.native_testing.control import NativeApprovalWait, NativePolicyStop
 
     c = physical_http
@@ -827,10 +878,10 @@ def test_host_seams_preserve_typed_controls(physical_http, boundary, category):
         else NativePolicyStop(ref=c.association.ref, reason_code="native_generation_conflict")
     )
 
-    def refuse(**_kwargs):
+    def refuse(**_kwargs: object) -> NoReturn:
         raise control
 
-    c.client = c.m.DeferredNativeHttpClient(
+    c.client = http_binding_module.DeferredNativeHttpClient(
         producer=c.producer,
         authorization=c.auth,
         calls_factory=refuse if boundary == "factory" else NativeCallAdapter,
@@ -843,18 +894,20 @@ def test_host_seams_preserve_typed_controls(physical_http, boundary, category):
     assert c.sent == []
 
 
-def test_host_seams_observer_refusal_blocks_actual_preparation_before_authority(concrete_case):
+def test_host_seams_observer_refusal_blocks_actual_preparation_before_authority(
+    concrete_case: ConcreteHttpCase,
+) -> None:
     from services.dify_builder.native_testing.control import NativePolicyStop
 
     c = concrete_case
     c.node.bind_execution_id(c.uuid)
     observed = []
 
-    def observe(*, binding):
+    def observe(*, binding: PreparedHttpBinding) -> None:
         observed.append(binding)
         raise RuntimeError("SENTINEL")
 
-    c.client = c.m.DeferredNativeHttpClient(
+    c.client = http_binding_module.DeferredNativeHttpClient(
         producer=c.producer, authorization=c.auth, calls_factory=NativeCallAdapter, on_prepared=observe
     )
     with pytest.raises(NativePolicyStop) as stopped:
@@ -865,14 +918,16 @@ def test_host_seams_observer_refusal_blocks_actual_preparation_before_authority(
 
 
 @pytest.mark.parametrize("kind", ["root", "loop", "iteration"])
-def test_official_container_id_normalization_preserves_http_snapshot_binding(concrete_case, kind):
+def test_official_container_id_normalization_preserves_http_snapshot_binding(
+    concrete_case: ConcreteHttpCase, kind: str
+) -> None:
     c = concrete_case
     c.node.bind_execution_id(c.uuid)
     raw = data(**({kind + "_id": "container"} if kind != "root" else {}))
     graph = {"nodes": [{"id": "http", "data": raw}]}
     if kind != "root":
         graph["nodes"].append({"id": "container", "data": {"type": kind}})
-    descriptor = c.m.describe_http_resource(
+    descriptor = http_binding_module.describe_http_resource(
         node_id="http", raw=raw, workflow_revision="a" * 64, app_id="app", workflow_id="workflow"
     )
     context = c.state.context.model_copy(update={"graph": graph, "resource_manifest": (descriptor,)})
@@ -884,7 +939,7 @@ def test_official_container_id_normalization_preserves_http_snapshot_binding(con
 
 
 @pytest.mark.parametrize("kind", ["root", "loop", "iteration"])
-def test_forged_runtime_container_id_is_http_node_drift(concrete_case, kind):
+def test_forged_runtime_container_id_is_http_node_drift(concrete_case: ConcreteHttpCase, kind: str) -> None:
     c = concrete_case
     c.node.bind_execution_id(c.uuid)
     raw = data(**({kind + "_id": "container"} if kind != "root" else {}))

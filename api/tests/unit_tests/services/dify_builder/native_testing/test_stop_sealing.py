@@ -1,14 +1,16 @@
 """Real lifecycle control with labeled SQL-boundary doubles, not locking proof."""
 
 from collections import UserList
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Literal, cast
 
 import pytest
-from sqlalchemy import inspect
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Select, inspect
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest
@@ -46,7 +48,7 @@ def control_owner(owner_state: str) -> OwnedNativeTest:
     )
 
 
-def state_snapshots(states):
+def state_snapshots(states: Sequence[NativeInvocationState]) -> list[tuple[object, ...]]:
     return deepcopy(
         [
             tuple(inspect(row).attrs[column.key].value for column in inspect(NativeInvocationState).column_attrs)
@@ -55,15 +57,18 @@ def state_snapshots(states):
     )
 
 
-class Rows(UserList):
-    def all(self):
+type StopRow = NativeInvocationState | NativeTestInvocation | NativeDispatch
+
+
+class Rows(UserList[StopRow]):
+    def all(self) -> list[StopRow]:
         return list(self)
 
 
 class SQLBoundary:
     """Explicit owner rows; deliberately does not pretend to evaluate SQL joins."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.request = DifyBuilderExecutionRequest(
             id="request",
             tenant_id="tenant",
@@ -115,7 +120,7 @@ class SQLBoundary:
             for identity, invocation, state in (("dispatch", "root", "claimed"), ("queued", "child", "queued"))
         ]
 
-    def scalars(self, statement):
+    def scalars(self, statement: Select[tuple[object, ...]]) -> Rows:
         model = statement.column_descriptions[0]["entity"]
         return Rows(
             {
@@ -125,7 +130,7 @@ class SQLBoundary:
             }[model]
         )
 
-    def scalar(self, statement):
+    def scalar(self, statement: Select[tuple[object, ...]]) -> StopRow | str | None:
         model = statement.column_descriptions[0]["entity"]
         if model is NativeInvocationState:
             return self.states[0]
@@ -137,17 +142,17 @@ class SQLBoundary:
             return self.invocations[0]
         raise AssertionError("unexpected SQL boundary")
 
-    def get(self, model, identity):
+    def get(self, model: type[DifyBuilderExecutionRequest], identity: str) -> DifyBuilderExecutionRequest:
         assert model is DifyBuilderExecutionRequest
         assert identity == "request"
         return self.request
 
 
 class Loader:
-    def __init__(self, sql):
+    def __init__(self, sql: SQLBoundary) -> None:
         self.sql = sql
         self.events = []
-        self.commit_error = None
+        self.commit_error: Exception | None = None
         self.scope = NativeTestScope(
             cancelled=False,
             generation=27,
@@ -164,7 +169,9 @@ class Loader:
         )
 
     @contextmanager
-    def locked(self, *, ref, settlement):
+    def locked(
+        self, *, ref: NativeTestContextRef, settlement: bool
+    ) -> Generator[tuple[SQLBoundary, OwnedNativeTest, NativeTestScope]]:
         assert ref == REF
         assert settlement is True
         self.events.append("writer-enter")
@@ -183,7 +190,7 @@ class StopSealCase:
 
 
 @pytest.fixture
-def case(monkeypatch):
+def case(monkeypatch: pytest.MonkeyPatch) -> StopSealCase:
     sql = SQLBoundary()
     loader = Loader(sql)
     # These labeled boundary objects grant no physical, SQL, or storage proof.
@@ -195,13 +202,23 @@ def case(monkeypatch):
     return StopSealCase(sql=sql, loader=loader, lifecycle=lifecycle)
 
 
-def seal(case, **changes):
-    values = {"ref": REF, "expected_generation": 3, "dispatch_id": "dispatch", "reason_code": "effect_denied"}
+def seal(case: StopSealCase, **changes: object) -> None:
+    values: dict[str, object] = {
+        "ref": REF,
+        "expected_generation": 3,
+        "dispatch_id": "dispatch",
+        "reason_code": "effect_denied",
+    }
     values.update(changes)
-    return case.lifecycle.seal_stop(**values)
+    return case.lifecycle.seal_stop(
+        ref=cast(NativeTestContextRef, values["ref"]),
+        expected_generation=cast(int, values["expected_generation"]),
+        dispatch_id=cast(str, values["dispatch_id"]),
+        reason_code=cast(str, values["reason_code"]),
+    )
 
 
-def test_stop_seals_authority_after_commit_without_claiming_physical_cleanup(case):
+def test_stop_seals_authority_after_commit_without_claiming_physical_cleanup(case: StopSealCase) -> None:
     states_before = state_snapshots(case.sql.states)
     assert seal(case) is None
     assert case.loader.events == ["writer-enter", "committed"]
@@ -224,7 +241,9 @@ def test_stop_seals_authority_after_commit_without_claiming_physical_cleanup(cas
         {"reason_code": "raw\nsecret"},
     ],
 )
-def test_stop_rejects_foreign_or_malformed_control_without_mutation(case, change):
+def test_stop_rejects_foreign_or_malformed_control_without_mutation(
+    case: StopSealCase, change: dict[str, object]
+) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
         seal(case, **change)
     assert case.sql.request.state == "running"
@@ -232,7 +251,7 @@ def test_stop_rejects_foreign_or_malformed_control_without_mutation(case, change
 
 
 @pytest.mark.parametrize("corruption", ["dispatch-tenant", "state-tenant", "missing-invocation", "disconnected-child"])
-def test_stop_rejects_incomplete_or_foreign_tree_before_authority_changes(case, corruption):
+def test_stop_rejects_incomplete_or_foreign_tree_before_authority_changes(case: StopSealCase, corruption: str) -> None:
     if corruption == "dispatch-tenant":
         case.sql.dispatches[0].tenant_id = "foreign"
     elif corruption == "state-tenant":
@@ -248,7 +267,9 @@ def test_stop_rejects_incomplete_or_foreign_tree_before_authority_changes(case, 
 
 
 @pytest.mark.parametrize("dispatch_state", ["queued", "published", "claimed"])
-def test_stop_rejects_orphan_dispatch_before_any_authority_or_outbox_mutation(case, dispatch_state):
+def test_stop_rejects_orphan_dispatch_before_any_authority_or_outbox_mutation(
+    case: StopSealCase, dispatch_state: str
+) -> None:
     orphan = deepcopy(case.sql.dispatches[1])
     orphan.id, orphan.invocation_id, orphan.state = "orphan-dispatch", "missing-invocation", dispatch_state
     case.sql.dispatches.append(orphan)
@@ -266,7 +287,7 @@ def test_stop_rejects_orphan_dispatch_before_any_authority_or_outbox_mutation(ca
     assert case.loader.events == ["writer-enter"]
 
 
-def test_lost_stop_commit_ack_is_not_retried_into_acceptance(case):
+def test_lost_stop_commit_ack_is_not_retried_into_acceptance(case: StopSealCase) -> None:
     case.loader.commit_error = RuntimeError("synthetic lost acknowledgment")
     with pytest.raises(RuntimeError, match="synthetic lost acknowledgment"):
         seal(case)
@@ -278,7 +299,9 @@ def test_lost_stop_commit_ack_is_not_retried_into_acceptance(case):
 
 
 @pytest.mark.parametrize("status", ["completed", "waiting"])
-def test_sealed_request_cannot_be_finalized_as_completed_or_resumable_wait(case, status):
+def test_sealed_request_cannot_be_finalized_as_completed_or_resumable_wait(
+    case: StopSealCase, status: Literal["completed", "waiting"]
+) -> None:
     case.sql.request.state = "sealed"
     for invocation in case.sql.invocations:
         invocation.active = False
@@ -296,7 +319,7 @@ def test_sealed_request_cannot_be_finalized_as_completed_or_resumable_wait(case,
     )
     with pytest.raises(BuilderExecutionPolicyError, match="native_request_sealed"):
         case.lifecycle.finalize_dispatch_locked(
-            session=case.sql,
+            session=cast(Session, case.sql),
             owned=owned,
             scope=case.loader.scope,
             dispatch_id="dispatch",

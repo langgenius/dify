@@ -5,43 +5,52 @@ units qualify no database authorization, persistence, host cleanup or external I
 """
 
 import json
-from collections.abc import Callable
-from contextlib import contextmanager
+from collections.abc import Callable, Generator
+from contextlib import AbstractContextManager, contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import cast
+from typing import NoReturn, cast
 
 import httpx
 import pytest
+from sqlalchemy import Select
+from sqlalchemy.orm import Session as OrmSession
+from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.models import Actor
+from graphon.runtime.runtime_state.state import RuntimeState
 from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
 from models.model import App
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.execution_policy_service import ExecutionOwnerSnapshot
 from services.dify_builder.native_testing import context_binding, http_binding
-from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler
+from services.dify_builder.native_testing.context_binding import NativeAdmissionCompilation, NativeAdmissionCompiler
+from services.dify_builder.native_testing.control import BoundaryOwnerState
+from services.workflow_runtime.node_factory import DifyNodeFactory
+from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import FixtureGraph, FixtureNode
 
 
 @dataclass
 class ZeroHttpCase:
-    graph: dict
+    graph: FixtureGraph
     workflow: Workflow
     actor: Actor
     monkeypatch: pytest.MonkeyPatch
     active: int = 0
     permissions: list[tuple[str, str, str]] = field(default_factory=list)
-    owner_reads: list[dict] = field(default_factory=list)
+    owner_reads: list[dict[str, object]] = field(default_factory=list)
     workflow_reads: int = 0
     permission_failure: int | None = None
     workflow_failure: str | None = None
-    sessions: Callable | None = None
-    forbidden_io: Callable | None = None
+    sessions: Callable[[], AbstractContextManager[object]] | None = None
+    forbidden_io: Callable[..., NoReturn] | None = None
     snapshot: http_binding.NativeHttpResourceSnapshot | None = None
     compiler: NativeAdmissionCompiler | None = None
 
-    def compile(self):
+    def compile(self) -> NativeAdmissionCompilation:
         self.workflow.graph = json.dumps(self.graph)
         assert self.compiler is not None
         return self.compiler.compile(
@@ -58,11 +67,11 @@ class ZeroHttpCase:
 
 
 @pytest.fixture
-def zero_http_case(monkeypatch):
-    graph = {
+def zero_http_case(monkeypatch: pytest.MonkeyPatch) -> ZeroHttpCase:
+    graph: FixtureGraph = {
         "nodes": [
-            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
-            {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": list[object]()}},
+            {"id": "end", "data": {"type": "end", "title": "End", "outputs": list[object]()}},
         ],
         "edges": [{"source": "start", "target": "end"}],
     }
@@ -95,12 +104,12 @@ def zero_http_case(monkeypatch):
     case = ZeroHttpCase(graph=graph, workflow=workflow, actor=actor, monkeypatch=monkeypatch)
 
     class Session:
-        def get(self, model, object_id):
+        def get(self, model: type[DifyBuilderSession], object_id: str) -> DifyBuilderSession:
             assert model is context_binding.DifyBuilderSession
             assert object_id == "session"
             return builder
 
-        def scalar(self, statement):
+        def scalar(self, statement: Select[tuple[object, ...]]) -> Workflow:
             # Actual validate_invocation_workflow builds the complete scoped query.
             assert statement.compile().params == {
                 "id_1": "workflow",
@@ -116,14 +125,14 @@ def zero_http_case(monkeypatch):
             return workflow
 
     @contextmanager
-    def sessions():
+    def sessions() -> Generator[Session]:
         case.active += 1
         try:
             yield Session()
         finally:
             case.active -= 1
 
-    def owners(session, **kwargs):
+    def owners(session: object, **kwargs: object) -> ExecutionOwnerSnapshot:
         del session
         assert case.active == 1
         assert kwargs == {"actor": actor, "app_id": "app", "session_id": "session", "test_input_id": "input"}
@@ -135,7 +144,7 @@ def zero_http_case(monkeypatch):
             test_input=test_input,
         )
 
-    def permission(actual_actor, app_id, factory):
+    def permission(actual_actor: Actor, app_id: str, factory: object) -> None:
         assert case.active == 0
         assert actual_actor is actor
         assert app_id == "app"
@@ -144,7 +153,7 @@ def zero_http_case(monkeypatch):
         if case.permission_failure == len(case.permissions):
             raise BuilderExecutionPolicyError("execution_permission_denied")
 
-    def forbidden_io(*args, **kwargs):
+    def forbidden_io(*args: object, **kwargs: object) -> NoReturn:
         del args, kwargs
         pytest.fail("zero HTTP workflow attempted transport or protected effect I/O")
 
@@ -155,19 +164,21 @@ def zero_http_case(monkeypatch):
     case.sessions, case.forbidden_io = sessions, forbidden_io
     case.snapshot = http_binding.NativeHttpResourceSnapshot(session_factory=sessions)
     case.compiler = NativeAdmissionCompiler(
-        session_factory=cast(context_binding.sessionmaker, sessions), resources=case.snapshot
+        session_factory=cast(sessionmaker[OrmSession], sessions), resources=case.snapshot
     )
 
     return case
 
 
-def delivery_factory(case, context):
+def delivery_factory(
+    case: ZeroHttpCase, context: ResolvedNativeTestContext
+) -> tuple[DifyNodeFactory, RuntimeState, BoundaryOwnerState]:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from graphon.runtime import RuntimeState, VariablePool
     from services.dify_builder.native_testing.runtime import DifyNativeRuntime, build_delivery_bridge
     from services.workflow_runtime.node_factory import DifyGraphInitContext, DifyNodeFactory
 
-    def load_context(*, ref):
+    def load_context(*, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
         assert ref == context.ref
         return context
 
@@ -179,7 +190,7 @@ def delivery_factory(case, context):
     # This unit replaces protected-object/RBAC readback, while preserving the
     # actual delivery, host, journal, control and collaborator composition.
     api = NativeTestApiService(
-        session_factory=case.sessions,
+        session_factory=cast(sessionmaker[OrmSession], case.sessions),
         actor=case.actor,
         resolver=http_binding.NativeHttpBindingResolver(),
         admission=None,
@@ -208,7 +219,7 @@ def delivery_factory(case, context):
     case.monkeypatch.setattr(runtime.host.control_sink, "record_control", case.forbidden_io)
     case.monkeypatch.setattr(runtime._journal, "open", case.forbidden_io)
     case.monkeypatch.setattr(runtime.authorization, "before_call", case.forbidden_io)
-    bridge = build_delivery_bridge(runtime=cast(DifyNativeRuntime, runtime))
+    bridge = build_delivery_bridge(runtime=runtime)
     prepared = bridge.prepare_inputs(context)
     assert prepared.inputs == {}
     assert prepared.files == ()
@@ -236,7 +247,7 @@ def delivery_factory(case, context):
     return factory, state, owner
 
 
-def test_owned_zero_http_admission_runs_real_start_end_without_resource_binding(zero_http_case):
+def test_owned_zero_http_admission_runs_real_start_end_without_resource_binding(zero_http_case: ZeroHttpCase) -> None:
     """Rejecting an empty HTTP manifest must not prevent a pure native run."""
     from graphon.engine import Engine
     from graphon.engine.command import InMemoryChannel
@@ -286,7 +297,7 @@ def test_owned_zero_http_admission_runs_real_start_end_without_resource_binding(
 
 
 @pytest.mark.parametrize("failure_at", [1, 2])
-def test_zero_http_admission_preserves_each_permission_gate(zero_http_case, failure_at):
+def test_zero_http_admission_preserves_each_permission_gate(zero_http_case: ZeroHttpCase, failure_at: int) -> None:
     case = zero_http_case
     case.permission_failure = failure_at
     with pytest.raises(BuilderExecutionPolicyError, match="execution_permission_denied$"):
@@ -296,7 +307,7 @@ def test_zero_http_admission_preserves_each_permission_gate(zero_http_case, fail
     assert case.active == 0
 
 
-def test_zero_http_snapshot_preserves_workflow_ownership_refusal(zero_http_case):
+def test_zero_http_snapshot_preserves_workflow_ownership_refusal(zero_http_case: ZeroHttpCase) -> None:
     case = zero_http_case
     case.workflow_failure = "native_owner_mismatch"
     with pytest.raises(BuilderExecutionPolicyError, match="native_owner_mismatch$"):
@@ -305,8 +316,9 @@ def test_zero_http_snapshot_preserves_workflow_ownership_refusal(zero_http_case)
     assert case.active == 0
 
 
-def test_zero_http_snapshot_preserves_revision_refusal(zero_http_case):
+def test_zero_http_snapshot_preserves_revision_refusal(zero_http_case: ZeroHttpCase) -> None:
     case = zero_http_case
+    assert case.snapshot is not None
     with pytest.raises(BuilderExecutionPolicyError, match="native_revision_drift$"):
         case.snapshot(
             actor=case.actor,
@@ -319,21 +331,22 @@ def test_zero_http_snapshot_preserves_revision_refusal(zero_http_case):
     assert case.active == 0
 
 
-def test_zero_http_snapshot_preserves_profile_refusal_before_owner_reads(zero_http_case):
+def test_zero_http_snapshot_preserves_profile_refusal_before_owner_reads(zero_http_case: ZeroHttpCase) -> None:
     case = zero_http_case
+    assert case.snapshot is not None
     with pytest.raises(BuilderExecutionPolicyError, match="native_http_profile_drift$"):
         case.snapshot(
             actor=case.actor,
             app_id="app",
             workflow_id="workflow",
-            graph=case.graph,
+            graph=cast(dict[str, object], case.graph),
             profile=http_binding.build_native_http_profile().model_copy(update={"implementation_revision": "foreign"}),
         )
     assert case.permissions == []
     assert case.workflow_reads == 0
 
 
-def literal_http():
+def literal_http() -> FixtureNode:
     return {
         "id": "http",
         "data": {
@@ -348,7 +361,7 @@ def literal_http():
     }
 
 
-def test_declared_http_still_requires_a_real_qualified_resource(zero_http_case):
+def test_declared_http_still_requires_a_real_qualified_resource(zero_http_case: ZeroHttpCase) -> None:
     case = zero_http_case
     case.graph["nodes"].insert(1, literal_http())
     compiled = case.compile()
@@ -361,10 +374,12 @@ def test_declared_http_still_requires_a_real_qualified_resource(zero_http_case):
         "workflow",
     )
     assert entry["workflow_revision"] == compiled.context.graph_revision
-    assert entry["policy"]["approval_scope"] == "operation"
+    policy = entry["policy"]
+    assert isinstance(policy, dict)
+    assert policy["approval_scope"] == "operation"
 
 
-def test_unqualified_http_cannot_be_disguised_as_zero_resources(zero_http_case):
+def test_unqualified_http_cannot_be_disguised_as_zero_resources(zero_http_case: ZeroHttpCase) -> None:
     case = zero_http_case
     node = literal_http()
     node["data"]["headers"] = "X-Secret:unsupported"
@@ -373,24 +388,24 @@ def test_unqualified_http_cannot_be_disguised_as_zero_resources(zero_http_case):
         case.compile()
 
 
-def test_duplicate_http_resource_ids_still_refuse(zero_http_case):
+def test_duplicate_http_resource_ids_still_refuse(zero_http_case: ZeroHttpCase) -> None:
     case = zero_http_case
     case.graph["nodes"].extend([literal_http(), deepcopy(literal_http())])
     with pytest.raises(BuilderExecutionPolicyError, match="native_http_manifest_unavailable$"):
         case.compile()
 
 
-def test_empty_manifest_does_not_enable_unsupported_native_collaborators(zero_http_case):
+def test_empty_manifest_does_not_enable_unsupported_native_collaborators(zero_http_case: ZeroHttpCase) -> None:
     case = zero_http_case
-    node = {
+    node: FixtureNode = {
         "id": "code",
         "data": {
             "type": "code",
             "title": "Code",
             "code_language": "python3",
             "code": "pass",
-            "variables": [],
-            "outputs": {},
+            "variables": list[object](),
+            "outputs": dict[str, object](),
         },
     }
     case.graph["nodes"].insert(1, node)
@@ -398,4 +413,4 @@ def test_empty_manifest_does_not_enable_unsupported_native_collaborators(zero_ht
     assert compiled.context.resource_manifest == ()
     factory, _, _ = delivery_factory(case, compiled.context)
     with pytest.raises(BuilderExecutionPolicyError, match="native_capability_unavailable$"):
-        factory.create_node(node)
+        factory.create_node(cast(dict[str, object], node))

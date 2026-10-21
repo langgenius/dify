@@ -4,6 +4,43 @@ Never import/collect/run locally. Backend allocation remains the existing explic
 fixture double; this suite proves no physical READY/Redis/Agent execution.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, NotRequired, Unpack, cast
+
+from dify_agent.protocol.native_testing import ReadAgentRuntimeIdentity
+from flask import Flask
+from pydantic import JsonValue
+from typing_extensions import TypedDict
+from werkzeug.local import LocalProxy
+
+from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+
+if TYPE_CHECKING:
+    import services.dify_builder.native_testing.repository as _forward_types_1
+    import services.dify_builder.native_testing.state_store as _forward_types_0
+
+
+from typing import TYPE_CHECKING
+
+from runtime_contracts.builder.native.agent_contracts import AgentCreateExisting, AgentCreateInserted
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
+    from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+        AgentAssociationCase,
+    )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_agent_associations as _fixture_types_0,
+    )
+
+
 from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
@@ -25,6 +62,13 @@ from services.dify_builder.native_testing.agent_preparation import (
 from services.dify_builder.native_testing.agent_runtime_config import (
     NativeAgentRuntimeConfigBuilder,
 )
+from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTest
+from services.dify_builder.native_testing.state_store import ObjectReceipt
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    AgentAssociationCase,
+    require_present,
+)
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_agent_associations import (
     association_case as association_case,  # noqa: PLC0414 - shared pytest fixture
 )
@@ -44,16 +88,23 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_a
     no_live as no_live,  # noqa: PLC0414 - fixture dependency
 )
 
-CONFIG = {"composition": {"schema_version": 2, "layers": []}, "session_snapshot": None}
+CONFIG: dict[str, JsonValue] = {"composition": {"schema_version": 2, "layers": []}, "session_snapshot": None}
 
 
-def definition_receipt(c):
-    node_id = c.context.graph["nodes"][-1]["id"]
+def definition_receipt(c: AgentAssociationCase) -> AgentDefinitionReceipt:
+    nodes = c.context.graph["nodes"]
+    assert isinstance(nodes, list)
+    node = nodes[-1]
+    assert isinstance(node, dict)
+    node_id = node["id"]
+    assert isinstance(node_id, str)
     definition = NativeAgentRuntimeConfigBuilder(loader=c.loader).load_definition(context=c.context, node_id=node_id)
     return AgentDefinitionReceipt(node_id, definition.stamp)
 
 
-def claim(c, receipt=None):
+def claim(
+    c: AgentAssociationCase, receipt: AgentDefinitionReceipt | None = None
+) -> AgentCreateExisting | AgentCreateInserted:
     return c.store.claim_agent_create(
         ref=c.ref,
         parent_node=c.parent,
@@ -64,8 +115,8 @@ def claim(c, receipt=None):
 
 
 def test_real_pg_encrypted_claim_lost_ack_is_discovery_never_second_authority(
-    association_case,
-):
+    association_case: _fixture_types_0.AgentAssociationCase,
+) -> None:
     c = association_case
     first = claim(c)
     assert first.kind == "inserted"
@@ -86,12 +137,12 @@ def test_real_pg_encrypted_claim_lost_ack_is_discovery_never_second_authority(
 
 
 def test_real_pg_concurrent_initial_reservation_has_one_local_post_owner(
-    association_case,
-):
+    association_case: _fixture_types_0.AgentAssociationCase,
+) -> None:
     c = association_case
-    app = current_app._get_current_object()
+    app = cast("LocalProxy[Flask]", current_app)._get_current_object()
 
-    def attempt(_index):
+    def attempt(_index) -> AgentCreateExisting | AgentCreateInserted:
         with app.app_context():
             return claim(c)
 
@@ -103,19 +154,23 @@ def test_real_pg_concurrent_initial_reservation_has_one_local_post_owner(
 
 
 @pytest.mark.parametrize("mutation", ["workspace", "snapshot", "generation", "parent-input"])
-def test_real_pg_mutation_during_crypto_storage_prevents_config_ack(association_case, monkeypatch, mutation):
+def test_real_pg_mutation_during_crypto_storage_prevents_config_ack(
+    association_case: _fixture_types_0.AgentAssociationCase, monkeypatch: pytest.MonkeyPatch, mutation: str
+) -> None:
     c = association_case
     original = c.store.prepare_object
 
-    def mutate(**kwargs):
+    def mutate(**kwargs: Unpack[_ForwardArguments142]) -> ObjectReceipt:
         receipt = original(**kwargs)
         with c.factory.begin() as session:
             if mutation == "workspace":
-                session.get(AgentWorkspace, c.workspace.workspace_id).status = AgentWorkingResourceStatus.RETIRED
+                require_instance(
+                    session.get(AgentWorkspace, c.workspace.workspace_id), AgentWorkspace
+                ).status = AgentWorkingResourceStatus.RETIRED
             elif mutation == "snapshot":
                 row = session.get(AgentConfigSnapshot, c.workspace.pinned_snapshot_id)
-                row.config_snapshot = {
-                    **row.config_snapshot_dict,
+                require_instance(row, AgentConfigSnapshot).config_snapshot = {
+                    **require_instance(row, AgentConfigSnapshot).config_snapshot_dict,
                     "config_note": "changed during IO",
                 }
             elif mutation == "generation":
@@ -124,10 +179,10 @@ def test_real_pg_mutation_during_crypto_storage_prevents_config_ack(association_
                 row = session.scalar(
                     select(NativeInvocationState).where(NativeInvocationState.invocation_id == c.ref.invocation_id)
                 )
-                row.generation += 1
+                require_instance(row, NativeInvocationState).generation += 1
             else:
                 row = session.get(NativePayloadObject, c.parent.input_result_ref)
-                row.storage_key = "foreign-object"
+                require_instance(row, NativePayloadObject).storage_key = "foreign-object"
         return receipt
 
     monkeypatch.setattr(c.store, "prepare_object", mutate)
@@ -141,14 +196,14 @@ def test_real_pg_mutation_during_crypto_storage_prevents_config_ack(association_
 
 
 def test_real_pg_callback_same_run_idempotent_foreign_run_conflicts_after_readback(
-    association_case,
-):
+    association_case: _fixture_types_0.AgentAssociationCase,
+) -> None:
     c = association_case
     reserved = claim(c)
     calls = []
 
     class Backend:
-        def read_run_identity_sync(self, run_id, selection):
+        def read_run_identity_sync(self, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity:
             # SQL writer is not open while authenticated backend read is in flight.
             calls.append(run_id)
             return AgentRuntimeIdentity(
@@ -167,7 +222,10 @@ def test_real_pg_callback_same_run_idempotent_foreign_run_conflicts_after_readba
     )
     first = service.bind_created_run(payload=payload)
     assert service.bind_created_run(payload=payload) == first
-    assert c.store.discover_agent_run(ref=c.ref, parent_node=c.parent).agent_run_id == payload.agent_run_id
+    assert (
+        require_present(c.store.discover_agent_run(ref=c.ref, parent_node=c.parent)).agent_run_id
+        == payload.agent_run_id
+    )
     with pytest.raises(BuilderExecutionPolicyError):
         service.bind_created_run(payload=payload.model_copy(update={"agent_run_id": str(uuid4())}))
     assert len(calls) == 3
@@ -176,25 +234,28 @@ def test_real_pg_callback_same_run_idempotent_foreign_run_conflicts_after_readba
 @pytest.mark.parametrize("resource", ["snapshot", "node-job"])
 @pytest.mark.parametrize("boundary", ["loader", "private-read"])
 def test_real_pg_initial_claim_io_cannot_restamp_older_composed_definition(
-    association_case, monkeypatch, resource, boundary
-):
+    association_case: _fixture_types_0.AgentAssociationCase,
+    monkeypatch: pytest.MonkeyPatch,
+    resource: str,
+    boundary: str,
+) -> None:
     """CI-only SQL mutation before claim's first resource capture; no local collection."""
     from models.agent import WorkflowAgentNodeBinding
     from services.dify_builder.native_testing import state_store as state
 
     c = association_case
     receipt = definition_receipt(c)
-    changed = []
+    changed: list[bool] = []
 
-    def mutate():
+    def mutate() -> None:
         if changed:
             return
         changed.append(True)
         with c.factory.begin() as session:
             if resource == "snapshot":
                 row = session.get(AgentConfigSnapshot, c.workspace.pinned_snapshot_id)
-                row.config_snapshot = {
-                    **row.config_snapshot_dict,
+                require_instance(row, AgentConfigSnapshot).config_snapshot = {
+                    **require_instance(row, AgentConfigSnapshot).config_snapshot_dict,
                     "config_note": "changed before initial stamp",
                 }
             else:
@@ -204,25 +265,25 @@ def test_real_pg_initial_claim_io_cannot_restamp_older_composed_definition(
                         WorkflowAgentNodeBinding.node_id == receipt.node_id,
                     )
                 )
-                row.node_job_config = {
-                    **row.node_job_config_dict,
+                require_instance(row, WorkflowAgentNodeBinding).node_job_config = {
+                    **require_instance(row, WorkflowAgentNodeBinding).node_job_config_dict,
                     "workflow_prompt": "Changed before initial stamp",
                 }
 
     if boundary == "loader":
-        original = c.loader.load
+        original_load = c.loader.load
 
-        def load(**kwargs):
+        def load(**kwargs: Unpack[_ForwardArguments255]) -> OwnedNativeTest | PrivateReadOwner:
             mutate()
-            return original(**kwargs)
+            return original_load(**kwargs)
 
         monkeypatch.setattr(c.loader, "load", load)
     else:
-        original = state.validate_private_read
+        original_read = state.validate_private_read
 
-        def read(*args, **kwargs):
+        def read(loader: OwnedNativeTestLoader, ref: NativeTestContextRef) -> PrivateReadOwner:
             mutate()
-            return original(*args, **kwargs)
+            return original_read(loader, ref)
 
         monkeypatch.setattr(state, "validate_private_read", read)
     with pytest.raises(BuilderExecutionPolicyError):
@@ -233,3 +294,16 @@ def test_real_pg_initial_claim_io_cannot_restamp_older_composed_definition(
             session.scalar(select(NativePayloadObject).where(NativePayloadObject.logical_key.like("agent-config:%")))
             is None
         )
+
+
+class _ForwardArguments142(TypedDict, closed=True):
+    ref: _forward_types_0.NativeTestContextRef
+    tenant_id: str
+    kind: _forward_types_0.PayloadKind
+    logical_key: str
+    payload: _forward_types_0.JsonValue
+    max_bytes: NotRequired[int | None]
+
+
+class _ForwardArguments255(TypedDict, closed=True):
+    ref: _forward_types_1.NativeTestContextRef

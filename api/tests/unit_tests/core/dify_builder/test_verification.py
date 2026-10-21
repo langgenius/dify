@@ -6,12 +6,15 @@ from typing_extensions import TypedDict
 
 from core.dify_builder import models
 from core.dify_builder.models import Run
+from runtime_contracts.builder.presentation import BuilderCopy
 from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
 class RunChanges(TypedDict, total=False, closed=True):
     session_id: str
+    dify_run_id: str
+    error: str
     kind: str
     immutable: bool
     status: str
@@ -283,10 +286,11 @@ def test_json_noncompletion_blocks_publication(
         assert card.terminal_outputs is None
 
 
-def test_observed_preparation_failure_has_specific_copy_without_entering_repair():
+def test_observed_preparation_failure_has_specific_copy_without_entering_repair() -> None:
     from services.dify_builder.application.verification import is_execution_policy_blocker, result_card
 
     run = verified(status="failed", dify_run_id="", error="private daemon response token=secret")
+    assert run.verification is not None
     run.verification.execution_evidence = ExecutionEvidenceSummary(
         request_id="request",
         policy_version="builder-confirmed-run-v1",
@@ -300,6 +304,7 @@ def test_observed_preparation_failure_has_specific_copy_without_entering_repair(
     assert is_execution_policy_blocker(run)
     card = result_card(run)
     assert card.outcome == "execution_failed"
+    assert isinstance(card.failure_reason, BuilderCopy)
     assert card.failure_reason.id == "test.preparationFailed"
     assert card.failure_reason.params == {"reason": "connection_refused"}
     assert card.failure_phase == "preparation"
@@ -307,10 +312,11 @@ def test_observed_preparation_failure_has_specific_copy_without_entering_repair(
     assert "secret" not in english_text(card.failure_reason)
 
 
-def test_unknown_execution_asks_for_reconciliation_instead_of_rerun():
+def test_unknown_execution_asks_for_reconciliation_instead_of_rerun() -> None:
     from services.dify_builder.application.verification import result_card
 
     run = verified(status="running", dify_run_id="")
+    assert run.verification is not None
     run.verification.execution_evidence = ExecutionEvidenceSummary(
         request_id="request",
         policy_version="builder-confirmed-run-v1",

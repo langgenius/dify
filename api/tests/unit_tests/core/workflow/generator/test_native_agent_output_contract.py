@@ -1,15 +1,20 @@
 """Native Agent v2 caller outputs survive shared generator validation."""
 
+from collections.abc import Sequence
 from copy import deepcopy
+from unittest.mock import MagicMock
 
 import pytest
+from pydantic import JsonValue
 
+from core.dify_builder.models import Graph
 from core.workflow.generator.prompts.node_builder_prompts import format_node_outputs_section
+from graphon.model_runtime.entities.message_entities import PromptMessage
 from models.agent_config_entities import WorkflowNodeJobConfig
 from services.workflow_generation.runner import WorkflowGenerator, _parse_node_outputs
 
 
-def _native_agent():
+def _native_agent() -> Graph:
     job = WorkflowNodeJobConfig.model_validate(
         {
             "declared_outputs": [
@@ -36,7 +41,7 @@ def _native_agent():
 
 
 @pytest.mark.parametrize("variable", ["risks", "summary", "text", "review", "review.approved"])
-def test_native_agent_declares_actual_caller_and_system_outputs(variable):
+def test_native_agent_declares_actual_caller_and_system_outputs(variable: str) -> None:
     assert WorkflowGenerator._declares_variable(_native_agent(), variable)
 
 
@@ -53,11 +58,11 @@ def test_native_agent_declares_actual_caller_and_system_outputs(variable):
         "review.approved.x",
     ],
 )
-def test_native_agent_rejects_undeclared_fields_and_invalid_nesting(variable):
+def test_native_agent_rejects_undeclared_fields_and_invalid_nesting(variable: str) -> None:
     assert not WorkflowGenerator._declares_variable(_native_agent(), variable)
 
 
-def test_native_agent_end_selectors_pass_without_rewriting_to_text():
+def test_native_agent_end_selectors_pass_without_rewriting_to_text() -> None:
     nodes = [
         _native_agent(),
         {
@@ -78,7 +83,7 @@ def test_native_agent_end_selectors_pass_without_rewriting_to_text():
     assert WorkflowGenerator._sole_declared_variable(nodes[0]) is None
 
 
-def test_native_agent_switch_only_exists_for_enabled_valid_routes():
+def test_native_agent_switch_only_exists_for_enabled_valid_routes() -> None:
     node = _native_agent()
     node["data"]["agent_output_routes"] = {
         "enabled": True,
@@ -91,7 +96,7 @@ def test_native_agent_switch_only_exists_for_enabled_valid_routes():
 @pytest.mark.parametrize(
     "outputs", [[{"name": "text", "type": "string"}], [{"name": "summary", "type": "invented"}], "summary"]
 )
-def test_malformed_or_reserved_agent_declarations_fail_closed(outputs):
+def test_malformed_or_reserved_agent_declarations_fail_closed(outputs: list[JsonValue] | str) -> None:
     node = _native_agent()
     node["data"]["agent_declared_outputs"] = outputs
     assert not WorkflowGenerator._declares_variable(node, "summary")
@@ -101,7 +106,7 @@ def test_malformed_or_reserved_agent_declarations_fail_closed(outputs):
 @pytest.mark.parametrize(
     "identity", [{}, {"version": "1"}, {"version": "2"}, {"version": "2", "agent_node_kind": "other"}]
 )
-def test_legacy_and_ambiguous_agents_do_not_gain_native_outputs(identity):
+def test_legacy_and_ambiguous_agents_do_not_gain_native_outputs(identity: dict[str, JsonValue]) -> None:
     node = _native_agent()
     node["data"].pop("version")
     node["data"].pop("agent_node_kind")
@@ -110,7 +115,7 @@ def test_legacy_and_ambiguous_agents_do_not_gain_native_outputs(identity):
     assert not WorkflowGenerator._declares_variable(node, "text")
 
 
-def test_agent_plan_name_promises_reach_end_builder_without_becoming_runtime_authority():
+def test_agent_plan_name_promises_reach_end_builder_without_becoming_runtime_authority() -> None:
     plan = [
         {"id": "node2", "node_type": "agent", "purpose": "Review the contract using the selected Agent"},
     ]
@@ -122,8 +127,8 @@ def test_agent_plan_name_promises_reach_end_builder_without_becoming_runtime_aut
     assert "structured_output.summary" not in section
 
 
-def test_agent_plan_to_parallel_builder_to_valid_end_graph(monkeypatch):
-    configs = {
+def test_agent_plan_to_parallel_builder_to_valid_end_graph(monkeypatch: pytest.MonkeyPatch) -> None:
+    configs: dict[str, Graph] = {
         "node1": {"type": "start", "variables": []},
         "node2": _native_agent()["data"],
         "node3": {
@@ -134,7 +139,7 @@ def test_agent_plan_to_parallel_builder_to_valid_end_graph(monkeypatch):
             ],
         },
     }
-    plan = {
+    plan: Graph = {
         "title": "Contract Reviewer",
         "description": "Review a synthetic contract",
         "nodes": [
@@ -144,14 +149,15 @@ def test_agent_plan_to_parallel_builder_to_valid_end_graph(monkeypatch):
         "edges": [{"source": "node1", "target": "node2"}, {"source": "node2", "target": "node3"}],
         "node_outputs": {"node2": ["risks", "summary"]},
     }
-    prompts = {}
+    prompts: dict[str, str] = {}
 
-    def model_boundary(**kwargs):
-        stage = kwargs["stage"]
+    def model_boundary(*, stage: str, messages: Sequence[PromptMessage], **_kwargs: object) -> Graph:
         if stage == "Planner":
             return deepcopy(plan)
         node_id = stage.removeprefix("Builder ")
-        prompts[node_id] = kwargs["messages"][-1].content
+        content = messages[-1].content
+        assert isinstance(content, str)
+        prompts[node_id] = content
         return {"config": deepcopy(configs[node_id])}
 
     monkeypatch.setattr(WorkflowGenerator, "_invoke_and_parse_json", staticmethod(model_boundary))
@@ -170,7 +176,7 @@ def test_agent_plan_to_parallel_builder_to_valid_end_graph(monkeypatch):
     assert end["data"]["outputs"] == configs["node3"]["outputs"]
 
 
-def _run_agent_model_responses(responses):
+def _run_agent_model_responses(responses: list[str]) -> tuple[Graph, MagicMock]:
     from unittest.mock import patch
 
     from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -209,7 +215,7 @@ def _run_agent_model_responses(responses):
     return result, invoke
 
 
-def _observed_bad_native_config():
+def _observed_bad_native_config() -> Graph:
     # Actual pre-assembly and final-validation shape captured in
     # actual-agent-generation-shapes.json: numeric version + JSON Schema items.
     return {
@@ -228,7 +234,7 @@ def _observed_bad_native_config():
     }
 
 
-def test_real_agent_response_parser_corrects_both_observed_schema_errors_in_one_retry():
+def test_real_agent_response_parser_corrects_both_observed_schema_errors_in_one_retry() -> None:
     import json
 
     bad = _observed_bad_native_config()
@@ -251,7 +257,7 @@ def test_real_agent_response_parser_corrects_both_observed_schema_errors_in_one_
 
 
 @pytest.mark.parametrize("invalid_kind", ["items", "reserved"])
-def test_invalid_native_declarations_exhaust_existing_two_attempt_budget_without_conversion(invalid_kind):
+def test_invalid_native_declarations_exhaust_existing_two_attempt_budget_without_conversion(invalid_kind: str) -> None:
     import json
 
     from services.workflow_generation.runner import _StageSchemaError
@@ -265,7 +271,7 @@ def test_invalid_native_declarations_exhaust_existing_two_attempt_budget_without
         _run_agent_model_responses([raw, raw])
 
 
-def test_legacy_agent_builder_config_does_not_enter_native_schema_correction():
+def test_legacy_agent_builder_config_does_not_enter_native_schema_correction() -> None:
     import json
 
     legacy = {"version": "1", "agent_strategy_name": "legacy-fixture"}
@@ -274,7 +280,7 @@ def test_legacy_agent_builder_config_does_not_enter_native_schema_correction():
     assert model.call_count == 1
 
 
-def test_agent_system_schema_example_validates_with_native_owners():
+def test_agent_system_schema_example_validates_with_native_owners() -> None:
     import json
 
     from core.workflow.generator.prompts.builder_prompts import get_node_config_snippet

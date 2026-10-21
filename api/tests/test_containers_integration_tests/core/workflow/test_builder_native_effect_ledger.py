@@ -4,19 +4,68 @@ No SQLite substitute: these exercise the service against committed rows and
 separate killable OS processes with independent NullPool connections.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
+from pydantic import JsonValue
+from sqlalchemy import Engine, Table
+
+from models.account import TenantAccountRole, TenantStatus
+from models.workflow import Workflow
+from runtime_contracts.builder.native.contracts import DispatchPermit, PolicyStop
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+
+if TYPE_CHECKING:
+    from multiprocessing.connection import Connection as ProcessConnection
+
+    from sqlalchemy.engine import Connection
+    from sqlalchemy.orm import Session
+
+    from runtime_contracts.builder.native.contracts import NativeTestContextRef
+    from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session, sessionmaker
+
+    from core.dify_builder.models import Actor
+    from dify_app import DifyApp
+    from runtime_contracts.builder.native.contracts import (
+        EffectIntent,
+        NativeTestContextRef,
+        OperationKey,
+    )
+    from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.authorization import EffectAuthorizationService
+    from services.dify_builder.native_testing.repository import NativeBinding, OwnedNativeTest, PendingOwner
+
+
 import importlib.util
 import multiprocessing
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import ModuleType
 from uuid import uuid4
 
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import CheckConstraint, create_engine, func, inspect, select, text
+from sqlalchemy.engine.base import Connection
 from sqlalchemy.exc import DBAPIError, IntegrityError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from core.dify_builder.models import Actor
@@ -25,15 +74,14 @@ from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInpu
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import (
     ApprovalWait,
-    DispatchPermit,
     EffectIntent,
     NativeTestContextRef,
     OperationKey,
-    PolicyStop,
     RecordedResult,
     operation_digest,
 )
 from services.dify_builder.native_testing.repository import native_workflow_revision
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_present
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
@@ -47,14 +95,21 @@ class MetadataOwner:
 
     credential_version = "credential-v1"
 
-    def resolve_binding(self, *, session, owned, key):
+    def resolve_binding(self, *, session: Session, owned: OwnedNativeTest, key: OperationKey) -> NativeBinding:
         from services.dify_builder.native_testing.repository import NativeBinding
 
         assert session.in_transaction()
         raw = owned.bindings[operation_digest(key)]
         return NativeBinding.model_validate(raw).model_copy(update={"credential_version": self.credential_version})
 
-    def resolve_pending(self, *, session, owned, category, reference):
+    def resolve_pending(
+        self,
+        *,
+        session: Session,
+        owned: OwnedNativeTest,
+        category: Literal["configuration", "interaction"],
+        reference: str,
+    ) -> PendingOwner:
         from services.dify_builder.native_testing.repository import PendingOwner
 
         assert session.in_transaction()
@@ -65,20 +120,22 @@ class MetadataOwner:
 
 @dataclass
 class LedgerCase:
-    factory: object
+    factory: sessionmaker[Session]
     actor: Actor
     ref: NativeTestContextRef
     intent: EffectIntent
     metadata: MetadataOwner
 
     @property
-    def guard(self):
+    def guard(self) -> EffectAuthorizationService:
         from services.dify_builder.native_testing.authorization import EffectAuthorizationService
         from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
 
         return EffectAuthorizationService(OwnedNativeTestLoader(self.factory, actor=self.actor, resolver=self.metadata))
 
-    def confirm(self, max_calls=1, max_dispatches=1, decision="approved"):
+    def confirm(
+        self, max_calls: int = 1, max_dispatches: int = 1, decision: Literal["approved", "denied"] = "approved"
+    ) -> str:
         return self.guard.decide(
             ref=self.ref,
             intent=self.intent,
@@ -89,7 +146,7 @@ class LedgerCase:
             expires_at=datetime.now(UTC) + timedelta(minutes=5),
         )
 
-    def dispatched_attempt_count(self):
+    def dispatched_attempt_count(self) -> int | None:
         from models.dify_builder_native_tests import NativeEffectAttempt
 
         with self.factory() as session:
@@ -99,7 +156,7 @@ class LedgerCase:
                 .where(NativeEffectAttempt.request_id == self.ref.request_id)
             )
 
-    def occurrence(self, number):
+    def occurrence(self, number: int | str) -> EffectIntent:
         from models.dify_builder_native_tests import NativeTestInvocation
         from services.dify_builder.native_testing.repository import NativeBinding
 
@@ -110,16 +167,16 @@ class LedgerCase:
             row = session.scalar(
                 select(NativeTestInvocation).where(NativeTestInvocation.request_id == self.ref.request_id)
             )
-            raw = dict(row.bindings)
+            raw = dict(require_instance(row, NativeTestInvocation).bindings)
             base = NativeBinding.model_validate(raw[operation_digest(self.intent.key)])
             raw[operation_digest(effect.key)] = base.model_copy(
                 update={"intent_digest": canonical_digest(effect.model_dump(mode="json"))}
             ).model_dump(mode="json")
-            row.bindings = raw
+            require_instance(row, NativeTestInvocation).bindings = raw
         return effect
 
 
-def _migration(filename):
+def _migration(filename: str) -> ModuleType:
     path = Path(__file__).parents[4] / "migrations/versions" / filename
     spec = importlib.util.spec_from_file_location("native_ledger_migration_" + filename, path)
     assert spec is not None
@@ -129,33 +186,33 @@ def _migration(filename):
     return migration
 
 
-def _native_migration():
+def _native_migration() -> ModuleType:
     return _migration("2026_10_14_1200-c67e12a904bf_add_builder_native_testing.py")
 
 
-def _request_migration():
+def _request_migration() -> ModuleType:
     return _migration("2026_10_09_1300-c84e6a217b90_add_builder_execution_requests.py")
 
 
-def _assert_single_request_state_check(connection, *, native):
+def _assert_single_request_state_check(connection: Connection, *, native: bool) -> None:
     """Check the real physical constraint, including SQLAlchemy PG truncation."""
     checks = inspect(connection).get_check_constraints("dify_builder_execution_requests")
     (model_check,) = (
         constraint
-        for constraint in DifyBuilderExecutionRequest.__table__.constraints
+        for constraint in require_instance(DifyBuilderExecutionRequest.__table__, Table).constraints
         if isinstance(constraint, CheckConstraint)
     )
     physical_name = connection.dialect.identifier_preparer.truncate_and_render_constraint_name(
-        model_check.name, _alembic_quote=False
+        require_instance(model_check.name, str), _alembic_quote=False
     )
     assert len(checks) == 1, "upgrade/downgrade must replace exactly one state CHECK"
     assert checks[0]["name"] == physical_name
     assert ("waiting" in checks[0]["sqltext"]) is native
 
 
-def _assert_waiting_policy(connection, *, native):
+def _assert_waiting_policy(connection: Connection, *, native: bool) -> None:
     """Actual INSERTs catch a surviving legacy CHECK or SQL NULL bypass."""
-    request_table = DifyBuilderExecutionRequest.__table__
+    request_table = require_instance(DifyBuilderExecutionRequest.__table__, Table)
     for policy, allowed in (("builder-native-test-v1", native), ("builder-execution-v1", False), (None, False)):
         identity = str(uuid4())
         values = dict.fromkeys(
@@ -177,7 +234,7 @@ def _assert_waiting_policy(connection, *, native):
 
 
 @pytest.fixture(scope="module", autouse=True)
-def migrated_native_tables(flask_app_with_containers):
+def migrated_native_tables(flask_app_with_containers: DifyApp) -> None:
     """Rebuild the race schema through both real migrations with deployed metadata."""
     from extensions.ext_database import db
 
@@ -223,7 +280,7 @@ def migrated_native_tables(flask_app_with_containers):
         connection.execute(text("COMMENT ON TABLE dify_builder_native_attempts IS 'ci-alembic:c67e12a904bf'"))
 
 
-def raw_ledger_case(native_owner, no_live):
+def raw_ledger_case(native_owner: _fixture_types_0.NativeOwner, no_live: None) -> LedgerCase:
     """Ordinary shared setup helper; no implicit pytest dependency or admitted state."""
     assert no_live is None
     from models.dify_builder_native_tests import NativeTestInvocation, NativeTestScope
@@ -267,7 +324,7 @@ def raw_ledger_case(native_owner, no_live):
             session.scalar(text("SELECT obj_description('dify_builder_native_attempts'::regclass)"))
             == "ci-alembic:c67e12a904bf"
         )
-        session.add(Tenant(name="other tenant", status="normal"))
+        session.add(Tenant(name="other tenant", status=TenantStatus.NORMAL))
         session.add(
             DifyBuilderExecutionRequest(
                 id=rid,
@@ -315,13 +372,12 @@ def raw_ledger_case(native_owner, no_live):
 
 
 @pytest.fixture
-def ledger_case(native_owner, no_live):
+def ledger_case(native_owner: _fixture_types_0.NativeOwner, no_live: None) -> LedgerCase:
     """Bare ledger users receive a real encrypted C03 context and current state."""
     import json
 
     from extensions.ext_database import db
     from libs.key_providers import generate_key_pair
-    from models.workflow import Workflow
     from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
     from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
     from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
@@ -335,19 +391,21 @@ def ledger_case(native_owner, no_live):
     db.session.close()
     public_key = generate_key_pair(case.actor.tenant_id)
     with case.factory.begin() as session:
-        session.get(Tenant, case.actor.tenant_id).encrypt_public_key = public_key
+        require_instance(session.get(Tenant, case.actor.tenant_id), Tenant).encrypt_public_key = public_key
         request = session.get(DifyBuilderExecutionRequest, case.ref.request_id)
-        workflow = session.get(Workflow, request.workflow_id)
-        inputs = session.get(DifyBuilderTestInput, request.test_input_id).inputs
+        workflow = session.get(Workflow, require_instance(request, DifyBuilderExecutionRequest).workflow_id)
+        inputs = require_instance(
+            session.get(DifyBuilderTestInput, require_present(request).test_input_id), DifyBuilderTestInput
+        ).inputs
         context = ResolvedNativeTestContext(
             ref=case.ref,
             tenant_id=case.actor.tenant_id,
             actor_id=case.actor.account_id,
-            app_id=request.app_id,
-            workflow_id=request.workflow_id,
-            graph=json.loads(workflow.graph),
+            app_id=require_instance(request, DifyBuilderExecutionRequest).app_id,
+            workflow_id=require_instance(request, DifyBuilderExecutionRequest).workflow_id,
+            graph=json.loads(require_instance(workflow, Workflow).graph),
             inputs=inputs,
-            graph_revision=request.context["execution_revision"],
+            graph_revision=require_instance(request, DifyBuilderExecutionRequest).context["execution_revision"],
             input_revision=canonical_digest(inputs),
             resource_manifest=(),
             generation=0,
@@ -365,7 +423,7 @@ def ledger_case(native_owner, no_live):
     return case
 
 
-def test_duplicate_delivery_does_not_get_second_permit(ledger_case):
+def test_duplicate_delivery_does_not_get_second_permit(ledger_case: LedgerCase) -> None:
     ledger_case.confirm(max_calls=1, max_dispatches=1)
     assert isinstance(ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent), DispatchPermit)
     duplicate = ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent)
@@ -373,7 +431,7 @@ def test_duplicate_delivery_does_not_get_second_permit(ledger_case):
     assert ledger_case.dispatched_attempt_count() == 1
 
 
-def test_unapproved_and_denied_never_dispatch(ledger_case):
+def test_unapproved_and_denied_never_dispatch(ledger_case: LedgerCase) -> None:
     assert isinstance(ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent), ApprovalWait)
     ledger_case.confirm(decision="denied")
     assert ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent) == PolicyStop(
@@ -391,7 +449,7 @@ def test_unapproved_and_denied_never_dispatch(ledger_case):
         {"key": OperationKey(invocation_id="other", occurrence_path=("node", "0"), cursor=0)},
     ],
 )
-def test_forged_binding_never_dispatches(ledger_case, change):
+def test_forged_binding_never_dispatches(ledger_case: LedgerCase, change: dict[str, JsonValue]) -> None:
     ledger_case.confirm()
     assert isinstance(
         ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent.model_copy(update=change)),
@@ -400,7 +458,7 @@ def test_forged_binding_never_dispatches(ledger_case, change):
     assert ledger_case.dispatched_attempt_count() == 0
 
 
-def test_rotation_and_cross_tenant_reference_fail_closed(ledger_case):
+def test_rotation_and_cross_tenant_reference_fail_closed(ledger_case: LedgerCase) -> None:
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
     from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
 
@@ -420,23 +478,30 @@ def test_rotation_and_cross_tenant_reference_fail_closed(ledger_case):
     assert ledger_case.dispatched_attempt_count() == 0
 
 
-def test_completed_result_replays_and_changed_intent_conflicts(ledger_case):
+def test_completed_result_replays_and_changed_intent_conflicts(ledger_case: LedgerCase) -> None:
     ledger_case.confirm()
     guard = ledger_case.guard
     permit = guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent)
-    receipt = guard.record_outcome(permit=permit, outcome="completed", result_ref="protected-result")
-    assert guard.record_outcome(permit=permit, outcome="completed", result_ref="protected-result") == receipt
+    receipt = guard.record_outcome(
+        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref="protected-result"
+    )
+    assert (
+        guard.record_outcome(
+            permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref="protected-result"
+        )
+        == receipt
+    )
     assert guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent) == RecordedResult(
-        operation_id=permit.operation_id, result_ref="protected-result"
+        operation_id=require_instance(permit, DispatchPermit).operation_id, result_ref="protected-result"
     )
     with pytest.raises(BuilderExecutionPolicyError, match="outcome_conflict"):
-        guard.record_outcome(permit=permit, outcome="failed", result_ref=None)
+        guard.record_outcome(permit=require_instance(permit, DispatchPermit), outcome="failed", result_ref=None)
     changed = ledger_case.intent.model_copy(update={"parameters": {"limit": 2}})
     assert isinstance(guard.before_call(ref=ledger_case.ref, intent=changed), PolicyStop)
     assert ledger_case.dispatched_attempt_count() == 1
 
 
-def test_iteration_quota_is_shared_and_third_occurrence_waits(ledger_case):
+def test_iteration_quota_is_shared_and_third_occurrence_waits(ledger_case: LedgerCase) -> None:
     second, third = ledger_case.occurrence(1), ledger_case.occurrence(2)
     ledger_case.confirm(max_calls=2, max_dispatches=2)
     assert isinstance(ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent), DispatchPermit)
@@ -445,16 +510,16 @@ def test_iteration_quota_is_shared_and_third_occurrence_waits(ledger_case):
     assert ledger_case.dispatched_attempt_count() == 2
 
 
-def test_two_processes_compete_for_one_dispatch(ledger_case):
+def test_two_processes_compete_for_one_dispatch(ledger_case: LedgerCase) -> None:
     ctx = multiprocessing.get_context("fork")
     ledger_case.confirm()
     with ledger_case.factory() as session:
-        url = session.get_bind().url
+        url = require_instance(session.get_bind(), Engine).url
     children = []
     receivers = []
     start = ctx.Event()
 
-    def worker(sender):
+    def worker(sender: ProcessConnection) -> None:
         engine = create_engine(url, poolclass=NullPool)
         try:
             child = LedgerCase(
@@ -466,7 +531,9 @@ def test_two_processes_compete_for_one_dispatch(ledger_case):
             )
             assert start.wait(15)
             result = child.guard.before_call(ref=child.ref, intent=child.intent)
-            sender.send(result.kind if isinstance(result, DispatchPermit) else result.reason_code)
+            sender.send(
+                result.kind if isinstance(result, DispatchPermit) else require_instance(result, PolicyStop).reason_code
+            )
         finally:
             engine.dispose()
             sender.close()
@@ -494,16 +561,16 @@ def test_two_processes_compete_for_one_dispatch(ledger_case):
     assert ledger_case.dispatched_attempt_count() == 1
 
 
-def test_crash_after_committed_claim_becomes_unknown(ledger_case):
+def test_crash_after_committed_claim_becomes_unknown(ledger_case: LedgerCase) -> None:
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 
     ledger_case.confirm()
     ctx = multiprocessing.get_context("fork")
     receiver, sender = ctx.Pipe(duplex=False)
     with ledger_case.factory() as session:
-        url = session.get_bind().url
+        url = require_instance(session.get_bind(), Engine).url
 
-    def worker():
+    def worker() -> None:
         engine = create_engine(url, poolclass=NullPool)
         child = LedgerCase(
             sessionmaker(engine, expire_on_commit=False),
@@ -535,18 +602,24 @@ def test_crash_after_committed_claim_becomes_unknown(ledger_case):
     assert ledger_case.dispatched_attempt_count() == 1
 
 
-def test_budget_reference_requires_matching_identity_and_consumes_no_extra_quota(ledger_case):
+def test_budget_reference_requires_matching_identity_and_consumes_no_extra_quota(ledger_case: LedgerCase) -> None:
     ledger_case.confirm()
     guard = ledger_case.guard
     permit = guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent)
-    first = guard.resolve_budget_reservation(permit=permit, execution_id="exec", invocation_digest="c" * 64)
-    assert first == guard.resolve_budget_reservation(permit=permit, execution_id="exec", invocation_digest="c" * 64)
+    first = guard.resolve_budget_reservation(
+        permit=require_instance(permit, DispatchPermit), execution_id="exec", invocation_digest="c" * 64
+    )
+    assert first == guard.resolve_budget_reservation(
+        permit=require_instance(permit, DispatchPermit), execution_id="exec", invocation_digest="c" * 64
+    )
     with pytest.raises(BuilderExecutionPolicyError):
-        guard.resolve_budget_reservation(permit=permit, execution_id="other", invocation_digest="c" * 64)
+        guard.resolve_budget_reservation(
+            permit=require_instance(permit, DispatchPermit), execution_id="other", invocation_digest="c" * 64
+        )
     assert ledger_case.dispatched_attempt_count() == 1
 
 
-def test_configuration_and_interaction_are_not_effect_approvals(ledger_case):
+def test_configuration_and_interaction_are_not_effect_approvals(ledger_case: LedgerCase) -> None:
     from models.dify_builder_native_tests import NativePendingAction
     from services.dify_builder.native_testing.pending_actions import NativePendingActionService
 
@@ -564,12 +637,14 @@ def test_configuration_and_interaction_are_not_effect_approvals(ledger_case):
     assert ledger_case.dispatched_attempt_count() == 0
 
 
-def test_sql_checks_reject_overspend_and_invalid_outcome(ledger_case):
+def test_sql_checks_reject_overspend_and_invalid_outcome(ledger_case: LedgerCase) -> None:
     from models.dify_builder_native_tests import NativeEffectAttempt, NativeEffectOutcome, NativeTestScope
 
     with ledger_case.factory() as session:
         row = session.get(NativeTestScope, ledger_case.ref.request_id)
-        row.spent_dispatches = row.max_dispatches + 1
+        require_instance(row, NativeTestScope).spent_dispatches = (
+            require_instance(row, NativeTestScope).max_dispatches + 1
+        )
         with pytest.raises(IntegrityError):
             session.commit()
     ledger_case.confirm()
@@ -580,21 +655,21 @@ def test_sql_checks_reject_overspend_and_invalid_outcome(ledger_case):
                 tenant_id=ledger_case.actor.tenant_id,
                 request_id=ledger_case.ref.request_id,
                 invocation_id=ledger_case.ref.invocation_id,
-                operation_id=permit.operation_id,
-                attempt_id=permit.attempt_id,
+                operation_id=require_instance(permit, DispatchPermit).operation_id,
+                attempt_id=require_instance(permit, DispatchPermit).attempt_id,
                 outcome="illegal",
                 result_ref=None,
             )
         )
     with ledger_case.factory() as session:
-        row = session.get(NativeEffectAttempt, permit.attempt_id)
-        row.cost_units = 0
+        row = session.get(NativeEffectAttempt, require_instance(permit, DispatchPermit).attempt_id)
+        require_instance(row, NativeEffectAttempt).cost_units = 0
         with pytest.raises(DBAPIError, match="append-only"):
             session.commit()
 
 
 @pytest.mark.parametrize("starting_schema", ["predecessor", "model_created"])
-def test_native_migration_upgrade_downgrade_reupgrade(flask_app_with_containers, starting_schema):
+def test_native_migration_upgrade_downgrade_reupgrade(flask_app_with_containers: DifyApp, starting_schema: str) -> None:
     from extensions.ext_database import db
 
     migration = _native_migration()
@@ -607,13 +682,13 @@ def test_native_migration_upgrade_downgrade_reupgrade(flask_app_with_containers,
         context = MigrationContext.configure(connection, opts={"target_metadata": db.metadata})
         with Operations.context(context) as operations:
             if starting_schema == "predecessor":
-                DifyBuilderTestInput.__table__.create(connection)
+                require_instance(DifyBuilderTestInput.__table__, Table).create(connection)
                 operations.drop_column("dify_builder_test_inputs", "http_fixtures")
                 predecessor.upgrade()
                 _assert_single_request_state_check(connection, native=False)
                 _assert_waiting_policy(connection, native=False)
             else:
-                DifyBuilderExecutionRequest.__table__.create(connection)
+                require_instance(DifyBuilderExecutionRequest.__table__, Table).create(connection)
                 _assert_single_request_state_check(connection, native=True)
                 # The model already has the new index; remove just that index
                 # so upgrade tests replacing its convention-named CHECK.
@@ -642,8 +717,7 @@ def test_native_migration_upgrade_downgrade_reupgrade(flask_app_with_containers,
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 
 
-def test_permission_revocation_and_serialized_revision_drift_never_dispatch(ledger_case):
-    from models.workflow import Workflow
+def test_permission_revocation_and_serialized_revision_drift_never_dispatch(ledger_case: LedgerCase) -> None:
 
     ledger_case.confirm()
     with ledger_case.factory.begin() as session:
@@ -653,8 +727,8 @@ def test_permission_revocation_and_serialized_revision_drift_never_dispatch(ledg
                 TenantAccountJoin.account_id == ledger_case.actor.account_id,
             )
         )
-        original_role = membership.role
-        membership.role = "normal"
+        original_role = require_instance(membership, TenantAccountJoin).role
+        require_instance(membership, TenantAccountJoin).role = TenantAccountRole.NORMAL
     assert isinstance(ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent), PolicyStop)
     with ledger_case.factory.begin() as session:
         membership = session.scalar(
@@ -663,17 +737,17 @@ def test_permission_revocation_and_serialized_revision_drift_never_dispatch(ledg
                 TenantAccountJoin.account_id == ledger_case.actor.account_id,
             )
         )
-        membership.role = original_role
+        require_instance(membership, TenantAccountJoin).role = original_role
         request = session.get(DifyBuilderExecutionRequest, ledger_case.ref.request_id)
-        workflow = session.get(Workflow, request.workflow_id)
-        workflow.graph = workflow.graph + " "
+        workflow = session.get(Workflow, require_instance(request, DifyBuilderExecutionRequest).workflow_id)
+        require_instance(workflow, Workflow).graph = require_instance(workflow, Workflow).graph + " "
     assert ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent) == PolicyStop(
         reason_code="native_revision_drift"
     )
     assert ledger_case.dispatched_attempt_count() == 0
 
 
-def test_oauth_requires_its_own_bounded_approval(ledger_case):
+def test_oauth_requires_its_own_bounded_approval(ledger_case: LedgerCase) -> None:
     from models.dify_builder_native_tests import NativeTestInvocation
     from services.dify_builder.native_testing.repository import NativeBinding
 
@@ -689,7 +763,7 @@ def test_oauth_requires_its_own_bounded_approval(ledger_case):
         row = session.scalar(
             select(NativeTestInvocation).where(NativeTestInvocation.request_id == ledger_case.ref.request_id)
         )
-        bindings = dict(row.bindings)
+        bindings = dict(require_instance(row, NativeTestInvocation).bindings)
         base = NativeBinding.model_validate(bindings[operation_digest(ledger_case.intent.key)])
         bindings[operation_digest(oauth.key)] = base.model_copy(
             update={
@@ -698,7 +772,7 @@ def test_oauth_requires_its_own_bounded_approval(ledger_case):
                 "intent_digest": canonical_digest(oauth.model_dump(mode="json")),
             }
         ).model_dump(mode="json")
-        row.bindings = bindings
+        require_instance(row, NativeTestInvocation).bindings = bindings
     guard = ledger_case.guard
     assert isinstance(guard.before_call(ref=ledger_case.ref, intent=oauth), ApprovalWait)
     assert ledger_case.dispatched_attempt_count() == 0
@@ -717,7 +791,7 @@ def test_oauth_requires_its_own_bounded_approval(ledger_case):
     assert ledger_case.dispatched_attempt_count() == 2
 
 
-def test_permit_returns_only_after_commit_and_releases_request_lock(ledger_case):
+def test_permit_returns_only_after_commit_and_releases_request_lock(ledger_case: LedgerCase) -> None:
     from models.dify_builder_native_tests import NativeTestScope
 
     ledger_case.confirm()
@@ -732,11 +806,15 @@ def test_permit_returns_only_after_commit_and_releases_request_lock(ledger_case)
             .with_for_update(nowait=True)
         )
         scope = session.get(NativeTestScope, ledger_case.ref.request_id)
-        assert scope.spent_calls == scope.spent_dispatches == 1
-        assert scope.spent_cost_units == 2
+        assert (
+            require_instance(scope, NativeTestScope).spent_calls
+            == require_instance(scope, NativeTestScope).spent_dispatches
+            == 1
+        )
+        assert require_instance(scope, NativeTestScope).spent_cost_units == 2
 
 
-def _create_real_child(case):
+def _create_real_child(case: LedgerCase) -> NativeTestContextRef:
     """Use the actual C03 child owner; no synthetic state/context reference."""
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
     from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
@@ -744,12 +822,20 @@ def _create_real_child(case):
 
     store = NativeExecutionStateStore(OwnedNativeTestLoader(case.factory, actor=case.actor, resolver=case.metadata))
     parent = store.load_context(ref=case.ref)
-    inputs = {"child": True}
+    inputs: dict[str, JsonValue] = {"child": True}
     key = case.intent.key.model_copy(update={"occurrence_path": ("actual-child-" + str(uuid4()),)})
     input_ref = store.store_result(ref=case.ref, key=key, result=inputs)
 
     class ChildOwner:
-        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+        def resolve_child(
+            self,
+            *,
+            parent: ResolvedNativeTestContext,
+            ref: NativeTestContextRef,
+            child_app_id: str,
+            child_workflow_revision: str,
+            inputs: dict[str, JsonValue],
+        ) -> ResolvedNativeTestContext:
             assert (child_app_id, child_workflow_revision) == (parent.app_id, parent.graph_revision)
             return parent.model_copy(
                 update={
@@ -772,7 +858,7 @@ def _create_real_child(case):
     )
 
 
-def test_child_invocation_shares_root_budget(ledger_case):
+def test_child_invocation_shares_root_budget(ledger_case: LedgerCase) -> None:
     from models.dify_builder_native_tests import NativeTestInvocation, NativeTestScope
     from services.dify_builder.native_testing.repository import NativeBinding
 
@@ -788,7 +874,9 @@ def test_child_invocation_shares_root_budget(ledger_case):
                 NativeTestInvocation.invocation_id == ledger_case.ref.invocation_id,
             )
         )
-        base = NativeBinding.model_validate(row.bindings[operation_digest(ledger_case.intent.key)])
+        base = NativeBinding.model_validate(
+            require_instance(row, NativeTestInvocation).bindings[operation_digest(ledger_case.intent.key)]
+        )
         binding = base.model_copy(
             update={
                 "intent_digest": canonical_digest(child_intent.model_dump(mode="json")),
@@ -802,9 +890,11 @@ def test_child_invocation_shares_root_budget(ledger_case):
                 NativeTestInvocation.invocation_id == child_ref.invocation_id,
             )
         )
-        child.bindings = {operation_digest(child_intent.key): binding.model_dump(mode="json")}
+        require_instance(child, NativeTestInvocation).bindings = {
+            operation_digest(child_intent.key): binding.model_dump(mode="json")
+        }
         scope = session.get(NativeTestScope, ledger_case.ref.request_id)
-        scope.budget_limits = {"cpu_ms": 10}
+        require_instance(scope, NativeTestScope).budget_limits = {"cpu_ms": 10}
     assert isinstance(ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent), DispatchPermit)
     assert ledger_case.guard.before_call(ref=child_ref, intent=child_intent) == PolicyStop(
         reason_code="native_budget_exhausted"
@@ -812,25 +902,29 @@ def test_child_invocation_shares_root_budget(ledger_case):
     assert ledger_case.dispatched_attempt_count() == 1
 
 
-def test_legacy_request_cannot_enter_native_waiting(ledger_case):
+def test_legacy_request_cannot_enter_native_waiting(ledger_case: LedgerCase) -> None:
     with ledger_case.factory() as session:
         request = session.get(DifyBuilderExecutionRequest, ledger_case.ref.request_id)
-        request.context = {"policy_version": "builder-execution-v1"}
-        request.state = "waiting"
+        require_instance(request, DifyBuilderExecutionRequest).context = {"policy_version": "builder-execution-v1"}
+        require_instance(request, DifyBuilderExecutionRequest).state = "waiting"
         with pytest.raises(IntegrityError):
             session.commit()
 
 
-def test_spent_permit_can_settle_after_cancel_without_new_dispatch(ledger_case):
+def test_spent_permit_can_settle_after_cancel_without_new_dispatch(ledger_case: LedgerCase) -> None:
     from models.dify_builder_native_tests import NativeTestScope
 
     ledger_case.confirm()
     guard = ledger_case.guard
     permit = guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent)
     with ledger_case.factory.begin() as session:
-        session.get(NativeTestScope, ledger_case.ref.request_id).cancelled = True
-        session.get(DifyBuilderExecutionRequest, ledger_case.ref.request_id).state = "sealed"
-    receipt = guard.record_outcome(permit=permit, outcome="completed", result_ref="result-after-cancel")
+        require_instance(session.get(NativeTestScope, ledger_case.ref.request_id), NativeTestScope).cancelled = True
+        require_instance(
+            session.get(DifyBuilderExecutionRequest, ledger_case.ref.request_id), DifyBuilderExecutionRequest
+        ).state = "sealed"
+    receipt = guard.record_outcome(
+        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref="result-after-cancel"
+    )
     assert receipt.outcome == "completed"
     assert guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent) == PolicyStop(
         reason_code="native_cancelled"
@@ -838,15 +932,19 @@ def test_spent_permit_can_settle_after_cancel_without_new_dispatch(ledger_case):
     assert ledger_case.dispatched_attempt_count() == 1
 
 
-def test_forged_permit_cannot_record_or_resolve_reservation(ledger_case):
+def test_forged_permit_cannot_record_or_resolve_reservation(ledger_case: LedgerCase) -> None:
     ledger_case.confirm()
     guard = ledger_case.guard
     permit = guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent)
     forged = permit.model_copy(update={"permit_id": str(uuid4())})
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
-        guard.record_outcome(permit=forged, outcome="completed", result_ref="fake-result")
+        guard.record_outcome(
+            permit=require_instance(forged, DispatchPermit), outcome="completed", result_ref="fake-result"
+        )
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
-        guard.resolve_budget_reservation(permit=forged, execution_id="exec", invocation_digest="c" * 64)
+        guard.resolve_budget_reservation(
+            permit=require_instance(forged, DispatchPermit), execution_id="exec", invocation_digest="c" * 64
+        )
     assert guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent) == PolicyStop(
         reason_code="dispatch_in_progress"
     )

@@ -3,13 +3,15 @@
 import json
 from collections.abc import Generator
 from contextlib import contextmanager
+from typing import cast
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask, g
+from flask import Flask, Request, g
 from flask import request as flask_request
 from pydantic import JsonValue
+from werkzeug.local import LocalProxy
 
 from controllers.inner_api import bp as inner_api_bp
 from core.errors.error import QuotaExceededError
@@ -252,7 +254,7 @@ def test_post_preserves_stream_quota_failure() -> None:
     ],
 )
 def test_native_stream_error_is_bounded_even_if_provider_raises_private_text(
-    failure, error_type, message, code
+    failure: Exception, error_type: str, message: str, code: int
 ) -> None:
     from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
 
@@ -264,10 +266,10 @@ def test_native_stream_error_is_bounded_even_if_provider_raises_private_text(
     app = _flask_app()
 
     @app.before_request
-    def admitted_transport():
+    def admitted_transport() -> None:
         # This test exercises the emitter after the independently tested runtime admission guard.
         g.agent_runtime_admitted = True
-        g.agent_runtime_request = flask_request._get_current_object()
+        g.agent_runtime_request = cast(LocalProxy[Request], flask_request)._get_current_object()
 
     with (
         _agent_inner_auth(),

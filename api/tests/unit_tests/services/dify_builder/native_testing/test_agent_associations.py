@@ -4,40 +4,96 @@ Real C03 store/codec; SQL, encryption and storage ports are explicitly labeled
 unit doubles. Actual PostgreSQL/tenant crypto witnesses remain normal-CI only.
 """
 
+from __future__ import annotations
+
+import ast
 import importlib
 import importlib.util
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from dataclasses import dataclass, replace
+from types import ModuleType
+from typing import NotRequired, cast, override
 
 import pytest
+import pytest_mock
 from pydantic import ValidationError
-from sqlalchemy import inspect
+from sqlalchemy import Select, inspect
+from typing_extensions import TypedDict
 
+from core.dify_builder.models import Actor
+from models.base import Base, TypeBase
+from models.dify_builder_native_tests import (
+    NativeInvocationState,
+    NativeTestInvocation,
+    NativeTestScope,
+)
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
-from runtime_contracts.builder.native.agent_contracts import AgentParentNodeRef
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.agent_contracts import (
+    AgentNodeAssociation,
+    AgentParentNodeRef,
+    AgentWaitAssociation,
+)
+from runtime_contracts.builder.native.contracts import JsonValue, NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import (
     NativeCheckpointPayload,
     NodeJournalState,
     ResolvedNativeTestContext,
 )
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
-from tests.unit_tests.services.dify_builder.native_testing.test_node_inputs import LoaderStandIn
+from tests.unit_tests.services.dify_builder.native_testing.test_node_inputs import LoaderStandIn, SQLStandIn
 
 EXECUTION = "81d492fd-05ce-46a8-8c82-a35d4b343d48"
 REF = NativeTestContextRef(request_id="request", invocation_id="inv", context_digest="a" * 64)
-INPUTS = {"typed": [True, 1, "1"]}
+INPUTS: dict[str, JsonValue] = {"typed": [True, 1, "1"]}
 
 
-def contracts():
+def contracts() -> ModuleType:
     name = "runtime_contracts.builder.native.agent_contracts"
     assert importlib.util.find_spec(name) is not None, "pure protected Agent association contracts are missing"
     return importlib.import_module(name)
 
 
-def parent_data():
+class ParentData(TypedDict):
+    ref: dict[str, str]
+    execution_id: str
+    input_result_ref: str
+    input_digest: str
+
+
+class WorkspaceData(TypedDict):
+    binding_id: str
+    workspace_id: str
+    backend_binding_ref: str
+    backend_workspace_ref: str
+    pinned_snapshot_id: str
+    home_snapshot_id: NotRequired[str | None]
+    workspace_generation: int
+
+
+class AssociationData(TypedDict):
+    parent_node: ParentData
+    workflow_native_run_id: str
+    agent_run_id: str
+    config_ref: str
+    config_digest: str
+    pinned_snapshot_id: str
+    home_snapshot_id: NotRequired[str | None]
+    workspace: WorkspaceData
+
+
+class WaitData(TypedDict):
+    parent_node: ParentData
+    association_object_ref: str
+    agent_generation: int
+    checkpoint_object_ref: str
+    checkpoint_digest: str
+    backend_wait_event_id: str
+
+
+def parent_data() -> ParentData:
     return {
         "ref": REF.model_dump(),
         "execution_id": EXECUTION,
@@ -46,7 +102,7 @@ def parent_data():
     }
 
 
-def workspace_data():
+def workspace_data() -> WorkspaceData:
     return {
         "binding_id": "binding",
         "workspace_id": "workspace",
@@ -58,7 +114,7 @@ def workspace_data():
     }
 
 
-def association_data():
+def association_data() -> AssociationData:
     return {
         "parent_node": parent_data(),
         "workflow_native_run_id": "workflow-run",
@@ -71,7 +127,7 @@ def association_data():
     }
 
 
-def wait_data():
+def wait_data() -> WaitData:
     return {
         "parent_node": parent_data(),
         "association_object_ref": "association",
@@ -82,7 +138,7 @@ def wait_data():
     }
 
 
-def checkpoint(wait):
+def checkpoint(wait: AgentWaitAssociation) -> NativeCheckpointPayload:
     journal = NodeJournalState(
         invocation_id=REF.invocation_id,
         occurrence_path=(EXECUTION,),
@@ -106,7 +162,7 @@ def checkpoint(wait):
     )
 
 
-def test_pure_association_preserves_distinct_runs_and_no_effect_cursor():
+def test_pure_association_preserves_distinct_runs_and_no_effect_cursor() -> None:
     c = contracts()
     binding = c.AgentNodeAssociation.model_validate(association_data())
     wait = c.AgentWaitAssociation.model_validate(wait_data())
@@ -128,7 +184,7 @@ def test_pure_association_preserves_distinct_runs_and_no_effect_cursor():
         ("input_result_ref", True),
     ],
 )
-def test_parent_locator_rejects_untyped_or_noncanonical_identity(field, bad):
+def test_parent_locator_rejects_untyped_or_noncanonical_identity(field: str, bad: object) -> None:
     c = contracts()
     with pytest.raises(ValidationError):
         c.AgentParentNodeRef.model_validate({**parent_data(), field: bad})
@@ -146,14 +202,14 @@ def test_parent_locator_rejects_untyped_or_noncanonical_identity(field, bad):
         ("physical_closed", True),
     ],
 )
-def test_wait_structure_never_accepts_caller_ack_or_cleanup_authority(field, value):
+def test_wait_structure_never_accepts_caller_ack_or_cleanup_authority(field: str, value: object) -> None:
     c = contracts()
     with pytest.raises(ValidationError):
         c.AgentWaitAssociation.model_validate({**wait_data(), field: value})
 
 
 @pytest.mark.parametrize("fault", ["duplicate", "occurrence", "input_ref", "input_digest", "invocation"])
-def test_checkpoint_association_requires_one_exact_saved_parent_journal(fault):
+def test_checkpoint_association_requires_one_exact_saved_parent_journal(fault: str) -> None:
     c = contracts()
     data = wait_data()
     if fault == "occurrence":
@@ -176,7 +232,7 @@ def test_checkpoint_association_requires_one_exact_saved_parent_journal(fault):
             checkpoint(wait)
 
 
-def test_workspace_ref_remains_same_public_reexport():
+def test_workspace_ref_remains_same_public_reexport() -> None:
     c = contracts()
     from services.dify_builder.native_testing.agent_workspace import AgentTestWorkspaceRef
 
@@ -184,17 +240,17 @@ def test_workspace_ref_remains_same_public_reexport():
     assert AgentTestWorkspaceRef.model_validate(workspace_data()).model_dump() == workspace_data()
 
 
-def runtime_imports(source):
+def runtime_imports(source: str) -> set[str | None]:
     """Exclude only the guarded, statically type-only branch from runtime imports."""
     import ast
     from typing import override
 
     class RuntimeImports(ast.NodeVisitor):
-        def __init__(self):
+        def __init__(self) -> None:
             self.modules = set()
 
         @override
-        def visit_If(self, node):
+        def visit_If(self, node: ast.If) -> None:
             if isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
                 for child in node.orelse:
                     self.visit(child)
@@ -202,11 +258,11 @@ def runtime_imports(source):
                 self.generic_visit(node)
 
         @override
-        def visit_ImportFrom(self, node):
+        def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
             self.modules.add(node.module)
 
         @override
-        def visit_Import(self, node):
+        def visit_Import(self, node: ast.Import) -> None:
             self.modules.update(alias.name for alias in node.names)
 
     visitor = RuntimeImports()
@@ -214,10 +270,12 @@ def runtime_imports(source):
     return visitor.modules
 
 
-def test_agent_contract_imports_are_pure_without_database_flask_or_backend_sdk():
+def test_agent_contract_imports_are_pure_without_database_flask_or_backend_sdk() -> None:
     from pathlib import Path
 
-    assert runtime_imports(Path(contracts().__file__).read_text()) <= {
+    contract_file = contracts().__file__
+    assert contract_file is not None
+    assert runtime_imports(Path(contract_file).read_text()) <= {
         "dataclasses",
         "typing",
         "uuid",
@@ -229,7 +287,7 @@ def test_agent_contract_imports_are_pure_without_database_flask_or_backend_sdk()
 
 @pytest.mark.parametrize("dependency", ["flask", "sqlalchemy", "dify_agent.protocol.schemas"])
 @pytest.mark.parametrize("placement", ["direct", "runtime-branch", "type-only-else"])
-def test_contract_purity_guard_detects_runtime_dependencies(dependency, placement):
+def test_contract_purity_guard_detects_runtime_dependencies(dependency: str, placement: str) -> None:
     statement = f"import {dependency}"
     source = {
         "direct": statement,
@@ -240,10 +298,31 @@ def test_contract_purity_guard_detects_runtime_dependencies(dependency, placemen
     assert dependency not in runtime_imports(f"if TYPE_CHECKING:\n    {statement}")
 
 
+class StoreAgentWaitArgs(TypedDict, closed=True):
+    ref: NativeTestContextRef
+    parent_node: AgentParentNodeRef
+    association_object_ref: str
+    agent_generation: int
+    checkpoint: JsonValue
+    backend_wait_event_id: str
+
+
+class AgentLoaderState(LoaderStandIn):
+    actor: Actor
+    resources: dict[type[object], Base | TypeBase | None]
+    invocation: NativeTestInvocation
+
+
+def required_resource[T](loader: AgentLoaderState, model: type[T]) -> T:
+    resource = loader.resources[model]
+    assert isinstance(resource, model)
+    return resource
+
+
 @dataclass
 class AgentStateCase:
     store: NativeExecutionStateStore
-    loader: LoaderStandIn
+    loader: AgentLoaderState
     ref: NativeTestContextRef
     context: ResolvedNativeTestContext
     parent: AgentParentNodeRef
@@ -253,7 +332,7 @@ class AgentStateCase:
 
 
 @pytest.fixture
-def state_case(monkeypatch):
+def state_case(monkeypatch: pytest.MonkeyPatch) -> AgentStateCase:
     """Actual state/codec; explicit SQL/permission/encryption/storage boundary doubles."""
     import json
     from contextlib import contextmanager
@@ -295,28 +374,35 @@ def state_case(monkeypatch):
     from services.dify_builder.native_testing import state_store as module
     from services.dify_builder.native_testing.agent_binding import native_node_data
     from tests.unit_tests.services.dify_builder.native_testing.test_node_inputs import (
-        LoaderStandIn,
         SQLStandIn,
     )
 
     class AgentSQL(SQLStandIn):
-        def scalar(self, query):
+        def __init__(self, owner: AgentLoaderState) -> None:
+            super().__init__(owner)
+            self.agent_owner = owner
+
+        @override
+        def scalar[T](self, query: Select[tuple[T]]) -> T | None:
             entity = query.column_descriptions[0]["entity"]
             if entity is NativeTestInvocation:
-                return self.owner.invocation
+                return cast(T, self.agent_owner.invocation)
             if entity in (NativeContinuation, NativePayloadObject):
                 params = {key.rsplit("_", 1)[0]: value for key, value in query.compile().params.items()}
-                return next(
-                    (
-                        row
-                        for row in self.owner.rows
-                        if isinstance(row, entity)
-                        and all(inspect(row).attrs[key].value == value for key, value in params.items())
+                return cast(
+                    T | None,
+                    next(
+                        (
+                            row
+                            for row in self.owner.rows
+                            if isinstance(row, entity)
+                            and all(inspect(row).attrs[key].value == value for key, value in params.items())
+                        ),
+                        None,
                     ),
-                    None,
                 )
-            if entity in self.owner.resources:
-                row = self.owner.resources[entity]
+            if entity in self.agent_owner.resources:
+                row = self.agent_owner.resources[entity]
                 if row is None:
                     return None
                 # SQL is a unit boundary double; assert the new access/pin queries
@@ -336,10 +422,11 @@ def state_case(monkeypatch):
                         "binding_type",
                     ):
                         assert inspect(row).attrs[field].value == value
-                return row.id if entity is App else row
+                return cast(T, inspect(row).attrs.id.value if entity is App else row)
             return super().scalar(query)
 
-        def scalars(self, query):
+        @override
+        def scalars(self, query: Select[tuple[object, ...]]) -> list[NativeInvocationState] | list[str]:
             if query.column_descriptions[0]["entity"] is NativePayloadObject:
                 return [
                     row.logical_key
@@ -348,24 +435,27 @@ def state_case(monkeypatch):
                 ]
             return super().scalars(query)
 
-        def get(self, model, identity, *, populate_existing=False):
+        @override
+        def get[T](self, model: type[T], identity: object, *, populate_existing: bool = False) -> T | None:
             if model in (Account, Tenant):
                 assert populate_existing
-            if model in self.owner.resources:
-                row = self.owner.resources[model]
-                return row if row is not None and row.id == identity else None
+            if model in self.agent_owner.resources:
+                row = self.agent_owner.resources[model]
+                return cast(T, row) if row is not None and inspect(row).attrs.id.value == identity else None
             return super().get(model, identity)
 
-    class AgentLoader(LoaderStandIn):
+    class AgentLoader(AgentLoaderState):
         actor: Actor
 
+        @override
         @contextmanager
-        def session_factory(self):
+        def session_factory(self) -> Generator[AgentSQL]:
             assert not self.writing
             yield AgentSQL(self)
 
+        @override
         @contextmanager
-        def locked(self, *, ref):
+        def locked(self, *, ref: NativeTestContextRef) -> Generator[tuple[AgentSQL, OwnedNativeTest, NativeTestScope]]:
             self.before_lock()
             owned = self.load(ref=ref)
             previous = self.rows.copy()
@@ -536,34 +626,37 @@ def state_case(monkeypatch):
         execution_mode="native",
     )
     loader.request.context["native_run_id"] = "workflow-run"
-    blobs, events = {}, []
+    blobs: dict[str, bytes] = {}
+    events: list[str] = []
     after_readback = [lambda: None]
 
-    def save(key, value):
+    def save(key: str, value: bytes) -> None:
         assert not loader.writing, "storage inside SQL writer"
         events.append("save")
         blobs[key] = value
 
-    def load(key):
+    def load(key: str) -> bytes:
         assert not loader.writing, "storage inside SQL writer"
         events.append("load")
         value = blobs[key]
         after_readback[0]()
         return value
 
-    def encrypt(tenant, value):
+    def encrypt(tenant: str, value: str) -> str:
         assert tenant == "tenant"
         assert not loader.writing
         return value.encode().hex()
 
-    def decrypt(tenant, value):
+    def decrypt(tenant: str, value: str) -> str:
         assert tenant == "tenant"
         assert not loader.writing
         return bytes.fromhex(value).decode()
 
-    def authority(owner, ref):
+    def authority(owner: AgentLoaderState, ref: NativeTestContextRef) -> PrivateReadOwner:
         assert not owner.writing, "permission outside SQL writer"
         owner.load(ref=ref)
+        assert loader.state.app_id is not None
+        assert loader.state.workflow_id is not None
         return PrivateReadOwner(
             tenant_id="tenant",
             actor_id="actor",
@@ -592,7 +685,7 @@ def state_case(monkeypatch):
         lambda *_args, **_kwargs: Workflow(graph=json.dumps(graph), version="published"),
     )
     monkeypatch.setattr(module, "native_workflow_revision", lambda _workflow: "revision")
-    store = module.NativeExecutionStateStore(loader)
+    store = module.NativeExecutionStateStore(cast(OwnedNativeTestLoader, loader))
     receipt = store.prepare_object(
         ref=loader.ref,
         tenant_id="tenant",
@@ -622,9 +715,9 @@ def state_case(monkeypatch):
     )
 
 
-def bound_state(c):
+def bound_state(c: AgentStateCase) -> tuple[dict[str, JsonValue], AgentNodeAssociation, str]:
     assert hasattr(c.store, "store_agent_config"), "protected Agent storage owner APIs are missing"
-    config = {"model": {"selected": "protected-model"}, "typed": [True, 1, "1"]}
+    config: dict[str, JsonValue] = {"model": {"selected": "protected-model"}, "typed": [True, 1, "1"]}
     config_ref = c.store.store_agent_config(
         ref=c.ref, parent_node=c.parent, expected_invocation_generation=c.loader.state.generation, config=config
     )
@@ -645,7 +738,9 @@ def bound_state(c):
     return config, association, ref
 
 
-def backend_checkpoint(c, association, generation=7):
+def backend_checkpoint(
+    c: AgentStateCase, association: AgentNodeAssociation, generation: int = 7
+) -> dict[str, JsonValue]:
     return {
         "protocol_version": 1,
         "run_id": association.agent_run_id,
@@ -664,7 +759,9 @@ def backend_checkpoint(c, association, generation=7):
 
 
 @pytest.mark.parametrize("fault", ["account", "tenant", "membership", "agent-pin", "published-binding"])
-def test_actual_agent_access_and_publication_guards_precede_private_write(state_case, fault):
+def test_actual_agent_access_and_publication_guards_precede_private_write(
+    state_case: AgentStateCase, fault: str
+) -> None:
     from models.account import (
         Account,
         AccountStatus,
@@ -677,13 +774,13 @@ def test_actual_agent_access_and_publication_guards_precede_private_write(state_
 
     c = state_case
     if fault == "account":
-        c.loader.resources[Account].status = AccountStatus.BANNED
+        required_resource(c.loader, Account).status = AccountStatus.BANNED
     elif fault == "tenant":
-        c.loader.resources[Tenant].status = TenantStatus.ARCHIVE
+        required_resource(c.loader, Tenant).status = TenantStatus.ARCHIVE
     elif fault == "membership":
         c.loader.resources[TenantAccountJoin] = None
     elif fault == "agent-pin":
-        c.loader.resources[Agent].active_config_snapshot_id = "foreign"
+        required_resource(c.loader, Agent).active_config_snapshot_id = "foreign"
     else:
         c.loader.resources[WorkflowAgentNodeBinding] = None
     reason = "agent_access_denied" if fault in ("account", "tenant", "membership") else "native_agent_pin_mismatch"
@@ -694,7 +791,7 @@ def test_actual_agent_access_and_publication_guards_precede_private_write(state_
     assert c.loader.rows == before
 
 
-def test_actual_state_nonempty_bind_wait_final_are_immutable_owned_objects(state_case):
+def test_actual_state_nonempty_bind_wait_final_are_immutable_owned_objects(state_case: AgentStateCase) -> None:
     c = state_case
     config, association, ref = bound_state(c)
     stored = backend_checkpoint(c, association)
@@ -725,7 +822,7 @@ def test_actual_state_nonempty_bind_wait_final_are_immutable_owned_objects(state
         == wait
     )
     assert c.events.count("save") == before
-    result = {"output": [True, 1, "1"]}
+    result: dict[str, JsonValue] = {"output": [True, 1, "1"]}
     final = c.store.store_agent_final(
         ref=c.ref,
         parent_node=c.parent,
@@ -754,7 +851,7 @@ def test_actual_state_nonempty_bind_wait_final_are_immutable_owned_objects(state
 
 
 @pytest.mark.parametrize("fault", ["input_digest", "input_ref", "execution_id", "ref"])
-def test_stored_parent_input_owner_rejects_before_agent_write(state_case, fault):
+def test_stored_parent_input_owner_rejects_before_agent_write(state_case: AgentStateCase, fault: str) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
@@ -776,7 +873,7 @@ def test_stored_parent_input_owner_rejects_before_agent_write(state_case, fault)
     assert "save" not in c.events
 
 
-def wait_state(c):
+def wait_state(c: AgentStateCase) -> tuple[AgentNodeAssociation, AgentWaitAssociation, dict[str, JsonValue]]:
     _, association, ref = bound_state(c)
     raw = backend_checkpoint(c, association)
     wait = c.store.store_agent_wait(
@@ -790,7 +887,7 @@ def wait_state(c):
     return association, wait, raw
 
 
-def payload_for(c, wait, generation=0):
+def payload_for(c: AgentStateCase, wait: AgentWaitAssociation, generation: int = 0) -> NativeCheckpointPayload:
     parent = c.parent
     journal = NodeJournalState(
         invocation_id=c.ref.invocation_id,
@@ -824,7 +921,9 @@ def payload_for(c, wait, generation=0):
         ("agent_generation", 8),
     ],
 )
-def test_commit_checkpoint_rejects_unselected_agent_private_material(state_case, field, bad):
+def test_commit_checkpoint_rejects_unselected_agent_private_material(
+    state_case: AgentStateCase, field: str, bad: object
+) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
@@ -837,7 +936,7 @@ def test_commit_checkpoint_rejects_unselected_agent_private_material(state_case,
 
 
 @pytest.mark.parametrize("fault", ["current_workspace", "checkpoint_bytes", "saved_generation"])
-def test_read_checkpoint_revalidates_current_agent_private_relations(state_case, fault):
+def test_read_checkpoint_revalidates_current_agent_private_relations(state_case: AgentStateCase, fault: str) -> None:
     from models.agent import AgentWorkspaceBinding
     from models.dify_builder_native_tests import NativeContinuation
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
@@ -846,7 +945,7 @@ def test_read_checkpoint_revalidates_current_agent_private_relations(state_case,
     _, wait, _ = wait_state(c)
     checkpoint_ref = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload_for(c, wait))
     if fault == "current_workspace":
-        c.loader.resources[AgentWorkspaceBinding].backend_binding_ref = "foreign"
+        required_resource(c.loader, AgentWorkspaceBinding).backend_binding_ref = "foreign"
     elif fault == "checkpoint_bytes":
         row = next(row for row in c.loader.rows if row.id == wait.checkpoint_object_ref)
         c.blobs[row.storage_key] = b"corrupt-private-checkpoint"
@@ -856,7 +955,7 @@ def test_read_checkpoint_revalidates_current_agent_private_relations(state_case,
         c.store.read_checkpoint(ref=c.ref, checkpoint=checkpoint_ref)
 
 
-def test_second_distinct_occurrence_cannot_silently_reuse_single_workspace(state_case):
+def test_second_distinct_occurrence_cannot_silently_reuse_single_workspace(state_case: AgentStateCase) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
@@ -874,7 +973,9 @@ def test_second_distinct_occurrence_cannot_silently_reuse_single_workspace(state
     assert c.events.count("save") == before
 
 
-def test_backend_generation_seven_cp_local_zero_remains_readable_at_local_two_scope_three(state_case):
+def test_backend_generation_seven_cp_local_zero_remains_readable_at_local_two_scope_three(
+    state_case: AgentStateCase,
+) -> None:
     c = state_case
     _, wait, raw = wait_state(c)
     cp = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload_for(c, wait))
@@ -888,23 +989,23 @@ def test_backend_generation_seven_cp_local_zero_remains_readable_at_local_two_sc
 
 
 @pytest.mark.parametrize("kind", ["config", "binding", "checkpoint", "final"])
-def test_same_logical_key_rejects_changed_agent_material(state_case, kind):
+def test_same_logical_key_rejects_changed_agent_material(state_case: AgentStateCase, kind: str) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
     _, association, ref = bound_state(c)
     if kind == "config":
 
-        def call():
+        def call() -> str | AgentWaitAssociation:
             return c.store.store_agent_config(
                 ref=c.ref, parent_node=c.parent, expected_invocation_generation=0, config={"different": True}
             )
     elif kind == "binding":
-        changed = association.model_copy(update={"agent_run_id": "different-agent-run"})
+        changed_association = association.model_copy(update={"agent_run_id": "different-agent-run"})
 
-        def call():
+        def call() -> str | AgentWaitAssociation:
             return c.store.bind_agent_run(
-                ref=c.ref, parent_node=c.parent, expected_invocation_generation=0, association=changed
+                ref=c.ref, parent_node=c.parent, expected_invocation_generation=0, association=changed_association
             )
     elif kind == "checkpoint":
         c.store.store_agent_wait(
@@ -915,15 +1016,18 @@ def test_same_logical_key_rejects_changed_agent_material(state_case, kind):
             checkpoint=backend_checkpoint(c, association),
             backend_wait_event_id="1234-0",
         )
-        changed = {**backend_checkpoint(c, association), "history": [{"changed": True}]}
+        changed_checkpoint: dict[str, JsonValue] = {
+            **backend_checkpoint(c, association),
+            "history": [{"changed": True}],
+        }
 
-        def call():
+        def call() -> str | AgentWaitAssociation:
             return c.store.store_agent_wait(
                 ref=c.ref,
                 parent_node=c.parent,
                 association_object_ref=ref,
                 agent_generation=7,
-                checkpoint=changed,
+                checkpoint=changed_checkpoint,
                 backend_wait_event_id="1234-0",
             )
     else:
@@ -936,7 +1040,7 @@ def test_same_logical_key_rejects_changed_agent_material(state_case, kind):
             backend_terminal_event_id="1235-0",
         )
 
-        def call():
+        def call() -> str | AgentWaitAssociation:
             return c.store.store_agent_final(
                 ref=c.ref,
                 parent_node=c.parent,
@@ -952,7 +1056,9 @@ def test_same_logical_key_rejects_changed_agent_material(state_case, kind):
     assert c.events.count("save") == before
 
 
-def test_lost_post_commit_ack_reuses_existing_selected_checkpoint_without_storage_write(state_case, monkeypatch):
+def test_lost_post_commit_ack_reuses_existing_selected_checkpoint_without_storage_write(
+    state_case: AgentStateCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from contextlib import contextmanager
 
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
@@ -963,15 +1069,15 @@ def test_lost_post_commit_ack_reuses_existing_selected_checkpoint_without_storag
     lost = [True]
 
     @contextmanager
-    def after_commit(**kwargs):
-        with locked(**kwargs) as selected:
+    def after_commit(*, ref: NativeTestContextRef) -> Generator[tuple[SQLStandIn, OwnedNativeTest, NativeTestScope]]:
+        with locked(ref=ref) as selected:
             yield selected
         if lost[0]:
             lost[0] = False
             raise TimeoutError("unit-lost-postcommit-ack")
 
     monkeypatch.setattr(c.loader, "locked", after_commit)
-    args = {
+    args: StoreAgentWaitArgs = {
         "ref": c.ref,
         "parent_node": c.parent,
         "association_object_ref": ref,
@@ -988,17 +1094,17 @@ def test_lost_post_commit_ack_reuses_existing_selected_checkpoint_without_storag
 
 
 @pytest.mark.parametrize("drift", ["local-generation", "workspace", "input-metadata"])
-def test_sql_recheck_after_private_io_refuses_drift_before_ack(state_case, drift):
+def test_sql_recheck_after_private_io_refuses_drift_before_ack(state_case: AgentStateCase, drift: str) -> None:
     from models.agent import AgentWorkspace
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
 
-    def change():
+    def change() -> None:
         if drift == "local-generation":
             c.loader.state.generation += 1
         elif drift == "workspace":
-            c.loader.resources[AgentWorkspace].owner_id = "foreign-run"
+            required_resource(c.loader, AgentWorkspace).owner_id = "foreign-run"
         else:
             next(row for row in c.loader.rows if row.id == c.parent.input_result_ref).value_digest = "d" * 64
 
@@ -1012,7 +1118,7 @@ def test_sql_recheck_after_private_io_refuses_drift_before_ack(state_case, drift
     assert not c.loader.writing
 
 
-def test_read_checkpoint_rechecks_selected_outer_metadata_after_private_io(state_case):
+def test_read_checkpoint_rechecks_selected_outer_metadata_after_private_io(state_case: AgentStateCase) -> None:
     from models.dify_builder_native_tests import NativeContinuation
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
@@ -1020,7 +1126,7 @@ def test_read_checkpoint_rechecks_selected_outer_metadata_after_private_io(state
     _, wait, _ = wait_state(c)
     checkpoint_ref = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload_for(c, wait))
 
-    def changed_outer():
+    def changed_outer() -> None:
         next(row for row in c.loader.rows if isinstance(row, NativeContinuation)).generation = 1
 
     c.loader.before_lock = changed_outer
@@ -1028,12 +1134,14 @@ def test_read_checkpoint_rechecks_selected_outer_metadata_after_private_io(state
         c.store.read_checkpoint(ref=c.ref, checkpoint=checkpoint_ref)
 
 
-def test_actual_operation_cursor_finish_is_untouched_by_agent_associations(state_case, mocker):
+def test_actual_operation_cursor_finish_is_untouched_by_agent_associations(
+    state_case: AgentStateCase, mocker: pytest_mock.MockerFixture
+) -> None:
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
     from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 
     c = state_case
-    authorization = EffectAuthorizationService(c.loader)
+    authorization = EffectAuthorizationService(cast(OwnedNativeTestLoader, c.loader))
     before_call = mocker.spy(authorization, "before_call")
     journal = NodeOperationJournal(state=c.store, authorization=authorization)
     cursor = journal.open(ref=c.ref, occurrence_path=(EXECUTION,))
@@ -1047,18 +1155,18 @@ def test_actual_operation_cursor_finish_is_untouched_by_agent_associations(state
     before_call.assert_not_called()
 
 
-def test_actual_sql_workspace_backend_reference_cannot_drift(state_case):
+def test_actual_sql_workspace_backend_reference_cannot_drift(state_case: AgentStateCase) -> None:
     from models.agent import AgentWorkspace
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
     _, wait, _ = wait_state(c)
-    c.loader.resources[AgentWorkspace].backend_workspace_ref = "foreign-backend"
+    required_resource(c.loader, AgentWorkspace).backend_workspace_ref = "foreign-backend"
     with pytest.raises(BuilderExecutionPolicyError, match="native_workspace_owner_mismatch"):
         c.store.load_agent_association(ref=c.ref, parent_node=c.parent, wait=wait)
 
 
-def test_empty_agent_checkpoint_keeps_legacy_private_payload_and_repeat_identity(state_case):
+def test_empty_agent_checkpoint_keeps_legacy_private_payload_and_repeat_identity(state_case: AgentStateCase) -> None:
     from models.dify_builder_native_tests import NativePayloadObject
 
     c = state_case
@@ -1075,12 +1183,16 @@ def test_empty_agent_checkpoint_keeps_legacy_private_payload_and_repeat_identity
     )
     first = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload)
     row = next(row for row in c.loader.rows if isinstance(row, NativePayloadObject) and row.id == first.checkpoint_id)
-    assert "agent_associations" not in c.store._read_object(row)
+    stored_payload = c.store._read_object(row)
+    assert isinstance(stored_payload, dict)
+    assert "agent_associations" not in stored_payload
     assert c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload) == first
     assert c.store.read_checkpoint(ref=c.ref, checkpoint=first).agent_associations == ()
 
 
-def test_current_local_generation_controls_config_write_without_shared_counter_alias(state_case):
+def test_current_local_generation_controls_config_write_without_shared_counter_alias(
+    state_case: AgentStateCase,
+) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
@@ -1097,11 +1209,11 @@ def test_current_local_generation_controls_config_write_without_shared_counter_a
     assert selected
 
 
-def test_missing_actual_workspace_owner_refuses_without_agent_private_write(state_case):
+def test_missing_actual_workspace_owner_refuses_without_agent_private_write(state_case: AgentStateCase) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
-    c.loader.invocation.bindings = {}
+    c.loader.invocation.bindings = dict[str, object]()
     with pytest.raises(BuilderExecutionPolicyError, match="native_workspace_unavailable"):
         c.store.store_agent_config(
             ref=c.ref, parent_node=c.parent, expected_invocation_generation=0, config={"typed": True}
@@ -1109,7 +1221,7 @@ def test_missing_actual_workspace_owner_refuses_without_agent_private_write(stat
     assert "save" not in c.events
 
 
-def test_agent_run_cannot_alias_workflow_native_run_or_inject_proof_fields():
+def test_agent_run_cannot_alias_workflow_native_run_or_inject_proof_fields() -> None:
     c = contracts()
     with pytest.raises(ValidationError):
         c.AgentNodeAssociation.model_validate({**association_data(), "agent_run_id": "workflow-run"})
@@ -1118,7 +1230,9 @@ def test_agent_run_cannot_alias_workflow_native_run_or_inject_proof_fields():
 
 
 @pytest.mark.parametrize("fault", ["allocation-extra-proof", "missing-scope-digest"])
-def test_actual_allocation_owner_parser_rejects_malformed_scope_and_unknown_proof(state_case, fault):
+def test_actual_allocation_owner_parser_rejects_malformed_scope_and_unknown_proof(
+    state_case: AgentStateCase, fault: str
+) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
@@ -1134,7 +1248,7 @@ def test_actual_allocation_owner_parser_rejects_malformed_scope_and_unknown_proo
     assert "save" not in c.events
 
 
-def test_normal_blank_home_association_roundtrip_retains_explicit_none():
+def test_normal_blank_home_association_roundtrip_retains_explicit_none() -> None:
     c = contracts()
     raw = association_data()
     raw["home_snapshot_id"] = None
@@ -1152,7 +1266,7 @@ def test_normal_blank_home_association_roundtrip_retains_explicit_none():
 
 
 @pytest.mark.parametrize("fault", ["isolated", "missing_home", "missing_workspace_home", "mismatched_home"])
-def test_blank_home_never_weakens_required_fields_or_isolated_pins(fault):
+def test_blank_home_never_weakens_required_fields_or_isolated_pins(fault: str) -> None:
     c = contracts()
     raw = association_data()
     raw["home_snapshot_id"] = None
@@ -1170,7 +1284,9 @@ def test_blank_home_never_weakens_required_fields_or_isolated_pins(fault):
 
 
 @pytest.mark.parametrize("physical_generation", [0, 1])
-def test_nullable_normal_home_cannot_enter_isolated_workspace_owner(state_case, physical_generation):
+def test_nullable_normal_home_cannot_enter_isolated_workspace_owner(
+    state_case: AgentStateCase, physical_generation: int
+) -> None:
     c = state_case
     c_contracts = contracts()
     normal = c_contracts.AgentTestWorkspaceRef.model_validate(

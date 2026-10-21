@@ -7,30 +7,18 @@ from extensions.storage.opendal_storage import OpenDALStorage
 from tests.unit_tests.oss.__mock.base import (
     get_example_data,
     get_example_filename,
-    get_opendal_bucket,
 )
 
 
 class TestOpenDAL:
     @pytest.fixture(autouse=True)
-    def setup_method(self) -> None:
+    def setup_method(self, tmp_path: Path) -> None:
         """Executed before each test method."""
+        self.storage_root = tmp_path
         self.storage = OpenDALStorage(
             scheme="fs",
-            root=get_opendal_bucket(),
+            root=str(self.storage_root),
         )
-
-    @pytest.fixture(scope="class", autouse=True)
-    def teardown_class(self) -> Generator[None]:
-        """Clean up after all tests in the class."""
-
-        yield
-
-        folder = Path(get_opendal_bucket())
-        if folder.exists() and folder.is_dir():
-            import shutil
-
-            shutil.rmtree(folder, ignore_errors=True)
 
     def test_save_and_exists(self) -> None:
         """Test saving data and checking existence."""
@@ -70,7 +58,7 @@ class TestOpenDAL:
     def test_download(self) -> None:
         """Test downloading data to a file."""
         filename = get_example_filename()
-        filepath = str(Path(get_opendal_bucket()) / filename)
+        filepath = str(self.storage_root / filename)
         data = get_example_data()
 
         self.storage.save(filename, data)

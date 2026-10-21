@@ -1,5 +1,37 @@
 """Normal CI only: actual SQL stop fencing, not native physical qualification."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, NotRequired, Unpack
+
+from sqlalchemy import inspect
+from typing_extensions import TypedDict
+
+from models.account import TenantAccountRole
+
+if TYPE_CHECKING:
+    import services.dify_builder.native_testing.repository as _forward_types_0
+
+
+from typing import TYPE_CHECKING
+
+from models.dify_builder_native_tests import NativeInvocationState
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_host_capacity as _fixture_types_0,
+    )
+
+
 from contextlib import contextmanager
 from uuid import uuid4
 
@@ -10,12 +42,12 @@ from models.account import TenantAccountJoin
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import (
     NativeDispatch,
-    NativeInvocationState,
     NativeTestInvocation,
     NativeTestScope,
 )
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_present
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_host_capacity import (
     capacity_case as capacity_case,  # noqa: PLC0414
 )
@@ -40,7 +72,7 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_h
 
 
 @pytest.fixture
-def stop_case(capacity_case):
+def stop_case(capacity_case: _fixture_types_0.ContinuationCase) -> tuple[ContinuationCase, NativeDispatchRef]:
     c = capacity_case
     dispatch = c.lifecycle.enqueue_initial_dispatch(ref=c.ref)
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=0, dispatch_id=dispatch.dispatch_id)
@@ -48,7 +80,7 @@ def stop_case(capacity_case):
     return c, dispatch
 
 
-def seal(c, dispatch):
+def seal(c: ContinuationCase, dispatch: NativeDispatchRef) -> None:
     return c.lifecycle.seal_stop(
         ref=c.ref,
         expected_generation=dispatch.generation,
@@ -57,7 +89,7 @@ def seal(c, dispatch):
     )
 
 
-def state(c, session):
+def state(c: ContinuationCase, session: Session) -> NativeInvocationState | None:
     return session.scalar(
         select(NativeInvocationState).where(
             NativeInvocationState.request_id == c.ref.request_id,
@@ -66,30 +98,42 @@ def state(c, session):
     )
 
 
-def test_real_stop_commit_seals_authority_but_retains_acquisition_and_cleanup(stop_case):
+def test_real_stop_commit_seals_authority_but_retains_acquisition_and_cleanup(
+    stop_case: tuple[ContinuationCase, NativeDispatchRef],
+) -> None:
     c, dispatch = stop_case
     assert seal(c, dispatch) is None
     with c.factory() as session:
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "sealed"
-        assert session.get(NativeDispatch, dispatch.dispatch_id).state == "claimed"
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).state
+            == "sealed"
+        )
+        assert require_instance(session.get(NativeDispatch, dispatch.dispatch_id), NativeDispatch).state == "claimed"
         current = state(c, session)
-        assert current.state == "running"
-        assert current.outcome is None
-        assert not current.cleanup_complete
-        assert not session.scalar(
-            select(NativeTestInvocation).where(
-                NativeTestInvocation.request_id == c.ref.request_id,
-                NativeTestInvocation.invocation_id == c.ref.invocation_id,
-            )
+        assert require_present(current).state == "running"
+        assert require_present(current).outcome is None
+        assert not require_present(current).cleanup_complete
+        assert not require_instance(
+            session.scalar(
+                select(NativeTestInvocation).where(
+                    NativeTestInvocation.request_id == c.ref.request_id,
+                    NativeTestInvocation.invocation_id == c.ref.invocation_id,
+                )
+            ),
+            NativeTestInvocation,
         ).active
-        assert not session.get(NativeTestScope, c.ref.request_id).cancelled
+        assert not require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).cancelled
     with pytest.raises(BuilderExecutionPolicyError):
         seal(c, dispatch)
     assert c.ledger.dispatched_attempt_count() == 0
 
 
 @pytest.mark.parametrize("dispatch_state", ["queued", "published", "claimed"])
-def test_real_stop_rejects_orphan_dispatch_without_mutating_authority_or_outbox(stop_case, dispatch_state):
+def test_real_stop_rejects_orphan_dispatch_without_mutating_authority_or_outbox(
+    stop_case: tuple[ContinuationCase, NativeDispatchRef], dispatch_state: str
+) -> None:
     c, dispatch = stop_case
     orphan_id = str(uuid4())
     with c.factory.begin() as session:
@@ -105,13 +149,15 @@ def test_real_stop_rejects_orphan_dispatch_without_mutating_authority_or_outbox(
                 idempotency_digest=uuid4().hex * 2,
                 state=dispatch_state,
                 checkpoint_id=None,
-                claim_expires_at=session.get(NativeDispatch, dispatch.dispatch_id).claim_expires_at
+                claim_expires_at=require_instance(
+                    session.get(NativeDispatch, dispatch.dispatch_id), NativeDispatch
+                ).claim_expires_at
                 if dispatch_state == "claimed"
                 else None,
             )
         )
 
-    def snapshot():
+    def snapshot() -> dict[str, list[dict[str, object]]]:
         with c.factory() as session:
             return {
                 model.__name__: [
@@ -119,11 +165,11 @@ def test_real_stop_rejects_orphan_dispatch_without_mutating_authority_or_outbox(
                     for row in session.execute(
                         select(model.__table__)
                         .where(
-                            model.id == c.ref.request_id
+                            model.__table__.c.id == c.ref.request_id
                             if model is DifyBuilderExecutionRequest
-                            else model.request_id == c.ref.request_id
+                            else model.__table__.c.request_id == c.ref.request_id
                         )
-                        .order_by(model.request_id if model is NativeTestScope else model.id)
+                        .order_by(*inspect(model).primary_key)
                     ).mappings()
                 ]
                 for model in (
@@ -145,7 +191,9 @@ def test_real_stop_rejects_orphan_dispatch_without_mutating_authority_or_outbox(
 
 
 @pytest.mark.parametrize("status", ["stopped", "unknown"])
-def test_real_stopped_or_unknown_evidence_can_finalize_after_authority_seal(stop_case, status):
+def test_real_stopped_or_unknown_evidence_can_finalize_after_authority_seal(
+    stop_case: tuple[ContinuationCase, NativeDispatchRef], status: Literal["stopped", "unknown"]
+) -> None:
     c, dispatch = stop_case
     seal(c, dispatch)
     outcome = NativeWorkflowOutcome(
@@ -164,13 +212,22 @@ def test_real_stopped_or_unknown_evidence_can_finalize_after_authority_seal(stop
             session=session, owned=owned, scope=scope, dispatch_id=dispatch.dispatch_id, generation=0, outcome=outcome
         )
     with c.factory() as session:
-        assert state(c, session).state == status
-        assert state(c, session).outcome["status"] == status
-        assert not state(c, session).cleanup_complete
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "sealed"
+        assert require_present(state(c, session)).state == status
+        outcome_data = require_instance(state(c, session), NativeInvocationState).outcome
+        assert outcome_data is not None
+        assert outcome_data["status"] == status
+        assert not require_present(state(c, session)).cleanup_complete
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).state
+            == "sealed"
+        )
 
 
-def test_real_seal_rejects_late_success_without_changing_acquisition(stop_case):
+def test_real_seal_rejects_late_success_without_changing_acquisition(
+    stop_case: tuple[ContinuationCase, NativeDispatchRef],
+) -> None:
     c, dispatch = stop_case
     seal(c, dispatch)
     outcome = NativeWorkflowOutcome(
@@ -195,12 +252,14 @@ def test_real_seal_rejects_late_success_without_changing_acquisition(stop_case):
                 outcome=outcome,
             )
     with c.factory() as session:
-        assert session.get(NativeDispatch, dispatch.dispatch_id).state == "claimed"
-        assert state(c, session).outcome is None
-        assert not state(c, session).cleanup_complete
+        assert require_instance(session.get(NativeDispatch, dispatch.dispatch_id), NativeDispatch).state == "claimed"
+        assert require_present(state(c, session)).outcome is None
+        assert not require_present(state(c, session)).cleanup_complete
 
 
-def test_real_stop_can_close_authority_after_membership_revocation(stop_case):
+def test_real_stop_can_close_authority_after_membership_revocation(
+    stop_case: tuple[ContinuationCase, NativeDispatchRef],
+) -> None:
     c, dispatch = stop_case
     with c.factory.begin() as session:
         membership = session.scalar(
@@ -209,19 +268,25 @@ def test_real_stop_can_close_authority_after_membership_revocation(stop_case):
                 TenantAccountJoin.account_id == c.ledger.actor.account_id,
             )
         )
-        membership.role = "normal"
+        require_instance(membership, TenantAccountJoin).role = TenantAccountRole.NORMAL
     with pytest.raises(BuilderExecutionPolicyError):
         c.lifecycle.loader.load(ref=c.ref)
     assert seal(c, dispatch) is None
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_real_stop_lost_commit_ack_never_replays_as_acceptance(stop_case, monkeypatch):
+def test_real_stop_lost_commit_ack_never_replays_as_acceptance(
+    stop_case: tuple[ContinuationCase, NativeDispatchRef], monkeypatch: pytest.MonkeyPatch
+) -> None:
     c, dispatch = stop_case
     actual_locked = c.lifecycle.loader.locked
 
     @contextmanager
-    def lost_ack(**kwargs):
+    def lost_ack(
+        **kwargs: Unpack[_ForwardArguments272],
+    ) -> _forward_types_0.Generator[
+        tuple[_forward_types_0.Session, _forward_types_0.OwnedNativeTest, _forward_types_0.NativeTestScope]
+    ]:
         with actual_locked(**kwargs) as owned:
             yield owned
         raise RuntimeError("synthetic stop commit acknowledgment loss")
@@ -231,8 +296,18 @@ def test_real_stop_lost_commit_ack_never_replays_as_acceptance(stop_case, monkey
         seal(c, dispatch)
     monkeypatch.setattr(c.lifecycle.loader, "locked", actual_locked)
     with c.factory() as session:
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "sealed"
-        assert session.get(NativeDispatch, dispatch.dispatch_id).state == "claimed"
-        assert not state(c, session).cleanup_complete
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).state
+            == "sealed"
+        )
+        assert require_instance(session.get(NativeDispatch, dispatch.dispatch_id), NativeDispatch).state == "claimed"
+        assert not require_present(state(c, session)).cleanup_complete
     with pytest.raises(BuilderExecutionPolicyError):
         seal(c, dispatch)
+
+
+class _ForwardArguments272(TypedDict, closed=True):
+    ref: _forward_types_0.NativeTestContextRef
+    settlement: NotRequired[bool]

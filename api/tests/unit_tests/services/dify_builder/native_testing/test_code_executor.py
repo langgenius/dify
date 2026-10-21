@@ -1,8 +1,10 @@
 """Real native nodes/transformers/C02; explicit SQL and deployment doubles only."""
 
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import NoReturn, cast
 from uuid import uuid4
 
 import pytest
@@ -14,6 +16,7 @@ from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
     canonical_digest,
 )
+from runtime_contracts.builder.native.contracts import DispatchPermit, JsonValue, NativeTestContextRef
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.control import (
@@ -31,8 +34,10 @@ from services.dify_builder.native_testing.runtime_bridge import NativeNodePrepar
 from services.dify_builder.native_testing.sandbox.host import NativeCodeHostOwner
 from services.dify_builder.native_testing.sandbox.qualification import (
     NativeCodeBindingProducer,
+    NativeCodeCapability,
     NativeCodeQualification,
 )
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import (
     REF,
     Authorization,
@@ -52,32 +57,32 @@ from tests.unit_tests.services.dify_builder.native_testing.test_runtime_bridge i
 @dataclass
 class CodeExecutorCase:
     q: NativeCodeQualification
-    seen: list
-    events: list
+    seen: list[NativeCodeCapability]
+    events: list[tuple[object, ...]]
     state: State
     auth: Authorization
     journal: NodeOperationJournal
     producer: NativeCodeBindingProducer
     node: CodeNode
     association: NativeNodePreparation
-    raw: dict
-    installed: list[dict]
+    raw: dict[str, JsonValue]
+    installed: list[dict[str, object]]
     owner: NativeCodeHostOwner
 
 
-def refuse_constructor_collaborators(**_kwargs):
+def refuse_constructor_collaborators(**_kwargs: object) -> NoReturn:
     raise AssertionError("node preparation collaborators are not used by executor tests")
 
 
 @pytest.fixture
-def case(monkeypatch):
+def case(monkeypatch: pytest.MonkeyPatch) -> CodeExecutorCase:
     from services.dify_builder.native_testing.sandbox import qualification as module
 
     q, seen = qualification()
-    events = []
+    events: list[tuple[object, ...]] = []
     state, auth = State(events), Authorization(events)
     raw = raw_code()
-    graph = {"nodes": [{"id": "code", "data": raw}], "edges": []}
+    graph: dict[str, JsonValue] = {"nodes": [{"id": "code", "data": raw}], "edges": []}
     descriptor = module.describe_code_resource(
         qualification=q,
         node_id="code",
@@ -94,13 +99,16 @@ def case(monkeypatch):
         }
     )
 
-    def store_inputs(**kw):
-        events.append(("input_ack", kw["native_execution_id"]))
-        ref = "node-input:" + kw["native_execution_id"]
-        prior = state.values.setdefault(ref, deepcopy(kw["inputs"]))
-        if canonical_digest(prior) != canonical_digest(kw["inputs"]):
+    def store_inputs(
+        *, ref: NativeTestContextRef, generation: int, native_execution_id: str, inputs: dict[str, JsonValue]
+    ) -> str:
+        del ref, generation
+        events.append(("input_ack", native_execution_id))
+        input_ref = "node-input:" + native_execution_id
+        prior = state.values.setdefault(input_ref, deepcopy(inputs))
+        if canonical_digest(prior) != canonical_digest(inputs):
             raise BuilderExecutionPolicyError("native_payload_conflict")
-        return ref
+        return input_ref
 
     monkeypatch.setattr(state, "store_node_inputs", store_inputs, raising=False)
     runtime = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
@@ -118,7 +126,7 @@ def case(monkeypatch):
         node_class=marked_native_node_class(CodeNode, marked=True),
         runtime_state=runtime,
     )
-    node = association.node_class(
+    node = cast(Callable[..., CodeNode], association.node_class)(
         native_control_owner=bridge._boundary_owner,
         native_control_sink=bridge._control_sink,
         node_id="code",
@@ -184,11 +192,11 @@ def case(monkeypatch):
     producer = module.NativeCodeBindingProducer(
         association=association,
         loader=loader,
-        state_store=state,
+        state_store=cast(NativeExecutionStateStore, state),
         journal=journal,
         qualification=q,
     )
-    installed = []
+    installed: list[dict[str, object]] = []
     monkeypatch.setattr(producer, "_install", lambda **kw: installed.append(kw))
     return CodeExecutorCase(
         owner=owner,
@@ -206,29 +214,35 @@ def case(monkeypatch):
     )
 
 
-def test_unbound_public_uuid_refuses_before_protected_input(case):
+def test_unbound_public_uuid_refuses_before_protected_input(case: CodeExecutorCase) -> None:
     with pytest.raises(Exception, match="native_execution_id_missing"):
-        case.producer.prepare(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={})
+        case.producer.prepare(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
     assert case.events == []
     assert case.installed == []
 
 
-def test_prepare_attests_actual_native_code_and_stable_reopened_intent(case):
+def test_prepare_attests_actual_native_code_and_stable_reopened_intent(case: CodeExecutorCase) -> None:
     case.node.bind_execution_id(str(uuid4()))
-    a = case.producer.prepare(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={})
-    b = case.producer.prepare(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={})
+    a = case.producer.prepare(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
+    b = case.producer.prepare(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
     assert a.intent == b.intent
     assert a.spec == b.spec
     assert a.intent.key.occurrence_path == (case.node.execution_id,)
     assert len(case.installed) == 2
-    assert a.intent.target["code_physical"]["base_snapshot_digest"] == case.q.capability.empty_snapshot_digest
+    assert isinstance(a.intent.target, dict)
+    physical_target = a.intent.target["code_physical"]
+    assert isinstance(physical_target, dict)
+    assert physical_target["base_snapshot_digest"] == case.q.capability.empty_snapshot_digest
     assert case.events[0][0] == "input_ack"
 
 
 @pytest.mark.parametrize("change", ["code", "input", "config", "qualification"])
-def test_producer_refuses_changed_protected_material(case, change):
+def test_producer_refuses_changed_protected_material(
+    case: CodeExecutorCase, change: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     case.node.bind_execution_id(str(uuid4()))
-    code, inputs = case.raw["code"], {}
+    code = cast(str, case.raw["code"])
+    inputs: dict[str, JsonValue] = {}
     if change == "code":
         code = "changed"
     if change == "input":
@@ -236,25 +250,28 @@ def test_producer_refuses_changed_protected_material(case, change):
     if change == "config":
         case.node.node_data.code = "changed"
     if change == "qualification":
-        case.q.owner.validate = lambda **_kw: True
+        monkeypatch.setattr(case.q.owner, "validate", lambda **_kw: True)
     with pytest.raises(BuilderExecutionPolicyError):
         case.producer.prepare(language=CodeLanguage.PYTHON3, code=code, inputs=inputs)
     assert case.installed == []
 
 
-def test_code_result_replay_has_zero_sdk_io_and_real_transformer(case, monkeypatch):
+def test_code_result_replay_has_zero_sdk_io_and_real_transformer(
+    case: CodeExecutorCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.native_testing.sandbox import executor as module
     from services.dify_builder.native_testing.sandbox.executor import NativeCodeExecutor
 
     case.node.bind_execution_id(str(uuid4()))
-    physical = []
+    physical: list[dict[str, object]] = []
 
     class Transport:
-        def __init__(self, **kw):
+        def __init__(self, **kw: object) -> None:
             physical.append(kw)
 
-        def execute(self, **kw):
+        def execute(self, **kw: object) -> str:
             assert kw["language"] == "python3"
+            assert isinstance(kw["code"], str)
             assert "CANARY" in kw["code"]
             return '<<RESULT>>{"result":"actual parsed"}<<RESULT>>'
 
@@ -267,16 +284,18 @@ def test_code_result_replay_has_zero_sdk_io_and_real_transformer(case, monkeypat
     )
     owner = case.owner
     execute = NativeCodeExecutor(producer=case.producer, calls=calls, owner=owner, on_prepared=lambda: None)
-    assert execute.execute(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={}) == {
+    assert execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={}) == {
         "result": "actual parsed"
     }
-    assert execute.execute(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={}) == {
+    assert execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={}) == {
         "result": "actual parsed"
     }
     assert len(physical) == 1
 
 
-def test_approval_wait_has_no_scope_and_exports_real_proposal(case, monkeypatch):
+def test_approval_wait_has_no_scope_and_exports_real_proposal(
+    case: CodeExecutorCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from runtime_contracts.builder.native.contracts import ApprovalWait
     from services.dify_builder.native_testing.sandbox import executor as module
     from services.dify_builder.native_testing.sandbox.executor import NativeCodeExecutor
@@ -292,30 +311,30 @@ def test_approval_wait_has_no_scope_and_exports_real_proposal(case, monkeypatch)
     )
     execute = NativeCodeExecutor(producer=case.producer, calls=calls, owner=object(), on_prepared=lambda: None)
     with pytest.raises(NativeApprovalWait):
-        execute.execute(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={})
+        execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
     assert len(case.producer.approval_proposals()) == 1
     assert not execute.is_execution_error(NativePolicyStop(ref=REF, reason_code="test_stop"))
 
 
-def test_non_json_input_error_never_contains_private_values(case):
+def test_non_json_input_error_never_contains_private_values(case: CodeExecutorCase) -> None:
     case.node.bind_execution_id(str(uuid4()))
     with pytest.raises(BuilderExecutionPolicyError) as error:
         case.producer.prepare(
             language=CodeLanguage.PYTHON3,
-            code=case.raw["code"],
+            code=cast(str, case.raw["code"]),
             inputs={"CANARY_PRIVATE": float("nan")},
         )
     assert "CANARY_PRIVATE" not in str(error.value)
     assert case.installed == []
 
 
-def variable_case(case, value):
+def variable_case(case: CodeExecutorCase, value: bool | int) -> dict[str, JsonValue]:
     from services.dify_builder.native_testing.sandbox.qualification import (
         describe_code_resource,
     )
 
     raw = raw_code(variables=[{"variable": "value", "value_selector": ["start", "value"]}])
-    graph = {
+    graph: dict[str, JsonValue] = {
         "nodes": [
             {
                 "id": "start",
@@ -341,23 +360,25 @@ def variable_case(case, value):
     return raw
 
 
-def test_typed_selector_input_does_not_conflate_boolean_and_integer(case):
+def test_typed_selector_input_does_not_conflate_boolean_and_integer(case: CodeExecutorCase) -> None:
     raw = variable_case(case, True)
     with pytest.raises(BuilderExecutionPolicyError):
-        case.producer.prepare(language=CodeLanguage.PYTHON3, code=raw["code"], inputs={"value": 1})
+        case.producer.prepare(language=CodeLanguage.PYTHON3, code=cast(str, raw["code"]), inputs={"value": 1})
     assert case.installed == []
 
 
-def test_current_selector_change_after_claim_refuses_before_transport(case, monkeypatch):
+def test_current_selector_change_after_claim_refuses_before_transport(
+    case: CodeExecutorCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.native_testing.sandbox import executor as module
 
     raw = variable_case(case, 1)
 
     class Calls:
-        def call(self, *, dispatch, **kw):
+        def call(self, *, dispatch: Callable[[DispatchPermit], JsonValue], **kw: object) -> JsonValue:
             del kw
             case.association.runtime_state.variable_pool.add(["start", "value"], 2)
-            return dispatch(object())
+            return dispatch(cast(DispatchPermit, object()))
 
     monkeypatch.setattr(
         module,
@@ -371,25 +392,27 @@ def test_current_selector_change_after_claim_refuses_before_transport(case, monk
         on_prepared=lambda: None,
     )
     with pytest.raises(BuilderExecutionPolicyError):
-        execute.execute(language=CodeLanguage.PYTHON3, code=raw["code"], inputs={"value": 1})
+        execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, raw["code"]), inputs={"value": 1})
 
 
-def test_wait_then_claim_preserves_logical_intent_and_replay_never_constructs_transport(case, monkeypatch):
+def test_wait_then_claim_preserves_logical_intent_and_replay_never_constructs_transport(
+    case: CodeExecutorCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from runtime_contracts.builder.native.contracts import ApprovalWait
     from services.dify_builder.native_testing.sandbox import executor as module
 
     case.node.bind_execution_id(str(uuid4()))
-    initial = case.producer.prepare(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={})
-    physical = []
+    initial = case.producer.prepare(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
+    physical: list[dict[str, object]] = []
 
     class Transport:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: object) -> None:
             physical.append(kwargs)
             assert case.auth.claimed
             assert kwargs["intent"] == initial.intent
             assert kwargs["spec"] == initial.spec
 
-        def execute(self, **kwargs):
+        def execute(self, **kwargs: object) -> str:
             del kwargs
             return '<<RESULT>>{"result":"ok"}<<RESULT>>'
 
@@ -408,10 +431,14 @@ def test_wait_then_claim_preserves_logical_intent_and_replay_never_constructs_tr
     )
     case.auth.decisions[0] = ApprovalWait(pending_operation_id="pending")
     with pytest.raises(NativeApprovalWait):
-        execute.execute(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={})
+        execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
     assert not physical
     assert not case.auth.claimed
     del case.auth.decisions[0]
-    assert execute.execute(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={}) == {"result": "ok"}
-    assert execute.execute(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={}) == {"result": "ok"}
+    assert execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={}) == {
+        "result": "ok"
+    }
+    assert execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={}) == {
+        "result": "ok"
+    }
     assert len(physical) == 1

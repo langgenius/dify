@@ -1,9 +1,11 @@
 """Current-worker progress recovery, including tenant and lease isolation."""
 
+from __future__ import annotations
+
 import json
 from collections.abc import Iterator
 from dataclasses import asdict
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from redis import Redis
@@ -37,7 +39,7 @@ def _snapshot() -> progress_snapshot.ProgressSnapshot:
 
 
 @pytest.fixture
-def redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[Redis]:
+def redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[Redis[bytes]]:
     with Redis() as client, patch.object(client, "get"), patch.object(client, "eval"):
         monkeypatch.setattr(progress_snapshot, "redis_client", client)
         monkeypatch.setattr(session_lock, "redis_client", client)
@@ -46,13 +48,14 @@ def redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[Redis]:
 
 @pytest.mark.parametrize("prefix", ["", "deployment"])
 def test_save_scopes_snapshot_to_tenant_session_and_activated_owner(
-    redis: Redis, monkeypatch: pytest.MonkeyPatch, prefix: str
+    redis: Redis[bytes], monkeypatch: pytest.MonkeyPatch, prefix: str
 ) -> None:
     apply_config_overrides(monkeypatch, REDIS_KEY_PREFIX=prefix)
     snapshot = _snapshot()
 
     progress_snapshot.save(snapshot, tenant_id="tenant-1", owner="activated-owner")
 
+    assert isinstance(redis.eval, Mock)
     args = redis.eval.call_args.args
     assert args[1:6] == (
         1,
@@ -65,9 +68,10 @@ def test_save_scopes_snapshot_to_tenant_session_and_activated_owner(
     assert args[7] == session_lock.active_advance_time_limit()
 
 
-def test_read_restores_ordered_steps_states_locale_and_node_parent(redis: Redis) -> None:
+def test_read_restores_ordered_steps_states_locale_and_node_parent(redis: Redis[bytes]) -> None:
     snapshot = _snapshot()
     raw = json.dumps(asdict(snapshot)).encode()
+    assert isinstance(redis.get, Mock)
     redis.get.side_effect = [b"activated-owner", raw, b"activated-owner"]
 
     restored = progress_snapshot.read(tenant_id="tenant-1", session_id="session-1")
@@ -78,25 +82,28 @@ def test_read_restores_ordered_steps_states_locale_and_node_parent(redis: Redis)
 
 @pytest.mark.parametrize("next_owner", [None, b"replacement-owner"])
 def test_read_discards_snapshot_if_command_settles_or_changes_worker_during_read(
-    redis: Redis, next_owner: bytes | None
+    redis: Redis[bytes], next_owner: bytes | None
 ) -> None:
+    assert isinstance(redis.get, Mock)
     redis.get.side_effect = [b"old-owner", json.dumps(asdict(_snapshot())).encode(), next_owner]
 
     assert progress_snapshot.read(tenant_id="tenant-1", session_id="session-1") is None
 
 
-def test_read_never_uses_a_previous_workers_or_another_tenants_snapshot(redis: Redis) -> None:
+def test_read_never_uses_a_previous_workers_or_another_tenants_snapshot(redis: Redis[bytes]) -> None:
     values = {
         "dify_builder:advance:session-1": b"current-owner",
         "dify_builder:progress:tenant-1:session-1:previous-owner": json.dumps(asdict(_snapshot())).encode(),
         "dify_builder:progress:tenant-2:session-1:current-owner": json.dumps(asdict(_snapshot())).encode(),
     }
+    assert isinstance(redis.get, Mock)
     redis.get.side_effect = values.get
 
     assert progress_snapshot.read(tenant_id="tenant-1", session_id="session-1") is None
 
 
-def test_read_does_not_load_progress_after_lease_release(redis: Redis) -> None:
+def test_read_does_not_load_progress_after_lease_release(redis: Redis[bytes]) -> None:
+    assert isinstance(redis.get, Mock)
     redis.get.return_value = None
 
     assert progress_snapshot.read(tenant_id="tenant-1", session_id="session-1") is None

@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy.engine import Engine
 
 from core.dify_builder.models import Graph
-from repositories.credentials.query_repository import CredentialQueryRepository
+from services.credentials.query import CredentialQuery
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     OTHER_TENANT_ID,
     TENANT_ID,
@@ -29,7 +29,7 @@ DRAFT_ID = "dddddddd-0000-4000-8000-000000000001"
 @dataclass
 class DraftToolInventory:
     daemon: FakeToolDaemon
-    queries: CredentialQueryRepository
+    queries: CredentialQuery
     forbidden: list[str]
     engine: Engine
 

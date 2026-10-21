@@ -34,8 +34,8 @@ def test_detection_failure_defaults_to_english(monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.parametrize("failure", ["missing", "exception", "invalid"])
-def test_chinese_language_survives_model_detection_failure(monkeypatch, failure):
-    def invoke(*_args, **_kwargs):
+def test_chinese_language_survives_model_detection_failure(monkeypatch: pytest.MonkeyPatch, failure: str) -> None:
+    def invoke(*_args: object, **_kwargs: object) -> str:
         if failure == "exception":
             raise ConnectionRefusedError("provider unavailable")
         return "The language is Chinese."
@@ -45,16 +45,16 @@ def test_chinese_language_survives_model_detection_failure(monkeypatch, failure)
     assert detector.detect_language("帮我把工作流的模型换成 fable 5.1") == "zh-Hans"
 
 
-def test_ambiguous_detection_failure_keeps_conversation_language():
+def test_ambiguous_detection_failure_keeps_conversation_language() -> None:
     assert LanguageDetector(lambda: None, prior_language="zh-Hans").detect_language("OK") == "zh-Hans"
 
 
-def test_fallback_allows_explicit_english_language_switch():
+def test_fallback_allows_explicit_english_language_switch() -> None:
     detector = LanguageDetector(lambda: None, prior_language="zh-Hans")
     assert detector.detect_language("Please explain the current workflow in English") == "en"
 
 
-def test_explicit_reply_language_switch_survives_literal_chinese_business_field():
+def test_explicit_reply_language_switch_survives_literal_chinese_business_field() -> None:
     from services.dify_builder.agent.localize import LanguageDetector
 
     assert (

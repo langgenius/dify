@@ -4,7 +4,8 @@ Import only the fixture into test_builder_native_runtime.py. This module is not
 an independently collected suite. No production hooks or logging are added.
 Records contain fixed stage names, counts, booleans and SHA-256 identifiers.
 No URLs, input/output values, serialized checkpoints, grant tokens or exception
-text are emitted. Only the serialized payload returned by the real checkpoint is parsed. Restore
+text are emitted. Failure records add only exception types and fixed source frames.
+Only the serialized payload returned by the real checkpoint is parsed. Restore
 and entry observations read existing owners/counts without queue serialization.
 No extra snapshot, dump, restore, graph or factory is constructed.
 """
@@ -13,11 +14,33 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from collections import Counter
+from collections.abc import Callable, Generator, Iterator
 from functools import wraps
 from threading import Lock
+from typing import Protocol, cast
 
 import pytest
+
+from graphon.engine.layer import Layer
+from graphon.engine_events import EngineEvent
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.nodes.base.node import Node
+from graphon.nodes.http_request.node import HttpRequestNode
+from graphon.runtime import RuntimeState
+from runtime_contracts.builder.native.contracts import EffectIntent
+from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
+from services.dify_builder.native_testing.control import BoundaryOwnerState
+from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+from services.dify_builder.native_testing.runtime import NativeHostResumeBindings
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import RuntimeDeliveryCase
+
+
+class _ObservedNativeNode(Protocol):
+    _native_control_owner: BoundaryOwnerState
+
 
 _TARGET = "tests.test_containers_integration_tests.core.workflow.test_builder_native_runtime"
 _LIMIT = 256
@@ -51,7 +74,7 @@ def _snapshot(serialized: str) -> dict[str, object]:
     }
 
 
-def _runtime_counts(runtime) -> dict[str, object]:
+def _runtime_counts(runtime: RuntimeState) -> dict[str, object]:
     """Read existing owners only; never serialize, iterate or drain a queue."""
     fields = runtime.__dict__
     execution = runtime.graph_execution
@@ -68,14 +91,16 @@ def _runtime_counts(runtime) -> dict[str, object]:
 
 
 @pytest.fixture(autouse=True)
-def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
+def native_runtime_resume_diagnostics(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch, record_property: Callable[[str, object], None]
+) -> Iterator[None]:
     """Transparent, module-limited observation; execution/outcomes stay untouched."""
     if request.module.__name__ != _TARGET:
         yield
         return
     # Ordering is explicit: wrap the fixture's synthetic transport only after
     # runtime_case has installed it. Never replace or bypass that transport.
-    case = request.getfixturevalue("runtime_case")
+    case = cast(RuntimeDeliveryCase, request.getfixturevalue("runtime_case"))
 
     import httpx
 
@@ -83,11 +108,16 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
     from core.helper import ssrf_proxy
     from graphon.engine_events import GraphRunStartedEvent, NodeRunStartedEvent
     from graphon.entities import WorkflowStartReason
+    from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from runtime_contracts.builder.native.contracts import operation_digest
     from services.dify_builder.native_testing import runtime as runtime_module
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
     from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
     from services.dify_builder.native_testing.context_runtime import NativeGraphRuntimeState
+    from services.dify_builder.native_testing.control import (
+        NativeApprovalWait,
+        NativePolicyStop,
+    )
     from services.dify_builder.native_testing.host_execution import NativeHostLaunch
     from services.dify_builder.native_testing.http_adapter import NativeHttpClient
     from services.dify_builder.native_testing.http_binding import DeferredNativeHttpClient, NativeHttpBindingProducer
@@ -113,6 +143,52 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
         # Diagnostic failure cannot suppress/replace the real operation/error.
         note(stage + ".diagnostic_unavailable", **facts)
 
+    def exception_facts(error: BaseException | None) -> dict[str, object]:
+        if error is None:
+            return {"active_exception": False}
+        frames: list[list[str | int]] = []
+        trace = error.__traceback__
+        while trace is not None:
+            module = trace.tb_frame.f_globals.get("__name__", "")
+            if isinstance(module, str) and module.startswith("services.dify_builder.native_testing."):
+                frames.append([module, trace.tb_frame.f_code.co_name, trace.tb_lineno])
+            trace = trace.tb_next
+        causes: list[dict[str, object]] = []
+        cause = error.__cause__ if error.__cause__ is not None else error.__context__
+        seen = {id(error)}
+        while cause is not None and id(cause) not in seen and len(causes) < 8:
+            seen.add(id(cause))
+            cause_frames: list[list[str | int]] = []
+            trace = cause.__traceback__
+            while trace is not None:
+                module = trace.tb_frame.f_globals.get("__name__", "")
+                if isinstance(module, str):
+                    cause_frames.append([module, trace.tb_frame.f_code.co_name, trace.tb_lineno])
+                trace = trace.tb_next
+            causes.append({"exception_type": type(cause).__name__, "frames": cause_frames})
+            cause = cause.__cause__ if cause.__cause__ is not None else cause.__context__
+        facts: dict[str, object] = {
+            "active_exception": True,
+            "exception_type": type(error).__name__,
+            "exception_frames": frames,
+            "exception_causes": causes,
+        }
+        if isinstance(error, (BuilderExecutionPolicyError, NativePolicyStop)):
+            facts["reason_code"] = error.reason_code
+        return facts
+
+    original_private_unknown = NativeHostLaunch._unknown
+
+    @wraps(original_private_unknown)
+    def private_unknown(host: NativeHostLaunch) -> None:
+        note(
+            "host_private_unknown",
+            generation=host.lifetime.generation,
+            **exception_facts(sys.exception()),
+        )
+        return original_private_unknown(host)
+
+    monkeypatch.setattr(NativeHostLaunch, "_unknown", private_unknown)
     ordinary_verbs = (
         ssrf_proxy.get,
         ssrf_proxy.post,
@@ -124,8 +200,8 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
     original_create = DifyNodeFactory.create_node
 
     @wraps(original_create)
-    def create(factory, *args, **kwargs):
-        node = original_create(factory, *args, **kwargs)
+    def create(factory: DifyNodeFactory, node_config: dict[str, object] | NodeConfigDict) -> Node[BaseNodeData]:
+        node = original_create(factory, node_config)
         try:
             bridge = factory._native_runtime
             note(
@@ -136,8 +212,11 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
                 required=factory._dify_context.native_test_required,
                 has_ref=factory._dify_context.native_test_ref is not None,
                 native_runtime=type(node.runtime_state) is NativeGraphRuntimeState,
-                boundary_owner=(bridge is not None and node._native_control_owner is bridge._boundary_owner),
-                deferred_http=hasattr(node, "_http_client") and type(node._http_client) is DeferredNativeHttpClient,
+                boundary_owner=(
+                    bridge is not None
+                    and cast(_ObservedNativeNode, node)._native_control_owner is bridge._boundary_owner
+                ),
+                deferred_http=isinstance(node, HttpRequestNode) and type(node._http_client) is DeferredNativeHttpClient,
             )
         except Exception:
             failure("factory_node")
@@ -147,7 +226,7 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
     original_snapshot = NativeHostLaunch.snapshot_wait
 
     @wraps(original_snapshot)
-    def snapshot(host):
+    def snapshot(host: NativeHostLaunch) -> NativeCheckpointPayload:
         payload = original_snapshot(host)
         try:
             note(
@@ -175,8 +254,10 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
     original_restore = runtime_module.restore_claimed_host
 
     @wraps(original_restore)
-    def restore(**kwargs):
-        actual = original_restore(**kwargs)
+    def restore(
+        *, host: NativeHostLaunch, lifecycle: NativeTestLifecycleService, expected_payload: NativeCheckpointPayload
+    ) -> NativeHostResumeBindings:
+        actual = original_restore(host=host, lifecycle=lifecycle, expected_payload=expected_payload)
         try:
             note("restore", **_runtime_counts(actual.runtime_state))
         except Exception:
@@ -187,7 +268,7 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
     original_entry = WorkflowEntry.run
 
     @wraps(original_entry)
-    def entry(owner):
+    def entry(owner: WorkflowEntry) -> Generator[EngineEvent]:
         try:
             note("entry", **_runtime_counts(owner.graph_engine.runtime_state))
         except Exception:
@@ -200,7 +281,7 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
     original_observe = NativeHostLaunch._observe_root_event
 
     @wraps(original_observe)
-    def observe(host, *, event, layer):
+    def observe(host: NativeHostLaunch, *, event: EngineEvent, layer: Layer) -> None:
         value = original_observe(host, event=event, layer=layer)
         try:
             if isinstance(event, NodeRunStartedEvent):
@@ -225,29 +306,43 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
     original_reject = StopAwareReadyQueue._should_reject
 
     @wraps(original_reject)
-    def reject(owner):
+    def reject(owner: StopAwareReadyQueue) -> bool:
         value = original_reject(owner)
         note("ready_reject", rejected=value, aborted=owner._graph_execution.aborted)
         return value
 
     monkeypatch.setattr(StopAwareReadyQueue, "_should_reject", reject)
 
-    def wrap(owner, name, original, stage, *, identity=False, decision=False):
+    def wrap[**P, R](
+        owner: type[object],
+        name: str,
+        original: Callable[P, R],
+        stage: str,
+        *,
+        identity: bool = False,
+        decision: bool = False,
+    ) -> None:
 
         @wraps(original)
-        def observed(instance, *args, **kwargs):
-            facts = {}
+        def observed(*args: P.args, **kwargs: P.kwargs) -> R:
+            facts: dict[str, object] = {}
             if identity:
                 try:
-                    facts["operation_digest"] = operation_digest(kwargs["intent"].key)
-                    facts["cursor"] = kwargs["intent"].key.cursor
+                    intent = kwargs["intent"]
+                    if not isinstance(intent, EffectIntent):
+                        raise TypeError("native diagnostic intent")
+                    facts["operation_digest"] = operation_digest(intent.key)
+                    facts["cursor"] = intent.key.cursor
                 except Exception:
                     failure(stage)
             note(stage + ".enter", **facts)
             try:
-                value = original(instance, *args, **kwargs)
-            except BaseException:
-                note(stage + ".raised", **facts)
+                value = original(*args, **kwargs)
+            except BaseException as error:
+                if isinstance(error, NativeApprovalWait):
+                    note(stage + ".raised", **facts)
+                else:
+                    note(stage + ".raised", **facts, **exception_facts(error))
                 raise
             if decision:
                 # The public decision union is fixed; never stringify a DTO.

@@ -4,6 +4,8 @@ No generator/runner/factory/persistence replacement in the positive controls.
 The package SSRF convenience stub is deliberately replaced with failing spies.
 """
 
+from __future__ import annotations
+
 import json
 from collections.abc import Iterator
 from dataclasses import replace
@@ -12,6 +14,7 @@ from typing import NoReturn
 from uuid import uuid4
 
 import pytest
+import pytest_mock
 import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -166,7 +169,7 @@ def no_live(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 
 @pytest.fixture
-def no_jinja_compilation(mocker) -> Iterator[None]:
+def no_jinja_compilation(mocker: pytest_mock.MockerFixture) -> Iterator[None]:
     """Guard restricted Template execution without replacing Jinja lex/parse."""
     from jinja2 import Environment, Template, debug
 
@@ -1130,7 +1133,9 @@ def test_composed_template_seal_replay_rejects_changed_output(
 
 
 @pytest.mark.usefixtures("no_live", "no_jinja_compilation")
-def test_composed_template_normal_workflow_citation_defaults_are_preserved(mocker, native_owner: NativeOwner) -> None:
+def test_composed_template_normal_workflow_citation_defaults_are_preserved(
+    mocker: pytest_mock.MockerFixture, native_owner: NativeOwner
+) -> None:
     from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 
     retrieval = mocker.patch.object(

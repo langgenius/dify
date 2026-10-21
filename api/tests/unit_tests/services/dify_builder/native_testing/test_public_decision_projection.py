@@ -13,7 +13,9 @@ from services.dify_builder.native_testing.public_contracts import PendingActionD
     ("decision", "expired", "expected"),
     [("approved", False, "confirmed"), ("approved", True, "expired"), ("denied", False, "denied")],
 )
-def test_saved_decision_projects_independently_of_current_grant_validity(decision, expired, expected):
+def test_saved_decision_projects_independently_of_current_grant_validity(
+    decision: str, expired: bool, expected: str
+) -> None:
     from services.dify_builder.native_testing.public_projection import project_pending_decision
 
     now = datetime.now(UTC)
@@ -52,7 +54,7 @@ def test_saved_decision_projects_independently_of_current_grant_validity(decisio
     assert "grant_id" not in projected.model_dump()
 
 
-def test_configuration_projection_reports_unsupported_continuation_without_approval():
+def test_configuration_projection_reports_unsupported_continuation_without_approval() -> None:
     from services.dify_builder.native_testing.public_projection import project_pending_decision
 
     item = PendingActionDisclosure(
@@ -75,7 +77,7 @@ def test_configuration_projection_reports_unsupported_continuation_without_appro
     assert result.scope_digest is None
 
 
-def test_public_revision_counts_only_saved_decision_records():
+def test_public_revision_counts_only_saved_decision_records() -> None:
     from services.dify_builder.native_testing.public_projection import decision_public_revision
 
     assert (
@@ -95,7 +97,7 @@ def test_public_revision_counts_only_saved_decision_records():
     ("expiry_offset", "expected"),
     [(-1, "expired"), (0, "expired"), (1, "awaiting_decision")],
 )
-def test_undecided_proposal_projects_expiry_at_a_fixed_clock(expiry_offset, expected):
+def test_undecided_proposal_projects_expiry_at_a_fixed_clock(expiry_offset: int, expected: str) -> None:
     from services.dify_builder.native_testing.public_projection import project_pending_decision
 
     now = datetime(2026, 10, 20, 12, tzinfo=UTC)

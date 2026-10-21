@@ -13,14 +13,14 @@ from tests.unit_tests.services.dify_builder.test_agent_operation_owner import en
 
 
 @pytest.fixture
-def app():
+def app() -> Flask:
     application = Flask(__name__)
     application.config["TESTING"] = True
     application.register_blueprint(bp)
     return application
 
 
-def test_legacy_config_route_refuses_native_header_before_read(app):
+def test_legacy_config_route_refuses_native_header_before_read(app: Flask) -> None:
     with (
         config_overrides_context(PLUGIN_DAEMON_KEY="daemon", INNER_API_KEY_FOR_PLUGIN="plugin"),
         patch("controllers.console.wraps._is_setup_completed", return_value=True),
@@ -34,13 +34,14 @@ def test_legacy_config_route_refuses_native_header_before_read(app):
     service.assert_not_called()
 
 
-def test_confirmed_config_route_validates_read_before_existing_service(app):
+def test_confirmed_config_route_validates_read_before_existing_service(app: Flask) -> None:
     lineage, _, transport, _ = owner()
     original = lineage.backend.read_run_identity_sync
-    lineage.backend.read_run_identity_sync = lambda *args: original(*args).model_copy(
+    lineage.backend.read_run_identity_sync = lambda run_id, selection: original(run_id, selection).model_copy(
         update={"native_test_profile": "confirmed"}
     )
     app.extensions["native_agent_endpoint_lineage"] = lineage
+    assert transport.parent_node is not None
     wire = envelope().model_copy(update={"ref": transport.parent_node.ref})
     headers = {
         "Authorization": "Bearer agent",
@@ -65,10 +66,10 @@ def test_confirmed_config_route_validates_read_before_existing_service(app):
     service.return_value.manifest.assert_called_once()
 
 
-def test_config_mutation_stays_closed_for_confirmed_runtime(app):
+def test_config_mutation_stays_closed_for_confirmed_runtime(app: Flask) -> None:
     lineage, _, transport, _ = owner()
     original = lineage.backend.read_run_identity_sync
-    lineage.backend.read_run_identity_sync = lambda *args: original(*args).model_copy(
+    lineage.backend.read_run_identity_sync = lambda run_id, selection: original(run_id, selection).model_copy(
         update={"native_test_profile": "confirmed"}
     )
     app.extensions["native_agent_endpoint_lineage"] = lineage

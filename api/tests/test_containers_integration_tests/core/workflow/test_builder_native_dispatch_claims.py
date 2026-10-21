@@ -5,6 +5,56 @@ Missing protocol is feature-availability RED, not an existing-network-duplicate
 claim. Every race uses independent connections in killable OS processes.
 """
 
+from __future__ import annotations
+
+from collections.abc import Callable, Generator
+from multiprocessing.connection import Connection as ProcessConnection
+from multiprocessing.process import BaseProcess
+from multiprocessing.synchronize import Event as ProcessEvent
+from typing import TYPE_CHECKING, Literal, override
+
+from pydantic import JsonValue
+from sqlalchemy import Engine, Table
+from sqlalchemy.orm import Session
+
+from runtime_contracts.builder.native.contracts import EffectIntent
+from services.dify_builder.native_testing.repository import OwnedNativeTest
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+
+if TYPE_CHECKING:
+    from runtime_contracts.builder.native.contracts import NativeTestContextRef
+
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy.orm.state import InstanceState
+
+from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import LedgerCase
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import sessionmaker
+
+    from core.dify_builder.models import Actor
+    from runtime_contracts.builder.native.contracts import (
+        DispatchPermit,
+        NativeTestContextRef,
+    )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_effect_ledger as _fixture_types_0,
+    )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_effect_ledger as _fixture_types_0,
+    )
+
+
 import multiprocessing
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
@@ -19,6 +69,7 @@ from sqlalchemy import inspect as inspect_orm
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
+from sqlalchemy.sql.elements import ColumnElement
 
 from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest
@@ -34,7 +85,6 @@ from runtime_contracts.builder.native.contracts import DispatchPermit, PolicySto
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
-    LedgerCase,
     MetadataOwner,
     _create_real_child,
     _migration,
@@ -56,7 +106,7 @@ MIGRATION = "2026_10_15_1200-e59b7d32a6c1_add_native_effect_dispatch_claims.py"
 
 
 @pytest.fixture(scope="module", autouse=True)
-def migrated_dispatch_claims(migrated_native_tables, flask_app_with_containers):
+def migrated_dispatch_claims(migrated_native_tables: None, flask_app_with_containers: ColumnElement[bool]) -> None:
     assert migrated_native_tables is None
     assert callable(EffectAuthorizationService.claim_dispatch), (
         "durable physical dispatch claim protocol is unavailable"
@@ -74,7 +124,7 @@ def migrated_dispatch_claims(migrated_native_tables, flask_app_with_containers):
 
 
 @pytest.fixture
-def claim_case(ledger_case):
+def claim_case(ledger_case: _fixture_types_0.LedgerCase) -> tuple[LedgerCase, DispatchPermit]:
     case = ledger_case
     with case.factory() as session:
         state = session.scalar(
@@ -84,21 +134,39 @@ def claim_case(ledger_case):
             )
         )
         request = session.get(DifyBuilderExecutionRequest, case.ref.request_id)
-        assert state.context_object_id
-        assert (state.app_id, state.workflow_id) == (request.app_id, request.workflow_id)
-        assert (state.state, state.generation, state.pending_ids) == ("running", 0, [])
+        assert require_instance(state, NativeInvocationState).context_object_id
+        assert (
+            require_instance(state, NativeInvocationState).app_id,
+            require_instance(state, NativeInvocationState).workflow_id,
+        ) == (
+            require_instance(request, DifyBuilderExecutionRequest).app_id,
+            require_instance(request, DifyBuilderExecutionRequest).workflow_id,
+        )
+        assert (
+            require_instance(state, NativeInvocationState).state,
+            require_instance(state, NativeInvocationState).generation,
+            require_instance(state, NativeInvocationState).pending_ids,
+        ) == ("running", 0, [])
     case.confirm(max_calls=2, max_dispatches=2)
     permit = case.guard.before_call(ref=case.ref, intent=case.intent)
     assert isinstance(permit, DispatchPermit)
     return case, permit
 
 
-def _claim(case, permit, *, io, ref=None, intent=None, guard=None):
+def _claim(
+    case: LedgerCase,
+    permit: DispatchPermit,
+    *,
+    io: Callable[[], object],
+    ref: NativeTestContextRef | None = None,
+    intent: EffectIntent | None = None,
+    guard: EffectAuthorizationService | None = None,
+) -> None:
     (guard or case.guard).claim_dispatch(ref=ref or case.ref, intent=intent or case.intent, permit=permit)
     io()
 
 
-def _count(case):
+def _count(case: LedgerCase) -> int | None:
     from models.dify_builder_native_tests import NativeEffectDispatchClaim
 
     with case.factory() as session:
@@ -109,7 +177,7 @@ def _count(case):
         )
 
 
-def _assert_one_spend(case, permit):
+def _assert_one_spend(case: LedgerCase, permit: DispatchPermit) -> None:
     with case.factory() as session:
         attempts = session.scalars(
             select(NativeEffectAttempt).where(NativeEffectAttempt.request_id == case.ref.request_id)
@@ -117,19 +185,23 @@ def _assert_one_spend(case, permit):
         assert [attempt.id for attempt in attempts] == [permit.attempt_id]
         scope = session.get(NativeTestScope, case.ref.request_id)
         grant = session.get(NativeEffectGrant, attempts[0].grant_id)
+        assert scope is not None
+        assert grant is not None
         for quota in (scope, grant):
             assert (quota.spent_calls, quota.spent_dispatches, quota.spent_cost_units) == (1, 1, 2)
-        assert scope.budget_spent == {"cpu_ms": 10}
+        assert require_instance(scope, NativeTestScope).budget_spent == {"cpu_ms": 10}
 
 
-def test_inert_validation_does_not_consume_and_owner_claim_commits_before_io(claim_case):
+def test_inert_validation_does_not_consume_and_owner_claim_commits_before_io(
+    claim_case: tuple[LedgerCase, DispatchPermit],
+) -> None:
     case, permit = claim_case
     case.guard.validate_dispatch(ref=case.ref, intent=case.intent, permit=permit)
     case.guard.validate_dispatch(ref=case.ref, intent=case.intent, permit=permit)
     assert _count(case) == 0
     observed = []
 
-    def io():
+    def io() -> None:
         # A separate session can acquire the SAME lock and see the committed
         # claim. A claim returned inside its writer transaction times out here.
         with case.factory.begin() as session:
@@ -149,9 +221,9 @@ def test_inert_validation_does_not_consume_and_owner_claim_commits_before_io(cla
     _assert_one_spend(case, permit)
 
 
-def _process_claim(case, permit, *, start, sender):
+def _process_claim(case: LedgerCase, permit: DispatchPermit, *, start: ProcessEvent, sender: ProcessConnection) -> None:
     with case.factory() as session:
-        url = session.get_bind().url
+        url = require_instance(session.get_bind(), Engine).url
     engine = create_engine(url, poolclass=NullPool)
     child = LedgerCase(sessionmaker(engine, expire_on_commit=False), case.actor, case.ref, case.intent, MetadataOwner())
     try:
@@ -164,10 +236,11 @@ def _process_claim(case, permit, *, start, sender):
         sender.close()
 
 
-def _run_processes(case, permit, count):
+def _run_processes(case: LedgerCase, permit: DispatchPermit, count: int) -> list[str]:
     ctx = multiprocessing.get_context("fork")
     start = ctx.Event()
-    processes, receivers = [], []
+    processes: list[BaseProcess] = []
+    receivers: list[ProcessConnection] = []
     try:
         for _ in range(count):
             receiver, sender = ctx.Pipe(duplex=False)
@@ -180,7 +253,7 @@ def _run_processes(case, permit, count):
         outcomes = []
         for receiver in receivers:
             assert receiver.poll(20), "claim worker did not finish"
-            outcomes.append(receiver.recv())
+            outcomes.append(require_instance(receiver.recv(), str))
         for process in processes:
             process.join(20)
             assert process.exitcode == 0
@@ -194,14 +267,16 @@ def _run_processes(case, permit, count):
             receiver.close()
 
 
-def test_two_processes_consume_one_owned_permit_once(claim_case):
+def test_two_processes_consume_one_owned_permit_once(claim_case: tuple[LedgerCase, DispatchPermit]) -> None:
     case, permit = claim_case
     assert sorted(_run_processes(case, permit, 2)) == ["dispatch_already_consumed", "io"]
     assert _count(case) == 1
     _assert_one_spend(case, permit)
 
 
-def test_lost_claim_response_and_restarted_process_cannot_dispatch(claim_case):
+def test_lost_claim_response_and_restarted_process_cannot_dispatch(
+    claim_case: tuple[LedgerCase, DispatchPermit],
+) -> None:
     case, permit = claim_case
     # First caller loses the acknowledgement before IO. Persistent consumption
     # is deliberately conservative: another process must not replay it.
@@ -211,12 +286,15 @@ def test_lost_claim_response_and_restarted_process_cannot_dispatch(claim_case):
     _assert_one_spend(case, permit)
 
 
-def test_rollback_before_claim_commit_invokes_no_io(claim_case):
+def test_rollback_before_claim_commit_invokes_no_io(claim_case: tuple[LedgerCase, DispatchPermit]) -> None:
     case, permit = claim_case
 
     class RollbackLoader(OwnedNativeTestLoader):
+        @override
         @contextmanager
-        def locked(self, *, ref, settlement=False):
+        def locked(
+            self, *, ref: NativeTestContextRef, settlement: bool = False
+        ) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
             with super().locked(ref=ref, settlement=settlement) as value:
                 yield value
                 raise RuntimeError("injected before commit")
@@ -233,7 +311,7 @@ def test_rollback_before_claim_commit_invokes_no_io(claim_case):
 
 
 @pytest.mark.parametrize("identity", ["tenant", "actor", "request", "invocation", "context"])
-def test_owner_mismatch_leaves_no_claim_or_io(claim_case, identity):
+def test_owner_mismatch_leaves_no_claim_or_io(claim_case: tuple[LedgerCase, DispatchPermit], identity: str) -> None:
     case, permit = claim_case
     guard, ref = case.guard, case.ref
     if identity in {"tenant", "actor"}:
@@ -266,7 +344,9 @@ def test_owner_mismatch_leaves_no_claim_or_io(claim_case, identity):
     ],
     ids=["resource", "target", "typed-args", "phase", "revision", "account", "input", "capability"],
 )
-def test_intent_mismatch_leaves_no_claim_or_io(claim_case, change):
+def test_intent_mismatch_leaves_no_claim_or_io(
+    claim_case: tuple[LedgerCase, DispatchPermit], change: dict[str, JsonValue]
+) -> None:
     case, permit = claim_case
     observed = []
     with pytest.raises(BuilderExecutionPolicyError):
@@ -276,7 +356,7 @@ def test_intent_mismatch_leaves_no_claim_or_io(claim_case, change):
 
 
 @pytest.mark.parametrize("field", ["permit_id", "attempt_id", "operation_id", "expires_at"])
-def test_permit_mismatch_leaves_no_claim_or_io(claim_case, field):
+def test_permit_mismatch_leaves_no_claim_or_io(claim_case: tuple[LedgerCase, DispatchPermit], field: str) -> None:
     case, permit = claim_case
     replacement = (datetime.now(UTC) + timedelta(minutes=1)).isoformat() if field == "expires_at" else str(uuid4())
     observed = []
@@ -289,7 +369,9 @@ def test_permit_mismatch_leaves_no_claim_or_io(claim_case, field):
 @pytest.mark.parametrize(
     "blocked", ["revoked", "scope-expired", "permit-expired", "cancelled", "inactive", "terminal", "unknown"]
 )
-def test_current_authority_failure_leaves_no_claim_or_io(claim_case, blocked):
+def test_current_authority_failure_leaves_no_claim_or_io(
+    claim_case: tuple[LedgerCase, DispatchPermit], blocked: str
+) -> None:
     from models.account import TenantAccountJoin
 
     case, permit = claim_case
@@ -301,22 +383,32 @@ def test_current_authority_failure_leaves_no_claim_or_io(claim_case, blocked):
             )
             session.delete(membership)
         elif blocked == "scope-expired":
-            session.get(NativeTestScope, case.ref.request_id).expires_at = datetime.now(UTC) - timedelta(seconds=1)
+            require_instance(session.get(NativeTestScope, case.ref.request_id), NativeTestScope).expires_at = (
+                datetime.now(UTC) - timedelta(seconds=1)
+            )
         elif blocked == "permit-expired":
             guard = EffectAuthorizationService(
                 case.guard.loader, clock=lambda: datetime.fromisoformat(permit.expires_at)
             )
         elif blocked == "cancelled":
-            session.get(NativeTestScope, case.ref.request_id).cancelled = True
+            require_instance(session.get(NativeTestScope, case.ref.request_id), NativeTestScope).cancelled = True
         elif blocked == "inactive":
-            session.scalar(
-                select(NativeTestInvocation).where(NativeTestInvocation.request_id == case.ref.request_id)
+            require_instance(
+                session.scalar(
+                    select(NativeTestInvocation).where(NativeTestInvocation.request_id == case.ref.request_id)
+                ),
+                NativeTestInvocation,
             ).active = False
         elif blocked == "terminal":
-            session.get(DifyBuilderExecutionRequest, case.ref.request_id).state = "sealed"
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, case.ref.request_id), DifyBuilderExecutionRequest
+            ).state = "sealed"
         else:
-            session.scalar(
-                select(NativeInvocationState).where(NativeInvocationState.request_id == case.ref.request_id)
+            require_instance(
+                session.scalar(
+                    select(NativeInvocationState).where(NativeInvocationState.request_id == case.ref.request_id)
+                ),
+                NativeInvocationState,
             ).state = "unknown"
     observed = []
     with pytest.raises(BuilderExecutionPolicyError):
@@ -327,7 +419,7 @@ def test_current_authority_failure_leaves_no_claim_or_io(claim_case, blocked):
 
 
 @pytest.mark.parametrize("state", ["unknown", "cancelled", "completed"])
-def test_blocked_ancestor_prevents_child_claim(claim_case, state):
+def test_blocked_ancestor_prevents_child_claim(claim_case: tuple[LedgerCase, DispatchPermit], state: str) -> None:
     case, permit = claim_case
     child_ref = _create_real_child(case)
     child_intent = case.intent.model_copy(
@@ -343,7 +435,7 @@ def test_blocked_ancestor_prevents_child_claim(claim_case, state):
                 NativeTestInvocation.invocation_id == case.ref.invocation_id,
             )
         )
-        raw = dict(next(iter(binding.bindings.values())))
+        raw = dict(next(iter(require_instance(binding, NativeTestInvocation).bindings.values())))
         raw["intent_digest"] = canonical_digest(child_intent.model_dump(mode="json"))
         child_row = session.scalar(
             select(NativeTestInvocation).where(
@@ -351,7 +443,7 @@ def test_blocked_ancestor_prevents_child_claim(claim_case, state):
                 NativeTestInvocation.invocation_id == child_ref.invocation_id,
             )
         )
-        child_row.bindings = {operation_digest(child_intent.key): raw}
+        require_instance(child_row, NativeTestInvocation).bindings = {operation_digest(child_intent.key): raw}
     child = LedgerCase(case.factory, case.actor, child_ref, child_intent, case.metadata)
     # The approved scope permits two identical occurrences but each invocation
     # still needs its own permit. No IO occurs in before_call.
@@ -366,7 +458,7 @@ def test_blocked_ancestor_prevents_child_claim(claim_case, state):
                 NativeInvocationState.invocation_id == case.ref.invocation_id,
             )
         )
-        root.state = state
+        require_instance(root, NativeInvocationState).state = state
     observed = []
     with pytest.raises(BuilderExecutionPolicyError, match="native_ancestor_quarantined"):
         _claim(child, child_permit, io=lambda: observed.append("io"))
@@ -375,7 +467,9 @@ def test_blocked_ancestor_prevents_child_claim(claim_case, state):
 
 
 @pytest.mark.parametrize("outcome", ["completed", "failed", "unknown", "not_dispatched"])
-def test_settlement_cannot_replay_physical_io(claim_case, outcome):
+def test_settlement_cannot_replay_physical_io(
+    claim_case: tuple[LedgerCase, DispatchPermit], outcome: Literal["completed", "failed", "unknown", "not_dispatched"]
+) -> None:
     case, permit = claim_case
     observed = []
     _claim(case, permit, io=lambda: observed.append("io"))
@@ -392,7 +486,9 @@ def test_settlement_cannot_replay_physical_io(claim_case, outcome):
     _assert_one_spend(case, permit)
 
 
-def test_claim_rows_are_unique_append_only_and_block_destructive_downgrade(claim_case):
+def test_claim_rows_are_unique_append_only_and_block_destructive_downgrade(
+    claim_case: tuple[LedgerCase, DispatchPermit],
+) -> None:
     from models.dify_builder_native_tests import NativeEffectDispatchClaim
 
     case, permit = claim_case
@@ -402,12 +498,14 @@ def test_claim_rows_are_unique_append_only_and_block_destructive_downgrade(claim
             select(NativeEffectDispatchClaim).where(NativeEffectDispatchClaim.attempt_id == permit.attempt_id)
         )
         values = {
-            column.name: inspect_orm(claim).attrs[column.name].value
+            column.name: require_instance(inspect_orm(claim), InstanceState).attrs[column.name].value
             for column in NativeEffectDispatchClaim.__table__.columns
         }
     for changed in ({"id": str(uuid4())}, {"id": str(uuid4()), "attempt_id": str(uuid4())}):
         with pytest.raises(IntegrityError), case.factory.begin() as session:
-            session.execute(NativeEffectDispatchClaim.__table__.insert().values({**values, **changed}))
+            session.execute(
+                require_instance(NativeEffectDispatchClaim.__table__, Table).insert().values({**values, **changed})
+            )
     for sql in (
         "UPDATE dify_builder_native_effect_dispatch_claims SET invocation_id = 'forged' WHERE attempt_id = :attempt",
         "DELETE FROM dify_builder_native_effect_dispatch_claims WHERE attempt_id = :attempt",
@@ -415,37 +513,42 @@ def test_claim_rows_are_unique_append_only_and_block_destructive_downgrade(claim
         with pytest.raises(DBAPIError, match="append-only"), case.factory.begin() as session:
             session.execute(text(sql), {"attempt": permit.attempt_id})
     with case.factory() as session:
-        engine = session.get_bind()
+        engine = require_instance(session.get_bind(), Engine)
     with pytest.raises(RuntimeError, match="dispatch claim evidence must be retained"), engine.begin() as connection:
         with Operations.context(MigrationContext.configure(connection)):
             _migration(MIGRATION).downgrade()
     assert _count(case) == 1
 
 
-def test_concurrent_downgrade_cannot_erase_a_successfully_committed_claim(claim_case):
+def test_concurrent_downgrade_cannot_erase_a_successfully_committed_claim(
+    claim_case: tuple[LedgerCase, DispatchPermit],
+) -> None:
     """Real migration DDL must serialize its empty check with physical claims."""
     case, permit = claim_case
     with case.factory() as session:
-        url = session.get_bind().url
+        url = require_instance(session.get_bind(), Engine).url
     schema = "dispatch_race_" + uuid4().hex
     table = "dify_builder_native_effect_dispatch_claims"
     setup_engine = create_engine(url, poolclass=NullPool)
     ctx = multiprocessing.get_context("fork")
     checked_empty, release_downgrade = ctx.Event(), ctx.Event()
     io_count = ctx.Value("i", 0)
-    processes, receivers = [], []
+    processes: list[BaseProcess] = []
+    receivers: list[ProcessConnection] = []
 
-    def engine_for_schema():
+    def engine_for_schema() -> Engine:
         return create_engine(
             url,
             poolclass=NullPool,
             connect_args={"options": f"-csearch_path={schema},public -clock_timeout=2000 -cstatement_timeout=10000"},
         )
 
-    def downgrade_worker(sender):
+    def downgrade_worker(sender: ProcessConnection) -> None:
         engine = engine_for_schema()
 
-        def after_empty_check(_connection, _cursor, statement, _parameters, _context, _executemany):
+        def after_empty_check(
+            _connection: object, _cursor: object, statement: str, _parameters, _context, _executemany
+        ) -> None:
             # Pause only after PostgreSQL has executed the real migration read.
             # Its table locks remain held; neither SQL nor results are replaced.
             if statement.strip().lower() == f"select 1 from {table} limit 1":
@@ -466,13 +569,13 @@ def test_concurrent_downgrade_cannot_erase_a_successfully_committed_claim(claim_
             engine.dispose()
             sender.close()
 
-    def claimant_worker(sender):
+    def claimant_worker(sender: ProcessConnection) -> None:
         engine = engine_for_schema()
         child = LedgerCase(
             sessionmaker(engine, expire_on_commit=False), case.actor, case.ref, case.intent, MetadataOwner()
         )
 
-        def io():
+        def io() -> None:
             with io_count.get_lock():
                 io_count.value += 1
 
@@ -485,7 +588,7 @@ def test_concurrent_downgrade_cannot_erase_a_successfully_committed_claim(claim_
             engine.dispose()
             sender.close()
 
-    def start_worker(target):
+    def start_worker(target: Callable[[ProcessConnection], None]) -> ProcessConnection:
         receiver, sender = ctx.Pipe(duplex=False)
         process = ctx.Process(target=target, args=(sender,))
         process.start()

@@ -1,13 +1,12 @@
 """Real application sinks and HTTPX instrumentation; httpcore pool is synthetic."""
 
-import importlib
-import importlib.util
 import io
 import logging
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
+from typing import Never
 
 import httpcore
 import httpx
@@ -21,17 +20,12 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from dify_app import DifyApp
 from extensions import ext_logging
 from extensions.otel import instrumentation
+from libs import sensitive_http_telemetry as telemetry_module
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.logging_helpers import protect_existing_log_routes
 
 CANARY = "nw4-secret-query-canary"
 URL = f"https://example.invalid/private-path?token={CANARY}"
-
-
-def telemetry():
-    spec = importlib.util.find_spec("libs.sensitive_http_telemetry")
-    assert spec is not None, "sensitive HTTP telemetry boundary is missing"
-    return importlib.import_module("libs.sensitive_http_telemetry")
 
 
 @pytest.fixture
@@ -51,7 +45,7 @@ def application_logs(
     def initialize() -> tuple[io.StringIO, Path]:
         # Pytest attaches its capture handlers between setup and call phases.
         # Initialize the real app during the call, preserving those test sinks.
-        protect_existing_log_routes(monkeypatch, emitters=telemetry()._HTTP_LOGGERS)
+        protect_existing_log_routes(monkeypatch, emitters=telemetry_module._HTTP_LOGGERS)
         root.handlers = []
         monkeypatch.setattr(ext_logging.sys, "stdout", output)
         ext_logging.init_app(DifyApp(__name__))
@@ -86,19 +80,21 @@ def synthetic_client() -> httpx.Client:
     return httpx.Client(transport=transport, trust_env=False)
 
 
-def test_current_httpx_info_really_persists_full_query(application_logs):
-    application_logs = application_logs()
+def test_current_httpx_info_really_persists_full_query(
+    application_logs: Callable[[], tuple[io.StringIO, Path]],
+) -> None:
+    logs = application_logs()
     with synthetic_client() as client:
         assert client.get(URL).text == "ok"
-    assert CANARY in persisted(application_logs)
+    assert CANARY in persisted(logs)
 
 
 @pytest.mark.parametrize("log_format", ["text", "json"])
 def test_guard_blocks_real_httpx_query_and_exception_in_console_and_file(
-    application_logs, monkeypatch: pytest.MonkeyPatch, log_format: str
-):
-    application_logs = application_logs()
-    module = telemetry()
+    application_logs: Callable[[], tuple[io.StringIO, Path]], monkeypatch: pytest.MonkeyPatch, log_format: str
+) -> None:
+    logs = application_logs()
+    module = telemetry_module
     apply_config_overrides(monkeypatch, LOG_OUTPUT_FORMAT=log_format)
     formatter = ext_logging._create_formatter()
     for handler in logging.getLogger().handlers:
@@ -111,19 +107,21 @@ def test_guard_blocks_real_httpx_query_and_exception_in_console_and_file(
             logging.getLogger("core.helper.ssrf_proxy").exception("transport failed %s", URL)
     with synthetic_client() as client:
         client.get("https://example.invalid/ordinary-after")
-    text = persisted(application_logs)
+    text = persisted(logs)
     assert CANARY not in text
     assert "private-path" not in text
     assert text.count("ordinary-after") == 2  # console + file, ordinary INFO remains
 
 
 @pytest.mark.parametrize("error_type", [ValueError, KeyboardInterrupt, SystemExit])
-def test_nested_context_restores_after_exception_and_baseexception(application_logs, error_type):
-    application_logs = application_logs()
-    module = telemetry()
+def test_nested_context_restores_after_exception_and_baseexception(
+    application_logs: Callable[[], tuple[io.StringIO, Path]], error_type: type[BaseException]
+) -> None:
+    logs = application_logs()
+    module = telemetry_module
     logger = logging.getLogger("httpx")
 
-    def interrupted():
+    def interrupted() -> None:
         with module.sensitive_http_telemetry():
             assert not is_instrumentation_enabled()
             logger.error(CANARY)
@@ -136,23 +134,23 @@ def test_nested_context_restores_after_exception_and_baseexception(application_l
         logger.error(CANARY)
     assert is_instrumentation_enabled()
     logger.info("ordinary-after-reset")
-    text = persisted(application_logs)
+    text = persisted(logs)
     assert CANARY not in text
     assert "ordinary-after-reset" in text
 
 
-def test_concurrent_ordinary_thread_keeps_httpx_logs(application_logs):
-    application_logs = application_logs()
-    module = telemetry()
+def test_concurrent_ordinary_thread_keeps_httpx_logs(application_logs: Callable[[], tuple[io.StringIO, Path]]) -> None:
+    logs = application_logs()
+    module = telemetry_module
     barrier = Barrier(2)
 
-    def sensitive():
+    def sensitive() -> None:
         with module.sensitive_http_telemetry(), synthetic_client() as client:
             barrier.wait(timeout=5)
             client.get(URL)
             barrier.wait(timeout=5)
 
-    def ordinary():
+    def ordinary() -> None:
         barrier.wait(timeout=5)
         with synthetic_client() as client:
             client.get("https://example.invalid/concurrent-ordinary")
@@ -162,15 +160,17 @@ def test_concurrent_ordinary_thread_keeps_httpx_logs(application_logs):
         futures = [executor.submit(sensitive), executor.submit(ordinary)]
         for future in futures:
             future.result(timeout=10)
-    text = persisted(application_logs)
+    text = persisted(logs)
     assert CANARY not in text
     assert "concurrent-ordinary" in text
 
 
 @pytest.mark.parametrize("configuration", ["no-handlers", "unfiltered-root", "removed-filter"])
-def test_unready_configuration_refuses_before_transport(application_logs, configuration):
-    application_logs = application_logs()
-    module = telemetry()
+def test_unready_configuration_refuses_before_transport(
+    application_logs: Callable[[], tuple[io.StringIO, Path]], configuration: str
+) -> None:
+    application_logs()
+    module = telemetry_module
     root = logging.getLogger()
     if configuration == "no-handlers":
         root.handlers = []
@@ -186,9 +186,11 @@ def test_unready_configuration_refuses_before_transport(application_logs, config
     assert not entered
 
 
-def test_context_rechecks_configuration_after_preclaim_readiness(application_logs):
-    application_logs = application_logs()
-    module = telemetry()
+def test_context_rechecks_configuration_after_preclaim_readiness(
+    application_logs: Callable[[], tuple[io.StringIO, Path]],
+) -> None:
+    application_logs()
+    module = telemetry_module
     module.assert_sensitive_http_telemetry_ready()
     handler = logging.StreamHandler(io.StringIO())
     logging.getLogger().addHandler(handler)
@@ -200,9 +202,14 @@ def test_context_rechecks_configuration_after_preclaim_readiness(application_log
 
 @pytest.mark.parametrize("name", ["httpx", "httpx.child", "httpcore", "httpcore.connection", "core.helper.ssrf_proxy"])
 @pytest.mark.parametrize("configuration", ["direct-handler", "no-propagation"])
-def test_known_lower_http_logger_bypass_refuses(application_logs, monkeypatch, name, configuration):
-    application_logs = application_logs()
-    module = telemetry()
+def test_known_lower_http_logger_bypass_refuses(
+    application_logs: Callable[[], tuple[io.StringIO, Path]],
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    configuration: str,
+) -> None:
+    application_logs()
+    module = telemetry_module
     logger = logging.getLogger(name)
     if configuration == "direct-handler":
         monkeypatch.setattr(logger, "handlers", [logging.StreamHandler(io.StringIO())])
@@ -212,9 +219,9 @@ def test_known_lower_http_logger_bypass_refuses(application_logs, monkeypatch, n
         module.assert_sensitive_http_telemetry_ready()
 
 
-def test_guard_never_changes_logger_configuration(application_logs):
-    application_logs = application_logs()
-    module = telemetry()
+def test_guard_never_changes_logger_configuration(application_logs: Callable[[], tuple[io.StringIO, Path]]) -> None:
+    application_logs()
+    module = telemetry_module
     before = [(handler, handler.level, tuple(handler.filters)) for handler in logging.getLogger().handlers]
     level = logging.getLogger().level
     with module.sensitive_http_telemetry():
@@ -227,10 +234,13 @@ def test_guard_never_changes_logger_configuration(application_logs):
 @pytest.mark.parametrize("name", ["graphon.graph_engine.worker", "graphon.graph_engine.worker.child", "graphon"])
 @pytest.mark.parametrize("configuration", ["direct-handler", "no-propagation"])
 def test_additional_native_logger_bypass_refuses_without_changing_http_default(
-    application_logs, monkeypatch, name, configuration
-):
+    application_logs: Callable[[], tuple[io.StringIO, Path]],
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    configuration: str,
+) -> None:
     application_logs()
-    module = telemetry()
+    module = telemetry_module
     logger = logging.getLogger(name)
     if configuration == "direct-handler":
         monkeypatch.setattr(logger, "handlers", [logging.StreamHandler(io.StringIO())])
@@ -250,9 +260,11 @@ def test_additional_native_logger_bypass_refuses_without_changing_http_default(
     assert not entered
 
 
-def test_additional_protected_routes_drop_scoped_exception_and_restore_ordinary_logs(application_logs, monkeypatch):
+def test_additional_protected_routes_drop_scoped_exception_and_restore_ordinary_logs(
+    application_logs: Callable[[], tuple[io.StringIO, Path]], monkeypatch: pytest.MonkeyPatch
+) -> None:
     logs = application_logs()
-    module = telemetry()
+    module = telemetry_module
     output = io.StringIO()
     handler = logging.StreamHandler(output)
     handler.addFilter(module.SensitiveHttpLogFilter())
@@ -260,7 +272,7 @@ def test_additional_protected_routes_drop_scoped_exception_and_restore_ordinary_
     monkeypatch.setattr(logger, "handlers", [handler])
     routes = (logger.name, "graphon.graph_engine.worker")
 
-    def emit_and_fail():
+    def emit_and_fail() -> None:
         with module.sensitive_http_telemetry(additional_emitters=routes):
             try:
                 raise ValueError(CANARY)
@@ -280,9 +292,11 @@ def test_additional_protected_routes_drop_scoped_exception_and_restore_ordinary_
         handler.close()
 
 
-def test_additional_route_is_rechecked_at_context_entry(application_logs, monkeypatch):
+def test_additional_route_is_rechecked_at_context_entry(
+    application_logs: Callable[[], tuple[io.StringIO, Path]], monkeypatch: pytest.MonkeyPatch
+) -> None:
     application_logs()
-    module = telemetry()
+    module = telemetry_module
     logger = logging.getLogger("graphon.graph_engine.worker")
     routes = (logger.name,)
     module.assert_sensitive_http_telemetry_ready(additional_emitters=routes)
@@ -296,9 +310,11 @@ def test_additional_route_is_rechecked_at_context_entry(application_logs, monkey
     assert not entered
 
 
-def test_actual_enabled_httpx_global_instrumentation_preserves_only_ordinary_spans(application_logs):
-    application_logs = application_logs()
-    module = telemetry()
+def test_actual_enabled_httpx_global_instrumentation_preserves_only_ordinary_spans(
+    application_logs: Callable[[], tuple[io.StringIO, Path]],
+) -> None:
+    logs = application_logs()
+    module = telemetry_module
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
@@ -317,15 +333,17 @@ def test_actual_enabled_httpx_global_instrumentation_preserves_only_ordinary_spa
         assert "ordinary-after" in serialized
         assert CANARY not in serialized
         assert "private-path" not in serialized
-        assert CANARY not in persisted(application_logs)
+        assert CANARY not in persisted(logs)
     finally:
         instrumentor.uninstrument()
         provider.shutdown()
 
 
-def test_existing_exception_logging_handler_filters_sensitive_parent_span_events(application_logs):
-    application_logs = application_logs()
-    module = telemetry()
+def test_existing_exception_logging_handler_filters_sensitive_parent_span_events(
+    application_logs: Callable[[], tuple[io.StringIO, Path]],
+) -> None:
+    application_logs()
+    module = telemetry_module
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
@@ -353,9 +371,11 @@ def test_existing_exception_logging_handler_filters_sensitive_parent_span_events
         provider.shutdown()
 
 
-def test_concurrent_ordinary_thread_keeps_real_auto_instrumented_span(application_logs):
-    application_logs = application_logs()
-    module = telemetry()
+def test_concurrent_ordinary_thread_keeps_real_auto_instrumented_span(
+    application_logs: Callable[[], tuple[io.StringIO, Path]],
+) -> None:
+    logs = application_logs()
+    module = telemetry_module
     barrier = Barrier(2)
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
@@ -363,13 +383,13 @@ def test_concurrent_ordinary_thread_keeps_real_auto_instrumented_span(applicatio
     instrumentor = HTTPXClientInstrumentor()
     instrumentor.instrument(tracer_provider=provider)
 
-    def sensitive():
+    def sensitive() -> None:
         with module.sensitive_http_telemetry(), synthetic_client() as client:
             barrier.wait(timeout=5)
             client.get(URL)
             barrier.wait(timeout=5)
 
-    def ordinary():
+    def ordinary() -> None:
         barrier.wait(timeout=5)
         with synthetic_client() as client:
             client.get("https://example.invalid/concurrent-trace")
@@ -384,7 +404,7 @@ def test_concurrent_ordinary_thread_keeps_real_auto_instrumented_span(applicatio
         assert len(spans) == 1
         assert "concurrent-trace" in repr(spans[0].attributes)
         assert CANARY not in repr(spans[0].attributes)
-        text = persisted(application_logs)
+        text = persisted(logs)
         assert "concurrent-trace" in text
         assert CANARY not in text
     finally:
@@ -392,15 +412,17 @@ def test_concurrent_ordinary_thread_keeps_real_auto_instrumented_span(applicatio
         provider.shutdown()
 
 
-def test_actual_thread_lease_rejects_live_release_and_preserves_other_threads(application_logs):
+def test_actual_thread_lease_rejects_live_release_and_preserves_other_threads(
+    application_logs: Callable[[], tuple[io.StringIO, Path]],
+) -> None:
     from threading import Event, Thread
 
     logs = application_logs()
-    module = telemetry()
+    module = telemetry_module
     entered, release = Event(), Event()
     leases = []
 
-    def sensitive():
+    def sensitive() -> None:
         lease = module.protect_current_thread_logs(additional_emitters=("graphon",))
         leases.append(lease)
         with pytest.raises(module.SensitiveHttpTelemetryUnavailable):
@@ -430,14 +452,16 @@ def test_actual_thread_lease_rejects_live_release_and_preserves_other_threads(ap
     assert "ordinary-after-lease" in text
 
 
-def test_multiple_owned_thread_leases_do_not_remove_each_other_or_protect_new_identity(application_logs):
+def test_multiple_owned_thread_leases_do_not_remove_each_other_or_protect_new_identity(
+    application_logs: Callable[[], tuple[io.StringIO, Path]],
+) -> None:
     from threading import Thread
 
     logs = application_logs()
-    module = telemetry()
+    module = telemetry_module
     leases = []
 
-    def sensitive():
+    def sensitive() -> None:
         leases.extend((module.protect_current_thread_logs(), module.protect_current_thread_logs()))
         logging.getLogger("httpx").error(CANARY)
 
@@ -457,9 +481,11 @@ def test_multiple_owned_thread_leases_do_not_remove_each_other_or_protect_new_id
 
 
 @pytest.mark.parametrize("configuration", ["unfiltered-root", "custom-route"])
-def test_thread_lease_refuses_unready_sinks_before_registration(application_logs, monkeypatch, configuration):
+def test_thread_lease_refuses_unready_sinks_before_registration(
+    application_logs: Callable[[], tuple[io.StringIO, Path]], monkeypatch: pytest.MonkeyPatch, configuration: str
+) -> None:
     application_logs()
-    module = telemetry()
+    module = telemetry_module
     if configuration == "unfiltered-root":
         logging.getLogger().addHandler(logging.StreamHandler(io.StringIO()))
     else:
@@ -468,22 +494,24 @@ def test_thread_lease_refuses_unready_sinks_before_registration(application_logs
         module.protect_current_thread_logs(additional_emitters=("graphon",))
 
 
-def test_thread_lease_drops_before_render_and_retains_unknown_background(application_logs):
+def test_thread_lease_drops_before_render_and_retains_unknown_background(
+    application_logs: Callable[[], tuple[io.StringIO, Path]],
+) -> None:
     from threading import Event, Thread
 
     logs = application_logs()
-    module = telemetry()
+    module = telemetry_module
     entered, finish = Event(), Event()
     leases = []
 
     rendered = []
 
     class Unrenderable:
-        def __str__(self):
+        def __str__(self) -> Never:
             rendered.append(True)
             raise AssertionError("protected record rendered")
 
-    def unknown_background():
+    def unknown_background() -> None:
         leases.append(module.protect_current_thread_logs())
         entered.set()
         assert finish.wait(3)

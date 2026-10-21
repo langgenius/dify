@@ -5,12 +5,38 @@ host qualification. Metadata corruption branches are unit-boundary negatives;
 immutable continuation/payload owner rows are never weakened to construct them.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from runtime_contracts.builder.native.contracts import CheckpointRef, ResumeReceipt
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_continuation as _fixture_types_0,
+    )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_continuation as _fixture_types_0,
+    )
+
+
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from operator import itemgetter
 from uuid import uuid4
 
 import pytest
+import pytest_mock
 from sqlalchemy import inspect, select
 from sqlalchemy import inspect as inspect_orm
 
@@ -28,6 +54,7 @@ from services.dify_builder.native_testing.operation_journal import NodeOperation
 from services.dify_builder.native_testing.pending_actions import NativePendingActionService
 from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+    ContinuationCase,
     _root_with_child_dispatch,
 )
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
@@ -49,12 +76,14 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_e
 
 
 @pytest.fixture
-def checkpoint_case(continuation_case, migrated_dispatch_claims):
+def checkpoint_case(
+    continuation_case: _fixture_types_0.ContinuationCase, migrated_dispatch_claims: None
+) -> ContinuationCase:
     assert migrated_dispatch_claims is None
     return continuation_case
 
 
-def _claim(c):
+def _claim(c: ContinuationCase) -> tuple[CheckpointRef, ResumeReceipt]:
     waiting = c.pause()
     c.ledger.confirm()
     dispatch = c.resume()
@@ -62,7 +91,7 @@ def _claim(c):
     return waiting.checkpoint, dispatch
 
 
-def _snapshot(c):
+def _snapshot(c: ContinuationCase) -> dict[str, list[dict[str, object]]]:
     result = {}
     with c.factory() as session:
         for model in (
@@ -86,14 +115,16 @@ def _snapshot(c):
     return result
 
 
-def test_actual_claimed_checkpoint_ref_is_acknowledged_and_metadata_only(checkpoint_case, monkeypatch):
+def test_actual_claimed_checkpoint_ref_is_acknowledged_and_metadata_only(
+    checkpoint_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from extensions.ext_storage import storage
 
     c = checkpoint_case
     checkpoint, dispatch = _claim(c)
     before = _snapshot(c)
 
-    def forbidden(*_, **__):
+    def forbidden(*_: object, **__: object) -> None:
         raise AssertionError("metadata port performed private I/O")
 
     with monkeypatch.context() as patch:
@@ -111,15 +142,26 @@ def test_actual_claimed_checkpoint_ref_is_acknowledged_and_metadata_only(checkpo
             select(NativeContinuation).where(NativeContinuation.checkpoint_id == actual.checkpoint_id)
         )
         obj = session.get(NativePayloadObject, actual.checkpoint_id)
-        assert actual.payload_digest == saved.payload_digest == obj.payload_digest
-        assert saved.payload_ref == obj.storage_key
+        assert (
+            actual.payload_digest
+            == require_instance(saved, NativeContinuation).payload_digest
+            == require_instance(obj, NativePayloadObject).payload_digest
+        )
+        assert (
+            require_instance(saved, NativeContinuation).payload_ref
+            == require_instance(obj, NativePayloadObject).storage_key
+        )
 
 
-def test_explicit_recovery_reclaims_same_dispatch_and_keeps_authentic_checkpoint(mocker, checkpoint_case):
+def test_explicit_recovery_reclaims_same_dispatch_and_keeps_authentic_checkpoint(
+    mocker: pytest_mock.MockerFixture, checkpoint_case: ContinuationCase
+) -> None:
     c = checkpoint_case
     checkpoint, dispatch = _claim(c)
     with c.factory.begin() as session:
-        session.get(NativeDispatch, dispatch.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        require_instance(session.get(NativeDispatch, dispatch.dispatch_id), NativeDispatch).claim_expires_at = (
+            datetime.now(UTC) - timedelta(seconds=1)
+        )
     c.lifecycle.reconcile()
     # Existing trusted recovery port double; no physical lifetime qualification.
     runtime = DifyNativeRuntimeOwner()
@@ -135,7 +177,7 @@ def test_explicit_recovery_reclaims_same_dispatch_and_keeps_authentic_checkpoint
     )
 
 
-def test_child_local_claim_survives_unrelated_shared_scope_advance(checkpoint_case):
+def test_child_local_claim_survives_unrelated_shared_scope_advance(checkpoint_case: ContinuationCase) -> None:
     c = checkpoint_case
     child, child_id, local_generation, root_dispatch, checkpoint, *_ = _root_with_child_dispatch(c, claimed=True)
     # Child completion woke a real parent checkpoint at a shared generation jump.
@@ -143,7 +185,7 @@ def test_child_local_claim_survives_unrelated_shared_scope_advance(checkpoint_ca
         saved = session.scalar(
             select(NativeContinuation).where(NativeContinuation.checkpoint_id == checkpoint.checkpoint_id)
         )
-        assert saved.generation < local_generation - 1
+        assert require_instance(saved, NativeContinuation).generation < local_generation - 1
     root_generation = root_dispatch.generation
     pending = NativePendingActionService(c.store.loader).configuration(
         ref=c.ref, requirements_ref="configuration-1", expected_generation=root_generation
@@ -165,7 +207,11 @@ def test_child_local_claim_survives_unrelated_shared_scope_advance(checkpoint_ca
                 NativeInvocationState.invocation_id == child.invocation_id,
             )
         )
-        assert state.generation == local_generation < session.get(NativeTestScope, child.request_id).generation
+        assert (
+            require_instance(state, NativeInvocationState).generation
+            == local_generation
+            < require_instance(session.get(NativeTestScope, child.request_id), NativeTestScope).generation
+        )
     actual = c.lifecycle.claimed_resume_checkpoint(ref=child, generation=local_generation, dispatch_id=child_id)
     assert actual == checkpoint
     assert (
@@ -176,7 +222,7 @@ def test_child_local_claim_survives_unrelated_shared_scope_advance(checkpoint_ca
     assert payload.generation == 0
     assert c.store.load_context(ref=child).generation == local_generation == 2
     with c.factory() as session:
-        assert session.get(NativeTestScope, child.request_id).generation == 3
+        assert require_instance(session.get(NativeTestScope, child.request_id), NativeTestScope).generation == 3
     assert payload.node_journals == ()
     # This real checkpoint has no recorded journal operations. The witness is
     # SQL selector → encrypted readback → authenticated restore association;
@@ -197,7 +243,7 @@ def test_child_local_claim_survives_unrelated_shared_scope_advance(checkpoint_ca
     assert _snapshot(c) == before_restore
 
 
-def test_generation_zero_claim_has_no_resume_checkpoint_authority(checkpoint_case):
+def test_generation_zero_claim_has_no_resume_checkpoint_authority(checkpoint_case: ContinuationCase) -> None:
     c = checkpoint_case
     dispatch = c.lifecycle.enqueue_initial_dispatch(ref=c.ref)
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=0, dispatch_id=dispatch.dispatch_id)
@@ -224,7 +270,9 @@ def test_generation_zero_claim_has_no_resume_checkpoint_authority(checkpoint_cas
         "missing_dispatch",
     ],
 )
-def test_actual_current_owner_or_claim_drift_refuses_without_projection(checkpoint_case, fault):
+def test_actual_current_owner_or_claim_drift_refuses_without_projection(
+    checkpoint_case: ContinuationCase, fault: str
+) -> None:
     c = checkpoint_case
     _, dispatch = _claim(c)
     ref, generation, dispatch_id = c.ref, dispatch.generation, dispatch.dispatch_id
@@ -236,23 +284,27 @@ def test_actual_current_owner_or_claim_drift_refuses_without_projection(checkpoi
         with c.factory.begin() as session:
             row = session.get(NativeDispatch, dispatch_id)
             if fault == "queued":
-                row.state = "queued"
+                require_instance(row, NativeDispatch).state = "queued"
             elif fault == "unknown":
-                row.state = "unknown"
+                require_instance(row, NativeDispatch).state = "unknown"
             elif fault == "expired_claim":
-                row.claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+                require_instance(row, NativeDispatch).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
             elif fault == "wrong_generation":
                 generation += 1
             elif fault == "foreign_tenant":
-                row.tenant_id = str(uuid4())
+                require_instance(row, NativeDispatch).tenant_id = str(uuid4())
             elif fault == "checkpoint_drift":
-                row.checkpoint_id = str(uuid4())
+                require_instance(row, NativeDispatch).checkpoint_id = str(uuid4())
             elif fault == "sealed":
-                session.get(DifyBuilderExecutionRequest, c.ref.request_id).state = "sealed"
+                require_instance(
+                    session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+                ).state = "sealed"
             elif fault == "cancelled":
-                session.get(NativeTestScope, c.ref.request_id).cancelled = True
+                require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).cancelled = True
             elif fault == "expired_scope":
-                session.get(NativeTestScope, c.ref.request_id).expires_at = datetime.now(UTC) - timedelta(seconds=1)
+                require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).expires_at = (
+                    datetime.now(UTC) - timedelta(seconds=1)
+                )
             elif fault == "missing_dispatch":
                 session.delete(row)
     before = _snapshot(c)

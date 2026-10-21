@@ -1,12 +1,14 @@
 from typing import Never, override
 
 import pytest
+import pytest_mock
 
 from core.dify_builder.errors import BadRequestError, ModelUnavailableError, NotFoundError
 from core.dify_builder.models import Actor, ConversationItem, DifyBuilderContext, Run, Session
 from services.dify_builder import service as service_mod
 from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository
+from tests.unit_tests.installed_spies import installed_mock
 
 MC: dict[str, object] = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
 
@@ -43,17 +45,17 @@ class _FakeLock:
 
 
 class SchedulingBoundary:
-    def __init__(self, *, deny_access: bool = False):
+    def __init__(self, *, deny_access: bool = False) -> None:
         self.deny_access = deny_access
 
-    def authorize(self, _actor, _app_id, _access):
+    def authorize(self, _actor: object, _app_id: object, _access: object) -> None:
         if self.deny_access:
             raise NotFoundError()
 
-    def enqueue(self, *_args, **_kwargs):
+    def enqueue(self, *_args: object, **_kwargs: object) -> Never:
         raise AssertionError("unavailable model must not dispatch")
 
-    def subscribe(self, _session_id):
+    def subscribe(self, _session_id: object) -> Never:
         raise AssertionError("unavailable model must not subscribe")
 
 
@@ -78,7 +80,9 @@ def test_build_session_stamps_model_config(monkeypatch: pytest.MonkeyPatch, acto
     assert repo.created_fc.model_config == MC
 
 
-def test_build_session_freezes_default_model_config(mocker, monkeypatch: pytest.MonkeyPatch, actor: Actor) -> None:
+def test_build_session_freezes_default_model_config(
+    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, actor: Actor
+) -> None:
     validate = mocker.patch.object(service_mod, "validate_model_config", return_value=MC)
     repo = _FakeRepo()
     svc = _service(repo)
@@ -102,26 +106,35 @@ def test_invalid_model_config_raises_before_persist(monkeypatch: pytest.MonkeyPa
 
 
 @pytest.mark.parametrize("scenario", ["build", "edit", "fix"])
-def test_authorization_precedes_model_resolution(mocker, actor: Actor, scenario: str) -> None:
+def test_authorization_precedes_model_resolution(
+    mocker: pytest_mock.MockerFixture, actor: Actor, scenario: str
+) -> None:
     validate = mocker.patch.object(service_mod, "validate_model_config", return_value=MC)
     repo = InMemoryRepository()
     mocker.spy(repo, "create_session")
     boundary = SchedulingBoundary(deny_access=True)
     svc = DifyBuilderService(repo, _FakeLock(), boundary.enqueue, authorize_app_fn=boundary.authorize)
-    kwargs = {"failed_run_id": "run-1"} if scenario == "fix" else {"goal_text": "Build it"}
+
+    def create_session() -> None:
+        if scenario == "build":
+            svc.create_build_session(app_id="app-1", actor=actor, goal_text="Build it")
+        elif scenario == "edit":
+            svc.create_edit_session(app_id="app-1", actor=actor, goal_text="Build it")
+        else:
+            svc.create_fix_session(app_id="app-1", actor=actor, failed_run_id="run-1")
+
     with pytest.raises(NotFoundError):
-        {"build": svc.create_build_session, "edit": svc.create_edit_session, "fix": svc.create_fix_session}[scenario](
-            app_id="app-1", actor=actor, **kwargs
-        )
+        create_session()
     validate.assert_not_called()
-    repo.create_session.assert_not_called()
+    _installed_spy_1 = installed_mock(repo.create_session)
+    _installed_spy_1.assert_not_called()
 
 
 @pytest.mark.parametrize("scenario", ["build", "edit", "fix", "checklist"])
 @pytest.mark.parametrize("streaming", [False, True])
 @pytest.mark.parametrize("config", [None, MC])
 def test_unavailable_model_rejected_before_session_subscription_or_dispatch(
-    mocker, actor: Actor, scenario: str, streaming: bool, config: dict[str, object] | None
+    mocker: pytest_mock.MockerFixture, actor: Actor, scenario: str, streaming: bool, config: dict[str, object] | None
 ) -> None:
     validate = mocker.patch.object(
         service_mod, "validate_model_config", side_effect=ModelUnavailableError("unavailable")
@@ -136,26 +149,37 @@ def test_unavailable_model_rejected_before_session_subscription_or_dispatch(
     subscribe = mocker.spy(boundary, "subscribe")
     authorize = mocker.spy(boundary, "authorize")
     svc = DifyBuilderService(repo, lock, enqueue, subscribe_fn=subscribe, authorize_app_fn=authorize)
-    mode = "fix" if scenario == "checklist" else scenario
-    create = {
-        ("build", False): svc.create_build_session,
-        ("edit", False): svc.create_edit_session,
-        ("fix", False): svc.create_fix_session,
-        ("build", True): svc.create_build_session_stream,
-        ("edit", True): svc.create_edit_session_stream,
-        ("fix", True): svc.create_fix_session_stream,
-    }[(mode, streaming)]
-    kwargs = {"goal_text": "Build it"} if mode != "fix" else {"failed_run_id": "run-1"}
-    if scenario == "checklist":
-        from core.dify_builder.models import ChecklistError
 
-        kwargs = {"checklist_errors": [ChecklistError(node_id="n1", node_type="llm", title="LLM")]}
+    def create_session() -> None:
+        if scenario == "build":
+            create_build = svc.create_build_session_stream if streaming else svc.create_build_session
+            create_build(app_id="app-1", actor=actor, model_config=config, goal_text="Build it")
+        elif scenario == "edit":
+            create_edit = svc.create_edit_session_stream if streaming else svc.create_edit_session
+            create_edit(app_id="app-1", actor=actor, model_config=config, goal_text="Build it")
+        else:
+            create_fix = svc.create_fix_session_stream if streaming else svc.create_fix_session
+            if scenario == "checklist":
+                from core.dify_builder.models import ChecklistError
+
+                create_fix(
+                    app_id="app-1",
+                    actor=actor,
+                    model_config=config,
+                    checklist_errors=[ChecklistError(node_id="n1", node_type="llm", title="LLM")],
+                )
+            else:
+                create_fix(app_id="app-1", actor=actor, model_config=config, failed_run_id="run-1")
+
     with pytest.raises(ModelUnavailableError):
-        create(app_id="app-1", actor=actor, model_config=config, **kwargs)
+        create_session()
     authorize.assert_called_once()
     validate.assert_called_once_with(actor.tenant_id, config)
-    repo.create_session.assert_not_called()
-    repo.save_run.assert_not_called()
-    lock.acquire.assert_not_called()
+    _installed_spy_2 = installed_mock(repo.create_session)
+    _installed_spy_2.assert_not_called()
+    _installed_spy_3 = installed_mock(repo.save_run)
+    _installed_spy_3.assert_not_called()
+    _installed_spy_4 = installed_mock(lock.acquire)
+    _installed_spy_4.assert_not_called()
     subscribe.assert_not_called()
     enqueue.assert_not_called()

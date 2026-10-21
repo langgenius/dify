@@ -1,5 +1,15 @@
 """Actual PostgreSQL contention on the existing owned Agent caller row."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import sessionmaker
+
+    from dify_app import DifyApp
+
+
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from uuid import uuid4
@@ -9,11 +19,12 @@ from sqlalchemy.orm import sessionmaker
 
 from extensions.ext_database import db
 from models.workflow import WorkflowNodeExecutionModel
+from runtime_contracts.agent_recovery import AgentCreateIntent
 from services.agent.workflow_run_recovery import AgentCreateScope, WorkflowAgentRunRecovery
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _execution_row
 
 
-def test_postgres_concurrent_reservations_allow_exactly_one_create(flask_app_with_containers):
+def test_postgres_concurrent_reservations_allow_exactly_one_create(flask_app_with_containers: DifyApp) -> None:
     with flask_app_with_containers.app_context():
         factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         ids = {
@@ -47,7 +58,7 @@ def test_postgres_concurrent_reservations_allow_exactly_one_create(flask_app_wit
             session.add(row)
         barrier = Barrier(12)
 
-        def reserve(_index):
+        def reserve(_index) -> tuple[AgentCreateIntent, bool]:
             barrier.wait(timeout=15)
             return WorkflowAgentRunRecovery(factory).reserve(
                 scope=scope,

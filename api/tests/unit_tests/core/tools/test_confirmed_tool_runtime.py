@@ -17,7 +17,7 @@ from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass, field
 from datetime import timedelta
 from threading import Lock
-from typing import Literal
+from typing import Literal, Never
 from uuid import uuid4
 
 import pytest
@@ -329,10 +329,10 @@ def world(consent_owner: Owner, monkeypatch: pytest.MonkeyPatch) -> Iterator[Wor
     monkeypatch.setattr(ToolProviderCredentialsCache, "delete", cache_delete)
 
     # The confirmed path bypasses the ordinary credential cache entirely.
-    def forbid_cache_read(*_args, **_kwargs):
+    def forbid_cache_read(*_args: object, **_kwargs: object) -> Never:
         raise AssertionError("ordinary cache read")
 
-    def forbid_cache_write(*_args, **_kwargs):
+    def forbid_cache_write(*_args: object, **_kwargs: object) -> Never:
         raise AssertionError("ordinary cache write")
 
     monkeypatch.setattr(ToolProviderCredentialsCache, "get", forbid_cache_read)

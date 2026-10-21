@@ -91,10 +91,12 @@ def _owners(
 
 
 def _expected(actual: metadata.InstalledJsonParse) -> QualifiedJsonToolBinding:
-    return QualifiedJsonToolBinding(
-        node_id="node2",
-        **actual.binding_fields(),
-        final_parameters_digest="a" * 64,
+    return QualifiedJsonToolBinding.model_validate(
+        {
+            "node_id": "node2",
+            **actual.binding_fields(),
+            "final_parameters_digest": "a" * 64,
+        }
     )
 
 

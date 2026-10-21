@@ -13,7 +13,9 @@ from services.dify_builder.agent import edit as edit_mod
 from services.dify_builder.agent import fix as fix_mod
 from services.dify_builder.agent import llm_agent, resources
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+from services.dify_builder.agent.resources import ResourceRef, TenantResources
 from services.dify_builder.application.ports import DifyBuilderAgent, ReasoningStreamingAgent
+from services.dify_builder.plan import WorkflowPlan
 
 
 def test_is_dify_builder_agent() -> None:
@@ -69,11 +71,19 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
     seen: dict[str, tuple[object, ...]] = {}
 
     def mock_propose_plan_v1(
-        model, requirements, _reasoning=None, *, tools=(), agents=(), agent_source_error=None, goal_text, mode
-    ):
+        model: object,
+        requirements: Inputs,
+        _reasoning: object = None,
+        *,
+        tools: Sequence[ResourceRef] = (),
+        agents: Sequence[ResourceRef] = (),
+        agent_source_error: str | None = None,
+        goal_text: str,
+        mode: str,
+    ) -> WorkflowPlan | None:
         assert mode == "workflow"
         seen["propose_plan_v1"] = (model, requirements, list(tools), list(agents), agent_source_error, goal_text)
-        return []
+        return None
 
     def mock_discover_resources(
         model: object,
@@ -137,12 +147,14 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
         seen["learn_from_build"] = (model, goal_text, requirements, plan_items, built_node_ids)
         return "skill"
 
+    catalogue_tool = ResourceRef(id="catalogue-stub", label="Catalogue tool")
+    catalogue_agent = ResourceRef(id="agent-stub", label="Catalogue agent")
     monkeypatch.setattr(build_mod, "propose_plan_v1", mock_propose_plan_v1)
     monkeypatch.setattr(
         build_mod,
         "planning_catalogue",
         lambda _tenant_id, **_kwargs: resources.TenantResources(
-            models=[], datasets=[], tools=["catalogue-stub"], agents=["agent-stub"]
+            models=[], datasets=[], tools=[catalogue_tool], agents=[catalogue_agent]
         ),
     )
     monkeypatch.setattr(build_mod, "discover_resources", mock_discover_resources)
@@ -158,7 +170,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
     goal = "Upload the real file. " + "原始目标。" * 1800
     requirements = {"format": "pptx", "endpoint": {"url": "https://example.test"}}
     agent.propose_plan_v1(requirements, goal_text=goal)
-    assert seen["propose_plan_v1"] == ("MODEL", requirements, ["catalogue-stub"], ["agent-stub"], None, goal)
+    assert seen["propose_plan_v1"] == ("MODEL", requirements, [catalogue_tool], [catalogue_agent], None, goal)
     assert seen["propose_plan_v1"][1] is requirements
 
     agent.discover_resources(["step"], goal_text=goal, requirements=requirements)
@@ -280,13 +292,17 @@ def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch: pytest.M
     corresponding edit.* with the resolved model threaded through."""
     seen: dict[str, object] = {}
 
-    def mock_analyze_impact(model, goal_text, graph, _reasoning=None, *, reply_language=None):
+    def mock_analyze_impact(
+        model: object, goal_text: str, graph: Graph, _reasoning: object = None, *, reply_language: str | None = None
+    ) -> Graph:
         seen["analyze_impact"] = (model, goal_text, graph, reply_language)
         return {"fields": [], "values": {}, "target_node_ids": []}
 
-    def mock_propose_edit_plan(model, edit_rules, graph, _reasoning=None, *, reply_language=None):
+    def mock_propose_edit_plan(
+        model: object, edit_rules: Inputs, graph: Graph, _reasoning: object = None, *, reply_language: str | None = None
+    ) -> WorkflowPlan | None:
         seen["propose_edit_plan"] = (model, edit_rules, graph, reply_language)
-        return ["step"]
+        return None
 
     def mock_build_edit_intents(
         model: object,
@@ -306,7 +322,7 @@ def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch: pytest.M
     agent = LlmBuilderAgent("t1", {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}})
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
 
-    graph = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
     agent.analyze_impact("goal", graph, reply_language="en")
     assert seen["analyze_impact"] == ("MODEL", "goal", graph, "en")
 
@@ -395,7 +411,7 @@ def test_message_reply_delegates_stream_callback(monkeypatch: pytest.MonkeyPatch
 def _capture_tool_owners(monkeypatch: pytest.MonkeyPatch) -> Graph:
     seen: Graph = {}
 
-    def planning_catalogue(tenant_id, **kwargs):
+    def planning_catalogue(tenant_id: str, **kwargs: object) -> TenantResources:
         seen["planning_catalogue"] = (tenant_id, kwargs)
         return resources.TenantResources(models=[], datasets=[], tools=[])
 

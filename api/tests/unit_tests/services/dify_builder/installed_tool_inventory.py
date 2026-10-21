@@ -17,6 +17,7 @@ import copy
 import json
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
+from types import ModuleType
 from typing import NoReturn, cast
 from urllib.parse import urlsplit
 
@@ -434,6 +435,7 @@ def forbid_secret_and_business_calls(monkeypatch: pytest.MonkeyPatch) -> list[st
         (ToolManager, "get_tool_runtime"),
     ]
     for owner, attribute in targets:
+        assert isinstance(owner, (type, ModuleType))
         monkeypatch.setattr(owner, attribute, _forbidden(f"{owner.__name__}.{attribute}"))
     import core.tools.tool_manager as tool_manager_module
 

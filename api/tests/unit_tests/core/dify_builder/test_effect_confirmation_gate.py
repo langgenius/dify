@@ -1,7 +1,9 @@
 """PRD §9.1 in the Build, Edit and Fix test gates: a side effect runs for real only once confirmed."""
 
+from collections.abc import Mapping
 from copy import deepcopy
 from datetime import datetime
+from typing import Protocol
 
 import pytest
 from pytest_mock import MockerFixture
@@ -11,6 +13,7 @@ from core.dify_builder.models import (
     Actor,
     DifyBuilderContext,
     EntryMode,
+    Graph,
     NodeOutput,
     Run,
     RunVerification,
@@ -21,14 +24,15 @@ from core.dify_builder.state import PcState
 from runtime_contracts.builder.execution import ExecutionEvidenceSummary
 from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix
 from services.dify_builder.application.placeholder_agent import PlaceholderAgent
-from services.dify_builder.application.runner import Env
+from services.dify_builder.application.runner import Env, Handler, StepResult
 from services.dify_builder.application.verification import publication_decision, result_card
-from services.dify_builder.effect_disclosure import confirm_field_key, disclose
+from services.dify_builder.effect_disclosure import EffectDisclosure, confirm_field_key, disclose
 from services.dify_builder.serde import context_from_dict, context_to_dict
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, saved_test_context
+from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
-GRAPH = {
+GRAPH: Graph = {
     "nodes": [
         {"id": "start", "data": {"type": "start", "title": "Start"}},
         {
@@ -50,8 +54,16 @@ GRAPH = {
     ]
 }
 
+
+class FlowHandlers(Protocol):
+    def handle_await_testdata(self, env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult: ...
+
+
+type Flow = tuple[FlowHandlers, EntryMode, PcState, str, Handler, PcState]
+
+
 # (module, entry mode, rest state, retest action, retest handler, testdata state)
-FLOWS = [
+FLOWS: list[Flow] = [
     (
         handlers_build,
         EntryMode.BUILD,
@@ -77,14 +89,16 @@ FLOWS = [
         PcState.FIX_AWAIT_TESTDATA,
     ),
 ]
-RUN_HANDLERS = {
+RUN_HANDLERS: dict[FlowHandlers, Handler] = {
     handlers_build: handlers_build.handle_test_and_repair,
     handlers_edit: handlers_edit.handle_test_affected_paths,
     handlers_fix: handlers_fix.handle_verify,
 }
 
 
-def _fixture(flow, *, disclosed: bool = True):
+def _fixture(
+    flow: Flow, *, disclosed: bool = True
+) -> tuple[FlowHandlers, FakeDifyPort, InMemoryRepository, Env, Session, Turn]:
     module, mode, state, kind, _handler, _testdata = flow
     dify = FakeDifyPort()
     if disclosed:
@@ -101,7 +115,7 @@ def _signature(node_id: str) -> str:
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_run_test_shows_the_form_again_while_a_side_effect_is_unconfirmed(flow):
+def test_run_test_shows_the_form_again_while_a_side_effect_is_unconfirmed(flow: Flow) -> None:
     module, _dify, repo, env, session, turn = _fixture(flow)
     fc = saved_test_context(repo, session.id)
 
@@ -122,7 +136,7 @@ def test_run_test_shows_the_form_again_while_a_side_effect_is_unconfirmed(flow):
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_explicit_run_requires_a_fresh_confirmation_even_after_a_previous_approval(flow):
+def test_explicit_run_requires_a_fresh_confirmation_even_after_a_previous_approval(flow: Flow) -> None:
     module, _dify, repo, env, session, turn = _fixture(flow)
     fc = saved_test_context(repo, session.id, effect_confirmation={"slack": _signature("slack")})
 
@@ -134,7 +148,7 @@ def test_explicit_run_requires_a_fresh_confirmation_even_after_a_previous_approv
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_nothing_to_disclose_keeps_the_existing_gate(flow):
+def test_nothing_to_disclose_keeps_the_existing_gate(flow: Flow) -> None:
     module, _dify, repo, env, session, turn = _fixture(flow, disclosed=False)
 
     result = flow[4](env, turn, session, saved_test_context(repo, session.id))
@@ -143,7 +157,7 @@ def test_nothing_to_disclose_keeps_the_existing_gate(flow):
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_ticked_box_is_recorded_and_kept_out_of_the_start_inputs(mocker: MockerFixture, flow):
+def test_ticked_box_is_recorded_and_kept_out_of_the_start_inputs(mocker: MockerFixture, flow: Flow) -> None:
     module, dify, repo, env, session, _turn = _fixture(flow)
     turn = Turn(
         actor=Actor(account_id="a", tenant_id="t"),
@@ -157,17 +171,20 @@ def test_ticked_box_is_recorded_and_kept_out_of_the_start_inputs(mocker: MockerF
 
     result = module.handle_await_testdata(env, turn, session, fc)
 
+    assert result.context is not None
     assert result.context.effect_confirmation == {"slack": _signature("slack")}
+    assert result.context is not None
     assert repo.get_test_input(result.context.test_input_ref).inputs == {}
 
     mocker.patch.object(dify, "run_draft", return_value=Run(status="succeeded"))
     RUN_HANDLERS[module](env, turn, session, result.context)
-    assert dify.run_draft.call_args.kwargs["effect_confirmation"] == {"slack": _signature("slack")}
+    _installed_spy_1 = installed_mock(dify.run_draft)
+    assert _installed_spy_1.call_args.kwargs["effect_confirmation"] == {"slack": _signature("slack")}
 
 
 @pytest.mark.parametrize("flow", FLOWS)
 @pytest.mark.parametrize("change", ["endpoint", "headers", "account", "credential"])
-def test_old_checkbox_redisplays_changed_targets_instead_of_confirming_them(flow, change):
+def test_old_checkbox_redisplays_changed_targets_instead_of_confirming_them(flow: Flow, change: str) -> None:
     module, dify, _repo, env, session, turn = _fixture(flow)
     graph = deepcopy(GRAPH)
     graph["nodes"].append(
@@ -199,7 +216,9 @@ def test_old_checkbox_redisplays_changed_targets_instead_of_confirming_them(flow
     form = next(item.payload for item in result.items if item.kind == "form")
     changed_node = "slack" if change in {"account", "credential"} else "hook"
     assert form["values"][confirm_field_key(changed_node)] is False
+    assert result.context is not None
     assert changed_node not in result.context.effect_confirmation
+    assert result.context is not None
     assert not result.context.test_input_ref
     unchanged_node = "hook" if changed_node == "slack" else "slack"
     assert form["values"][confirm_field_key(unchanged_node)] is True
@@ -207,22 +226,26 @@ def test_old_checkbox_redisplays_changed_targets_instead_of_confirming_them(flow
     reviewed = module.handle_await_testdata(env, turn, session, result.context)
 
     assert reviewed.next != flow[5]
+    assert reviewed.context is not None
     assert set(reviewed.context.effect_confirmation) == {"slack", "hook"}
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_checkbox_without_a_server_shown_disclosure_cannot_confirm_an_effect(flow):
+def test_checkbox_without_a_server_shown_disclosure_cannot_confirm_an_effect(flow: Flow) -> None:
     module, _dify, _repo, env, session, turn = _fixture(flow)
     turn.action = Action(kind="provide_testdata", payload={"inputs": {confirm_field_key("slack"): True}})
 
     result = module.handle_await_testdata(env, turn, session, DifyBuilderContext())
 
     assert result.next == flow[5]
+    assert result.context is not None
     assert result.context.effect_confirmation == {}
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_user_entered_start_target_is_bound_without_rejecting_an_intentional_input_edit(flow, monkeypatch):
+def test_user_entered_start_target_is_bound_without_rejecting_an_intentional_input_edit(
+    flow: Flow, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module, dify, repo, env, session, turn = _fixture(flow)
     graph = {
         "nodes": [
@@ -231,7 +254,7 @@ def test_user_entered_start_target_is_bound_without_rejecting_an_intentional_inp
         ]
     }
 
-    def disclosure(_app_id, _actor, *, inputs=None):
+    def disclosure(_app_id: object, _actor: object, *, inputs: Mapping[str, object] | None = None) -> EffectDisclosure:
         return disclose(graph, inputs=inputs)
 
     monkeypatch.setattr(dify, "disclose_effects", disclosure)
@@ -244,6 +267,7 @@ def test_user_entered_start_target_is_bound_without_rejecting_an_intentional_inp
     result = module.handle_await_testdata(env, turn, session, fc)
 
     assert result.next != flow[5]
+    assert result.context is not None
     assert repo.get_test_input(result.context.test_input_ref).inputs == {"host": "a.example.com"}
     assert disclose(graph, inputs={"host": "a.example.com"}).mocked_node_ids(fc.effect_confirmation) == set()
     assert disclose(graph, inputs={"host": "b.example.com"}).mocked_node_ids(fc.effect_confirmation) == {"hook"}
@@ -279,7 +303,7 @@ def _confirmed_run(simulated: tuple[str, ...]) -> Run:
     )
 
 
-def test_a_fully_confirmed_run_can_be_published():
+def test_a_fully_confirmed_run_can_be_published() -> None:
     decision = publication_decision(
         _confirmed_run(()), session_id="s", current_revision="rev", current_graph_revision="graph"
     )
@@ -287,7 +311,7 @@ def test_a_fully_confirmed_run_can_be_published():
     assert decision.allowed is True
 
 
-def test_a_run_with_mocked_steps_cannot_be_published_and_says_which():
+def test_a_run_with_mocked_steps_cannot_be_published_and_says_which() -> None:
     run = _confirmed_run(("slack",))
 
     decision = publication_decision(run, session_id="s", current_revision="rev", current_graph_revision="graph")

@@ -2,11 +2,13 @@
 
 import copy
 import json
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
-from typing import cast, override
+from typing import Unpack, cast, override
 
 import pytest
+from typing_extensions import TypedDict
 
 from core.app.app_config.entities import ModelConfig
 from core.dify_builder.models import (
@@ -115,8 +117,22 @@ def _generated_chatflow(initial_graph: Graph) -> Graph:
     return graph
 
 
+class GenerationCall(TypedDict, extra_items=object):
+    mode: str
+    instruction: str
+
+
+class GenerationResponse(TypedDict):
+    graph: Graph
+    error: str
+    errors: list[dict[str, str]]
+
+
+type GeneratorCase = tuple[list[GenerationCall], list[GenerationResponse]]
+
+
 @pytest.fixture
-def generator(monkeypatch: pytest.MonkeyPatch, initial_graph: Graph):
+def generator(monkeypatch: pytest.MonkeyPatch, initial_graph: Graph) -> GeneratorCase:
     monkeypatch.setattr(
         build.resources,
         "list_tenant_resources",
@@ -129,9 +145,10 @@ def generator(monkeypatch: pytest.MonkeyPatch, initial_graph: Graph):
             {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
         ),
     )
-    calls, responses = [], []
+    calls: list[GenerationCall] = []
+    responses: list[GenerationResponse] = []
 
-    def generate(**kwargs):
+    def generate(**kwargs: Unpack[GenerationCall]) -> GenerationResponse:
         calls.append(kwargs)
         return (
             responses.pop(0) if responses else {"graph": _generated_chatflow(initial_graph), "error": "", "errors": []}
@@ -141,7 +158,7 @@ def generator(monkeypatch: pytest.MonkeyPatch, initial_graph: Graph):
     return calls, responses
 
 
-def test_chatflow_generation_accepts_answer_and_uses_the_actual_mode(generator) -> None:
+def test_chatflow_generation_accepts_answer_and_uses_the_actual_mode(generator: GeneratorCase) -> None:
     calls, _responses = generator
     result = build.build_nodes("tenant", {}, ["Reply to the user"], mode="advanced-chat")
     assert result.error == ""
@@ -152,7 +169,7 @@ def test_chatflow_generation_accepts_answer_and_uses_the_actual_mode(generator) 
     assert "Do NOT use 'end' nodes" in calls[-1]["instruction"]
 
 
-def test_chatflow_retry_rejects_a_workflow_terminal(generator, initial_graph: Graph) -> None:
+def test_chatflow_retry_rejects_a_workflow_terminal(generator: GeneratorCase, initial_graph: Graph) -> None:
     wrong = _generated_chatflow(initial_graph)
     wrong["nodes"][2]["data"] = {"type": "end", "title": "End", "outputs": []}
     errors: list[dict[str, str]] = []
@@ -250,16 +267,18 @@ def test_failed_generation_keeps_the_initial_template(initial_graph: Graph) -> N
 
 
 def test_chatflow_mode_reaches_planning_capability_checks_and_generation(monkeypatch: pytest.MonkeyPatch) -> None:
-    planner_calls, gap_calls, generation_calls = [], [], []
+    planner_calls: list[dict[str, object]] = []
+    gap_calls: list[dict[str, object]] = []
+    generation_calls: list[dict[str, object]] = []
 
-    def planner(*_args, **kwargs):
+    def planner(*_args: object, **kwargs: object) -> None:
         planner_calls.append(kwargs)
 
-    def gap(*_args, **kwargs):
+    def gap(*_args: object, **kwargs: object) -> str:
         gap_calls.append(kwargs)
         return ""
 
-    def generate(*_args, **kwargs):
+    def generate(*_args: object, **kwargs: object) -> BuildNodesResult:
         generation_calls.append(kwargs)
         return BuildNodesResult()
 
@@ -281,7 +300,7 @@ def test_chatflow_mode_reaches_planning_capability_checks_and_generation(monkeyp
 def test_chatflow_planning_and_capability_prompts_use_answer_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = []
 
-    def planner(*_args, **kwargs):
+    def planner(*_args: object, **kwargs: object) -> str:
         calls.append(kwargs)
         return json.dumps(
             {
@@ -292,7 +311,7 @@ def test_chatflow_planning_and_capability_prompts_use_answer_nodes(monkeypatch: 
             }
         )
 
-    def gap(*_args, **kwargs):
+    def gap(*_args: object, **kwargs: object) -> dict[str, str]:
         calls.append(kwargs)
         return {"gap": ""}
 
@@ -302,8 +321,10 @@ def test_chatflow_planning_and_capability_prompts_use_answer_nodes(monkeypatch: 
     assert build.assess_capability_gap(object(), ["Reply"], [], mode="advanced-chat") == ""
     assert len(calls) == 2
     for call in calls:
-        assert '- "answer"' in call["system"]
-        assert '- "end"' not in call["system"]
+        system = call["system"]
+        assert isinstance(system, str)
+        assert '- "answer"' in system
+        assert '- "end"' not in system
 
 
 def test_worker_resolves_the_persisted_app_mode_before_constructing_the_agent(
@@ -327,14 +348,17 @@ def test_worker_resolves_the_persisted_app_mode_before_constructing_the_agent(
     original_factory = task.build_dify_builder_agent
     factory_calls = []
 
-    def factory(*args, **kwargs):
-        factory_calls.append(kwargs)
-        return original_factory(*args, **kwargs)
+    def track_factory[**P, R](original: Callable[P, R]) -> Callable[P, R]:
+        def factory(*args: P.args, **kwargs: P.kwargs) -> R:
+            factory_calls.append(kwargs)
+            return original(*args, **kwargs)
+
+        return factory
 
     events: list[dict[str, object]] = []
     monkeypatch.setattr(task, "_build_repo", lambda: repo)
     monkeypatch.setattr(task, "WorkflowServiceDifyPort", lambda: port)
-    monkeypatch.setattr(task, "build_dify_builder_agent", factory)
+    monkeypatch.setattr(task, "build_dify_builder_agent", track_factory(original_factory))
     monkeypatch.setattr(LlmBuilderAgent, "model_or_none", lambda _self: None)
     monkeypatch.setattr(task.session_lock, "activate", lambda *_a: "worker")
     monkeypatch.setattr(task.session_lock, "release", lambda *_a: None)

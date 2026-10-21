@@ -7,6 +7,44 @@ protected pending reader, decision guard, root lock and physical claim are used.
 No network/provider transport or Graphon activation is involved.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, override
+
+from pydantic import JsonValue
+from sqlalchemy.orm import Session
+
+from runtime_contracts.builder.native.contracts import DispatchPermit, EffectIntent, OperationKey, PolicyStop
+from runtime_contracts.builder.native.runtime_contracts import NodeJournalState
+from services.dify_builder.native_testing.authorization import EffectAuthorizationService
+from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+from services.dify_builder.native_testing.repository import OwnedNativeTest
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    ChildApprovalCase,
+    DecisionTerms,
+    InternalDecisionArguments,
+    require_instance,
+)
+
+if TYPE_CHECKING:
+    from core.dify_builder.models import Actor
+    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_continuation as _fixture_types_0,
+    )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_continuation as _fixture_types_0,
+    )
+
+
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -27,17 +65,17 @@ from runtime_contracts.builder.execution import BuilderExecutionPolicyError, can
 from runtime_contracts.builder.native.approval_contracts import NativeApprovalProposal, NativeApprovalTerms
 from runtime_contracts.builder.native.contracts import (
     ApprovalWait,
-    DispatchPermit,
-    PolicyStop,
     RecordedResult,
     operation_digest,
 )
-from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, NodeJournalState
-from services.dify_builder.native_testing.authorization import EffectAuthorizationService, _scope_digest
+from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
+from services.dify_builder.native_testing.authorization import _scope_digest
 from services.dify_builder.native_testing.pending_intents import PendingDecisionGuard, ProtectedPendingIntentReader
-from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import NativeBinding, OwnedNativeTestLoader
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import ApprovalLedgerSnapshot
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    ApprovalLedgerSnapshot,
+)
+from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,  # noqa: PLC0414 - unchanged encrypted owner fixture
 )
@@ -63,29 +101,33 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_e
 
 
 @pytest.fixture
-def approval_case(continuation_case, migrated_continuation_tables, migrated_dispatch_claims):
+def approval_case(
+    continuation_case: _fixture_types_0.ContinuationCase,
+    migrated_continuation_tables: None,
+    migrated_dispatch_claims: None,
+) -> ContinuationCase:
     assert migrated_continuation_tables is None
     assert migrated_dispatch_claims is None
     c = continuation_case
     with c.factory.begin() as session:
         scope = session.get(NativeTestScope, c.ref.request_id)
-        scope.max_calls = scope.max_dispatches = 2
-        scope.max_cost_units = 4
-        scope.budget_limits = {"cpu_ms": 20}
+        require_instance(scope, NativeTestScope).max_calls = require_instance(scope, NativeTestScope).max_dispatches = 2
+        require_instance(scope, NativeTestScope).max_cost_units = 4
+        require_instance(scope, NativeTestScope).budget_limits = {"cpu_ms": 20}
         row = session.scalar(select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.ref.request_id))
-        row.bindings = {
+        require_instance(row, NativeTestInvocation).bindings = {
             identity: {**raw, "approval_scope": "operation", "execution_id": str(uuid4())}
-            for identity, raw in row.bindings.items()
+            for identity, raw in require_instance(row, NativeTestInvocation).bindings.items()
         }
     return c
 
 
-def _effects(c, count=1):
+def _effects(c: ContinuationCase, count: int = 1) -> tuple[EffectIntent, ...]:
     # These UUID occurrence keys are fixture identities, not native public IDs.
     return tuple(c.ledger.occurrence("fixture-" + str(uuid4())) for _ in range(count))
 
 
-def _input_effect(c, effect):
+def _input_effect(c: ContinuationCase | ChildApprovalCase, effect: EffectIntent) -> EffectIntent:
     effect = effect.model_copy(update={"input_digest": canonical_digest({"limit": 1})})
     with c.factory.begin() as session:
         row = session.scalar(
@@ -95,17 +137,24 @@ def _input_effect(c, effect):
             )
         )
         identity = operation_digest(effect.key)
-        row.bindings = {
-            **row.bindings,
-            identity: {**row.bindings[identity], "intent_digest": canonical_digest(effect.model_dump(mode="json"))},
+        require_instance(row, NativeTestInvocation).bindings = {
+            **require_instance(row, NativeTestInvocation).bindings,
+            identity: {
+                **require_instance(row, NativeTestInvocation).bindings[identity],
+                "intent_digest": canonical_digest(effect.model_dump(mode="json")),
+            },
         }
     return effect
 
 
-def _prepare_pending(c, effects):
-    inputs = {"limit": 1}
+def _prepare_pending(
+    c: ContinuationCase | ChildApprovalCase, effects: tuple[EffectIntent, ...]
+) -> tuple[tuple[EffectIntent, ...], tuple[PendingDecisionGuard, ...]]:
+    inputs: dict[str, JsonValue] = {"limit": 1}
     generation = c.store.load_context(ref=c.ref).generation
-    prepared, journals, waits = [], [], []
+    prepared: list[EffectIntent] = []
+    journals: list[NodeJournalState] = []
+    waits: list[str] = []
     terms = NativeApprovalTerms(
         max_calls=1,
         max_dispatches=1,
@@ -137,7 +186,7 @@ def _prepare_pending(c, effects):
         generation=generation,
         payload=NativeCheckpointPayload(
             schema_version="1",
-            native_run_id=c.context.native_run_id,
+            native_run_id=require_instance(c.context.native_run_id, str),
             generation=generation,
             generate_entity_json="{}",
             graph_runtime_state_json="{}",
@@ -170,7 +219,7 @@ def _prepare_pending(c, effects):
         assert resolved.intent == effect
         assert reader.load_terms(resolved=resolved) == terms
         with c.factory() as session:
-            digest = session.get(NativePendingAction, pending_id).owner_version
+            digest = require_instance(session.get(NativePendingAction, pending_id), NativePendingAction).owner_version
         guards.append(
             PendingDecisionGuard(
                 resolved=resolved,
@@ -189,7 +238,13 @@ def _prepare_pending(c, effects):
     return tuple(prepared), tuple(guards)
 
 
-def _decide(c, guard, *, decision="approved", service=None):
+def _decide(
+    c: ContinuationCase | ChildApprovalCase,
+    guard: PendingDecisionGuard,
+    *,
+    decision: Literal["approved", "denied"] = "approved",
+    service: EffectAuthorizationService | None = None,
+) -> NativeTestPublicReceipt:
     terms = guard.terms
     return (service or c.ledger.guard).decide(
         ref=c.ref,
@@ -203,7 +258,7 @@ def _decide(c, guard, *, decision="approved", service=None):
     )
 
 
-def _resume(c):
+def _resume(c: ContinuationCase) -> None:
     generation = c.store.load_context(ref=c.ref).generation
     receipt = c.lifecycle.resume(
         actor=c.ledger.actor,
@@ -214,14 +269,16 @@ def _resume(c):
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
 
 
-def _claim(c, effect, *, service=None):
+def _claim(
+    c: ContinuationCase, effect: EffectIntent, *, service: EffectAuthorizationService | None = None
+) -> DispatchPermit:
     with c.factory() as session:
         from models.dify_builder_native_tests import NativeInvocationState
 
         current = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
-        waiting = current.state == "waiting"
+        waiting = require_instance(current, NativeInvocationState).state == "waiting"
     if waiting:
         _resume(c)
     auth = service or c.ledger.guard
@@ -233,7 +290,7 @@ def _claim(c, effect, *, service=None):
     return permit
 
 
-def _counts(c):
+def _counts(c: ContinuationCase) -> ApprovalLedgerSnapshot:
     with c.factory() as session:
         scope = session.get(NativeTestScope, c.ref.request_id)
         grants = session.scalars(
@@ -246,15 +303,21 @@ def _counts(c):
             for model in (NativeEffectAttempt, NativeEffectDispatchClaim)
         }
         return ApprovalLedgerSnapshot(
-            quota=(scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units),
-            budget=dict(scope.budget_spent),
+            quota=(
+                require_instance(scope, NativeTestScope).spent_calls,
+                require_instance(scope, NativeTestScope).spent_dispatches,
+                require_instance(scope, NativeTestScope).spent_cost_units,
+            ),
+            budget=dict(require_instance(scope, NativeTestScope).budget_spent),
             grants=sorted((g.max_calls, g.max_dispatches, g.max_cost_units, g.spent_calls) for g in grants),
-            attempts=counts["NativeEffectAttempt"],
-            claims=counts["NativeEffectDispatchClaim"],
+            attempts=require_instance(counts["NativeEffectAttempt"], int),
+            claims=require_instance(counts["NativeEffectDispatchClaim"], int),
         )
 
 
-def test_operation_confirmations_are_separate_immutable_single_calls_under_root_limit(approval_case):
+def test_operation_confirmations_are_separate_immutable_single_calls_under_root_limit(
+    approval_case: ContinuationCase,
+) -> None:
     c = approval_case
     raw = tuple(_input_effect(c, effect) for effect in _effects(c, 3))
     first_effects, first_guards = _prepare_pending(c, raw[:1])
@@ -267,7 +330,7 @@ def test_operation_confirmations_are_separate_immutable_single_calls_under_root_
         operation_id=first.operation_id, result_ref=result
     )
     # Trusted internal reconfirmation also reuses the immutable spent grant.
-    reconfirm = {
+    reconfirm: InternalDecisionArguments = {
         "ref": c.ref,
         "intent": effects[0],
         "decision": "approved",
@@ -298,7 +361,7 @@ def test_operation_confirmations_are_separate_immutable_single_calls_under_root_
     assert (counts.attempts, counts.claims) == (2, 2)
 
 
-def test_unknown_operation_cannot_redispatch_using_another_operation_grant(approval_case):
+def test_unknown_operation_cannot_redispatch_using_another_operation_grant(approval_case: ContinuationCase) -> None:
     c = approval_case
     raw = tuple(_input_effect(c, effect) for effect in _effects(c, 2))
     first_effects, first_guards = _prepare_pending(c, raw[:1])
@@ -321,18 +384,21 @@ def test_unknown_operation_cannot_redispatch_using_another_operation_grant(appro
     assert (counts.attempts, counts.claims) == (2, 2)
 
 
-def test_legacy_batch_digest_and_exhaustion_keep_one_immutable_grant(approval_case):
+def test_legacy_batch_digest_and_exhaustion_keep_one_immutable_grant(approval_case: ContinuationCase) -> None:
     c = approval_case
     with c.factory.begin() as session:
         row = session.scalar(select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.ref.request_id))
-        row.bindings = {
-            identity: {k: v for k, v in raw.items() if k != "approval_scope"} for identity, raw in row.bindings.items()
+        require_instance(row, NativeTestInvocation).bindings = {
+            identity: {k: v for k, v in raw.items() if k != "approval_scope"}
+            for identity, raw in require_instance(row, NativeTestInvocation).bindings.items()
         }
-        trusted = NativeBinding.model_validate(row.bindings[operation_digest(c.ledger.intent.key)])
+        trusted = NativeBinding.model_validate(
+            require_instance(row, NativeTestInvocation).bindings[operation_digest(c.ledger.intent.key)]
+        )
     # Captured from the actual old helper before either production file changed.
     assert _scope_digest(c.ledger.intent, trusted) == "f14661adebe3ee33021286ec175a3b80f7bf608468f77d873be621de7064756b"
     expiry = datetime.now(UTC) + timedelta(minutes=3)
-    terms = {"max_calls": 1, "max_dispatches": 1, "max_cost_units": 2, "expires_at": expiry}
+    terms: DecisionTerms = {"max_calls": 1, "max_dispatches": 1, "max_cost_units": 2, "expires_at": expiry}
     first, second = _effects(c, 2)
     grant_id = c.ledger.guard.decide(ref=c.ref, intent=first, decision="approved", **terms)
     permit = _claim(c, first)
@@ -340,8 +406,10 @@ def test_legacy_batch_digest_and_exhaustion_keep_one_immutable_grant(approval_ca
     assert isinstance(c.ledger.guard.before_call(ref=c.ref, intent=second), ApprovalWait)
     assert c.ledger.guard.decide(ref=c.ref, intent=second, decision="approved", **terms) == grant_id
     assert isinstance(c.ledger.guard.before_call(ref=c.ref, intent=second), ApprovalWait)
+    conflicting_terms = terms.copy()
+    conflicting_terms["max_calls"] = 2
     with pytest.raises(BuilderExecutionPolicyError, match="native_grant_conflict"):
-        c.ledger.guard.decide(ref=c.ref, intent=second, decision="approved", **{**terms, "max_calls": 2})
+        c.ledger.guard.decide(ref=c.ref, intent=second, decision="approved", **conflicting_terms)
     counts = _counts(c)
     assert counts.grants == [(1, 1, 2, 1)]
     assert counts.quota == (1, 1, 2)
@@ -349,11 +417,14 @@ def test_legacy_batch_digest_and_exhaustion_keep_one_immutable_grant(approval_ca
 
 
 @pytest.mark.parametrize("mode", ["operation", "batch"])
-def test_denial_cannot_be_bypassed_by_decision_replay(approval_case, mode):
+def test_denial_cannot_be_bypassed_by_decision_replay(approval_case: ContinuationCase, mode: str) -> None:
     c = approval_case
     with c.factory.begin() as session:
         row = session.scalar(select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.ref.request_id))
-        row.bindings = {identity: {**raw, "approval_scope": mode} for identity, raw in row.bindings.items()}
+        require_instance(row, NativeTestInvocation).bindings = {
+            identity: {**raw, "approval_scope": mode}
+            for identity, raw in require_instance(row, NativeTestInvocation).bindings.items()
+        }
     effects, guards = _prepare_pending(c, _effects(c))
     _decide(c, guards[0], decision="denied")
     assert c.ledger.guard.before_call(ref=c.ref, intent=effects[0]) == PolicyStop(reason_code="effect_denied")
@@ -372,7 +443,7 @@ def test_denial_cannot_be_bypassed_by_decision_replay(approval_case, mode):
     assert _counts(c).attempts == _counts(c).claims == 0
 
 
-def test_concurrent_guarded_decisions_and_claims_serialize_once(approval_case):
+def test_concurrent_guarded_decisions_and_claims_serialize_once(approval_case: ContinuationCase) -> None:
     c = approval_case
     effects, guards = _prepare_pending(c, _effects(c))
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -381,12 +452,12 @@ def test_concurrent_guarded_decisions_and_claims_serialize_once(approval_case):
     assert _counts(c).grants == [(1, 1, 2, 0)]
     _resume(c)
 
-    def reserve_and_claim(_):
+    def reserve_and_claim(_) -> str:
         decision = c.ledger.guard.before_call(ref=c.ref, intent=effects[0])
         if isinstance(decision, DispatchPermit):
             c.ledger.guard.claim_dispatch(ref=c.ref, intent=effects[0], permit=decision)
             return "claimed"
-        return decision.reason_code
+        return require_instance(decision, PolicyStop).reason_code
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         outcomes = list(pool.map(reserve_and_claim, range(2)))
@@ -396,12 +467,19 @@ def test_concurrent_guarded_decisions_and_claims_serialize_once(approval_case):
 
 
 class ChangedScopeOwner(MetadataOwner):
-    def resolve_binding(self, **kwargs):
-        return super().resolve_binding(**kwargs).model_copy(update={"approval_scope": "batch"})
+    @override
+    def resolve_binding(self, *, session: Session, owned: OwnedNativeTest, key: OperationKey) -> NativeBinding:
+        return (
+            super()
+            .resolve_binding(session=session, owned=owned, key=key)
+            .model_copy(update={"approval_scope": "batch"})
+        )
 
 
 @pytest.mark.parametrize("phase", ["decision", "claim"])
-def test_current_scope_metadata_drift_rejects_decision_and_physical_claim(approval_case, phase):
+def test_current_scope_metadata_drift_rejects_decision_and_physical_claim(
+    approval_case: ContinuationCase, phase: str
+) -> None:
     c = approval_case
     effects, guards = _prepare_pending(c, _effects(c))
     changed = EffectAuthorizationService(
@@ -423,7 +501,7 @@ def test_current_scope_metadata_drift_rejects_decision_and_physical_claim(approv
 
 
 @pytest.mark.parametrize("drift", ["owner", "generation"])
-def test_guarded_decision_rechecks_current_owner_and_generation(approval_case, drift):
+def test_guarded_decision_rechecks_current_owner_and_generation(approval_case: ContinuationCase, drift: str) -> None:
     c = approval_case
     _, guards = _prepare_pending(c, _effects(c))
     if drift == "owner":
@@ -434,11 +512,14 @@ def test_guarded_decision_rechecks_current_owner_and_generation(approval_case, d
         with c.factory.begin() as session:
             from models.dify_builder_native_tests import NativeInvocationState
 
-            session.scalar(
-                select(NativeInvocationState).where(
-                    NativeInvocationState.request_id == c.ref.request_id,
-                    NativeInvocationState.invocation_id == c.ref.invocation_id,
-                )
+            require_instance(
+                session.scalar(
+                    select(NativeInvocationState).where(
+                        NativeInvocationState.request_id == c.ref.request_id,
+                        NativeInvocationState.invocation_id == c.ref.invocation_id,
+                    )
+                ),
+                NativeInvocationState,
             ).generation = 1
     with pytest.raises(BuilderExecutionPolicyError):
         _decide(c, guards[0], service=changed)

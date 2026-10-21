@@ -130,7 +130,7 @@ def test_expired_close_reader_can_clean_but_cannot_make_snapshot_ready() -> None
     consume(life)
 
 
-def iter_source():
+def iter_source() -> Generator[str]:
     yield "data: bounded-test\n\n"
 
 

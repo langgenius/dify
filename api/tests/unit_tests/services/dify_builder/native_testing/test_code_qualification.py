@@ -2,22 +2,29 @@ from collections.abc import Callable
 from typing import cast
 
 import pytest
+from pydantic import JsonValue
 
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from services.dify_builder.native_testing.sandbox.qualification import NativeCodeCapability
+from services.dify_builder.native_testing.sandbox.qualification import NativeCodeCapability, NativeCodeQualification
 
 
 class CapabilityOwner:
     """Declared qualification boundary whose capability checks are observed by tests."""
 
-    def __init__(self, validate: Callable[[NativeCodeCapability], object]):
+    def __init__(self, validate: Callable[[NativeCodeCapability], None]) -> None:
         self._validate = validate
 
-    def validate(self, *, capability: NativeCodeCapability):
+    def validate(self, *, capability: NativeCodeCapability) -> None:
         return self._validate(capability)
 
 
-def capability():
+class InvalidQualificationOwner:
+    def validate(self, *, capability: NativeCodeCapability) -> bool:
+        del capability
+        return True
+
+
+def capability() -> NativeCodeCapability:
     from services.dify_builder.native_testing.sandbox.qualification import (
         BOUNDS,
         NativeCodeCapability,
@@ -39,17 +46,17 @@ def capability():
     )
 
 
-def qualification():
+def qualification() -> tuple[NativeCodeQualification, list[NativeCodeCapability]]:
     from services.dify_builder.native_testing.sandbox.qualification import (
         NativeCodeQualification,
     )
 
-    seen = []
+    seen: list[NativeCodeCapability] = []
     owner = CapabilityOwner(seen.append)
     return NativeCodeQualification(capability=capability(), owner=owner), seen
 
 
-def test_capability_dto_and_artifact_hashes_do_not_grant_authority():
+def test_capability_dto_and_artifact_hashes_do_not_grant_authority() -> None:
     from services.dify_builder.native_testing.sandbox.qualification import (
         NativeCodeQualification,
         NativeCodeQualificationOwner,
@@ -58,10 +65,12 @@ def test_capability_dto_and_artifact_hashes_do_not_grant_authority():
     with pytest.raises(BuilderExecutionPolicyError):
         NativeCodeQualification(capability=capability(), owner=cast(NativeCodeQualificationOwner, None))
     with pytest.raises(BuilderExecutionPolicyError):
-        NativeCodeQualification(capability=capability(), owner=CapabilityOwner(lambda _capability: True))
+        NativeCodeQualification(
+            capability=capability(), owner=cast(NativeCodeQualificationOwner, InvalidQualificationOwner())
+        )
 
 
-def test_qualification_rechecks_exact_complete_snapshot_for_each_use():
+def test_qualification_rechecks_exact_complete_snapshot_for_each_use() -> None:
     q, seen = qualification()
     q.check()
     q.check()
@@ -83,7 +92,7 @@ def test_qualification_rechecks_exact_complete_snapshot_for_each_use():
         ("auth_token", ""),
     ],
 )
-def test_invalid_qualified_identity_refuses_before_owner(field, value):
+def test_invalid_qualified_identity_refuses_before_owner(field: str, value: JsonValue) -> None:
     from services.dify_builder.native_testing.sandbox.qualification import (
         NativeCodeQualification,
     )
@@ -96,7 +105,7 @@ def test_invalid_qualified_identity_refuses_before_owner(field, value):
         )
 
 
-def test_owner_revocation_refuses_existing_qualification():
+def test_owner_revocation_refuses_existing_qualification() -> None:
     q, _ = qualification()
     q.owner.validate = lambda **_kw: (_ for _ in ()).throw(ValueError("private reason"))
     with pytest.raises(BuilderExecutionPolicyError) as error:
@@ -104,13 +113,13 @@ def test_owner_revocation_refuses_existing_qualification():
     assert "private reason" not in str(error.value)
 
 
-def test_complete_snapshot_binds_the_fixed_deployment_limits():
+def test_complete_snapshot_binds_the_fixed_deployment_limits() -> None:
     q, _ = qualification()
     assert dict(q.capability.bounds)["memory_bytes"] == 256 << 20
     assert dict(q.capability.bounds)["wall_seconds"] == 30
 
 
-def raw_code(**changes):
+def raw_code(**changes: JsonValue) -> dict[str, JsonValue]:
     return {
         "type": "code",
         "version": "1",
@@ -123,7 +132,7 @@ def raw_code(**changes):
     }
 
 
-def test_code_descriptor_binds_config_environment_and_limits_without_payload():
+def test_code_descriptor_binds_config_environment_and_limits_without_payload() -> None:
     from services.dify_builder.native_testing.sandbox.qualification import (
         describe_code_resource,
     )
@@ -164,7 +173,7 @@ def test_code_descriptor_binds_config_environment_and_limits_without_payload():
         {"type": "http-request"},
     ],
 )
-def test_resource_refuses_unqualified_config_before_payload_preparation(change):
+def test_resource_refuses_unqualified_config_before_payload_preparation(change: dict[str, JsonValue]) -> None:
     from services.dify_builder.native_testing.sandbox.qualification import (
         describe_code_resource,
     )

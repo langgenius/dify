@@ -27,7 +27,7 @@ from clients.agent_backend import (
 )
 
 
-def test_event_adapter_preserves_wait_identity_without_converting_it_to_failure():
+def test_event_adapter_preserves_wait_identity_without_converting_it_to_failure() -> None:
     from dify_agent.protocol import RunWaitingEvent, RunWaitingEventData
 
     event = RunWaitingEvent(
@@ -42,7 +42,7 @@ def test_event_adapter_preserves_wait_identity_without_converting_it_to_failure(
     assert adapted[0].pending_actions == ()
 
 
-def test_event_adapter_preserves_resumption_generation():
+def test_event_adapter_preserves_resumption_generation() -> None:
     from dify_agent.protocol import RunResumedEvent, RunResumedEventData
 
     adapted = AgentBackendRunEventAdapter().adapt(

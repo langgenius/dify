@@ -1,7 +1,11 @@
 """Authenticated wrappers, strict payload and public schema regression."""
 
 import pytest
+import pytest_mock
+from pydantic import JsonValue
 
+from core.dify_builder.models import Actor
+from tests.unit_tests.controllers.console.test_dify_builder_routes import _RequestSqlWorld
 from tests.unit_tests.controllers.console.test_dify_builder_routes import (
     request_sql_world as request_sql_world,  # noqa: PLC0414
 )
@@ -9,12 +13,12 @@ from tests.unit_tests.controllers.console.test_dify_builder_routes import (
 BASE = "/console/api/dify-builder/sessions/session-1/native-tests"
 
 
-def test_native_route_requires_signed_login(request_sql_world):
+def test_native_route_requires_signed_login(request_sql_world: _RequestSqlWorld) -> None:
     response = request_sql_world.client.post(BASE, json={}, headers={"Authorization": ""})
     assert response.status_code == 401
 
 
-def test_native_route_requires_csrf(request_sql_world):
+def test_native_route_requires_csrf(request_sql_world: _RequestSqlWorld) -> None:
     response = request_sql_world.client.post(BASE, json={}, headers={"X-CSRF-Token": ""})
     assert response.status_code == 401
 
@@ -51,14 +55,16 @@ def test_native_route_requires_csrf(request_sql_world):
         ("/request/cancel", {"schema_version": "builder-native-test-v1", "idempotency_key": "c", "permit": "forged"}),
     ],
 )
-def test_native_routes_reject_invalid_payload_before_composition(request_sql_world, suffix, body):
+def test_native_routes_reject_invalid_payload_before_composition(
+    request_sql_world: _RequestSqlWorld, suffix: str, body: dict[str, JsonValue]
+) -> None:
     response = request_sql_world.client.post(BASE + suffix, json=body)
     assert response.status_code == 400
     assert "changed@example.invalid" not in response.get_data(as_text=True)
     assert "forged" not in response.get_data(as_text=True)
 
 
-def test_native_sse_snapshot_has_reconnect_cursor_and_no_private_payload():
+def test_native_sse_snapshot_has_reconnect_cursor_and_no_private_payload() -> None:
     from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
     from services.dify_builder.wiring import stream_advance_frames
 
@@ -86,7 +92,7 @@ def test_native_sse_snapshot_has_reconnect_cursor_and_no_private_payload():
     assert "context_digest" not in frames[0]
 
 
-def test_native_sse_reconnect_skips_unchanged_public_snapshot():
+def test_native_sse_reconnect_skips_unchanged_public_snapshot() -> None:
     from runtime_contracts.builder.execution import canonical_digest
     from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
     from services.dify_builder.wiring import stream_advance_frames
@@ -119,14 +125,16 @@ def test_native_sse_reconnect_skips_unchanged_public_snapshot():
     )
 
 
-def test_native_input_binding_requires_signed_login(request_sql_world):
+def test_native_input_binding_requires_signed_login(request_sql_world: _RequestSqlWorld) -> None:
     response = request_sql_world.client.get(
         BASE.removesuffix("/native-tests") + "/native-test-input", headers={"Authorization": ""}
     )
     assert response.status_code == 401
 
 
-def test_native_input_binding_has_only_public_identity(request_sql_world, monkeypatch, mocker):
+def test_native_input_binding_has_only_public_identity(
+    request_sql_world: _RequestSqlWorld, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture
+) -> None:
     from sqlalchemy.orm import sessionmaker
 
     from controllers.console import dify_builder as controller
@@ -137,7 +145,7 @@ def test_native_input_binding_has_only_public_identity(request_sql_world, monkey
         test_input_id="input-1", expected_version=3, workflow_id="workflow-1", graph_revision="a" * 64
     )
 
-    def binding_service(*, actor):
+    def binding_service(*, actor: Actor) -> NativeTestInputBindingService:
         service = NativeTestInputBindingService(
             session_factory=sessionmaker(bind=request_sql_world.registry.get_bind()), actor=actor
         )

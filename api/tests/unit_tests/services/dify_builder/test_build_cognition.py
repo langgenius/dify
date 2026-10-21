@@ -3,6 +3,7 @@ from collections.abc import Callable, Sequence
 from typing import Never
 
 import pytest
+import sqlalchemy.orm
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session as OrmSession
 
@@ -1115,8 +1116,8 @@ def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch: pytest.Monkey
 
 @pytest.mark.parametrize("with_actor", [True, False])
 def test_initial_plan_uses_only_current_actor_eligible_published_agent_metadata(
-    sqlite_session, monkeypatch, with_actor
-):
+    sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch, with_actor: bool
+) -> None:
 
     from services.agent import access_service
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
@@ -1140,7 +1141,7 @@ def test_initial_plan_uses_only_current_actor_eligible_published_agent_metadata(
     captured = {}
     steps = ["start node receives report", "New Agent v2 node reviews the report", "end node returns summary"]
 
-    def propose(_model, *, system, user, **_kwargs):
+    def propose(_model: object, *, system: str, user: str, **_kwargs: object) -> str:
         captured.update(system=system, user=user)
         return _plan_reply(steps)
 
@@ -1172,7 +1173,7 @@ def test_initial_plan_uses_only_current_actor_eligible_published_agent_metadata(
     assert "HIDDEN" not in system
 
 
-def test_initial_plan_keeps_agent_catalogue_failure_distinct_from_no_agents(monkeypatch):
+def test_initial_plan_keeps_agent_catalogue_failure_distinct_from_no_agents(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
     monkeypatch.setattr(
@@ -1193,7 +1194,7 @@ def test_initial_plan_keeps_agent_catalogue_failure_distinct_from_no_agents(monk
     assert "do not infer" in system
 
 
-def test_agent_binding_names_new_agent_step_instead_of_end(monkeypatch):
+def test_agent_binding_names_new_agent_step_instead_of_end(monkeypatch: pytest.MonkeyPatch) -> None:
     agent_id = "agent:agent-1:snapshot-1:" + "a" * 64
     monkeypatch.setattr(
         resources,
@@ -1215,7 +1216,7 @@ def test_agent_binding_names_new_agent_step_instead_of_end(monkeypatch):
     assert result[2] == "end node returns summary"
 
 
-def test_plan_prompt_without_tools_has_no_tool_section(monkeypatch):
+def test_plan_prompt_without_tools_has_no_tool_section(monkeypatch: pytest.MonkeyPatch) -> None:
     captured = {}
 
     def fake_invoke_text(model: object, *, system: str, user: str, **kw: object) -> str:  # noqa: ARG001
@@ -1936,7 +1937,7 @@ class TestNativeBuildCapabilityMessages:
         )
 
 
-def test_plan_distinguishes_stop_on_error_from_diagnostic_output():
+def test_plan_distinguishes_stop_on_error_from_diagnostic_output() -> None:
     """Removing the native-failure rule must not leave a marker-only plan contract."""
     model = _FakeInstance([_plan_reply(["code node sends the POST and stops on failure"])])
     requirements = {"error_status_value": 0, "continue_on_post_failure": False, "health_success_status": 404}

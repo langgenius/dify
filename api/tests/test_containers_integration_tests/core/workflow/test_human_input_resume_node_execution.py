@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import time
 import uuid
 
@@ -292,7 +294,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
         for _ in engine.run():
             continue
 
-    def test_resume_human_input_does_not_create_duplicate_node_execution(self):
+    def test_resume_human_input_does_not_create_duplicate_node_execution(self) -> None:
         execution_id = str(uuid.uuid4())
         runtime_state = _build_runtime_state(
             workflow_execution_id=execution_id,

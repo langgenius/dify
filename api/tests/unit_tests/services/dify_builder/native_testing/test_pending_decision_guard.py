@@ -1,8 +1,11 @@
 """Post-read guard compares the complete frozen checkpoint identity."""
 
 import importlib.util
+from types import ModuleType
+from typing import cast
 
 import pytest
+from typing_extensions import TypedDict
 
 from models.dify_builder_native_tests import (
     NativeContinuation,
@@ -15,13 +18,57 @@ from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTest
 from tests.unit_tests.services.dify_builder.native_testing.test_pending_intents import effect
 
 
-def module():
+class StateSnapshot(TypedDict, closed=True):
+    tenant_id: str
+    request_id: str
+    invocation_id: str
+    generation: int
+    checkpoint_id: str
+    pending_ids: list[str]
+    state: str
+
+
+class PendingSnapshot(TypedDict, closed=True):
+    id: str
+    tenant_id: str
+    request_id: str
+    invocation_id: str
+    generation: int
+    category: str
+    operation_id: str
+    reference: str
+    reference_digest: str
+    owner_ref: str
+    owner_version: str
+
+
+class OperationSnapshot(TypedDict, closed=True):
+    id: str
+    tenant_id: str
+    request_id: str
+    invocation_id: str
+    operation_digest: str
+    intent_digest: str
+    scope_digest: str
+    state: str
+
+
+class ContinuationSnapshot(TypedDict, closed=True):
+    tenant_id: str
+    request_id: str
+    invocation_id: str
+    generation: int
+    checkpoint_id: str
+    payload_digest: str
+
+
+def module() -> ModuleType:
     name = "services.dify_builder.native_testing.pending_intents"
     assert importlib.util.find_spec(name) is not None, "protected pending intent reader is missing"
     return __import__(name, fromlist=["ResolvedPendingIntent"])
 
 
-def test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner():
+def test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner() -> None:
     m = module()
     intent = effect()
     resolved = m.ResolvedPendingIntent(
@@ -30,7 +77,7 @@ def test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner(
         checkpoint=CheckpointRef(checkpoint_id="cp", payload_digest="d" * 64),
         intent=intent,
     )
-    pending = {
+    pending: PendingSnapshot = {
         "id": "p",
         "tenant_id": "t",
         "request_id": "r",
@@ -43,7 +90,7 @@ def test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner(
         "owner_ref": "app",
         "owner_version": "e" * 64,
     }
-    operation = {
+    operation: OperationSnapshot = {
         "id": "op",
         "tenant_id": "t",
         "request_id": "r",
@@ -53,7 +100,7 @@ def test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner(
         "scope_digest": "e" * 64,
         "state": "pending",
     }
-    state = {
+    state: StateSnapshot = {
         "tenant_id": "t",
         "request_id": "r",
         "invocation_id": "inv",
@@ -62,7 +109,7 @@ def test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner(
         "pending_ids": ["p"],
         "state": "waiting",
     }
-    cp = {
+    cp: ContinuationSnapshot = {
         "tenant_id": "t",
         "request_id": "r",
         "invocation_id": "inv",
@@ -71,7 +118,12 @@ def test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner(
         "payload_digest": "d" * 64,
     }
 
-    def validate(p=pending, o=operation, s=state, checkpoint=cp):
+    def validate(**overrides: object) -> None:
+        # Mutation cases retain the snapshot shape and change one selected value.
+        p = cast(PendingSnapshot, overrides.get("p", pending))
+        o = cast(OperationSnapshot, overrides.get("o", operation))
+        s = cast(StateSnapshot, overrides.get("s", state))
+        checkpoint = cast(ContinuationSnapshot, overrides.get("checkpoint", cp))
         m.validate_pending_snapshot(
             resolved=resolved,
             tenant_id="t",
@@ -93,7 +145,7 @@ def test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner(
         ("o", "operation_digest", "f" * 64),
         ("o", "scope_digest", "f" * 64),
         ("s", "checkpoint_id", "old"),
-        ("s", "pending_ids", []),
+        ("s", "pending_ids", list[str]()),
         ("checkpoint", "payload_digest", "f" * 64),
     ):
         original = {"p": pending, "o": operation, "s": state, "checkpoint": cp}[group]

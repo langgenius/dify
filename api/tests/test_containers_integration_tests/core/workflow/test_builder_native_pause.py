@@ -6,6 +6,42 @@ slot. MetadataOwner remains the existing synthetic trusted fixture; these tests
 cannot qualify a production binding/input producer or native execution factory.
 """
 
+from __future__ import annotations
+
+from collections.abc import Generator
+from typing import TYPE_CHECKING
+
+from runtime_contracts.builder.native.contracts import ApprovalWait
+from runtime_contracts.builder.native.runtime_contracts import NodeJournalState
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
+
+
+from typing import TYPE_CHECKING
+
+from runtime_contracts.builder.native.contracts import EffectIntent
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from runtime_contracts.builder.native.contracts import (
+        DispatchPermit,
+        OperationKey,
+    )
+    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_continuation as _fixture_types_0,
+    )
+
+
 from dataclasses import replace
 from uuid import uuid4
 
@@ -17,7 +53,6 @@ from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import NativeContinuation, NativeInvocationState, NativeTestInvocation
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import (
-    ApprovalWait,
     DispatchPermit,
     OperationKey,
     PolicyStop,
@@ -28,6 +63,7 @@ from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointP
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 from services.dify_builder.native_testing.pending_actions import NativePendingActionService
+from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,  # noqa: PLC0414 - existing real owner fixture
 )
@@ -48,7 +84,9 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_c
 )
 
 
-def _payload(_c, generation=0, journals=()):
+def _payload(
+    _c: ContinuationCase, generation: int = 0, journals: tuple[NodeJournalState, ...] = ()
+) -> NativeCheckpointPayload:
     return NativeCheckpointPayload(
         schema_version="1",
         native_run_id="native-run",
@@ -62,7 +100,7 @@ def _payload(_c, generation=0, journals=()):
     )
 
 
-def _input_fixture(c):
+def _input_fixture(c: ContinuationCase) -> str:
     """Independent test data identity; never registered as a dispatch binding."""
     return c.store.store_result(
         ref=c.ref,
@@ -71,23 +109,25 @@ def _input_fixture(c):
     )
 
 
-def _journal_effect(c):
+def _journal_effect(c: ContinuationCase) -> EffectIntent:
     """Bind exact fixture inputs before any C02 operation is created."""
     effect = c.ledger.intent.model_copy(update={"input_digest": canonical_digest(c.context.inputs)})
     with c.factory.begin() as session:
         row = session.scalar(select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.ref.request_id))
-        bindings = dict(row.bindings)
+        bindings = dict(require_instance(row, NativeTestInvocation).bindings)
         bindings[operation_digest(effect.key)] = {
             **bindings[operation_digest(effect.key)],
             "intent_digest": canonical_digest(effect.model_dump(mode="json")),
         }
-        row.bindings = bindings
+        require_instance(row, NativeTestInvocation).bindings = bindings
     c.ledger = replace(c.ledger, intent=effect)
     return effect
 
 
 @pytest.mark.parametrize("category", ["approval", "configuration", "interaction"])
-def test_host_barrier_returns_only_real_committed_wait_category(continuation_case, category):
+def test_host_barrier_returns_only_real_committed_wait_category(
+    continuation_case: _fixture_types_0.ContinuationCase, category: str
+) -> None:
     c = continuation_case
     if category == "approval":
         pending = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
@@ -112,7 +152,11 @@ def test_host_barrier_returns_only_real_committed_wait_category(continuation_cas
         state = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
-        assert (state.state, state.wait_reason, state.checkpoint_id) == (
+        assert (
+            require_instance(state, NativeInvocationState).state,
+            require_instance(state, NativeInvocationState).wait_reason,
+            require_instance(state, NativeInvocationState).checkpoint_id,
+        ) == (
             "waiting",
             category,
             receipt.checkpoint.checkpoint_id,
@@ -120,7 +164,7 @@ def test_host_barrier_returns_only_real_committed_wait_category(continuation_cas
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_host_barrier_survives_two_real_pause_generations(continuation_case):
+def test_host_barrier_survives_two_real_pause_generations(continuation_case: _fixture_types_0.ContinuationCase) -> None:
     c = continuation_case
     pending_service = NativePendingActionService(c.store.loader)
     bridge = NativeCheckpointBridge(state=c.store, lifecycle=c.lifecycle)
@@ -149,7 +193,9 @@ def test_host_barrier_survives_two_real_pause_generations(continuation_case):
 
 
 @pytest.mark.parametrize("fault", ["storage", "readback", "checkpoint_sql", "lifecycle_sql"])
-def test_host_barrier_owner_failure_never_returns_waiting(continuation_case, monkeypatch, fault):
+def test_host_barrier_owner_failure_never_returns_waiting(
+    continuation_case: _fixture_types_0.ContinuationCase, monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
     from extensions.ext_storage import storage
 
     c = continuation_case
@@ -157,7 +203,7 @@ def test_host_barrier_owner_failure_never_returns_waiting(continuation_case, mon
     fault_hits = []
     if fault == "storage":
 
-        def fail_save(*_args, **_kwargs):
+        def fail_save(*_args: object, **_kwargs: object) -> None:
             fault_hits.append(fault)
             raise OSError("synthetic storage failure")
 
@@ -166,20 +212,20 @@ def test_host_barrier_owner_failure_never_returns_waiting(continuation_case, mon
         original_load, original_save = storage.load, storage.save
         new_keys = set()
 
-        def save(key, data):
+        def save(key: str, data: bytes) -> None:
             original_save(key, data)
             new_keys.add(key)
 
-        def load(key, *args, **kwargs):
+        def load(key: str, *, stream: bool = False) -> bytes | Generator[bytes]:
             if key in new_keys:
                 fault_hits.append(fault)
                 return b"corrupt encrypted payload"
-            return original_load(key, *args, **kwargs)
+            return original_load(key, stream=stream)
 
         monkeypatch.setattr(storage, "save", save)
         monkeypatch.setattr(storage, "load", load)
 
-    def fail_commit(session):
+    def fail_commit(session: Session) -> None:
         if fault == "checkpoint_sql" and any(isinstance(row, NativeContinuation) for row in session.new):
             fault_hits.append(fault)
             raise RuntimeError("synthetic checkpoint commit failure")
@@ -204,7 +250,7 @@ def test_host_barrier_owner_failure_never_returns_waiting(continuation_case, mon
                 ref=c.ref,
                 generation=0,
                 payload=_payload(c),
-                pending_operation_ids=(pending.pending_operation_id,),
+                pending_operation_ids=(require_instance(pending, ApprovalWait).pending_operation_id,),
             )
     finally:
         event.remove(Session, "before_commit", fail_commit)
@@ -213,12 +259,19 @@ def test_host_barrier_owner_failure_never_returns_waiting(continuation_case, mon
         state = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
-        assert state.state == "running"
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "running"
+        assert require_instance(state, NativeInvocationState).state == "running"
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).state
+            == "running"
+        )
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_host_journal_real_completed_result_replays_without_second_claim(continuation_case):
+def test_host_journal_real_completed_result_replays_without_second_claim(
+    continuation_case: _fixture_types_0.ContinuationCase,
+) -> None:
     c = continuation_case
     effect = _journal_effect(c)
     input_ref = _input_fixture(c)
@@ -252,7 +305,9 @@ def test_host_journal_real_completed_result_replays_without_second_claim(continu
     assert c.ledger.dispatched_attempt_count() == 1
 
 
-def test_host_journal_real_unknown_result_never_becomes_replayable(continuation_case):
+def test_host_journal_real_unknown_result_never_becomes_replayable(
+    continuation_case: _fixture_types_0.ContinuationCase,
+) -> None:
     c = continuation_case
     effect = _journal_effect(c)
     input_ref = _input_fixture(c)
@@ -276,7 +331,9 @@ def test_host_journal_real_unknown_result_never_becomes_replayable(continuation_
 
 
 @pytest.mark.parametrize("owner", ["request", "invocation", "context"])
-def test_host_journal_refuses_foreign_private_input_before_effect(continuation_case, owner):
+def test_host_journal_refuses_foreign_private_input_before_effect(
+    continuation_case: _fixture_types_0.ContinuationCase, owner: str
+) -> None:
     c = continuation_case
     input_ref = _input_fixture(c)
     foreign_request_id = str(uuid4())
@@ -289,7 +346,7 @@ def test_host_journal_refuses_foreign_private_input_before_effect(continuation_c
     foreign = c.ref.model_copy(update=updates[owner])
     journal = NodeOperationJournal(state=c.store, authorization=c.ledger.guard)
 
-    def read_foreign():
+    def read_foreign() -> None:
         cursor = journal.open(ref=foreign, occurrence_path=("node",))
         cursor.bind_input(input_result_ref=input_ref, inputs=c.context.inputs)
 

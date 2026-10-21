@@ -1,15 +1,35 @@
 """Native bindings preserve confirmed snapshots and native output contracts."""
 
 import re
+from collections.abc import Generator
 
 import pytest
-from pydantic import ValidationError
+import sqlalchemy.orm
+from pydantic import JsonValue, ValidationError
+from typing_extensions import TypedDict
 
+from clients.agent_backend.fake_client import FakeAgentBackendRunClient
+from core.dify_builder.models import Actor, Graph
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
+from graphon.node_events import StreamCompletedEvent
+from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+from tests.builder_agent_fixtures import AgentCase
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeSessionStore
 
 
-def test_active_roster_drift_requires_reconfirmation():
+class ResolveSelection(TypedDict, closed=True):
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    node_id: str
+    builder_actor: Actor
+    selected_agent_id: str
+    selected_snapshot_id: str
+    conversation_id: str | None
+
+
+def test_active_roster_drift_requires_reconfirmation() -> None:
     from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged, require_selected_snapshot
 
     with pytest.raises(AgentSnapshotChanged) as error:
@@ -18,7 +38,7 @@ def test_active_roster_drift_requires_reconfirmation():
     require_selected_snapshot(selected_snapshot_id="snapshot-3", effective_snapshot_id="snapshot-3")
 
 
-def test_native_job_contract_survives_graph_translation_and_prompt():
+def test_native_job_contract_survives_graph_translation_and_prompt() -> None:
     from models.agent_config_entities import WorkflowNodeJobConfig
     from services.dify_builder.agent.graph_prompt import published_variables_of
     from services.dify_builder.agent.graph_translate import to_intents
@@ -42,13 +62,19 @@ def test_native_job_contract_survives_graph_translation_and_prompt():
         "agent_id": "agent-1",
         "current_snapshot_id": "snapshot-3",
     }
-    assert [item["name"] for item in data["agent_declared_outputs"]] == ["risks", "summary"]
+    outputs = data["agent_declared_outputs"]
+    assert isinstance(outputs, list)
+    names: list[JsonValue] = []
+    for item in outputs:
+        assert isinstance(item, dict)
+        names.append(item["name"])
+    assert names == ["risks", "summary"]
     intents = to_intents({"nodes": [{"id": "review", "data": data}], "edges": []})
     assert intents[0].args["config"]["agent_declared_outputs"] == data["agent_declared_outputs"]
     assert published_variables_of({"data": data}) == frozenset({"text", "risks", "summary"})
 
 
-def test_only_bound_new_agent_is_admitted_by_proposal_policy():
+def test_only_bound_new_agent_is_admitted_by_proposal_policy() -> None:
     from core.dify_builder.models import MutationIntent
     from services.dify_builder.node_policy import proposal_policy_rejections
 
@@ -57,7 +83,7 @@ def test_only_bound_new_agent_is_admitted_by_proposal_policy():
         "agent_node_kind": "dify_agent",
         "agent_binding": {"binding_type": "roster_agent", "agent_id": "a", "current_snapshot_id": "s"},
     }
-    graph = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
     assert (
         proposal_policy_rejections(
             graph, [MutationIntent(op="create_node", args={"node_type": "agent", "config": data})]
@@ -70,7 +96,7 @@ def test_only_bound_new_agent_is_admitted_by_proposal_policy():
 
 
 @pytest.fixture
-def agent_case(sqlite_session, monkeypatch):
+def agent_case(sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch) -> AgentCase:
     from tests.builder_agent_fixtures import make_case
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
@@ -80,7 +106,7 @@ def agent_case(sqlite_session, monkeypatch):
     return case
 
 
-def _selection(case):
+def _selection(case: AgentCase) -> AgentBindingSelection:
     from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
@@ -90,7 +116,9 @@ def _selection(case):
     )
 
 
-def test_prepare_then_native_sync_share_one_rollback(agent_case, sqlite_session):
+def test_prepare_then_native_sync_share_one_rollback(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     import json
 
     from sqlalchemy import select
@@ -116,17 +144,18 @@ def test_prepare_then_native_sync_share_one_rollback(agent_case, sqlite_session)
     graph["nodes"].append({"id": "review", "data": data})
     case.workflow.graph = json.dumps(graph)
     service.sync_prepared_bindings(actor=case.actor, workflow=case.workflow, selections={"review": selection})
-    assert (
-        sqlite_session.scalar(
-            select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == case.workflow.id)
-        ).current_snapshot_id
-        == selection.snapshot_id
+    saved_binding = sqlite_session.scalar(
+        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == case.workflow.id)
     )
+    assert saved_binding is not None
+    assert saved_binding.current_snapshot_id == selection.snapshot_id
     workflow_id = case.workflow.id
     sqlite_session.rollback()
     from models.workflow import Workflow
 
-    assert sqlite_session.get(Workflow, workflow_id).graph == graph_before
+    restored = sqlite_session.get(Workflow, workflow_id)
+    assert restored is not None
+    assert restored.graph == graph_before
     assert (
         sqlite_session.scalar(
             select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == workflow_id)
@@ -135,7 +164,9 @@ def test_prepare_then_native_sync_share_one_rollback(agent_case, sqlite_session)
     )
 
 
-def test_changed_start_snapshot_stops_before_native_sync(agent_case, sqlite_session):
+def test_changed_start_snapshot_stops_before_native_sync(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     from models.agent import AgentConfigSnapshot
     from models.agent_config_entities import WorkflowNodeJobConfig
     from services.dify_builder.native_testing.agent_binding import AgentBindingService, AgentSnapshotChanged
@@ -179,13 +210,15 @@ def test_changed_start_snapshot_stops_before_native_sync(agent_case, sqlite_sess
         {"declared_outputs": [{"name": "summary", "type": "string"}, {"name": "summary", "type": "number"}]},
     ],
 )
-def test_prepare_uses_native_input_and_output_validators(agent_case, sqlite_session, job):
+def test_prepare_uses_native_input_and_output_validators(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session, job: dict[str, JsonValue]
+) -> None:
     from models.agent_config_entities import WorkflowNodeJobConfig
     from services.dify_builder.native_testing.agent_binding import AgentBindingService
 
     if "declared_outputs" in job:
         reason = "Workflow Agent node review has duplicate output name summary."
-    elif "missing" in job["workflow_prompt"]:
+    elif isinstance(job["workflow_prompt"], str) and "missing" in job["workflow_prompt"]:
         reason = "Workflow Agent node review references missing previous node missing."
     else:
         reason = "Workflow Agent node review references non-upstream previous node review."
@@ -199,7 +232,9 @@ def test_prepare_uses_native_input_and_output_validators(agent_case, sqlite_sess
         )
 
 
-def test_current_membership_revocation_blocks_apply(agent_case, sqlite_session):
+def test_current_membership_revocation_blocks_apply(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     from sqlalchemy import delete
 
     from models.account import TenantAccountJoin
@@ -220,8 +255,11 @@ def test_current_membership_revocation_blocks_apply(agent_case, sqlite_session):
 
 @pytest.mark.parametrize("conversation_id", [None, "new-test-conversation"])
 def test_fresh_native_resolution_reconfirms_but_paused_keeps_snapshot(
-    agent_case, sqlite_session, monkeypatch, conversation_id
-):
+    agent_case: AgentCase,
+    sqlite_session: sqlalchemy.orm.Session,
+    monkeypatch: pytest.MonkeyPatch,
+    conversation_id: None | str,
+) -> None:
     from contextlib import contextmanager
 
     from models.agent import (
@@ -267,11 +305,11 @@ def test_fresh_native_resolution_reconfirms_but_paused_keeps_snapshot(
     sqlite_session.flush()
 
     @contextmanager
-    def session_context():
+    def session_context() -> Generator[sqlalchemy.orm.Session]:
         yield sqlite_session
 
     monkeypatch.setattr(binding_resolver.session_factory, "create_session", session_context)
-    args = {
+    args: ResolveSelection = {
         "tenant_id": case.actor.tenant_id,
         "app_id": case.workflow.app_id,
         "workflow_id": case.workflow.id,
@@ -283,8 +321,14 @@ def test_fresh_native_resolution_reconfirms_but_paused_keeps_snapshot(
     }
     with pytest.raises(AgentSnapshotChanged):
         binding_resolver.WorkflowAgentBindingResolver().resolve(**args)
-    ordinary_args = {key: value for key, value in args.items() if not key.startswith(("builder_", "selected_"))}
-    assert binding_resolver.WorkflowAgentBindingResolver().resolve(**ordinary_args).snapshot.id == replacement.id
+    ordinary = binding_resolver.WorkflowAgentBindingResolver().resolve(
+        tenant_id=args["tenant_id"],
+        app_id=args["app_id"],
+        workflow_id=args["workflow_id"],
+        node_id=args["node_id"],
+        conversation_id=args["conversation_id"],
+    )
+    assert ordinary.snapshot.id == replacement.id
     pinned = binding_resolver.WorkflowAgentBindingResolver().resolve(**args, binding_id=binding.id, snapshot_id=old_id)
     assert pinned.snapshot.id == old_id
 
@@ -299,8 +343,12 @@ def test_fresh_native_resolution_reconfirms_but_paused_keeps_snapshot(
     ],
 )
 def test_confirmed_ordinary_agent_rechecks_selection_before_backend(
-    agent_case, sqlite_session, monkeypatch, change, reason
-):
+    agent_case: AgentCase,
+    sqlite_session: sqlalchemy.orm.Session,
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
+    reason: str,
+) -> None:
     """The actual ordinary node must refuse changed authority before allocation or dispatch."""
     from contextlib import contextmanager
 
@@ -373,7 +421,7 @@ def test_confirmed_ordinary_agent_rechecks_selection_before_backend(
         )
 
     @contextmanager
-    def session_context():
+    def session_context() -> Generator[sqlalchemy.orm.Session]:
         yield sqlite_session
 
     monkeypatch.setattr(binding_resolver.session_factory, "create_session", session_context)
@@ -414,14 +462,20 @@ def test_confirmed_ordinary_agent_rechecks_selection_before_backend(
 
     events = list(node._run())
 
-    result = events[-1].node_run_result
+    terminal = events[-1]
+    assert isinstance(terminal, StreamCompletedEvent)
+    result = terminal.node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error_type == reason
+    assert isinstance(node._agent_backend_client, FakeAgentBackendRunClient)
     assert node._agent_backend_client.request is None
+    assert isinstance(node._session_store, FakeSessionStore)
     assert node._session_store.resolved_scopes == []
 
 
-def test_sync_cannot_skip_native_selection_admission(agent_case, sqlite_session):
+def test_sync_cannot_skip_native_selection_admission(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from services.dify_builder.native_testing.agent_binding import AgentBindingService
 
@@ -431,7 +485,7 @@ def test_sync_cannot_skip_native_selection_admission(agent_case, sqlite_session)
         )
 
 
-def test_translation_rejects_invalid_native_declared_output_type():
+def test_translation_rejects_invalid_native_declared_output_type() -> None:
     from services.dify_builder.agent.graph_translate import to_intents
 
     data = {
@@ -445,7 +499,9 @@ def test_translation_rejects_invalid_native_declared_output_type():
         to_intents({"nodes": [{"id": "review", "data": data}], "edges": []})
 
 
-def test_full_native_node_job_is_persisted_in_existing_binding_owner(agent_case, sqlite_session):
+def test_full_native_node_job_is_persisted_in_existing_binding_owner(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     import json
 
     from sqlalchemy import select
@@ -474,11 +530,15 @@ def test_full_native_node_job_is_persisted_in_existing_binding_owner(agent_case,
     binding = sqlite_session.scalar(
         select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == agent_case.workflow.id)
     )
+    assert binding is not None
     assert binding.node_job_config_dict["mode"] == "let_agent_figure_it_out"
+    assert binding is not None
     assert binding.node_job_config_dict["human_contacts"][0]["contact_id"] == "contact-1"
 
 
-def test_native_authorization_rpc_precedes_draft_transaction(agent_case, sqlite_session, monkeypatch):
+def test_native_authorization_rpc_precedes_draft_transaction(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from models.agent_config_entities import WorkflowNodeJobConfig
     from services.agent import access_service
     from services.dify_builder.native_testing.agent_binding import AgentBindingService
@@ -489,7 +549,7 @@ def test_native_authorization_rpc_precedes_draft_transaction(agent_case, sqlite_
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     checked = []
 
-    def remote_check(*_args, **_kwargs):
+    def remote_check(*_args: object, **_kwargs: object) -> bool:
         assert not sqlite_session.in_transaction()
         checked.append("RPC")
         return True
@@ -514,7 +574,9 @@ def test_native_authorization_rpc_precedes_draft_transaction(agent_case, sqlite_
 
 
 @pytest.mark.parametrize("omission", ["additional", "empty", "advanced_existing", "removed_existing"])
-def test_sync_requires_complete_graph_and_existing_binding_coverage(agent_case, sqlite_session, omission):
+def test_sync_requires_complete_graph_and_existing_binding_coverage(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session, omission: str
+) -> None:
     import json
 
     from models.agent import (
@@ -541,6 +603,7 @@ def test_sync_requires_complete_graph_and_existing_binding_coverage(agent_case, 
     )
     graph = case.workflow.graph_dict
     graph["nodes"].append({"id": "review", "data": data})
+    other_snapshot: AgentConfigSnapshot | None = None
     if omission != "empty":
         other_agent, other_snapshot = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name="Unprepared Agent")
         other_data = native_node_data(
@@ -593,6 +656,7 @@ def test_sync_requires_complete_graph_and_existing_binding_coverage(agent_case, 
         select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == case.workflow.id)
     ).all()
     if omission in {"advanced_existing", "removed_existing"}:
+        assert other_snapshot is not None
         assert [(binding.node_id, binding.current_snapshot_id) for binding in bindings] == [
             ("unprepared", other_snapshot.id)
         ]
@@ -600,7 +664,9 @@ def test_sync_requires_complete_graph_and_existing_binding_coverage(agent_case, 
         assert bindings == []
 
 
-def test_complete_prepared_multi_agent_graph_syncs_all_owned_bindings(agent_case, sqlite_session):
+def test_complete_prepared_multi_agent_graph_syncs_all_owned_bindings(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     import json
 
     from sqlalchemy import select

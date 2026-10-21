@@ -1612,12 +1612,16 @@ def test_create_stream_closes_subscription_when_state_serialization_fails(
     svc, actor = inmemory_service_factory_raw(subscribe_fn=lambda _sid: subscription)
     monkeypatch.setattr(service_module, "asdict", lambda _view: (_ for _ in ()).throw(RuntimeError("projection")))
 
+    def create_stream() -> object:
+        if method_name == "create_build_session_stream":
+            return svc.create_build_session_stream(app_id=APP_ID, actor=actor, goal_text=kwargs["goal_text"])
+        if method_name == "create_edit_session_stream":
+            return svc.create_edit_session_stream(app_id=APP_ID, actor=actor, goal_text=kwargs["goal_text"])
+        assert method_name == "create_fix_session_stream"
+        return svc.create_fix_session_stream(app_id=APP_ID, actor=actor, failed_run_id=kwargs["failed_run_id"])
+
     with pytest.raises(RuntimeError, match="projection"):
-        {
-            "create_build_session_stream": svc.create_build_session_stream,
-            "create_edit_session_stream": svc.create_edit_session_stream,
-            "create_fix_session_stream": svc.create_fix_session_stream,
-        }[method_name](app_id=APP_ID, actor=actor, **kwargs)
+        create_stream()
 
     assert subscription.closed is True
 
@@ -2610,7 +2614,9 @@ def test_foreign_actor_is_refused_before_fixture_decode(repo: SqlDifyBuilderRepo
         )
 
 
-def test_completed_task_message_can_prepare_against_current_draft(service, repo, enqueued):
+def test_completed_task_message_can_prepare_against_current_draft(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
+) -> None:
     terminal = _seed_session_at(repo, PcState.BUILD_COMPLETE)
     _, context = repo.get_session(terminal.id)
     context.last_snapshot_hash = "old-draft"

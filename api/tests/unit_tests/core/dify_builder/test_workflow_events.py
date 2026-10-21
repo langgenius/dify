@@ -4,6 +4,7 @@ from collections.abc import Callable
 from datetime import datetime
 
 import pytest
+import pytest_mock
 
 from core.dify_builder.models import (
     Action,
@@ -28,6 +29,7 @@ from tests.unit_tests.core.dify_builder.fakes import (
     StubAgent,
     saved_test_context,
 )
+from tests.unit_tests.installed_spies import installed_mock
 
 
 @pytest.mark.parametrize(
@@ -38,7 +40,9 @@ from tests.unit_tests.core.dify_builder.fakes import (
         (handle_verify, PcState.FIX_VERIFY, EntryMode.FIX),
     ],
 )
-def test_all_test_flows_forward_native_events(mocker, handler: Handler, state: PcState, mode: EntryMode) -> None:
+def test_all_test_flows_forward_native_events(
+    mocker: pytest_mock.MockerFixture, handler: Handler, state: PcState, mode: EntryMode
+) -> None:
     port = FakeDifyPort()
     port.workflow_events = [
         {"event": "workflow_started", "workflow_run_id": "run-1", "data": {"inputs": {"query": "hello"}}},
@@ -65,8 +69,10 @@ def test_all_test_flows_forward_native_events(mocker, handler: Handler, state: P
     )
 
     assert received == port.workflow_events
-    assert port.run_draft.call_args.kwargs["session_id"] == "real-session"
-    test_input_id = port.run_draft.call_args.kwargs["test_input_id"]
+    _installed_spy_1 = installed_mock(port.run_draft)
+    assert _installed_spy_1.call_args.kwargs["session_id"] == "real-session"
+    _installed_spy_2 = installed_mock(port.run_draft)
+    test_input_id = _installed_spy_2.call_args.kwargs["test_input_id"]
     assert test_input_id == context.test_input_ref
     assert env.repo.get_test_input(test_input_id).session_id == "real-session"
 
@@ -93,7 +99,7 @@ def test_all_test_flows_forward_native_events(mocker, handler: Handler, state: P
     ],
 )
 def test_structural_repair_is_committed_before_a_separate_retest(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
     registry: Callable[[], dict[PcState, Handler]],
     mode: EntryMode,
     repair_state: PcState,
@@ -126,18 +132,20 @@ def test_structural_repair_is_committed_before_a_separate_retest(
 
     assert applied.current_state == ready_state
     assert "new-code" in {node["id"] for node in port.graph["nodes"]}
-    port.run_draft.assert_not_called()
+    _installed_spy_3 = installed_mock(port.run_draft)
+    _installed_spy_3.assert_not_called()
 
     tested = runner.advance(
         session.id, Turn(actor=actor, action=Action(kind=test_action, base_version=applied.version))
     )
 
     assert tested.current_state == review_state
-    port.run_draft.assert_called_once()
+    _installed_spy_4 = installed_mock(port.run_draft)
+    _installed_spy_4.assert_called_once()
 
 
 def test_edit_unknown_result_does_not_stage_a_failure_or_repair(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
     port = FakeEditDifyPort()
     mocker.patch.object(port, "run_draft", return_value=Run(status="running", dify_run_id="run-1"))

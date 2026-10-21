@@ -5,13 +5,20 @@ from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
+from typing_extensions import TypedDict
 
 from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import Graph, MutationIntent
+from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.utils.condition.entities import Condition, SupportedComparisonOperator
 from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import edit, graph_prompt
 from services.dify_builder.preflight import new_preflight_problems, preflight_errors
+
+
+def _message_text(message: PromptMessage) -> str:
+    assert isinstance(message.content, str)
+    return message.content
 
 
 class _Msg:
@@ -41,6 +48,10 @@ class _BoomInstance(MagicMock):
         raise RuntimeError("provider down")
 
 
+class RecordedInvocation(TypedDict):
+    prompt_messages: list[PromptMessage]
+
+
 class _RecordingInstance(MagicMock):
     """Like ``_FakeInstance`` but keeps every ``invoke_llm`` call's kwargs, so a
     test can assert how many round-trips happened (e.g. "exactly one retry")."""
@@ -48,10 +59,11 @@ class _RecordingInstance(MagicMock):
     def __init__(self, replies: list[str]) -> None:
         super().__init__()
         self._replies = list(replies)
-        self.calls: list[Graph] = []
+        self.calls: list[RecordedInvocation] = []
 
-    def invoke_llm(self, **kwargs: object) -> _Result:
-        self.calls.append(kwargs)
+    def invoke_llm(self, *, prompt_messages: list[PromptMessage], **kwargs: object) -> _Result:
+        del kwargs
+        self.calls.append({"prompt_messages": prompt_messages})
         return _Result(self._replies.pop(0))
 
 
@@ -174,7 +186,7 @@ def test_propose_edit_plan_non_list_plan_returns_no_approvable_plan() -> None:
 
 
 def test_edit_plan_sees_existing_workflow_inputs_and_outputs() -> None:
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "start",
@@ -211,10 +223,10 @@ def test_edit_plan_sees_existing_workflow_inputs_and_outputs() -> None:
     assert plan.output_summary == "A formal answer to the support question."
     assert len(model.calls) == 1
     system, user = model.calls[0]["prompt_messages"]
-    assert "entire resulting workflow" in system.content
-    assert "remain unchanged" in system.content
-    assert "Support question" in user.content
-    assert '"value_selector": ["llm", "text"]' in user.content
+    assert "entire resulting workflow" in _message_text(system)
+    assert "remain unchanged" in _message_text(system)
+    assert "Support question" in _message_text(user)
+    assert '"value_selector": ["llm", "text"]' in _message_text(user)
 
 
 def test_build_edit_intents_validates_and_drops_bad() -> None:
@@ -288,7 +300,7 @@ def test_graph_context_lists_branch_handles_and_a_named_edge_handle() -> None:
 
 
 def test_graph_context_plain_edge_has_no_handle_suffix() -> None:
-    graph = {
+    graph: Graph = {
         "nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "llm"}}],
         "edges": [{"source": "a", "target": "b", "sourceHandle": "source"}],
     }
@@ -496,7 +508,7 @@ def test_build_edit_intents_puts_the_target_config_in_the_prompt() -> None:
 
     edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
 
-    user = m.calls[0]["prompt_messages"][1].content
+    user = _message_text(m.calls[0]["prompt_messages"][1])
     assert json.dumps(_IF_ELSE_CASES, ensure_ascii=False) in user
 
 
@@ -506,7 +518,7 @@ def test_build_edit_intents_with_no_targets_falls_back_to_the_plain_context() ->
     out = edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH)
 
     assert out == []
-    assert "config:" not in m.calls[0]["prompt_messages"][1].content
+    assert "config:" not in _message_text(m.calls[0]["prompt_messages"][1])
 
 
 # ---- what the engine said last time reaches the next attempt ----------------
@@ -530,7 +542,7 @@ def test_build_edit_intents_quotes_the_engines_refusal_of_the_previous_attempt()
 
     edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH, last_edit_rejection=rejection)
 
-    user = m.calls[0]["prompt_messages"][1].content
+    user = _message_text(m.calls[0]["prompt_messages"][1])
     assert f"PREVIOUS ATTEMPT REJECTED BY THE ENGINE:\n{rejection}\nDo not repeat it." in user
 
 
@@ -539,7 +551,7 @@ def test_no_previous_refusal_leaves_the_prompt_exactly_as_it_was() -> None:
 
     edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH)
 
-    assert "PREVIOUS ATTEMPT REJECTED" not in m.calls[0]["prompt_messages"][1].content
+    assert "PREVIOUS ATTEMPT REJECTED" not in _message_text(m.calls[0]["prompt_messages"][1])
 
 
 def test_the_engines_text_separates_two_refusals_the_preflight_key_cannot() -> None:
@@ -568,7 +580,7 @@ def test_the_engines_text_separates_two_refusals_the_preflight_key_cannot() -> N
         edit.build_edit_intents(
             m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"], last_edit_rejection=text
         )
-        prompts.append(m.calls[0]["prompt_messages"][1].content)
+        prompts.append(_message_text(m.calls[0]["prompt_messages"][1]))
 
     assert "input_value='klingon'" in prompts[0]
     assert "input_value='martian'" not in prompts[0]
@@ -590,7 +602,7 @@ def test_the_previous_refusal_stays_in_front_of_the_model_through_the_retry() ->
         last_edit_rejection="the draft would not start: node 'node2' (if-else): input_value='klingon'",
     )
 
-    assert "input_value='klingon'" in m.calls[1]["prompt_messages"][1].content
+    assert "input_value='klingon'" in _message_text(m.calls[1]["prompt_messages"][1])
 
 
 # ---- credentials: withheld from the prompt, and un-writable back into the draft ----
@@ -893,7 +905,7 @@ def test_the_corrective_reprompt_quotes_the_engines_own_words() -> None:
 
     edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
 
-    retry_prompt = m.calls[1]["prompt_messages"][1].content
+    retry_prompt = _message_text(m.calls[1]["prompt_messages"][1])
     assert "Your previous intents were invalid:" in retry_prompt
     # the engine's literal message, node named and field named -- not model prose
     assert "the draft would then not start: node 'node2' (if-else): " in retry_prompt
@@ -1065,10 +1077,10 @@ def test_a_first_attempt_the_guards_condemn_surfaces_even_when_the_retry_is_unus
     assert len(m.calls) >= 2  # the retry was spent before the refusal (invoke_json re-parses once of its own)
 
 
-def test_edit_receives_stop_policy_and_preserves_known_error_strategy():
+def test_edit_receives_stop_policy_and_preserves_known_error_strategy() -> None:
     """Editor guidance must not turn an unrelated Code edit into swallowed errors."""
     model = _RecordingInstance(['{"intents": []}'])
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "code",
@@ -1102,7 +1114,7 @@ def test_edit_receives_stop_policy_and_preserves_known_error_strategy():
     assert "explicitly requested fallback" in system
 
 
-def test_edit_rule_labels_receive_explicit_session_language_and_preserve_business_value():
+def test_edit_rule_labels_receive_explicit_session_language_and_preserve_business_value() -> None:
     model = _RecordingInstance(
         [
             json.dumps(
@@ -1122,9 +1134,9 @@ def test_edit_rule_labels_receive_explicit_session_language_and_preserve_busines
 
 
 @pytest.mark.parametrize("retry", [None, "same"])
-def test_edit_refuses_partial_added_node_when_its_wiring_is_rejected(retry):
+def test_edit_refuses_partial_added_node_when_its_wiring_is_rejected(retry: None | str) -> None:
     """Dropping the failed connection must not turn insertion into a new orphan."""
-    batch = {
+    batch: Graph = {
         "intents": [
             {
                 "op": "create_node",
@@ -1142,10 +1154,10 @@ def test_edit_refuses_partial_added_node_when_its_wiring_is_rejected(retry):
         edit.build_edit_intents(_RecordingInstance(replies), {}, _GRAPH)
 
 
-def test_edit_exposes_approved_insertion_plan_and_preserves_receipt_contract():
+def test_edit_exposes_approved_insertion_plan_and_preserves_receipt_contract() -> None:
     from services.dify_builder.plan import WorkflowPlan
 
-    graph = {
+    graph: Graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "variables": []}},
             {
@@ -1221,12 +1233,12 @@ def test_edit_exposes_approved_insertion_plan_and_preserves_receipt_contract():
         {"variable": "receipt", "value_selector": ["mark", "output"], "value_type": "string"}
     ]
     system, user = model.calls[0]["prompt_messages"]
-    assert plan.items[0] in user.content
-    assert plan.output_summary in user.content
+    assert plan.items[0] in _message_text(user)
+    assert plan.output_summary in _message_text(user)
 
 
-def test_edit_still_allows_intentional_isolated_draft_addition():
-    batch = {
+def test_edit_still_allows_intentional_isolated_draft_addition() -> None:
+    batch: Graph = {
         "intents": [
             {
                 "op": "create_node",
@@ -1242,7 +1254,7 @@ def test_edit_still_allows_intentional_isolated_draft_addition():
     assert [i.args["node_id"] for i in intents] == ["draft"]
 
 
-def test_edit_retry_cannot_remove_rejected_wiring_and_keep_same_isolated_addition():
+def test_edit_retry_cannot_remove_rejected_wiring_and_keep_same_isolated_addition() -> None:
     create = {
         "op": "create_node",
         "args": {
@@ -1257,7 +1269,7 @@ def test_edit_retry_cannot_remove_rejected_wiring_and_keep_same_isolated_additio
         edit.build_edit_intents(_RecordingInstance([json.dumps(first), json.dumps(retry)]), {}, _GRAPH)
 
 
-def test_edit_retry_can_correct_added_node_wiring_to_existing_anchor():
+def test_edit_retry_can_correct_added_node_wiring_to_existing_anchor() -> None:
     create = {
         "op": "create_node",
         "args": {

@@ -12,46 +12,69 @@ import io
 import json
 import logging
 import sys
-from collections.abc import Callable
+from _io import StringIO
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import AbstractContextManager
 from contextvars import ContextVar
-from threading import current_thread
+from threading import Thread, current_thread
 from time import monotonic
-from typing import TypedDict, cast
+from types import ModuleType
+from typing import NoReturn, Protocol, Self, TypedDict, cast, override
 
 import pytest
+import pytest_mock
 from flask import Flask, current_app, has_app_context
+from httpx._models import Response
 from sqlalchemy.orm import Session
 
 from context.flask_app_context import capture_flask_context
-from graphon.runtime import VariablePool
+from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+from graphon.engine import Engine
+from graphon.engine.command import Command, CommandChannel
+from graphon.engine_events.base import EngineEvent
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.enums import NodeExecutionType
+from graphon.file import File
+from graphon.nodes.base.node import Node
+from graphon.runtime import RuntimeState, VariablePool
 from libs import sensitive_http_telemetry as telemetry
 from models.workflow import Workflow
+from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.observation import NativeObservationError
+from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
+from services.dify_builder.native_testing.context_runtime import NativeGraphRuntimeState
 from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime, NativeHostLifetimeRegistry
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
-from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
+from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.workflow_pipeline import WorkflowAppGenerateTaskPipeline
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
+from tests.unit_tests.services.dify_builder.native_testing.test_observation_owner import ObservationOwnerCase
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_owner import case as case  # noqa: PLC0414 - shared pytest fixture
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import SENTINEL
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context as sample_context
 
 
-def _refuse_protected_input(**_kwargs):
+def _refuse_protected_input(**_kwargs: object) -> NoReturn:
     raise AssertionError("protected input effect must not begin")
 
 
-def contexts():
+def contexts() -> ModuleType:
     name = "services.dify_builder.native_testing.context_runtime"
     assert importlib.util.find_spec(name) is not None, "bounded native execution context is missing"
     return importlib.import_module(name)
 
 
-def protect_logs(monkeypatch):
+def protect_logs(monkeypatch: pytest.MonkeyPatch) -> StringIO:
     """Test-only application sink setup; production never installs/toggles filters."""
     from services.dify_builder.native_testing.context_runtime import NATIVE_LOG_EMITTERS
     from services.dify_builder.native_testing.observation_repository import _EMITTERS
@@ -66,13 +89,13 @@ def protect_logs(monkeypatch):
     return output
 
 
-def component_guard(*, on_failure=lambda: None):
+def component_guard(*, on_failure: Callable[[], None] = lambda: None) -> NativeObservationGuard:
     """Actual structural policy/guard fixture, not persisted-profile attestation."""
     policy = NativeHttpObservationPolicy.qualify(context=sample_context(), profile=build_native_http_profile())
     return NativeObservationGuard(policy=policy, on_failure=on_failure)
 
 
-def qualified_host(case):
+def qualified_host(case: ObservationOwnerCase) -> NativeHostLaunch:
     authorization = EffectAuthorizationService(case.store.loader)
     journal = NodeOperationJournal(state=case.store, authorization=authorization)
     life = NativeHostLifetime(context=case.context, dispatch_id="initial-observation")
@@ -98,7 +121,9 @@ def qualified_host(case):
     return host
 
 
-def test_host_creates_one_actual_persisted_profile_guard_and_rechecks_current_owner(case, monkeypatch):
+def test_host_creates_one_actual_persisted_profile_guard_and_rechecks_current_owner(
+    case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     protect_logs(monkeypatch)
     host = qualified_host(case)
     guard = host.bind_observation()
@@ -111,7 +136,9 @@ def test_host_creates_one_actual_persisted_profile_guard_and_rechecks_current_ow
     assert host.lifetime.unknown
 
 
-def test_untrusted_profile_refuses_guard_and_marks_actual_host_unknown(case, monkeypatch):
+def test_untrusted_profile_refuses_guard_and_marks_actual_host_unknown(
+    case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     protect_logs(monkeypatch)
     host = qualified_host(case)
     case.request.context["profile"]["implementation_revision"] = "unqualified"
@@ -120,7 +147,9 @@ def test_untrusted_profile_refuses_guard_and_marks_actual_host_unknown(case, mon
     assert host.lifetime.unknown
 
 
-def test_native_execution_context_restores_nested_reused_thread_context_and_flask(monkeypatch):
+def test_native_execution_context_restores_nested_reused_thread_context_and_flask(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     output = protect_logs(monkeypatch)
     module = contexts()
     marker = ContextVar("native-observation-test-marker", default="ordinary-default")
@@ -132,9 +161,9 @@ def test_native_execution_context_restores_nested_reused_thread_context_and_flas
         with module.native_observation_scope(guard=guard):
             module.NativeGraphRuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=monotonic())
             execution_context = module.NativeExecutionContext(guard=guard)
-    seen = []
+    seen: list[Thread] = []
 
-    def reused():
+    def reused() -> None:
         marker.set("ordinary-before")
         assert not has_app_context()
         with execution_context:
@@ -160,7 +189,9 @@ def test_native_execution_context_restores_nested_reused_thread_context_and_flas
     assert output.getvalue().count("ordinary-after-native") == 2
 
 
-def test_public_subclass_snapshot_restore_uses_native_context_without_enabling_resume(monkeypatch):
+def test_public_subclass_snapshot_restore_uses_native_context_without_enabling_resume(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     protect_logs(monkeypatch)
     module = contexts()
     guard = component_guard()
@@ -175,7 +206,7 @@ def test_public_subclass_snapshot_restore_uses_native_context_without_enabling_r
     assert module.current_native_observation() is None
 
 
-def test_native_exception_exit_restores_ordinary_thread_even_when_guard_fails(monkeypatch):
+def test_native_exception_exit_restores_ordinary_thread_even_when_guard_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     protect_logs(monkeypatch)
     module = contexts()
     marker = ContextVar("native-exception-marker", default="ordinary")
@@ -183,10 +214,10 @@ def test_native_exception_exit_restores_ordinary_thread_even_when_guard_fails(mo
     guard = component_guard()
     wrapped = module.NativeExecutionContext(guard=guard)
 
-    def reused():
+    def reused() -> None:
         marker.set("ordinary")
 
-        def fail_wrapped():
+        def fail_wrapped() -> None:
             with wrapped:
                 assert marker.get() == "captured"
                 raise RuntimeError(SENTINEL)
@@ -201,7 +232,12 @@ def test_native_exception_exit_restores_ordinary_thread_even_when_guard_fails(mo
         pool.submit(reused).result(2)
 
 
-def bind_component_observation(case, monkeypatch):
+class HostObservationCase(Protocol):
+    @property
+    def host(self) -> NativeHostLaunch: ...
+
+
+def bind_component_observation(case: HostObservationCase, monkeypatch: pytest.MonkeyPatch) -> NativeObservationGuard:
     """Exact component guard with a labeled factory boundary; no profile proof."""
     from services.dify_builder.native_testing import observation_owner
 
@@ -215,7 +251,9 @@ def bind_component_observation(case, monkeypatch):
 
 
 @pytest.mark.parametrize("feature", ["tts", "files", "trace", "hitl"])
-def test_initial_preflight_refuses_unqualified_routes_before_worker(monkeypatch, feature):
+def test_initial_preflight_refuses_unqualified_routes_before_worker(
+    monkeypatch: pytest.MonkeyPatch, feature: str
+) -> None:
 
     from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
     from tests.unit_tests.services.dify_builder.native_testing.test_host_generation_wiring import generate_fixture
@@ -228,11 +266,13 @@ def test_initial_preflight_refuses_unqualified_routes_before_worker(monkeypatch,
     if feature == "tts":
         arguments["workflow"].features = json.dumps({"text_to_speech": {"enabled": True}})
     elif feature == "files":
-        entity.files = [object()]
+        entity.files = cast(Sequence[File], [object()])
     elif feature == "trace":
         entity.extras["external_trace_id"] = SENTINEL
     else:
-        entity.single_iteration_run = {"node_id": SENTINEL, "inputs": {}}
+        entity.single_iteration_run = cast(
+            WorkflowAppGenerateEntity.SingleIterationRunEntity, {"node_id": SENTINEL, "inputs": {}}
+        )
     monkeypatch.setattr(
         generator, "_generate_worker", lambda **_kwargs: pytest.fail("worker launched before preflight")
     )
@@ -241,7 +281,7 @@ def test_initial_preflight_refuses_unqualified_routes_before_worker(monkeypatch,
     assert case.lifetime.unknown
 
 
-def test_actual_generate_passes_same_guard_to_queue_and_pipeline_before_worker(monkeypatch):
+def test_actual_generate_passes_same_guard_to_queue_and_pipeline_before_worker(monkeypatch: pytest.MonkeyPatch) -> None:
     from threading import Event
 
     from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
@@ -251,20 +291,24 @@ def test_actual_generate_passes_same_guard_to_queue_and_pipeline_before_worker(m
     generator, arguments = generate_fixture(case, monkeypatch)
     guard = bind_component_observation(case, monkeypatch)
     arguments["workflow"] = Workflow(features="{}")
-    seen = []
+    seen: list[str] = []
     done = Event()
 
-    def worker(**kwargs):
+    def worker(**kwargs: object) -> None:
         try:
-            assert kwargs["queue_manager"].native_observation is guard
+            queue = kwargs["queue_manager"]
+            assert isinstance(queue, WorkflowAppQueueManager)
+            assert queue.native_observation is guard
             seen.append("worker")
         finally:
             case.host.worker_finished(worker=current_thread(), exit_kind="returned")
             done.set()
 
-    def response(**kwargs):
+    def response(**kwargs: object) -> Iterator[dict[str, str]]:
         assert kwargs["native_observation"] is guard
-        assert kwargs["queue_manager"].native_observation is guard
+        queue = kwargs["queue_manager"]
+        assert isinstance(queue, WorkflowAppQueueManager)
+        assert queue.native_observation is guard
         seen.append("pipeline")
         yield {"fixture": "response"}
 
@@ -287,7 +331,7 @@ class _SupportedGraph(TypedDict):
     edges: list[dict[str, str]]
 
 
-def supported_graph(kind):
+def supported_graph(kind: str) -> _SupportedGraph:
     """Only the profile's actual Start/HTTP/End and Loop/Iteration classes."""
     from copy import deepcopy
 
@@ -328,7 +372,14 @@ def supported_graph(kind):
     return graph
 
 
-def supported_engine(*, kind, mode, monkeypatch, commands=None, graph=None):
+def supported_engine(
+    *,
+    kind: str,
+    mode: str,
+    monkeypatch: pytest.MonkeyPatch,
+    commands: CommandChannel | None = None,
+    graph: _SupportedGraph | None = None,
+) -> tuple[ModuleType, NativeObservationGuard, Engine, NativeGraphRuntimeState, list[Thread], NativeHostLaunch]:
     from dataclasses import dataclass
 
     import httpx
@@ -347,7 +398,7 @@ def supported_engine(*, kind, mode, monkeypatch, commands=None, graph=None):
     from graphon.nodes.loop.loop_node import LoopNode
     from graphon.nodes.loop.loop_start_node import LoopStartNode
     from graphon.nodes.start.start_node import StartNode
-    from graphon.runtime import InitParams, RuntimeState
+    from graphon.runtime import InitParams
     from runtime_contracts.builder.native.contracts import ApprovalWait
     from services.dify_builder.native_testing.control import (
         BoundaryOwnerState,
@@ -395,13 +446,13 @@ def supported_engine(*, kind, mode, monkeypatch, commands=None, graph=None):
     runtime.variable_pool.add(("start", "items"), [SENTINEL, SENTINEL])
     owner = BoundaryOwnerState(ref=context.ref)
     sink = Sink(owner)
-    entered = []
+    entered: list[Thread] = []
 
     class Client:
         max_retries_exceeded_error = TimeoutError
         request_error = httpx.RequestError
 
-        def request(self, *args, **kwargs):
+        def request(self, *args: object, **kwargs: object) -> Response:
             del args, kwargs
             assert module.current_native_observation() is guard
             assert telemetry._sensitive_http.get()
@@ -430,24 +481,24 @@ def supported_engine(*, kind, mode, monkeypatch, commands=None, graph=None):
     class Factory:
         runtime: RuntimeState
 
-        def with_runtime_state(self, graph_runtime_state):
-            return Factory(graph_runtime_state)
+        def with_runtime_state(self, runtime_state: RuntimeState) -> Factory:
+            return Factory(runtime_state)
 
-        def with_graph_config(self, graph_config):
+        def with_graph_config(self, graph_config: Mapping[str, object]) -> Self:
             del graph_config
             return self
 
-        def validate_node(self, node_config):
+        def validate_node(self, node_config: NodeConfigDict) -> NodeExecutionType:
             raw = node_config["data"].model_dump(mode="python", exclude_unset=True)
             original = next(cls for cls in originals if cls.node_type == raw["type"])
             original.validate_node_data(raw)
             return original.execution_type
 
-        def create_node(self, node_config):
-            node_config = {**node_config, "data": node_config["data"].model_dump(mode="python", exclude_unset=True)}
-            original = next(cls for cls in originals if cls.node_type == node_config["data"]["type"])
+        def create_node(self, node_config: NodeConfigDict) -> Node[BaseNodeData]:
+            raw_data = node_config["data"].model_dump(mode="python", exclude_unset=True)
+            original = next(cls for cls in originals if cls.node_type == raw_data["type"])
             cls = marked_native_node_class(original, marked=True)
-            kwargs = {}
+            kwargs: dict[str, object] = {}
             if original is HttpRequestNode:
                 kwargs = {
                     "http_request_config": native_http_config(),
@@ -458,7 +509,7 @@ def supported_engine(*, kind, mode, monkeypatch, commands=None, graph=None):
                 }
             return cast(Callable[..., Node[BaseNodeData]], cls)(
                 node_id=node_config["id"],
-                data=cls.validate_node_data(node_config["data"]),
+                data=cls.validate_node_data(raw_data),
                 init_params=InitParams(
                     workflow_id="supported-native", graph_config=graph, run_context={}, call_depth=0
                 ),
@@ -479,7 +530,10 @@ def supported_engine(*, kind, mode, monkeypatch, commands=None, graph=None):
     captured_context = module.NativeExecutionContext(guard=guard)
 
     class NativeContextLayer(Layer):
-        def node_run_context(self, node, *, parent_execution_id=None):
+        @override
+        def node_run_context(
+            self, node: Node[BaseNodeData], *, parent_execution_id: str | None = None
+        ) -> AbstractContextManager[None]:
             del node, parent_execution_id
             return captured_context.enter()
 
@@ -489,12 +543,14 @@ def supported_engine(*, kind, mode, monkeypatch, commands=None, graph=None):
 
 @pytest.mark.parametrize("kind", ["root", "loop", "iteration"])
 @pytest.mark.parametrize("mode", ["failed", "pause"])
-def test_actual_supported_root_loop_parallel_iteration_context_and_dispatcher_canaries(monkeypatch, kind, mode):
+def test_actual_supported_root_loop_parallel_iteration_context_and_dispatcher_canaries(
+    monkeypatch: pytest.MonkeyPatch, kind: str, mode: str
+) -> None:
     from graphon.engine_events.graph import GraphRunFailedEvent, GraphRunPausedEvent
 
     output = protect_logs(monkeypatch)
     module, guard, engine, runtime, entered, host = supported_engine(kind=kind, mode=mode, monkeypatch=monkeypatch)
-    events = []
+    events: list[EngineEvent] = []
     with module.native_observation_scope(guard=guard):
         if mode == "failed":
             with pytest.raises(RuntimeError) as caught:
@@ -516,7 +572,7 @@ def test_actual_supported_root_loop_parallel_iteration_context_and_dispatcher_ca
     assert "ordinary-after-dispatch" in output.getvalue()
 
 
-def test_actual_supported_loop_dispatcher_condition_error_is_protected(monkeypatch):
+def test_actual_supported_loop_dispatcher_condition_error_is_protected(monkeypatch: pytest.MonkeyPatch) -> None:
     """Actual missing-selector failure logged on the separate dispatcher."""
     output = protect_logs(monkeypatch)
     graph = supported_graph("loop")
@@ -546,7 +602,9 @@ def test_actual_supported_loop_dispatcher_condition_error_is_protected(monkeypat
         lease.release_after_exit()
 
 
-def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(case, monkeypatch, mocker):
+def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(
+    case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture
+) -> None:
 
     from core.app.entities.app_invoke_entities import InvokeFrom
     from models.account import Account
@@ -571,9 +629,11 @@ def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(case
 
     actual_factory = observation_owner.create_http_observation_guard
 
-    def changed_profile(**kwargs):
+    def changed_profile(
+        *, state: NativeExecutionStateStore, context: ResolvedNativeTestContext, on_failure: Callable[[], None]
+    ) -> NativeObservationGuard:
         case.request.context["profile"]["implementation_revision"] = "unqualified"
-        return actual_factory(**kwargs)
+        return actual_factory(state=state, context=context, on_failure=on_failure)
 
     monkeypatch.setattr(observation_owner, "create_http_observation_guard", changed_profile)
     account = Account(name="Native actor", email="native@example.test")
@@ -597,7 +657,7 @@ def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(case
     assert host.lifetime.unknown
 
 
-def test_actual_handle_response_builds_same_guard_pipeline_and_converter(monkeypatch):
+def test_actual_handle_response_builds_same_guard_pipeline_and_converter(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
     from services.workflow_runtime.workflow_pipeline import WorkflowAppGenerateTaskPipeline
     from tests.unit_tests.services.dify_builder.native_testing.test_observation_stream import account, make_pipeline
@@ -606,10 +666,12 @@ def test_actual_handle_response_builds_same_guard_pipeline_and_converter(monkeyp
     fixture, queue, saver = make_pipeline(guard, monkeypatch)
     seen = []
 
-    def process(actual):
+    def process(actual: WorkflowAppGenerateTaskPipeline) -> Iterator[object]:
         assert actual._native_observation is guard
         assert actual._workflow_response_converter._native_observation is guard
-        assert actual._base_task_pipeline.queue_manager.native_observation is guard
+        queue = actual._base_task_pipeline.queue_manager
+        assert isinstance(queue, WorkflowAppQueueManager)
+        assert queue.native_observation is guard
         seen.append(actual)
         return iter(())
 
@@ -627,18 +689,20 @@ def test_actual_handle_response_builds_same_guard_pipeline_and_converter(monkeyp
     assert saver.calls == []
 
 
-def test_same_guard_rechecks_exact_state_without_holding_host_lock(case, monkeypatch):
+def test_same_guard_rechecks_exact_state_without_holding_host_lock(
+    case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from threading import Thread
 
     protect_logs(monkeypatch)
     host = qualified_host(case)
     original = case.store.load_context
-    locks = []
+    locks: list[bool] = []
 
-    def load(*, ref):
-        acquired = []
+    def load(*, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
+        acquired: list[bool] = []
 
-        def inspect():
+        def inspect() -> None:
             with host._registration:
                 acquired.append(True)
 
@@ -664,7 +728,9 @@ def test_same_guard_rechecks_exact_state_without_holding_host_lock(case, monkeyp
     assert host.lifetime.unknown
 
 
-def test_actual_dispatcher_command_reason_and_fetch_exception_protected_before_delegation(monkeypatch):
+def test_actual_dispatcher_command_reason_and_fetch_exception_protected_before_delegation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from graphon.engine.command import InMemoryChannel, PauseCommand
     from graphon.engine_events.graph import GraphRunPausedEvent
 
@@ -684,7 +750,7 @@ def test_actual_dispatcher_command_reason_and_fetch_exception_protected_before_d
     lease.release_after_exit()
 
 
-def test_actual_native_worker_adapter_restores_reused_thread_after_exception(monkeypatch):
+def test_actual_native_worker_adapter_restores_reused_thread_after_exception(monkeypatch: pytest.MonkeyPatch) -> None:
     import contextvars
 
     from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
@@ -698,10 +764,10 @@ def test_actual_native_worker_adapter_restores_reused_thread_after_exception(mon
         marker.set("captured-worker")
         captured = contextvars.copy_context()
 
-    def reused(fail):
+    def reused(fail: int) -> None:
         marker.set("ordinary")
 
-        def work():
+        def work() -> None:
             with module.native_flask_worker_scope(host=case.host, flask_app=app, context_vars=captured):
                 assert current_app.name == app.name
                 assert marker.get() == "captured-worker"
@@ -724,7 +790,7 @@ def test_actual_native_worker_adapter_restores_reused_thread_after_exception(mon
         pool.submit(reused, True).result(2)
 
 
-def test_host_retains_unknown_live_dispatcher_logging_lease_until_actual_exit(monkeypatch):
+def test_host_retains_unknown_live_dispatcher_logging_lease_until_actual_exit(monkeypatch: pytest.MonkeyPatch) -> None:
     from threading import Event, Thread
 
     from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
@@ -735,13 +801,13 @@ def test_host_retains_unknown_live_dispatcher_logging_lease_until_actual_exit(mo
     entered, finish = Event(), Event()
 
     class Channel:
-        def fetch_commands(self):
+        def fetch_commands(self) -> list[Command]:
             entered.set()
             assert finish.wait(3)
             logging.getLogger("graphon.graph_engine.error_handler").error(SENTINEL)
             return []
 
-        def send_command(self, command):
+        def send_command(self, command: Command) -> None:
             pass  # Labeled command-only fixture; no native graph/effect runs here.
 
     channel = case.host.wrap_commands(channel=Channel())
@@ -768,7 +834,9 @@ def test_host_retains_unknown_live_dispatcher_logging_lease_until_actual_exit(mo
 
 
 @pytest.mark.parametrize("kind", ["validation", "value", "unexpected"])
-def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(monkeypatch, kind):
+def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(
+    monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
     import contextvars
     from contextlib import nullcontext
     from threading import Thread
@@ -803,10 +871,10 @@ def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(m
     session = Session()
     monkeypatch.setattr(session, "scalar", lambda _query: workflow)
     monkeypatch.setattr(module.session_factory, "create_session", lambda: session)
-    published = []
+    published: list[NativeObservationError] = []
     actual_publish = queue.publish_error
 
-    def publish(error, pub_from):
+    def publish(error: Exception, pub_from: PublishFrom) -> None:
         assert type(error) is NativeObservationError
         published.append(error)
         return actual_publish(error, pub_from)
@@ -824,10 +892,10 @@ def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(m
         errors.append(ValueError(SENTINEL) if kind == "value" else RuntimeError(SENTINEL))
 
     class RunnerPort:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: object) -> None:
             pass
 
-        def run(self):
+        def run(self) -> NoReturn:
             raise errors[0]
 
     monkeypatch.setattr(module, "WorkflowAppRunner", RunnerPort)
@@ -836,7 +904,9 @@ def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(m
     app = Flask(__name__)
     with app.app_context():
         worker = Thread(
-            target=module.WorkflowAppGenerator(execution_driver=lambda runner, *_args: runner.run())._generate_worker,
+            target=module.WorkflowAppGenerator(
+                execution_driver=lambda runner, *_args: cast(RunnerPort, runner).run()
+            )._generate_worker,
             kwargs={
                 "flask_app": app,
                 "application_generate_entity": entity,
@@ -860,7 +930,9 @@ def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(m
 
 
 @pytest.mark.parametrize("case", ["start_end", "literal_http"], indirect=True)
-def test_initial_host_binds_current_profile_without_native_activity(case, monkeypatch):
+def test_initial_host_binds_current_profile_without_native_activity(
+    case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Actual pre-claim observation composition, labeled owner/object doubles."""
     protect_logs(monkeypatch)
     authorization = EffectAuthorizationService(case.store.loader)
@@ -892,7 +964,9 @@ def test_initial_host_binds_current_profile_without_native_activity(case, monkey
     assert not host.lifetime._node_scopes
     from models.dify_builder_native_tests import NativeTestScope
 
-    case.rows[NativeTestScope][0].cancelled = True
+    scope = case.rows[NativeTestScope][0]
+    assert isinstance(scope, NativeTestScope)
+    scope.cancelled = True
     with pytest.raises(NativeObservationError, match="^native_observation_failed$"):
         _ = host.native_observation
     assert host.boundary_owner.status == "UNKNOWN_NONRESUMABLE"

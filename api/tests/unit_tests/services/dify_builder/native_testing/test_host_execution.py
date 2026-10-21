@@ -5,27 +5,34 @@ No SQL execution, provider I/O, production DI, or durable stop sealer is claimed
 
 from __future__ import annotations
 
-import importlib
-import importlib.util
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from threading import Barrier, Event, Thread, current_thread
 from time import monotonic, sleep
-from types import ModuleType
 from typing import TYPE_CHECKING, Protocol, cast, override
+from weakref import ReferenceType
 
 import pytest
 
+from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.engine.command import InMemoryChannel
+from graphon.engine.filter.builtin.response_stream.filter import ResponseStreamFilter
+from graphon.engine_events.base import EngineEvent
 from graphon.engine_events.node import NodeRunStartedEvent
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import IterationFrameRequest
 from runtime_contracts.builder.native.contracts import (
     ApprovalWait,
+    CheckpointRef,
     DispatchPermit,
     JsonValue,
     NativeTestContextRef,
     WaitingReceipt,
 )
+from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.control import (
     NativeApprovalWait,
@@ -34,9 +41,12 @@ from services.dify_builder.native_testing.control import (
     NativeControlRefused,
     NativePolicyStop,
 )
+from services.dify_builder.native_testing.host_execution import HostBoundScalarCalls, NativeHostLaunch
 from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime, NativeHostLifetimeRegistry
 from services.dify_builder.native_testing.http_adapter import PreparedHttpBinding, PreparedHttpRequest
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
+from services.workflow_runtime.entry import WorkflowEntry
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import (
     INPUT,
     PATH,
@@ -45,6 +55,7 @@ from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter imp
     State,
 )
 from tests.unit_tests.services.dify_builder.native_testing.test_control import (
+    Factory,
     Observations,
     bound_guard,
     make_native,
@@ -53,7 +64,7 @@ from tests.unit_tests.services.dify_builder.native_testing.test_control import (
 )
 
 if TYPE_CHECKING:
-    from services.dify_builder.native_testing.host_execution import DurableNativeStopSealer, NativeHostLaunch
+    from services.dify_builder.native_testing.host_execution import DurableNativeStopSealer
     from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
     from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
     from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
@@ -63,14 +74,15 @@ class MutableTerminal(Protocol):
     terminal: str
 
 
-def host_module() -> ModuleType:
-    name = "services.dify_builder.native_testing.host_execution"
-    assert importlib.util.find_spec(name) is not None, "host launch composition is missing"
-    return importlib.import_module(name)
-
-
 class NoCheckpointLifecycle:
-    def pause(self, *, ref, checkpoint, pending_operation_ids, expected_generation) -> WaitingReceipt:
+    def pause(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        checkpoint: CheckpointRef,
+        pending_operation_ids: tuple[str, ...],
+        expected_generation: int,
+    ) -> WaitingReceipt:
         _ = ref, checkpoint, pending_operation_ids, expected_generation
         raise AssertionError("launch phase must never commit waiting")
 
@@ -112,7 +124,6 @@ class DurablePorts:
 
 class LaunchCase:
     def __init__(self, *, baseline: tuple[float | int, ...] = (0.02, 0.02, 0.02), activate: bool = True) -> None:
-        module = host_module()
         self.events = []
         self.state = State(self.events)
         self.state.context = self.state.context.model_copy(update={"workflow_id": "control-unit"})
@@ -125,7 +136,7 @@ class LaunchCase:
         if activate:
             self.registry.activate(lifetime=self.lifetime)
         self.ports = DurablePorts()
-        self.host: NativeHostLaunch = module.NativeHostLaunch(
+        self.host: NativeHostLaunch = NativeHostLaunch(
             context=self.state.context,
             dispatch_id="dispatch",
             lifetime=self.lifetime,
@@ -166,12 +177,12 @@ class LaunchCase:
         self.host.register_http_request(ref=REF, binding=binding)
         return binding
 
-    def calls(self):
+    def calls(self) -> HostBoundScalarCalls:
         return self.host.make_calls(
             state=self.state, authorization=self.authorization, journal=self.journal, max_result_bytes=4096
         )
 
-    def own_node(self):
+    def own_node(self) -> Node[BaseNodeData]:
         from dataclasses import replace
 
         from tests.unit_tests.services.dify_builder.native_testing.test_control import Effects, Sink
@@ -188,7 +199,7 @@ class LaunchCase:
         return node
 
 
-def record(case: LaunchCase, node, *, stop: bool = False) -> NativeControlRecord:
+def record(case: LaunchCase, node: Node[BaseNodeData], *, stop: bool = False) -> NativeControlRecord:
     control = (
         NativePolicyStop(ref=REF, reason_code="outcome_unknown")
         if stop
@@ -235,9 +246,9 @@ def test_scalar_completion_replays_real_journal_without_extra_claim_or_key() -> 
 @pytest.mark.parametrize(
     "timeout", [(0, 1, 1), (1, float("inf"), 1), (1, float("nan"), 1), (True, 1, 1), (1, 2), (1, 2, 3, None)]
 )
-def test_nonfinite_or_nonpositive_http_baseline_is_refused(timeout: tuple) -> None:
+def test_nonfinite_or_nonpositive_http_baseline_is_refused(timeout: tuple[object, ...]) -> None:
     with pytest.raises(ValueError, match="^native_host_http_timeout_unqualified$"):
-        LaunchCase(baseline=timeout)
+        LaunchCase(baseline=cast(tuple[float, float, float], timeout))
 
 
 def test_actual_prepared_timeout_snapshot_contributes_to_max_sum_and_fixed_deadline() -> None:
@@ -337,7 +348,23 @@ def test_registered_callback_releases_admission_mutex_before_real_io() -> None:
     assert errors == []
 
 
-def generation_objects(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
+class GenerationCase(Protocol):
+    @property
+    def state(self) -> State: ...
+
+    @property
+    def host(self) -> NativeHostLaunch: ...
+
+
+def generation_objects(
+    case: GenerationCase, monkeypatch: pytest.MonkeyPatch
+) -> tuple[
+    WorkflowAppGenerateEntity,
+    WorkflowAppQueueManager,
+    ResponseStreamFilter,
+    SQLAlchemyWorkflowExecutionRepository,
+    SQLAlchemyWorkflowNodeExecutionRepository,
+]:
     from sqlalchemy.orm import sessionmaker
 
     from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -385,7 +412,15 @@ def generation_objects(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
     return entity, queue, ResponseStreamFilter(), workflow_repo, node_repo
 
 
-def bind_generation(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
+def bind_generation(
+    case: GenerationCase, monkeypatch: pytest.MonkeyPatch
+) -> tuple[
+    WorkflowAppGenerateEntity,
+    WorkflowAppQueueManager,
+    ResponseStreamFilter,
+    SQLAlchemyWorkflowExecutionRepository,
+    SQLAlchemyWorkflowNodeExecutionRepository,
+]:
     entity, queue, response_filter, workflow_repo, node_repo = generation_objects(case, monkeypatch)
     case.host.bind_generation(
         entity=entity,
@@ -507,7 +542,7 @@ def native_entry(
     iteration: bool = False,
     bind: bool = True,
     policy: dict[str, object] | None = None,
-):
+) -> tuple[WorkflowEntry, Factory]:
     from graphon.graph import Graph
     from graphon.runtime import RuntimeState, VariablePool
     from services.workflow_runtime.entry import WorkflowEntry
@@ -589,7 +624,7 @@ def test_root_observation_retains_actual_business_terminal_without_payload(monke
         cast(MutableTerminal, observed).terminal = "failed"
 
 
-def _run_observed(case: LaunchCase, entry) -> None:
+def _run_observed(case: LaunchCase, entry: WorkflowEntry) -> None:
     try:
         list(entry.run())
     finally:
@@ -604,17 +639,20 @@ def test_nested_pool_lifecycle_events_do_not_attest_root_terminal(monkeypatch: p
     entry, _ = native_entry(case, monkeypatch, iteration=True)
 
     class NestedObserver(Layer):
-        def on_graph_start(self):
-            pass
-
-        def on_graph_end(self, error):
-            pass
-
-        def on_event(self, event):
+        @override
+        def on_graph_start(self) -> None:
             pass
 
         @override
-        def on_node_run_start(self, node):
+        def on_graph_end(self, error: Exception | None) -> None:
+            pass
+
+        @override
+        def on_event(self, event: EngineEvent) -> None:
+            pass
+
+        @override
+        def on_node_run_start(self, node: Node[BaseNodeData]) -> None:
             # Real native pool callback, while the public root is still live.
             case.host.observation_layer().on_event(GraphRunStartedEvent())
             case.host.observation_layer().on_event(GraphRunFailedEvent(error="private-nested-canary"))
@@ -654,7 +692,9 @@ def test_snapshot_requires_settlement_and_exact_composed_owners(monkeypatch: pyt
 
 
 @pytest.mark.parametrize("container", [False, True])
-def test_cross_thread_end_never_closes_active_physical_phase_or_scalar_hook(monkeypatch, container):
+def test_cross_thread_end_never_closes_active_physical_phase_or_scalar_hook(
+    monkeypatch: pytest.MonkeyPatch, container: bool
+) -> None:
     from datetime import UTC, datetime
 
     from graphon.engine_events.node import NodeRunSucceededEvent
@@ -666,7 +706,7 @@ def test_cross_thread_end_never_closes_active_physical_phase_or_scalar_hook(monk
     layer = case.host.observation_layer()
     entered, release = Event(), Event()
 
-    def run():
+    def run() -> None:
         try:
             with case.host.node_scope(node=node, phase="resume_container"), layer.node_run_context(node):
                 entered.set()
@@ -709,17 +749,20 @@ def test_first_real_native_hook_is_owned_before_later_start_hook_blocks(monkeypa
     errors: list[BaseException] = []
 
     class LaterHook(Layer):
+        @override
         def on_graph_start(self) -> None:
             pass
 
-        def on_graph_end(self, error) -> None:
-            pass
-
-        def on_event(self, event) -> None:
+        @override
+        def on_graph_end(self, error: Exception | None) -> None:
             pass
 
         @override
-        def on_node_run_start(self, node) -> None:
+        def on_event(self, event: EngineEvent) -> None:
+            pass
+
+        @override
+        def on_node_run_start(self, node: Node[BaseNodeData]) -> None:
             if node.id == "guard":
                 entered.set()
                 release.wait(2)
@@ -1044,14 +1087,14 @@ def test_launch_retirement_releases_layer_and_real_control_traceback_payloads(mo
     import gc
     import weakref
 
-    def completed():
+    def completed() -> tuple[NativeHostLaunch, HostBoundScalarCalls, list[ReferenceType[object]]]:
         case = LaunchCase(baseline=(1, 1, 1))
         entry, factory = native_entry(case, monkeypatch)
         factory.effects.decision = ApprovalWait(pending_operation_id="pending")
         node = entry.graph_engine.graph.nodes["guard"]
         node.bind_execution_id("actual-control-gc")
         calls = case.calls()
-        refs = [
+        refs: list[ReferenceType[object]] = [
             weakref.ref(value)
             for value in [
                 case.state,
@@ -1096,7 +1139,7 @@ def test_mandatory_stop_owner_and_exact_resolved_context_are_required() -> None:
 
     case = LaunchCase()
 
-    def construct(*, context, stop_sealer):
+    def construct(*, context: ResolvedNativeTestContext, stop_sealer: DurableNativeStopSealer) -> NativeHostLaunch:
         return NativeHostLaunch(
             context=context,
             stop_sealer=stop_sealer,

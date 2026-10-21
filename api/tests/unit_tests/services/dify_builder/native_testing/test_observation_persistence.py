@@ -10,12 +10,15 @@ import importlib
 import importlib.util
 import json
 import traceback
+from collections.abc import AsyncIterator, Sequence
 from copy import deepcopy
 from datetime import datetime
-from typing import cast, override
+from types import ModuleType
+from typing import NoReturn, Self, cast, override
 
 import pytest
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
@@ -39,16 +42,18 @@ from graphon.engine_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.enums import WorkflowNodeExecutionStatus as Status
 from graphon.node_events import NodeRunResult
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
-from models import WorkflowNodeExecutionTriggeredFrom
+from models import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.model import AppMode
+from models.model import AppMode, UploadFile
+from models.workflow import WorkflowNodeExecutionModel
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
+from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
@@ -67,84 +72,87 @@ from tests.unit_tests.services.dify_builder.native_testing.test_observation_priv
 NOW = datetime(2026, 10, 16)
 
 
-def adapters():
+def adapters() -> ModuleType:
     name = "services.dify_builder.native_testing.observation_adapters"
     assert importlib.util.find_spec(name) is not None, "native observation guard is missing"
     return importlib.import_module(name)
 
 
-def policy():
+def policy() -> NativeHttpObservationPolicy:
     return NativeHttpObservationPolicy.qualify(context=qualified_context(), profile=build_native_http_profile())
+
+
+type MemoryRow = WorkflowRun | WorkflowNodeExecutionModel
 
 
 class MemorySQLPort:
     """Single current-row query port for the actual synchronous repository methods."""
 
-    def __init__(self):
-        self.rows = {}
-        self.current_id = None
+    def __init__(self) -> None:
+        self.rows: dict[str, MemoryRow] = {}
+        self.current_id: str | None = None
         self.commits = 0
         self.flushes = 0
         self.fail = False
 
-    def __call__(self, **_kwargs):
+    def __call__(self, **_kwargs: object) -> Self:
         return self
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *_args):
+    def __exit__(self, *_args: object) -> bool:
         return False
 
-    def begin(self):
+    def begin(self) -> Self:
         return self
 
-    def get(self, _model, identity, *, with_for_update=None):
+    def get[T: MemoryRow](self, _model: type[T], identity: str, *, with_for_update: object = None) -> T | None:
         # Accept the real Session's locked reread shape; this unit port makes
         # no SQL isolation or durable-lock claim.
         del with_for_update
-        return self.rows.get(identity)
+        return cast(T | None, self.rows.get(identity))
 
-    def add(self, model):
+    def add(self, model: MemoryRow) -> None:
         self.rows[model.id] = model
 
-    def merge(self, model):
+    def merge[T: MemoryRow](self, model: T) -> T:
         self.rows[model.id] = model
         return model
 
-    def execute(self, _statement):
+    def execute(self, _statement: Select[tuple[object, ...]]) -> Self:
         # The fixture sets current_id from the concrete domain save call. This
         # does not implement SQL selection/tenant filtering or durability.
         return self
 
-    def scalar(self, statement):
+    def scalar(self, statement: Select[tuple[object, ...]]) -> MemoryRow | None:
         # Match Session.scalar for the repository's locked current-row reread.
         # This remains a query-shape port, with no claim of real SQL locking.
         return self.execute(statement).scalars().first()
 
-    def scalars(self):
+    def scalars(self) -> Self:
         return self
 
-    def first(self):
-        return self.rows.get(self.current_id)
+    def first(self) -> MemoryRow | None:
+        return self.rows.get(self.current_id) if self.current_id is not None else None
 
-    def commit(self):
+    def commit(self) -> None:
         if self.fail:
             raise RuntimeError(SENTINEL)
         self.commits += 1
 
-    def flush(self):
+    def flush(self) -> None:
         if self.fail:
             raise RuntimeError(SENTINEL)
         self.flushes += 1
 
 
 class MemoryFiles:
-    def __init__(self):
+    def __init__(self) -> None:
         self.uploads = []
         self.fail = False
 
-    def upload_file(self, *, content, **_kwargs):
+    def upload_file(self, *, content: bytes, **_kwargs: object) -> UploadFile:
         if self.fail:
             raise RuntimeError(SENTINEL)
         self.uploads.append(content)
@@ -154,19 +162,19 @@ class MemoryFiles:
 class UnitRunRepository(SQLAlchemyWorkflowExecutionRepository):
     """Real save/serializer with explicit in-memory SQL port; constructor IO skipped."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sql = MemorySQLPort()
-        self._session_factory = cast(sessionmaker, self.sql)
+        self._session_factory = cast(sessionmaker[Session], self.sql)
         self._tenant_id = "tenant"
         self._app_id = "app"
         self._creator_user_id = "actor"
         self._creator_user_role = CreatorUserRole.ACCOUNT
         self._triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
         self._execution_cache = {}
-        self.saved = []
+        self.saved: list[WorkflowExecution] = []
 
     @override
-    def save(self, execution):
+    def save(self, execution: WorkflowExecution) -> None:
         self.saved.append(execution.model_copy(deep=True))
         self.sql.current_id = execution.id_
         super().save(execution)
@@ -175,9 +183,9 @@ class UnitRunRepository(SQLAlchemyWorkflowExecutionRepository):
 class UnitNodeRepository(SQLAlchemyWorkflowNodeExecutionRepository):
     """Real save/save_execution_data/truncation/offload with memory ports only."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sql = MemorySQLPort()
-        self._session_factory = cast(sessionmaker, self.sql)
+        self._session_factory = cast(sessionmaker[Session], self.sql)
         self._tenant_id = "tenant"
         self._app_id = "app"
         self._creator_user_id = "actor"
@@ -187,24 +195,24 @@ class UnitNodeRepository(SQLAlchemyWorkflowNodeExecutionRepository):
         self._node_execution_cache = {}
         self.files = MemoryFiles()
         self._file_service = cast(FileService, self.files)
-        self.saved = []
-        self.loaded = []
+        self.saved: list[WorkflowNodeExecution] = []
+        self.loaded: list[WorkflowNodeExecution] = []
         self.load_calls = 0
 
     @override
-    def _create_truncator(self):
+    def _create_truncator(self) -> VariableTruncator:
         # Real native truncation, made small so even the redacted full payload
         # takes the real upload path. No source/config mutation is needed.
         return VariableTruncator(max_size_bytes=48, string_length_limit=8, array_element_limit=2)
 
     @override
-    def save(self, execution):
+    def save(self, execution: WorkflowNodeExecution) -> None:
         self.saved.append(execution.model_copy(deep=True))
         self.sql.current_id = execution.id
         super().save(execution)
 
     @override
-    def save_execution_data(self, execution):
+    def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
         self.sql.current_id = execution.id
         super().save_execution_data(execution)
 
@@ -215,13 +223,22 @@ class UnitNodeRepository(SQLAlchemyWorkflowNodeExecutionRepository):
         order_config: OrderConfig | None = None,
         *,
         include_paused: bool = False,
-    ):
+    ) -> Sequence[WorkflowNodeExecution]:
         del workflow_execution_id, order_config, include_paused
         self.load_calls += 1
         return self.loaded
 
 
-def make_layer(*, guard=None, trace=None):
+def make_layer(
+    *, guard: NativeObservationGuard | None = None, trace: object = None
+) -> tuple[
+    WorkflowPersistenceLayer,
+    UnitRunRepository,
+    UnitNodeRepository,
+    RuntimeState,
+    WorkflowAppGenerateEntity,
+    PersistenceWorkflowInfo,
+]:
     ctx = qualified_context()
     runtime = RuntimeState(
         workflow_id="workflow",
@@ -250,14 +267,13 @@ def make_layer(*, guard=None, trace=None):
         workflow_id="workflow", workflow_type=WorkflowType.WORKFLOW, version="1", graph_data=ctx.graph
     )
     runs, nodes = UnitRunRepository(), UnitNodeRepository()
-    kwargs = {"native_observation": guard} if guard is not None else {}
     layer = WorkflowPersistenceLayer(
         application_generate_entity=entity,
         workflow_info=info,
         workflow_execution_repository=runs,
         workflow_node_execution_repository=nodes,
-        trace_manager=trace,
-        **kwargs,
+        trace_manager=cast(TraceQueueManager | None, trace),
+        native_observation=guard,
     )
     layer.initialize(ReadOnlyRuntimeStateWrapper(runtime), command_channel=InMemoryChannel())
     # WorkflowRunAgg supplies indices before node lifecycle events in 0.8.
@@ -266,12 +282,12 @@ def make_layer(*, guard=None, trace=None):
 
 
 @pytest.fixture(autouse=True)
-def quiet_inspector(monkeypatch):
+def quiet_inspector(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("services.workflow_persistence._inspector_publish_node_changed", lambda **_kwargs: None)
     monkeypatch.setattr("services.workflow_persistence._inspector_publish_workflow_completed", lambda **_kwargs: None)
 
 
-def started():
+def started() -> NodeRunStartedEvent:
     return NodeRunStartedEvent(
         id="execution",
         node_id="http",
@@ -282,7 +298,7 @@ def started():
     )
 
 
-def succeeded():
+def succeeded() -> NodeRunSucceededEvent:
     return NodeRunSucceededEvent(
         id="execution",
         node_id="http",
@@ -298,7 +314,7 @@ def succeeded():
     )
 
 
-def test_guard_requires_actual_policy_and_callback_before_any_projection():
+def test_guard_requires_actual_policy_and_callback_before_any_projection() -> None:
     module = adapters()
     with pytest.raises(TypeError):
         module.NativeObservationGuard(policy=policy())
@@ -308,8 +324,8 @@ def test_guard_requires_actual_policy_and_callback_before_any_projection():
         module.NativeObservationGuard(policy=policy(), on_failure=None)
 
 
-def test_actual_layer_projects_before_caches_serializer_and_full_offload():
-    failures = []
+def test_actual_layer_projects_before_caches_serializer_and_full_offload() -> None:
+    failures: list[str] = []
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: failures.append("failed"))
     layer, runs, nodes, runtime, entity, info = make_layer(guard=guard)
     raw_graph = deepcopy(info.graph_data)
@@ -352,7 +368,13 @@ def test_actual_layer_projects_before_caches_serializer_and_full_offload():
         GraphRunPausedEvent(reasons=[SchedulingPause(message=SENTINEL)], outputs={}),
     ],
 )
-def test_runtime_fallback_is_projected_without_changing_operational_outputs(event):
+def test_runtime_fallback_is_projected_without_changing_operational_outputs(
+    event: GraphRunSucceededEvent
+    | GraphRunPartialSucceededEvent
+    | GraphRunFailedEvent
+    | GraphRunAbortedEvent
+    | GraphRunPausedEvent,
+) -> None:
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None)
     layer, runs, _, runtime, _, _ = make_layer(guard=guard)
     layer.on_event(GraphRunStartedEvent())
@@ -369,7 +391,9 @@ def test_runtime_fallback_is_projected_without_changing_operational_outputs(even
         assert saved.outputs is None
         assert runtime.outputs == {"answer": {"body": SENTINEL}}
         return
+    assert saved.outputs is not None
     assert saved.outputs["redacted"] is True
+    assert saved.outputs is not None
     assert saved.outputs["shape"]["fields"] == 1
     assert saved.total_steps == 1
     assert (
@@ -385,7 +409,7 @@ def test_runtime_fallback_is_projected_without_changing_operational_outputs(even
     assert runtime.outputs == {"answer": {"body": SENTINEL}}
 
 
-def test_retry_history_is_projected_before_real_save_upload_and_keeps_safe_metadata():
+def test_retry_history_is_projected_before_real_save_upload_and_keeps_safe_metadata() -> None:
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None)
     layer, _, nodes, _, _, _ = make_layer(guard=guard)
     layer.on_event(GraphRunStartedEvent())
@@ -415,11 +439,11 @@ def test_retry_history_is_projected_before_real_save_upload_and_keeps_safe_metad
     assert event.model_dump(mode="json") == original
 
 
-def test_guarded_initial_inputs_never_enter_ordinary_special_value_serializer(monkeypatch):
+def test_guarded_initial_inputs_never_enter_ordinary_special_value_serializer(monkeypatch: pytest.MonkeyPatch) -> None:
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None)
     layer, runs, _, _, _, _ = make_layer(guard=guard)
 
-    def forbidden(_value):
+    def forbidden(_value) -> NoReturn:
         raise AssertionError("raw ordinary serializer should not run for marked inputs")
 
     monkeypatch.setattr("services.workflow_runtime.entry.WorkflowEntry.handle_special_values", forbidden)
@@ -428,8 +452,8 @@ def test_guarded_initial_inputs_never_enter_ordinary_special_value_serializer(mo
     assert SENTINEL not in runs.saved[0].model_dump_json()
 
 
-def test_projection_failure_is_sticky_notifies_host_and_never_saves_raw_fallback():
-    notices = []
+def test_projection_failure_is_sticky_notifies_host_and_never_saves_raw_fallback() -> None:
+    notices: list[str] = []
     module = adapters()
     guard = module.NativeObservationGuard(policy=policy(), on_failure=lambda: notices.append("failure"))
     layer, runs, nodes, _, _, _ = make_layer(guard=guard)
@@ -445,8 +469,8 @@ def test_projection_failure_is_sticky_notifies_host_and_never_saves_raw_fallback
 
 
 @pytest.mark.parametrize("failure", ["run-save", "node-save", "offload"])
-def test_repository_failures_latch_guard_and_surface_only_fixed_safe_error(failure):
-    notices = []
+def test_repository_failures_latch_guard_and_surface_only_fixed_safe_error(failure: str) -> None:
+    notices: list[str] = []
     module = adapters()
     guard = module.NativeObservationGuard(policy=policy(), on_failure=lambda: notices.append("failure"))
     layer, runs, nodes, _, _, _ = make_layer(guard=guard)
@@ -472,17 +496,17 @@ def test_repository_failures_latch_guard_and_surface_only_fixed_safe_error(failu
         guard.require_healthy()
 
 
-def test_failed_callback_is_safe_and_cannot_restore_success():
+def test_failed_callback_is_safe_and_cannot_restore_success() -> None:
     module = adapters()
 
     class CallbackError(Exception):
         @override
-        def __str__(self):
+        def __str__(self) -> NoReturn:
             raise AssertionError("raw callback exception rendered")
 
-    calls = []
+    calls: list[int] = []
 
-    def callback():
+    def callback() -> NoReturn:
         calls.append(1)
         raise CallbackError(SENTINEL)
 
@@ -495,8 +519,8 @@ def test_failed_callback_is_safe_and_cannot_restore_success():
     assert SENTINEL not in "".join(traceback.format_exception(caught.value))
 
 
-def test_native_resumption_refuses_before_old_row_load_or_cache_and_run_save():
-    notices = []
+def test_native_resumption_refuses_before_old_row_load_or_cache_and_run_save() -> None:
+    notices: list[int] = []
     module = adapters()
     guard = module.NativeObservationGuard(policy=policy(), on_failure=lambda: notices.append(1))
     layer, runs, nodes, _, _, _ = make_layer(guard=guard)
@@ -524,12 +548,12 @@ def test_native_resumption_refuses_before_old_row_load_or_cache_and_run_save():
 class RejectRawTrace:
     """Trace queue boundary that must never receive marked persistence events."""
 
-    def add_trace_task(self, _task):
+    def add_trace_task(self, _task) -> NoReturn:
         pytest.fail("raw trace enqueue")
 
 
-def test_trace_owner_is_refused_before_marked_persistence_or_enqueues():
-    notices = []
+def test_trace_owner_is_refused_before_marked_persistence_or_enqueues() -> None:
+    notices: list[int] = []
     module = adapters()
     guard = module.NativeObservationGuard(policy=policy(), on_failure=lambda: notices.append(1))
     with pytest.raises(module.NativeObservationError):
@@ -538,7 +562,7 @@ def test_trace_owner_is_refused_before_marked_persistence_or_enqueues():
     assert notices == [1]
 
 
-def test_two_actual_observers_have_independent_diagnostic_caches():
+def test_two_actual_observers_have_independent_diagnostic_caches() -> None:
     left = make_layer(guard=adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None))
     right = make_layer(guard=adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None))
     event = succeeded()
@@ -546,14 +570,14 @@ def test_two_actual_observers_have_independent_diagnostic_caches():
         layer.on_event(GraphRunStartedEvent())
         layer.on_event(started())
         layer.on_event(event)
-    cast(dict, left[0]._node_execution_cache["execution"].outputs)["redacted"] = False
+    cast(dict[str, object], left[0]._node_execution_cache["execution"].outputs)["redacted"] = False
     right_outputs = right[0]._node_execution_cache["execution"].outputs
     assert right_outputs is not None
     assert right_outputs["redacted"] is True
     assert event.node_run_result.outputs["body"] == SENTINEL * 10_000
 
 
-def test_ordinary_real_persistence_preserves_content_and_exceptions_without_guard():
+def test_ordinary_real_persistence_preserves_content_and_exceptions_without_guard() -> None:
     layer, runs, nodes, runtime, entity, info = make_layer()
     layer.on_event(GraphRunStartedEvent())
     layer.on_event(started())
@@ -571,7 +595,7 @@ def test_ordinary_real_persistence_preserves_content_and_exceptions_without_guar
         layer.on_event(GraphRunSucceededEvent(outputs={}))
 
 
-def test_ordinary_resumption_still_uses_existing_loaded_domain_rows():
+def test_ordinary_resumption_still_uses_existing_loaded_domain_rows() -> None:
     layer, _, nodes, _, _, _ = make_layer()
     old = WorkflowNodeExecution(
         id="old",
@@ -598,16 +622,16 @@ def test_ordinary_resumption_still_uses_existing_loaded_domain_rows():
     assert index.root_snapshots[0].title == SENTINEL
 
 
-def test_async_generator_callback_object_is_not_a_synchronous_host_latch():
+def test_async_generator_callback_object_is_not_a_synchronous_host_latch() -> None:
     class AsyncCallback:
-        async def __call__(self):
+        async def __call__(self) -> AsyncIterator[None]:
             yield None
 
     with pytest.raises(adapters().NativeObservationError):
         adapters().NativeObservationGuard(policy=policy(), on_failure=AsyncCallback())
 
 
-def test_policy_subclasses_cannot_replace_the_exact_server_policy():
+def test_policy_subclasses_cannot_replace_the_exact_server_policy() -> None:
     class DerivedPolicy(NativeHttpObservationPolicy):
         pass
 
@@ -616,11 +640,11 @@ def test_policy_subclasses_cannot_replace_the_exact_server_policy():
         adapters().NativeObservationGuard(policy=derived, on_failure=lambda: None)
 
 
-def test_reentrant_failure_callback_observes_sticky_fact_without_deadlock():
+def test_reentrant_failure_callback_observes_sticky_fact_without_deadlock() -> None:
     notices = []
     module = adapters()
 
-    def callback():
+    def callback() -> None:
         notices.append(guard.failed)
         guard.require_healthy()
 
@@ -631,21 +655,22 @@ def test_reentrant_failure_callback_observes_sticky_fact_without_deadlock():
     assert guard.failed is True
 
 
-def test_concurrent_failures_notify_actual_callback_before_any_refusal_completes():
+def test_concurrent_failures_notify_actual_callback_before_any_refusal_completes() -> None:
     from threading import Event, Thread
 
     entered, release, second_started, second_done = Event(), Event(), Event(), Event()
     module = adapters()
-    notices, errors = [], []
+    notices: list[bool] = []
+    errors: list[str] = []
 
-    def callback():
+    def callback() -> None:
         notices.append(guard.failed)
         entered.set()
         assert release.wait(2)
 
     guard = module.NativeObservationGuard(policy=policy(), on_failure=callback)
 
-    def invoke(second=False):
+    def invoke(second: bool = False) -> None:
         if second:
             second_started.set()
         try:
@@ -674,7 +699,7 @@ def test_concurrent_failures_notify_actual_callback_before_any_refusal_completes
     assert errors == ["native_observation_failed", "native_observation_failed"]
 
 
-def test_business_node_failure_is_preserved_without_marking_observation_failed():
+def test_business_node_failure_is_preserved_without_marking_observation_failed() -> None:
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: pytest.fail("not observer failure"))
     layer, _, nodes, _, _, _ = make_layer(guard=guard)
     layer.on_event(GraphRunStartedEvent())
@@ -695,7 +720,7 @@ def test_business_node_failure_is_preserved_without_marking_observation_failed()
     assert guard.failed is False
 
 
-def test_marked_native_node_pause_retains_pause_semantics_with_no_raw_process_data():
+def test_marked_native_node_pause_retains_pause_semantics_with_no_raw_process_data() -> None:
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None)
     layer, _, nodes, _, _, _ = make_layer(guard=guard)
     layer.on_event(GraphRunStartedEvent())
@@ -713,18 +738,19 @@ def test_marked_native_node_pause_retains_pause_semantics_with_no_raw_process_da
     assert SENTINEL not in nodes.saved[-1].model_dump_json()
 
 
-def test_nonempty_graph_event_keeps_ordinary_output_selection_over_live_runtime():
+def test_nonempty_graph_event_keeps_ordinary_output_selection_over_live_runtime() -> None:
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None)
     layer, runs, _, runtime, _, _ = make_layer(guard=guard)
     layer.on_event(GraphRunStartedEvent())
     runtime.set_output("a", SENTINEL)
     runtime.set_output("b", SENTINEL)
     layer.on_event(GraphRunSucceededEvent(outputs={"selected": SENTINEL}))
+    assert runs.saved[-1].outputs is not None
     assert runs.saved[-1].outputs["shape"]["fields"] == 1
     assert runtime.outputs == {"a": SENTINEL, "b": SENTINEL}
 
 
-def test_failed_guard_cannot_be_cleared_by_graph_lifecycle_hooks():
+def test_failed_guard_cannot_be_cleared_by_graph_lifecycle_hooks() -> None:
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None)
     layer, _, _, _, _, _ = make_layer(guard=guard)
     with pytest.raises(adapters().NativeObservationError):
@@ -735,7 +761,7 @@ def test_failed_guard_cannot_be_cleared_by_graph_lifecycle_hooks():
     assert guard.failed is True
 
 
-def test_late_trace_owner_cannot_enqueue_after_marked_construction():
+def test_late_trace_owner_cannot_enqueue_after_marked_construction() -> None:
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None)
     layer, _, _, _, entity, _ = make_layer(guard=guard)
     layer.on_event(GraphRunStartedEvent())
@@ -745,15 +771,15 @@ def test_late_trace_owner_cannot_enqueue_after_marked_construction():
     assert guard.failed is True
 
 
-def test_run_id_and_initial_system_values_never_render_unknown_objects():
-    calls = []
+def test_run_id_and_initial_system_values_never_render_unknown_objects() -> None:
+    calls: list[int] = []
 
     class Unclassified:
-        def __str__(self):
+        def __str__(self) -> str:
             calls.append(1)
             return SENTINEL
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             calls.append(1)
             return SENTINEL
 

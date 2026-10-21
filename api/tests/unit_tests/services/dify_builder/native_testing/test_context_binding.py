@@ -1,30 +1,49 @@
 """Trusted reload must finish before any marked run reaches native setup."""
 
+from collections.abc import Mapping
 from datetime import datetime
+from typing import cast
 
 import pytest
-from sqlalchemy.orm import sessionmaker
+import sqlalchemy.orm
+from sqlalchemy import Select
+from sqlalchemy.orm import ORMExecuteState, sessionmaker
 
 from core.dify_builder.models import Actor
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.contracts import JsonValue, NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+from services.dify_builder.native_testing.agent_binding import AgentBindingAuthorization, AgentBindingSelection
+from services.dify_builder.native_testing.context_binding import (
+    NativeAdmissionCompilation,
+    NativeAdmissionCompiler,
+    NativeContextUnavailable,
+    resolve_native_context,
+)
+from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.builder_agent_fixtures import AgentCase
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT, REF_DATA
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 from tests.unit_tests.services.dify_builder.test_native_agent_binding import agent_case as agent_case  # noqa: PLC0414
 
 
-def stored_context_boundary(monkeypatch, *, context=None, failure=None):
+def stored_context_boundary(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    context: ResolvedNativeTestContext | None = None,
+    failure: BaseException | None = None,
+) -> tuple[NativeExecutionStateStore, list[NativeTestContextRef]]:
     """Actual state owner with only its protected-object read method replaced."""
     loader = OwnedNativeTestLoader(
-        sessionmaker(), actor=Actor(tenant_id="tenant", account_id="actor"), resolver=object()
+        sessionmaker(), actor=Actor(tenant_id="tenant", account_id="actor"), resolver=NativeHttpBindingResolver()
     )
     state = NativeExecutionStateStore(loader)
-    calls = []
+    calls: list[NativeTestContextRef] = []
 
-    def load_context(*, ref):
+    def load_context(*, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
         calls.append(ref)
         if failure is not None:
             raise failure
@@ -35,29 +54,23 @@ def stored_context_boundary(monkeypatch, *, context=None, failure=None):
     return state, calls
 
 
-def binding():
-    from services.dify_builder.native_testing.context_binding import NativeContextUnavailable, resolve_native_context
-
-    return NativeContextUnavailable, resolve_native_context
-
-
-def test_required_scope_never_falls_back_to_ordinary(monkeypatch):
-    error, resolve = binding()
+def test_required_scope_never_falls_back_to_ordinary(monkeypatch: pytest.MonkeyPatch) -> None:
+    error, resolve = NativeContextUnavailable, resolve_native_context
     state, calls = stored_context_boundary(monkeypatch)
     with pytest.raises(error, match="^native_context_missing$"):
         resolve(required=True, ref=None, state=state)
     assert calls == []
 
 
-def test_unmarked_ordinary_run_does_not_load_native_state(monkeypatch):
-    _, resolve = binding()
+def test_unmarked_ordinary_run_does_not_load_native_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    resolve = resolve_native_context
     state, calls = stored_context_boundary(monkeypatch)
     assert resolve(required=False, ref=None, state=state) is None
     assert calls == []
 
 
-def test_unknown_policy_never_reaches_owner(monkeypatch):
-    error, resolve = binding()
+def test_unknown_policy_never_reaches_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    error, resolve = NativeContextUnavailable, resolve_native_context
     state, calls = stored_context_boundary(monkeypatch)
     ref = NativeTestContextRef.model_construct(**{**REF_DATA, "policy_version": "unknown"})
     with pytest.raises(error, match="^native_context_version$"):
@@ -66,39 +79,44 @@ def test_unknown_policy_never_reaches_owner(monkeypatch):
 
 
 @pytest.mark.parametrize("reason", ["native_owner_mismatch", "native_context_mismatch", "native_access_denied"])
-def test_owner_rejection_is_sanitized(reason, monkeypatch):
-    error, resolve = binding()
+def test_owner_rejection_is_sanitized(reason: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    error, resolve = NativeContextUnavailable, resolve_native_context
     state, _calls = stored_context_boundary(monkeypatch, failure=BuilderExecutionPolicyError(reason))
     with pytest.raises(error, match="^native_context_unavailable$"):
-        resolve(required=True, ref=NativeTestContextRef(**REF_DATA), state=state)
+        resolve(required=True, ref=NativeTestContextRef.model_validate(REF_DATA), state=state)
 
 
-def test_loaded_ref_must_exactly_match_requested_ref(monkeypatch):
-    error, resolve = binding()
-    changed_context = ResolvedNativeTestContext(**CONTEXT).model_copy(
-        update={"ref": NativeTestContextRef(**{**REF_DATA, "context_digest": "b" * 64})}
+def test_loaded_ref_must_exactly_match_requested_ref(monkeypatch: pytest.MonkeyPatch) -> None:
+    error, resolve = NativeContextUnavailable, resolve_native_context
+    changed_context = ResolvedNativeTestContext.model_validate(CONTEXT).model_copy(
+        update={"ref": NativeTestContextRef.model_validate({**REF_DATA, "context_digest": "b" * 64})}
     )
     state, _calls = stored_context_boundary(monkeypatch, context=changed_context)
     with pytest.raises(error, match="^native_context_mismatch$"):
-        resolve(required=True, ref=NativeTestContextRef(**REF_DATA), state=state)
+        resolve(required=True, ref=NativeTestContextRef.model_validate(REF_DATA), state=state)
 
 
-def test_reload_preserves_typed_inputs_and_isolates_mutable_snapshot(monkeypatch):
-    _, resolve = binding()
-    context = ResolvedNativeTestContext(
-        **{**CONTEXT, "inputs": {"bool": True, "array": [1, None], "file": {"ref": "f"}}}
+def test_reload_preserves_typed_inputs_and_isolates_mutable_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    resolve = resolve_native_context
+    context = ResolvedNativeTestContext.model_validate(
+        {**CONTEXT, "inputs": {"bool": True, "array": [1, None], "file": {"ref": "f"}}}
     )
     state, _calls = stored_context_boundary(monkeypatch, context=context)
     actual = resolve(required=True, ref=context.ref, state=state)
+    assert actual is not None
     assert actual.inputs == context.inputs
-    actual.inputs["array"].append(2)
+    assert isinstance(actual.inputs, dict)
+    array = actual.inputs["array"]
+    assert isinstance(array, list)
+    array.append(2)
+    assert isinstance(context.inputs, dict)
     assert context.inputs["array"] == [1, None]
 
 
-def test_marker_roundtrip_does_not_extend_legacy_policy_union():
+def test_marker_roundtrip_does_not_extend_legacy_policy_union() -> None:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 
-    ref = NativeTestContextRef(**REF_DATA)
+    ref = NativeTestContextRef.model_validate(REF_DATA)
     context = DifyRunContext(
         native_test_required=True,
         native_test_ref=ref,
@@ -114,12 +132,12 @@ def test_marker_roundtrip_does_not_extend_legacy_policy_union():
     assert restored.builder_execution is None
 
 
-def compile_owned(owned):
+def compile_owned(owned: Owned) -> tuple[NativeAdmissionCompiler, NativeAdmissionCompilation]:
     from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler, NativeRuntimeProfile
 
     factory, actor, app, workflow, sid, tid = owned
 
-    def metadata(**_kwargs):
+    def metadata(**_kwargs: object) -> tuple[()]:
         return ()
 
     compiler = NativeAdmissionCompiler(session_factory=factory, resources=metadata)
@@ -140,7 +158,7 @@ def compile_owned(owned):
     return compiler, result
 
 
-def test_compiler_reads_actual_owner_snapshot_and_finalizes_digest(owned):
+def test_compiler_reads_actual_owner_snapshot_and_finalizes_digest(owned: Owned) -> None:
     from runtime_contracts.builder.execution import canonical_digest
     from services.dify_builder.native_testing.repository import native_workflow_revision
 
@@ -157,7 +175,7 @@ def test_compiler_reads_actual_owner_snapshot_and_finalizes_digest(owned):
 
 
 @pytest.mark.parametrize("change", ["graph", "inputs", "session", "owner"])
-def test_compiled_admission_recheck_rejects_local_changes_without_writing(owned, change):
+def test_compiled_admission_recheck_rejects_local_changes_without_writing(owned: Owned, change: str) -> None:
     from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
     from models.workflow import Workflow
     from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
@@ -166,18 +184,28 @@ def test_compiled_admission_recheck_rejects_local_changes_without_writing(owned,
     factory, actor, app, workflow, sid, tid = owned
     with factory.begin() as db:
         if change == "graph":
-            db.get(Workflow, workflow.id).graph = '{"nodes":[],"edges":[]}'
+            saved_workflow = db.get(Workflow, workflow.id)
+            assert saved_workflow is not None
+            saved_workflow.graph = '{"nodes":[],"edges":[]}'
         elif change == "inputs":
-            db.get(DifyBuilderTestInput, tid).inputs = {"new": True}
+            saved_input = db.get(DifyBuilderTestInput, tid)
+            assert saved_input is not None
+            saved_input.inputs = {"new": True}
         elif change == "session":
-            db.get(DifyBuilderSession, sid).version += 1
+            saved_session = db.get(DifyBuilderSession, sid)
+            assert saved_session is not None
+            saved_session.version += 1
         else:
-            db.get(DifyBuilderSession, sid).owner_account_id = "foreign"
+            saved_session = db.get(DifyBuilderSession, sid)
+            assert saved_session is not None
+            saved_session.owner_account_id = "foreign"
     with factory.begin() as db, pytest.raises(NativeContextUnavailable):
         compiler.recheck_local(session=db, actor=actor, compilation=compiled)
 
 
-def test_native_graph_prepares_every_agent_with_one_binding_owner(agent_case, sqlite_session):
+def test_native_graph_prepares_every_agent_with_one_binding_owner(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     from sqlalchemy import select
 
     from models.agent import WorkflowAgentNodeBinding
@@ -188,7 +216,7 @@ def test_native_graph_prepares_every_agent_with_one_binding_owner(agent_case, sq
 
     case = agent_case
     selection = _selection(case)
-    graph = case.workflow.graph_dict
+    graph = dict(case.workflow.graph_dict)
     graph["nodes"].append(
         {
             "id": "review",
@@ -210,20 +238,24 @@ def test_native_graph_prepares_every_agent_with_one_binding_owner(agent_case, sq
         selections={"review": selection},
         authorization=authorization,
     )
+    assert binding is not None
     assert binding.session is sqlite_session
     binding.sync_prepared_bindings(actor=case.actor, workflow=case.workflow, selections={"review": selection})
     row = sqlite_session.scalar(select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.node_id == "review"))
+    assert row is not None
     assert row.current_snapshot_id == selection.snapshot_id
     assert graph["nodes"][-1]["data"]["agent_binding"]["agent_id"] == selection.agent_id
 
 
-def test_native_graph_refuses_unselected_agent_before_sync(agent_case, sqlite_session):
+def test_native_graph_refuses_unselected_agent_before_sync(
+    agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     from models.agent_config_entities import WorkflowNodeJobConfig
     from services.dify_builder.dify_port import _prepare_native_agent_graph
     from services.dify_builder.native_testing.agent_binding import native_node_data
 
     case = agent_case
-    graph = case.workflow.graph_dict
+    graph = dict(case.workflow.graph_dict)
     graph["nodes"].append(
         {
             "id": "injected",
@@ -240,15 +272,15 @@ def test_native_graph_refuses_unselected_agent_before_sync(agent_case, sqlite_se
             actor=case.actor,
             workflow=case.workflow,
             graph=graph,
-            selections=None,
+            selections=cast(Mapping[str, AgentBindingSelection], None),
             authorization=None,
         )
 
 
-def test_agent_selection_uses_exact_confirmed_opaque_identity():
+def test_agent_selection_uses_exact_confirmed_opaque_identity() -> None:
     from services.dify_builder.dify_port import _confirmed_agent_selections
 
-    graph = {
+    graph: dict[str, JsonValue] = {
         "nodes": [
             {
                 "id": "a",
@@ -272,7 +304,11 @@ def test_agent_selection_uses_exact_confirmed_opaque_identity():
         _confirmed_agent_selections(graph, ["agent:agent:changed:" + "a" * 64])
 
 
-def _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory, monkeypatch):
+def _apply_confirmed_agent_and_verify_binding(
+    agent_case: AgentCase,
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from sqlalchemy import select
 
     from core.dify_builder.models import MutationIntent
@@ -317,24 +353,31 @@ def _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory
     assert "review" in result.changed_nodes
     with sqlite_session_factory() as session:
         row = session.scalar(select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.node_id == "review"))
+        assert row is not None
         assert row.current_snapshot_id == selection.snapshot_id
         from models.workflow import Workflow
 
-        graph = session.get(Workflow, case.workflow.id).graph_dict
+        saved_workflow = session.get(Workflow, case.workflow.id)
+        assert saved_workflow is not None
+        graph = dict(saved_workflow.graph_dict)
         assert any(
             n["id"] == "review" and n["data"]["agent_binding"]["agent_id"] == selection.agent_id for n in graph["nodes"]
         )
 
 
 def test_real_apply_persists_confirmed_agent_graph_and_binding_together(
-    agent_case, sqlite_session_factory, monkeypatch
-):
+    agent_case: AgentCase,
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory, monkeypatch)
 
 
 def test_agent_apply_undo_refusal_preserves_bindings_and_allows_next_apply(
-    agent_case, sqlite_session_factory, monkeypatch
-):
+    agent_case: AgentCase,
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from sqlalchemy import select
 
     from core.dify_builder.models import Action, DifyBuilderContext, MutationIntent, Turn
@@ -344,7 +387,7 @@ def test_agent_apply_undo_refusal_preserves_bindings_and_allows_next_apply(
     from services.dify_builder.application.handlers_build import handle_execution
     from tests.unit_tests.services.dify_builder.test_native_agent_binding import _selection
 
-    before = agent_case.workflow.graph_dict
+    before = dict(agent_case.workflow.graph_dict)
     _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory, monkeypatch)
     port = dify_port.WorkflowServiceDifyPort()
     current, revision = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
@@ -357,9 +400,12 @@ def test_agent_apply_undo_refusal_preserves_bindings_and_allows_next_apply(
 
     repo = SqlDifyBuilderRepository(sqlite_session_factory)
     monkeypatch.setattr(
-        repo, "get_checkpoint", lambda _identity: (Checkpoint(state=PcState.BUILD_EXECUTION), Snapshot(graph=before))
+        repo,
+        "get_checkpoint",
+        lambda _identity: (Checkpoint(state=PcState.BUILD_EXECUTION), Snapshot(graph=dict(before))),
     )
-    emitted, invalidated = [], []
+    emitted: list[dict[str, object]] = []
+    invalidated: list[tuple[object, ...]] = []
     monkeypatch.setattr(repo, "invalidate_conversation_items", lambda *args: invalidated.append(args))
     env = Env(
         dify=port,
@@ -391,7 +437,9 @@ def test_agent_apply_undo_refusal_preserves_bindings_and_allows_next_apply(
         confirmed_resource_ids=[f"agent:{selection.agent_id}:{selection.snapshot_id}:{selection.capability_digest}"],
     )
     with sqlite_session_factory() as sql:
-        graph = sql.get(Workflow, agent_case.workflow.id).graph_dict
+        saved_workflow = sql.get(Workflow, agent_case.workflow.id)
+        assert saved_workflow is not None
+        graph = dict(saved_workflow.graph_dict)
         rows = sql.scalars(
             select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == agent_case.workflow.id)
         ).all()
@@ -402,19 +450,24 @@ def test_agent_apply_undo_refusal_preserves_bindings_and_allows_next_apply(
 
 @pytest.mark.parametrize("agent_state", ["target_only", "binding_only"])
 def test_restore_refuses_native_agent_state_before_graph_sync(
-    agent_case, sqlite_session_factory, monkeypatch, agent_state
-):
+    agent_case: AgentCase,
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    monkeypatch: pytest.MonkeyPatch,
+    agent_state: str,
+) -> None:
     import json
 
     from models.workflow import Workflow
     from services.dify_builder import dify_port
 
-    before = agent_case.workflow.graph_dict
+    before = dict(agent_case.workflow.graph_dict)
     _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory, monkeypatch)
     port = dify_port.WorkflowServiceDifyPort()
     target, _ = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
     with sqlite_session_factory() as sql:
-        sql.get(Workflow, agent_case.workflow.id).graph = json.dumps(before)
+        saved_workflow = sql.get(Workflow, agent_case.workflow.id)
+        assert saved_workflow is not None
+        saved_workflow.graph = json.dumps(before)
         if agent_state == "target_only":
             from sqlalchemy import delete
 
@@ -427,7 +480,7 @@ def test_restore_refuses_native_agent_state_before_graph_sync(
     current, revision = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
     sync_calls = []
 
-    def sync(*args, **kwargs):
+    def sync(*args: object, **kwargs: object) -> None:
         sync_calls.append((args, kwargs))
         raise AssertionError("legacy graph sync")
 
@@ -436,7 +489,7 @@ def test_restore_refuses_native_agent_state_before_graph_sync(
         port.restore_graph(
             agent_case.workflow.app_id,
             agent_case.actor,
-            target if agent_state == "target_only" else before,
+            dict(target if agent_state == "target_only" else before),
             expected_revision=revision,
         )
     assert sync_calls == []
@@ -444,7 +497,9 @@ def test_restore_refuses_native_agent_state_before_graph_sync(
 
 
 @pytest.mark.parametrize("change", ["canvas", "execution", "features", "environment", "conversation"])
-def test_confirmed_compiler_rechecks_canvas_basis_without_resolving_secret_values(owned, change, monkeypatch):
+def test_confirmed_compiler_rechecks_canvas_basis_without_resolving_secret_values(
+    owned: Owned, change: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import json
 
     from models.workflow import Workflow
@@ -456,7 +511,7 @@ def test_confirmed_compiler_rechecks_canvas_basis_without_resolving_secret_value
 
     factory, actor, _app, workflow, sid, tid = owned
 
-    def secret_read(_self):
+    def secret_read(_self: object) -> None:
         raise AssertionError("revision checks must never decrypt variables")
 
     monkeypatch.setattr(Workflow, "environment_variables", property(secret_read))
@@ -479,6 +534,7 @@ def test_confirmed_compiler_rechecks_canvas_basis_without_resolving_secret_value
     assert compiled.request_context["revision_basis"] == "confirmed-canvas-v1"
     with factory.begin() as session:
         current = session.get(Workflow, workflow.id)
+        assert current is not None
         if change in {"canvas", "execution"}:
             graph = json.loads(current.graph)
             graph["viewport"] = {"x": 14, "y": 29, "zoom": 1}
@@ -501,7 +557,7 @@ def test_confirmed_compiler_rechecks_canvas_basis_without_resolving_secret_value
 
 
 @pytest.mark.parametrize("scope", ["legacy", "child"])
-def test_canvas_basis_never_reinterprets_old_context_or_child_workflow(owned, scope):
+def test_canvas_basis_never_reinterprets_old_context_or_child_workflow(owned: Owned, scope: str) -> None:
     import json
 
     from services.dify_builder.native_testing.repository import admitted_workflow_revision, native_workflow_revision
@@ -521,7 +577,9 @@ def test_canvas_basis_never_reinterprets_old_context_or_child_workflow(owned, sc
 @pytest.mark.parametrize(
     ("profile", "basis"), [("isolated", "confirmed-canvas-v1"), ("builder-agent-confirmed-v1", "unknown")]
 )
-def test_canvas_basis_requires_exact_server_profile_and_supported_marker(owned, profile, basis):
+def test_canvas_basis_requires_exact_server_profile_and_supported_marker(
+    owned: Owned, profile: str, basis: str
+) -> None:
     from services.dify_builder.native_testing.repository import admitted_workflow_revision
 
     _factory, _actor, _app, workflow, _sid, _tid = owned
@@ -531,7 +589,7 @@ def test_canvas_basis_requires_exact_server_profile_and_supported_marker(owned, 
         )
 
 
-def test_confirmed_snapshot_graph_still_refuses_executable_payload_tampering(owned):
+def test_confirmed_snapshot_graph_still_refuses_executable_payload_tampering(owned: Owned) -> None:
     from copy import deepcopy
 
     from services.dify_builder.native_testing.repository import admitted_graph_matches
@@ -542,14 +600,16 @@ def test_confirmed_snapshot_graph_still_refuses_executable_payload_tampering(own
         "revision_basis": "confirmed-canvas-v1",
         "workflow_id": workflow.id,
     }
-    protected_graph = deepcopy(workflow.graph_dict)
+    protected_graph = deepcopy(dict(workflow.graph_dict))
     protected_graph["nodes"][0]["data"]["new_execution_input"] = "injected"
     assert admitted_graph_matches(workflow, protected_graph, request_context) is False
 
 
 def test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection(
-    agent_case, sqlite_session_factory, monkeypatch
-):
+    agent_case: AgentCase,
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import json
 
     from sqlalchemy import select
@@ -562,7 +622,8 @@ def test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection(
     _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory, monkeypatch)
     with sqlite_session_factory() as sql:
         workflow = sql.get(Workflow, agent_case.workflow.id)
-        graph = workflow.graph_dict
+        assert workflow is not None
+        graph = dict(workflow.graph_dict)
         next(node["data"] for node in graph["nodes"] if node["id"] == "review").update(
             {
                 "title": "Existing reviewer",
@@ -587,6 +648,7 @@ def test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection(
         graph["edges"].append({"source": "review", "target": "end"})
         workflow.graph = json.dumps(graph)
         row = sql.scalar(select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.node_id == "review"))
+        assert row is not None
         original = (row.id, row.current_snapshot_id, row.node_job_config_dict)
         sql.commit()
     port = dify_port.WorkflowServiceDifyPort()
@@ -615,13 +677,17 @@ def test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection(
     )
     with sqlite_session_factory() as sql:
         row = sql.scalar(select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.node_id == "review"))
+        assert row is not None
         assert (row.id, row.current_snapshot_id, row.node_job_config_dict) == original
 
 
 @pytest.mark.parametrize("mutation", ["job", "copied-node", "binding-pin", "published-pointer", "revoked"])
 def test_unselected_agent_retention_refuses_changed_job_copy_pin_publication_or_access(
-    agent_case, sqlite_session_factory, monkeypatch, mutation
-):
+    agent_case: AgentCase,
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+) -> None:
     from sqlalchemy import select
 
     from core.dify_builder.models import MutationIntent
@@ -654,12 +720,16 @@ def test_unselected_agent_retention_refuses_changed_job_copy_pin_publication_or_
     elif mutation in {"binding-pin", "published-pointer"}:
         with sqlite_session_factory() as sql:
             if mutation == "binding-pin":
-                sql.scalar(
+                saved_binding = sql.scalar(
                     select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.node_id == "review")
-                ).current_snapshot_id = "forged-pin"
+                )
+                assert saved_binding is not None
+                saved_binding.current_snapshot_id = "forged-pin"
             else:
                 agent = sql.get(Agent, agent_case.agent.id)
+                assert agent is not None
                 current = sql.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+                assert current is not None
                 replacement = AgentConfigSnapshot(
                     tenant_id=agent.tenant_id,
                     agent_id=agent.id,
@@ -675,10 +745,16 @@ def test_unselected_agent_retention_refuses_changed_job_copy_pin_publication_or_
             agent_case.workflow.app_id, agent_case.actor, intents, expected_revision=revision, confirmed_resource_ids=[]
         )
     with sqlite_session_factory() as sql:
-        assert sql.get(Workflow, agent_case.workflow.id).graph_dict == before
+        saved_workflow = sql.get(Workflow, agent_case.workflow.id)
+        assert saved_workflow is not None
+        assert saved_workflow.graph_dict == before
 
 
-def test_retained_hidden_job_metadata_is_rechecked_under_draft_lock(agent_case, sqlite_session_factory, monkeypatch):
+def test_retained_hidden_job_metadata_is_rechecked_under_draft_lock(
+    agent_case: AgentCase,
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from sqlalchemy import select
 
     from core.dify_builder.models import MutationIntent
@@ -691,10 +767,13 @@ def test_retained_hidden_job_metadata_is_rechecked_under_draft_lock(agent_case, 
     before, revision = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
     original_authorize = AgentBindingService.authorize
 
-    def authorize_after_job_change(**kwargs):
-        authorization = original_authorize(**kwargs)
+    def authorize_after_job_change(
+        *, actor: Actor, app_id: str, agent_ids: frozenset[str]
+    ) -> AgentBindingAuthorization:
+        authorization = original_authorize(actor=actor, app_id=app_id, agent_ids=agent_ids)
         with sqlite_session_factory() as sql:
             row = sql.scalar(select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.node_id == "review"))
+            assert row is not None
             job = row.node_job_config_dict
             job["metadata"] = {"agent_soul": {"external_change": True}}
             row.node_job_config = job
@@ -714,8 +793,10 @@ def test_retained_hidden_job_metadata_is_rechecked_under_draft_lock(agent_case, 
 
 
 def test_final_retained_binding_check_locks_and_refreshes_rows_before_sync(
-    agent_case, sqlite_session_factory, monkeypatch
-):
+    agent_case: AgentCase,
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from sqlalchemy import event
     from sqlalchemy.dialects import postgresql
 
@@ -727,7 +808,8 @@ def test_final_retained_binding_check_locks_and_refreshes_rows_before_sync(
     _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory, monkeypatch)
     with sqlite_session_factory() as sql:
         workflow = sql.get(Workflow, agent_case.workflow.id)
-        graph = workflow.graph_dict
+        assert workflow is not None
+        graph = dict(workflow.graph_dict)
         retained, stamps = dify_port._retained_native_agent_selections(
             session=sql, actor=agent_case.actor, workflow=workflow, graph=graph
         )
@@ -738,10 +820,12 @@ def test_final_retained_binding_check_locks_and_refreshes_rows_before_sync(
         )
         statements = []
 
-        def capture(state):
-            descriptions = state.statement.column_descriptions
+        def capture(state: ORMExecuteState) -> None:
+            statement = state.statement
+            assert isinstance(statement, Select)
+            descriptions = statement.column_descriptions
             if descriptions and descriptions[0].get("entity") is WorkflowAgentNodeBinding:
-                statements.append(state.statement)
+                statements.append(statement)
 
         event.listen(sql, "do_orm_execute", capture)
         try:
@@ -754,6 +838,7 @@ def test_final_retained_binding_check_locks_and_refreshes_rows_before_sync(
                 authorization=authorization,
                 retained_binding_stamps=stamps,
             )
+            assert binding_service is not None
             binding_service.sync_prepared_bindings(actor=agent_case.actor, workflow=workflow, selections=retained)
         finally:
             event.remove(sql, "do_orm_execute", capture)

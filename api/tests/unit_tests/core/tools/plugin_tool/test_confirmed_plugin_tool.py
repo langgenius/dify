@@ -6,10 +6,13 @@ transport and the consent callbacks are spies. Header values are SYNTHETIC
 server-only contract values; they say nothing about deployed daemon support.
 """
 
-from collections.abc import Generator, Iterator, Mapping
+from __future__ import annotations
+
+from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import ExitStack
 from dataclasses import dataclass
-from unittest.mock import patch
+from typing import Protocol
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -26,6 +29,8 @@ from services.dify_builder.application.execution_policy import BuilderExecutionP
 from services.dify_builder.application.gmail_read_policy import normalize_get_message_parameters
 from services.dify_builder.real_call_consent_service import ServiceConfirmedToolGuard
 from tests.unit_tests.core.tools import test_confirmed_tool_runtime as runtime_fixtures
+from tests.unit_tests.installed_spies import installed_mock
+from tests.unit_tests.services.dify_builder.test_real_call_consent_service import Owner
 
 owned = runtime_fixtures.owned
 consent_owner = runtime_fixtures.consent_owner
@@ -40,7 +45,7 @@ APPROVED = {"message_id": "18cab_1", "include_body": False, "include_attachments
 SECRET_SENTINEL = "unit-secret-sentinel-7f3a"
 
 
-def test_plugin_tool_rejects_after_cast_before_manager_invoke(guard_factory) -> None:
+def test_plugin_tool_rejects_after_cast_before_manager_invoke(guard_factory: GuardFactory) -> None:
     approved = normalize_get_message_parameters(
         {"message_id": "18cab_1", "include_body": False, "include_attachments": False}
     )
@@ -83,8 +88,10 @@ def test_plugin_tool_rejects_after_cast_before_manager_invoke(guard_factory) -> 
     with Session() as session, patch("core.tools.plugin_tool.tool.PluginToolManager") as manager:
         with pytest.raises(BuilderExecutionPolicyError, match="consent_scope_changed"):
             list(tool.invoke(session=session, user_id="owner", tool_parameters=approved.model_dump()))
-        manager.return_value.invoke.assert_not_called()
-    guard.before_invoke.assert_called_once()
+        _installed_spy_19 = installed_mock(manager.return_value.invoke)
+        _installed_spy_19.assert_not_called()
+    _installed_spy_1 = installed_mock(guard.before_invoke)
+    _installed_spy_1.assert_called_once()
 
 
 # --- shared builders --------------------------------------------------------------------
@@ -132,21 +139,29 @@ def _tool(
     )
 
 
+type GuardCheck = Callable[[Mapping[str, object]], None]
+
+
+class GuardFactory(Protocol):
+    def __call__(self, check: GuardCheck | None = None) -> ServiceConfirmedToolGuard: ...
+
+
 @pytest.fixture
-def guard_factory(consent_owner):
+def guard_factory(consent_owner: Owner) -> Generator[GuardFactory]:
     """Observe actual guard methods at the consent callback boundary."""
     with ExitStack() as stack:
 
-        def create(check=None):
+        def create(check: GuardCheck | None = None) -> ServiceConfirmedToolGuard:
             approved = normalize_get_message_parameters(APPROVED)
             if check is None:
 
-                def check(parameters):
+                def check(parameters: Mapping[str, object]) -> None:
                     if normalize_get_message_parameters(parameters) != approved:
                         raise BuilderExecutionPolicyError("consent_scope_changed")
 
             _, binding = runtime_fixtures.claimed(consent_owner)
             guard = runtime_fixtures.guard_for(consent_owner, binding)
+            assert isinstance(guard, ServiceConfirmedToolGuard)
             stack.enter_context(patch.object(guard, "before_invoke", side_effect=check))
             stack.enter_context(patch.object(guard, "dispatch_headers", return_value=dict(SYNTHETIC_HEADERS)))
             stack.enter_context(patch.object(guard, "observe_json"))
@@ -223,7 +238,7 @@ def _invoke(
 # --- final envelope through ToolEngine ------------------------------------------------------
 
 
-def test_tool_engine_merge_is_checked_lazily_before_transport(guard_factory) -> None:
+def test_tool_engine_merge_is_checked_lazily_before_transport(guard_factory: GuardFactory) -> None:
     guard = guard_factory()
     # An extra runtime value merged by ToolEngine (and Tool.invoke) widens the final envelope.
     tool = _tool(guard, runtime_parameters={"format": "raw"})
@@ -241,16 +256,20 @@ def test_tool_engine_merge_is_checked_lazily_before_transport(guard_factory) -> 
             workflow_call_depth=0,
         )
         # Nothing is spent or sent until the native generator is iterated.
-        guard.before_invoke.assert_not_called()
+        _installed_spy_20 = installed_mock(guard.before_invoke)
+        _installed_spy_20.assert_not_called()
         with pytest.raises(BuilderExecutionPolicyError, match="unsupported_tool_parameters"):
             list(stream)
-    guard.before_invoke.assert_called_once()
+    _installed_spy_1 = installed_mock(guard.before_invoke)
+    _installed_spy_1.assert_called_once()
     assert transport.calls == []
-    guard.dispatch_headers.assert_not_called()
-    guard.finish_stream.assert_not_called()
+    _installed_spy_2 = installed_mock(guard.dispatch_headers)
+    _installed_spy_2.assert_not_called()
+    _installed_spy_3 = installed_mock(guard.finish_stream)
+    _installed_spy_3.assert_not_called()
 
 
-def test_tool_engine_exact_envelope_dispatches_once_with_pinned_headers(guard_factory) -> None:
+def test_tool_engine_exact_envelope_dispatches_once_with_pinned_headers(guard_factory: GuardFactory) -> None:
     guard = guard_factory()
     tool = _tool(guard)
     transport = Transport(_success_messages())
@@ -269,7 +288,8 @@ def test_tool_engine_exact_envelope_dispatches_once_with_pinned_headers(guard_fa
             )
         )
     assert [m.type for m in messages] == [m.type for m in _success_messages()]
-    guard.before_invoke.assert_called_once_with(APPROVED)
+    _installed_spy_4 = installed_mock(guard.before_invoke)
+    _installed_spy_4.assert_called_once_with(APPROVED)
     assert len(transport.calls) == 1
     call = transport.calls[0]
     assert call.path == "plugin/tenant/dispatch/tool/invoke"
@@ -279,8 +299,10 @@ def test_tool_engine_exact_envelope_dispatches_once_with_pinned_headers(guard_fa
         **SYNTHETIC_HEADERS,
     }
     assert call.payload["tool_parameters"] == APPROVED
-    guard.observe_json.assert_called_once_with({"message": {"id": "18cab_1"}, "message_id": "18cab_1"})
-    guard.finish_stream.assert_called_once_with(complete=True, declared_failure=False)
+    _installed_spy_5 = installed_mock(guard.observe_json)
+    _installed_spy_5.assert_called_once_with({"message": {"id": "18cab_1"}, "message_id": "18cab_1"})
+    _installed_spy_6 = installed_mock(guard.finish_stream)
+    _installed_spy_6.assert_called_once_with(complete=True, declared_failure=False)
 
 
 # --- stream classification inputs ---------------------------------------------------------
@@ -301,7 +323,7 @@ def test_tool_engine_exact_envelope_dispatches_once_with_pinned_headers(guard_fa
     ],
 )
 def test_unexpected_output_is_refused_before_it_reaches_file_transformation(
-    unexpected: ToolInvokeMessage, guard_factory
+    unexpected: ToolInvokeMessage, guard_factory: GuardFactory
 ) -> None:
     guard = guard_factory()
     transport = Transport([_success_messages()[0], unexpected, _success_messages()[2]])
@@ -320,7 +342,8 @@ def test_unexpected_output_is_refused_before_it_reaches_file_transformation(
             consume(stream)
     assert [m.type for m in seen] == [ToolInvokeMessage.MessageType.TEXT]
     assert transport.closed is True
-    guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
+    _installed_spy_7 = installed_mock(guard.finish_stream)
+    _installed_spy_7.assert_called_once_with(complete=False, declared_failure=False)
 
 
 def _variable(name: str, value: object, *, stream: bool = False) -> ToolInvokeMessage:
@@ -330,14 +353,16 @@ def _variable(name: str, value: object, *, stream: bool = False) -> ToolInvokeMe
     )
 
 
-def test_audited_message_id_variable_is_forwarded_once_without_observation(guard_factory) -> None:
+def test_audited_message_id_variable_is_forwarded_once_without_observation(guard_factory: GuardFactory) -> None:
     guard = guard_factory()
     transport = Transport([_variable("message_id", "18cab_1"), _success_messages()[2]])
     messages = _invoke(_tool(guard), transport)
     assert [m.type for m in messages] == [ToolInvokeMessage.MessageType.VARIABLE, ToolInvokeMessage.MessageType.JSON]
     # The variable is optional data, never a classification input.
-    guard.observe_json.assert_called_once_with({"message": {"id": "18cab_1"}, "message_id": "18cab_1"})
-    guard.finish_stream.assert_called_once_with(complete=True, declared_failure=False)
+    _installed_spy_8 = installed_mock(guard.observe_json)
+    _installed_spy_8.assert_called_once_with({"message": {"id": "18cab_1"}, "message_id": "18cab_1"})
+    _installed_spy_9 = installed_mock(guard.finish_stream)
+    _installed_spy_9.assert_called_once_with(complete=True, declared_failure=False)
 
 
 @pytest.mark.parametrize(
@@ -352,7 +377,9 @@ def test_audited_message_id_variable_is_forwarded_once_without_observation(guard
     ],
     ids=["other-name", "mismatched-id", "non-string", "list-value", "streamed", "duplicate"],
 )
-def test_unaudited_variable_is_refused_before_it_is_yielded(variables: list[ToolInvokeMessage], guard_factory) -> None:
+def test_unaudited_variable_is_refused_before_it_is_yielded(
+    variables: list[ToolInvokeMessage], guard_factory: GuardFactory
+) -> None:
     guard = guard_factory()
     transport = Transport([_success_messages()[0], *variables, _success_messages()[2]])
     seen: list[ToolInvokeMessage] = []
@@ -372,11 +399,13 @@ def test_unaudited_variable_is_refused_before_it_is_yielded(variables: list[Tool
     assert all(m.type != ToolInvokeMessage.MessageType.JSON for m in seen)
     assert len([m for m in seen if m.type == ToolInvokeMessage.MessageType.VARIABLE]) <= 1
     assert transport.closed is True
-    guard.observe_json.assert_not_called()
-    guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
+    _installed_spy_10 = installed_mock(guard.observe_json)
+    _installed_spy_10.assert_not_called()
+    _installed_spy_11 = installed_mock(guard.finish_stream)
+    _installed_spy_11.assert_called_once_with(complete=False, declared_failure=False)
 
 
-def test_consumer_cancellation_finishes_unknown_once_without_reconstruction(guard_factory) -> None:
+def test_consumer_cancellation_finishes_unknown_once_without_reconstruction(guard_factory: GuardFactory) -> None:
     guard = guard_factory()
     transport = Transport(_success_messages())
     with (
@@ -388,48 +417,58 @@ def test_consumer_cancellation_finishes_unknown_once_without_reconstruction(guar
         assert first.type == ToolInvokeMessage.MessageType.TEXT
         stream.close()
         stream.close()
-    guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
+    _installed_spy_12 = installed_mock(guard.finish_stream)
+    _installed_spy_12.assert_called_once_with(complete=False, declared_failure=False)
     assert transport.closed is True
     assert len(transport.calls) == 1
-    guard.before_invoke.assert_called_once()
+    _installed_spy_13 = installed_mock(guard.before_invoke)
+    _installed_spy_13.assert_called_once()
 
 
 def test_native_transport_error_stays_native_and_never_reaches_builder_metadata(
     caplog: pytest.LogCaptureFixture,
-    guard_factory,
+    guard_factory: GuardFactory,
 ) -> None:
     guard = guard_factory()
     transport = Transport(_success_messages(), fail_after=1)
     with pytest.raises(RuntimeError, match=SECRET_SENTINEL):
         _invoke(_tool(guard), transport)
-    guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
+    _installed_spy_14 = installed_mock(guard.finish_stream)
+    _installed_spy_14.assert_called_once_with(complete=False, declared_failure=False)
     # Nothing the guard received, and nothing logged, carries the native error text.
+    assert isinstance(guard.before_invoke, Mock)
+    assert isinstance(guard.dispatch_headers, Mock)
+    assert isinstance(guard.finish_stream, Mock)
+    _installed_spy_15 = installed_mock(guard.observe_json)
     assert SECRET_SENTINEL not in repr(
         [
             guard.before_invoke.mock_calls,
             guard.dispatch_headers.mock_calls,
-            guard.observe_json.mock_calls,
+            _installed_spy_15.mock_calls,
             guard.finish_stream.mock_calls,
         ]
     )
     assert SECRET_SENTINEL not in caplog.text
 
 
-def test_dispatch_header_failure_after_business_claim_is_unknown_not_retried(guard_factory) -> None:
+def test_dispatch_header_failure_after_business_claim_is_unknown_not_retried(guard_factory: GuardFactory) -> None:
     guard = guard_factory()
-    guard.dispatch_headers.return_value = {**SYNTHETIC_HEADERS, "X-Dify-Confirmed-Dispatch": "v2"}
+    _installed_spy_16 = installed_mock(guard.dispatch_headers)
+    _installed_spy_16.return_value = {**SYNTHETIC_HEADERS, "X-Dify-Confirmed-Dispatch": "v2"}
     transport = Transport(_success_messages())
     with pytest.raises(BuilderExecutionPolicyError, match="confirmed_dispatch_headers_invalid"):
         _invoke(_tool(guard), transport)
     assert transport.calls == []
-    guard.before_invoke.assert_called_once()
-    guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
+    _installed_spy_17 = installed_mock(guard.before_invoke)
+    _installed_spy_17.assert_called_once()
+    _installed_spy_18 = installed_mock(guard.finish_stream)
+    _installed_spy_18.assert_called_once_with(complete=False, declared_failure=False)
 
 
 # --- guard lifecycle and ordinary compatibility -------------------------------------------
 
 
-def test_fork_preserves_guard_outside_runtime_and_serialization(guard_factory) -> None:
+def test_fork_preserves_guard_outside_runtime_and_serialization(guard_factory: GuardFactory) -> None:
     guard = guard_factory()
     tool = _tool(guard)
     forked = tool.fork_tool_runtime(ToolRuntime(tenant_id="tenant", credentials={"access_token": "unit-token"}))

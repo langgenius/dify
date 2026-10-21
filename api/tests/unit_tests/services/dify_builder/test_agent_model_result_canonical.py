@@ -2,16 +2,21 @@
 
 import copy
 import json
+from collections.abc import Iterator
 
 import pytest
 from dify_agent.adapters.llm.provider import ProtectedModelChunkReceipt
 from dify_agent.runtime.native_continuation import NativePolicyStopped
+from pydantic import JsonValue
+from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from models.dify_builder_native_tests import NativeEffectOperation
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_json
 from runtime_contracts.builder.native.contracts import operation_digest
+from services.dify_builder.native_testing.agent_bridge import api_intent
+from services.dify_builder.native_testing.agent_operations import AgentOperationService
 from tests.unit_tests.services.dify_builder import native_owner_fixtures
 from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
 
@@ -21,8 +26,12 @@ operations_service = native_owner_fixtures.operations_service
 @pytest.mark.parametrize("with_tool_history", [False, True])
 @pytest.mark.parametrize("repeated_prompt", [False, True])
 def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_accepting_replacement(
-    sqlite_session_factory, monkeypatch, with_tool_history, repeated_prompt, operations_service
-):
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    with_tool_history: bool,
+    repeated_prompt: bool,
+    operations_service: AgentOperationService,
+) -> None:
     pending = envelope()
     messages = (
         [
@@ -55,25 +64,28 @@ def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_acceptin
         )
         for index, content in enumerate(contents)
     ]
-    stored, claims, outcomes, calls = {}, [], [], []
+    stored: dict[str, JsonValue] = {}
+    claims: list[dict[str, object]] = []
+    outcomes: list[dict[str, object]] = []
+    calls: list[str] = []
 
-    def store(**kwargs):
-        stored["actual-result"] = copy.deepcopy(kwargs["result"])
+    def store(*, result: JsonValue, **_kwargs: object) -> str:
+        stored["actual-result"] = copy.deepcopy(result)
         return "actual-result"
 
-    def completed(**kwargs):
-        outcomes.append(kwargs)
+    def completed(*, outcome: str, result_ref: str | None, **kwargs: object) -> None:
+        outcomes.append({**kwargs, "outcome": outcome, "result_ref": result_ref})
         with sqlite_session_factory() as sql:
             sql.add(
                 NativeEffectOperation(
                     tenant_id="tenant",
                     request_id=pending.ref.request_id,
                     invocation_id=pending.ref.invocation_id,
-                    operation_digest=operation_digest(pending.intent.key),
+                    operation_digest=operation_digest(api_intent(pending.intent).key),
                     intent_digest="a" * 64,
                     scope_digest="b" * 64,
-                    state=kwargs["outcome"],
-                    result_ref=kwargs["result_ref"],
+                    state=outcome,
+                    result_ref=result_ref,
                 )
             )
             sql.commit()
@@ -96,7 +108,7 @@ def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_acceptin
     monkeypatch.setattr(service, "validate_model", lambda **_kwargs: None)
     monkeypatch.setattr(service, "_endpoint", lambda _ref: None)
 
-    def provider():
+    def provider() -> Iterator[LLMResultChunk]:
         calls.append("provider")
         yield from chunks
 
@@ -113,29 +125,45 @@ def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_acceptin
     assert canonical_json(stored["actual-result"]) == canonical_json(sdk_result)
     assert service.store_result(ref=pending.ref, key=pending.intent.key, result=sdk_result) == "actual-result"
     changed = copy.deepcopy(sdk_result)
-    assert stored["actual-result"]["format"] == "dify-model-chunks-v1"
-    assert len(stored["actual-result"]["prompts"]) == 1
+    protected = stored["actual-result"]
+    assert isinstance(protected, dict)
+    assert protected["format"] == "dify-model-chunks-v1"
+    assert isinstance(protected["prompts"], list)
+    assert len(protected["prompts"]) == 1
     if repeated_prompt:
         assert len(json.dumps([chunk.model_dump(mode="json") for chunk in chunks]).encode()) > 1024 * 1024
         assert len(json.dumps(stored["actual-result"]).encode()) < 1024 * 1024
-    changed["chunks"][-1]["chunk"]["delta"]["message"]["content"] = "fabricated"
+    changed_chunks = changed["chunks"]
+    assert isinstance(changed_chunks, list)
+    changed_entry = changed_chunks[-1]
+    assert isinstance(changed_entry, dict)
+    changed_chunk = changed_entry["chunk"]
+    assert isinstance(changed_chunk, dict)
+    changed_delta = changed_chunk["delta"]
+    assert isinstance(changed_delta, dict)
+    changed_message = changed_delta["message"]
+    assert isinstance(changed_message, dict)
+    changed_message["content"] = "fabricated"
     with pytest.raises(BuilderExecutionPolicyError, match="native_result_conflict"):
         service.store_result(ref=pending.ref, key=pending.intent.key, result=changed)
     assert calls == ["provider"]
 
 
 def test_actual_oversized_model_output_stops_before_yield_and_keeps_unknown_without_replay(
-    monkeypatch, operations_service
-):
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService
+) -> None:
     pending = envelope()
-    claims, outcomes, stores, calls = [], [], [], []
+    claims: list[dict[str, object]] = []
+    outcomes: list[dict[str, object]] = []
+    stores: list[dict[str, object]] = []
+    calls: list[str] = []
     service = operations_service
     monkeypatch.setattr(service.state_store, "store_result", lambda **kwargs: stores.append(kwargs))
     monkeypatch.setattr(service.bridge.authorization, "claim_dispatch", lambda **kwargs: claims.append(kwargs))
     monkeypatch.setattr(service.bridge.authorization, "record_outcome", lambda **kwargs: outcomes.append(kwargs))
     monkeypatch.setattr(service, "validate_model", lambda **_kwargs: None)
 
-    def provider():
+    def provider() -> Iterator[LLMResultChunk]:
         calls.append("provider")
         for index, text in enumerate(("small", "x" * (1024 * 1024))):
             yield LLMResultChunk(

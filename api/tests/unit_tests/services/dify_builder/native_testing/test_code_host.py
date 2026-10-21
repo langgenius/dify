@@ -1,22 +1,37 @@
 """Actual retained lifetime and C02 wrapper, external persistence is a double."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, tzinfo
 from time import monotonic
+from typing import NotRequired, Self, Unpack
 from uuid import uuid4
 
+import httpx
 import pytest
+from httpx._models import Response
+from typing_extensions import TypedDict
 
-from runtime_contracts.builder.native.contracts import ApprovalWait, NativeTestContextRef
+from runtime_contracts.builder.native.contracts import (
+    ApprovalWait,
+    DispatchPermit,
+    EffectIntent,
+    NativeTestContextRef,
+    OperationKey,
+)
+from services.code_execution.native_scope_transport import NativeCodeIdentity
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
 from services.dify_builder.native_testing.control import (
     NativeApprovalWait,
     NativePolicyStop,
 )
+from services.dify_builder.native_testing.host_execution import HostBoundCodeCalls
 from services.dify_builder.native_testing.host_lifetime import (
     NativeHostLifetime,
     NativeHostLifetimeRegistry,
 )
+from services.dify_builder.native_testing.sandbox.contracts import CodeAcquisitionRef, CodeScopeSpec
+from services.dify_builder.native_testing.sandbox.host import NativeCodeHostOwner
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import REF
 from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import (
     LaunchCase,
@@ -36,7 +51,7 @@ class ReservedCodeScope:
     destroyed_at: datetime | None
 
 
-def code_case():
+def code_case() -> LaunchCase:
     from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 
     case = LaunchCase()
@@ -59,7 +74,7 @@ def code_case():
     return case
 
 
-def test_acquisition_requires_exact_current_lifetime_even_with_identical_ids():
+def test_acquisition_requires_exact_current_lifetime_even_with_identical_ids() -> None:
     from services.dify_builder.native_testing.sandbox.host import NativeCodeHostOwner
 
     case = code_case()
@@ -73,7 +88,7 @@ def test_acquisition_requires_exact_current_lifetime_even_with_identical_ids():
         owner.check_current(owner.acquisition)
 
 
-def test_code_wait_and_replay_do_not_register_participants_or_dispatch():
+def test_code_wait_and_replay_do_not_register_participants_or_dispatch() -> None:
     from services.dify_builder.native_testing.host_execution import HostBoundCodeCalls
 
     case = code_case()
@@ -99,7 +114,7 @@ def test_code_wait_and_replay_do_not_register_participants_or_dispatch():
     assert not case.authorization.claimed
 
 
-def test_registration_before_reservation_is_retained_and_root_limit_is_two():
+def test_registration_before_reservation_is_retained_and_root_limit_is_two() -> None:
     from services.dify_builder.native_testing.sandbox.host import NativeCodeHostOwner
 
     case = code_case()
@@ -132,14 +147,38 @@ def test_registration_before_reservation_is_retained_and_root_limit_is_two():
     assert case.lifetime.code_participants == (first, second)
 
 
+class ScopeHttpArguments(TypedDict, closed=True):
+    max_retries: int
+    sensitive_request: bool
+    stream_response: bool
+    follow_redirects: bool
+    headers: dict[str, str]
+    content: bytes
+    timeout: httpx.Timeout
+
+
+class ScopeReservationArguments(TypedDict, closed=True):
+    ref: NativeTestContextRef
+    key: OperationKey
+    permit: DispatchPermit
+    acquisition: CodeAcquisitionRef
+    spec: CodeScopeSpec
+    intent: EffectIntent
+    payload_digest: str
+    profile_digest: str
+    physical_deadline: NotRequired[datetime]
+
+
 class PhysicalStore:
     """Explicit non-SQL owner double; real adapter/host/bridge/SDK are exercised."""
 
-    def __init__(self, owner, events, *, unknown_failure=False):
+    def __init__(
+        self, owner: NativeCodeHostOwner, events: list[str | tuple[str, str]], *, unknown_failure: bool = False
+    ) -> None:
         self.owner, self.events, self.unknown_failure = owner, events, unknown_failure
-        self.row = None
+        self.row: ReservedCodeScope | None = None
 
-    def reserve_scope(self, **kwargs):
+    def reserve_scope(self, **kwargs: Unpack[ScopeReservationArguments]) -> ReservedCodeScope:
         assert self.owner.host.lifetime.code_participants
         self.events.append("reserve_scope")
         assert self.row is None
@@ -159,30 +198,30 @@ class PhysicalStore:
         )
         return self.row
 
-    def bind(self, **kwargs):
+    def bind(self, **kwargs: object) -> Self:
         del kwargs
         return self
 
-    def assert_claim(self, identity):
+    def assert_claim(self, identity: NativeCodeIdentity) -> None:
         self.owner.check_current(self.owner.acquisition)
         assert self.row is not None
         assert identity.operation_ref == self.row.operation_id
 
-    def reserve_dispatch(self, identity, **kwargs):
+    def reserve_dispatch(self, identity: NativeCodeIdentity, **kwargs: object) -> None:
         del identity, kwargs
         assert "reserve_job" not in self.events
         self.events.append("reserve_job")
 
-    def associate_job(self, identity, job_id):
+    def associate_job(self, identity: NativeCodeIdentity, job_id: str) -> None:
         del identity
         assert job_id == "job1"
         self.events.append("associate")
 
-    def ack_scope(self, **kwargs):
+    def ack_scope(self, **kwargs: object) -> None:
         del kwargs
         self.events.append("scope_ack")
 
-    def observe_output(self, **kwargs):
+    def observe_output(self, **kwargs: object) -> None:
         assert (kwargs["job_id"], kwargs["expected_offset"], kwargs["next_offset"]) == (
             "job1",
             0,
@@ -190,13 +229,13 @@ class PhysicalStore:
         )
         self.events.append("offset")
 
-    def mark_unknown(self, *args, **kwargs):
+    def mark_unknown(self, *args: object, **kwargs: object) -> None:
         del args, kwargs
         self.events.append("unknown")
         if self.unknown_failure:
             raise ValueError("SQL unavailable")
 
-    def ack_destroyed(self, **kwargs):
+    def ack_destroyed(self, **kwargs: object) -> None:
         del kwargs
         from datetime import UTC, datetime
 
@@ -204,12 +243,21 @@ class PhysicalStore:
         self.row.destroyed_at = datetime.now(UTC)
         self.events.append("destroy_ack")
 
-    def load_for_settlement(self, **kwargs):
+    def load_for_settlement(self, **kwargs: object) -> ReservedCodeScope | None:
         assert kwargs["acquisition"] == self.owner.acquisition
         return self.row
 
 
-def composed(case, monkeypatch, *, failure=None, logical_seconds=5):
+def composed(
+    case: LaunchCase, monkeypatch: pytest.MonkeyPatch, *, failure: str | None = None, logical_seconds: int = 5
+) -> tuple[
+    HostBoundCodeCalls,
+    EffectIntent,
+    Callable[[DispatchPermit], str],
+    NativeCodeHostOwner,
+    list[str | tuple[str, str]],
+    str,
+]:
     import contextlib
     from datetime import UTC, datetime, timedelta
 
@@ -228,7 +276,7 @@ def composed(case, monkeypatch, *, failure=None, logical_seconds=5):
         NativeCodeHostOwner,
     )
 
-    events = []
+    events: list[str | tuple[str, str]] = []
     owner = NativeCodeHostOwner(host=case.host, loader=object())
     from services.dify_builder.native_testing.sandbox import host as host_module
 
@@ -270,7 +318,7 @@ def composed(case, monkeypatch, *, failure=None, logical_seconds=5):
     )
     prefix = "/v1/test-scopes/" + scope_id
 
-    def request(method, url, **kwargs):
+    def request(method: str, url: str, **kwargs: Unpack[ScopeHttpArguments]) -> Response:
         path = httpx.URL(url).path
         events.append((method, path))
         assert kwargs["max_retries"] == 0
@@ -329,7 +377,7 @@ def composed(case, monkeypatch, *, failure=None, logical_seconds=5):
     monkeypatch.setattr(scope_client.ssrf_proxy, "make_request", request)
     monkeypatch.setattr(scope_client, "sensitive_http_telemetry", contextlib.nullcontext)
 
-    def dispatch(permit):
+    def dispatch(permit: DispatchPermit) -> str:
         return HostNativeCodeTransport(
             owner=owner,
             calls=calls,
@@ -348,7 +396,7 @@ def composed(case, monkeypatch, *, failure=None, logical_seconds=5):
     return calls, intent, dispatch, owner, events, prefix
 
 
-def test_real_adapter_sdk_loop_scope_destruction_precedes_c02_completion(monkeypatch):
+def test_real_adapter_sdk_loop_scope_destruction_precedes_c02_completion(monkeypatch: pytest.MonkeyPatch) -> None:
     case = code_case()
     calls, intent, dispatch, _owner, events, prefix = composed(case, monkeypatch)
     assert calls.call(ref=REF, intent=intent, dispatch=dispatch) == "ok"
@@ -362,7 +410,9 @@ def test_real_adapter_sdk_loop_scope_destruction_precedes_c02_completion(monkeyp
 
 
 @pytest.mark.parametrize("failure", ["create", "job", "input", "destroy", "unknown"])
-def test_uncertain_ack_never_creates_again_or_resends_input_and_attempts_destroy(monkeypatch, failure):
+def test_uncertain_ack_never_creates_again_or_resends_input_and_attempts_destroy(
+    monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
     case = code_case()
     calls, intent, dispatch, _owner, events, prefix = composed(case, monkeypatch, failure=failure)
     with pytest.raises(NativePolicyStop):
@@ -376,8 +426,8 @@ def test_uncertain_ack_never_creates_again_or_resends_input_and_attempts_destroy
 
 
 def test_successful_code_cleanup_is_consumed_only_after_actual_host_worker_exit(
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from tests.unit_tests.services.dify_builder.native_testing.test_host_lifetime import (
         worker,
     )
@@ -395,7 +445,7 @@ def test_successful_code_cleanup_is_consumed_only_after_actual_host_worker_exit(
         case.lifetime.consume_cleanup(ref=REF, generation=0, dispatch_id=case.lifetime.dispatch_id)
 
 
-def test_recorded_code_replay_creates_no_additional_scope_or_participant(monkeypatch):
+def test_recorded_code_replay_creates_no_additional_scope_or_participant(monkeypatch: pytest.MonkeyPatch) -> None:
     from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import (
         INPUT,
         PATH,
@@ -413,7 +463,7 @@ def test_recorded_code_replay_creates_no_additional_scope_or_participant(monkeyp
     assert len(case.lifetime.code_participants) == 1
 
 
-def test_same_operation_cannot_replace_retained_repository_after_uncertain_reservation():
+def test_same_operation_cannot_replace_retained_repository_after_uncertain_reservation() -> None:
     from services.dify_builder.native_testing.sandbox.host import NativeCodeHostOwner
 
     case = code_case()
@@ -442,7 +492,7 @@ def test_same_operation_cannot_replace_retained_repository_after_uncertain_reser
     ("create", "join"),
     [(float("nan"), 1), (5, float("inf")), (0, 1), (5, 0), (6, 1), (5, 2), (True, 1)],
 )
-def test_transport_requires_finite_separate_bounded_create_and_join(create, join):
+def test_transport_requires_finite_separate_bounded_create_and_join(create: object, join: object) -> None:
     from services.dify_builder.native_testing.sandbox.host import (
         HostNativeCodeTransport,
     )
@@ -464,7 +514,7 @@ def test_transport_requires_finite_separate_bounded_create_and_join(create, join
         )
 
 
-def test_insufficient_reserved_cleanup_and_join_refuses_before_reservation(monkeypatch):
+def test_insufficient_reserved_cleanup_and_join_refuses_before_reservation(monkeypatch: pytest.MonkeyPatch) -> None:
     case = code_case()
     calls, intent, dispatch, owner, events, _ = composed(case, monkeypatch)
     calls._allowance = 0.5  # Exactly the two 0.25 cleanup phases, no join/create/exec.
@@ -474,7 +524,7 @@ def test_insufficient_reserved_cleanup_and_join_refuses_before_reservation(monke
     assert "reserve_scope" not in events
 
 
-def test_late_create_reply_never_reserves_job_and_destroys_original_scope(monkeypatch):
+def test_late_create_reply_never_reserves_job_and_destroys_original_scope(monkeypatch: pytest.MonkeyPatch) -> None:
     from time import sleep
 
     from services.dify_builder.native_testing.sandbox import scope_client
@@ -483,7 +533,7 @@ def test_late_create_reply_never_reserves_job_and_destroys_original_scope(monkey
     calls, intent, dispatch, owner, events, prefix = composed(case, monkeypatch)
     request = scope_client.ssrf_proxy.make_request
 
-    def late(method, url, **kwargs):
+    def late(method: str, url: str, **kwargs: Unpack[ScopeHttpArguments]) -> Response:
         if method == "POST" and url.endswith("/v1/test-scopes"):
             sleep(0.12)  # Origin I/O cannot be preempted; native create allowance is 0.1.
         return request(method, url, **kwargs)
@@ -500,7 +550,7 @@ def test_late_create_reply_never_reserves_job_and_destroys_original_scope(monkey
     assert case.lifetime.unknown
 
 
-def test_long_logical_expiry_sends_persisted_a7_compatible_wire_deadline(monkeypatch):
+def test_long_logical_expiry_sends_persisted_a7_compatible_wire_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
     import json
     from datetime import UTC, datetime
 
@@ -512,7 +562,7 @@ def test_long_logical_expiry_sends_persisted_a7_compatible_wire_deadline(monkeyp
     request = scope_client.ssrf_proxy.make_request
     observed = []
 
-    def checked(method, url, **kwargs):
+    def checked(method: str, url: str, **kwargs: Unpack[ScopeHttpArguments]) -> Response:
         if method == "POST" and url.endswith("/v1/test-scopes"):
             wire = json.loads(kwargs["content"])
             expiry = datetime.fromisoformat(wire["deadline"])
@@ -530,14 +580,16 @@ def test_long_logical_expiry_sends_persisted_a7_compatible_wire_deadline(monkeyp
 
 
 @pytest.mark.parametrize("damage", ["digest", "expired", "cleanup_only", "extended"])
-def test_invalid_or_short_persisted_deadline_never_creates_or_claims_cleanup(monkeypatch, damage):
+def test_invalid_or_short_persisted_deadline_never_creates_or_claims_cleanup(
+    monkeypatch: pytest.MonkeyPatch, damage: str
+) -> None:
     from datetime import UTC, datetime, timedelta
 
     from runtime_contracts.builder.execution import canonical_digest
 
     original = PhysicalStore.reserve_scope
 
-    def altered(store, **kwargs):
+    def altered(store: PhysicalStore, **kwargs: Unpack[ScopeReservationArguments]) -> ReservedCodeScope:
         row = original(store, **kwargs)
         if damage == "digest":
             row.scope_spec_digest = "0" * 64
@@ -562,8 +614,8 @@ def test_invalid_or_short_persisted_deadline_never_creates_or_claims_cleanup(mon
 
 
 def test_sql_elapsed_time_uses_original_clock_pair_without_extending_phases(
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from datetime import datetime
     from time import sleep
 
@@ -576,7 +628,7 @@ def test_sql_elapsed_time_uses_original_clock_pair_without_extending_phases(
         fromisoformat = staticmethod(datetime.fromisoformat)
 
         @classmethod
-        def now(cls, tz=None):
+        def now(cls, tz: tzinfo | None = None) -> datetime:
             calls_to_utc.append(None)
             return datetime.now(tz)
 
@@ -584,7 +636,7 @@ def test_sql_elapsed_time_uses_original_clock_pair_without_extending_phases(
     original = PhysicalStore.reserve_scope
     admitted = []
 
-    def delayed(store, **kwargs):
+    def delayed(store: PhysicalStore, **kwargs: Unpack[ScopeReservationArguments]) -> ReservedCodeScope:
         row = original(store, **kwargs)
         operation = next(iter(store.owner._operations.values()))
         admitted.append(
@@ -604,7 +656,7 @@ def test_sql_elapsed_time_uses_original_clock_pair_without_extending_phases(
     request = scope_client.ssrf_proxy.make_request
     checked = []
 
-    def check(method, url, **kwargs):
+    def check(method: str, url: str, **kwargs: Unpack[ScopeHttpArguments]) -> Response:
         if method == "POST" and url.endswith("/v1/test-scopes"):
             operation = next(iter(owner._operations.values()))
             b = operation.bridge
@@ -627,7 +679,7 @@ def test_sql_elapsed_time_uses_original_clock_pair_without_extending_phases(
     assert len(calls_to_utc) == 1
 
 
-def test_clock_sampling_delay_cannot_add_time_to_persisted_physical_allowance(monkeypatch):
+def test_clock_sampling_delay_cannot_add_time_to_persisted_physical_allowance(monkeypatch: pytest.MonkeyPatch) -> None:
     from datetime import datetime
     from time import sleep
 
@@ -640,7 +692,7 @@ def test_clock_sampling_delay_cannot_add_time_to_persisted_physical_allowance(mo
         fromisoformat = staticmethod(datetime.fromisoformat)
 
         @staticmethod
-        def now(tz=None):
+        def now(tz: tzinfo | None = None) -> datetime:
             value = datetime.now(tz)
             sampled.append((monotonic(), value))
             sleep(0.02)  # Time passes between receiving UTC and sampling monotonic.
@@ -652,7 +704,7 @@ def test_clock_sampling_delay_cannot_add_time_to_persisted_physical_allowance(mo
     request = scope_client.ssrf_proxy.make_request
     checked = []
 
-    def check(method, url, **kwargs):
+    def check(method: str, url: str, **kwargs: Unpack[ScopeHttpArguments]) -> Response:
         if method == "POST" and url.endswith("/v1/test-scopes"):
             operation = next(iter(owner._operations.values()))
             mono, utc = sampled[0]

@@ -1,11 +1,12 @@
 """Tests for the Edit-flow handlers + edit_registry() (Slice 3)."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import datetime
 from typing import NoReturn, Unpack, override
 
 import pytest
+import pytest_mock
 
 from core.dify_builder.models import (
     Action,
@@ -27,6 +28,7 @@ from core.dify_builder.state import PcState
 from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 from services.dify_builder.application.ports import DifyBuilderAgent
 from services.dify_builder.application.runner import Env, Runner, StepResult
+from services.dify_builder.plan import WorkflowPlan
 from tests.unit_tests.core.dify_builder.fakes import (
     ContextOverrides,
     FakeBuildDifyPort,
@@ -122,11 +124,16 @@ def test_edit_capability_check_renders_agent_fields() -> None:
     from services.dify_builder.application.handlers_edit import handle_capability_check
 
     env, _ = _new_env()
-    env.agent.analyze_impact = lambda _g, _graph, **_kwargs: {
-        "fields": [{"key": "tone", "label": "Tone", "type": "select", "options": ["formal", "casual"]}],
-        "values": {"tone": "formal"},
-        "target_node_ids": ["llm"],
-    }
+
+    def analyze_impact(goal_text: str, graph: Graph, **kwargs: object) -> Graph:
+        del goal_text, graph, kwargs
+        return {
+            "fields": [{"key": "tone", "label": "Tone", "type": "select", "options": ["formal", "casual"]}],
+            "values": {"tone": "formal"},
+            "target_node_ids": ["llm"],
+        }
+
+    env.agent.analyze_impact = analyze_impact
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_CAPABILITY_CHECK)
     fc = DifyBuilderContext(goal_text="make it formal")
     result = handle_capability_check(
@@ -259,6 +266,7 @@ def test_apply_changes_run_affected_tests_advances_to_test() -> None:
     turn = Turn(action=Action(kind="run_affected_tests", base_version=1), actor=_actor())
     res = handle_apply_changes(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.EDIT_TEST_AFFECTED_PATHS
+    assert res.context is not None
     assert res.context.test_input_ref != "ti-1"
     assert repo.get_test_input(res.context.test_input_ref).inputs == {"topic": "hello"}
     assert events == []
@@ -747,12 +755,12 @@ def test_edit_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix() 
     assert result.context.staged_repair == []
 
 
-def test_edit_await_repair_keep_draft_completes_without_second_confirmation(monkeypatch):
+def test_edit_await_repair_keep_draft_completes_without_second_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application.handlers_edit import handle_await_repair
 
     env, _ = _new_env()
 
-    def unexpected_effect(*_args, **_kwargs):
+    def unexpected_effect(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Keeping a failed draft must not mutate, execute or publish it")
 
     for method in ("apply_repair", "run_draft", "publish"):
@@ -761,7 +769,9 @@ def test_edit_await_repair_keep_draft_completes_without_second_confirmation(monk
     context = DifyBuilderContext(verify_run_id="failed-run", last_repair_error="model unavailable")
     result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="keep_draft")), s, context)
     assert result.next == PcState.EDIT_COMPLETE
+    assert result.context is not None
     assert result.context.verify_run_id == "failed-run"
+    assert result.context is not None
     assert result.context.last_repair_error == "model unavailable"
 
 
@@ -1314,10 +1324,10 @@ def test_plan_approval_threads_edit_targets_into_build_edit_intents() -> None:
             edit_rules: dict[str, object],
             graph: Graph,
             *,
-            edit_target_node_ids=(),
-            last_edit_rejection=None,
-            approved_plan=None,
-        ):
+            edit_target_node_ids: Sequence[str] = (),
+            last_edit_rejection: object = None,
+            approved_plan: object = None,
+        ) -> list[MutationIntent]:
             seen["targets"] = list(edit_target_node_ids)
             return super().build_edit_intents(edit_rules, graph)
 
@@ -1360,9 +1370,16 @@ class _RejectionRecordingAgent(PlaceholderAgent):
     def __init__(self) -> None:
         self.rejections: list[str | None] = []
 
+    @override
     def build_edit_intents(
-        self, edit_rules, graph, *, edit_target_node_ids=(), last_edit_rejection=None, approved_plan=None
-    ):
+        self,
+        edit_rules: Inputs,
+        graph: Graph,
+        *,
+        edit_target_node_ids: Sequence[str] = (),
+        last_edit_rejection: str | None = None,
+        approved_plan: WorkflowPlan | None = None,
+    ) -> list[MutationIntent]:
         self.rejections.append(last_edit_rejection)
         return super().build_edit_intents(
             edit_rules, graph, edit_target_node_ids=edit_target_node_ids, approved_plan=approved_plan
@@ -1630,12 +1647,23 @@ def _refuse_once_then_apply(error: Exception) -> FakeEditDifyPort:
         *,
         expected_revision: str = "",
         failed_run_id: str | None = None,
+        confirmed_resource_ids: Sequence[str] | None = None,
+        expected_resource_fingerprints: dict[str, str] | None = None,
+        expected_node_resources: dict[str, str] | None = None,
     ) -> ApplyResult:
         if not refused:
             refused.append(True)
             raise error
         return real_apply(
-            app_id, actor, intents, on_canvas, expected_revision=expected_revision, failed_run_id=failed_run_id
+            app_id,
+            actor,
+            intents,
+            on_canvas,
+            expected_revision=expected_revision,
+            failed_run_id=failed_run_id,
+            confirmed_resource_ids=confirmed_resource_ids,
+            expected_resource_fingerprints=expected_resource_fingerprints,
+            expected_node_resources=expected_node_resources,
         )
 
     dify.apply_repair = apply
@@ -1786,7 +1814,7 @@ _WOULD_RUN_EMPTY = (
 
 
 def test_a_proposal_the_agent_judged_wrong_ends_at_the_gate_and_writes_nothing(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
     """The last hole the two semantic guards had. Their defects are ones the
     ENGINE ACCEPTS, so ``apply_repair`` has nothing to veto: if the agent
@@ -1861,9 +1889,20 @@ class _RevisionEditPort(FakeEditDifyPort):
         *,
         expected_revision: str = "",
         failed_run_id: str | None = None,
+        confirmed_resource_ids: Sequence[str] | None = None,
+        expected_resource_fingerprints: dict[str, str] | None = None,
+        expected_node_resources: dict[str, str] | None = None,
     ) -> ApplyResult:
         result = super().apply_repair(
-            app_id, actor, intents, on_canvas, expected_revision=expected_revision, failed_run_id=failed_run_id
+            app_id,
+            actor,
+            intents,
+            on_canvas,
+            expected_revision=expected_revision,
+            failed_run_id=failed_run_id,
+            confirmed_resource_ids=confirmed_resource_ids,
+            expected_resource_fingerprints=expected_resource_fingerprints,
+            expected_node_resources=expected_node_resources,
         )
         self.hash = result.new_hash = self.new_revision
         if self.omit_summary:
@@ -2010,15 +2049,24 @@ def test_confirmed_edit_action_for_another_command_is_refused_before_any_run() -
         run_confirmed_handler("edit", PcState.EDIT_TEST_AFFECTED_PATHS, command="command-other")
 
 
-def test_approved_edit_uses_the_presented_plan_snapshot_for_generation():
+def test_approved_edit_uses_the_presented_plan_snapshot_for_generation() -> None:
     from services.dify_builder.application.handlers_edit import handle_plan_approval
     from services.dify_builder.plan import WorkflowPlan
 
-    seen = []
+    seen: list[WorkflowPlan | None] = []
 
     class RecordingAgent(PlaceholderAgent):
-        def build_edit_intents(self, _edit_rules, _graph, **kwargs):
-            seen.append(kwargs.get("approved_plan"))
+        @override
+        def build_edit_intents(
+            self,
+            edit_rules: Inputs,
+            graph: Graph,
+            *,
+            edit_target_node_ids: Sequence[str] = (),
+            last_edit_rejection: str | None = None,
+            approved_plan: WorkflowPlan | None = None,
+        ) -> list[MutationIntent]:
+            seen.append(approved_plan)
             return []
 
     env, repo = _new_env(agent=RecordingAgent())

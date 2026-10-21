@@ -2,6 +2,7 @@
 
 import io
 import logging
+from collections.abc import Iterator
 
 import pytest
 
@@ -18,7 +19,7 @@ from tests.unit_tests.logging_helpers import protect_existing_log_routes
 
 
 @pytest.fixture
-def application_logging(monkeypatch):
+def application_logging(monkeypatch: pytest.MonkeyPatch) -> Iterator[io.StringIO]:
     """Own actual app sinks and restore the original process logging configuration."""
     from libs.sensitive_http_telemetry import _HTTP_LOGGERS
 
@@ -55,7 +56,9 @@ def application_logging(monkeypatch):
         engine.propagate = engine_propagation
 
 
-def test_normal_app_logging_protects_sql_errors_and_preserves_warning_threshold(application_logging):
+def test_normal_app_logging_protects_sql_errors_and_preserves_warning_threshold(
+    application_logging: io.StringIO,
+) -> None:
     engine = logging.getLogger("sqlalchemy.engine")
     assert_sensitive_http_telemetry_ready(additional_emitters=("sqlalchemy",))
     assert engine.propagate is True
@@ -71,7 +74,7 @@ def test_normal_app_logging_protects_sql_errors_and_preserves_warning_threshold(
 
 
 @pytest.mark.usefixtures("application_logging")
-def test_custom_unprotected_sql_sink_still_refuses_after_normal_init():
+def test_custom_unprotected_sql_sink_still_refuses_after_normal_init() -> None:
     assert_sensitive_http_telemetry_ready(additional_emitters=("sqlalchemy",))
     engine = logging.getLogger("sqlalchemy.engine")
     custom = logging.StreamHandler(io.StringIO())

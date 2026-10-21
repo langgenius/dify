@@ -32,6 +32,7 @@ from clients.agent_backend import (
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
+from clients.agent_backend.client import AgentBackendRunClient
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
@@ -403,7 +404,7 @@ def _node(
     scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCESS,
     session_store: FakeSessionStore | None = None,
     declared_outputs: list[dict[str, object]] | None = None,
-    agent_backend_client: FakeAgentBackendRunClient | None = None,
+    agent_backend_client: AgentBackendRunClient | None = None,
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
     error_strategy: ErrorStrategy | None = None,
