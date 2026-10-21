@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 
 import pytest
+from psycopg2 import Error as Psycopg2Error
 from sqlalchemy import select, text, update
 from sqlalchemy.exc import DBAPIError
 
@@ -145,7 +146,8 @@ def test_publication_pointer_cannot_change_between_prepare_and_native_sync(bindi
             assert entered.wait(timeout=5)
             with pytest.raises(DBAPIError) as error:
                 attempted.result(timeout=5)
-            assert (getattr(error.value.orig, "sqlstate", None) or getattr(error.value.orig, "pgcode", None)) == "55P03"
+            assert isinstance(error.value.orig, Psycopg2Error)
+            assert error.value.orig.pgcode == "55P03"
         graph = workflow.graph_dict
         graph["nodes"].append({"id": "review", "data": data})
         workflow.graph = json.dumps(graph)

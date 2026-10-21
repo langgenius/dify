@@ -10,8 +10,8 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_QUEUE_PATTERN = re.compile(r'^\s*(?:QUEUES|DEFAULT_QUEUES)="([^"]+,.*?)"$', re.MULTILINE)
 
 
-def test_advance_task_uses_dedicated_queue():
-    assert getattr(advance_session, "queue", None) == DIFY_BUILDER_QUEUE
+def test_advance_task_uses_dedicated_queue() -> None:
+    assert advance_session.queue == DIFY_BUILDER_QUEUE
 
 
 @pytest.mark.parametrize(
@@ -21,7 +21,7 @@ def test_advance_task_uses_dedicated_queue():
         REPO_ROOT / "dev" / "start-worker",
     ],
 )
-def test_default_workers_consume_dify_builder_queue(script_path: Path):
+def test_default_workers_consume_dify_builder_queue(script_path: Path) -> None:
     queue_sets = [
         set(queue_list.split(","))
         for queue_list in DEFAULT_QUEUE_PATTERN.findall(script_path.read_text(encoding="utf-8"))
