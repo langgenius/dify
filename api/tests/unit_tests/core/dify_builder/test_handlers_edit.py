@@ -542,13 +542,51 @@ def test_review_publish_enters_working_publish_before_side_effect() -> None:
     assert {"event": "publish_workflow"} in events
 
 
+def test_review_keep_draft_reports_actual_diff_instead_of_unfulfilled_plan() -> None:
+    from core.dify_builder.models import ChangeSet
+    from services.dify_builder.application.handlers_edit import handle_review
+
+    env, repo = _new_env()
+    s = _seed_edit_session(repo, PcState.EDIT_REVIEW)
+    session, context = repo.get_session(s.id)
+    context.plan_items = ["Delete receipt -> end and insert mark"]
+    context.change_set = ChangeSet(changed_nodes=["mark"], diff="＋ mark; ＋ receipt → mark")
+    result = handle_review(env, Turn(action=Action(kind="keep_draft"), actor=_actor()), session, context)
+    reply = english_text(result.items[-1].payload["reply_text"])
+    assert context.change_set.diff in reply
+    assert context.plan_items[0] not in reply
+
+
+@pytest.mark.parametrize("empty_change_set", [False, True])
+def test_review_keep_draft_without_actual_changes_does_not_restate_plan(empty_change_set: bool) -> None:
+    from core.dify_builder.models import ChangeSet
+    from services.dify_builder.application.handlers_edit import handle_review
+
+    env, repo = _new_env()
+    s = _seed_edit_session(repo, PcState.EDIT_REVIEW)
+    session, context = repo.get_session(s.id)
+    context.plan_items = ["Delete receipt -> end"]
+    context.change_set = ChangeSet() if empty_change_set else None
+    result = handle_review(env, Turn(action=Action(kind="keep_draft"), actor=_actor()), session, context)
+    reply = english_text(result.items[-1].payload["reply_text"])
+    assert "Delete receipt -> end" not in reply
+    assert "no effective changes" in reply.lower()
+    assert result.next == PcState.EDIT_COMPLETE
+
+
 def test_review_keep_draft_reaches_terminal_without_publish_card() -> None:
+    from core.dify_builder.models import ChangeSet
     from services.dify_builder.application.handlers_edit import handle_review
 
     dify = FakeEditDifyPort()
     events: list[dict[str, object]] = []
     env, repo = _new_env(dify=dify, emit_canvas=events.append)
-    s = _seed_edit_session(repo, PcState.EDIT_REVIEW, plan_items=["Tighten threshold"])
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_REVIEW,
+        plan_items=["Tighten threshold"],
+        change_set=ChangeSet(changed_nodes=["risk"], diff="risk: threshold"),
+    )
     res = handle_review(
         env, Turn(action=Action(kind="keep_draft", base_version=1), actor=_actor()), *repo.get_session(s.id)
     )

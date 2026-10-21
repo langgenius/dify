@@ -1237,6 +1237,187 @@ def test_edit_exposes_approved_insertion_plan_and_preserves_receipt_contract() -
     assert plan.output_summary in _message_text(user)
 
 
+@pytest.fixture
+def retained_bypass() -> tuple[Graph, Graph, Graph]:
+    graph: Graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "variables": []}},
+            {"id": "receipt", "data": {"type": "template-transform", "template": "hello", "variables": []}},
+            {"id": "end", "data": {"type": "end", "outputs": []}},
+        ],
+        "edges": [{"source": "start", "target": "receipt"}, {"source": "receipt", "target": "end"}],
+    }
+    config = {"title": "Mark", "template": "mark", "variables": []}
+    batch = {
+        "intents": [
+            {"op": "create_node", "args": {"node_id": "mark", "node_type": "template-transform", "config": config}},
+            {"op": "connect", "args": {"from_node": "receipt", "to_node": "mark"}},
+            {"op": "connect", "args": {"from_node": "mark", "to_node": "end"}},
+        ]
+    }
+    corrected = {
+        "intents": [
+            {
+                "op": "insert_between",
+                "args": {
+                    "node_id": "mark",
+                    "node_type": "template-transform",
+                    "config": config,
+                    "edge": {"source": "receipt", "target": "end"},
+                },
+            }
+        ]
+    }
+    return graph, batch, corrected
+
+
+def test_edit_corrects_retained_bypass_before_returning_insertion(retained_bypass: tuple[Graph, Graph, Graph]) -> None:
+    from services.dify_builder.plan import WorkflowPlan
+
+    graph, batch, corrected = retained_bypass
+    model = _RecordingInstance(
+        [json.dumps(batch), '{"required_insertions":[0],"uncertain":false}', json.dumps(corrected)]
+    )
+    plan = WorkflowPlan("Insert mark", "Original input", "Marked output", ["Replace receipt→end with receipt→mark→end"])
+    intents = edit.build_edit_intents(model, {"change": "Insert mark"}, graph, approved_plan=plan)
+    result = graph_ops.filter_applicable(graph, intents).graph
+    assert {(e["source"], e["target"]) for e in result["edges"]} == {
+        ("start", "receipt"),
+        ("receipt", "mark"),
+        ("mark", "end"),
+    }
+    assert graph["edges"] == [{"source": "start", "target": "receipt"}, {"source": "receipt", "target": "end"}]
+
+
+@pytest.mark.parametrize("retry", ["same", "empty"])
+def test_edit_refuses_still_condemned_bypass(retained_bypass: tuple[Graph, Graph, Graph], retry: str) -> None:
+    graph, batch, _ = retained_bypass
+    assessment = '{"required_insertions":[0],"uncertain":false}'
+    replies = [json.dumps(batch), assessment, json.dumps(batch) if retry == "same" else "{}", assessment]
+    with pytest.raises(ProposalWouldRunWrongError, match="receipt"):
+        edit.build_edit_intents(_RecordingInstance(replies), {"change": "Insert mark; remove old edge"}, graph)
+
+
+def test_edit_keeps_explicit_parallel_path(retained_bypass: tuple[Graph, Graph, Graph]) -> None:
+    graph, batch, _ = retained_bypass
+    model = _RecordingInstance([json.dumps(batch), '{"required_insertions":[],"uncertain":false}'])
+    intents = edit.build_edit_intents(model, {"change": "Add a parallel mark path; preserve receipt→end"}, graph)
+    result = graph_ops.filter_applicable(graph, intents).graph
+    assert {(e["source"], e["target"]) for e in result["edges"]} == {
+        ("start", "receipt"),
+        ("receipt", "end"),
+        ("receipt", "mark"),
+        ("mark", "end"),
+    }
+    assert len(model.calls) == 2
+
+
+@pytest.mark.parametrize("retry_kind", ["isolated", "reclassified"])
+def test_insertion_retry_cannot_drop_or_reclassify_the_required_path(
+    retained_bypass: tuple[Graph, Graph, Graph], retry_kind: str
+) -> None:
+    graph, batch, _ = retained_bypass
+    retry = {"intents": batch["intents"][:1]} if retry_kind == "isolated" else batch
+    model = _RecordingInstance(
+        [
+            json.dumps(batch),
+            '{"required_insertions":[0],"uncertain":false}',
+            json.dumps(retry),
+            '{"required_insertions":[],"uncertain":false}',
+        ]
+    )
+    with pytest.raises(ProposalWouldRunWrongError, match="receipt"):
+        edit.build_edit_intents(model, {"change": "Insert mark"}, graph)
+
+
+def test_insertion_only_retry_preserves_valid_new_node_config(retained_bypass: tuple[Graph, Graph, Graph]) -> None:
+    graph, batch, corrected = retained_bypass
+    batch["intents"][0]["args"]["config"] = {
+        "title": "Mark",
+        "template": "LANG|{{ value }}",
+        "variables": [{"variable": "value", "value_selector": ["receipt", "output"], "value_type": "string"}],
+    }
+    corrected["intents"][0]["args"]["config"] = {"title": "Mark", "template": "LANG|{{ value }}", "variables": []}
+    model = _RecordingInstance(
+        [
+            json.dumps(batch),
+            '{"required_insertions":[0],"uncertain":false}',
+            json.dumps(corrected),
+        ]
+    )
+    with pytest.raises(ProposalWouldRunWrongError, match="configuration"):
+        edit.build_edit_intents(model, {"change": "Insert mark"}, graph)
+
+
+def test_edit_checks_paths_through_multiple_added_nodes(retained_bypass: tuple[Graph, Graph, Graph]) -> None:
+    graph, batch, _ = retained_bypass
+    batch["intents"].insert(
+        1,
+        {
+            "op": "create_node",
+            "args": {
+                "node_id": "mark2",
+                "node_type": "template-transform",
+                "config": {"template": "second", "variables": []},
+            },
+        },
+    )
+    batch["intents"][-1]["args"]["to_node"] = "mark2"
+    batch["intents"].append({"op": "connect", "args": {"from_node": "mark2", "to_node": "end"}})
+    model = _RecordingInstance([json.dumps(batch), '{"required_insertions":[0],"uncertain":false}', "{}"])
+    with pytest.raises(ProposalWouldRunWrongError, match="receipt"):
+        edit.build_edit_intents(model, {"change": "Insert two sequential marks"}, graph)
+
+
+@pytest.mark.parametrize("different_handle", ["sourceHandle", "targetHandle"])
+def test_bypass_detection_respects_original_edge_handles(
+    retained_bypass: tuple[Graph, Graph, Graph], different_handle: str
+) -> None:
+    graph, batch, _ = retained_bypass
+    graph["edges"][-1][different_handle] = "other-branch"
+    after = graph_ops.filter_applicable(graph, [MutationIntent(**i) for i in batch["intents"]]).graph
+    assert edit._added_path(graph, after, graph["edges"][-1]) is None
+
+
+def test_assessment_has_candidate_node_metadata_and_full_plan(retained_bypass: tuple[Graph, Graph, Graph]) -> None:
+    from services.dify_builder.plan import WorkflowPlan
+
+    graph, batch, _ = retained_bypass
+    graph["nodes"][1]["data"]["title"] = "Original receipt"
+    plan = WorkflowPlan("Parallel receipt review", "Receipt input", "Both paths reach End", ["Add review path"])
+    model = _RecordingInstance([json.dumps(batch), '{"required_insertions":[],"uncertain":false}'])
+    edit.build_edit_intents(model, {}, graph, approved_plan=plan)
+    user = json.loads(_message_text(model.calls[-1]["prompt_messages"][1]))
+    assert user["approved_plan"]["title"] == "Parallel receipt review"
+    assert user["approved_plan"]["input_summary"] == "Receipt input"
+    assert any("receipt (template-transform): Original receipt" in n for n in user["nodes"])
+    assert any("mark (template-transform): Mark" in n for n in user["nodes"])
+
+
+def test_unavailable_assessment_does_not_authorize_a_bypass(
+    retained_bypass: tuple[Graph, Graph, Graph], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    graph, batch, _ = retained_bypass
+
+    def unavailable(_model: object, **_kwargs: object) -> str:
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(edit.llm, "invoke_text", unavailable)
+    with pytest.raises(ProposalWouldRunWrongError, match="Could not verify"):
+        edit.build_edit_intents(_RecordingInstance([json.dumps(batch), "{}"]), {"change": "Insert mark"}, graph)
+
+
+@pytest.mark.parametrize(
+    "assessment",
+    ["{}", '{"required_insertions":[99],"uncertain":false}', '{"required_insertions":[],"uncertain":true}'],
+)
+def test_edit_does_not_accept_unassessed_bypass(retained_bypass: tuple[Graph, Graph, Graph], assessment: str) -> None:
+    graph, batch, _ = retained_bypass
+    model = _RecordingInstance([json.dumps(batch), assessment, json.dumps(batch), assessment])
+    with pytest.raises(ProposalWouldRunWrongError):
+        edit.build_edit_intents(model, {"change": "Insert mark"}, graph)
+
+
 def test_edit_still_allows_intentional_isolated_draft_addition() -> None:
     batch: Graph = {
         "intents": [
