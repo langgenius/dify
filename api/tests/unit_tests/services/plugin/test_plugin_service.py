@@ -1287,6 +1287,7 @@ class TestPluginModelProviderCacheInvalidation:
             installer.fetch_plugin_manifest.return_value = MagicMock()
             decode_response = MagicMock()
             decode_response.verification = None
+            decode_response.manifest.meta.minimum_dify_version = None
             installer.decode_plugin_from_identifier.return_value = decode_response
             installer.upgrade_plugin.return_value = "task-id"
 
@@ -1309,6 +1310,7 @@ class TestPluginModelProviderCacheInvalidation:
             installer = installer_cls.return_value
             decode_response = MagicMock()
             decode_response.verification = None
+            decode_response.manifest.meta.minimum_dify_version = None
             installer.decode_plugin_from_identifier.return_value = decode_response
             installer.install_from_identifiers.return_value = "task-id"
 
@@ -1345,6 +1347,8 @@ class TestPluginModelProviderCacheInvalidation:
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
             installer = installer_cls.return_value
+            installer.decode_plugin_from_identifier.return_value.verification = None
+            installer.decode_plugin_from_identifier.return_value.manifest.meta.minimum_dify_version = None
             installer.upgrade_plugin.return_value = "task-id"
 
             from core.plugin.plugin_service import PluginService
@@ -1367,6 +1371,7 @@ class TestPluginModelProviderCacheInvalidation:
             installer = installer_cls.return_value
             decode_response = MagicMock()
             decode_response.verification = None
+            decode_response.manifest.meta.minimum_dify_version = None
             installer.decode_plugin_from_identifier.return_value = decode_response
             installer.install_from_identifiers.return_value = "task-id"
 
@@ -1394,6 +1399,7 @@ class TestPluginModelProviderCacheInvalidation:
             installer.fetch_plugin_manifest.return_value = MagicMock()
             decode_response = MagicMock()
             decode_response.verification = None
+            decode_response.manifest.meta.minimum_dify_version = None
             installer.decode_plugin_from_identifier.return_value = decode_response
             installer.install_from_identifiers.return_value = "task-id"
 
