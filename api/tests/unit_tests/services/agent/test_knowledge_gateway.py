@@ -358,7 +358,7 @@ def test_real_context_scope_rejects_foreign_tenant_wrong_agent_and_changed_workf
         version_id="snapshot",
         kind=AgentConfigVersionKind.SNAPSHOT,
         writable=False,
-        version=AgentConfigSnapshot(config_snapshot=SOUL),
+        version=AgentConfigSnapshot(tenant_id="tenant", agent_id="agent", version=1, config_snapshot=SOUL),
         agent_soul=SOUL,
     )
     monkeypatch.setattr(gateway.AgentConfigService, "resolve_target", lambda *_args, **_kwargs: target)
@@ -400,8 +400,8 @@ def test_only_trusted_tool_metadata_produces_sources() -> None:
 def test_workflow_space_union_reads_frozen_snapshots_not_graph_soul() -> None:
     snapshots = _ScalarsSession(
         rows=[
-            AgentConfigSnapshot(config_snapshot=SOUL),
-            AgentConfigSnapshot(config_snapshot=SOUL),
+            AgentConfigSnapshot(tenant_id="tenant", agent_id="agent-1", version=1, config_snapshot=SOUL),
+            AgentConfigSnapshot(tenant_id="tenant", agent_id="agent-2", version=1, config_snapshot=SOUL),
         ]
     )
     workflow = Workflow(tenant_id="tenant", app_id="app", id="workflow", version="published")
