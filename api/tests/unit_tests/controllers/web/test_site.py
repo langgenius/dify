@@ -11,6 +11,7 @@ from controllers.web import site as site_module
 from controllers.web.error import WebAppNotFoundError
 from extensions.ext_application_services import ApplicationServices
 from libs.external_api import ExternalApi
+from models.enums import EndUserType
 from models.model import App, EndUser
 from services.app_definition_query_service import AppSiteConfiguration
 from services.web_app_runtime_query_service import (
@@ -125,7 +126,7 @@ def test_site_final_response_only_reclassifies_terminal_runtime_failure(
         "decode_jwt_token",
         lambda: (
             App(id="fixture-app"),
-            EndUser(id="fixture-user", tenant_id="fixture-tenant", type="browser"),
+            EndUser(id="fixture-user", tenant_id="fixture-tenant", type=EndUserType.BROWSER),
         ),
     )
     apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")

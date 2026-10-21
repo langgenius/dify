@@ -73,7 +73,7 @@ def _harness(
         tenant_id=app.tenant_id,
         app_id=app.id,
         session_id="old",
-        is_anonymous=True,
+        _is_anonymous=True,
         type=EndUserType.BROWSER,
     )
     if not missing:
