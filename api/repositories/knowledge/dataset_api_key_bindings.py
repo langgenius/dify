@@ -24,7 +24,7 @@ The caller owns the transaction boundary (commit/flush).
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-from sqlalchemy import Select, delete, or_, select
+from sqlalchemy import ColumnElement, Select, delete, or_, select
 from sqlalchemy.orm import Session
 
 from models.dataset import Dataset
@@ -211,25 +211,39 @@ def bind_knowledge_spaces(session: Session, api_token_id: str, control_space_ids
         )
 
 
-def _delete_keys_bound_only_to(session: Session, *, is_target_binding, is_other_binding) -> list[str]:
+def _delete_keys_bound_only_to(
+    session: Session, *, is_target_binding: ColumnElement[bool], is_other_binding: ColumnElement[bool]
+) -> list[str]:
     """Delete keys whose every binding matches ``is_target_binding``.
 
     ``is_other_binding`` must select bindings that keep a key alive (any binding to a
     different resource, of either kind). NULL-safe: a binding of the other kind has a
     NULL id column for the target kind and must still count as "other".
     """
-    orphan_ids = [
-        str(token_id)
-        for token_id in session.scalars(
+    # Different resources can share a key. Lock that common parent before deciding
+    # which keys survive, and retain the locks through the caller's binding deletion
+    # and commit. A stable order also serializes overlapping sets of keys safely.
+    token_ids = list(
+        session.scalars(
+            select(ApiToken.id)
+            .where(ApiToken.id.in_(select(DatasetApiTokenBinding.api_token_id).where(is_target_binding)))
+            .order_by(ApiToken.id)
+            .with_for_update()
+        )
+    )
+    if not token_ids:
+        return []
+    # Use a locking/current read after acquiring the parent locks. In MySQL's
+    # REPEATABLE READ, an ordinary SELECT could still see bindings another deletion
+    # removed while we waited, leaving a surviving key with unrestricted scope.
+    bound_elsewhere = set(
+        session.scalars(
             select(DatasetApiTokenBinding.api_token_id)
-            .where(is_target_binding)
-            .where(
-                DatasetApiTokenBinding.api_token_id.notin_(
-                    select(DatasetApiTokenBinding.api_token_id).where(is_other_binding)
-                )
-            )
-        ).all()
-    ]
+            .where(DatasetApiTokenBinding.api_token_id.in_(token_ids), is_other_binding)
+            .with_for_update()
+        )
+    )
+    orphan_ids = [token_id for token_id in token_ids if token_id not in bound_elsewhere]
     if orphan_ids:
         session.execute(delete(ApiToken).where(ApiToken.id.in_(orphan_ids)))
     return orphan_ids

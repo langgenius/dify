@@ -2,8 +2,11 @@
 
 import uuid
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+import pytest
+from sqlalchemy import Select, delete, event, select
+from sqlalchemy.dialects import mysql, postgresql
+from sqlalchemy.engine import Dialect
+from sqlalchemy.orm import ORMExecuteState, Session
 
 from models.enums import ApiTokenBindingResourceType, ApiTokenType
 from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
@@ -283,3 +286,58 @@ def test_dataset_management_excludes_mixed_scope_keys(sqlite_session: Session) -
     )
     sqlite_session.commit()
     assert list(sqlite_session.scalars(dataset_api_key_bindings.token_ids_scoped_only_to("dataset"))) == []
+
+
+@pytest.mark.parametrize("resource_type", list(ApiTokenBindingResourceType))
+@pytest.mark.parametrize("dialect", [postgresql.dialect(), mysql.dialect()], ids=["postgresql", "mysql"])
+def test_deletion_locks_keys_before_reading_current_remaining_scope(
+    sqlite_session: Session, resource_type: ApiTokenBindingResourceType, dialect: Dialect
+) -> None:
+    """SQLite cannot enforce row locks; check both production dialects and the resulting scope."""
+    token = _dataset_token(sqlite_session)
+    sqlite_session.flush()
+    space_id = str(uuid.uuid4())
+    other_id = str(uuid.uuid4())
+    sqlite_session.add(_space_binding(token.id, space_id))
+    if resource_type == ApiTokenBindingResourceType.DATASET:
+        sqlite_session.add(DatasetApiTokenBinding(api_token_id=token.id, dataset_id=other_id))
+    else:
+        sqlite_session.add(_space_binding(token.id, other_id))
+    sqlite_session.commit()
+    token_id, tenant_id = token.id, token.tenant_id
+    assert tenant_id is not None
+    reads: list[str] = []
+
+    def capture_read(state: ORMExecuteState) -> None:
+        if state.is_select:
+            assert isinstance(state.statement, Select)
+            reads.append(str(state.statement.compile(dialect=dialect)))
+
+    event.listen(sqlite_session, "do_orm_execute", capture_read)
+    try:
+        if resource_type == ApiTokenBindingResourceType.DATASET:
+            dataset_api_key_bindings.delete_keys_scoped_only_to(sqlite_session, other_id)
+        else:
+            dataset_api_key_bindings.delete_keys_scoped_only_to_knowledge_space(sqlite_session, other_id)
+    finally:
+        event.remove(sqlite_session, "do_orm_execute", capture_read)
+
+    assert len(reads) == 2
+    assert "SELECT api_tokens.id" in reads[0]
+    assert "ORDER BY api_tokens.id" in reads[0]
+    assert all(sql.rstrip().endswith("FOR UPDATE") for sql in reads)
+    if resource_type == ApiTokenBindingResourceType.DATASET:
+        # The legacy caller deletes the Dataset and cascades this binding in the same transaction.
+        sqlite_session.execute(delete(DatasetApiTokenBinding).where(DatasetApiTokenBinding.dataset_id == other_id))
+    sqlite_session.commit()
+    scope = dataset_api_key_bindings.get_active_key_scope(sqlite_session, api_token_id=token_id, tenant_id=tenant_id)
+    assert scope is not None
+    assert scope.knowledge_space_ids == {space_id}
+    assert not scope.allows_dataset("unrelated-dataset")
+
+    dataset_api_key_bindings.delete_keys_scoped_only_to_knowledge_space(sqlite_session, space_id)
+    sqlite_session.commit()
+    assert (
+        dataset_api_key_bindings.get_active_key_scope(sqlite_session, api_token_id=token_id, tenant_id=tenant_id)
+        is None
+    )

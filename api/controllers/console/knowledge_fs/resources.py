@@ -32,6 +32,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.knowledge_fs.error import (
     KnowledgeFSAccessDeniedHTTPError,
     KnowledgeFSConflictHTTPError,
@@ -56,6 +57,8 @@ from core.db.session_factory import session_factory
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from repositories.sqlalchemy_knowledge_fs_capability_issuance_auditor import (
     SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor,
@@ -1070,16 +1073,23 @@ class KnowledgeFSSpacesApi(Resource):
         "Agent Knowledge Base provisioning accepted",
         console_ns.models[KnowledgeFSSpaceCreateResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
+    @console_account_admission(
+        allowed_roles=frozenset(
+            {
+                TenantAccountRole.OWNER,
+                TenantAccountRole.ADMIN,
+                TenantAccountRole.EDITOR,
+                TenantAccountRole.DATASET_OPERATOR,
+            }
+        ),
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace()),),
+    )
     @cloud_edition_billing_rate_limit_check("knowledge")
     @_knowledge_fs_errors
-    def post(self):
-        actor_id, tenant_id = _actor()
+    def post(self, request_context: RequestContext):
         result = _console_services().application.create_space(
-            tenant_id=tenant_id,
-            account_id=actor_id,
+            tenant_id=request_context.active_workspace_id,
+            account_id=request_context.account_id,
             payload=_payload(KnowledgeFSSpaceCreatePayload),
         )
         return dump_response(KnowledgeFSSpaceCreateResponse, result), HTTPStatus.ACCEPTED
