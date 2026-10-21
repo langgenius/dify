@@ -210,3 +210,15 @@ def test_failed_index_write_discards_entries_only_for_a_deleted_document(
         ports.backend.discard.assert_called_once_with(document, chunks)
     else:
         ports.backend.discard.assert_not_called()
+
+
+def test_unverifiable_existence_after_a_pause_keeps_entries_and_the_pause(
+    execution: ExecutionFixture, caplog: pytest.LogCaptureFixture
+) -> None:
+    service, ports, document, _ = execution
+    ports.backend.check_paused.side_effect = [None, None, DocumentIsPausedError()]
+    ports.documents.get_indexing_document.side_effect = [document, RuntimeError("database unavailable")]
+    with pytest.raises(DocumentIsPausedError):
+        service.run([document.ref])
+    ports.backend.discard.assert_not_called()
+    assert "Could not check whether document still exists after indexing stopped" in caplog.text

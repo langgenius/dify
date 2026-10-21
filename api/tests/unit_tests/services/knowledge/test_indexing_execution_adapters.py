@@ -35,6 +35,7 @@ from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.repositories.knowledge.test_document_repository import _dataset, _document
 
 MODULE = "services.knowledge.indexing.adapters.execution"
+CLEANUP_MODULE = "services.knowledge.indexing.adapters.cleanup"
 
 
 BackendFixture = tuple[
@@ -552,7 +553,8 @@ def test_discard_removes_keywords_written_for_a_deleted_document(
         )
     _delete_document_row(sqlite_session_factory)
 
-    adapter.discard(job, [IndexDocument(page_content="hello world", metadata={"doc_id": "node"})])
+    with patch(f"{CLEANUP_MODULE}.redis_client", redis):
+        adapter.discard(job, [IndexDocument(page_content="hello world", metadata={"doc_id": "node"})])
 
     assert redis.lock.call_args.args == ("keyword_indexing_lock_dataset-1",)
     _, encoded = segments.get_keyword_table(job.ref.dataset)
@@ -581,10 +583,14 @@ def test_discard_deletes_the_vectors_load_writes(
         children=[child] if doc_form == IndexStructureType.PARENT_CHILD_INDEX else None,
     )
 
-    with patch(f"{MODULE}.Vector") as vector:
+    with (
+        patch(f"{MODULE}.Vector.resolve_vector_type", return_value="qdrant"),
+        patch(f"{CLEANUP_MODULE}.Vector") as vector,
+    ):
         adapter.discard(job, [chunk])
 
     expected = ["child-node"] if doc_form == IndexStructureType.PARENT_CHILD_INDEX else ["node"]
+    assert vector.call_args.kwargs["vector_type"] == "qdrant"
     vector.return_value.delete_by_ids.assert_called_once_with(expected)
 
 
@@ -598,7 +604,7 @@ def test_discard_leaves_index_cleanup_to_dataset_deletion(
         assert dataset is not None
         session.delete(dataset)
 
-    with patch(f"{MODULE}.Vector") as vector:
+    with patch(f"{CLEANUP_MODULE}.Vector") as vector, patch(f"{CLEANUP_MODULE}.redis_client", redis):
         adapter.discard(job, [IndexDocument(page_content="hello", metadata={"doc_id": "node"})])
 
     vector.assert_not_called()
@@ -652,7 +658,7 @@ def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
     with (
         Flask(__name__).app_context(),
         patch.object(Jieba, "update_texts", cleanup_wins_the_race),
-        patch("services.knowledge.indexing.adapters.cleanup.redis_client", redis),
+        patch(f"{CLEANUP_MODULE}.redis_client", redis),
     ):
         if paused_first:
             with pytest.raises(DocumentIsPausedError):
@@ -663,3 +669,47 @@ def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
     _, encoded = segments.get_keyword_table(job.ref.dataset)
     assert encoded is not None
     assert all("node" not in node_ids for node_ids in json.loads(encoded)["__data__"]["table"].values())
+
+
+@pytest.mark.parametrize(
+    ("indexing_technique", "chunk"),
+    [
+        # parent-child chunks without children wrote no vectors
+        (IndexTechniqueType.HIGH_QUALITY, IndexDocument(page_content="parent", metadata={"doc_id": "node"})),
+        # economy parent-child datasets never write keywords
+        (
+            IndexTechniqueType.ECONOMY,
+            IndexDocument(
+                page_content="parent",
+                metadata={"doc_id": "node"},
+                children=[ChildDocument(page_content="child", metadata={"doc_id": "child-node"})],
+            ),
+        ),
+    ],
+)
+def test_discard_touches_no_index_when_load_wrote_nothing(
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    indexing_technique: IndexTechniqueType,
+    chunk: IndexDocument,
+) -> None:
+    adapter, documents, _, _, job, redis = backend
+    with sqlite_session_factory.begin() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        document = session.get(Document, "document-1")
+        assert dataset is not None
+        assert document is not None
+        dataset.indexing_technique = indexing_technique
+        document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+    job = replace(documents.get_indexing_document(job.ref), processing_rule=job.processing_rule)
+    _delete_document_row(sqlite_session_factory)
+
+    with (
+        patch(f"{MODULE}.Vector.resolve_vector_type", return_value="qdrant"),
+        patch(f"{CLEANUP_MODULE}.Vector") as vector,
+        patch(f"{CLEANUP_MODULE}.redis_client", redis),
+    ):
+        adapter.discard(job, [chunk])
+
+    vector.assert_not_called()
+    redis.lock.assert_not_called()

@@ -1937,22 +1937,27 @@ class DocumentService:
 
     @staticmethod
     def delete_document(document, session: Session):
-        # trigger document_was_deleted signal
         file_id = None
         if document.data_source_type == DataSourceType.UPLOAD_FILE:
             if document.data_source_info:
                 data_source_info = document.data_source_info_dict
                 if data_source_info and "upload_file_id" in data_source_info:
                     file_id = data_source_info["upload_file_id"]
-        document_was_deleted.send(
-            document.id,
-            dataset_id=document.dataset_id,
-            doc_form=document.doc_form,
-            file_id=file_id,
-        )
+        # Read everything cleanup needs before the row is deleted and expired.
+        document_id, dataset_id, doc_form = document.id, document.dataset_id, document.doc_form
 
         session.delete(document)
         session.commit()
+
+        # Dispatch cleanup only after the deletion commits, as bulk deletion does. An
+        # in-flight indexing run either sees the document gone and discards what it
+        # wrote, or finished writing before the commit, so cleanup still finds it.
+        document_was_deleted.send(
+            document_id,
+            dataset_id=dataset_id,
+            doc_form=doc_form,
+            file_id=file_id,
+        )
 
     @staticmethod
     def delete_documents(
