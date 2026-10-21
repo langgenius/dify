@@ -215,9 +215,7 @@ class TestDocumentIndexingSyncTask:
     def test_document_not_found(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task handles missing document gracefully."""
         # Arrange
-        account, tenant = DocumentIndexingSyncTaskTestDataFactory.create_account_with_tenant(
-            db_session_with_containers
-        )
+        account, tenant = DocumentIndexingSyncTaskTestDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DocumentIndexingSyncTaskTestDataFactory.create_dataset(
             db_session_with_containers,
             tenant_id=tenant.id,
