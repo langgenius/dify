@@ -3,6 +3,7 @@ import json
 import sys
 import types
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,10 +13,18 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_mo_vector_modules():
-    mo_vector = types.ModuleType("mo_vector")
+    mo_vector = _FakeModule("mo_vector")
     mo_vector.__path__ = []
-    mo_vector_client = types.ModuleType("mo_vector.client")
+    mo_vector_client = _FakeModule("mo_vector.client")
 
     class MoVectorClient:
         def __init__(self, **kwargs):
@@ -28,8 +37,8 @@ def _build_fake_mo_vector_modules():
             self.query = MagicMock(return_value=[])
             self.full_text_query = MagicMock(return_value=[])
 
-    vars(mo_vector_client)["MoVectorClient"] = MoVectorClient
-    vars(mo_vector)["client"] = mo_vector_client
+    mo_vector_client.MoVectorClient = MoVectorClient
+    mo_vector.client = mo_vector_client
     return {"mo_vector": mo_vector, "mo_vector.client": mo_vector_client}
 
 

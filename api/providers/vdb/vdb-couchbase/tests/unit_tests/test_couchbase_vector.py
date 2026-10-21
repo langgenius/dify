@@ -3,6 +3,7 @@ import json
 import sys
 import types
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -12,15 +13,23 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_couchbase_modules():
-    couchbase = types.ModuleType("couchbase")
-    couchbase_auth = types.ModuleType("couchbase.auth")
-    couchbase_cluster = types.ModuleType("couchbase.cluster")
-    couchbase_management = types.ModuleType("couchbase.management")
-    couchbase_management_search = types.ModuleType("couchbase.management.search")
-    couchbase_options = types.ModuleType("couchbase.options")
-    couchbase_vector = types.ModuleType("couchbase.vector_search")
-    couchbase_search = types.ModuleType("couchbase.search")
+    couchbase = _FakeModule("couchbase")
+    couchbase_auth = _FakeModule("couchbase.auth")
+    couchbase_cluster = _FakeModule("couchbase.cluster")
+    couchbase_management = _FakeModule("couchbase.management")
+    couchbase_management_search = _FakeModule("couchbase.management.search")
+    couchbase_options = _FakeModule("couchbase.options")
+    couchbase_vector = _FakeModule("couchbase.vector_search")
+    couchbase_search = _FakeModule("couchbase.search")
 
     class PasswordAuthenticator:
         def __init__(self, user, password):
@@ -126,18 +135,18 @@ def _build_fake_couchbase_modules():
         def bucket(self, _name):
             return self._bucket
 
-    vars(couchbase_auth)["PasswordAuthenticator"] = PasswordAuthenticator
-    vars(couchbase_cluster)["Cluster"] = Cluster
-    vars(couchbase_management_search)["SearchIndex"] = SearchIndex
-    vars(couchbase_options)["ClusterOptions"] = ClusterOptions
-    vars(couchbase_options)["SearchOptions"] = SearchOptions
-    vars(couchbase_vector)["VectorQuery"] = VectorQuery
-    vars(couchbase_vector)["VectorSearch"] = VectorSearch
-    vars(couchbase_search)["QueryStringQuery"] = QueryStringQuery
-    vars(couchbase_search)["SearchRequest"] = SearchRequest
+    couchbase_auth.PasswordAuthenticator = PasswordAuthenticator
+    couchbase_cluster.Cluster = Cluster
+    couchbase_management_search.SearchIndex = SearchIndex
+    couchbase_options.ClusterOptions = ClusterOptions
+    couchbase_options.SearchOptions = SearchOptions
+    couchbase_vector.VectorQuery = VectorQuery
+    couchbase_vector.VectorSearch = VectorSearch
+    couchbase_search.QueryStringQuery = QueryStringQuery
+    couchbase_search.SearchRequest = SearchRequest
 
-    vars(couchbase)["search"] = couchbase_search
-    vars(couchbase)["management"] = couchbase_management
+    couchbase.search = couchbase_search
+    couchbase.management = couchbase_management
 
     return {
         "couchbase": couchbase,

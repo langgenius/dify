@@ -4,6 +4,7 @@ import sys
 import types
 from collections import UserDict
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,10 +13,18 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_vikingdb_modules():
-    volcengine = types.ModuleType("volcengine")
+    volcengine = _FakeModule("volcengine")
     volcengine.__path__ = []
-    viking_db = types.ModuleType("volcengine.viking_db")
+    viking_db = _FakeModule("volcengine.viking_db")
 
     class Data(UserDict):
         def __init__(self, payload):
@@ -67,14 +76,14 @@ def _build_fake_vikingdb_modules():
             self.get_collection = MagicMock(return_value=self._collection)
             self.get_index = MagicMock(return_value=self._index)
 
-    vars(viking_db)["Data"] = Data
-    vars(viking_db)["DistanceType"] = DistanceType
-    vars(viking_db)["Field"] = Field
-    vars(viking_db)["FieldType"] = FieldType
-    vars(viking_db)["IndexType"] = IndexType
-    vars(viking_db)["QuantType"] = QuantType
-    vars(viking_db)["VectorIndexParams"] = VectorIndexParams
-    vars(viking_db)["VikingDBService"] = VikingDBService
+    viking_db.Data = Data
+    viking_db.DistanceType = DistanceType
+    viking_db.Field = Field
+    viking_db.FieldType = FieldType
+    viking_db.IndexType = IndexType
+    viking_db.QuantType = QuantType
+    viking_db.VectorIndexParams = VectorIndexParams
+    viking_db.VikingDBService = VikingDBService
 
     return {"volcengine": volcengine, "volcengine.viking_db": viking_db}
 

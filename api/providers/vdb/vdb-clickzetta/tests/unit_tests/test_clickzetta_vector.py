@@ -4,6 +4,7 @@ import sys
 import types
 from contextlib import contextmanager
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,8 +13,16 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_clickzetta_module():
-    clickzetta = types.ModuleType("clickzetta")
+    clickzetta = _FakeModule("clickzetta")
 
     class _FakeCursor:
         def __init__(self):
@@ -41,7 +50,7 @@ def _build_fake_clickzetta_module():
     def connect(**_kwargs):
         return _FakeConnection()
 
-    vars(clickzetta)["connect"] = connect
+    clickzetta.connect = connect
     return clickzetta
 
 

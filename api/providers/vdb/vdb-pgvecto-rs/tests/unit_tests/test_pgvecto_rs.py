@@ -3,6 +3,7 @@ import json
 import sys
 import types
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -14,15 +15,23 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_pgvecto_modules():
-    pgvecto_rs = types.ModuleType("pgvecto_rs")
-    pgvecto_rs_sqlalchemy = types.ModuleType("pgvecto_rs.sqlalchemy")
+    pgvecto_rs = _FakeModule("pgvecto_rs")
+    pgvecto_rs_sqlalchemy = _FakeModule("pgvecto_rs.sqlalchemy")
 
     class VECTOR(UserDefinedType):
         def __init__(self, dim):
             self.dim = dim
 
-    vars(pgvecto_rs_sqlalchemy)["VECTOR"] = VECTOR
+    pgvecto_rs_sqlalchemy.VECTOR = VECTOR
     return {
         "pgvecto_rs": pgvecto_rs,
         "pgvecto_rs.sqlalchemy": pgvecto_rs_sqlalchemy,

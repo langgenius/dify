@@ -2,6 +2,7 @@ import importlib
 import json
 import sys
 import types
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,13 +12,21 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-def _build_fake_hologres_modules():
-    holo_module = types.ModuleType("holo_search_sdk")
-    holo_types_module = types.ModuleType("holo_search_sdk.types")
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
 
-    vars(holo_types_module)["BaseQuantizationType"] = str
-    vars(holo_types_module)["DistanceType"] = str
-    vars(holo_types_module)["TokenizerType"] = str
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
+def _build_fake_hologres_modules():
+    holo_module = _FakeModule("holo_search_sdk")
+    holo_types_module = _FakeModule("holo_search_sdk.types")
+
+    holo_types_module.BaseQuantizationType = str
+    holo_types_module.DistanceType = str
+    holo_types_module.TokenizerType = str
 
     def _connect(**kwargs):
         client = MagicMock()
@@ -29,7 +38,7 @@ def _build_fake_hologres_modules():
         client.drop_table = MagicMock()
         return client
 
-    vars(holo_module)["connect"] = MagicMock(side_effect=_connect)
+    holo_module.connect = MagicMock(side_effect=_connect)
 
     return {
         "holo_search_sdk": holo_module,

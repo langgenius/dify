@@ -3,6 +3,7 @@ import json
 import sys
 import types
 from collections import UserDict
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,10 +12,18 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_chroma_modules():
-    chroma = types.ModuleType("chromadb")
-    vars(chroma)["DEFAULT_TENANT"] = "default_tenant"
-    vars(chroma)["DEFAULT_DATABASE"] = "default_database"
+    chroma = _FakeModule("chromadb")
+    chroma.DEFAULT_TENANT = "default_tenant"
+    chroma.DEFAULT_DATABASE = "default_database"
 
     class Settings:
         def __init__(self, **kwargs):
@@ -38,9 +47,9 @@ def _build_fake_chroma_modules():
             self.get_or_create_collection = MagicMock(return_value=self.collection)
             self.delete_collection = MagicMock()
 
-    vars(chroma)["Settings"] = Settings
-    vars(chroma)["QueryResult"] = QueryResult
-    vars(chroma)["HttpClient"] = _Client
+    chroma.Settings = Settings
+    chroma.QueryResult = QueryResult
+    chroma.HttpClient = _Client
     return chroma
 
 

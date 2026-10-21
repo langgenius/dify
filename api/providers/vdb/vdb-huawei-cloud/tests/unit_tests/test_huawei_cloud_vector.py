@@ -3,6 +3,7 @@ import json
 import sys
 import types
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,8 +13,16 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_elasticsearch_modules():
-    elasticsearch = types.ModuleType("elasticsearch")
+    elasticsearch = _FakeModule("elasticsearch")
 
     class Elasticsearch:
         def __init__(self, **kwargs):
@@ -26,7 +35,7 @@ def _build_fake_elasticsearch_modules():
                 refresh=MagicMock(), delete=MagicMock(), exists=MagicMock(return_value=False), create=MagicMock()
             )
 
-    vars(elasticsearch)["Elasticsearch"] = Elasticsearch
+    elasticsearch.Elasticsearch = Elasticsearch
     return {"elasticsearch": elasticsearch}
 
 

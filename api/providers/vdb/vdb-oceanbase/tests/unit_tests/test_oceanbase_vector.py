@@ -4,6 +4,7 @@ import json
 import sys
 import types
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,8 +15,16 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_pyobvector_module():
-    pyobvector = types.ModuleType("pyobvector")
+    pyobvector = _FakeModule("pyobvector")
 
     class VECTOR:
         def __init__(self, dim):
@@ -50,12 +59,12 @@ def _build_fake_pyobvector_module():
             self.ann_search = MagicMock(return_value=[])
             self.drop_table_if_exist = MagicMock()
 
-    vars(pyobvector)["VECTOR"] = VECTOR
-    vars(pyobvector)["ObVecClient"] = ObVecClient
-    vars(pyobvector)["VecIndexType"] = VecIndexType
-    vars(pyobvector)["l2_distance"] = l2_distance
-    vars(pyobvector)["cosine_distance"] = cosine_distance
-    vars(pyobvector)["inner_product"] = inner_product
+    pyobvector.VECTOR = VECTOR
+    pyobvector.ObVecClient = ObVecClient
+    pyobvector.VecIndexType = VecIndexType
+    pyobvector.l2_distance = l2_distance
+    pyobvector.cosine_distance = cosine_distance
+    pyobvector.inner_product = inner_product
     return pyobvector
 
 

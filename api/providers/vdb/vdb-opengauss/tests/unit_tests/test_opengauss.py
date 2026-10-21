@@ -4,6 +4,7 @@ import sys
 import types
 from contextlib import contextmanager
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,11 +14,19 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_psycopg2_modules():
-    psycopg2 = types.ModuleType("psycopg2")
+    psycopg2 = _FakeModule("psycopg2")
     psycopg2.__path__ = []
-    psycopg2_extras = types.ModuleType("psycopg2.extras")
-    psycopg2_pool = types.ModuleType("psycopg2.pool")
+    psycopg2_extras = _FakeModule("psycopg2.extras")
+    psycopg2_pool = _FakeModule("psycopg2.pool")
 
     class SimpleConnectionPool:
         def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
@@ -26,11 +35,11 @@ def _build_fake_psycopg2_modules():
             self.getconn = MagicMock()
             self.putconn = MagicMock()
 
-    vars(psycopg2_pool)["SimpleConnectionPool"] = SimpleConnectionPool
-    vars(psycopg2_extras)["execute_values"] = MagicMock()
+    psycopg2_pool.SimpleConnectionPool = SimpleConnectionPool
+    psycopg2_extras.execute_values = MagicMock()
 
-    vars(psycopg2)["pool"] = psycopg2_pool
-    vars(psycopg2)["extras"] = psycopg2_extras
+    psycopg2.pool = psycopg2_pool
+    psycopg2.extras = psycopg2_extras
     return {
         "psycopg2": psycopg2,
         "psycopg2.pool": psycopg2_pool,

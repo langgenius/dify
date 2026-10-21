@@ -3,6 +3,7 @@ import json
 import sys
 import types
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,8 +13,16 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_tablestore_module():
-    tablestore = types.ModuleType("tablestore")
+    tablestore = _FakeModule("tablestore")
 
     class _BatchGetRowRequest:
         def __init__(self):
@@ -47,33 +56,33 @@ def _build_fake_tablestore_module():
             self.batch_get_row = MagicMock()
             self.search = MagicMock()
 
-    vars(tablestore)["OTSClient"] = _Client
-    vars(tablestore)["BatchGetRowRequest"] = _BatchGetRowRequest
-    vars(tablestore)["TableInBatchGetRowItem"] = _TableInBatchGetRowItem
-    vars(tablestore)["Row"] = _Row
-    vars(tablestore)["TableMeta"] = lambda name, schema: ("table_meta", name, schema)
-    vars(tablestore)["TableOptions"] = lambda: ("table_options",)
-    vars(tablestore)["CapacityUnit"] = lambda read, write: ("capacity", read, write)
-    vars(tablestore)["ReservedThroughput"] = lambda cap: ("reserved", cap)
-    vars(tablestore)["FieldSchema"] = lambda *args, **kwargs: ("field", args, kwargs)
-    vars(tablestore)["VectorOptions"] = lambda **kwargs: ("vector_options", kwargs)
-    vars(tablestore)["SearchIndexMeta"] = lambda field_schemas: ("search_index_meta", field_schemas)
-    vars(tablestore)["SearchQuery"] = lambda query, **kwargs: SimpleNamespace(query=query, **kwargs)
-    vars(tablestore)["TermQuery"] = lambda key, value: ("term_query", key, value)
-    vars(tablestore)["ColumnsToGet"] = lambda **kwargs: ("columns_to_get", kwargs)
-    vars(tablestore)["KnnVectorQuery"] = lambda **kwargs: SimpleNamespace(**kwargs)
-    vars(tablestore)["TermsQuery"] = lambda key, values: ("terms_query", key, values)
-    vars(tablestore)["Sort"] = lambda **kwargs: ("sort", kwargs)
-    vars(tablestore)["ScoreSort"] = lambda **kwargs: ("score_sort", kwargs)
-    vars(tablestore)["BoolQuery"] = lambda **kwargs: SimpleNamespace(**kwargs)
-    vars(tablestore)["MatchQuery"] = lambda **kwargs: ("match_query", kwargs)
+    tablestore.OTSClient = _Client
+    tablestore.BatchGetRowRequest = _BatchGetRowRequest
+    tablestore.TableInBatchGetRowItem = _TableInBatchGetRowItem
+    tablestore.Row = _Row
+    tablestore.TableMeta = lambda name, schema: ("table_meta", name, schema)
+    tablestore.TableOptions = lambda: ("table_options",)
+    tablestore.CapacityUnit = lambda read, write: ("capacity", read, write)
+    tablestore.ReservedThroughput = lambda cap: ("reserved", cap)
+    tablestore.FieldSchema = lambda *args, **kwargs: ("field", args, kwargs)
+    tablestore.VectorOptions = lambda **kwargs: ("vector_options", kwargs)
+    tablestore.SearchIndexMeta = lambda field_schemas: ("search_index_meta", field_schemas)
+    tablestore.SearchQuery = lambda query, **kwargs: SimpleNamespace(query=query, **kwargs)
+    tablestore.TermQuery = lambda key, value: ("term_query", key, value)
+    tablestore.ColumnsToGet = lambda **kwargs: ("columns_to_get", kwargs)
+    tablestore.KnnVectorQuery = lambda **kwargs: SimpleNamespace(**kwargs)
+    tablestore.TermsQuery = lambda key, values: ("terms_query", key, values)
+    tablestore.Sort = lambda **kwargs: ("sort", kwargs)
+    tablestore.ScoreSort = lambda **kwargs: ("score_sort", kwargs)
+    tablestore.BoolQuery = lambda **kwargs: SimpleNamespace(**kwargs)
+    tablestore.MatchQuery = lambda **kwargs: ("match_query", kwargs)
 
-    vars(tablestore)["FieldType"] = SimpleNamespace(TEXT="TEXT", VECTOR="VECTOR", KEYWORD="KEYWORD")
-    vars(tablestore)["AnalyzerType"] = SimpleNamespace(MAXWORD="MAXWORD")
-    vars(tablestore)["VectorDataType"] = SimpleNamespace(VD_FLOAT_32="VD_FLOAT_32")
-    vars(tablestore)["VectorMetricType"] = SimpleNamespace(VM_COSINE="VM_COSINE")
-    vars(tablestore)["ColumnReturnType"] = SimpleNamespace(SPECIFIED="SPECIFIED", ALL_FROM_INDEX="ALL_FROM_INDEX")
-    vars(tablestore)["SortOrder"] = SimpleNamespace(DESC="DESC")
+    tablestore.FieldType = SimpleNamespace(TEXT="TEXT", VECTOR="VECTOR", KEYWORD="KEYWORD")
+    tablestore.AnalyzerType = SimpleNamespace(MAXWORD="MAXWORD")
+    tablestore.VectorDataType = SimpleNamespace(VD_FLOAT_32="VD_FLOAT_32")
+    tablestore.VectorMetricType = SimpleNamespace(VM_COSINE="VM_COSINE")
+    tablestore.ColumnReturnType = SimpleNamespace(SPECIFIED="SPECIFIED", ALL_FROM_INDEX="ALL_FROM_INDEX")
+    tablestore.SortOrder = SimpleNamespace(DESC="DESC")
     return tablestore
 
 

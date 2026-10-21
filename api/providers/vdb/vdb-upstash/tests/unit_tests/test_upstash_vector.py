@@ -3,6 +3,7 @@ import json
 import sys
 import types
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,8 +13,16 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class _FakeModule(types.ModuleType):
+    """A stand-in SDK module whose attributes the test sets one by one."""
+
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+
 def _build_fake_upstash_module():
-    upstash_module = types.ModuleType("upstash_vector")
+    upstash_module = _FakeModule("upstash_vector")
 
     class Vector:
         def __init__(self, id, vector, metadata, data):
@@ -32,8 +41,8 @@ def _build_fake_upstash_module():
             self.delete = MagicMock()
             self.reset = MagicMock()
 
-    vars(upstash_module)["Vector"] = Vector
-    vars(upstash_module)["Index"] = Index
+    upstash_module.Vector = Vector
+    upstash_module.Index = Index
     return upstash_module
 
 
