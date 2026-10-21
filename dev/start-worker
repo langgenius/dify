@@ -11,7 +11,7 @@ show_help() {
   echo "  -c, --concurrency NUM  Number of worker processes (default: 1)"
   echo "  -P, --pool POOL        Pool implementation (default: gevent)"
   echo "  --loglevel LEVEL       Log level (default: INFO)"
-  echo "  -e, --env-file FILE    Path to an env file to source before starting"
+  echo "  -e, --env-file FILE    Path to a dotenv file to load before starting"
   echo "  -h, --help             Show this help message"
   echo ""
   echo "Examples:"
@@ -94,12 +94,9 @@ if [[ -n "${ENV_FILE}" ]]; then
   fi
 
   echo "Loading environment variables from ${ENV_FILE}"
-  # Export everything sourced from the env file
-  set -a
-  # Environment assignments follow the repository's documented API env schema.
-  # shellcheck source=../api/.env.example
-  source "${ENV_FILE}"
-  set +a
+  exec uv run dotenv -f "$ENV_FILE" run --override -- \
+    "$SCRIPT_DIR/start-worker" --queues "$QUEUES" --concurrency "$CONCURRENCY" \
+    --pool "$POOL" --loglevel "$LOGLEVEL"
 fi
 
 # If no queues are specified, use product-edition defaults
