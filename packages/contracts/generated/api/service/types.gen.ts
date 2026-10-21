@@ -2474,6 +2474,16 @@ export type WorkflowPausedBlockingResponse = {
   [key: string]: unknown
 }
 
+export type WorkflowRunFileNotReferencedError = ErrorResponse & {
+  code: 'workflow_run_file_not_referenced'
+  status: 404
+}
+
+export type WorkflowRunFileNotRetainedError = ErrorResponse & {
+  code: 'workflow_run_file_not_retained'
+  status: 410
+}
+
 export type WorkflowRunForLogResponse = {
   created_at?: number | null
   elapsed_time?: number | number | null
@@ -5024,6 +5034,37 @@ export type GetWorkflowsRunByWorkflowRunIdResponses = {
 
 export type GetWorkflowsRunByWorkflowRunIdResponse =
   GetWorkflowsRunByWorkflowRunIdResponses[keyof GetWorkflowsRunByWorkflowRunIdResponses]
+
+export type GetWorkflowsRunByWorkflowRunIdFilesByFileIdData = {
+  body?: never
+  path: {
+    file_id: string
+    workflow_run_id: string
+  }
+  query?: {
+    as_attachment?: boolean
+  }
+  url: '/workflows/run/{workflow_run_id}/files/{file_id}'
+}
+
+export type GetWorkflowsRunByWorkflowRunIdFilesByFileIdErrors = {
+  400: NotWorkflowAppError | ErrorResponse
+  401: ErrorResponse
+  403: FileAccessDeniedError | ErrorResponse
+  404: FileNotFoundError | WorkflowRunFileNotReferencedError | ErrorResponse
+  410: WorkflowRunFileNotRetainedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkflowsRunByWorkflowRunIdFilesByFileIdError =
+  GetWorkflowsRunByWorkflowRunIdFilesByFileIdErrors[keyof GetWorkflowsRunByWorkflowRunIdFilesByFileIdErrors]
+
+export type GetWorkflowsRunByWorkflowRunIdFilesByFileIdResponses = {
+  200: Blob | File
+}
+
+export type GetWorkflowsRunByWorkflowRunIdFilesByFileIdResponse =
+  GetWorkflowsRunByWorkflowRunIdFilesByFileIdResponses[keyof GetWorkflowsRunByWorkflowRunIdFilesByFileIdResponses]
 
 export type PostWorkflowsTasksByTaskIdStopData = {
   body: WorkflowTaskStopPayload
