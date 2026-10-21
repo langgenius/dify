@@ -13,9 +13,10 @@ import { ServiceApiCard } from './card'
 
 type ServiceApiProps = {
   apiBaseUrl: string
+  apiReferenceUrl?: string
 }
 
-export function ServiceApi({ apiBaseUrl }: ServiceApiProps) {
+export function ServiceApi({ apiBaseUrl, apiReferenceUrl }: ServiceApiProps) {
   const { t } = useTranslation(['dataset', 'appApi'])
   const triggerRef = useRef<HTMLButtonElement>(null)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -54,7 +55,11 @@ export function ServiceApi({ apiBaseUrl }: ServiceApiProps) {
             alignOffset={-4}
             className="border-none bg-transparent shadow-none"
           >
-            <ServiceApiCard apiBaseUrl={apiBaseUrl} canManageApiKey={canManageApiKey} />
+            <ServiceApiCard
+              apiBaseUrl={apiBaseUrl}
+              apiReferenceUrl={apiReferenceUrl}
+              canManageApiKey={canManageApiKey}
+            />
           </PopoverContent>
         </Popover>
         <DatasetApiKeyDialogContent

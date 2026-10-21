@@ -14,6 +14,7 @@ import { CreatorFilter } from '@/app/components/datasets/creator-filter'
 import { creatorIdsParser } from '@/app/components/datasets/creator-filter-query'
 import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
 import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
+import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
@@ -95,6 +96,7 @@ export function NewKnowledgeList({
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
+  const docLink = useDocLink()
   const { data: apiBaseInfo } = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
@@ -267,7 +269,13 @@ export function NewKnowledgeList({
                 </span>
               </Button>
             )}
-            <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
+            <ServiceApi
+              apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
+              apiReferenceUrl={docLink(
+                // @ts-expect-error Agent Knowledge Base API guide not yet in the generated doc paths.
+                '/api-reference/guides/knowledge-base',
+              )}
+            />
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
