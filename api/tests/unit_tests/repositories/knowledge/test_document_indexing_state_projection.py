@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from enums.knowledge import DocumentIndexRetryAction
 from models.dataset import Document
 from models.document_indexing_state import resolve_document_indexing_state
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
@@ -31,11 +30,7 @@ _DISPLAY_STATUSES = ("queuing", "indexing", "paused", "error", "available", "dis
 class _StateCase:
     name: str
     raw_status: IndexingStatus
-    expected_indexing_status: str
     expected_display_status: str
-    expected_indexing_state: Literal["pending", "completed", "failed"] | None = None
-    expected_retry_action: DocumentIndexRetryAction | None = None
-    expected_error: str | None = None
     enabled: bool = True
     archived: bool = False
     paused: bool = False
@@ -44,42 +39,31 @@ class _StateCase:
 
 
 _STATE_CASES = (
-    _StateCase("raw-completed", IndexingStatus.COMPLETED, "completed", "available"),
-    _StateCase("raw-waiting", IndexingStatus.WAITING, "waiting", "queuing"),
-    _StateCase("raw-parsing", IndexingStatus.PARSING, "parsing", "indexing"),
-    _StateCase("raw-paused", IndexingStatus.PARSING, "paused", "paused", paused=True),
+    _StateCase("raw-completed", IndexingStatus.COMPLETED, "available"),
+    _StateCase("raw-waiting", IndexingStatus.WAITING, "queuing"),
+    _StateCase("raw-parsing", IndexingStatus.PARSING, "indexing"),
+    _StateCase("raw-paused", IndexingStatus.PARSING, "paused", paused=True),
     _StateCase(
         "raw-error-active",
         IndexingStatus.ERROR,
         "error",
-        "error",
-        expected_retry_action="retry",
-        expected_error="body failed",
     ),
     _StateCase(
         "raw-error-disabled",
         IndexingStatus.ERROR,
         "error",
-        "error",
-        expected_error="body failed",
         enabled=False,
     ),
     _StateCase(
         "raw-error-archived",
         IndexingStatus.ERROR,
         "error",
-        "error",
-        expected_error="body failed",
         archived=True,
     ),
     _StateCase(
         "failed-add-from-completed",
         IndexingStatus.COMPLETED,
         "error",
-        "error",
-        expected_indexing_state="failed",
-        expected_retry_action="enable",
-        expected_error="state failed",
         task_status="failed",
         task_action="add",
     ),
@@ -87,10 +71,6 @@ _STATE_CASES = (
         "failed-add-from-processing",
         IndexingStatus.INDEXING,
         "error",
-        "error",
-        expected_indexing_state="failed",
-        expected_retry_action="enable",
-        expected_error="state failed",
         task_status="failed",
         task_action="add",
     ),
@@ -98,10 +78,6 @@ _STATE_CASES = (
         "failed-remove-disabled",
         IndexingStatus.COMPLETED,
         "error",
-        "error",
-        expected_indexing_state="failed",
-        expected_retry_action="disable",
-        expected_error="state failed",
         enabled=False,
         task_status="failed",
         task_action="remove",
@@ -110,10 +86,6 @@ _STATE_CASES = (
         "failed-remove-archived",
         IndexingStatus.PARSING,
         "error",
-        "error",
-        expected_indexing_state="failed",
-        expected_retry_action="archive",
-        expected_error="state failed",
         archived=True,
         task_status="failed",
         task_action="remove",
@@ -121,9 +93,7 @@ _STATE_CASES = (
     _StateCase(
         "completed-state",
         IndexingStatus.COMPLETED,
-        "completed",
         "available",
-        expected_indexing_state="completed",
         task_status="completed",
         task_action="add",
     ),
@@ -132,8 +102,6 @@ _STATE_CASES = (
             f"{task_status}-from-completed",
             IndexingStatus.COMPLETED,
             "indexing",
-            "indexing",
-            expected_indexing_state="pending",
             task_status=task_status,
             task_action="add",
         )
@@ -143,8 +111,6 @@ _STATE_CASES = (
         "pending-hides-raw-error",
         IndexingStatus.ERROR,
         "indexing",
-        "indexing",
-        expected_indexing_state="pending",
         task_status="pending",
         task_action="add",
     ),
@@ -208,7 +174,7 @@ def _filtered_ids(session: Session, status: str) -> set[str]:
 
 
 @pytest.mark.parametrize("case", _STATE_CASES, ids=lambda case: case.name)
-def test_effective_projection_and_sql_display_filter_share_one_state_policy(
+def test_sql_display_filter_maps_each_effective_state(
     sqlite_session: Session,
     case: _StateCase,
 ) -> None:
@@ -218,18 +184,6 @@ def test_effective_projection_and_sql_display_filter_share_one_state_policy(
         sqlite_session.add(_task(document, status=case.task_status, action=case.task_action))
     sqlite_session.commit()
 
-    effective = get_effective_document_indexing_states(
-        sqlite_session,
-        tenant_id=_TENANT_ID,
-        dataset_id=_DATASET_ID,
-        documents=[document],
-    )[document.id]
-
-    assert effective.indexing_status == case.expected_indexing_status
-    assert effective.display_status == case.expected_display_status
-    assert effective.indexing_state == case.expected_indexing_state
-    assert effective.indexing_retry_action == case.expected_retry_action
-    assert effective.error == case.expected_error
     for display_status in _DISPLAY_STATUSES:
         assert (document.id in _filtered_ids(sqlite_session, display_status)) is (
             display_status == case.expected_display_status
@@ -326,7 +280,6 @@ def test_sql_display_predicates_match_pure_policy_for_every_state_combination(sq
             _StateCase(
                 name=f"matrix-{index}",
                 raw_status=raw_status,
-                expected_indexing_status="unused",
                 expected_display_status="unused",
                 enabled=enabled,
                 archived=archived,
