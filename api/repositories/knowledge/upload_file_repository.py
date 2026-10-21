@@ -1880,13 +1880,20 @@ def sync_knowledge_owner_upload_references(
     mutation = target.__dict__.pop(_KNOWLEDGE_REFERENCE_MUTATION_ATTRIBUTE, None)
     if not isinstance(mutation, _KnowledgeReferenceMutation):
         return
+    # Legacy Document IDs are assigned by the column default while INSERT is
+    # emitted, after the before_insert fence captured the mutation. Read the
+    # persisted identity here so new owners never create NULL reference keys.
+    document_id = target.id if isinstance(target, Document) else target.document_id
+    resource_id = target.id
+    if not document_id or not resource_id:
+        raise RuntimeError("knowledge reference owner identity was not assigned")
     connection.execute(
         delete(KnowledgeUploadFileReference).where(
             KnowledgeUploadFileReference.tenant_id == mutation.tenant_id,
             KnowledgeUploadFileReference.dataset_id == mutation.dataset_id,
-            KnowledgeUploadFileReference.document_id == mutation.document_id,
+            KnowledgeUploadFileReference.document_id == document_id,
             KnowledgeUploadFileReference.kind == mutation.kind,
-            KnowledgeUploadFileReference.resource_id == mutation.resource_id,
+            KnowledgeUploadFileReference.resource_id == resource_id,
         )
     )
     if mutation.new_file_ids:
@@ -1898,9 +1905,9 @@ def sync_knowledge_owner_upload_references(
                     "tenant_id": mutation.tenant_id,
                     "upload_file_id": file_id,
                     "dataset_id": mutation.dataset_id,
-                    "document_id": mutation.document_id,
+                    "document_id": document_id,
                     "kind": mutation.kind,
-                    "resource_id": mutation.resource_id,
+                    "resource_id": resource_id,
                 }
                 for file_id in mutation.new_file_ids
             ],

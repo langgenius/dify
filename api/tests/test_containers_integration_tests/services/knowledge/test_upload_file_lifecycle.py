@@ -221,7 +221,11 @@ def test_concurrent_last_reference_deletes_produce_one_cleanup_claim(
     tenant_id = str(uuid4())
     dataset_id = str(uuid4())
     document_ids = (str(uuid4()), str(uuid4()))
-    upload = make_upload_file(tenant_id=tenant_id, key=f"knowledge/{uuid4()}.txt")
+    upload = make_upload_file(
+        tenant_id=tenant_id,
+        key=f"knowledge/{uuid4()}.txt",
+        created_by=str(uuid4()),
+    )
     db_session_with_containers.add(upload)
     db_session_with_containers.flush()
     for document_id in document_ids:
@@ -273,7 +277,11 @@ def test_local_message_reference_waits_for_cleanup_claim_and_rejects_pending_fil
     app_id = str(uuid4())
     conversation_id = str(uuid4())
     message_id = str(uuid4())
-    upload = make_upload_file(tenant_id=tenant_id, key=f"messages/{uuid4()}.txt")
+    upload = make_upload_file(
+        tenant_id=tenant_id,
+        key=f"messages/{uuid4()}.txt",
+        created_by=str(uuid4()),
+    )
     db_session_with_containers.add_all(
         [
             make_app(app_id=app_id, tenant_id=tenant_id),
@@ -364,7 +372,11 @@ def test_app_icon_reference_waits_for_cleanup_claim_and_rejects_pending_file(
     register_upload_file_reference_guards()
     tenant_id = str(uuid4())
     app_id = str(uuid4())
-    upload = make_upload_file(tenant_id=tenant_id, key=f"app-icons/{uuid4()}.png")
+    upload = make_upload_file(
+        tenant_id=tenant_id,
+        key=f"app-icons/{uuid4()}.png",
+        created_by=str(uuid4()),
+    )
     db_session_with_containers.add(upload)
     db_session_with_containers.commit()
 
@@ -429,7 +441,11 @@ def test_agent_config_writer_waits_for_cleanup_claim_and_rejects_pending_file(
 ) -> None:
     tenant_id = str(uuid4())
     agent_id = str(uuid4())
-    upload = make_upload_file(tenant_id=tenant_id, key=f"agent-config/{uuid4()}.txt")
+    upload = make_upload_file(
+        tenant_id=tenant_id,
+        key=f"agent-config/{uuid4()}.txt",
+        created_by=str(uuid4()),
+    )
     with icon_lifecycle_sessions.begin() as session:
         session.add_all(
             [
@@ -613,7 +629,11 @@ def test_normalized_owner_writer_waits_for_cleanup_and_rejects_the_claimed_file(
 ) -> None:
     register_upload_file_reference_guards()
     tenant_id = str(uuid4())
-    upload = make_upload_file(tenant_id=tenant_id, key=f"human-input/{uuid4()}.txt")
+    upload = make_upload_file(
+        tenant_id=tenant_id,
+        key=f"human-input/{uuid4()}.txt",
+        created_by=str(uuid4()),
+    )
     db_session_with_containers.add(upload)
     db_session_with_containers.commit()
 
@@ -684,7 +704,11 @@ def test_cleanup_waits_for_normalized_owner_writer_and_releases_its_candidate(
 ) -> None:
     register_upload_file_reference_guards()
     tenant_id = str(uuid4())
-    upload = make_upload_file(tenant_id=tenant_id, key=f"human-input/{uuid4()}.txt")
+    upload = make_upload_file(
+        tenant_id=tenant_id,
+        key=f"human-input/{uuid4()}.txt",
+        created_by=str(uuid4()),
+    )
     db_session_with_containers.add(upload)
     db_session_with_containers.commit()
 

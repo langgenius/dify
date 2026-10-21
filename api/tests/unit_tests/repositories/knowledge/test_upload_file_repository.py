@@ -2384,6 +2384,65 @@ def test_document_owner_mapper_syncs_edges_and_claims_serialized_only_detach(sql
 
 @pytest.mark.parametrize(
     "sqlite_session",
+    [(Dataset, Document, DocumentSegment, UploadFile, KnowledgeUploadFileReference)],
+    indirect=True,
+)
+@pytest.mark.parametrize("owner_kind", ["document", "segment"])
+def test_new_knowledge_owner_mapper_uses_identity_assigned_during_insert(
+    sqlite_session: Session,
+    owner_kind: str,
+) -> None:
+    upload = make_upload_file(file_id="file-1", tenant_id="tenant-1", key="files/one")
+    dataset = _dataset("dataset-1", "tenant-1")
+    sqlite_session.add_all([dataset, upload])
+    sqlite_session.flush()
+
+    with _registered_upload_reference_guards():
+        if owner_kind == "document":
+            expected_document = Document(
+                tenant_id="tenant-1",
+                dataset_id=dataset.id,
+                position=1,
+                data_source_type=DataSourceType.UPLOAD_FILE,
+                data_source_info=json.dumps({"upload_file_id": upload.id}),
+                batch="batch-1",
+                name="Document with insert-time identity",
+                created_from="api",
+                created_by="account-1",
+                indexing_status="completed",
+                doc_form="text_model",
+                enabled=True,
+                archived=False,
+            )
+            owner: Document | DocumentSegment = expected_document
+        else:
+            expected_document = _document("document-1", workspace_id="tenant-1")
+            sqlite_session.add(expected_document)
+            sqlite_session.flush()
+            owner = DocumentSegment(
+                tenant_id="tenant-1",
+                dataset_id=dataset.id,
+                document_id=expected_document.id,
+                position=1,
+                content=f"![image](/files/{upload.id}/image-preview)",
+                word_count=1,
+                tokens=1,
+                created_by="account-1",
+            )
+
+        sqlite_session.add(owner)
+        sqlite_session.flush()
+
+    assert owner.id
+    reference = sqlite_session.scalar(select(KnowledgeUploadFileReference))
+    assert reference is not None
+    assert reference.document_id == expected_document.id
+    assert reference.resource_id == owner.id
+    assert reference.upload_file_id == upload.id
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
     [(Dataset, Document, UploadFile, KnowledgeUploadFileReference)],
     indirect=True,
 )
