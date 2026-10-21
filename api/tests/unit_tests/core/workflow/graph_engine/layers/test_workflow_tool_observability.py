@@ -88,7 +88,7 @@ def test_workflow_tool_tracing_survives_worker_handoff(
                     assert completed.wait(10), "Workflow Tool did not resume on the available worker"
 
         state = RuntimeState(workflow_id="outer-workflow", variable_pool=VariablePool(), start_at=1)
-        tool, _, _ = _workflow_tool_node(state)
+        tool, _, _ = _workflow_tool_node(monkeypatch, state)
         original_resume = tool._resume_container_events
 
         def instrument_resume(*, result: ContainerRunResult) -> Generator[NodeEventPayload | ContainerAwaitRequest]:
@@ -132,7 +132,7 @@ def test_standalone_node_uses_worker_scoped_tracing_context(
     memory_span_exporter: InMemorySpanExporter,
 ) -> None:
     apply_config_overrides(monkeypatch, ENABLE_OTEL=True)
-    tool, _, _ = _workflow_tool_node()
+    tool, _, _ = _workflow_tool_node(monkeypatch)
     node = _outer_graph(tool).root_node
     tracer = tracer_provider_with_memory_exporter.get_tracer(__name__)
     with tracer.start_as_current_span("standalone") as parent:
@@ -165,7 +165,7 @@ def test_interleaved_snippets_restore_caller_flask_context(
             parents.append(parent.get_span_context())
             g._login_user = name
             request_id.set(name)
-            tool, _, _ = _workflow_tool_node()
+            tool, _, _ = _workflow_tool_node(monkeypatch)
             node = _outer_graph(tool).root_node
 
             def run_node() -> Generator[NodeRunStreamChunkEvent]:

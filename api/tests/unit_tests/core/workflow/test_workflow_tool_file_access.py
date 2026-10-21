@@ -87,7 +87,7 @@ def test_workflow_tool_dispatcher_enforces_file_ownership(
             variable_pool=VariablePool(),
             start_at=1,
         )
-    template_node, runtime, payload = _workflow_tool_node(runtime_state)
+    template_node, runtime, payload = _workflow_tool_node(monkeypatch, runtime_state)
     monkeypatch.setattr("core.workflow.node_factory.DifyToolNodeRuntime", lambda _, **_kwargs: runtime)
     tool_data = template_node.node_data.model_dump(mode="python")
     nodes = [
