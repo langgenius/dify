@@ -195,6 +195,100 @@ def test_completed_task_test_form_rebases_current_read_without_running() -> None
     assert not repo._runs
 
 
+def test_test_continuation_undo_is_scoped_to_current_task_graph_and_history() -> None:
+    import copy
+
+    from services.dify_builder.application.handlers_fix import mint_checkpoint, perform_revert
+
+    env, repo, session = setup_task()
+    _, context = repo.get_session(session.id)
+    assert isinstance(env.dify, FakeDifyPort)
+    mint_checkpoint(env, session, context, {"nodes": [], "edges": []}, "old", PcState.BUILD_PLAN_APPROVAL)
+    old_checkpoint = context.checkpoint_id
+    context.checkpoint_seq = 0
+    context.next_seq = 3
+    prior_items = [
+        ConversationItem(seq=1, kind="assistant_turn", payload={"card_state": "approved", "cards": ["form"]}),
+        ConversationItem(seq=2, kind="form", payload={"frozen": True, "values": {"order_id": "prior"}}),
+    ]
+    repo.compare_and_advance(session.id, session.version, session.current_state, context, prior_items)
+    session, _ = repo.get_session(session.id)
+    baseline = copy.deepcopy(env.dify.graph)
+    out = continue_task(env, session)
+    _, current = repo.get_session(session.id)
+    assert current.checkpoint_id != old_checkpoint
+    assert repo.get_checkpoint(current.checkpoint_id)[1].graph == baseline
+    assert current.checkpoint_seq == 4
+    env.dify.graph = {"nodes": [], "edges": []}
+    perform_revert(env, Turn(actor=Actor(account_id="u", tenant_id="t")), out, current)
+    assert env.dify.graph == baseline
+    rows = repo.list_conversation(session.id)
+    assert next(row for row in rows if row.seq == 1).payload == prior_items[0].payload
+    assert next(row for row in rows if row.seq == 2).payload == prior_items[1].payload
+    assert all(
+        row.payload["card_state"] == "invalidated" for row in rows if row.seq >= 4 and row.kind == "assistant_turn"
+    )
+    assert not repo._runs
+
+
+@pytest.mark.parametrize(
+    ("variable", "value"),
+    [
+        ({"variable": "field", "type": "select", "options": ["current"]}, "removed"),
+        ({"variable": "field", "type": "text-input", "max_length": 3}, "too long"),
+        ({"variable": "field", "type": "file"}, "old text"),
+        ({"variable": "field", "type": "file-list", "max_length": 1}, [{}, {}]),
+        ({"variable": "field", "type": "file-list"}, ["old text"]),
+        ({"variable": "field", "type": "external_data_tool"}, "old text"),
+    ],
+)
+def test_continuation_drops_values_incompatible_with_current_schema(variable: dict[str, object], value: object) -> None:
+    from services.dify_builder.test_input_continuity import reusable_values
+
+    assert reusable_values({"variables": [variable]}, {"field": value}) == {}
+
+
+def test_duplicate_continuation_does_not_create_another_checkpoint_or_form() -> None:
+    env, repo, session = setup_task()
+    out = continue_task(env, session)
+    _, first = repo.get_session(session.id)
+    history = repo.list_conversation(session.id)
+    continue_task(env, out)
+    _, current = repo.get_session(session.id)
+    assert current.checkpoint_id == first.checkpoint_id
+    assert repo.list_conversation(session.id) == history
+    assert not repo._runs
+
+
+def test_compatible_defaults_keep_zero_false_and_valid_file_shapes() -> None:
+    from services.dify_builder.test_input_continuity import reusable_values
+
+    schema = {
+        "variables": [
+            {"variable": "n", "type": "number"},
+            {"variable": "yes", "type": "checkbox"},
+            {"variable": "f", "type": "file"},
+            {"variable": "fs", "type": "file-list", "max_length": 1},
+            {"variable": "s", "type": "select", "options": ["active"]},
+        ]
+    }
+    values = {"n": 0, "yes": False, "f": {"upload_file_id": "file"}, "fs": [{"upload_file_id": "file2"}], "s": "active"}
+    assert reusable_values(schema, values) == values
+
+
+def test_edit_continuation_does_not_inherit_previous_task_restore_point() -> None:
+    env, repo, session = setup_task("edit")
+    _, context = repo.get_session(session.id)
+    context.checkpoint_id = "old-task"
+    context.checkpoint_seq = 0
+    repo.compare_and_advance(session.id, session.version, session.current_state, context, [])
+    session, _ = repo.get_session(session.id)
+    continue_task(env, session)
+    _, current = repo.get_session(session.id)
+    assert not current.checkpoint_id
+    assert current.checkpoint_seq >= 2
+
+
 def test_known_failed_run_allows_fresh_form_without_reusing_consent() -> None:
     from core.dify_builder.models import RunVerification
     from runtime_contracts.builder.execution import ExecutionEvidenceSummary
