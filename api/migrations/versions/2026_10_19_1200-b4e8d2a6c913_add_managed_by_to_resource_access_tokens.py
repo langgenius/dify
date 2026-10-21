@@ -1,7 +1,7 @@
 """add managed_by to resource access tokens
 
 Revision ID: b4e8d2a6c913
-Revises: c6f4a90d8b31
+Revises: a8c3e7f4b912
 Create Date: 2026-10-19 12:00:00.000000
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 import models.types
 
 revision = "b4e8d2a6c913"
-down_revision = "c6f4a90d8b31"
+down_revision = "a8c3e7f4b912"
 branch_labels = None
 depends_on = None
 
