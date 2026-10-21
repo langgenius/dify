@@ -16,7 +16,7 @@ class RequestContext(NamedTuple):
     """Framework-neutral request metadata and admitted identity.
 
     Anonymous admission uses empty ``account_id`` and ``active_workspace_id`` values.
-    ``resource_app_ids`` is absent for account callers; an empty set admits no apps.
+    Resource scopes are absent for account callers; an empty set admits no resources.
     """
 
     request_id: str
@@ -25,6 +25,7 @@ class RequestContext(NamedTuple):
     active_workspace_id: str
     remote_ip: str | None = None
     resource_app_ids: frozenset[str] | None = None
+    resource_dataset_ids: frozenset[str] | None = None
 
 
 class AccountRequestContext(NamedTuple):

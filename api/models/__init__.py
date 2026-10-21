@@ -15,6 +15,8 @@ from .agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentConfigToolFileReference,
+    AgentConfigUploadFileReference,
     AgentConfigVersionKind,
     AgentDebugConversation,
     AgentHomeSnapshot,
@@ -32,6 +34,7 @@ from .agent import (
 )
 from .agent_sandbox_usage import AgentSandboxExecution, AgentSandboxUsageEvent
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
+from .app_cleanup import AppCleanupOperation
 from .comment import (
     WorkflowComment,
     WorkflowCommentMention,
@@ -66,6 +69,7 @@ from .enums import (
 )
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
 from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
+from .knowledge_task import KnowledgeTaskOutbox
 from .model import (
     AccountTrialAppRecord,
     ApiRequest,
@@ -157,6 +161,11 @@ from .workflow import (
     WorkflowVersionCounter,
     resolve_workflow_kind,
 )
+from .workspace import (
+    WorkspaceOwnerTransferNotification,
+    WorkspaceOwnerTransferOperation,
+    WorkspaceProvisioningOperation,
+)
 
 __all__ = [
     "APIBasedExtension",
@@ -172,6 +181,8 @@ __all__ = [
     "AgentConfigRevision",
     "AgentConfigRevisionOperation",
     "AgentConfigSnapshot",
+    "AgentConfigToolFileReference",
+    "AgentConfigUploadFileReference",
     "AgentConfigVersionKind",
     "AgentDebugConversation",
     "AgentHomeSnapshot",
@@ -193,6 +204,7 @@ __all__ = [
     "App",
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
+    "AppCleanupOperation",
     "AppDatasetJoin",
     "AppMCPServer",
     "AppMode",
@@ -239,6 +251,7 @@ __all__ = [
     "IconType",
     "InstalledApp",
     "InvitationCode",
+    "KnowledgeTaskOutbox",
     "LoadBalancingModelConfig",
     "Message",
     "MessageAgentThought",
@@ -311,5 +324,8 @@ __all__ = [
     "WorkflowTriggerStatus",
     "WorkflowType",
     "WorkflowVersionCounter",
+    "WorkspaceOwnerTransferNotification",
+    "WorkspaceOwnerTransferOperation",
+    "WorkspaceProvisioningOperation",
     "resolve_workflow_kind",
 ]

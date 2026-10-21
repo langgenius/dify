@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping
 from functools import lru_cache
 from typing import Any
@@ -7,6 +8,9 @@ from typing import Any
 from core.workflow.file_reference import parse_file_reference
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.file.constants import FILE_MODEL_IDENTITY, maybe_file_object
+
+_PERSISTED_FILE_VALUE_TYPES = frozenset(("file", "array[file]"))
+_UPLOAD_FILE_TRANSFER_METHODS = frozenset((FileTransferMethod.LOCAL_FILE.value, FileTransferMethod.REMOTE_URL.value))
 
 
 @lru_cache(maxsize=1)
@@ -30,6 +34,51 @@ def resolve_file_record_id(file_mapping: Mapping[str, Any]) -> str | None:
             return parsed_reference.record_id
 
     return None
+
+
+def resolve_upload_file_ids_from_serialized_file_value(
+    *,
+    value_type: object,
+    value: object,
+) -> tuple[str, ...]:
+    """Resolve UploadFile ids from one persisted workflow file value.
+
+    Draft variables store a JSON serialization of either one file or an array
+    of files. Only local files and remote files backed by an UploadFile are
+    durable UploadFile owners; tool and datasource files have different
+    persistence owners.
+    """
+
+    value_type_value = getattr(value_type, "value", value_type)
+    if value_type_value not in _PERSISTED_FILE_VALUE_TYPES:
+        return ()
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (TypeError, ValueError):
+            return ()
+
+    mappings: tuple[Mapping[str, Any], ...]
+    if value_type_value == "file" and isinstance(value, Mapping):
+        mappings = (value,)
+    elif value_type_value == "array[file]" and isinstance(value, list):
+        mappings = tuple(item for item in value if isinstance(item, Mapping))
+    else:
+        return ()
+
+    file_ids: list[str] = []
+    for mapping in mappings:
+        transfer_method = mapping.get("transfer_method")
+        transfer_method_value = getattr(transfer_method, "value", transfer_method)
+        if transfer_method_value not in _UPLOAD_FILE_TRANSFER_METHODS:
+            continue
+        record_id = resolve_file_record_id(mapping)
+        if record_id is None:
+            upload_file_id = mapping.get("upload_file_id")
+            record_id = upload_file_id if isinstance(upload_file_id, str) and upload_file_id else None
+        if record_id is not None:
+            file_ids.append(record_id)
+    return tuple(dict.fromkeys(file_ids))
 
 
 def resolve_file_mapping_tenant_id(

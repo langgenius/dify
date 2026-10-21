@@ -11,7 +11,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 from .agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
-from .base import Base, DefaultFieldsMixin
+from .base import Base, DefaultFieldsMixin, TypeBase
 from .types import EnumText, JSONModelColumn, LongText, StringUUID
 
 
@@ -370,6 +370,102 @@ class AgentConfigSnapshot(DefaultFieldsMixin, Base):
         if isinstance(self.config_snapshot, str):
             return json.loads(self.config_snapshot)
         return dict(self.config_snapshot)
+
+
+class AgentConfigUploadFileReference(TypeBase):
+    """Indexed UploadFile ownership edge for Agent Soul config files."""
+
+    __tablename__ = "agent_config_upload_file_references"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_config_upload_file_reference_pkey"),
+        UniqueConstraint(
+            "tenant_id",
+            "owner_kind",
+            "owner_id",
+            "upload_file_id",
+            name="agent_config_upload_file_reference_unique",
+        ),
+        Index(
+            "agent_config_upload_file_reference_file_idx",
+            "tenant_id",
+            "upload_file_id",
+        ),
+        Index(
+            "agent_config_upload_file_reference_owner_idx",
+            "tenant_id",
+            "owner_kind",
+            "owner_id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        insert_default=lambda: str(uuidv7()),
+        default_factory=lambda: str(uuidv7()),
+        init=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    owner_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    upload_file_id: Mapped[str] = mapped_column(
+        StringUUID,
+        sa.ForeignKey("upload_files.id"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        init=False,
+    )
+
+
+class AgentConfigToolFileReference(TypeBase):
+    """Indexed ToolFile ownership edge for Agent Soul config files."""
+
+    __tablename__ = "agent_config_tool_file_references"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_config_tool_file_reference_pkey"),
+        UniqueConstraint(
+            "tenant_id",
+            "owner_kind",
+            "owner_id",
+            "tool_file_id",
+            name="agent_config_tool_file_reference_unique",
+        ),
+        Index(
+            "agent_config_tool_file_reference_file_idx",
+            "tenant_id",
+            "tool_file_id",
+        ),
+        Index(
+            "agent_config_tool_file_reference_owner_idx",
+            "tenant_id",
+            "owner_kind",
+            "owner_id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        insert_default=lambda: str(uuidv7()),
+        default_factory=lambda: str(uuidv7()),
+        init=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    owner_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tool_file_id: Mapped[str] = mapped_column(
+        StringUUID,
+        sa.ForeignKey("tool_files.id"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        init=False,
+    )
 
 
 class AgentConfigRevision(Base):

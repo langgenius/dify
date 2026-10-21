@@ -94,6 +94,7 @@ from models.tools import ToolFile
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.roster_service import AgentRosterService
 from services.file_service import FileService
+from services.tag_application_service import SkillTagMutations, normalize_tag_name
 
 logger = logging.getLogger(__name__)
 
@@ -583,9 +584,11 @@ class SkillManagementService:
         *,
         tool_file_manager: ToolFileManager | None = None,
         session: Session | None = None,
+        skill_tags: SkillTagMutations[Session] | None = None,
     ) -> None:
         self._tool_files = tool_file_manager or ToolFileManager()
         self._session = session
+        self._skill_tags = skill_tags
 
     @contextmanager
     def _session_scope(self, session: Session | None = None) -> Generator[Session]:
@@ -621,13 +624,14 @@ class SkillManagementService:
             )
             session.add(skill)
             session.flush()
-            self._sync_skill_tag_bindings(
-                session,
-                tenant_id=tenant_id,
-                user_id=user_id,
-                skill_id=skill.id,
-                tags=payload.tags,
-            )
+            if payload.tags:
+                self._sync_skill_tag_bindings(
+                    session,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    skill_id=skill.id,
+                    tags=payload.tags,
+                )
             initial_skill_md = self._build_initial_skill_md(skill=skill)
             initial_skill_md_bytes = initial_skill_md.encode("utf-8")
             session.add(
@@ -744,7 +748,7 @@ class SkillManagementService:
                 )
             requested_tags = self._normalize_tags(tags or [])
             if requested_tags:
-                requested_tag_keys = [tag.casefold() for tag in requested_tags]
+                requested_tag_keys = [normalize_tag_name("skill", tag) for tag in requested_tags]
                 tagged_skill_ids = (
                     select(TagBinding.target_id)
                     .join(Tag, Tag.id == TagBinding.tag_id)
@@ -752,10 +756,10 @@ class SkillManagementService:
                         TagBinding.tenant_id == tenant_id,
                         Tag.tenant_id == tenant_id,
                         Tag.type == TagType.SKILL,
-                        func.lower(Tag.name).in_(requested_tag_keys),
+                        Tag.normalized_name.in_(requested_tag_keys),
                     )
                     .group_by(TagBinding.target_id)
-                    .having(func.count(func.distinct(func.lower(Tag.name))) == len(requested_tag_keys))
+                    .having(func.count(func.distinct(Tag.normalized_name)) == len(requested_tag_keys))
                 )
                 stmt = stmt.where(Skill.id.in_(tagged_skill_ids))
             total = session.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
@@ -2085,13 +2089,15 @@ class SkillManagementService:
             session.add(duplicate)
             session.flush()
             duplicate_id = duplicate.id
-            self._sync_skill_tag_bindings(
-                session,
-                tenant_id=tenant_id,
-                user_id=user_id,
-                skill_id=duplicate.id,
-                tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[source.id]).get(source.id, []),
-            )
+            source_tags = self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[source.id]).get(source.id, [])
+            if source_tags:
+                self._sync_skill_tag_bindings(
+                    session,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    skill_id=duplicate.id,
+                    tags=source_tags,
+                )
             source_draft_files = list(
                 session.scalars(select(SkillDraftFile).where(SkillDraftFile.skill_id == source.id))
             )
@@ -3330,7 +3336,7 @@ class SkillManagementService:
         seen: set[str] = set()
         for tag in tags:
             value = tag.strip()[:_MAX_TAG_LENGTH]
-            key = value.casefold()
+            key = normalize_tag_name("skill", value)
             if value and key not in seen:
                 normalized.append(value)
                 seen.add(key)
@@ -3338,9 +3344,9 @@ class SkillManagementService:
             raise SkillManagementServiceError("too_many_tags", "skill supports at most 5 tags")
         return normalized
 
-    @staticmethod
     def _sync_skill_tag_bindings(
-        session,
+        self,
+        session: Session,
         *,
         tenant_id: str,
         user_id: str,
@@ -3348,46 +3354,15 @@ class SkillManagementService:
         tags: list[str],
     ) -> None:
         normalized_tags = SkillManagementService._normalize_tags(tags)
-        session.execute(
-            delete(TagBinding).where(
-                TagBinding.tenant_id == tenant_id,
-                TagBinding.target_id == skill_id,
-                TagBinding.tag_id.in_(select(Tag.id).where(Tag.tenant_id == tenant_id, Tag.type == TagType.SKILL)),
-            )
+        if self._skill_tags is None:
+            raise RuntimeError("Skill tag mutations are not configured")
+        self._skill_tags.replace_skill_bindings(
+            session,
+            workspace_id=tenant_id,
+            actor_id=user_id,
+            skill_id=skill_id,
+            names=normalized_tags,
         )
-        if not normalized_tags:
-            return
-
-        existing_tags = list(
-            session.scalars(
-                select(Tag).where(
-                    Tag.tenant_id == tenant_id,
-                    Tag.type == TagType.SKILL,
-                    func.lower(Tag.name).in_([tag.casefold() for tag in normalized_tags]),
-                )
-            )
-        )
-        tag_by_key = {tag.name.casefold(): tag for tag in existing_tags}
-        for tag_name in normalized_tags:
-            tag = tag_by_key.get(tag_name.casefold())
-            if tag is None:
-                tag = Tag(
-                    tenant_id=tenant_id,
-                    type=TagType.SKILL,
-                    name=tag_name,
-                    created_by=user_id,
-                )
-                session.add(tag)
-                session.flush()
-                tag_by_key[tag_name.casefold()] = tag
-            session.add(
-                TagBinding(
-                    tenant_id=tenant_id,
-                    tag_id=tag.id,
-                    target_id=skill_id,
-                    created_by=user_id,
-                )
-            )
 
     @staticmethod
     def _require_skill(session, *, tenant_id: str, skill_id: str) -> Skill:

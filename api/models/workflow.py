@@ -2103,6 +2103,59 @@ class WorkflowDraftVariableFile(TypeBase):
     )
 
 
+class WorkflowDraftVariableUploadFileReference(TypeBase):
+    """Indexed UploadFile ownership edge for an ordinary draft-variable value."""
+
+    __tablename__ = "workflow_draft_variable_upload_file_references"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_draft_variable_upload_file_reference_pkey"),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "draft_variable_id",
+            "upload_file_id",
+            name="workflow_draft_variable_upload_file_reference_unique",
+        ),
+        sa.Index(
+            "workflow_draft_variable_upload_file_reference_file_idx",
+            "tenant_id",
+            "upload_file_id",
+        ),
+        sa.Index(
+            "workflow_draft_variable_upload_file_reference_owner_idx",
+            "tenant_id",
+            "app_id",
+            "node_id",
+            "draft_variable_id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        default_factory=lambda: str(uuidv7()),
+        insert_default=lambda: str(uuidv7()),
+        init=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    draft_variable_id: Mapped[str] = mapped_column(
+        StringUUID,
+        sa.ForeignKey("workflow_draft_variables.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    upload_file_id: Mapped[str] = mapped_column(
+        StringUUID,
+        sa.ForeignKey("upload_files.id"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        init=False,
+    )
+
+
 def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
 

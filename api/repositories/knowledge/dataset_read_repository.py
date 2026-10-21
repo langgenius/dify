@@ -56,6 +56,27 @@ def segment_content_file_ids(content: str) -> tuple[set[str], set[str]]:
     )
 
 
+def lock_dataset_row_for_child_write(session: Session, *, tenant_id: str, dataset_id: str) -> Dataset | None:
+    """Serialize child writes with deletion and recheck that the parent still exists.
+
+    Dataset deletion takes the same row lock before it snapshots descendants. A
+    child writer that wins the lock therefore commits before that snapshot; a
+    writer that loses waits for deletion and observes that the dataset is gone.
+    ``populate_existing`` makes the locking read refresh an identity already
+    present in a MySQL repeatable-read session.
+    """
+
+    return session.scalar(
+        select(Dataset)
+        .where(
+            Dataset.id == dataset_id,
+            Dataset.tenant_id == tenant_id,
+        )
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+
+
 @dataclass(frozen=True)
 class DocumentReadBatch:
     uploads: dict[tuple[str, str], UploadFile] = field(default_factory=dict)
