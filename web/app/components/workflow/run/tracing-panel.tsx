@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type { WorkflowRunInfo } from './workflow-tool-tracing-context'
 import type { ExternalTraceRun } from './external-trace-row'
+import type { WorkflowRunInfo } from './workflow-tool-tracing-context'
 import type { NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
@@ -145,6 +145,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
           <NodePanel
             nodeInfo={node!}
             allExecutions={list}
+            externalTraceRun={externalTraceRun}
             onShowIterationDetail={() => setContainerId(node.id)}
             onShowLoopDetail={() => setContainerId(node.id)}
             onShowRetryDetail={logs.handleShowRetryResultList}

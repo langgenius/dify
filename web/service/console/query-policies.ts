@@ -1640,13 +1640,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       snippets: {
         bySnippetId: {
-          traceRuns: {
-            bySourceKind: {
-              bySourceId: {
-                get: { queryOptions: { context: { silent: true }, retry: false } },
-              },
-            },
-          },
           workflowRuns: {
             tasks: {
               byTaskId: {
