@@ -3881,6 +3881,25 @@ Stop running workflow task
 | 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /apps/{app_id}/workflow-runs/{run_id}/node-executions/{node_execution_id}/children
+Get the internal node executions of one workflow tool invocation
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Root application ID | Yes | string (uuid) |
+| node_execution_id | path | Tool execution ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Internal node executions retrieved successfully | **application/json**: [WorkflowToolNodeExecutionListResponse](#workflowtoolnodeexecutionlistresponse)<br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files
 List a directory in a workflow Agent node sandbox
 
@@ -9090,7 +9109,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflow retrieved successfully, or null if not exist | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
+| 200 | Published workflow retrieved successfully, or null if not exist | **application/json**: [RagPipelinePublishedWorkflowResponse](#ragpipelinepublishedworkflowresponse)<br> |
 | 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -14480,7 +14499,6 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow tool created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [WorkflowToolHumanInputNotSupportedError](#workflowtoolhumaninputnotsupportederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/delete
@@ -14538,7 +14556,6 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow tool updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [WorkflowToolHumanInputNotSupportedError](#workflowtoolhumaninputnotsupportederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-providers
@@ -20907,6 +20924,13 @@ Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
 | ---- | ---- | ----------- | -------- |
 | DeclaredOutputType | string |  |  |
 
+#### DefaultBlockConfigItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | Yes |
+| type | string |  | Yes |
+
 #### DefaultBlockConfigQuery
 
 | Name | Type | Description | Required |
@@ -22373,13 +22397,13 @@ Enum class for form type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| actions | [ object ] |  | No |
+| actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
 | display_in_ui | boolean |  | No |
 | expiration_time | integer |  | No |
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
-| inputs | [ object ] |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 | resolved_default_values | object |  | No |
@@ -25623,6 +25647,14 @@ Blocking run result: a preview run returns the workflow result, a processing run
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | RagPipelinePublishedRunResponse | [PipelineGenerateResponse](#pipelinegenerateresponse)<br>[WorkflowAppBlockingResponse](#workflowappblockingresponse) | Blocking run result: a preview run returns the workflow result, a processing run the queued batch. |  |
+
+#### RagPipelinePublishedWorkflowResponse
+
+A null response means the pipeline has no published workflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RagPipelinePublishedWorkflowResponse | [WorkflowResponse](#workflowresponse) | A null response means the pipeline has no published workflow. |  |
 
 #### RagPipelineRecommendedPluginQuery
 
@@ -29663,19 +29695,46 @@ Workflow run not found.
 | workflow_app_id | string |  | No |
 | workflow_tool_id | string |  | No |
 
-#### WorkflowToolHumanInputNotSupportedError
-
-Workflow with Human Input nodes cannot be published as a workflow tool.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| WorkflowToolHumanInputNotSupportedError |  | Workflow with Human Input nodes cannot be published as a workflow tool. |  |
-
 #### WorkflowToolListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | workflow_tool_id | string |  | Yes |
+
+#### WorkflowToolNodeExecutionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowToolNodeExecutionResponse](#workflowtoolnodeexecutionresponse) ] |  | Yes |
+
+#### WorkflowToolNodeExecutionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
+| created_by_role | string |  | No |
+| elapsed_time | number |  | No |
+| error | string |  | No |
+| execution_metadata |  |  | No |
+| extras |  |  | No |
+| finished_at | integer |  | No |
+| id | string |  | Yes |
+| index | integer |  | No |
+| inputs |  |  | No |
+| inputs_truncated | boolean |  | No |
+| node_execution_id | string |  | No |
+| node_id | string |  | No |
+| node_type | string |  | No |
+| outputs |  |  | No |
+| outputs_truncated | boolean |  | No |
+| predecessor_node_id | string |  | No |
+| process_data |  |  | No |
+| process_data_truncated | boolean |  | No |
+| retry_index | integer |  | No |
+| status | string |  | No |
+| title | string |  | No |
 
 #### WorkflowToolParameterConfiguration
 

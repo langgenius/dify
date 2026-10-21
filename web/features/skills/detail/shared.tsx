@@ -6,7 +6,7 @@ import type {
   SkillResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { InfiniteData, useQueryClient } from '@tanstack/react-query'
 import type {
   DefaultModel,
@@ -82,12 +82,12 @@ export function runSkillFileMutation(
 
 export const skillFileHotkeys = {
   copy: {
-    command: 'Mod+C' satisfies Hotkey,
+    command: 'Mod+C' satisfies HotkeyChord,
   },
   cut: {
-    command: 'Mod+X' satisfies Hotkey,
+    command: 'Mod+X' satisfies HotkeyChord,
   },
-  paste: { command: 'Mod+V' satisfies Hotkey },
+  paste: { command: 'Mod+V' satisfies HotkeyChord },
 } as const
 
 export const skillFileMenuPopupClassName = 'w-[168px] data-ending-style:transition-none'

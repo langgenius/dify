@@ -12,7 +12,17 @@ import Authorized from '../index'
 const requests = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }))
 vi.mock('@/service/base', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/base')>()
-  return { ...actual, get: requests.get, post: requests.post }
+  return {
+    ...actual,
+    request: async (url: string, _init: RequestInit, options: { request: Request }) => {
+      const path = new URL(url).pathname.replace('/console/api', '')
+      return Response.json(
+        options.request.method === 'GET'
+          ? await requests.get(path)
+          : await requests.post(path, { body: await options.request.json() }),
+      )
+    },
+  }
 })
 const permissions = vi.hoisted(() => ({
   keys: ['credential.use', 'credential.create', 'credential.manage'],
@@ -48,7 +58,12 @@ beforeEach(() => {
   requests.get.mockImplementation((url: string) => {
     if (url.endsWith('/credential/schema/api-key'))
       return Promise.resolve([
-        { name: 'api_key', label: 'API Key', type: FormTypeEnum.secretInput, required: true },
+        {
+          name: 'api_key',
+          label: { en_US: 'API Key' },
+          type: FormTypeEnum.secretInput,
+          required: true,
+        },
       ])
     if (url.endsWith('/oauth/client-schema'))
       return Promise.resolve({

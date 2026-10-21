@@ -2,6 +2,7 @@ import type { FileEntity } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { TransferMethod } from '@/types/app'
 import { FileContextProvider } from '../../store'
 import { FileListInChatInput } from '../file-list'
@@ -37,6 +38,7 @@ it('removes the selected attachment from a mixed chat file list and reports the 
     <FileContextProvider value={files} onChange={onChange}>
       <FileListInChatInput fileConfig={config} />
     </FileContextProvider>,
+    { wrapper: createConsoleQueryWrapper().wrapper },
   )
   expect(screen.getByRole('img')).toBeInTheDocument()
   expect(screen.getByText('document.pdf')).toBeInTheDocument()

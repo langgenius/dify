@@ -1,5 +1,6 @@
 'use client'
 
+import type { SnippetPublishStatus } from '../query-params'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -11,8 +12,6 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-
-export type SnippetPublishStatus = 'all' | 'published' | 'draft'
 
 type SnippetPublishStatusFilterProps = {
   value: SnippetPublishStatus

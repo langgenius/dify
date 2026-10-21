@@ -109,35 +109,34 @@ export default function ResourceSelector({
 
     return knowledgeCandidates.filter((candidate) => candidate.name.toLowerCase().includes(keyword))
   }, [knowledgeCandidates, resourceSearchText])
-  const renderCandidate = (candidate: ResourceCandidate) => {
+  const renderCandidate = (
+    candidate: ResourceCandidate,
+    index: number,
+    candidates: ResourceCandidate[],
+  ) => {
     const key = candidateKey(candidate)
 
     return (
       <div
         key={key}
-        className="flex min-h-10 w-full items-center gap-3 border-b border-divider-subtle px-3 text-left last:border-b-0 hover:bg-state-base-hover"
+        className={`relative mx-2 my-0.5 flex min-h-11 items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-state-base-hover ${index < candidates.length - 1 ? 'after:pointer-events-none after:absolute after:inset-x-2 after:-bottom-px after:border-b after:border-divider-subtle' : ''}`}
       >
-        <Checkbox
-          checked={selectedResources.has(key)}
-          aria-label={candidate.name}
-          onCheckedChange={() => onToggle(candidate)}
-        />
         <span
           aria-hidden
           className={
             candidate.type === 'app'
-              ? 'i-ri-apps-2-line size-4 text-text-tertiary'
-              : 'i-ri-book-2-line size-4 text-text-tertiary'
+              ? 'i-ri-apps-2-line size-6 shrink-0 text-text-tertiary'
+              : 'i-ri-book-2-line size-6 shrink-0 text-text-tertiary'
           }
         />
         <span className="min-w-0 flex-1 truncate system-sm-medium text-text-primary">
           {candidate.name}
         </span>
-        <span className="system-xs-medium-uppercase text-text-tertiary">
-          {candidate.type === 'app'
-            ? t(($) => $['resourceAccessToken.app'], { ns: 'accountSettings' })
-            : t(($) => $['resourceAccessToken.knowledge'], { ns: 'accountSettings' })}
-        </span>
+        <Checkbox
+          checked={selectedResources.has(key)}
+          aria-label={candidate.name}
+          onCheckedChange={() => onToggle(candidate)}
+        />
       </div>
     )
   }
@@ -173,8 +172,8 @@ export default function ResourceSelector({
     if (!candidates.length && !hasNextPage) return null
 
     return (
-      <div>
-        <div className="flex h-8 items-center border-b border-divider-subtle px-3 system-xs-medium-uppercase text-text-tertiary">
+      <div className="mt-2 border-t border-divider-regular pt-2 first:mt-0 first:border-t-0 first:pt-0">
+        <div className="flex h-8 items-center px-4 system-xs-medium-uppercase text-text-tertiary">
           {title}
         </div>
         {candidates.map(renderCandidate)}
@@ -184,7 +183,7 @@ export default function ResourceSelector({
   }
 
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-3">
       <div className="system-sm-medium text-text-secondary">
         {t(($) => $['resourceAccessToken.resources'], { ns: 'accountSettings' })}
       </div>
@@ -196,29 +195,42 @@ export default function ResourceSelector({
             ns: 'accountSettings',
           })}
         />
-        <Tabs value={resourceTab} onValueChange={(value) => setResourceTab(value as ResourceTab)}>
-          <div className="flex items-center justify-between gap-3">
-            <TabsList className="gap-5">
-              <TabsTab value="all" className="py-1.5 system-sm-semibold">
+        <Tabs
+          className="grid gap-3"
+          value={resourceTab}
+          onValueChange={(value) => setResourceTab(value as ResourceTab)}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <TabsList className="gap-2">
+              <TabsTab
+                value="all"
+                className="rounded-lg border-b-0 px-3 py-1.5 system-sm-medium data-active:bg-state-base-active"
+              >
                 {t(($) => $['resourceAccessToken.tabAll'], { ns: 'accountSettings' })}
               </TabsTab>
-              <TabsTab value="app" className="py-1.5 system-sm-semibold">
+              <TabsTab
+                value="app"
+                className="rounded-lg border-b-0 px-3 py-1.5 system-sm-medium data-active:bg-state-base-active"
+              >
                 {t(($) => $['resourceAccessToken.tabApps'], { ns: 'accountSettings' })}
               </TabsTab>
-              <TabsTab value="knowledge" className="py-1.5 system-sm-semibold">
+              <TabsTab
+                value="knowledge"
+                className="rounded-lg border-b-0 px-3 py-1.5 system-sm-medium data-active:bg-state-base-active"
+              >
                 {t(($) => $['resourceAccessToken.tabKnowledgeBases'], {
                   ns: 'accountSettings',
                 })}
               </TabsTab>
             </TabsList>
-            <div className="rounded-full bg-state-accent-hover px-3 py-1 system-sm-semibold text-text-accent">
+            <div className="shrink-0 rounded-full bg-state-accent-hover px-3 py-1 system-xs-semibold text-text-accent">
               {t(($) => $['dynamicSelect.selected'], {
                 ns: 'common',
                 count: selectedResources.size,
               })}
             </div>
           </div>
-          <div className="max-h-72 overflow-y-auto rounded-lg border border-components-panel-border">
+          <div className="max-h-[min(28rem,45dvh)] overflow-y-auto overscroll-contain rounded-lg border border-divider-subtle py-1">
             {(appsQuery.isPending || datasetsQuery.isPending) && (
               <div className="grid gap-2 p-3">
                 <SkeletonRectangle className="h-8 w-full animate-pulse" />

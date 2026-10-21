@@ -41,7 +41,6 @@
   "duplicateTitle": "Uygulamayı Çoğalt",
   "editApp": "Bilgileri Düzenle",
   "editAppTitle": "Uygulama Bilgilerini Düzenle",
-  "editFailed": "Uygulama bilgileri güncellenemedi",
   "exportApp": "Uygulamayı dışa aktar",
   "exportFailed": "Dışa aktarma başarısız oldu",
   "exportSecret.description": "Seçilirse gizli değerler dışa aktarılan uygulama paketine dahil edilir.",

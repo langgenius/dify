@@ -41,7 +41,6 @@
   "duplicateTitle": "Dupliquer l'application",
   "editApp": "Modifier les informations",
   "editAppTitle": "Modifier les informations de l'application",
-  "editFailed": "Échec de la mise à jour des informations de l'application",
   "exportApp": "Exporter l’application",
   "exportFailed": "Échec de l’exportation",
   "exportSecret.description": "Si cette option est cochée, les valeurs secrètes seront incluses dans le paquet d’application exporté.",

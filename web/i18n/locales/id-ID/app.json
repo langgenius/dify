@@ -41,7 +41,6 @@
   "duplicateTitle": "Aplikasi Duplikat",
   "editApp": "Edit Informasi",
   "editAppTitle": "Edit Info Aplikasi",
-  "editFailed": "Gagal memperbarui info aplikasi",
   "exportApp": "Ekspor Aplikasi",
   "exportFailed": "Ekspor gagal",
   "exportSecret.description": "Jika dipilih, nilai rahasia akan disertakan dalam paket aplikasi yang diekspor.",

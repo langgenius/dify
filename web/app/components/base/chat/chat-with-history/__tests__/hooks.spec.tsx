@@ -19,6 +19,7 @@ import {
   updateFeedback,
 } from '@/service/share'
 import { createChatConfigFixture as createChatConfig } from '@/test/fixtures/chat'
+import { createHumanInputFormFixture } from '@/test/fixtures/workflow-process'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../constants'
 import { useChatWithHistory } from '../hooks'
 
@@ -749,7 +750,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       expect(mockUpdateFeedback).toHaveBeenCalledWith(
-        { url: '/messages/message-1/feedbacks', body: { rating: 'like', content: 'Great!' } },
+        { messageId: 'message-1', body: { rating: 'like', content: 'Great!' } },
         AppSourceType.webApp,
         'app-1',
       )
@@ -1086,7 +1087,7 @@ describe('useChatWithHistory', () => {
               {
                 type: 'human_input',
                 submitted: false,
-                form_definition: { fields: [] },
+                form_definition: createHumanInputFormFixture(),
                 workflow_run_id: 'wf-run-1',
               },
             ],
@@ -1105,6 +1106,134 @@ describe('useChatWithHistory', () => {
       const answerNode = result.current.appPrevChatTree[0]?.children?.[0]
       expect(answerNode?.humanInputFormDataList).toHaveLength(1)
       expect(answerNode?.workflow_run_id).toBe('wf-run-1')
+    })
+
+    it('preserves distinct legacy submissions without form definitions', async () => {
+      // Arrange
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1' })],
+      })
+      const chatListData = {
+        data: [
+          {
+            id: 'msg-normal',
+            query: 'Normal query',
+            answer: 'Answer',
+            message_files: [],
+            feedback: null,
+            retriever_resources: [],
+            agent_thoughts: null,
+            parent_message_id: null,
+            inputs: {},
+            status: 'normal',
+            extra_contents: [
+              {
+                type: 'human_input',
+                submitted: true,
+                form_submission_data: {
+                  node_id: 'human-input',
+                  node_title: 'Approval',
+                  rendered_content: 'First approval',
+                  action_id: 'approve',
+                  action_text: 'Approve',
+                },
+              },
+              {
+                type: 'human_input',
+                submitted: true,
+                form_submission_data: {
+                  node_id: 'human-input',
+                  node_title: 'Approval',
+                  rendered_content: 'Second approval',
+                  action_id: 'approve',
+                  action_text: 'Approve',
+                },
+              },
+            ],
+          },
+        ],
+      }
+      mockFetchConversations.mockResolvedValue(listData)
+      mockFetchChatList.mockResolvedValue(chatListData)
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result.current.appPrevChatTree.length).toBeGreaterThan(0)
+      })
+
+      const answerNode = result.current.appPrevChatTree[0]?.children?.[0]
+      const forms = answerNode!.humanInputFilledFormDataList!
+      expect(forms.map((form) => form.rendered_content)).toEqual([
+        'First approval',
+        'Second approval',
+      ])
+      expect(forms[0]!.form_id).not.toBe(forms[1]!.form_id)
+    })
+
+    it('restores distinct same-Tool forms without removing the unsubmitted sibling', async () => {
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      const first = {
+        form_id: 'first',
+        node_id: 'tool',
+        node_title: 'Tool',
+        form_content: 'First approval',
+        inputs: [],
+        actions: [],
+        form_token: 'first-token',
+        display_in_ui: true,
+        resolved_default_values: {},
+        expiration_time: 100,
+      }
+      const second = {
+        ...first,
+        form_id: 'second',
+        form_content: 'Second approval',
+        form_token: 'second-token',
+      }
+      const filled = {
+        node_id: 'tool',
+        node_title: 'Tool',
+        rendered_content: 'Approved',
+        action_id: 'approve',
+        action_text: 'Approve',
+      }
+      mockFetchChatList.mockResolvedValue({
+        data: [
+          {
+            id: 'message',
+            query: 'Approve both requests',
+            answer: '',
+            message_files: [],
+            status: 'paused',
+            extra_contents: [
+              {
+                type: 'human_input',
+                submitted: false,
+                workflow_run_id: 'run',
+                form_definition: first,
+              },
+              {
+                type: 'human_input',
+                submitted: true,
+                workflow_run_id: 'run',
+                form_definition: second,
+                form_submission_data: filled,
+              },
+            ],
+          },
+        ],
+      })
+      const { result } = await renderWithClient(() => useChatWithHistory())
+      await waitFor(() => {
+        const answer = result.current.appPrevChatTree[0]?.children?.[0]
+        expect(answer?.humanInputFormDataList).toEqual([first])
+        expect(answer?.humanInputFilledFormDataList).toEqual([
+          { ...filled, form_id: 'second', form_content: 'Second approval', inputs: [] },
+        ])
+      })
     })
 
     it('should parse human input payloads regardless of message status', async () => {
@@ -1566,7 +1695,17 @@ describe('useChatWithHistory', () => {
             status: 'normal',
             extra_contents: [
               { type: 'human_input', submitted: false },
-              { type: 'human_input', submitted: true, form_submission_data: { submitted: true } },
+              {
+                type: 'human_input',
+                submitted: true,
+                form_submission_data: {
+                  node_id: 'human-input-1',
+                  node_title: 'Human Input',
+                  rendered_content: 'Approved',
+                  action_id: 'approve',
+                  action_text: 'Approve',
+                },
+              },
             ],
           },
           {
@@ -1584,7 +1723,7 @@ describe('useChatWithHistory', () => {
               {
                 type: 'human_input',
                 submitted: false,
-                form_definition: { fields: [] },
+                form_definition: createHumanInputFormFixture(),
                 workflow_run_id: 'wf-run-branch',
               },
               { type: 'human_input', submitted: true },
