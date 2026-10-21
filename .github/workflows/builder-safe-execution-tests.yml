@@ -1346,6 +1346,19 @@ jobs:
               "test_the_previous_refusal_stays_in_front_of_the_model_through_the_retry": 1,
               "test_truncation_names_the_keys_it_dropped": 1
           }
+          # ENG-1269: retain the exact inventory guard while adding insertion regressions.
+          a4_expected['tests.unit_tests.services.dify_builder.test_edit_cognition'].update({
+              "test_edit_corrects_retained_bypass_before_returning_insertion": 1,
+              "test_edit_refuses_still_condemned_bypass": 2,
+              "test_edit_keeps_explicit_parallel_path": 1,
+              "test_insertion_retry_cannot_drop_or_reclassify_the_required_path": 2,
+              "test_insertion_only_retry_preserves_valid_new_node_config": 1,
+              "test_edit_checks_paths_through_multiple_added_nodes": 1,
+              "test_bypass_detection_respects_original_edge_handles": 2,
+              "test_assessment_has_candidate_node_metadata_and_full_plan": 1,
+              "test_unavailable_assessment_does_not_authorize_a_bypass": 1,
+              "test_edit_does_not_accept_unassessed_bypass": 3,
+          })
           a4_expected['tests.unit_tests.services.dify_builder.test_fix_cognition'] = {
               "test_a_branch_connect_with_a_declared_handle_is_accepted_first_time": 1,
               "test_a_branch_connect_without_a_handle_is_refused_and_the_retry_recovers_it": 1,
