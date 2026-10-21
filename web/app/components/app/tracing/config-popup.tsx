@@ -12,6 +12,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription } from '@langgenius/dify-ui/field'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -185,7 +186,6 @@ export function ConfigPopup({
                   pending={pending}
                   config={configs[chosenProvider]}
                   isChosen
-                  onChoose={() => {}}
                 />
               ) : (
                 <p className="system-sm-regular text-text-secondary">
@@ -193,7 +193,14 @@ export function ConfigPopup({
                 </p>
               )
             ) : (
-              <div className="space-y-2">
+              <RadioGroup<ConfigurableTracingProvider | null>
+                value={chosenProvider}
+                aria-label={t(($) => $['tracing.configProviderTitle.configured'])}
+                className="block space-y-2"
+                onValueChange={(provider) => {
+                  if (provider) void chooseProvider(provider).catch(() => {})
+                }}
+              >
                 {groups.flatMap((group, index) =>
                   group.length > 0
                     ? [
@@ -218,15 +225,12 @@ export function ConfigPopup({
                             config={configs[item]}
                             configError={configErrors?.[item]}
                             isChosen={chosenProvider === item}
-                            onChoose={() => {
-                              void chooseProvider(item).catch(() => {})
-                            }}
                           />
                         )),
                       ]
                     : [],
                 )}
-              </div>
+              </RadioGroup>
             )}
           </div>
           {!readOnly && (

@@ -177,6 +177,15 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
       >
         {hasConfiguredTracing ? (
           <span className="flex items-center gap-2">
+            <span className="sr-only">
+              {t(($) => $['tracing.config'], { ns: 'app' })}
+              {' · '}
+              {t(($) => $['tracing.title'], { ns: 'app' })}
+              {' · '}
+              {inUseTracingProvider &&
+                t(($) => $[`tracing.${inUseTracingProvider}.title`], { ns: 'app' })}
+              {' · '}
+            </span>
             {inUseProviderIconClassName && (
               <span aria-hidden className="flex items-center pr-2 pl-1">
                 <span className={cn(inUseProviderIconClassName, 'h-5')} />

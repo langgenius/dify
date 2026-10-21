@@ -228,7 +228,7 @@ export const useChat = (
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
-  const stopPendingRef = useRef(false)
+  const stopPendingRef = useRef<number | null>(null)
   const pausedStateRef = useRef(false)
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
@@ -560,7 +560,8 @@ export const useChat = (
 
   const handleStop = useCallback(async () => {
     if (options.isNewAgent && isRespondingRef.current) {
-      if (stopPendingRef.current) return
+      const generation = workflowRequestGenerationRef.current
+      if (stopPendingRef.current === generation) return
       const taskId = taskIdRef.current
       if (!stopChat || !taskId) {
         toast.error(
@@ -568,8 +569,7 @@ export const useChat = (
         )
         return
       }
-      stopPendingRef.current = true
-      const generation = workflowRequestGenerationRef.current
+      stopPendingRef.current = generation
       try {
         await stopChat(taskId)
       } catch {
@@ -578,7 +578,7 @@ export const useChat = (
         )
         return
       } finally {
-        stopPendingRef.current = false
+        if (stopPendingRef.current === generation) stopPendingRef.current = null
       }
       if (generation !== workflowRequestGenerationRef.current) return
     }

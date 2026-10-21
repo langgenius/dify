@@ -483,7 +483,7 @@ describe('Tracing overview panel', () => {
     expect(screen.getByRole('status', { name: 'app.tracing.title' })).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
     await act(async () => configsReady.resolve())
-    expect(await screen.findByRole('button', { name: 'app.tracing.enabled' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: /app\.tracing\.enabled/ })).toBeEnabled()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
@@ -511,7 +511,7 @@ describe('Tracing overview panel', () => {
     expect(screen.getByRole('status', { name: 'app.tracing.title' })).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
     resolveConfigs()
-    expect(await screen.findByRole('button', { name: 'app.tracing.disabled' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: /app\.tracing\.disabled/ })).toBeEnabled()
   })
 
   it('keeps healthy providers usable and retries only the unavailable provider', async () => {
@@ -539,7 +539,7 @@ describe('Tracing overview panel', () => {
     const phoenix = within(screen.getByRole('group', { name: 'app.tracing.phoenix.title' }))
     expect(phoenix.queryByRole('button', { name: 'app.tracing.config' })).not.toBeInTheDocument()
     expect(
-      phoenix.queryByRole('button', { name: 'app.tracing.phoenix.title' }),
+      phoenix.queryByRole('radio', { name: 'app.tracing.phoenix.title' }),
     ).not.toBeInTheDocument()
     await user.click(screen.getByRole('switch'))
     await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
@@ -554,7 +554,7 @@ describe('Tracing overview panel', () => {
         },
       },
     ])
-    await user.click(screen.getByRole('button', { name: 'app.tracing.langsmith.title' }))
+    await user.click(screen.getByRole('radio', { name: 'app.tracing.langsmith.title' }))
     await waitFor(() => expect(screen.getByRole('switch')).toBeChecked())
     expect(writes[1]).toEqual({
       method: 'POST',
@@ -622,7 +622,7 @@ describe('Tracing overview panel', () => {
     expect(tracingSwitch).toHaveAccessibleDescription('app.tracing.disabledTip')
     await user.click(tracingSwitch)
     expect(writes).toHaveLength(0)
-    await user.click(screen.getByRole('button', { name: 'app.tracing.langfuse.title' }))
+    await user.click(screen.getByRole('radio', { name: 'app.tracing.langfuse.title' }))
     await waitFor(() => expect(screen.getByRole('switch')).toBeChecked())
     expect(writes).toEqual([
       {
@@ -670,8 +670,8 @@ describe('Tracing overview panel', () => {
     expect(writes).toEqual([])
 
     await user.tab({ shift: true })
-    expect(provider.getByRole('button', { name: 'app.tracing.langfuse.title' })).toHaveFocus()
-    await user.keyboard('{Enter}')
+    expect(provider.getByRole('radio', { name: 'app.tracing.langfuse.title' })).toHaveFocus()
+    await user.keyboard(' ')
     await waitFor(() =>
       expect(writes).toEqual([
         {
@@ -685,6 +685,68 @@ describe('Tracing overview panel', () => {
         },
       ]),
     )
+  })
+
+  it.each([true, false])(
+    'names the configured entry with its purpose, provider, and enabled=%s status',
+    async (enabled) => {
+      mockServer(true, { enabled, tracing_provider: 'langfuse' })
+      renderPanel()
+      const trigger = await screen.findByRole('button', {
+        name: `app.tracing.config · app.tracing.title · app.tracing.langfuse.title · app.tracing.${enabled ? 'enabled' : 'disabled'}`,
+      })
+      expect(
+        within(trigger).getByText(`app.tracing.${enabled ? 'enabled' : 'disabled'}`),
+      ).toBeVisible()
+    },
+  )
+
+  it('selects configured providers with arrow keys without turning selection off', async () => {
+    const writes = mockServer()
+    const original = request.getMockImplementation()!
+    request.mockImplementation((...args) => {
+      const sent = args[2].request
+      if (
+        sent.method === 'GET' &&
+        new URL(sent.url).searchParams.get('tracing_provider') === 'langsmith'
+      )
+        return Promise.resolve(
+          Response.json({
+            has_not_configured: false,
+            tracing_config: {
+              api_key: 'key',
+              project: 'project',
+              endpoint: 'https://api.smith.langchain.com',
+            },
+          }),
+        )
+      return original(...args)
+    })
+    const { client } = renderPanel()
+    const user = await openConfiguredPanel()
+    const group = screen.getByRole('radiogroup', {
+      name: 'app.tracing.configProviderTitle.configured',
+    })
+    const langfuse = within(group).getByRole('radio', { name: 'app.tracing.langfuse.title' })
+    const langsmith = within(group).getByRole('radio', { name: 'app.tracing.langsmith.title' })
+    expect(langfuse).toBeChecked()
+    langfuse.focus()
+    await user.keyboard('{ArrowRight}')
+    await waitFor(() => expect(client.isMutating()).toBe(0))
+    expect(langsmith).toBeChecked()
+    expect(langsmith).toHaveFocus()
+    expect(langfuse).not.toBeChecked()
+    await user.keyboard(' ')
+    expect(langsmith).toBeChecked()
+    expect(writes).toHaveLength(1)
+    expect(writes[0]?.body).toMatchObject({ tracing_provider: 'langsmith' })
+    await user.tab()
+    expect(
+      within(screen.getByRole('group', { name: 'app.tracing.langsmith.title' })).getByRole(
+        'button',
+        { name: 'app.tracing.config' },
+      ),
+    ).toHaveFocus()
   })
 
   it('keeps the provider list open and discards the cancelled form draft', async () => {
@@ -971,7 +1033,7 @@ describe('Tracing overview panel', () => {
     })
     renderPanel()
     const user = await openConfiguredPanel()
-    await user.click(screen.getByRole('button', { name: 'app.tracing.langsmith.title' }))
+    await user.click(screen.getByRole('radio', { name: 'app.tracing.langsmith.title' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Provider was removed')
     const provider = within(screen.getByRole('group', { name: 'app.tracing.langsmith.title' }))
     await waitFor(() =>
