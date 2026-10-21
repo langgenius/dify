@@ -406,6 +406,71 @@ describe('ExternalContactDialog pending state', () => {
     },
   )
 
+  it.each(['john..doe@example.com', '.evan@example.com', 'evan.@example.com'])(
+    'rejects malformed local parts without sending %s to the server',
+    async (email) => {
+      renderAvatarDialog()
+      const user = userEvent.setup()
+      await user.type(screen.getByRole('textbox', { name: 'contacts.external.name' }), 'Evan')
+      const emailInput = screen.getByRole<HTMLInputElement>('textbox', {
+        name: 'contacts.external.email',
+      })
+      await user.type(emailInput, email)
+      // Chrome accepts these local parts; happy-dom would otherwise bypass our form validation.
+      const validity = vi.spyOn(emailInput, 'validity', 'get').mockReturnValue({
+        valid: true,
+        badInput: false,
+        customError: false,
+        patternMismatch: false,
+        rangeOverflow: false,
+        rangeUnderflow: false,
+        stepMismatch: false,
+        tooLong: false,
+        tooShort: false,
+        typeMismatch: false,
+        valueMissing: false,
+      })
+      try {
+        await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
+        expect(await screen.findByText('contacts.external.validation.email_invalid')).toBeVisible()
+        expect(
+          consoleClient.workspaces.current.humanInput.contacts.external.post,
+        ).not.toHaveBeenCalled()
+      } finally {
+        validity.mockRestore()
+      }
+    },
+  )
+
+  it.each(['evan+qa@example.com', 'evan@xn--bcher-kva.de'])(
+    'keeps accepting the valid email %s',
+    async (email) => {
+      const contacts = consoleClient.workspaces.current.humanInput.contacts
+      vi.mocked(contacts.external.post).mockResolvedValue({
+        contact: {
+          id: 'valid-email-contact',
+          name: 'Evan',
+          email,
+          avatar_url: '',
+          created_at: 1,
+          type: 'external',
+        },
+      })
+      renderAvatarDialog()
+      const user = userEvent.setup()
+      await user.type(screen.getByRole('textbox', { name: 'contacts.external.name' }), 'Evan')
+      await user.type(screen.getByRole('textbox', { name: 'contacts.external.email' }), email)
+      await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
+
+      await waitFor(() =>
+        expect(contacts.external.post).toHaveBeenCalledWith(
+          { body: { name: 'Evan', email } },
+          expect.anything(),
+        ),
+      )
+    },
+  )
+
   it.each(['load', 'error'] as const)(
     'shows no fallback while the existing avatar loads, then handles its %s result',
     async (result) => {

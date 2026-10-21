@@ -51,6 +51,7 @@ function isValidEmail(value: string) {
   const [local, domain] = parts
   return Boolean(
     local &&
+    local.split('.').every((part) => part.length > 0) &&
     domain &&
     !value.includes(' ') &&
     domain.includes('.') &&
