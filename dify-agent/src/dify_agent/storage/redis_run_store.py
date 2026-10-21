@@ -6,10 +6,12 @@ beginning for polling and SSE. Records, event streams, and intents share one ret
 that is refreshed when status or event data is written. Execution is scheduled
 in-process by ``dify_agent.runtime.run_scheduler``; Redis is not a job queue, and
 create-run payloads are never persisted because layer config may include
-sensitive runtime configuration.
+sensitive runtime configuration. Idempotency claims persist only a hashed key,
+a request fingerprint, and the run id.
 """
 
 from collections.abc import AsyncIterator, Awaitable
+import hashlib
 from typing import cast, override
 
 from redis.asyncio import Redis
@@ -36,9 +38,34 @@ from dify_agent.runtime.event_sink import (
 )
 from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, DEFAULT_RUN_RETENTION_SECONDS
-from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_record_key
+from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_idempotency_key, run_record_key
 
 _TERMINAL_RUN_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
+
+
+_CREATE_RUN_IDEMPOTENT_SCRIPT = """
+local claim = redis.call("GET", KEYS[1])
+if claim then
+    local existing = cjson.decode(claim)
+    local existing_record_key = ARGV[5] .. ":runs:" .. existing.run_id .. ":record"
+    local existing_record = redis.call("GET", existing_record_key)
+    if existing_record then
+        if existing.fingerprint ~= ARGV[2] then
+            return {-1, existing.run_id, ""}
+        end
+        return {0, existing.run_id, existing_record}
+    end
+end
+
+local value = cjson.encode({run_id = ARGV[1], fingerprint = ARGV[2]})
+redis.call("SET", KEYS[1], value, "EX", ARGV[4])
+redis.call("SET", KEYS[2], ARGV[3], "EX", ARGV[4])
+return {1, ARGV[1], ARGV[3]}
+"""
+
+
+class IdempotencyConflictError(RuntimeError):
+    """Raised when a key is reused with a different create-run request."""
 
 
 class RunNotFoundError(LookupError):
@@ -188,6 +215,37 @@ class RedisRunStore(RunEventSink):
             ex=self.run_retention_seconds,
         )
         return record
+
+    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+        """Atomically claim a key and persist its run, returning ``(record, created)``.
+
+        The Lua script serializes admission across Redis clients, so concurrent
+        requests cannot both schedule work. Only hashes and a run id are stored;
+        the request may contain sensitive model configuration.
+        """
+        record = RunRecord(run_id=new_run_id(), status="running")
+        claim_key = run_idempotency_key(self.prefix, hashlib.sha256(idempotency_key.encode()).hexdigest())
+        raw_result = await cast(
+            Awaitable[object],
+            self.redis.eval(
+                _CREATE_RUN_IDEMPOTENT_SCRIPT,
+                2,
+                claim_key,
+                run_record_key(self.prefix, record.run_id),
+                record.run_id,
+                request_fingerprint,
+                record.model_dump_json(),
+                str(self.run_retention_seconds),
+                self.prefix,
+            ),
+        )
+        result = cast(list[object], raw_result)
+        status = int(cast(int | bytes | str, result[0]))
+        if status == -1:
+            raise IdempotencyConflictError("idempotency key was already used with a different create-run request")
+        record_json = _decode_redis_text(result[2])
+        persisted_record = RunRecord.model_validate_json(record_json)
+        return persisted_record, status == 1
 
     async def get_run(self, run_id: str) -> RunRecord:
         """Return one run record or raise ``RunNotFoundError``."""
@@ -412,6 +470,7 @@ def _decode_redis_text(value: object) -> str:
 __all__ = [
     "DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH",
     "DEFAULT_RUN_RETENTION_SECONDS",
+    "IdempotencyConflictError",
     "RedisRunStore",
     "RunNotFoundError",
 ]

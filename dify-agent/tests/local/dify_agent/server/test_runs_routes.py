@@ -4,7 +4,7 @@ from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID, Ru
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
-from dify_agent.storage.redis_run_store import RunNotFoundError
+from dify_agent.storage.redis_run_store import IdempotencyConflictError, RunNotFoundError
 
 
 class FakeScheduler:
@@ -93,6 +93,30 @@ def test_create_run_returns_running_from_scheduler() -> None:
 
     assert response.status_code == 202
     assert response.json() == {"run_id": "run-1", "status": "running"}
+
+
+def test_create_run_maps_idempotency_conflict_to_409() -> None:
+    from fastapi import FastAPI
+
+    class ConflictingScheduler(FakeScheduler):
+        async def create_run(self, request: object) -> object:
+            del request
+            raise IdempotencyConflictError("idempotency key was already used with a different create-run request")
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: ConflictingScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    response = TestClient(app).post(
+        "/runs",
+        json={
+            "composition": {"schema_version": 2, "layers": [{"name": "prompt", "config": {"user": "hello"}}]},
+            "idempotency_key": "retry-1",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "different create-run request" in response.json()["detail"]
 
 
 def test_cancel_run_endpoint_returns_scheduler_result() -> None:
