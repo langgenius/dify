@@ -19,7 +19,7 @@ def delete_segment_from_index_task(
     index_node_ids: list, dataset_id: str, document_id: str, segment_ids: list, child_node_ids: list | None = None
 ):
     """
-    Async Remove segment from index
+    Async remove a segment from indexes and clean up its attachment resources.
     :param index_node_ids:
     :param dataset_id:
     :param document_id:
@@ -39,30 +39,30 @@ def delete_segment_from_index_task(
             if not dataset_document:
                 return
 
-            if (
-                not dataset_document.enabled
-                or dataset_document.archived
-                or dataset_document.indexing_status != "completed"
-            ):
-                logging.info("Document not in valid state for index operations, skipping")
-                return
             doc_form = dataset_document.doc_form
-
-            # Proceed with index cleanup using the index_node_ids directly
-            # For actual deletion, we should delete summaries (not just disable them)
-            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-            index_processor.clean(
-                dataset,
-                index_node_ids,
-                with_keywords=True,
-                delete_child_chunks=True,
-                precomputed_child_node_ids=child_node_ids,
-                delete_summaries=True,  # Actually delete summaries when segment is deleted,
-                session=session,
+            index_processor = None
+            document_can_be_indexed = (
+                dataset_document.enabled
+                and not dataset_document.archived
+                and dataset_document.indexing_status == "completed"
             )
-            session.commit()
+            if document_can_be_indexed:
+                # Proceed with index cleanup using the index_node_ids directly.
+                # For actual deletion, we should delete summaries (not just disable them).
+                index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+                index_processor.clean(
+                    dataset,
+                    index_node_ids,
+                    with_keywords=True,
+                    delete_child_chunks=True,
+                    precomputed_child_node_ids=child_node_ids,
+                    delete_summaries=True,  # Actually delete summaries when segment is deleted,
+                    session=session,
+                )
+                session.commit()
             if dataset.is_multimodal:
-                # delete segment attachment binding
+                # Attachment records are durable resources and must be cleaned even
+                # when the parent document is no longer eligible for index cleanup.
                 segment_attachment_bindings = session.scalars(
                     select(SegmentAttachmentBinding).where(
                         SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
@@ -101,6 +101,8 @@ def delete_segment_from_index_task(
                     ]
 
                     if orphan_attachment_ids:
+                        if index_processor is None:
+                            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
                         attachment_storage_keys = list(
                             dict.fromkeys(
                                 session.scalars(
