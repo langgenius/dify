@@ -9,7 +9,11 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderIdentity
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from repositories.credentials.query_repository import CredentialQueryRepository
 from services.tools import builtin_tools_manage_service as service_module
@@ -212,14 +216,32 @@ class TestAddBuiltinToolProvider:
         return []
 
     @pytest.fixture
-    def controller(self, monkeypatch: pytest.MonkeyPatch, events: list[str]) -> MagicMock:
-        controller = MagicMock(need_credentials=True)
-        controller.get_credentials_schema_by_type.return_value = []
-        controller.validate_credentials.side_effect = lambda *_: events.append("validate")
-        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
-        encrypter = MagicMock()
-        encrypter.encrypt.side_effect = lambda credentials: credentials
-        monkeypatch.setattr(service_module, "create_provider_encrypter", MagicMock(return_value=(encrypter, None)))
+    def controller(self, monkeypatch: pytest.MonkeyPatch, events: list[str]) -> PluginToolProviderController:
+        controller = PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin(
+                identity=ToolProviderIdentity(
+                    author="author",
+                    name="google",
+                    description=I18nObject(en_US="Google"),
+                    icon="icon.svg",
+                    label=I18nObject(en_US="Google"),
+                ),
+                credentials_schema=[ProviderConfig(name="key", type=ProviderConfigType.TEXT_INPUT)],
+                plugin_id="langgenius/google",
+                tools=[],
+            ),
+            plugin_id="langgenius/google",
+            plugin_unique_identifier="langgenius/google:0.0.1",
+            tenant_id="tenant-1",
+        )
+
+        def validate_credentials(user_id: str, credentials: dict[str, str]) -> None:
+            assert user_id == "u"
+            assert credentials == {"key": "value"}
+            events.append("validate")
+
+        monkeypatch.setattr(controller, "_validate_credentials", validate_credentials)
+        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", lambda *_: controller)
         return controller
 
     def _install_lock(
@@ -229,7 +251,7 @@ class TestAddBuiltinToolProvider:
         on_release: Callable[[], None] | None = None,
     ) -> None:
         lock = _RecordingLock(events, on_release)
-        monkeypatch.setattr(service_module, "redis_client", SimpleNamespace(lock=MagicMock(return_value=lock)))
+        monkeypatch.setattr(service_module.redis_client, "lock", lambda *_, **__: lock)
 
     def _count_providers(self, repository_session: Session) -> int:
         with Session(repository_session.get_bind()) as session:
@@ -239,7 +261,7 @@ class TestAddBuiltinToolProvider:
         self,
         monkeypatch: pytest.MonkeyPatch,
         repository_session: Session,
-        controller: MagicMock,
+        controller: PluginToolProviderController,
         events: list[str],
     ) -> None:
         self._install_lock(monkeypatch, events)
@@ -250,7 +272,6 @@ class TestAddBuiltinToolProvider:
 
         assert result["result"] == "success"
         assert events == ["validate", "acquire", "release"]
-        controller.validate_credentials.assert_called_once_with("u", {"key": "value"})
         provider = repository_session.get(BuiltinToolProvider, result["id"])
         assert provider is not None
         assert provider.credentials == {"key": "value"}
@@ -259,7 +280,7 @@ class TestAddBuiltinToolProvider:
         self,
         monkeypatch: pytest.MonkeyPatch,
         repository_session: Session,
-        controller: MagicMock,
+        controller: PluginToolProviderController,
         events: list[str],
     ) -> None:
         counts_at_release: list[int] = []
@@ -277,11 +298,15 @@ class TestAddBuiltinToolProvider:
         self,
         monkeypatch: pytest.MonkeyPatch,
         repository_session: Session,
-        controller: MagicMock,
+        controller: PluginToolProviderController,
         events: list[str],
     ) -> None:
         self._install_lock(monkeypatch, events)
-        controller.validate_credentials.side_effect = ValueError("invalid api key")
+
+        def reject_credentials(user_id: str, credentials: dict[str, str]) -> None:
+            raise ValueError("invalid api key")
+
+        monkeypatch.setattr(controller, "_validate_credentials", reject_credentials)
 
         with pytest.raises(ValueError, match="invalid api key"):
             BuiltinToolManageService.add_builtin_tool_provider(
@@ -295,7 +320,7 @@ class TestAddBuiltinToolProvider:
         self,
         monkeypatch: pytest.MonkeyPatch,
         repository_session: Session,
-        controller: MagicMock,
+        controller: PluginToolProviderController,
         events: list[str],
     ) -> None:
         _persist_provider(repository_session, credential_id="cred-1")
@@ -314,7 +339,7 @@ class TestAddBuiltinToolProvider:
         self,
         monkeypatch: pytest.MonkeyPatch,
         repository_session: Session,
-        controller: MagicMock,
+        controller: PluginToolProviderController,
         events: list[str],
     ) -> None:
         _persist_provider(repository_session, credential_id="cred-1", name="Google 1")
