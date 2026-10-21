@@ -236,7 +236,10 @@ class WordExtractor(BaseExtractor):
             if parsed_paragraph:
                 cell_content.append(parsed_paragraph)
         unique_content = list(dict.fromkeys(cell_content))
-        return " ".join(unique_content)
+        cell_text = " ".join(unique_content)
+        # A raw newline would terminate the Markdown table row. Use the GFM
+        # line-break form so the cell stays within its row.
+        return cell_text.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br>")
 
     def _parse_cell_paragraph(self, paragraph, image_map):
         paragraph_content: list[str] = []

@@ -92,6 +92,33 @@ def test_parse_row():
         assert extractor._parse_row(row, {}, 3) == gt[idx]
 
 
+def test_table_to_markdown_replaces_cell_newlines(tmp_path: Path):
+    """A line break inside a table cell must not split the Markdown row."""
+    doc = Document()
+    table = doc.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "Name"
+    header_paragraph = table.cell(0, 1).paragraphs[0]
+    header_run = header_paragraph.add_run("Line one")
+    header_run.add_break()
+    header_paragraph.add_run("Line two")
+    table.cell(1, 0).text = "A"
+    cell_paragraph = table.cell(1, 1).paragraphs[0]
+    cell_run = cell_paragraph.add_run("value one")
+    cell_run.add_break()
+    cell_paragraph.add_run("value two")
+    path = tmp_path / "table-with-breaks.docx"
+    doc.save(str(path))
+
+    extractor = WordExtractor.__new__(WordExtractor)
+    markdown = extractor._table_to_markdown(Document(str(path)).tables[0], {})
+
+    assert markdown.splitlines() == [
+        "| Name | Line one<br>Line two |",
+        "| --- | --- |",
+        "| A | value one<br>value two |",
+    ]
+
+
 def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
     doc = Document()
     doc.add_paragraph("hello")
