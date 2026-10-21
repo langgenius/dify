@@ -4,6 +4,11 @@ Authority is a separate WebConnectionContext, never part of a submitted payload.
 The target resolver reconstructs the currently published node/Provider/Client from
 stored state. CRUD implementations must apply the ownership policy before decrypting
 or contacting a plugin. Controllers map domain failures to documented HTTP errors.
+
+Run entry points own saved selections derived from explicit execution inputs; no
+separate binding request is required before a Run. Builder tests use authorized
+workspace credential overrides through the Console entry point (SNP-970), outside
+this Web Passport and published-workflow contract.
 """
 
 from datetime import datetime
