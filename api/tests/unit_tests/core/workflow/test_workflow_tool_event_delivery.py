@@ -434,8 +434,10 @@ def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding
         assert execution.status == "exception"
         if caller_save_fails:
             assert resolution_calls == []
-            assert execution.error == "Workflow node execution caller is unavailable"
-            assert execution.outputs_dict["error_type"] == "agent_workflow_node_runtime_error"
+            # Preserve the commit failure instead of replacing it with a later
+            # missing-caller error after best-effort event delivery.
+            assert execution.error == "Caller store unavailable"
+            assert execution.outputs_dict["error_type"] == "WorkflowNodeError"
         else:
             # The real workspace store must see the caller synchronously before
             # the binding resolver reports this deliberately unconfigured Agent.
