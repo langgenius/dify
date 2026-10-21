@@ -142,7 +142,7 @@ def test_initial_build_detects_language_before_first_progress(goal: str, languag
         (PcState.FIX_AWAIT_TESTDATA, "provide_testdata", {"mode": "mock"}),
         (PcState.BUILD_AWAIT_REPAIR, "approve_repair", {}),
         (PcState.EDIT_AWAIT_REPAIR, "approve_repair", {}),
-        (PcState.BUILD_REVIEW, "re_fix", {}),
+        (PcState.BUILD_GOAL_ANALYSIS, "submit_requirements", {"__builder_adjustment_request": "Change the summary"}),
     ],
 )
 def test_progress_keeps_session_language_across_build_edit_and_fix_branches(
@@ -153,6 +153,7 @@ def test_progress_keeps_session_language_across_build_edit_and_fix_branches(
     env.fake_dify.graph = {"nodes": [{"id": "code", "data": {"type": "code", "code": "original"}}], "edges": []}
     context = DifyBuilderContext(
         reply_language="fr",
+        form_fields=[{"key": "__builder_adjustment_request", "type": "text", "required": True}],
         goal_text="Goal / Yes / {{name}} / <tag>",
         staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "code", "path": "code", "value": "Yes"})],
     )

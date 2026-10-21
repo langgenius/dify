@@ -11,7 +11,7 @@ no handler; completion and publish receipts are emitted as assistant text.
 import json
 import logging
 import uuid
-from dataclasses import fields, replace
+from dataclasses import asdict, fields, replace
 from typing import Any
 
 from core.dify_builder.contract import (
@@ -90,6 +90,8 @@ from services.dify_builder.initial_draft import build_intents_for_draft
 from services.dify_builder.plan import make_plan_card, store_plan
 
 logger = logging.getLogger(__name__)
+
+_ADJUSTMENT_REQUEST = "__builder_adjustment_request"
 
 __all__ = [
     "build_registry",
@@ -192,11 +194,21 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     via the shared ``_discover_and_offer_resources`` helper. The decision-free
     find_resources gate that used to sit at build.initial_plan (showing the
     same plan a second time) is gone; that state is now reached only via the
-    continue_adjusting/retry_after_revert loop-back (handle_initial_plan).
+    retry_after_revert loop-back (handle_initial_plan). Continue adjusting
+    first collects a fresh required change request in this existing form gate.
     If planning returns no usable plan, keep this waiting state and prior plan."""
     kind = action_kind(turn)
     if kind != "submit_requirements":
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
+
+    if any(field.get("key") == _ADJUSTMENT_REQUEST for field in fc.form_fields):
+        value = (
+            turn.action.payload.get(_ADJUSTMENT_REQUEST)
+            if turn.action and isinstance(turn.action.payload, dict)
+            else None
+        )
+        if not isinstance(value, str) or not value.strip():
+            return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
 
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
@@ -297,7 +309,7 @@ def _discover_and_offer_resources(
     Shared by the straight-through path (requirements submitted -- continues
     the caller's still-open ``progress`` reporter, so the whole step stays
     ONE operation with monotonically increasing revisions) and the
-    continue_adjusting path, which re-enters at BUILD_INITIAL_PLAN with no
+    retry_after_revert path, which re-enters at BUILD_INITIAL_PLAN with no
     reporter yet (``progress=None``, so one is created here). One
     implementation so the two entries cannot drift apart.
     """
@@ -354,7 +366,7 @@ def _discover_and_offer_resources(
 def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(working, auto) Discover the (canned, ready) resource and fall straight
     through to build.resource_recommendation. Reachable only via the
-    continue_adjusting/retry_after_revert loop-back -- the straight-through
+    retry_after_revert loop-back -- the straight-through
     path no longer stops here (see handle_goal_analysis). Unconditional: this
     is a working/pass-through state now (state.py), so the runner drives it
     on entry with no action to gate on -- it must NOT re-require find_resources,
@@ -448,9 +460,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     changes in assistant text, and transition to build.execution.
 
     Idempotent by construction (final-review fix, Important #1): a loop-back
-    from build.review/build.reverted (continue_adjusting/revert/retry_after_
-    revert) returns to build.initial_plan WITHOUT resetting the already-built
-    graph. Re-walking find_resources -> confirm_resources -> approve_plan then
+    from review collects a new adjustment request; retry after revert reuses the
+    prior request. Neither resets the already-built graph. Re-walking resource
+    discovery -> confirm_resources -> approve_plan then
     calls build_nodes() again, which always proposes the SAME fixed node ids
     -- so before applying, drop any create_node/connect intent that already
     exists in the current draft graph. Everything survives the first build
@@ -1264,10 +1276,10 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
 def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Terminal decision. publish_workflow -> build.publish;
     keep_draft -> build.complete (skips publish); continue_adjusting
-    (resolved to re_fix) -> build.initial_plan (re-plan); revert (undo) ->
-    build.reverted: restores the pre-build draft from the checkpoint and
-    invalidates the approvals made since it (via perform_revert). An empty
-    replacement plan leaves the review state and prior test/repair context intact."""
+    (resolved to re_fix) -> build.goal_analysis (collect a new change request);
+    revert (undo) -> build.reverted: restores the pre-build draft from the
+    checkpoint and invalidates the approvals made since it (via perform_revert).
+    Continuing preserves the canvas and prior plan until a new request is submitted."""
     kind = action_kind(turn)
     if kind == "run_test":
         fc.verify_run_id = ""
@@ -1288,44 +1300,37 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         )
         return StepResult(next=PcState.BUILD_COMPLETE, context=fc, items=[*decision_items, *turn_items])
     if kind == "re_fix":  # continue_adjusting
-        progress = ProgressReporter.for_session(
-            emit=env.emit_progress,
-            operation_id=env.operation_id,
-            session=s,
-            reply_language=fc.reply_language,
-            stage_id=str(s.current_state),
-            steps=[("build-revise-plan", copy_text(BuilderCopyId.PROGRESS_REVISE_THE_WORKFLOW_PLAN))],
+        fc.form_fields = [field for field in fc.form_fields if field.get("key") != _ADJUSTMENT_REQUEST]
+        fc.form_fields.append(
+            {
+                "key": _ADJUSTMENT_REQUEST,
+                "label_copy": asdict(copy_text(BuilderCopyId.FORMS_GOAL)),
+                "type": "text",
+                "required": True,
+            }
         )
-        progress.activate("build-revise-plan")
-        # Draft the plan, but do NOT show it yet: build.initial_plan (next)
-        # runs resource discovery unconditionally and falls straight through
-        # to build.resource_recommendation, which shows the ONE plan card for
-        # this pass (v1, resources bound) -- exactly the duplicate-card
-        # removal task 2 already did for the straight-through path. Showing
-        # it here too would mean two "Build plan" v1 cards in one pass.
-        plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text)
-        if not plan:
-            return _planning_failed(env, s, fc, progress, "build-revise-plan", PcState.BUILD_REVIEW)
-        store_plan(fc, plan)
+        fc.requirements[_ADJUSTMENT_REQUEST] = ""
         fc.test_input_ref = ""
         fc.verify_run_id = ""
         fc.repair_attempts = 0
         fc.last_repair_error = ""
         fc.unknown_outcome_count = 0
         decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.ACTIONS_CONTINUE_ADJUSTING)))
-        execution = progress.finish()
-        turn_items = append_assistant(
-            env,
-            s,
+        form_items = append_card(
             fc,
-            copy_text(BuilderCopyId.LABELS_REVISED_PLAN),
-            execution=execution,
-            turn_id=progress.operation_id,
+            FormCard(
+                variant="build_requirements",
+                title=copy_text(BuilderCopyId.FORMS_REQUIREMENTS_TITLE),
+                description=copy_text(BuilderCopyId.FORMS_EDIT_RULES_DESCRIPTION),
+                fields=build_form_fields(fc.form_fields),
+                values=dict(fc.requirements),
+                frozen=False,
+            ),
         )
         return StepResult(
-            next=PcState.BUILD_INITIAL_PLAN,
+            next=PcState.BUILD_GOAL_ANALYSIS,
             context=fc,
-            items=[*decision_items, *turn_items],
+            items=[*decision_items, *form_items],
         )
     if kind == "undo":  # revert
         perform_revert(env, turn, s, fc)
@@ -1391,8 +1396,8 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         steps=[("build-restart-plan", copy_text(BuilderCopyId.PROGRESS_REBUILD_THE_WORKFLOW_PLAN))],
     )
     progress.activate("build-restart-plan")
-    # Draft the plan, but do NOT show it yet -- same duplicate-card removal
-    # as handle_review's re_fix branch: build.initial_plan (next) falls
+    # Retry the reverted build's prior request without collecting a new change.
+    # Draft the plan but show it only once: build.initial_plan (next) falls
     # straight through to build.resource_recommendation, which shows the ONE
     # plan card for this pass (v1, resources bound).
     plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text)

@@ -66,6 +66,20 @@ def test_plan_overview_is_saved_with_its_final_steps(mode: EntryMode, state: PcS
     runner = Runner(env, build_registry() if mode == EntryMode.BUILD else edit_registry())
     actor = Actor(account_id="account", tenant_id="tenant")
     result = runner.advance(session.id, Turn(actor=actor, action=Action(kind=action, base_version=1)))
+    if state == PcState.BUILD_REVIEW:
+        assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+        assert repo.get_session(session.id)[1].plan_title == "Previous title"
+        result = runner.advance(
+            session.id,
+            Turn(
+                actor=actor,
+                action=Action(
+                    kind="submit_requirements",
+                    payload={"__builder_adjustment_request": "Add evidence to the answers"},
+                    base_version=result.version,
+                ),
+            ),
+        )
 
     # Restoring a commit between planning and resource confirmation must preserve
     # its overview rather than replacing it with empty or stale display fields.
