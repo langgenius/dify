@@ -152,8 +152,18 @@ def upgrade() -> None:
                 type_=_tag_identity_type(),
                 existing_nullable=False,
             )
-    _merge_duplicate_tags()
-    _merge_duplicate_tag_bindings()
+    # Offline SQL rendering has no database result rows to drive the
+    # deterministic Python merge. Make the generated artifact explicit about
+    # that limitation; deployments with existing tags must run this revision
+    # online so cleanup precedes the new constraints.
+    if op.get_context().as_sql:
+        op.execute(
+            "-- Tag normalization and duplicate merging require an online upgrade; "
+            "offline SQL renders DDL for review only."
+        )
+    else:
+        _merge_duplicate_tags()
+        _merge_duplicate_tag_bindings()
     with op.batch_alter_table("tag_bindings", schema=None) as batch_op:
         batch_op.create_unique_constraint(
             _TAG_BINDING_CONSTRAINT_NAME,

@@ -148,8 +148,12 @@ def test_concurrent_identical_tag_bindings_are_idempotent(db_session_with_contai
         tag_type=TagType.KNOWLEDGE,
         count=1,
     )[0]
+    account_id = account.id
+    tenant_id = tenant.id
+    dataset_id = dataset.id
+    tag_id = tag.id
     db_session_with_containers.commit()
-    context = RequestContext("tag-binding-concurrency", None, account.id, tenant.id)
+    context = RequestContext("tag-binding-concurrency", None, account_id, tenant_id)
     service = application_services().tags
     ready = Barrier(2)
 
@@ -157,7 +161,7 @@ def test_concurrent_identical_tag_bindings_are_idempotent(db_session_with_contai
         ready.wait()
         service.create_bindings(
             context,
-            TagBindingInput(tag_ids=(tag.id,), target_id=dataset.id, type="knowledge"),
+            TagBindingInput(tag_ids=(tag_id,), target_id=dataset_id, type="knowledge"),
         )
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -168,9 +172,9 @@ def test_concurrent_identical_tag_bindings_are_idempotent(db_session_with_contai
     assert (
         db_session_with_containers.scalar(
             select(func.count(TagBinding.id)).where(
-                TagBinding.tenant_id == tenant.id,
-                TagBinding.tag_id == tag.id,
-                TagBinding.target_id == dataset.id,
+                TagBinding.tenant_id == tenant_id,
+                TagBinding.tag_id == tag_id,
+                TagBinding.target_id == dataset_id,
             )
         )
         == 1
@@ -190,6 +194,10 @@ def test_concurrent_skill_tag_creation_reuses_casefolded_winner(db_session_with_
         for index in range(2)
     ]
     db_session_with_containers.add_all(skills)
+    db_session_with_containers.flush()
+    tenant_id = tenant.id
+    account_id = account.id
+    skill_ids = tuple(skill.id for skill in skills)
     db_session_with_containers.commit()
     ready = Barrier(2)
 
@@ -198,8 +206,8 @@ def test_concurrent_skill_tag_creation_reuses_casefolded_winner(db_session_with_
         response = SkillManagementService(
             skill_tags=TagRepository(session_factory.get_session_maker()),
         ).update_metadata(
-            tenant_id=tenant.id,
-            user_id=account.id,
+            tenant_id=tenant_id,
+            user_id=account_id,
             skill_id=skill_id,
             payload=SkillMetadataPayload(tags=[tag_name]),
         )
@@ -213,23 +221,23 @@ def test_concurrent_skill_tag_creation_reuses_casefolded_winner(db_session_with_
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         futures = (
-            executor.submit(add_tag, skills[0].id, "Shared"),
-            executor.submit(add_tag, skills[1].id, "shared"),
+            executor.submit(add_tag, skill_ids[0], "Shared"),
+            executor.submit(add_tag, skill_ids[1], "shared"),
         )
         results = [future.result() for future in futures]
 
     assert [result["tags"][0].casefold() for result in results] == ["shared", "shared"]
     db_session_with_containers.expire_all()
     tag = db_session_with_containers.scalar(
-        select(Tag).where(Tag.tenant_id == tenant.id, Tag.type == TagType.SKILL, Tag.normalized_name == "shared")
+        select(Tag).where(Tag.tenant_id == tenant_id, Tag.type == TagType.SKILL, Tag.normalized_name == "shared")
     )
     assert tag is not None
     assert (
         db_session_with_containers.scalar(
             select(func.count(TagBinding.id)).where(
-                TagBinding.tenant_id == tenant.id,
+                TagBinding.tenant_id == tenant_id,
                 TagBinding.tag_id == tag.id,
-                TagBinding.target_id.in_([skill.id for skill in skills]),
+                TagBinding.target_id.in_(skill_ids),
             )
         )
         == 2
@@ -249,6 +257,10 @@ def test_concurrent_skill_tag_batches_use_one_lock_order(db_session_with_contain
         for index in range(2)
     ]
     db_session_with_containers.add_all(skills)
+    db_session_with_containers.flush()
+    tenant_id = tenant.id
+    account_id = account.id
+    skill_ids = tuple(skill.id for skill in skills)
     db_session_with_containers.commit()
     ready = Barrier(2)
 
@@ -257,16 +269,16 @@ def test_concurrent_skill_tag_batches_use_one_lock_order(db_session_with_contain
         SkillManagementService(
             skill_tags=TagRepository(session_factory.get_session_maker()),
         ).update_metadata(
-            tenant_id=tenant.id,
-            user_id=account.id,
+            tenant_id=tenant_id,
+            user_id=account_id,
             skill_id=skill_id,
             payload=SkillMetadataPayload(tags=names),
         )
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         futures = (
-            executor.submit(replace_tags, skills[0].id, ["Alpha", "Beta"]),
-            executor.submit(replace_tags, skills[1].id, ["Beta", "Alpha"]),
+            executor.submit(replace_tags, skill_ids[0], ["Alpha", "Beta"]),
+            executor.submit(replace_tags, skill_ids[1], ["Beta", "Alpha"]),
         )
         for future in futures:
             future.result()
@@ -274,14 +286,14 @@ def test_concurrent_skill_tag_batches_use_one_lock_order(db_session_with_contain
     db_session_with_containers.expire_all()
     assert set(
         db_session_with_containers.scalars(
-            select(Tag.normalized_name).where(Tag.tenant_id == tenant.id, Tag.type == TagType.SKILL)
+            select(Tag.normalized_name).where(Tag.tenant_id == tenant_id, Tag.type == TagType.SKILL)
         )
     ) == {"alpha", "beta"}
     assert (
         db_session_with_containers.scalar(
             select(func.count(TagBinding.id)).where(
-                TagBinding.tenant_id == tenant.id,
-                TagBinding.target_id.in_([skill.id for skill in skills]),
+                TagBinding.tenant_id == tenant_id,
+                TagBinding.target_id.in_(skill_ids),
             )
         )
         == 4

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping
+from enum import Enum
 from functools import lru_cache
 from typing import Any
 
@@ -49,7 +50,7 @@ def resolve_upload_file_ids_from_serialized_file_value(
     persistence owners.
     """
 
-    value_type_value = getattr(value_type, "value", value_type)
+    value_type_value = value_type.value if isinstance(value_type, Enum) else value_type
     if value_type_value not in _PERSISTED_FILE_VALUE_TYPES:
         return ()
     if isinstance(value, str):
@@ -69,7 +70,9 @@ def resolve_upload_file_ids_from_serialized_file_value(
     file_ids: list[str] = []
     for mapping in mappings:
         transfer_method = mapping.get("transfer_method")
-        transfer_method_value = getattr(transfer_method, "value", transfer_method)
+        transfer_method_value = (
+            transfer_method.value if isinstance(transfer_method, FileTransferMethod) else transfer_method
+        )
         if transfer_method_value not in _UPLOAD_FILE_TRANSFER_METHODS:
             continue
         record_id = resolve_file_record_id(mapping)

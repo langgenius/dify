@@ -367,7 +367,12 @@ def upgrade() -> None:
         ["tenant_id", "app_id", "node_id", "draft_variable_id"],
         unique=False,
     )
-    _backfill_references()
+    if op.get_context().as_sql:
+        op.execute(
+            "-- Upload-file reference backfill requires an online upgrade; offline SQL renders DDL for review only."
+        )
+    else:
+        _backfill_references()
 
 
 def downgrade() -> None:

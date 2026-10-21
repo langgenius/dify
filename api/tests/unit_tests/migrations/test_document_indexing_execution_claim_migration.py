@@ -24,12 +24,15 @@ def _load_migration() -> ModuleType:
 
 
 def _run(module: ModuleType, engine: sa.Engine, step: str) -> None:
+    migration_step = module.__dict__[step]
+    if not callable(migration_step):
+        raise TypeError(f"migration step {step!r} is not callable")
     with engine.begin() as connection:
         operations = Operations(MigrationContext.configure(connection))
         original_op = module.__dict__["op"]
         module.__dict__["op"] = operations
         try:
-            getattr(module, step)()
+            migration_step()
         finally:
             module.__dict__["op"] = original_op
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 from datetime import datetime
+from io import StringIO
 from pathlib import Path
 from types import ModuleType
 
@@ -72,6 +73,28 @@ def test_mysql_identity_type_uses_binary_collation() -> None:
     module = _load_migration_module()
 
     assert module._tag_identity_type().dialect_impl(mysql.dialect()).collation == "utf8mb4_0900_bin"
+
+
+@pytest.mark.parametrize("dialect_name", ["mysql", "postgresql"])
+def test_upgrade_renders_offline_sql_without_querying_rows(dialect_name: str) -> None:
+    module = _load_migration_module()
+    output = StringIO()
+    context = MigrationContext.configure(
+        dialect_name=dialect_name,
+        opts={"as_sql": True, "output_buffer": output},
+    )
+    operations = Operations(context)
+    original_op = module.__dict__["op"]
+    module.__dict__["op"] = operations
+    try:
+        module.upgrade()
+    finally:
+        module.__dict__["op"] = original_op
+
+    rendered_sql = output.getvalue()
+    assert "require an online upgrade" in rendered_sql
+    assert "normalized_name" in rendered_sql
+    assert "tag_tenant_type_normalized_name_unique" in rendered_sql
 
 
 def test_upgrade_merges_duplicate_tags_and_preserves_distinct_binding_scope() -> None:

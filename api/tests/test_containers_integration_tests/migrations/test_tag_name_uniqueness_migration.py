@@ -143,7 +143,7 @@ def test_upgrade_aligns_mysql_collation_with_domain_identity(mysql_engine: Engin
         ("skill-accented", "r\N{LATIN SMALL LETTER E WITH ACUTE}sum\N{LATIN SMALL LETTER E WITH ACUTE}"),
         ("skill-composed", "caf\N{LATIN SMALL LETTER E WITH ACUTE}"),
         ("skill-unaccented", "resume"),
-        ("skill-upper", "shared"),
+        ("skill-lower", "shared"),
     ]
     assert collations == {"name": "utf8mb4_0900_bin", "normalized_name": "utf8mb4_0900_bin"}
 

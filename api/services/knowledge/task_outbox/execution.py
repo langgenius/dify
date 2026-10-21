@@ -165,11 +165,9 @@ def knowledge_task_execution(
     if execution_id is None:
         yield None
         return
-    recovered_execution_reader = getattr(store, "is_recovered_task_execution", None)
-    recovered_execution = bool(
-        recovered_execution_reader(intent_id=outbox_id, execution_id=execution_id)
-        if recovered_execution_reader is not None
-        else False
+    recovered_execution = store.is_recovered_task_execution(
+        intent_id=outbox_id,
+        execution_id=execution_id,
     )
 
     lease = KnowledgeTaskExecutionLease(

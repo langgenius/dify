@@ -176,8 +176,14 @@ def upgrade() -> None:
         ["tenant_id", "owner_kind", "owner_id"],
         unique=False,
     )
-    _backfill_owner_table(table_name="agent_config_drafts", owner_kind="draft")
-    _backfill_owner_table(table_name="agent_config_snapshots", owner_kind="snapshot")
+    if op.get_context().as_sql:
+        op.execute(
+            "-- Agent-config tool-file reference backfill requires an online upgrade; "
+            "offline SQL renders DDL for review only."
+        )
+    else:
+        _backfill_owner_table(table_name="agent_config_drafts", owner_kind="draft")
+        _backfill_owner_table(table_name="agent_config_snapshots", owner_kind="snapshot")
 
 
 def downgrade() -> None:
