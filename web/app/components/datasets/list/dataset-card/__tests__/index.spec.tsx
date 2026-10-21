@@ -3,7 +3,7 @@ import type { consoleClient } from '@/service/console'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -52,7 +52,7 @@ function setup(
   const onSuccess = vi.fn()
   renderWithConsoleQuery(
     <>
-      <AppToastHost />
+      <AppToaster />
       <DatasetCard dataset={dataset} onSuccess={onSuccess} />
     </>,
     {

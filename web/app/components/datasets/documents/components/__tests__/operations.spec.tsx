@@ -4,7 +4,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import Operations from '../operations'
 
@@ -63,7 +63,7 @@ const render = (ui: ReactElement) =>
   renderWithConsoleQuery(
     <>
       {ui}
-      <AppToastHost />
+      <AppToaster />
     </>,
   )
 
