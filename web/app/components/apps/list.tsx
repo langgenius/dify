@@ -13,10 +13,11 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { useQueryStates } from 'nuqs'
+import { throttle, useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { CheckModal } from '@/hooks/use-pay'
+import { StudioListNavigation } from '@/features/studio-list-navigation/navigation'
+import { CheckResultToast } from '@/hooks/use-pay'
 import { hasPermission } from '@/utils/permission'
 import { AppListCatalog } from './app-list-catalog'
 import { AppListCreationModals } from './app-list-creation-modals'
@@ -24,7 +25,7 @@ import { AppListHeader } from './app-list-header'
 import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
-import { appListQueryParsers } from './query-params'
+import { appListQueryParsers, serializeAppListQuery } from './query-params'
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
@@ -39,10 +40,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
-  const { category, keywords } = urlQuery
-  const [creatorIDs, setCreatorIDs] = useState<string[]>([])
-  const [tagIDs, setTagIDs] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<AppListSortBy>('last_modified')
+  const { category, keywords, creatorIDs, tagIDs, sort_by: sortBy } = urlQuery
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const dropZoneRef = useRef<HTMLDivElement>(null)
   const scrollViewportRef = useRef<HTMLDivElement>(null)
@@ -94,7 +92,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   }
   const changeTagIDs = (nextTagIDs: string[]) => {
     resetCatalogScroll()
-    setTagIDs(nextTagIDs)
+    void setUrlQuery({ tagIDs: nextTagIDs })
   }
   const changeKeywords = (nextKeywords: string) => {
     resetCatalogScroll()
@@ -102,11 +100,11 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   }
   const changeCreatorIDs = (nextCreatorIDs: string[]) => {
     resetCatalogScroll()
-    setCreatorIDs(nextCreatorIDs)
+    void setUrlQuery({ creatorIDs: nextCreatorIDs })
   }
   const changeSortBy = (nextSortBy: AppListSortBy) => {
     resetCatalogScroll()
-    setSortBy(nextSortBy)
+    void setUrlQuery({ sort_by: nextSortBy })
   }
 
   const openCreateBlankModal = useCallback(() => {
@@ -121,7 +119,11 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
   return (
-    <>
+    <StudioListNavigation
+      path="/apps"
+      href={serializeAppListQuery('/apps', urlQuery)}
+      flush={() => setUrlQuery(urlQuery, { history: 'replace', limitUrlUpdates: throttle(0) })}
+    >
       <div
         ref={dropZoneRef}
         className="relative flex h-0 min-h-0 shrink-0 grow flex-col bg-background-body"
@@ -183,7 +185,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
           </ScrollArea>
         </div>
 
-        <CheckModal />
+        <CheckResultToast />
         <AppListTagManagementModal
           show={showTagManagementModal}
           onClose={() => setShowTagManagementModal(false)}
@@ -198,6 +200,6 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
         onOpenBlank={openCreateBlankModal}
         onOpenTemplate={openCreateTemplateDialog}
       />
-    </>
+    </StudioListNavigation>
   )
 }

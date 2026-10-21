@@ -35,6 +35,7 @@ from services.data_source.credential_gateway import (
     TrustedStoredDatasourceCredentialGateway,
 )
 from services.data_source.entities.credential import DatasourceCredentialRecord
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 
 def _record(
@@ -182,12 +183,15 @@ class RecordingOAuthHandler:
         redirect_uri: str,
         system_credentials: Mapping[str, object],
         credentials: Mapping[str, object],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthCredentialsResponse:
         self.calls.append(
             {
                 "tenant_id": tenant_id,
                 "user_id": user_id,
                 "plugin_id": plugin_id,
+                "plugin_unique_identifier": plugin_unique_identifier,
                 "provider": provider,
                 "redirect_uri": redirect_uri,
                 "system_credentials": system_credentials,
@@ -211,9 +215,9 @@ class RecordingCredentialEncrypter:
 
 
 class StaticOAuthClientResolver:
-    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> dict[str, object]:
-        del workspace_id, provider_id
-        return {}
+    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> PluginOAuthClientConfig:
+        del workspace_id
+        return PluginOAuthClientConfig(f"{provider_id.plugin_id}:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {})
 
 
 def _oauth_refresher(
@@ -247,7 +251,7 @@ def _provider(*, with_oauth_schema: bool = True) -> PluginDatasourceProviderEnti
     )
     return PluginDatasourceProviderEntity(
         provider="notion_datasource",
-        plugin_unique_identifier="langgenius/notion_datasource:1.0.0",
+        plugin_unique_identifier="langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         plugin_id="langgenius/notion_datasource",
         declaration=DatasourceProviderEntityWithPlugin(
             identity=DatasourceProviderIdentity(
@@ -524,6 +528,7 @@ def test_oauth_refresher_prefers_enabled_tenant_client_and_returns_refreshed_sna
     assert handler.calls[0]["system_credentials"] == {"client_secret": "tenant-secret"}
     assert handler.calls[0]["credentials"] == {"integration_secret": "old-secret"}
     assert handler.calls[0]["user_id"] == "actor-1"
+    assert handler.calls[0]["plugin_unique_identifier"] == manager.provider.plugin_unique_identifier
 
 
 def test_oauth_refresher_rejects_tenant_client_when_provider_has_no_oauth_schema(
@@ -611,8 +616,11 @@ def test_oauth_refresher_uses_system_client_only_for_verified_plugin(
             credentials={"integration_secret": "old"},
         )
         assert handler.calls[0]["system_credentials"] == {"client_secret": "system-secret"}
+        assert handler.calls[0]["plugin_unique_identifier"] == manager.provider.plugin_unique_identifier
 
-    assert verification_calls == [("workspace-1", "langgenius/notion_datasource:1.0.0")]
+    assert verification_calls == [
+        ("workspace-1", "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    ]
 
 
 def test_oauth_refresher_translates_plugin_refresh_failure() -> None:

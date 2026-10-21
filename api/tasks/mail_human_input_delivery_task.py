@@ -1,11 +1,10 @@
-import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any
 
 import click
 from celery import shared_task
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -14,7 +13,7 @@ from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailDeliveryMethod
 from extensions.ext_database import db
 from extensions.ext_mail import mail
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.human_input import (
     DeliveryMethodType,
     HumanInputDelivery,
@@ -48,14 +47,23 @@ def _build_form_link(token: str) -> str:
     return f"{base_url.rstrip('/')}/form/{token}"
 
 
+class _RecipientPayload(BaseModel):
+    """Shape of HumanInputFormRecipient.recipient_payload written by the recipients layer."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    email: str
+    TYPE: RecipientType
+
+
 def _parse_recipient_payload(payload: str) -> tuple[str | None, RecipientType | None]:
     try:
-        payload_dict: dict[str, Any] = json.loads(payload)
+        recipient = _RecipientPayload.model_validate_json(payload)
     except Exception:
         logger.exception("Failed to parse recipient payload")
         return None, None
 
-    return payload_dict.get("email"), payload_dict.get("TYPE")
+    return recipient.email, recipient.TYPE
 
 
 def _load_email_jobs(session: Session, form: HumanInputForm) -> list[_EmailDeliveryJob]:
@@ -131,7 +139,7 @@ def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:
         logger.exception("Failed to load resumption context for workflow run %s", workflow_run_id)
         return None
 
-    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    graph_runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     return graph_runtime_state.variable_pool
 
 

@@ -17,7 +17,7 @@ from models.account import (
 )
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.enums import DataSourceType
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.dataset_service import DatasetService
 
 
@@ -220,7 +220,7 @@ class TestDatasetServiceUpdateDataset:
 
         update_data = {"name": "new_name", "external_knowledge_api_id": str(uuid4())}
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="External knowledge id is required") as context:
             DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
 
         assert "External knowledge id is required" in str(context.value)
@@ -244,7 +244,7 @@ class TestDatasetServiceUpdateDataset:
 
         update_data = {"name": "new_name", "external_knowledge_id": "knowledge_id"}
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="External knowledge api id is required") as context:
             DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
 
         assert "External knowledge api id is required" in str(context.value)
@@ -271,7 +271,7 @@ class TestDatasetServiceUpdateDataset:
             "external_knowledge_api_id": external_api.id,
         }
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="External knowledge binding not found") as context:
             DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
 
         assert "External knowledge binding not found" in str(context.value)
@@ -544,7 +544,7 @@ class TestDatasetServiceUpdateDataset:
         user, _ = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         update_data = {"name": "new_name"}
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="Dataset not found") as context:
             DatasetService.update_dataset(str(uuid4()), update_data, user, session=db_session_with_containers)
 
         assert "Dataset not found" in str(context.value)
@@ -594,7 +594,7 @@ class TestDatasetServiceUpdateDataset:
         ):
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 
-            with pytest.raises(Exception) as context:
+            with pytest.raises(Exception, match="(?i)No Embedding Model available") as context:
                 DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
 
         assert "No Embedding Model available".lower() in str(context.value).lower()

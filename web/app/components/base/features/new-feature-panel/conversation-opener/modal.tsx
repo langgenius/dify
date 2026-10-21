@@ -3,7 +3,15 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -266,21 +274,14 @@ const OpeningSettingModal = ({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()} disablePointerDismissal>
-      <DialogContent className="mt-14 w-160 max-w-none rounded-2xl bg-components-panel-bg-blur p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="title-2xl-semi-bold text-text-primary">
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>
             {t(($) => $['feature.conversationOpener.title'], { ns: 'appDebug' })}
-          </div>
-          <button
-            type="button"
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            onClick={onCancel}
-          >
-            <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-          </button>
-        </div>
-        <div className="mb-8 space-y-4">
+          </DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="space-y-4">
           <div data-testid="opener-input-section" className="py-2">
             <div className="mb-3 text-sm font-medium text-text-primary">
               {t(($) => $['openingStatement.editorTitle'], { ns: 'appDebug' })}
@@ -312,15 +313,13 @@ const OpeningSettingModal = ({
           <div data-testid="opener-questions-section" className="py-2">
             {renderQuestions()}
           </div>
-        </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={onCancel} className="mr-2">
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
+        </DialogBody>
+        <DialogFooter>
+          <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button variant="primary" onClick={() => handleSave()} disabled={isSaveDisabled}>
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
-        </div>
+        </DialogFooter>
         {isShowConfirmAddVar && (
           <ConfirmAddVar
             varNameArr={notIncludeKeys}

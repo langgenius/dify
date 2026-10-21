@@ -1,16 +1,17 @@
 'use client'
 
-import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { OpenDeploymentDialog } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuGroupLabel,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useAtomValue } from 'jotai'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
@@ -23,12 +24,12 @@ import {
 
 type EnvironmentDeployMenuProps = {
   appearance?: 'empty' | 'header'
-  onSelectEnvironment: (environment: AppEnvironment) => void
+  onOpenDeployment: OpenDeploymentDialog
 }
 
 export function EnvironmentDeployMenu({
   appearance = 'header',
-  onSelectEnvironment,
+  onOpenDeployment,
 }: EnvironmentDeployMenuProps) {
   const { t } = useTranslation(['deployments'])
   const { t: tCommon } = useTranslation(['common'])
@@ -39,12 +40,17 @@ export function EnvironmentDeployMenu({
   const refetchEnvironments = useAtomValue(appEnvironmentsRefetchAtom)
   const isEmptyState = appearance === 'empty'
   const label = tCommon(($) => $['appMenus.deploy'])
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         render={
-          <Button variant={isEmptyState ? 'secondary' : 'primary'} className="gap-0 px-2">
+          <Button
+            ref={triggerRef}
+            variant={isEmptyState ? 'secondary' : 'primary'}
+            className="gap-0 px-2"
+          >
             <span aria-hidden className="i-ri-add-line size-4" />
             <span className="pl-1.5">{label}</span>
             <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
@@ -55,12 +61,12 @@ export function EnvironmentDeployMenu({
         aria-busy={isLoading || isRetrying}
         placement="bottom-end"
         sideOffset={4}
-        className="w-42 rounded-xl p-1"
+        className="w-42 p-1"
       >
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="px-2 py-1 system-xs-medium-uppercase text-text-tertiary">
+          <DropdownMenuGroupLabel className="px-2 py-1">
             {t(($) => $['card.notDeployed'])}
-          </DropdownMenuLabel>
+          </DropdownMenuGroupLabel>
           {isLoading ? (
             <LoadingPlaceholder className="h-7" />
           ) : isError ? (
@@ -68,17 +74,21 @@ export function EnvironmentDeployMenu({
               <p role="alert" className="px-2 py-1.5 system-xs-regular text-text-destructive">
                 {t(($) => $['common.loadFailed'])}
               </p>
-              <Button
-                type="button"
-                size="small"
-                variant="ghost"
-                loading={isRetrying}
-                className="gap-1 px-2"
+              <DropdownMenuItem
+                closeOnClick={false}
+                disabled={isRetrying}
+                className="mx-0 h-6 w-fit justify-center rounded-md text-xs font-medium text-components-button-ghost-text"
                 onClick={() => void refetchEnvironments()}
               >
                 <span aria-hidden className="i-ri-reset-left-line size-3" />
                 <span>{tCommon(($) => $['operation.retry'])}</span>
-              </Button>
+                {isRetrying && (
+                  <span
+                    aria-hidden
+                    className="i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+                  />
+                )}
+              </DropdownMenuItem>
             </div>
           ) : undeployedEnvironments.length === 0 ? (
             <p role="status" className="px-2 py-1.5 system-xs-regular text-text-tertiary">
@@ -90,8 +100,17 @@ export function EnvironmentDeployMenu({
             undeployedEnvironments.map((environment) => (
               <DropdownMenuItem
                 key={environment.id}
-                className="mx-0 flex gap-2 px-2 py-1.5"
-                onClick={() => onSelectEnvironment(environment)}
+                className="mx-0 gap-2 py-1.5"
+                onClick={() => {
+                  onOpenDeployment(
+                    {
+                      environment: environment.display_name,
+                      environmentId: environment.id,
+                      kind: 'deploy',
+                    },
+                    triggerRef.current,
+                  )
+                }}
               >
                 <span
                   aria-hidden

@@ -1,6 +1,5 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from sqlalchemy import Engine, event
@@ -8,14 +7,61 @@ from sqlalchemy.orm import sessionmaker
 
 from enums import WebAppAccessMode
 from models.enums import CustomizeTokenStrategy
-from models.model import Site
+from models.model import App, AppModelConfig, Site
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
-    WebAppAccessQuery,
     WebAppAccessQueryService,
     WebAppAccessReferenceRequiredError,
+    WebAppAccessUnavailableError,
 )
+
+
+@dataclass
+class AccessQueryStub:
+    app_id: str | None = None
+    available: bool = True
+    error: Exception | None = None
+    calls: list[str] = field(default_factory=list)
+    availability_calls: list[str] = field(default_factory=list)
+
+    def find_app_id_by_code(self, app_code: str) -> str | None:
+        self.calls.append(app_code)
+        if self.error is not None:
+            raise self.error
+        return self.app_id
+
+    def is_app_available(self, app_id: str) -> bool:
+        self.availability_calls.append(app_id)
+        if self.error is not None:
+            raise self.error
+        return self.available
+
+
+@dataclass
+class AccessPolicyStub:
+    access_mode: WebAppAccessMode = WebAppAccessMode.PRIVATE
+    allowed: bool = True
+    access_mode_error: Exception | None = None
+    access_mode_calls: list[str] = field(default_factory=list)
+    permission_calls: list[tuple[str, str]] = field(default_factory=list)
+
+    def get_access_mode(self, app_id: str) -> WebAppAccessMode:
+        self.access_mode_calls.append(app_id)
+        if self.access_mode_error is not None:
+            raise self.access_mode_error
+        return self.access_mode
+
+    def is_user_allowed(self, *, user_id: str, app_id: str) -> bool:
+        self.permission_calls.append((user_id, app_id))
+        return self.allowed
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceFixture:
+    service: WebAppAccessQueryService
+    access: AccessQueryStub
+    policy: AccessPolicyStub
 
 
 def _unexpected_access_modes(*, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
@@ -28,96 +74,183 @@ def _unexpected_user_permissions(*, user_id: str, app_ids: Sequence[str]) -> Map
 
 def _service(
     *,
-    access: MagicMock,
+    access: AccessQueryStub | None = None,
     enabled: bool = True,
     access_mode: WebAppAccessMode = WebAppAccessMode.PRIVATE,
     allowed: bool = True,
-) -> tuple[WebAppAccessQueryService, MagicMock, MagicMock]:
-    access_mode_for_app = MagicMock(return_value=access_mode)
-    is_user_allowed_for_app = MagicMock(return_value=allowed)
-    return (
-        WebAppAccessQueryService(
+) -> ServiceFixture:
+    access = access or AccessQueryStub()
+    policy = AccessPolicyStub(access_mode=access_mode, allowed=allowed)
+    return ServiceFixture(
+        service=WebAppAccessQueryService(
             access=access,
+            policy=policy,
             webapp_auth_enabled=enabled,
-            access_mode_for_app=access_mode_for_app,
-            is_user_allowed_for_app=is_user_allowed_for_app,
             get_access_modes=_unexpected_access_modes,
             get_user_permissions=_unexpected_user_permissions,
         ),
-        access_mode_for_app,
-        is_user_allowed_for_app,
+        access=access,
+        policy=policy,
     )
 
 
 def test_disabled_auth_returns_public_before_resolving_app() -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
-    service, access_mode_for_app, _ = _service(access=access, enabled=False)
+    fixture = _service(enabled=False)
 
-    assert service.get_access_mode(app_id=None, app_code=None) is WebAppAccessMode.PUBLIC
-    access.find_app_id_by_code.assert_not_called()
-    access_mode_for_app.assert_not_called()
+    assert fixture.service.get_access_mode(app_id=None, app_code=None) is WebAppAccessMode.PUBLIC
+    assert fixture.access.calls == []
+    assert fixture.policy.access_mode_calls == []
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_management_reads_configured_policy_without_publication_admission(enabled: bool) -> None:
+    fixture = _service(access=AccessQueryStub(available=False), enabled=enabled)
+
+    result = fixture.service.get_configured_access_mode(app_id="draft-app")
+
+    assert result is (WebAppAccessMode.PRIVATE if enabled else WebAppAccessMode.PUBLIC)
+    assert fixture.access.calls == []
+    assert fixture.access.availability_calls == []
+    assert fixture.policy.access_mode_calls == (["draft-app"] if enabled else [])
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+@pytest.mark.parametrize("reference", ["code", "id"])
+def test_public_identity_resolution_does_not_load_authentication_settings(enabled: bool, reference: str) -> None:
+    fixture = _service(access=AccessQueryStub(app_id="resolved-id"), enabled=enabled)
+    result = fixture.service.resolve_app_id(
+        **({"app_code": "site-code"} if reference == "code" else {"app_id": "resolved-id"})
+    )
+    assert result == "resolved-id"
+    assert fixture.policy.access_mode_calls == []
+    assert fixture.policy.permission_calls == []
+    assert fixture.access.calls == (["site-code"] if reference == "code" else [])
+    assert fixture.access.availability_calls == (["resolved-id"] if reference == "id" else [])
+
+
+def test_public_identity_requires_a_reference_even_when_auth_disabled() -> None:
+    fixture = _service(enabled=False)
+    with pytest.raises(WebAppAccessReferenceRequiredError):
+        fixture.service.resolve_app_id()
+    assert fixture.policy.access_mode_calls == []
+    assert fixture.access.availability_calls == []
+
+
+@pytest.mark.parametrize("reference", ["code", "id"])
+def test_public_identity_dependency_failure_preserves_its_type(reference: str) -> None:
+    failure = WebAppAccessUnavailableError("dependency")
+    fixture = _service(access=AccessQueryStub(error=failure), enabled=False)
+    with pytest.raises(WebAppAccessUnavailableError) as raised:
+        fixture.service.resolve_app_id(**({"app_code": "site-code"} if reference == "code" else {"app_id": "app-1"}))
+    assert raised.value is failure
+    assert fixture.policy.access_mode_calls == []
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+@pytest.mark.parametrize("app_id", [None, "resolved-id"])
+def test_nullable_code_lookup_preserves_repository_admission_without_policy_reads(
+    enabled: bool, app_id: str | None
+) -> None:
+    fixture = _service(access=AccessQueryStub(app_id=app_id), enabled=enabled)
+
+    assert fixture.service.find_app_id_by_code("site-code") == app_id
+    assert fixture.access.calls == ["site-code"]
+    assert fixture.access.availability_calls == []
+    assert fixture.policy.access_mode_calls == []
+    assert fixture.policy.permission_calls == []
+
+
+def test_nullable_code_lookup_does_not_turn_dependency_failure_into_missing_app() -> None:
+    failure = WebAppAccessUnavailableError("dependency")
+    fixture = _service(access=AccessQueryStub(error=failure))
+
+    with pytest.raises(WebAppAccessUnavailableError) as raised:
+        fixture.service.find_app_id_by_code("site-code")
+
+    assert raised.value is failure
+    assert fixture.policy.access_mode_calls == []
 
 
 def test_enabled_auth_reads_access_mode_by_app_id() -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
-    service, access_mode_for_app, _ = _service(access=access)
+    fixture = _service()
 
-    assert service.get_access_mode(app_id="app-1", app_code=None) is WebAppAccessMode.PRIVATE
-    access.find_app_id_by_code.assert_not_called()
-    access_mode_for_app.assert_called_once_with("app-1")
+    assert fixture.service.get_access_mode(app_id="app-1", app_code=None) is WebAppAccessMode.PRIVATE
+    assert fixture.access.calls == []
+    assert fixture.access.availability_calls == ["app-1"]
+    assert fixture.policy.access_mode_calls == ["app-1"]
 
 
 def test_app_code_takes_precedence_over_app_id() -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
-    access.find_app_id_by_code.return_value = "resolved-id"
-    service, access_mode_for_app, _ = _service(access=access, access_mode=WebAppAccessMode.SSO_VERIFIED)
+    fixture = _service(
+        access=AccessQueryStub(app_id="resolved-id"),
+        access_mode=WebAppAccessMode.SSO_VERIFIED,
+    )
 
-    assert service.get_access_mode(app_id="ignored-id", app_code="code-1") is WebAppAccessMode.SSO_VERIFIED
-    access.find_app_id_by_code.assert_called_once_with("code-1")
-    access_mode_for_app.assert_called_once_with("resolved-id")
+    assert fixture.service.get_access_mode(app_id="ignored-id", app_code="code-1") is WebAppAccessMode.SSO_VERIFIED
+    assert fixture.access.calls == ["code-1"]
+    assert fixture.policy.access_mode_calls == ["resolved-id"]
+    assert fixture.access.availability_calls == []
 
 
 def test_missing_app_code_raises_not_found() -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
-    access.find_app_id_by_code.return_value = None
-    service, access_mode_for_app, _ = _service(access=access)
+    fixture = _service()
 
     with pytest.raises(WebAppAccessAppNotFoundError):
-        service.get_access_mode(app_id="must-not-fallback", app_code="missing-code")
+        fixture.service.get_access_mode(app_id="must-not-fallback", app_code="missing-code")
 
-    access_mode_for_app.assert_not_called()
+    assert fixture.policy.access_mode_calls == []
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_supplied_missing_app_id_is_not_public_when_auth_disabled(enabled: bool) -> None:
+    fixture = _service(access=AccessQueryStub(available=False), enabled=enabled)
+    with pytest.raises(WebAppAccessAppNotFoundError):
+        fixture.service.get_access_mode(app_id="missing-app", app_code=None)
+    assert fixture.access.availability_calls == ["missing-app"]
+    assert fixture.policy.access_mode_calls == []
+
+
+def test_disabled_auth_resolves_supplied_missing_code_before_public_shortcut() -> None:
+    fixture = _service(enabled=False)
+    with pytest.raises(WebAppAccessAppNotFoundError):
+        fixture.service.get_access_mode(app_id=None, app_code="missing-code")
+    assert fixture.access.calls == ["missing-code"]
+    assert fixture.policy.access_mode_calls == []
+
+
+def test_disabled_auth_returns_public_for_existing_code_without_enterprise_lookup() -> None:
+    fixture = _service(access=AccessQueryStub(app_id="resolved-id"), enabled=False)
+    assert fixture.service.get_access_mode(app_id=None, app_code="existing-code") is WebAppAccessMode.PUBLIC
+    assert fixture.policy.access_mode_calls == []
+    assert fixture.access.availability_calls == []
 
 
 def test_enabled_auth_requires_app_id_or_code() -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
-    service, access_mode_for_app, _ = _service(access=access)
+    fixture = _service()
 
     with pytest.raises(WebAppAccessReferenceRequiredError, match="^appId or appCode must be provided$"):
-        service.get_access_mode(app_id=None, app_code=None)
+        fixture.service.get_access_mode(app_id=None, app_code=None)
 
-    access_mode_for_app.assert_not_called()
+    assert fixture.policy.access_mode_calls == []
 
 
 def test_repository_failure_is_not_hidden() -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
     failure = TypeError("repository bug")
-    access.find_app_id_by_code.side_effect = failure
-    service, _, _ = _service(access=access)
+    fixture = _service(access=AccessQueryStub(error=failure))
 
     with pytest.raises(TypeError) as raised:
-        service.get_access_mode(app_id=None, app_code="code-1")
+        fixture.service.get_access_mode(app_id=None, app_code="code-1")
 
     assert raised.value is failure
 
 
 def test_access_mode_failure_is_not_hidden() -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
-    service, access_mode_for_app, _ = _service(access=access)
+    fixture = _service()
     failure = TypeError("adapter bug")
-    access_mode_for_app.side_effect = failure
+    fixture.policy.access_mode_error = failure
 
     with pytest.raises(TypeError) as raised:
-        service.get_access_mode(app_id="app-1", app_code=None)
+        fixture.service.get_access_mode(app_id="app-1", app_code=None)
 
     assert raised.value is failure
 
@@ -132,39 +265,31 @@ def test_access_mode_failure_is_not_hidden() -> None:
     ],
 )
 def test_requires_permission_check_for_private_modes(access_mode: WebAppAccessMode, expected: bool) -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
-    service, access_mode_for_app, _ = _service(access=access, access_mode=access_mode)
+    fixture = _service(access_mode=access_mode)
 
-    assert service.requires_permission_check("app-1") is expected
-    access_mode_for_app.assert_called_once_with("app-1")
+    assert fixture.service.requires_permission_check("app-1") is expected
+    assert fixture.policy.access_mode_calls == ["app-1"]
 
 
 def test_disabled_auth_still_reads_configured_mode_before_passport() -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
-    service, access_mode_for_app, _ = _service(
-        access=access,
-        enabled=False,
-        access_mode=WebAppAccessMode.PRIVATE,
-    )
+    fixture = _service(enabled=False, access_mode=WebAppAccessMode.PRIVATE)
 
-    assert service.requires_permission_check("app-1") is True
-    access_mode_for_app.assert_called_once_with("app-1")
+    assert fixture.service.requires_permission_check("app-1") is True
+    assert fixture.policy.access_mode_calls == ["app-1"]
 
 
 def test_disabled_auth_allows_after_passport_without_querying_user_permission() -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
-    service, _, is_user_allowed_for_app = _service(access=access, enabled=False, allowed=False)
+    fixture = _service(enabled=False, allowed=False)
 
-    assert service.is_user_allowed(user_id="user-1", app_id="app-1") is True
-    is_user_allowed_for_app.assert_not_called()
+    assert fixture.service.is_user_allowed(user_id="user-1", app_id="app-1") is True
+    assert fixture.policy.permission_calls == []
 
 
 def test_enabled_auth_delegates_user_permission() -> None:
-    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
-    service, _, is_user_allowed_for_app = _service(access=access, allowed=False)
+    fixture = _service(allowed=False)
 
-    assert service.is_user_allowed(user_id="user-1", app_id="app-1") is False
-    is_user_allowed_for_app.assert_called_once_with("user-1", "app-1")
+    assert fixture.service.is_user_allowed(user_id="user-1", app_id="app-1") is False
+    assert fixture.policy.permission_calls == [("user-1", "app-1")]
 
 
 @pytest.mark.parametrize("missing", [False, True], ids=["found", "missing"])
@@ -172,6 +297,20 @@ def test_app_code_lookup_releases_database_before_access_policy(sqlite_engine: E
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id = "11111111-1111-1111-1111-111111111111"
     with factory.begin() as session:
+        config = AppModelConfig(app_id=app_id)
+        config.id = "22222222-2222-2222-2222-222222222222"
+        session.add(config)
+        session.add(
+            App(
+                id=app_id,
+                tenant_id=app_id,
+                name="Test App",
+                mode="chat",
+                enable_site=True,
+                enable_api=True,
+                app_model_config_id=config.id,
+            )
+        )
         session.add(
             Site(
                 app_id=app_id,
@@ -191,19 +330,19 @@ def test_app_code_lookup_releases_database_before_access_policy(sqlite_engine: E
     def checkin(connection: object, *_args: object) -> None:
         connections.remove(connection)
 
-    def access_mode_for_app(resolved_app_id: str) -> WebAppAccessMode:
-        assert not connections
-        resolved.append(resolved_app_id)
-        return WebAppAccessMode.PRIVATE
+    class AccessPolicy:
+        def get_access_mode(self, app_id: str) -> WebAppAccessMode:
+            assert not connections
+            resolved.append(app_id)
+            return WebAppAccessMode.PRIVATE
 
-    def is_user_allowed_for_app(_user_id: str, _app_id: str) -> bool:
-        raise AssertionError("Resolving access mode must not query user permissions")
+        def is_user_allowed(self, *, user_id: str, app_id: str) -> bool:
+            raise AssertionError(f"Resolving access mode must not query user permissions: {user_id}, {app_id}")
 
     service = WebAppAccessQueryService(
         access=WebAppAccessQueryRepository(session_factory=factory),
         webapp_auth_enabled=True,
-        access_mode_for_app=access_mode_for_app,
-        is_user_allowed_for_app=is_user_allowed_for_app,
+        policy=AccessPolicy(),
         get_access_modes=_unexpected_access_modes,
         get_user_permissions=_unexpected_user_permissions,
     )
@@ -247,19 +386,21 @@ class _BatchQueries:
     def find_app_id_by_code(self, app_code: str) -> str | None:
         raise AssertionError(f"Batch queries must not resolve app codes: {app_code}")
 
+    def is_app_available(self, app_id: str) -> bool:
+        raise AssertionError(f"Batch queries must not check app availability: {app_id}")
+
     def get_access_mode(self, app_id: str) -> WebAppAccessMode:
         raise AssertionError(f"Batch queries must not use single-app lookups: {app_id}")
 
-    def is_user_allowed(self, user_id: str, app_id: str) -> bool:
+    def is_user_allowed(self, *, user_id: str, app_id: str) -> bool:
         raise AssertionError(f"Batch queries must not use single-app permissions: {user_id}, {app_id}")
 
 
 def _batch_service(queries: _BatchQueries, *, enabled: bool = True) -> WebAppAccessQueryService:
     return WebAppAccessQueryService(
         access=queries,
+        policy=queries,
         webapp_auth_enabled=enabled,
-        access_mode_for_app=queries.get_access_mode,
-        is_user_allowed_for_app=queries.is_user_allowed,
         get_access_modes=queries.get_access_modes,
         get_user_permissions=queries.get_user_permissions,
     )

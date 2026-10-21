@@ -337,6 +337,11 @@
   "agentDetail.monitoring.sourceLabel": "App",
   "agentDetail.monitoring.sourceTrigger": "Source {{name}}",
   "agentDetail.monitoring.sources.all": "All",
+  "agentDetail.monitoring.table.date": "Date",
+  "agentDetail.monitoring.table.estimatedCost": "Estimated cost",
+  "agentDetail.monitoring.table.hideData": "Hide data",
+  "agentDetail.monitoring.table.value": "Value",
+  "agentDetail.monitoring.table.viewData": "View data",
   "agentDetail.monitoring.timeRangeLabel": "Time range",
   "agentDetail.monitoring.timeRanges.custom": "Custom",
   "agentDetail.monitoring.timeRanges.last30days": "Last 30 days",
@@ -358,5 +363,6 @@
   "agentDetail.versionHistory.filter": "Filter versions",
   "agentDetail.versionHistory.restore": "Restore",
   "agentDetail.versionHistory.versionName": "Version {{version}}",
-  "agentDetail.versionHistory.viewOnly": "View Only"
+  "agentDetail.versionHistory.viewOnly": "View Only",
+  "exportAgent": "Export Agent"
 }

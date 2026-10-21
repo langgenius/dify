@@ -1,7 +1,6 @@
 import copy
 
 import pytest
-from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.prompt.prompt_templates.advanced_prompt_templates import (
@@ -33,7 +32,6 @@ class TestAdvancedPromptTemplateService:
         - Proper prompt generation
         - Appropriate prompt template selection
         """
-        fake = Faker()
 
         args = {
             "app_mode": AppMode.CHAT,
@@ -68,7 +66,6 @@ class TestAdvancedPromptTemplateService:
         - Proper context integration
         - Template structure validation
         """
-        fake = Faker()
 
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
@@ -101,7 +98,6 @@ class TestAdvancedPromptTemplateService:
         - Proper context integration
         - Template structure validation
         """
-        fake = Faker()
 
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(app_mode=AppMode.CHAT, model_mode="chat", has_context="true")
@@ -130,7 +126,6 @@ class TestAdvancedPromptTemplateService:
         - Proper context integration
         - Template structure validation
         """
-        fake = Faker()
 
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
@@ -160,7 +155,6 @@ class TestAdvancedPromptTemplateService:
         - Proper context integration
         - Template structure validation
         """
-        fake = Faker()
 
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
@@ -189,7 +183,6 @@ class TestAdvancedPromptTemplateService:
         - Context is not included in prompt
         - Template structure remains intact
         """
-        fake = Faker()
 
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
@@ -219,7 +212,6 @@ class TestAdvancedPromptTemplateService:
         - Proper handling of unsupported app modes
         - Default empty dict return
         """
-        fake = Faker()
 
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
@@ -239,7 +231,6 @@ class TestAdvancedPromptTemplateService:
         - Proper handling of unsupported model modes
         - Default empty dict return
         """
-        fake = Faker()
 
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
@@ -260,7 +251,6 @@ class TestAdvancedPromptTemplateService:
         - Template structure preservation
         - Context placement at the beginning
         """
-        fake = Faker()
 
         # Create test prompt template
         prompt_template = copy.deepcopy(CHAT_APP_COMPLETION_PROMPT_CONFIG)
@@ -291,7 +281,6 @@ class TestAdvancedPromptTemplateService:
         - Original template is preserved when no context
         - No modification to prompt text
         """
-        fake = Faker()
 
         # Create test prompt template
         prompt_template = copy.deepcopy(CHAT_APP_COMPLETION_PROMPT_CONFIG)
@@ -322,7 +311,6 @@ class TestAdvancedPromptTemplateService:
         - Template structure preservation
         - Context placement at the beginning of first message
         """
-        fake = Faker()
 
         # Create test prompt template
         prompt_template = copy.deepcopy(CHAT_APP_CHAT_PROMPT_CONFIG)
@@ -354,7 +342,6 @@ class TestAdvancedPromptTemplateService:
         - Original template is preserved when no context
         - No modification to prompt text
         """
-        fake = Faker()
 
         # Create test prompt template
         prompt_template = copy.deepcopy(CHAT_APP_CHAT_PROMPT_CONFIG)
@@ -383,7 +370,6 @@ class TestAdvancedPromptTemplateService:
         - All app modes work correctly
         - Proper template selection for each combination
         """
-        fake = Faker()
 
         # Test all app modes
         app_modes = [AppMode.CHAT, AppMode.COMPLETION]
@@ -413,7 +399,6 @@ class TestAdvancedPromptTemplateService:
         - Proper error handling
         - Consistent behavior with unusual inputs
         """
-        fake = Faker()
 
         # Test edge cases
         edge_cases = [
@@ -443,7 +428,6 @@ class TestAdvancedPromptTemplateService:
         - Deep copy is used properly
         - Template immutability is maintained
         """
-        fake = Faker()
 
         # Store original templates
         original_chat_completion = copy.deepcopy(CHAT_APP_COMPLETION_PROMPT_CONFIG)
@@ -459,7 +443,7 @@ class TestAdvancedPromptTemplateService:
         }
 
         # Act: Execute the method under test
-        result = AdvancedPromptTemplateService.get_prompt(**args)
+        AdvancedPromptTemplateService.get_prompt(**args)
 
         # Assert: Verify original templates are unchanged
         assert original_chat_completion == CHAT_APP_COMPLETION_PROMPT_CONFIG
@@ -478,7 +462,6 @@ class TestAdvancedPromptTemplateService:
         - Context integration is consistent across different templates
         - No context duplication or corruption
         """
-        fake = Faker()
 
         # Test different scenarios
         test_scenarios = [

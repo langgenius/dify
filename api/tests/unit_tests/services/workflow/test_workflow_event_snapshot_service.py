@@ -23,17 +23,22 @@ from core.app.layers.pause_state_persist_layer import (
 )
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
+from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import AppMode, Message
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services import workflow_event_snapshot_service as service_module
 from services.workflow_event_snapshot_service import (
     BufferState,
@@ -140,7 +145,7 @@ def _build_resumption_context(task_id: str, *, select_options: list[str] | None 
         call_depth=0,
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     if select_options is not None:
         runtime_state.variable_pool.add(("start", "options"), select_options)
     runtime_state.set_output("result", "value")
@@ -168,6 +173,7 @@ def test_build_snapshot_events_applies_message_context() -> None:
         message_context=message_context,
         pause_entity=None,
         resumption_context=None,
+        node_executions={},
     )
 
     assert [event["event"] for event in events] == [
@@ -247,7 +253,7 @@ def _build_resumption_context_additional(task_id: str) -> WorkflowResumptionCont
         call_depth=0,
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.set_output("answer", "ok")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
@@ -276,7 +282,7 @@ def _build_advanced_chat_resumption_context(conversation_id: str | None) -> Work
         workflow_run_id="run-1",
         query="hello",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     wrapper = _AdvancedChatAppGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,
@@ -318,10 +324,12 @@ def _persist_human_input_form(
     session_maker: sessionmaker[Session],
     *,
     recipients: Sequence[HumanInputFormRecipient] = (),
+    form_id: str = "form-1",
+    status: HumanInputFormStatus = HumanInputFormStatus.WAITING,
 ) -> datetime:
     expiration_time = datetime(2024, 1, 1)
     form = HumanInputForm(
-        id="form-1",
+        id=form_id,
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_run_id="run-1",
@@ -330,6 +338,7 @@ def _persist_human_input_form(
         form_definition='{"display_in_ui": true}',
         rendered_content="content",
         expiration_time=expiration_time,
+        status=status,
     )
     with session_maker.begin() as session:
         session.add(form)
@@ -701,6 +710,101 @@ def test_start_buffering_should_set_done_event_when_subscription_raises() -> Non
     assert finished is True
 
 
+def test_start_buffering_should_treat_closed_subscription_as_done(caplog: pytest.LogCaptureFixture) -> None:
+    class Subscription:
+        def receive(self, timeout: int = 1) -> bytes | None:
+            raise SubscriptionClosedError("closed")
+
+    buffer_state = service_module._start_buffering(Subscription())
+
+    assert buffer_state.done_event.wait(timeout=1) is True
+    assert "Failed while buffering workflow events" not in caplog.text
+
+
+@pytest.mark.parametrize("include_node_details", [False, True])
+def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    include_node_details: bool,
+) -> None:
+    snapshot = _build_snapshot(WorkflowNodeExecutionStatus.SUCCEEDED)
+    run = _build_workflow_run(WorkflowExecutionStatus.RUNNING)
+    execution = WorkflowNodeExecutionModel(
+        id="row-1",
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        workflow_id=run.workflow_id,
+        workflow_run_id=run.id,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        node_execution_id=snapshot.execution_id,
+        node_id=snapshot.node_id,
+        node_type=snapshot.node_type,
+        title=snapshot.title,
+        index=snapshot.index,
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        elapsed_time=snapshot.elapsed_time,
+        created_at=snapshot.created_at,
+        finished_at=snapshot.finished_at,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=run.created_by,
+        predecessor_node_id="start",
+        inputs=json.dumps({"request": "review"}),
+        process_data=json.dumps({"action": "approve"}),
+        outputs=json.dumps({"approved_text": "approved"}),
+        execution_metadata=json.dumps({"total_tokens": 7}),
+        offload_data=[],
+    )
+    sqlite_session.add_all([run, execution])
+    sqlite_session.commit()
+    node_repo = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
+    detail_queries: list[tuple[str, str, str]] = []
+    load_executions = node_repo.get_executions_by_workflow_run
+
+    def get_executions(tenant_id: str, app_id: str, workflow_run_id: str) -> Sequence[WorkflowNodeExecutionModel]:
+        detail_queries.append((tenant_id, app_id, workflow_run_id))
+        return load_executions(tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run_id)
+
+    monkeypatch.setattr(node_repo, "get_executions_by_workflow_run", get_executions)
+    monkeypatch.setattr(
+        service_module.DifyAPIRepositoryFactory, "create_api_workflow_node_execution_repository", lambda _: node_repo
+    )
+    monkeypatch.setattr(
+        service_module.MessageGenerator, "get_response_topic", lambda *_args: _Topic(_StaticSubscription())
+    )
+    buffer_state = BufferState(queue.Queue(), Event(), Event(), Event(), task_id_hint="task-1")
+    buffer_state.done_event.set()
+    monkeypatch.setattr(service_module, "_start_buffering", lambda _sub: buffer_state)
+
+    events = list(
+        build_workflow_event_stream(
+            app_mode=AppMode.WORKFLOW,
+            workflow_run=run,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            session_maker=sqlite_session_factory,
+            **({"include_node_details": True} if include_node_details else {}),
+        )
+    )
+    started, finished = [
+        event["data"]
+        for event in events
+        if isinstance(event, Mapping) and event["event"] in (StreamEvent.NODE_STARTED, StreamEvent.NODE_FINISHED)
+    ]
+    assert started["id"] == finished["id"] == snapshot.execution_id
+    assert started["index"] == finished["index"] == 1
+    if include_node_details:
+        assert detail_queries == [("tenant-1", "app-1", "run-1")]
+        assert started["inputs"] == finished["inputs"] == {"request": "review"}
+        assert finished["process_data"] == {"action": "approve"}
+        assert finished["outputs"] == {"approved_text": "approved"}
+        assert finished["execution_metadata"] == {"total_tokens": 7}
+    else:
+        assert detail_queries == []
+        assert started["inputs"] is None
+        assert all(finished[key] is None for key in ("inputs", "process_data", "outputs", "execution_metadata"))
+
+
 def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_event(
     monkeypatch: pytest.MonkeyPatch,
     unbound_session_factory: sessionmaker[Session],
@@ -815,7 +919,6 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock())
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=resumption_context))
     conversation_lookup = MagicMock(return_value=None)
     app_lookup = MagicMock(return_value=None)
@@ -852,7 +955,6 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock())
     load_resumption_context = MagicMock(return_value=None)
     monkeypatch.setattr(service_module, "_load_resumption_context", load_resumption_context)
     conversation_lookup = MagicMock(return_value=None)
@@ -1076,6 +1178,7 @@ def test_build_snapshot_events_preserves_public_form_token(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=sqlite_session_factory,
+        node_executions={},
     )
 
     assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
@@ -1122,6 +1225,7 @@ def _build_recipient_snapshot_events(
         resumption_context=resumption_context,
         session_maker=session_maker,
         human_input_surface=HumanInputSurface.OPENAPI,
+        node_executions={},
     )
 
 
@@ -1238,6 +1342,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=sqlite_session_factory,
+        node_executions={},
     )
 
     human_input_event = events[-2]
@@ -1301,3 +1406,202 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
     assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED
     assert pause_event["data"]["reasons"][0]["form_token"] == "wtok"
     assert pause_event["data"]["reasons"][0]["expiration_time"] == to_utc_timestamp(expiration_time)
+
+
+def _human_input_reason(form_id: str) -> HumanInputRequired:
+    return HumanInputRequired(
+        form_id=form_id,
+        form_content="content",
+        node_id=f"node-{form_id}",
+        node_title="Human Input",
+    )
+
+
+def _build_paused_snapshot_events(
+    session_maker: sessionmaker[Session],
+    forms: Mapping[str, HumanInputFormStatus],
+    *,
+    pause_reason_form_ids: Sequence[str] | None = None,
+) -> list[Mapping[str, Any]]:
+    for form_id, status in forms.items():
+        _persist_human_input_form(session_maker, form_id=form_id, status=status)
+    reason_form_ids = list(forms) if pause_reason_form_ids is None else pause_reason_form_ids
+    pause_entity = _FakePauseEntity(
+        pause_id="pause-1",
+        workflow_run_id="run-1",
+        paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
+        pause_reasons=[_human_input_reason(form_id) for form_id in reason_form_ids],
+    )
+    return _build_snapshot_events(
+        workflow_run=_build_workflow_run(WorkflowExecutionStatus.PAUSED),
+        node_snapshots=[_build_snapshot(WorkflowNodeExecutionStatus.PAUSED)],
+        task_id="task-ctx",
+        message_context=None,
+        pause_entity=pause_entity,
+        resumption_context=_build_resumption_context("task-ctx"),
+        session_maker=session_maker,
+        node_executions={},
+    )
+
+
+class _PausedRunRepo:
+    def __init__(self, pause_entity: WorkflowPauseEntity) -> None:
+        self._pause_entity = pause_entity
+
+    def get_workflow_pause(self, _workflow_run_id: str) -> WorkflowPauseEntity:
+        return self._pause_entity
+
+
+class _EmptyNodeRepo:
+    def get_execution_snapshots_by_workflow_run(self, **_kwargs: object) -> list[WorkflowNodeExecutionSnapshot]:
+        return []
+
+
+def _event_types(events: Sequence[Mapping[str, Any]]) -> list[str]:
+    return [event["event"] for event in events]
+
+
+@pytest.mark.parametrize(
+    "closed_status",
+    [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED],
+)
+def test_snapshot_omits_forms_that_are_no_longer_waiting(
+    sqlite_session_factory: sessionmaker[Session],
+    closed_status: HumanInputFormStatus,
+) -> None:
+    events = _build_paused_snapshot_events(sqlite_session_factory, {"form-1": closed_status})
+
+    assert StreamEvent.HUMAN_INPUT_REQUIRED not in _event_types(events)
+    assert StreamEvent.WORKFLOW_PAUSED not in _event_types(events)
+
+
+def test_snapshot_omits_pause_when_form_row_is_missing(sqlite_session_factory: sessionmaker[Session]) -> None:
+    events = _build_paused_snapshot_events(sqlite_session_factory, {}, pause_reason_form_ids=["form-unknown"])
+
+    assert _event_types(events) == ["workflow_started", "node_started", "node_finished"]
+
+
+def test_snapshot_replays_waiting_form_and_pause(sqlite_session_factory: sessionmaker[Session]) -> None:
+    events = _build_paused_snapshot_events(sqlite_session_factory, {"form-1": HumanInputFormStatus.WAITING})
+
+    assert _event_types(events)[-2:] == [StreamEvent.HUMAN_INPUT_REQUIRED, StreamEvent.WORKFLOW_PAUSED]
+    assert events[-2]["data"]["form_id"] == "form-1"
+    assert [reason["form_id"] for reason in events[-1]["data"]["reasons"]] == ["form-1"]
+
+
+def test_snapshot_replays_only_waiting_forms_when_mixed(sqlite_session_factory: sessionmaker[Session]) -> None:
+    events = _build_paused_snapshot_events(
+        sqlite_session_factory,
+        {"form-1": HumanInputFormStatus.SUBMITTED, "form-2": HumanInputFormStatus.WAITING},
+    )
+
+    human_input_events = [event for event in events if event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED]
+    assert [event["data"]["form_id"] for event in human_input_events] == ["form-2"]
+    pause_data = events[-1]["data"]
+    assert events[-1]["event"] == StreamEvent.WORKFLOW_PAUSED
+    assert [reason["form_id"] for reason in pause_data["reasons"]] == ["form-2"]
+    assert pause_data["paused_nodes"] == ["node-form-2"]
+
+
+def test_stream_continues_with_live_events_when_all_forms_submitted(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
+    pause_entity = _FakePauseEntity(
+        pause_id="pause-1",
+        workflow_run_id="run-1",
+        paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
+        pause_reasons=[_human_input_reason("form-1")],
+    )
+    factory = service_module.DifyAPIRepositoryFactory
+    monkeypatch.setattr(factory, "create_api_workflow_run_repository", lambda _sm: _PausedRunRepo(pause_entity))
+    monkeypatch.setattr(factory, "create_api_workflow_node_execution_repository", lambda _sm: _EmptyNodeRepo())
+    topic = _Topic(_StaticSubscription())
+    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", lambda *_args: topic)
+    resumption_context = _build_resumption_context("task-1")
+    monkeypatch.setattr(service_module, "_load_resumption_context", lambda _pause_entity: resumption_context)
+    live_finished = {"event": StreamEvent.WORKFLOW_FINISHED.value, "task_id": "task-1"}
+    buffer_state = BufferState(
+        queue=queue.Queue(),
+        stop_event=Event(),
+        done_event=Event(),
+        task_id_ready=Event(),
+        task_id_hint="task-1",
+    )
+    buffer_state.queue.put(live_finished)
+    monkeypatch.setattr(service_module, "_start_buffering", lambda _subscription: buffer_state)
+    _persist_human_input_form(sqlite_session_factory, status=HumanInputFormStatus.SUBMITTED)
+
+    events = list(
+        build_workflow_event_stream(
+            app_mode=AppMode.WORKFLOW,
+            workflow_run=workflow_run,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            session_maker=sqlite_session_factory,
+            close_on_pause=True,
+        )
+    )
+
+    assert events[-1] == live_finished
+    snapshot_types = [event["event"] for event in events if isinstance(event, Mapping)]
+    assert StreamEvent.WORKFLOW_PAUSED not in snapshot_types
+    assert StreamEvent.HUMAN_INPUT_REQUIRED not in snapshot_types
+
+
+@pytest.mark.parametrize("saved_run_id", ["run-1", "other-run"])
+@pytest.mark.parametrize("app_mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_authorized_snapshot_indexes_legacy_pause_for_stop(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    saved_run_id: str,
+    app_mode: AppMode,
+) -> None:
+    task_id = "ccbd2ed3-013f-4de1-82b5-a38356203f8f"
+    run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
+    pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="legacy-state")
+    sqlite_session.add_all([run, pause])
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    assert (
+        repository.stop_paused_workflow_task(tenant_id=run.tenant_id, app_id=run.app_id, task_id=task_id, owner=None)
+        is None
+    )
+    context = (
+        _build_resumption_context(task_id)
+        if app_mode == AppMode.WORKFLOW
+        else _build_advanced_chat_resumption_context("conv-1")
+    )
+    generate_entity = context.get_generate_entity()
+    generate_entity.task_id = task_id
+    if isinstance(generate_entity, AdvancedChatAppGenerateEntity):
+        generate_entity.workflow_run_id = saved_run_id
+    else:
+        generate_entity.workflow_execution_id = saved_run_id
+    monkeypatch.setattr(service_module, "_load_resumption_context", lambda _: context)
+    monkeypatch.setattr(
+        service_module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", lambda _: repository
+    )
+    node_repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
+    monkeypatch.setattr(
+        service_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_node_execution_repository",
+        lambda _: node_repository,
+    )
+    stream = build_workflow_event_stream(
+        app_mode=app_mode,
+        workflow_run=run,
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        session_maker=sqlite_session_factory,
+    )
+    stream.close()
+    sqlite_session.expire_all()
+    assert run.task_id == (task_id if saved_run_id == run.id else None)
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", lambda _: None)
+    stopped = repository.stop_paused_workflow_task(
+        tenant_id=run.tenant_id, app_id=run.app_id, task_id=task_id, owner=None
+    )
+    assert (stopped is not None) is (saved_run_id == run.id)

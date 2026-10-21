@@ -6,11 +6,12 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from werkzeug.exceptions import InternalServerError, NotFound, Unauthorized
 
 import services
+from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -33,15 +34,15 @@ from core.errors.error import (
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from machinery.context import RequestContext
+from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotChatError, InstalledAppNotCompletionError
-
-from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class CompletionMessageExplorePayload(BaseModel):
     retriever_from: str = Field(default="explore_app")
 
 
-class ChatMessagePayload(BaseModel):
+class ChatMessageExplorePayload(BaseModel):
     inputs: dict[str, Any]
     query: str
     files: list[dict[str, Any]] | None = Field(default=None)
@@ -77,7 +78,7 @@ class ChatMessagePayload(BaseModel):
             raise ValueError("must be a valid UUID") from exc
 
 
-register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
+register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessageExplorePayload)
 register_response_schema_models(console_ns, SimpleResultResponse)
 
 
@@ -87,6 +88,14 @@ register_response_schema_models(console_ns, SimpleResultResponse)
     endpoint="installed_app_completion",
 )
 class CompletionApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        NotCompletionAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -112,29 +121,29 @@ class CompletionApi(Resource):
         except InstalledAppNotCompletionError:
             raise NotCompletionAppError() from None
         except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+            raise NotFoundError("Installed app not found") from None
         except AccountNotFoundError:
-            raise Unauthorized("Account no longer exists.") from None
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+            raise UnauthorizedError("Account no longer exists.") from None
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route(
@@ -142,6 +151,7 @@ class CompletionApi(Resource):
     endpoint="installed_app_stop_completion",
 )
 class CompletionStopApi(Resource):
+    @error_responses(NotCompletionAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
@@ -156,7 +166,6 @@ class CompletionStopApi(Resource):
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
             user_id=request_context.account_id,
-            app_mode=AppMode.value_of(app_mode),
         )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK
@@ -167,14 +176,23 @@ class CompletionStopApi(Resource):
     endpoint="installed_app_chat_completion",
 )
 class ChatApi(Resource):
-    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
+    @console_ns.expect(console_ns.models[ChatMessageExplorePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
-    @model_validate(ChatMessagePayload)
+    @model_validate(ChatMessageExplorePayload)
     def post(
         self,
-        req_data: ChatMessagePayload,
+        req_data: ChatMessageExplorePayload,
         request_context: RequestContext,
         installed_app: InstalledAppRef,
     ) -> Response:
@@ -192,31 +210,31 @@ class ChatApi(Resource):
         except InstalledAppNotChatError:
             raise NotChatAppError() from None
         except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+            raise NotFoundError("Installed app not found") from None
         except AccountNotFoundError:
-            raise Unauthorized("Account no longer exists.") from None
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+            raise UnauthorizedError("Account no longer exists.") from None
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route(
@@ -224,6 +242,7 @@ class ChatApi(Resource):
     endpoint="installed_app_stop_chat_completion",
 )
 class ChatStopApi(Resource):
+    @error_responses(NotChatAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
@@ -234,11 +253,19 @@ class ChatStopApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        application_services().app_tasks.stop_task(
-            task_id=task_id,
-            invoke_from=InvokeFrom.EXPLORE,
-            user_id=request_context.account_id,
-            app_mode=app_mode,
-        )
+        if app_mode == AppMode.ADVANCED_CHAT:
+            application_services().app_tasks.stop_workflow_task(
+                tenant_id=installed_app.app_owner_tenant_id,
+                app_id=installed_app.app_id,
+                task_id=task_id,
+                app_mode=app_mode,
+                owner=(CreatorUserRole.ACCOUNT, request_context.account_id),
+            )
+        else:
+            application_services().app_tasks.stop_task(
+                task_id=task_id,
+                invoke_from=InvokeFrom.EXPLORE,
+                user_id=request_context.account_id,
+            )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK

@@ -1,4 +1,5 @@
 'use client'
+import type { OnMount } from '@monaco-editor/react'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import Editor, { loader } from '@monaco-editor/react'
@@ -32,7 +33,7 @@ export type Props = Readonly<{
   isJSONStringifyBeauty?: boolean
   height?: number
   isInNode?: boolean
-  onMount?: (editor: any, monaco: any) => void
+  onMount?: OnMount
   noWrapper?: boolean
   isExpand?: boolean
   showFileList?: boolean
@@ -86,7 +87,7 @@ const CodeEditor: FC<Props> = ({
     return []
   }, [value])
 
-  const editorRef = useRef<any>(null)
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
   const resizeEditorToContent = () => {
     if (editorRef.current) {
       const contentHeight = editorRef.current.getContentHeight() // Math.max(, minHeight)
@@ -101,7 +102,7 @@ const CodeEditor: FC<Props> = ({
     }, 10)
   }
 
-  const handleEditorDidMount = (editor: any, monaco: any) => {
+  const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
     resizeEditorToContent()
 

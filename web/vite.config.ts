@@ -18,6 +18,10 @@ export default defineConfig(({ command, mode, isPreview }) => {
     process.argv.some((arg) => arg.toLowerCase().includes('storybook'))
 
   return {
+    build: {
+      // Match package.json's browserslist; these targets support native top-level await.
+      target: ['chrome111', 'edge111', 'firefox128', 'safari16.4', 'ios16.4'],
+    },
     plugins: lazyPlugins(async () => {
       const { default: react } = await import('@vitejs/plugin-react')
 
@@ -72,17 +76,14 @@ export default defineConfig(({ command, mode, isPreview }) => {
     }),
     resolve: {
       tsconfigPaths: true,
-      alias: [
-        { find: '~@', replacement: projectRoot },
-        // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
-        { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
-      ],
+      alias: [{ find: '~@', replacement: projectRoot }],
     },
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['@tanstack/react-query'],
+            // Keep skipToken shared by the unbundled React Query and oRPC clients.
+            exclude: ['@tanstack/react-query', '@tanstack/query-core'],
           },
           server: {
             port: 3000,
@@ -92,10 +93,31 @@ export default defineConfig(({ command, mode, isPreview }) => {
 
     // Vitest config
     test: {
+      // Vitest 5 stores Browser Mode failure screenshots as attachments; keep them beside the traces.
+      attachmentsDir: './.vitest-browser/attachments',
       coverage: {
         provider: 'v8',
-        reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
-        exclude: ['**/__mocks__/**'],
+        // Include authored sources even when no test imports them.
+        include: ['**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}'],
+        reporter: isCI ? ['json', 'json-summary'] : ['text', 'html', 'json', 'json-summary'],
+        exclude: [
+          // Test infrastructure and examples do not belong in the source denominator.
+          '**/{__tests__,__mocks__}/**',
+          '**/*.{spec,test,stories}.*',
+          'test/**',
+          'vitest*.setup.ts',
+          // Declarations, generated sources, tool configuration, and build output.
+          '**/*.d.{ts,mts,cts}',
+          '**/*.{generated,gen}.*',
+          'types/doc-paths.ts',
+          '*.config.*',
+          '.*/**',
+          '**/dist/**',
+          '{coverage,build,out,storybook-static}/**',
+          // Keep public/embed.js, but omit its minified copy and vendored workers/editor.
+          'public/**/*.min.{js,mjs}',
+          'public/vs/**',
+        ],
       },
       projects: [
         {
@@ -134,14 +156,10 @@ export default defineConfig(({ command, mode, isPreview }) => {
             setupFiles: ['./vitest.browser.setup.ts'],
             include: [browserTestPattern],
             browser: {
-              expect: {
-                toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' },
-              },
               enabled: true,
               provider: playwright(),
               instances: [{ browser: 'chromium' }],
               headless: true,
-              screenshotDirectory: './.vitest-browser/screenshots',
               screenshotFailures: true,
               trace: {
                 mode: 'retain-on-failure',

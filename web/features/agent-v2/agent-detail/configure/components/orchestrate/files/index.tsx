@@ -134,17 +134,15 @@ function AgentFileItem({
     enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile && !!apiContext.workflow,
   })
   const trialPreviewQuery = useQuery(
-    apiContext.trialAppId
-      ? {
-          ...consoleQuery.trialApps.byAppId.agent.config.files.byName.preview.get.queryOptions({
-            input: {
-              params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
-              query: { version_id: apiContext.versionId },
-            },
-          }),
-          enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile,
-        }
-      : { queryKey: ['agent-v2', 'trial-file-preview-disabled'], queryFn: skipToken },
+    consoleQuery.trialApps.byAppId.agent.config.files.byName.preview.get.queryOptions({
+      input: apiContext.trialAppId
+        ? {
+            params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
+            query: { version_id: apiContext.versionId },
+          }
+        : skipToken,
+      enabled: !!apiContext.trialAppId && isPreviewOpen && !!previewFileId && !isVirtualPreviewFile,
+    }),
   )
   const previewQuery = apiContext.trialAppId
     ? trialPreviewQuery
@@ -191,18 +189,16 @@ function AgentFileItem({
     enabled: shouldDownloadPreviewFile && !!apiContext.workflow,
   })
   const trialDownloadQuery = useQuery(
-    apiContext.trialAppId
-      ? {
-          ...consoleQuery.trialApps.byAppId.agent.config.files.byName.download.get.queryOptions({
-            input: {
-              params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
-              query: { version_id: apiContext.versionId },
-            },
-          }),
-          staleTime: 0,
-          enabled: shouldDownloadPreviewFile,
-        }
-      : { queryKey: ['agent-v2', 'trial-file-download-disabled'], queryFn: skipToken },
+    consoleQuery.trialApps.byAppId.agent.config.files.byName.download.get.queryOptions({
+      input: apiContext.trialAppId
+        ? {
+            params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
+            query: { version_id: apiContext.versionId },
+          }
+        : skipToken,
+      enabled: !!apiContext.trialAppId && shouldDownloadPreviewFile,
+      staleTime: 0,
+    }),
   )
   const downloadQuery = apiContext.trialAppId
     ? trialDownloadQuery
@@ -316,7 +312,7 @@ function AgentFileItem({
               aria-current={selected ? 'true' : undefined}
               disabled={file.isMissing}
               className={cn(
-                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left select-none focus-visible:ring-inset',
                 file.isMissing && 'cursor-default pr-6',
               )}
             />

@@ -19,6 +19,7 @@ type AppPublisherPublishHandler =
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
 
 export type AppPublisherProps = {
+  appId: string
   disabled?: boolean
   publishDisabled?: boolean
   publishedAt?: number
@@ -39,5 +40,4 @@ export type AppPublisherProps = {
   missingStartNode?: boolean
   hasTriggerNode?: boolean
   startNodeLimitExceeded?: boolean
-  hasHumanInputNode?: boolean
 }

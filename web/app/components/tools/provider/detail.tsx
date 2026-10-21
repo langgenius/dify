@@ -10,11 +10,12 @@ import type {
 import type { WorkflowToolDrawerPayload } from '@/app/components/tools/workflow-tool'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -36,6 +37,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
@@ -44,7 +46,6 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { toast } from '@/app/notifications'
 import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getPluginLanguage } from '@/i18n/metadata'
@@ -54,7 +55,6 @@ import {
   fetchBuiltInToolList,
   fetchCustomCollection,
   fetchCustomToolList,
-  fetchModelToolList,
   fetchWorkflowToolDetail,
   removeBuiltInToolCredential,
   removeCustomCollection,
@@ -62,8 +62,6 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
-import { modelProviderDetailsQueryOptions } from '@/service/use-common'
-import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'
@@ -87,7 +85,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const canOpenCredentialSettings = isAuthed ? canUseCredential : canCreateCredential
   const canSaveCredentialSettings = isAuthed ? canManageCredential : canCreateCredential
   const canManageTools = useCanManageTools()
-  const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   // built in provider
@@ -159,15 +156,13 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
     setCustomCollection((prev) => (prev ? { ...prev, labels: data.labels } : null))
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   const doRemoveCustomToolCollection = async () => {
     if (!canManageTools) return
 
-    await removeCustomCollection(collection?.name as string)
+    await removeCustomCollection(collection?.name)
     onRefreshData()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   // workflow provider
@@ -197,7 +192,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
 
     await deleteWorkflowTool(collection.id)
     onRefreshData()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setWorkflowToolDrawerOpen(false)
   }
   const updateWorkflowToolProvider = async (
@@ -210,10 +204,11 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     await saveWorkflowToolProvider(data)
-    invalidateAllWorkflowTools()
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+    })
     onRefreshData()
     getWorkflowToolProvider()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setWorkflowToolDrawerOpen(false)
   }
   const onClickCustomToolDelete = () => {
@@ -238,9 +233,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     try {
       if (collection.type === CollectionType.builtIn) {
         const list = await fetchBuiltInToolList(collection.name)
-        setToolList(list)
-      } else if (collection.type === CollectionType.model) {
-        const list = await fetchModelToolList(collection.name)
         setToolList(list)
       } else if (collection.type === CollectionType.workflow) {
         setToolList([])
@@ -475,7 +467,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                               collection={collection}
                               tool={tool}
                               isBuiltIn={isBuiltIn}
-                              isModel={isModel}
                             />
                           ))}
                         {collection.type === CollectionType.workflow &&
@@ -515,7 +506,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       if (!canSaveCredentialSettings) return
 
                       await updateBuiltInToolCredential(collection.name, value)
-                      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
@@ -523,7 +513,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       if (!canManageCredential) return
 
                       await removeBuiltInToolCredential(collection.name)
-                      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
@@ -551,22 +540,22 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                   onOpenChange={(open) => !open && setShowConfirmDelete(false)}
                 >
                   <AlertDialogContent>
-                    <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                      <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
                         {t(($) => $['createTool.deleteToolConfirmTitle'], { ns: 'tools' })}
                       </AlertDialogTitle>
-                      <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                      <AlertDialogDescription>
                         {t(($) => $['createTool.deleteToolConfirmContent'], { ns: 'tools' })}
                       </AlertDialogDescription>
-                    </div>
-                    <AlertDialogActions>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
                       <AlertDialogCancelButton>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
                       </AlertDialogCancelButton>
                       <AlertDialogConfirmButton onClick={handleConfirmDelete}>
                         {t(($) => $['operation.confirm'], { ns: 'common' })}
                       </AlertDialogConfirmButton>
-                    </AlertDialogActions>
+                    </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               </div>

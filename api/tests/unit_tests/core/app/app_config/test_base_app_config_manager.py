@@ -5,15 +5,16 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
+from models.model import AppMode
 
 
 class TestBaseAppConfigManager:
     @pytest.fixture
-    def mock_config_dict(self):
+    def mock_config_dict(self) -> dict[str, object]:
         return {"key": "value", "another": 123}
 
     @pytest.fixture
-    def mock_app_additional_features(self, mocker: MockerFixture):
+    def mock_app_additional_features(self, mocker: MockerFixture) -> MagicMock:
         mock_instance = MagicMock()
         mocker.patch(
             "core.app.app_config.base_app_config_manager.AppAdditionalFeatures",
@@ -22,7 +23,7 @@ class TestBaseAppConfigManager:
         return mock_instance
 
     @pytest.fixture
-    def mock_managers(self, mocker: MockerFixture):
+    def mock_managers(self, mocker: MockerFixture) -> dict[str, MagicMock]:
         retrieval = mocker.patch(
             "core.app.app_config.base_app_config_manager.RetrievalResourceConfigManager.convert",
             return_value="retrieval_result",
@@ -65,32 +66,20 @@ class TestBaseAppConfigManager:
     @pytest.mark.parametrize(
         ("app_mode", "expected_is_vision"),
         [
-            ("CHAT", True),
-            ("COMPLETION", True),
-            ("AGENT_CHAT", True),
-            ("OTHER", False),
+            (AppMode.CHAT, True),
+            (AppMode.COMPLETION, True),
+            (AppMode.AGENT_CHAT, True),
+            (AppMode.WORKFLOW, False),
         ],
     )
     def test_convert_features_all_modes(
         self,
-        mocker: MockerFixture,
-        mock_config_dict,
-        mock_app_additional_features,
-        mock_managers,
-        app_mode,
-        expected_is_vision,
-    ):
-        # Arrange
-        mock_app_mode = MagicMock()
-        mock_app_mode.CHAT = "CHAT"
-        mock_app_mode.COMPLETION = "COMPLETION"
-        mock_app_mode.AGENT_CHAT = "AGENT_CHAT"
-
-        mocker.patch(
-            "core.app.app_config.base_app_config_manager.AppMode",
-            mock_app_mode,
-        )
-
+        mock_config_dict: dict[str, object],
+        mock_app_additional_features: MagicMock,
+        mock_managers: dict[str, MagicMock],
+        app_mode: AppMode,
+        expected_is_vision: bool,
+    ) -> None:
         # Act
         result = BaseAppConfigManager.convert_features(mock_config_dict, app_mode)
 
@@ -108,21 +97,14 @@ class TestBaseAppConfigManager:
         mock_managers["speech_to_text"].assert_called_once_with(config=dict(mock_config_dict.items()))
         mock_managers["text_to_speech"].assert_called_once_with(config=dict(mock_config_dict.items()))
 
-    def test_convert_features_empty_config(self, mocker: MockerFixture, mock_app_additional_features, mock_managers):
+    def test_convert_features_empty_config(
+        self, mock_app_additional_features: MagicMock, mock_managers: dict[str, MagicMock]
+    ) -> None:
         # Arrange
         empty_config = {}
-        mock_app_mode = MagicMock()
-        mock_app_mode.CHAT = "CHAT"
-        mock_app_mode.COMPLETION = "COMPLETION"
-        mock_app_mode.AGENT_CHAT = "AGENT_CHAT"
-
-        mocker.patch(
-            "core.app.app_config.base_app_config_manager.AppMode",
-            mock_app_mode,
-        )
 
         # Act
-        result = BaseAppConfigManager.convert_features(empty_config, "CHAT")
+        result = BaseAppConfigManager.convert_features(empty_config, AppMode.CHAT)
 
         # Assert
         assert result == mock_app_additional_features
@@ -139,12 +121,14 @@ class TestBaseAppConfigManager:
             [],
         ],
     )
-    def test_convert_features_invalid_config_raises(self, invalid_config):
+    def test_convert_features_invalid_config_raises(self, invalid_config: object) -> None:
         # Act & Assert
         with pytest.raises((TypeError, AttributeError)):
-            BaseAppConfigManager.convert_features(invalid_config, "CHAT")
+            BaseAppConfigManager.convert_features(invalid_config, AppMode.CHAT)  # pyrefly: ignore[bad-argument-type]
 
-    def test_convert_features_manager_exception_propagates(self, mocker: MockerFixture, mock_config_dict):
+    def test_convert_features_manager_exception_propagates(
+        self, mocker: MockerFixture, mock_config_dict: dict[str, object]
+    ) -> None:
         # Arrange
         mocker.patch(
             "core.app.app_config.base_app_config_manager.RetrievalResourceConfigManager.convert",
@@ -153,29 +137,19 @@ class TestBaseAppConfigManager:
 
         # Act & Assert
         with pytest.raises(RuntimeError):
-            BaseAppConfigManager.convert_features(mock_config_dict, "CHAT")
+            BaseAppConfigManager.convert_features(mock_config_dict, AppMode.CHAT)
 
     def test_convert_features_mapping_subclass(
-        self, mocker: MockerFixture, mock_app_additional_features, mock_managers
-    ):
+        self, mock_app_additional_features: MagicMock, mock_managers: dict[str, MagicMock]
+    ) -> None:
         # Arrange
-        class CustomMapping(UserDict):
+        class CustomMapping(UserDict[str, int]):
             pass
 
         custom_config = CustomMapping({"a": 1})
 
-        mock_app_mode = MagicMock()
-        mock_app_mode.CHAT = "CHAT"
-        mock_app_mode.COMPLETION = "COMPLETION"
-        mock_app_mode.AGENT_CHAT = "AGENT_CHAT"
-
-        mocker.patch(
-            "core.app.app_config.base_app_config_manager.AppMode",
-            mock_app_mode,
-        )
-
         # Act
-        result = BaseAppConfigManager.convert_features(custom_config, "CHAT")
+        result = BaseAppConfigManager.convert_features(custom_config, AppMode.CHAT)
 
         # Assert
         assert result == mock_app_additional_features

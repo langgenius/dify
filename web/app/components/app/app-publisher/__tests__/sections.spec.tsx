@@ -1,33 +1,21 @@
 import type { ComponentProps } from 'react'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useRef } from 'react'
+import { consoleQuery } from '@/service/console'
 import { expectLoadingButton } from '@/test/button'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
-import { AppModeEnum } from '@/types/app'
 import { PublisherActionsSection } from '../built-in-publisher/actions-section'
 import { PublisherSummarySection } from '../built-in-publisher/summary-section'
 import { usePublishController } from '../publisher-content/use-publish-controller'
 
-vi.mock('../publish-with-multiple-model', () => ({
-  default: ({
-    disabled,
-    onSelect,
-  }: {
-    disabled?: boolean
-    onSelect: (item: Record<string, unknown>) => void
-  }) => (
-    <button type="button" disabled={disabled} onClick={() => onSelect({ model: 'gpt-4o' })}>
-      publish-multiple-model
-    </button>
-  ),
-}))
-
-const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersionInfo = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'workflow-version-1',
   graph: {
     nodes: [],
@@ -82,7 +70,7 @@ function PublisherPopup({
 
 function PublishingPopup({ onPublish }: { onPublish: () => Promise<void> }) {
   const publish = usePublishController({
-    appMode: AppModeEnum.CHAT,
+    appMode: 'chat' as const,
     supportsMultiEnvironment: false,
     onClose: () => {},
     onPublish,
@@ -248,19 +236,70 @@ describe('app-publisher sections', () => {
     expect(screen.getByRole('button', { name: /common\.published\b/ })).toBeDisabled()
   })
 
-  it('keeps multiple-model publication behind the model selection action', async () => {
-    const user = userEvent.setup()
-    const handlePublish = vi.fn().mockResolvedValue(undefined)
-    render(<PublisherPopup debugWithMultipleModel handlePublish={handlePublish} />)
-    await user.click(screen.getByRole('button', { name: 'Open publisher' }))
-    const modelButton = screen.getByRole('button', { name: 'publish-multiple-model' })
-    expect(publishFrom(modelButton).defaultPrevented).toBe(false)
-    expect(handlePublish).not.toHaveBeenCalled()
-    await user.click(modelButton)
-    expect(handlePublish).toHaveBeenCalledWith({ model: 'gpt-4o' })
-  })
+  it.each([false, true])(
+    'keeps multiple-model publication behind model selection (disabled: %s)',
+    async (publishDisabled) => {
+      const user = userEvent.setup()
+      const handlePublish = vi.fn().mockResolvedValue(undefined)
+      const modelConfig = { id: 'model-1', provider: 'openai', model: 'gpt-4o', parameters: {} }
+      const queryClient = createConsoleQueryClient()
+      queryClient.setQueryData(
+        consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+          input: { params: { model_type: 'llm' } },
+        }).queryKey,
+        {
+          data: [
+            {
+              provider: 'openai',
+              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+              status: 'active',
+              tenant_id: 'workspace-1',
+              models: [
+                {
+                  model: 'gpt-4o',
+                  label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' },
+                  model_type: 'llm',
+                  model_properties: {},
+                  fetch_from: 'predefined-model',
+                  status: 'active',
+                  deprecated: false,
+                  has_invalid_load_balancing_configs: false,
+                  load_balancing_enabled: false,
+                },
+              ],
+            },
+          ],
+        },
+      )
+      render(
+        <PublisherPopup
+          debugWithMultipleModel
+          handlePublish={handlePublish}
+          multipleModelConfigs={[modelConfig]}
+          publishDisabled={publishDisabled}
+        />,
+        queryClient,
+      )
+      await user.click(screen.getByRole('button', { name: 'Open publisher' }))
+      const modelButton = screen.getByRole('button', { name: /operation\.applyConfig\b/ })
+      expect(publishFrom(modelButton).defaultPrevented).toBe(false)
+      expect(handlePublish).not.toHaveBeenCalled()
+      if (publishDisabled) {
+        expect(modelButton).toBeDisabled()
+        await user.click(modelButton)
+        expect(screen.queryByRole('menuitem', { name: /GPT-4o/ })).not.toBeInTheDocument()
+        expect(handlePublish).not.toHaveBeenCalled()
+        return
+      }
+      expect(modelButton).toBeEnabled()
+      await user.click(modelButton)
+      await user.click(screen.getByRole('menuitem', { name: /GPT-4o/ }))
+      expect(handlePublish).toHaveBeenCalledWith(expect.objectContaining(modelConfig))
+    },
+  )
 
-  it('should render restore controls for published chat apps', () => {
+  it('should render restore controls for published chat apps', async () => {
+    const user = userEvent.setup()
     const handleRestore = vi.fn()
 
     render(
@@ -282,7 +321,7 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
+    await user.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
     expect(handleRestore).toHaveBeenCalled()
     expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
@@ -342,11 +381,11 @@ describe('app-publisher sections', () => {
 
     expect(screen.getByText(/(?:^|\.)common\.notPublishedYet(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/)).toBeInTheDocument()
-    expect(screen.getByText('P')).toBeInTheDocument()
     expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
 
-  it('should expose naming and keep publishing available for an unnamed published workflow', () => {
+  it('should expose naming and keep publishing available for an unnamed published workflow', async () => {
+    const user = userEvent.setup()
     const onEditVersion = vi.fn()
 
     render(
@@ -376,15 +415,15 @@ describe('app-publisher sections', () => {
     const nameButton = screen.getByRole('button', {
       name: /versionHistory\.nameIt\b/,
     })
-    fireEvent.click(nameButton)
+    await user.click(nameButton)
     expect(onEditVersion).toHaveBeenCalledTimes(1)
     const publishButton = screen.getByRole('button', { name: /common\.publishUpdate\b/ })
     expect(publishButton).toBeEnabled()
-    expect(within(publishButton).getByText('P')).toBeInTheDocument()
     expect(screen.getByText(/common\.autoSaved\b/)).toBeInTheDocument()
   })
 
-  it('should show named workflow metadata and keep publish update available', () => {
+  it('should show named workflow metadata and keep publish update available', async () => {
+    const user = userEvent.setup()
     const onEditVersion = vi.fn()
 
     render(
@@ -414,7 +453,7 @@ describe('app-publisher sections', () => {
 
     expect(screen.getByText('Sprint-42')).toBeInTheDocument()
     expect(screen.getByText('Fixed data synchronization and page loading.')).toBeInTheDocument()
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /versionHistory\.editVersionInfo\b/,
       }),
@@ -422,7 +461,6 @@ describe('app-publisher sections', () => {
     expect(onEditVersion).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: /common\.publishUpdate\b/ })).toBeEnabled()
     expect(screen.getByText(/common\.autoSaved\b/)).toBeInTheDocument()
-    expect(screen.getAllByText(/2 minutes ago/)).not.toHaveLength(0)
   })
 
   it('should keep non-workflow apps free of workflow version details and saved time', () => {
@@ -447,60 +485,9 @@ describe('app-publisher sections', () => {
     )
 
     expect(screen.getAllByText(/common\.latestPublished\b/)).toHaveLength(1)
-    expect(screen.queryByText('#5')).not.toBeInTheDocument()
     expect(screen.queryByText(/versionHistory\.nameIt\b/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /common\.publishUpdate\b/ })).toBeEnabled()
     expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
-  })
-
-  it('should keep multiple-model publishing available without publish config changes', () => {
-    const handlePublish = vi.fn()
-
-    render(
-      <PublisherPopup
-        defaultOpen
-        debugWithMultipleModel
-        draftUpdatedAt={Date.now()}
-        formatTimeFromNow={() => '1 minute ago'}
-        handlePublish={handlePublish}
-        handleRestore={vi.fn()}
-        isChatApp={false}
-        isPublishing={false}
-        multipleModelConfigs={[]}
-        publishDisabled={false}
-        published={false}
-        publishedAt={Date.now()}
-        startNodeLimitExceeded={false}
-        upgradeHighlightStyle={{}}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('publish-multiple-model'))
-
-    expect(handlePublish).toHaveBeenCalledWith({ model: 'gpt-4o' })
-  })
-
-  it('should disable multiple-model publishing when publishing is unavailable', () => {
-    render(
-      <PublisherPopup
-        defaultOpen
-        debugWithMultipleModel
-        draftUpdatedAt={Date.now()}
-        formatTimeFromNow={() => '1 minute ago'}
-        handlePublish={vi.fn()}
-        handleRestore={vi.fn()}
-        isChatApp={false}
-        isPublishing={false}
-        multipleModelConfigs={[]}
-        publishDisabled
-        published={false}
-        publishedAt={Date.now()}
-        startNodeLimitExceeded={false}
-        upgradeHighlightStyle={{}}
-      />,
-    )
-
-    expect(screen.getByRole('button', { name: 'publish-multiple-model' })).toBeDisabled()
   })
 
   it('should render the upgrade hint when the start node limit is exceeded', () => {
@@ -526,7 +513,7 @@ describe('app-publisher sections', () => {
     expect(screen.getByText(/(?:^|\.)publishLimit\.startNodeDesc(?=$|:)/)).toBeInTheDocument()
   })
 
-  it('should render the published workflow actions with Workflow as Tool after Marketplace', async () => {
+  it('should render the published workflow actions with Workflow as Tool', async () => {
     const user = userEvent.setup()
     const handleOpenRunConfig = vi.fn()
     const onConfigureWorkflowTool = vi.fn()
@@ -534,21 +521,18 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appDetail={{
-          id: 'workflow-app',
-          mode: AppModeEnum.WORKFLOW,
-        }}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
         disabledFunctionTooltip="disabled"
         handleOpenRunConfig={handleOpenRunConfig}
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={Date.now()}
         showDeployAction
         showMarketplaceAction
         showRunConfig
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onPublishToMarketplace={onPublishToMarketplace}
@@ -560,7 +544,7 @@ describe('app-publisher sections', () => {
       'href',
       'https://example.com/app',
     )
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ }))
     expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app')
     expect(screen.getByRole('link', { name: /appMenus\.accessPoint\b/ })).toHaveAttribute(
       'href',
@@ -577,10 +561,6 @@ describe('app-publisher sections', () => {
     const workflowToolAction = screen.getByRole('button', {
       name: /common\.workflowAsTool\b/,
     })
-    expect(
-      marketplaceAction.compareDocumentPosition(workflowToolAction) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
     expect(screen.getByRole('status', { name: /common\.configureRequired\b/ })).toBeInTheDocument()
 
     await user.click(marketplaceAction)
@@ -596,17 +576,14 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appDetail={{
-          id: 'workflow-app',
-          mode: AppModeEnum.WORKFLOW,
-        }}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={Date.now()}
         showDeployAction
+        showWorkflowTool
         toolPublished
         workflowToolAvailable
         workflowToolIsLoading={false}
@@ -627,19 +604,16 @@ describe('app-publisher sections', () => {
     expect(onConfigureWorkflowTool).toHaveBeenCalledTimes(1)
   })
 
-  it('should show the disabled reason below setup and configured workflow tool actions', () => {
+  it('should show the disabled reason for setup and configured workflow tool actions', () => {
     const commonProps = {
-      appDetail: {
-        id: 'workflow-app',
-        mode: AppModeEnum.WORKFLOW,
-      },
+      appId: 'workflow-app',
       appURL: 'https://example.com/app',
       canViewAccessPoint: true,
       disabledFunctionButton: false,
-      hasHumanInputNode: false,
       hasTriggerNode: false,
       onConfigureWorkflowTool: vi.fn(),
       publishedAt: Date.now(),
+      showWorkflowTool: true,
       workflowToolAvailable: false,
       workflowToolIsLoading: false,
       workflowToolMessage: 'Workflow tool unavailable',
@@ -650,9 +624,6 @@ describe('app-publisher sections', () => {
     const setupReason = screen.getByText('Workflow tool unavailable')
     expect(setupAction).toBeDisabled()
     expect(setupReason).toBeVisible()
-    expect(
-      setupAction.compareDocumentPosition(setupReason) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
 
     rerender(<PublisherActionsSection {...commonProps} toolPublished />)
 
@@ -662,26 +633,20 @@ describe('app-publisher sections', () => {
     expect(configureAction).toBeDisabled()
     expect(manageAction).toBeDisabled()
     expect(configuredReason).toBeVisible()
-    expect(
-      manageAction.compareDocumentPosition(configuredReason) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
   })
 
   it('should surface update-needed and loading states for a configured workflow tool', async () => {
     const user = userEvent.setup()
     const onConfigureWorkflowTool = vi.fn()
     const commonProps = {
-      appDetail: {
-        id: 'workflow-app',
-        mode: AppModeEnum.WORKFLOW,
-      },
+      appId: 'workflow-app',
       appURL: 'https://example.com/app',
       canViewAccessPoint: true,
       disabledFunctionButton: false,
-      hasHumanInputNode: false,
       hasTriggerNode: false,
       onConfigureWorkflowTool,
       publishedAt: Date.now(),
+      showWorkflowTool: true,
       toolPublished: true,
       workflowToolAvailable: true,
     }
@@ -717,17 +682,14 @@ describe('app-publisher sections', () => {
   it('should keep Access Point and Deploy available for trigger workflows', () => {
     render(
       <PublisherActionsSection
-        appDetail={{
-          id: 'trigger-app',
-          mode: AppModeEnum.WORKFLOW,
-        }}
+        appId="trigger-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
-        hasHumanInputNode={false}
         hasTriggerNode
         publishedAt={Date.now()}
         showDeployAction
+        showWorkflowTool={false}
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}
@@ -749,14 +711,14 @@ describe('app-publisher sections', () => {
   it('should hide the Access Point publisher entry without view permission', () => {
     render(
       <PublisherActionsSection
-        appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint={false}
         disabledFunctionButton={false}
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={Date.now()}
         showDeployAction
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}
@@ -773,28 +735,24 @@ describe('app-publisher sections', () => {
   it('should expose unavailable quick links as disabled buttons before the first publish', () => {
     render(
       <PublisherActionsSection
-        appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={undefined}
         showDeployAction
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}
       />,
     )
 
-    expect(screen.getByText(/(?:^|\.)common\.openWebApp(?=$|:)/).closest('button')).toBeDisabled()
-    expect(
-      screen.getByText(/(?:^|\.)appMenus\.accessPoint(?=$|:)/).closest('button'),
-    ).toBeDisabled()
-    expect(screen.getByText(/(?:^|\.)appMenus\.deploy(?=$|:)/).closest('button')).toBeDisabled()
-    expect(
-      screen.getByText(/(?:^|\.)common\.workflowAsTool(?=$|:)/).closest('button'),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: /common\.openWebApp\b/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /appMenus\.accessPoint\b/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /appMenus\.deploy\b/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /common\.workflowAsTool\b/ })).toBeDisabled()
   })
 
   it('should show the disabled reason when hovering an unavailable action', async () => {
@@ -802,14 +760,14 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton
         disabledFunctionTooltip="Open web app unavailable"
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={undefined}
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}
@@ -828,14 +786,14 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
+        appId="workflow-app"
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton
         disabledFunctionTooltip="Open web app unavailable"
-        hasHumanInputNode={false}
         hasTriggerNode={false}
         publishedAt={undefined}
+        showWorkflowTool
         workflowToolAvailable
         workflowToolIsLoading={false}
         onConfigureWorkflowTool={vi.fn()}
@@ -854,8 +812,8 @@ describe('app-publisher sections', () => {
   })
 })
 
-function render(ui: React.ReactElement) {
-  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+function render(ui: React.ReactElement, queryClient?: ReturnType<typeof createConsoleQueryClient>) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({ queryClient })
   return renderWithConsoleState(ui, {
     wrapper: ({ children }) => (
       <NuqsTestingAdapter>

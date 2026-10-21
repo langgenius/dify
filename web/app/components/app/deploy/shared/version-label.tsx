@@ -49,7 +49,7 @@ export function VersionLabel({
           render={
             <button
               type="button"
-              className="min-w-0 cursor-help truncate border-b border-dotted border-text-quaternary system-md-medium text-text-secondary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+              className="min-h-6 min-w-0 cursor-help truncate rounded-sm border-b border-dotted border-text-quaternary system-md-medium text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >
               {name}
             </button>
@@ -93,7 +93,7 @@ export function VersionLabel({
               <button
                 type="button"
                 aria-label={versionsBehindLabel}
-                className="inline-flex h-4.5 shrink-0 cursor-default items-center rounded-[5px] border border-util-colors-orange-orange-500 px-1 system-2xs-medium text-util-colors-orange-orange-600 outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+                className="inline-flex min-h-6 min-w-6 shrink-0 cursor-default items-center justify-center rounded-[5px] border border-util-colors-orange-orange-500 px-1 system-2xs-medium text-util-colors-orange-orange-700 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               >
                 <span aria-hidden className="i-ri-arrow-up-line size-3" />
                 {behind}

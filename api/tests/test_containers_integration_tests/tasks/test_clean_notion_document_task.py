@@ -17,8 +17,8 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
-from services.account_service import AccountService, TenantService
 from tasks.clean_notion_document_task import clean_notion_document_task
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -37,7 +37,7 @@ class TestCleanNotionDocumentTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
+            patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for account service
             mock_account_feature_service.is_registration_allowed.return_value = True
@@ -67,14 +67,14 @@ class TestCleanNotionDocumentTask:
         fake = Faker()
 
         # Create test data
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -167,7 +167,7 @@ class TestCleanNotionDocumentTask:
         This test verifies that the task properly handles the case where
         the specified dataset does not exist in the database.
         """
-        fake = Faker()
+
         non_existent_dataset_id = str(uuid.uuid4())
         document_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
@@ -189,14 +189,14 @@ class TestCleanNotionDocumentTask:
         fake = Faker()
 
         # Create test data
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -229,14 +229,14 @@ class TestCleanNotionDocumentTask:
         fake = Faker()
 
         # Create test data
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Test different index types
@@ -316,14 +316,14 @@ class TestCleanNotionDocumentTask:
         fake = Faker()
 
         # Create test data
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -399,14 +399,14 @@ class TestCleanNotionDocumentTask:
         fake = Faker()
 
         # Create test data
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -475,7 +475,7 @@ class TestCleanNotionDocumentTask:
         # Clean up only first 3 documents
         documents_to_clean = [doc.id for doc in documents[:3]]
         segments_to_clean = [seg for seg in all_segments if seg.document_id in documents_to_clean]
-        index_node_ids_to_clean = [seg.index_node_id for seg in segments_to_clean]
+        [seg.index_node_id for seg in segments_to_clean]
 
         clean_notion_document_task(documents_to_clean, dataset.id)
 
@@ -502,14 +502,14 @@ class TestCleanNotionDocumentTask:
         fake = Faker()
 
         # Create test data
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -604,14 +604,14 @@ class TestCleanNotionDocumentTask:
         fake = Faker()
 
         # Create test data
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -697,14 +697,14 @@ class TestCleanNotionDocumentTask:
         fake = Faker()
 
         # Create test data
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -802,16 +802,14 @@ class TestCleanNotionDocumentTask:
         datasets = []
 
         for i in range(3):
-            account = AccountService.create_account(
+            account = account_fixtures.create_account(
                 email=fake.email(),
                 name=fake.name(),
                 interface_language="en-US",
                 password=generate_valid_password(fake),
                 session=db_session_with_containers,
             )
-            TenantService.create_owner_tenant_if_not_exist(
-                account, name=fake.company(), session=db_session_with_containers
-            )
+            account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
             tenant = account.current_tenant
             accounts.append(account)
             tenants.append(tenant)
@@ -835,7 +833,7 @@ class TestCleanNotionDocumentTask:
         all_segments = []
         all_index_node_ids = []
 
-        for i, (dataset, account) in enumerate(zip(datasets, accounts)):
+        for i, (dataset, account) in enumerate(zip(datasets, accounts, strict=False)):
             document = Document(
                 id=str(uuid.uuid4()),
                 tenant_id=account.current_tenant.id,
@@ -887,7 +885,7 @@ class TestCleanNotionDocumentTask:
         target_dataset = datasets[0]
         target_document = all_documents[0]
         target_segments = [seg for seg in all_segments if seg.dataset_id == target_dataset.id]
-        target_index_node_ids = [seg.index_node_id for seg in target_segments]
+        [seg.index_node_id for seg in target_segments]
 
         clean_notion_document_task([target_document.id], target_dataset.id)
 
@@ -914,14 +912,14 @@ class TestCleanNotionDocumentTask:
         fake = Faker()
 
         # Create test data
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -1021,14 +1019,14 @@ class TestCleanNotionDocumentTask:
         fake = Faker()
 
         # Create test data
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset with built-in fields enabled

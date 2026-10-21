@@ -44,7 +44,7 @@ def _make_workflow_trace_info(**overrides) -> WorkflowTraceInfo:
         "total_tokens": 10,
         "file_list": [],
         "query": "hello",
-        "metadata": {"user_id": "u1", "conversation_id": "c1"},
+        "metadata": {"app_id": "app-1", "user_id": "u1", "conversation_id": "c1"},
         "start_time": _dt(),
         "end_time": _dt(),
     }
@@ -502,7 +502,7 @@ class TestWorkflowTrace:
         mock_tracing["set"].return_value = "token"
 
         trace_info = _make_workflow_trace_info(
-            metadata={},
+            metadata={"app_id": "app-1"},
             conversation_id=None,
         )
         trace_instance.workflow_trace(trace_info)
@@ -860,8 +860,15 @@ class TestGenerateNameTrace:
 class TestGetWorkflowNodes:
     def test_queries_db(self, trace_instance, mock_db):
         mock_db.session.scalars.return_value.all.return_value = ["n1", "n2"]
-        result = trace_instance._get_workflow_nodes("run-1")
+        result = trace_instance._get_workflow_nodes(_make_workflow_trace_info())
         assert result == ["n1", "n2"]
+
+    @pytest.mark.parametrize("metadata", [{}, {"app_id": ""}, {"app_id": 123}], ids=["missing", "empty", "non-string"])
+    def test_rejects_invalid_app_id_before_querying_nodes(self, metadata, trace_instance, mock_db):
+        with pytest.raises(ValueError, match="No app_id found in workflow trace metadata"):
+            trace_instance._get_workflow_nodes(_make_workflow_trace_info(metadata=metadata))
+
+        mock_db.session.scalars.assert_not_called()
 
 
 # ── _get_node_span_type ─────────────────────────────────────────────────────

@@ -1,10 +1,10 @@
 """Actor-aware and trusted-source SQLAlchemy repository for datasource credentials."""
 
-import json
 from collections.abc import Mapping
 from typing import cast
 
 from pydantic import TypeAdapter, ValidationError
+from sqlalchemy import cast as sql_cast
 from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
@@ -22,7 +22,7 @@ _CREDENTIALS_ADAPTER = TypeAdapter(dict[str, object])
 def _source_mapping(value: object) -> Mapping[str, object]:
     try:
         if isinstance(value, str):
-            return _CREDENTIALS_ADAPTER.validate_python(json.loads(value))
+            return _CREDENTIALS_ADAPTER.validate_json(value)
         return _CREDENTIALS_ADAPTER.validate_python(value)
     except (TypeError, ValueError, ValidationError):
         return {}
@@ -206,6 +206,13 @@ def _update_datasource_credentials_if_unchanged(
     expires_at: int,
 ) -> bool:
     credentials = _CREDENTIALS_ADAPTER.validate_python(encrypted_credentials)
+    expected_credentials = _CREDENTIALS_ADAPTER.validate_python(record.encrypted_credentials)
+    credentials_match = DatasourceProvider.encrypted_credentials == expected_credentials
+    if session.get_bind().dialect.name == "mysql":
+        # MySQL otherwise compares the JSON column with the bound value as a string scalar.
+        credentials_match = DatasourceProvider.encrypted_credentials == sql_cast(
+            expected_credentials, DatasourceProvider.encrypted_credentials.type
+        )
     result = session.execute(
         update(DatasourceProvider)
         .where(
@@ -214,8 +221,7 @@ def _update_datasource_credentials_if_unchanged(
             DatasourceProvider.provider == record.provider,
             DatasourceProvider.plugin_id == record.plugin_id,
             DatasourceProvider.user_id == record.owner_id,
-            DatasourceProvider.encrypted_credentials
-            == _CREDENTIALS_ADAPTER.validate_python(record.encrypted_credentials),
+            credentials_match,
             DatasourceProvider.expires_at == record.expires_at,
         )
         .values(

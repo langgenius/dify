@@ -256,7 +256,7 @@ export const buildChatConfig = ({
       },
     },
     dataset_configs: toLegacyPreviewDatasetConfigs(agentSoulConfig?.knowledge),
-    file_upload: toPreviewFileUploadConfig(appFeatures.file_upload as FileUpload | undefined),
+    file_upload: toPreviewFileUploadConfig(appFeatures.file_upload),
     system_parameters: defaultSystemParameters,
     supportCitationHitInfo: true,
   }

@@ -3,22 +3,22 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy.orm import Session
 
 from services.app.access import (
     APP_LIST_PERMISSION_KEYS,
     AppAccessFilter,
+    app_access_filter_from_permissions,
     has_app_list_permission,
     resolve_app_access_filter,
 )
-from services.enterprise.rbac_service import (
+from services.entities.app_entities import AppListParams
+from services.rbac.contracts import (
     MyPermissionsResponse,
     ResourcePermissionKeys,
     ResourcePermissionSnapshot,
     ResourceWhitelistResources,
     WorkspacePermissionSnapshot,
 )
-from services.entities.app_entities import AppListParams
 
 _RBAC_MODULE = "services.app.access.enterprise_rbac_service"
 
@@ -39,26 +39,26 @@ def _permissions(
 
 
 class TestHasAppListPermission:
-    def test_matches_known_preview_keys(self):
+    def test_matches_known_preview_keys(self) -> None:
         for key in APP_LIST_PERMISSION_KEYS:
             assert has_app_list_permission([key])
 
-    def test_rejects_unknown_keys(self):
+    def test_rejects_unknown_keys(self) -> None:
         assert not has_app_list_permission(["app.export", "app.delete"])
         assert not has_app_list_permission([])
 
 
 class TestAppAccessFilterIsAppAccessible:
-    def test_unrestricted_sees_everything(self):
+    def test_unrestricted_sees_everything(self) -> None:
         flt = AppAccessFilter.unrestricted()
         assert flt.is_app_accessible("app-1", maintainer="someone", account_id="acc-1")
 
-    def test_whitelisted_app_is_visible(self):
+    def test_whitelisted_app_is_visible(self) -> None:
         flt = AppAccessFilter(accessible_app_ids={"app-1"}, can_manage_own_apps=False)
         assert flt.is_app_accessible("app-1", maintainer=None, account_id="acc-1")
         assert not flt.is_app_accessible("app-2", maintainer=None, account_id="acc-1")
 
-    def test_own_app_visible_only_with_manage_permission(self):
+    def test_own_app_visible_only_with_manage_permission(self) -> None:
         own = AppAccessFilter(accessible_app_ids=set(), can_manage_own_apps=True)
         assert own.is_app_accessible("app-1", maintainer="acc-1", account_id="acc-1")
         assert not own.is_app_accessible("app-1", maintainer="acc-2", account_id="acc-1")
@@ -68,20 +68,20 @@ class TestAppAccessFilterIsAppAccessible:
 
 
 class TestAppAccessFilterApplyToParams:
-    def test_unrestricted_leaves_params_untouched(self):
+    def test_unrestricted_leaves_params_untouched(self) -> None:
         params = AppListParams()
         AppAccessFilter.unrestricted().apply_to_params(params)
         assert params.accessible_app_ids is None
         assert params.include_own_apps is False
         assert params.is_created_by_me is None
 
-    def test_whitelisted_ids_are_sorted_with_own_apps_flag(self):
+    def test_whitelisted_ids_are_sorted_with_own_apps_flag(self) -> None:
         params = AppListParams()
         AppAccessFilter(accessible_app_ids={"b", "a"}, can_manage_own_apps=True).apply_to_params(params)
         assert params.accessible_app_ids == ["a", "b"]
         assert params.include_own_apps is True
 
-    def test_empty_set_with_manage_falls_back_to_maintained_apps(self):
+    def test_empty_set_with_manage_falls_back_to_maintained_apps(self) -> None:
         # Own-app fallback must use maintainer (include_own_apps), consistent
         # with is_app_accessible — not created_by (is_created_by_me).
         params = AppListParams()
@@ -90,7 +90,7 @@ class TestAppAccessFilterApplyToParams:
         assert params.include_own_apps is True
         assert params.is_created_by_me is None
 
-    def test_empty_set_without_manage_sees_nothing(self):
+    def test_empty_set_without_manage_sees_nothing(self) -> None:
         params = AppListParams()
         AppAccessFilter(accessible_app_ids=set(), can_manage_own_apps=False).apply_to_params(params)
         assert params.accessible_app_ids == []
@@ -102,35 +102,30 @@ class TestResolveAppAccessFilter:
     def _patch_whitelist(self, monkeypatch: pytest.MonkeyPatch, whitelist: ResourceWhitelistResources) -> None:
         monkeypatch.setattr(
             f"{_RBAC_MODULE}.RBACService.AppAccess.whitelist_resources",
-            lambda tenant_id, account_id: whitelist,
+            lambda *_args, **_kwargs: whitelist,
         )
 
-    def test_default_preview_is_unrestricted(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
-        self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
+    def test_default_preview_is_unrestricted(self) -> None:
         permissions = _permissions(app_default_keys=["app.preview"])
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", session=unbound_session, permissions=permissions)
+        flt = app_access_filter_from_permissions(permissions, ResourceWhitelistResources(unrestricted=True))
 
         assert flt.accessible_app_ids is None
         assert flt.can_manage_own_apps is False
 
-    def test_restricted_whitelist_overrides_default_preview(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
-        self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-9"]))
+    def test_restricted_whitelist_overrides_default_preview(self) -> None:
         permissions = _permissions(
             workspace_keys=["app.full_access", "app.create_and_management"],
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", session=unbound_session, permissions=permissions)
+        flt = app_access_filter_from_permissions(
+            permissions, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-9"])
+        )
 
         assert flt.accessible_app_ids == {"app-9"}
         assert flt.can_manage_own_apps is False
 
-    def test_override_apps_collected_without_default_preview(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
-        self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
+    def test_override_apps_collected_without_default_preview(self) -> None:
         permissions = _permissions(
             app_overrides=[
                 ResourcePermissionKeys(resource_id="app-1", permission_keys=["app.preview"]),
@@ -138,29 +133,27 @@ class TestResolveAppAccessFilter:
             ],
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", session=unbound_session, permissions=permissions)
+        flt = app_access_filter_from_permissions(permissions, ResourceWhitelistResources(unrestricted=True))
 
         assert flt.accessible_app_ids == {"app-1"}
 
-    def test_restricted_whitelist_ignores_override_apps(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
-        self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-5"]))
+    def test_restricted_whitelist_ignores_override_apps(self) -> None:
         permissions = _permissions(
             app_overrides=[ResourcePermissionKeys(resource_id="app-1", permission_keys=["app.acl.preview"])],
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", session=unbound_session, permissions=permissions)
+        flt = app_access_filter_from_permissions(
+            permissions, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-5"])
+        )
 
         assert flt.accessible_app_ids == {"app-5"}
 
-    def test_fetches_permissions_when_not_supplied(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+    def test_fetches_permissions_when_not_supplied(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=[]))
-        session = unbound_session
         captured: dict[str, object] = {}
 
-        def get_permissions(tenant_id: str, account_id: str, *, session: object):
-            captured.update(tenant_id=tenant_id, account_id=account_id, session=session)
+        def get_permissions(tenant_id: str, account_id: str) -> MyPermissionsResponse:
+            captured.update(tenant_id=tenant_id, account_id=account_id)
             return _permissions(workspace_keys=["app.create_and_management"])
 
         monkeypatch.setattr(
@@ -168,8 +161,11 @@ class TestResolveAppAccessFilter:
             get_permissions,
         )
 
-        flt = resolve_app_access_filter("tenant-1", "acc-1", session=session)
+        flt = resolve_app_access_filter(
+            "tenant-1",
+            "acc-1",
+        )
 
         assert flt.accessible_app_ids == set()
         assert flt.can_manage_own_apps is False
-        assert captured == {"tenant_id": "tenant-1", "account_id": "acc-1", "session": session}
+        assert captured == {"tenant_id": "tenant-1", "account_id": "acc-1"}

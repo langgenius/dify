@@ -21,10 +21,10 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'merge_group' }}
 
 jobs:
-  # Keep orchestration independent of the Depot pool used for test execution.
+  # Keep orchestration on Depot to avoid GitHub-hosted runner queue delays.
   pre_job:
     name: Skip Duplicate Checks
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip || 'false' }}
     steps:
@@ -34,11 +34,13 @@ jobs:
         with:
           cancel_others: 'true'
           concurrent_skipping: same_content_newer
+          # Coverage checks must be generated for each new commit, even with an unchanged tree.
+          skip_after_successful_duplicate: 'false'
 
   # Check which paths were changed to determine which tests to run
   check-changes:
     name: Check Changed Files
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     outputs:
       api-changed: ${{ steps.changes.outputs.api }}
       cli-changed: ${{ steps.changes.outputs.cli }}
@@ -63,9 +65,16 @@ jobs:
               - 'api/**'
               - 'scripts/ast_grep_guard.py'
               - 'scripts/check_no_new_getattr.py'
+              - 'scripts/check_no_spec_mock.py'
+              - 'scripts/check_no_new_base_model.py'
+              - 'scripts/ast_grep_rules/no_new_base_model.yml'
+              - 'scripts/check_no_new_test_doubles.py'
               - 'scripts/check_no_new_controller_sqlalchemy.py'
               - 'scripts/lint_controller_sqlalchemy.py'
               - 'scripts/ast_grep_rules/no_new_getattr.yml'
+              - 'scripts/ast_grep_rules/no_spec_mock.yml'
+              - 'scripts/ast_grep_rules/no_new_mock.yml'
+              - 'scripts/ast_grep_rules/no_new_stub_subclass.yml'
               - 'scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml'
               - 'scripts/ast_grep_rules/no_new_session_mock.yml'
               - '.github/workflows/style.yml'
@@ -80,12 +89,13 @@ jobs:
               - 'docker/volumes/sandbox/conf/**'
             cli:
               - 'cli/**'
+              - 'skills/**'
               - 'packages/contracts/**'
               - 'packages/tsconfig/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - 'lint.config.ts'
+              - 'packages/tooling/**'
               - '.npmrc'
               - '.github/workflows/cli-tests.yml'
               - '.github/actions/setup-web/**'
@@ -113,7 +123,6 @@ jobs:
               - '.github/workflows/web-e2e.yml'
               - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'
-              - '.github/actions/setup-core-e2e/**'
               - '.github/actions/wait-e2e-web-build/**'
             vdb:
               - 'api/core/rag/datasource/**'
@@ -161,10 +170,17 @@ jobs:
               - 'api/**'
               - 'scripts/ast_grep_guard.py'
               - 'scripts/check_no_new_getattr.py'
+              - 'scripts/check_no_spec_mock.py'
+              - 'scripts/check_no_new_base_model.py'
+              - 'scripts/ast_grep_rules/no_new_base_model.yml'
+              - 'scripts/check_no_new_test_doubles.py'
               - 'scripts/check_no_new_controller_sqlalchemy.py'
               - 'scripts/check_no_new_session_mock.py'
               - 'scripts/lint_controller_sqlalchemy.py'
               - 'scripts/ast_grep_rules/no_new_getattr.yml'
+              - 'scripts/ast_grep_rules/no_spec_mock.yml'
+              - 'scripts/ast_grep_rules/no_new_mock.yml'
+              - 'scripts/ast_grep_rules/no_new_stub_subclass.yml'
               - 'scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml'
               - 'scripts/ast_grep_rules/no_new_session_mock.yml'
               - '.github/workflows/style.yml'
@@ -182,7 +198,6 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'knip.config.ts'
-              - 'scripts/check-web-production-unused-after-knip-fix.mjs'
               - '.npmrc'
               - '.github/workflows/main-ci.yml'
               - '.github/workflows/web-bundle-size.yml'
@@ -191,6 +206,7 @@ jobs:
             ts-common-style:
               - 'web/**'
               - 'cli/**'
+              - 'skills/**'
               - 'e2e/**'
               - 'sdks/nodejs-client/**'
               - 'packages/**'
@@ -199,10 +215,8 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'tsconfig.json'
               - 'vite.config.ts'
-              - 'lint.config.ts'
               - 'eslint.config.mjs'
               - 'knip.config.ts'
-              - 'scripts/check-web-production-unused-after-knip-fix.mjs'
               - 'oxlint-suppressions.json'
               - 'eslint-suppressions.json'
               - '.vscode/**'
@@ -234,7 +248,7 @@ jobs:
       - pre_job
       - check-changes
       - api-tests-run
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize API Tests status
         env:
@@ -288,7 +302,7 @@ jobs:
       - pre_job
       - check-changes
       - cli-tests-run
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize CLI Tests status
         env:
@@ -342,7 +356,7 @@ jobs:
       - pre_job
       - check-changes
       - web-tests-run
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize Web Tests status
         env:
@@ -398,7 +412,7 @@ jobs:
       - pre_job
       - check-changes
       - web-e2e-run
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize Web Full-Stack E2E status
         env:
@@ -468,7 +482,7 @@ jobs:
       - pre_job
       - check-changes
       - vdb-tests-run
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize VDB Tests status
         env:
@@ -521,7 +535,7 @@ jobs:
       - pre_job
       - check-changes
       - db-migration-test-run
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize DB Migration Test status
         env:
@@ -575,7 +589,7 @@ jobs:
       - pre_job
       - check-changes
       - sandbox-runtime-tests-run
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize Sandbox Runtime Tests status
         env:
@@ -629,7 +643,7 @@ jobs:
       - pre_job
       - check-changes
       - dify-agent-tests-run
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize Dify Agent Tests status
         env:

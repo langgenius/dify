@@ -45,10 +45,10 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from extensions.ext_database import db
+from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
-from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
@@ -96,6 +96,7 @@ from services.workflow_node_execution_trace_service import (
 )
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -600,6 +601,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
+                execution_driver=WorkflowRunAgg.run,
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs=user_inputs,
@@ -674,7 +676,7 @@ class RagPipelineService:
         credential_id: str | None = None,
         *,
         datasource_providers: DatasourceProviderService,
-    ) -> Generator[Mapping[str, Any], None, None]:
+    ) -> Generator[Mapping[str, Any]]:
         """
         Run published workflow datasource
         """
@@ -742,7 +744,7 @@ class RagPipelineService:
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                    online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
+                    online_document_result: Generator[OnlineDocumentPagesMessage] = (
                         datasource_runtime.get_online_document_pages(
                             user_id=account.id,
                             datasource_parameters=user_inputs,
@@ -767,7 +769,7 @@ class RagPipelineService:
                         yield DatasourceErrorEvent(error=str(e)).model_dump()
                 case DatasourceProviderType.ONLINE_DRIVE:
                     datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
-                    online_drive_result: Generator[OnlineDriveBrowseFilesResponse, None, None] = (
+                    online_drive_result: Generator[OnlineDriveBrowseFilesResponse] = (
                         datasource_runtime.online_drive_browse_files(
                             user_id=account.id,
                             request=OnlineDriveBrowseFilesRequest(
@@ -796,12 +798,10 @@ class RagPipelineService:
                         yield online_drive_event.model_dump()
                 case DatasourceProviderType.WEBSITE_CRAWL:
                     datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
-                    website_crawl_result: Generator[WebsiteCrawlMessage, None, None] = (
-                        datasource_runtime.get_website_crawl(
-                            user_id=account.id,
-                            datasource_parameters=variables_map,
-                            provider_type=datasource_runtime.datasource_provider_type(),
-                        )
+                    website_crawl_result: Generator[WebsiteCrawlMessage] = datasource_runtime.get_website_crawl(
+                        user_id=account.id,
+                        datasource_parameters=variables_map,
+                        provider_type=datasource_runtime.datasource_provider_type(),
                     )
                     start_time = time.time()
                     try:
@@ -886,7 +886,7 @@ class RagPipelineService:
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                    online_document_result: Generator[DatasourceMessage, None, None] = (
+                    online_document_result: Generator[DatasourceMessage] = (
                         datasource_runtime.get_online_document_page_content(
                             user_id=account.id,
                             datasource_parameters=GetOnlineDocumentPageContentRequest(
@@ -915,13 +915,13 @@ class RagPipelineService:
                         return variables
                     except Exception as e:
                         logger.exception("Error during get online document content.")
-                        raise RuntimeError(str(e))
+                        raise RuntimeError(str(e)) from e
                 # TODO Online Drive
                 case _:
                     raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
         except Exception as e:
             logger.exception("Error in run_datasource_node_preview.")
-            raise RuntimeError(str(e))
+            raise RuntimeError(str(e)) from e
 
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
@@ -951,7 +951,7 @@ class RagPipelineService:
         self,
         getter: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+            tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]],
         ],
         start_at: float,
         tenant_id: str,
@@ -1050,7 +1050,7 @@ class RagPipelineService:
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED
             workflow_node_execution.error = error
             # update document status
-            variable_pool = node_instance.graph_runtime_state.variable_pool
+            variable_pool = node_instance.runtime_state.variable_pool
             invoke_from = get_system_segment(variable_pool, SystemVariableKey.INVOKE_FROM)
             if invoke_from:
                 if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
@@ -1402,6 +1402,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
+                execution_driver=WorkflowRunAgg.run,
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs={},
@@ -1469,7 +1470,7 @@ class RagPipelineService:
 
     def get_recommended_plugins(self, type: str, current_user: Account, current_tenant_id: str) -> dict[str, Any]:
         # Query active recommended plugins
-        stmt = select(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active == True)
+        stmt = select(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active.is_(True))
         if type and type != "all":
             stmt = stmt.where(PipelineRecommendedPlugin.type == type)
 
@@ -1597,10 +1598,7 @@ class RagPipelineService:
                     continue
 
                 variables = workflow.rag_pipeline_variables
-                if variables:
-                    variables_map = {item["variable"]: item for item in variables}
-                else:
-                    variables_map = {}
+                variables_map = {item["variable"]: item for item in variables} if variables else {}
 
                 datasource_parameters = datasource_node_data.get("datasource_parameters", {})
                 user_input_variables_keys = []

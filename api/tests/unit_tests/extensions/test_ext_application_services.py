@@ -7,7 +7,7 @@ from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call, create_autospec, patch
 from uuid import uuid4
 
 import httpx
@@ -28,7 +28,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import CustomizeTokenStrategy
+from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import (
     AccountTrialAppRecord,
     App,
@@ -42,53 +42,62 @@ from models.model import (
     TrialApp,
 )
 from models.provider import ProviderCredential
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
-from repositories.account_oauth_repository import (
-    AccountServiceOAuthAccountRegistrationGateway,
-    AccountServiceOAuthSessionGateway,
-    AccountServiceOAuthWorkspaceGateway,
-    RegisterServiceOAuthInvitationGateway,
-)
-from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.app.workflow_comment_repository import WorkflowCommentRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
-from services import account_forgot_password_service, audio_provider_gateway, recommended_app_catalog_gateway
-from services.account_adapters import (
+from repositories.workspace.workspace_repository import WorkspaceRepository
+from services import audio_provider_gateway, recommended_app_catalog_gateway
+from services.account import forgot_password_service as account_forgot_password_service
+from services.account.adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
     RBACWorkspaceMemberAccessSync,
     RedisInvitationTokenStore,
 )
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
-from services.account_email_registration_adapters import (
-    AccountServiceRegistrationGateway,
+from services.account.email_registration_adapters import (
+    AccountLifecycleRegistrationGateway,
     BillingAccountRegistrationPolicyGateway,
     RedisEmailRegistrationSecurityGateway,
     TokenManagerEmailRegistrationTokenGateway,
 )
-from services.account_forgot_password_adapters import (
+from services.account.forgot_password_adapters import (
     RateLimiterForgotPasswordSendLimiter,
     RedisForgotPasswordSecurityGateway,
     RedisForgotPasswordTokenGateway,
 )
-from services.account_oauth_adapters import (
+from services.account.login_adapters import RedisConsoleAuthSecurityGateway
+from services.account.oauth_adapters import (
+    AccountActivationOAuthInvitationGateway,
+    AccountLifecycleOAuthRegistrationGateway,
+    AccountLifecycleOAuthSessionGateway,
     DeploymentOAuthPolicyGateway,
     RedisOAuthAccountClaimLock,
+    WorkspaceProvisioningOAuthGateway,
 )
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
+from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.api_key_service import AppApiKeyService
+from services.app.console_gateway import EnterpriseConsoleAppAccess
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
+from services.app.workflow_comment_mention_gateway import CeleryWorkflowCommentMentionNotifier
+from services.app.workflow_comment_service import WorkflowCommentService
 from services.app_generate_service import AppGenerateService
 from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
@@ -105,26 +114,37 @@ from services.data_source.binding_application_service import DataSourceBindingAp
 from services.data_source.credential_gateway import ActorAwareDatasourceCredentialGateway
 from services.data_source.notion_import_adapters import PluginNotionSourceGateway
 from services.data_source.notion_import_application_service import NotionImportApplicationService
+from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError, EnterpriseServiceError
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
-from services.installed_app_access_service import InstalledAppAccessDeniedError, InstalledAppRef
+from services.installed_app_access_service import (
+    InstalledAppAccessDeniedError,
+    InstalledAppAccessService,
+    InstalledAppRef,
+)
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge.dataset_access import DatasetAccessService
+from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetApplicationService
 from services.knowledge.document_sync import DocumentSyncApplicationService
 from services.knowledge.documents.application import DatasetDocumentApplicationService
+from services.knowledge.external.adapters import SQLAlchemyExternalKnowledgeOperations
 from services.knowledge.external.application import ExternalKnowledgeApplicationService
 from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapter, SQLAlchemyProcessRuleReader
 from services.knowledge.indexing.adapters.sources import NotionSourceResolver
 from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.message_file_preview_service import MessageFilePreviewService
+from services.network_access_group_gateway import (
+    BillingNetworkAccessGroupEntitlementGateway,
+    NetworkAccessGroupGateway,
+)
+from services.network_access_group_service import NetworkAccessGroupAccessDeniedError, NetworkAccessGroupService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
-from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -132,6 +152,13 @@ from services.retention.workflow_run.archive_log_service import WorkflowRunArchi
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.upload_file_delivery_service import UploadFileDeliveryService
+from services.web_authentication_adapters import (
+    AccountWebAuthenticationSecurityGateway,
+    PassportWebAppSessionGateway,
+    TokenManagerWebAuthenticationGateway,
+)
+from services.web_authentication_service import WebAuthenticationService
+from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
@@ -232,7 +259,11 @@ def test_init_app_registers_services_for_the_current_app(
         assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
         assert isinstance(services.apps, AppServices)
-        assert services.apps.console._apps is services.apps.queries._apps
+        assert services.apps.console._apps is services.apps.discovery._apps
+        dataset_operations = services.knowledge.datasets._operations
+        assert isinstance(dataset_operations, SQLAlchemyDatasetOperations)
+        assert isinstance(dataset_operations._app_queries, ConsoleAppRepository)
+        assert dataset_operations._app_queries._session_factory is sqlite_session_factory
         creators = services.apps.console._creators
         assert isinstance(creators, CreatorsPlatformGateway)
         assert creators._oauth is services.oauth_server
@@ -271,6 +302,25 @@ def test_build_application_services_preserves_composed_boundaries(
     assert services.trial_apps.generation._usage is trial_apps
     assert services.recommended_app_queries._trial_apps is trial_apps
 
+    assert services.rbac.resources._apps is services.apps.console._apps
+    assert services.rbac.queries._apps is services.rbac.resources._apps
+    assert services.rbac.queries._datasets is services.rbac.resources._datasets
+    dataset_access = services.knowledge.datasets._dataset_access
+    assert isinstance(dataset_access, DatasetAccessService)
+    assert services.rbac.resources._datasets is dataset_access._datasets
+    assert services.rbac.members._members is services.rbac.resources._members
+    assert services.rbac.members._members is services.workspaces.members._workspaces
+    assert services.rbac.members._workspace_roles is services.workspaces.members
+    app_access = services.apps.console._access
+    assert isinstance(app_access, EnterpriseConsoleAppAccess)
+    assert app_access._members is services.rbac.members
+    dataset_operations = services.knowledge.datasets._operations
+    assert isinstance(dataset_operations, SQLAlchemyDatasetOperations)
+    assert dataset_operations._members_service is services.rbac.members
+    external_operations = services.knowledge.external._operations
+    assert isinstance(external_operations, SQLAlchemyExternalKnowledgeOperations)
+    assert external_operations._members is services.rbac.members
+
 
 @pytest.mark.parametrize(
     ("deployment_edition", "setup_completed"),
@@ -294,6 +344,8 @@ def test_build_application_services_configures_setup_policy(
 
     assert services.setup.get_status().completed is setup_completed
     assert services.oauth_server is not None
+    assert isinstance(services.oauth_device._accounts, SQLAlchemyAccountRepository)
+    assert isinstance(services.oauth_device._workspaces, WorkspaceRepository)
 
 
 def test_build_application_services_wires_builtin_schema_definitions(
@@ -337,6 +389,21 @@ def test_build_application_services_wires_tag_boundary(
     )
 
     assert isinstance(services.tags, TagApplicationService)
+
+
+def test_build_application_services_wires_api_based_extension_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_redis(),
+    )
+
+    assert isinstance(services.api_based_extensions, APIBasedExtensionApplicationService)
+    assert isinstance(services.api_based_extensions._secrets, WorkspaceTokenCipher)
+    assert isinstance(services.api_based_extensions._probe, APIBasedExtensionPingProbe)
 
 
 def test_build_application_services_reuses_file_service(
@@ -472,6 +539,50 @@ def test_build_application_services_wires_app_site_boundary(
     assert services.app_sites._sites._session_factory is sqlite_session_factory
 
 
+def test_build_application_services_wires_web_authentication_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.ENTERPRISE,
+        initialization_password="",
+        redis=create_autospec(RedisClientWrapper, instance=True),
+    )
+
+    assert isinstance(services.web_authentication, WebAuthenticationService)
+    assert services.web_authentication._accounts is services.accounts.profile._accounts
+    assert isinstance(services.web_authentication._tokens, TokenManagerWebAuthenticationGateway)
+    assert (
+        services.web_authentication._tokens._access_token_expire_minutes
+        == ext_application_services.dify_config.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+    assert isinstance(services.web_authentication._security, AccountWebAuthenticationSecurityGateway)
+    assert isinstance(services.web_authentication._security._password_security, RedisForgotPasswordSecurityGateway)
+    assert isinstance(services.web_authentication._security._login_security, RedisConsoleAuthSecurityGateway)
+    assert isinstance(services.web_authentication._app_sessions, PassportWebAppSessionGateway)
+    assert services.web_authentication._app_sessions._sessions is services.webapp_access._access
+    assert isinstance(services.webapp_access._policy, EnterpriseWebAppAccessPolicyGateway)
+    assert services.webapp_access._policy._webapp_auth is EnterpriseService.WebAppAuth
+
+
+def test_build_application_services_reuses_installed_app_dependencies(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=create_autospec(RedisClientWrapper, instance=True),
+    )
+
+    assert isinstance(services.installed_apps.access, InstalledAppAccessService)
+    assert isinstance(services.installed_apps.generation, InstalledAppGenerationService)
+    assert isinstance(services.installed_apps.access._installed_apps, SQLAlchemyInstalledAppRepository)
+    assert services.installed_apps.generation._usage is services.installed_apps.access._installed_apps
+    assert isinstance(services.installed_apps.generation._runtime, InstalledAppGenerateServiceRuntime)
+    assert services.installed_apps.generation._runtime._session_factory is sqlite_session_factory
+
+
 def test_build_application_services_wires_app_tracing_config_boundary(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -501,6 +612,22 @@ def test_build_application_services_wires_workflow_app_log_boundary(
     assert isinstance(services.workflow_app_logs, WorkflowAppLogQueryService)
     assert isinstance(services.workflow_app_logs._logs, WorkflowAppLogQueryRepository)
     assert services.workflow_app_logs._logs._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_workflow_comment_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_redis(),
+    )
+
+    assert isinstance(services.workflow_comments, WorkflowCommentService)
+    assert isinstance(services.workflow_comments._comments, WorkflowCommentRepository)
+    assert services.workflow_comments._comments._session_factory is sqlite_session_factory
+    assert isinstance(services.workflow_comments._notifier, CeleryWorkflowCommentMentionNotifier)
 
 
 def test_build_application_services_wires_app_statistic_boundary(
@@ -553,11 +680,6 @@ def test_build_application_services_wires_billing_service(
             "get_invoices",
             return_value={"url": "https://billing.example.com/portal"},
         ) as get_invoices,
-        patch.object(
-            BillingService,
-            "sync_partner_tenants_bindings",
-            return_value={"result": "success"},
-        ) as sync_partner_tenants_bindings,
     ):
         services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
@@ -579,15 +701,49 @@ def test_build_application_services_wires_billing_service(
         interval="month",
     ) == {"url": "https://billing.example.com/checkout"}
     assert services.billing_portal.get_invoices(request_context) == {"url": "https://billing.example.com/portal"}
-    assert isinstance(services.partner_tenant_bindings, PartnerTenantBindingService)
-    assert services.partner_tenant_bindings.sync(
-        account_id="account-1",
-        partner_key="partner-key",
-        click_id="click-1",
-    ) == {"result": "success"}
     get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
     get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
-    sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
+
+
+def test_build_application_services_wires_network_access_group_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.CLOUD,
+        initialization_password="",
+        redis=_redis(),
+    )
+
+    network_access_groups = services.network_access_groups
+    assert isinstance(network_access_groups, NetworkAccessGroupService)
+    assert isinstance(network_access_groups._control_plane, NetworkAccessGroupGateway)
+    assert isinstance(network_access_groups._apps, SQLAlchemyNetworkAccessGroupAppRepository)
+    assert network_access_groups._apps._session_factory is sqlite_session_factory
+    assert isinstance(network_access_groups._entitlement, BillingNetworkAccessGroupEntitlementGateway)
+
+    # Exercise the composed membership port, not only the class of its owner.
+    # A workspace-repository migration must not leave a stale method signature.
+    context = RequestContext("request-1", None, "account-1", "workspace-1", "203.0.113.42")
+    with pytest.raises(NetworkAccessGroupAccessDeniedError):
+        network_access_groups.get_current_ip(context, client_ip_supplier=lambda: "203.0.113.42")
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="QA owner", email="qa-owner@example.com")
+        account.id = context.account_id
+        workspace = Tenant(name="QA workspace")
+        workspace.id = context.active_workspace_id
+        session.add_all(
+            [
+                account,
+                workspace,
+                TenantAccountJoin(
+                    tenant_id=workspace.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+    assert network_access_groups.get_current_ip(context, client_ip_supplier=lambda: "203.0.113.42") == "203.0.113.42"
 
 
 def test_build_application_services_wires_compliance_downloads(
@@ -638,7 +794,7 @@ def test_build_application_services_wires_education_rate_limiters(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     redis = _redis()
-    with patch("extensions.ext_application_services.RateLimiter") as rate_limiter_type:
+    with patch("extensions.application_services.account.RateLimiter") as rate_limiter_type:
         ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
             deployment_edition=DeploymentEdition.COMMUNITY,
@@ -700,26 +856,32 @@ def test_build_application_services_wires_account_profile_repository(
     assert isinstance(email_registration._tokens, TokenManagerEmailRegistrationTokenGateway)
     assert isinstance(email_registration._security, RedisEmailRegistrationSecurityGateway)
     assert isinstance(email_registration._account_policy, BillingAccountRegistrationPolicyGateway)
-    assert isinstance(email_registration._registration, AccountServiceRegistrationGateway)
-    assert email_registration._registration._session_factory is sqlite_session_factory
+    assert isinstance(email_registration._registration, AccountLifecycleRegistrationGateway)
+    assert email_registration._registration._accounts is services.accounts.lifecycle
+    assert services.workspaces.invitations._accounts is services.accounts.lifecycle
+    assert services.workspaces.invitations._members is services.workspaces.members
+    assert services.workspaces.invitations._workspaces is services.workspaces.management._workspaces
+    assert services.workspaces.provisioning._members is services.workspaces.members
+    assert services.accounts.lifecycle._workspaces is services.workspaces.provisioning
+    assert services.workspaces.identity._workspaces is services.workspaces.management._workspaces
     assert services.accounts.education._accounts is accounts
     assert services.accounts.deletion._accounts is accounts
     assert services.accounts.authentication._accounts is accounts
-    assert services.accounts.authentication._workspaces is services.workspace_queries._workspaces
+    assert services.accounts.authentication._workspaces is services.workspaces.queries._workspaces
     assert services.step_by_step_tour._accounts is accounts
-    assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
+    assert services.accounts.deletion._memberships is services.workspaces.queries._workspaces
     integrations = services.accounts.integrations._integrations
     assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
     assert integrations._session_factory is sqlite_session_factory
     oauth = services.accounts.oauth
     assert oauth._accounts is accounts
     assert oauth._integrations is integrations
-    assert oauth._memberships is services.workspace_queries._workspaces
-    assert isinstance(oauth._invitations, RegisterServiceOAuthInvitationGateway)
+    assert oauth._memberships is services.workspaces.queries._workspaces
+    assert isinstance(oauth._invitations, AccountActivationOAuthInvitationGateway)
     assert isinstance(oauth._account_claims, RedisOAuthAccountClaimLock)
-    assert isinstance(oauth._registration, AccountServiceOAuthAccountRegistrationGateway)
-    assert isinstance(oauth._workspaces, AccountServiceOAuthWorkspaceGateway)
-    assert isinstance(oauth._sessions, AccountServiceOAuthSessionGateway)
+    assert isinstance(oauth._registration, AccountLifecycleOAuthRegistrationGateway)
+    assert isinstance(oauth._workspaces, WorkspaceProvisioningOAuthGateway)
+    assert isinstance(oauth._sessions, AccountLifecycleOAuthSessionGateway)
     assert oauth._sessions is not oauth._workspaces
     assert isinstance(oauth._registration_policy, DeploymentOAuthPolicyGateway)
     assert oauth._workspace_policy is oauth._registration_policy
@@ -761,7 +923,7 @@ def test_build_application_services_wires_account_activation(
         redis=_redis(),
     )
 
-    activation = services.account_activation
+    activation = services.accounts.activation
     assert isinstance(activation._tokens, RedisInvitationTokenStore)
     assert isinstance(activation._accounts, SQLAlchemyAccountActivationRepository)
     assert activation._accounts._session_factory is sqlite_session_factory
@@ -793,7 +955,7 @@ def test_build_application_services_groups_dataset_services_and_reuses_repositor
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_redis(),
     )
 
     assert isinstance(services.data_sources.bindings, DataSourceBindingApplicationService)
@@ -827,7 +989,7 @@ def test_build_application_services_groups_dataset_services_and_reuses_repositor
     assert services.data_sources.providers._credentials is actor_credentials._credentials
     assert services.knowledge.pipeline_generator._datasource_providers is services.data_sources.providers
     assert notion_resolver._stored_credentials is not notion_resolver._actor_credentials
-    assert services.workspace_member_queries._members is dataset_access._workspace_roles
+    assert services.workspaces.member_queries._members is dataset_access._workspace_roles
 
 
 def test_build_application_services_wires_credential_query(
@@ -837,7 +999,7 @@ def test_build_application_services_wires_credential_query(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_redis(),
     )
     tenant_id, actor_id = str(uuid4()), str(uuid4())
     with sqlite_session_factory.begin() as session:
@@ -872,7 +1034,7 @@ def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_s
     assert redis.values["generate_task_stopped:workflow-task"] == b"1"
     assert redis.expirations["generate_task_stopped:workflow-task"] == 600
     assert [json.loads(command) for command in redis.commands["workflow:workflow-task:commands"]] == [
-        {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+        {"command_type": "abort", "reason": "User requested stop"}
     ]
     assert redis.expirations["workflow:workflow-task:commands"] == 3600
 
@@ -900,6 +1062,35 @@ def test_build_application_services_wires_trial_app_usage(
         )
     assert record is not None
     assert record.count == 1
+
+
+@pytest.fixture
+def published_webapp_id(sqlite_session: Session) -> str:
+    """Keep public admission real so wiring tests reach the Enterprise adapter."""
+    app_id = str(uuid4())
+    config = AppModelConfig(app_id=app_id)
+    config.id = str(uuid4())
+    app = App(
+        id=app_id,
+        tenant_id=str(uuid4()),
+        name="Published adapter fixture",
+        mode=AppMode.CHAT,
+        status=AppStatus.NORMAL,
+        enable_site=True,
+        enable_api=True,
+        app_model_config_id=config.id,
+    )
+    site = Site(
+        app_id=app_id,
+        code="published-adapter-fixture",
+        title="Published adapter fixture",
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.UUID,
+        status=AppStatus.NORMAL,
+    )
+    sqlite_session.add_all([app, config, site])
+    sqlite_session.commit()
+    return app_id
 
 
 @pytest.fixture
@@ -939,7 +1130,7 @@ def test_build_application_services_reuses_installed_app_generation_dependencies
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_redis(),
     )
 
     assert services.installed_apps.access._installed_apps is services.installed_apps.generation._usage
@@ -1191,6 +1382,7 @@ def test_app_preview_details_use_the_configured_database_without_request_globals
 
 def test_build_application_services_adapts_enterprise_webapp_access_mode(
     sqlite_session_factory: sessionmaker[Session],
+    published_webapp_id: str,
 ) -> None:
     with (
         patch("extensions.ext_application_services.SystemFeatureService.is_webapp_auth_enabled", return_value=True),
@@ -1205,17 +1397,17 @@ def test_build_application_services_adapts_enterprise_webapp_access_mode(
             initialization_password="",
             redis=_redis(),
         )
-        result = services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+        result = services.webapp_access.get_access_mode(app_id=published_webapp_id, app_code=None)
 
     assert result is WebAppAccessMode.PRIVATE_ALL
-    get_access_mode.assert_called_once_with("app-1")
+    get_access_mode.assert_called_once_with(published_webapp_id)
 
 
 def _query_webapp_access(
-    service: WebAppAccessQueryService, query_kind: str
+    service: WebAppAccessQueryService, query_kind: str, published_webapp_id: str
 ) -> WebAppAccessMode | bool | Mapping[str, WebAppAccessMode] | Mapping[str, bool]:
     if query_kind == "single-mode":
-        return service.get_access_mode(app_id="app-1", app_code=None)
+        return service.get_access_mode(app_id=published_webapp_id, app_code=None)
     if query_kind == "single-permission":
         return service.is_user_allowed(user_id="viewer", app_id="app-1")
     if query_kind == "batch-modes":
@@ -1237,6 +1429,7 @@ def _query_webapp_access(
 )
 def test_webapp_access_queries_map_known_enterprise_errors_to_unavailable(
     sqlite_session_factory: sessionmaker[Session],
+    published_webapp_id: str,
     query_kind: str,
     enterprise_error: Exception,
 ) -> None:
@@ -1250,7 +1443,7 @@ def test_webapp_access_queries_map_known_enterprise_errors_to_unavailable(
             redis=_redis(),
         )
         with pytest.raises(WebAppAccessUnavailableError) as raised:
-            _query_webapp_access(services.webapp_access, query_kind)
+            _query_webapp_access(services.webapp_access, query_kind, published_webapp_id)
 
     assert type(raised.value) is WebAppAccessUnavailableError
     assert raised.value.__cause__ is enterprise_error
@@ -1259,7 +1452,7 @@ def test_webapp_access_queries_map_known_enterprise_errors_to_unavailable(
 
 @pytest.mark.parametrize("access_mode", ["invalid", 123])
 def test_single_webapp_mode_maps_invalid_enum_or_field_value_to_unavailable(
-    sqlite_session_factory: sessionmaker[Session], access_mode: str | int
+    sqlite_session_factory: sessionmaker[Session], published_webapp_id: str, access_mode: str | int
 ) -> None:
     with patch(
         "services.enterprise.enterprise_service.EnterpriseRequest.send_request",
@@ -1272,7 +1465,7 @@ def test_single_webapp_mode_maps_invalid_enum_or_field_value_to_unavailable(
             redis=_redis(),
         )
         with pytest.raises(WebAppAccessUnavailableError) as raised:
-            services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+            services.webapp_access.get_access_mode(app_id=published_webapp_id, app_code=None)
 
     assert type(raised.value) is WebAppAccessUnavailableError
     assert isinstance(raised.value.__cause__, ValueError)
@@ -1281,7 +1474,7 @@ def test_single_webapp_mode_maps_invalid_enum_or_field_value_to_unavailable(
 @pytest.mark.parametrize("query_kind", ["single-mode", "single-permission", "batch-modes", "batch-permissions"])
 @pytest.mark.parametrize("failure", [TypeError("adapter bug"), ValueError("unexpected programming error")])
 def test_webapp_access_queries_do_not_hide_unknown_programming_errors(
-    sqlite_session_factory: sessionmaker[Session], query_kind: str, failure: Exception
+    sqlite_session_factory: sessionmaker[Session], published_webapp_id: str, query_kind: str, failure: Exception
 ) -> None:
     with patch("services.enterprise.enterprise_service.EnterpriseRequest.send_request", side_effect=failure):
         services = ext_application_services.build_application_services(
@@ -1291,7 +1484,7 @@ def test_webapp_access_queries_do_not_hide_unknown_programming_errors(
             redis=_redis(),
         )
         with pytest.raises(type(failure)) as raised:
-            _query_webapp_access(services.webapp_access, query_kind)
+            _query_webapp_access(services.webapp_access, query_kind, published_webapp_id)
 
     assert raised.value is failure
 
@@ -1335,6 +1528,7 @@ def test_build_application_services_wires_webapp_permission(
 
 def test_webapp_permission_adapter_maps_connection_failure() -> None:
     failure = httpx.ConnectError("connection failed")
+    adapter = EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth)
     with (
         patch(
             "extensions.ext_application_services.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
@@ -1342,7 +1536,7 @@ def test_webapp_permission_adapter_maps_connection_failure() -> None:
         ),
         pytest.raises(WebAppAccessUnavailableError) as raised,
     ):
-        ext_application_services._is_enterprise_webapp_user_allowed("user-1", "app-1")
+        adapter.is_user_allowed(user_id="user-1", app_id="app-1")
 
     assert raised.value.__cause__ is failure
 

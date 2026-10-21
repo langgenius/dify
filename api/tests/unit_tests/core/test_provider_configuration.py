@@ -1,7 +1,7 @@
 """Provider-configuration behavior with persisted SQLite credential records."""
 
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -30,7 +30,7 @@ from models.provider import Provider, ProviderCredential, ProviderType
 
 
 @pytest.fixture
-def mock_provider_entity():
+def mock_provider_entity() -> ProviderEntity:
     """Mock provider entity with basic configuration"""
     provider_entity = ProviderEntity(
         provider="openai",
@@ -49,7 +49,7 @@ def mock_provider_entity():
 
 
 @pytest.fixture
-def mock_system_configuration():
+def mock_system_configuration() -> SystemConfiguration:
     """Mock system configuration"""
     quota_config = QuotaConfiguration(
         quota_type=ProviderQuotaType.TRIAL,
@@ -71,16 +71,23 @@ def mock_system_configuration():
 
 
 @pytest.fixture
-def mock_custom_configuration():
+def mock_custom_configuration() -> CustomConfiguration:
     """Mock custom configuration"""
     custom_config = CustomConfiguration(provider=None, models=[])
     return custom_config
 
 
 @pytest.fixture
-def provider_configuration(mock_provider_entity, mock_system_configuration, mock_custom_configuration):
+def provider_configuration(
+    mock_provider_entity: ProviderEntity,
+    mock_system_configuration: SystemConfiguration,
+    mock_custom_configuration: CustomConfiguration,
+) -> ProviderConfiguration:
     """Create a test provider configuration instance"""
-    with patch("core.entities.provider_configuration.original_provider_configurate_methods", {}):
+    with patch(
+        "core.entities.provider_configuration.original_provider_configurate_methods",
+        dict[str, list[ConfigurateMethod]](),
+    ):
         return ProviderConfiguration(
             tenant_id="test_tenant",
             provider=mock_provider_entity,
@@ -95,7 +102,9 @@ def provider_configuration(mock_provider_entity, mock_system_configuration, mock
 class TestProviderConfiguration:
     """Test cases for ProviderConfiguration class"""
 
-    def test_get_current_credentials_system_provider_success(self, provider_configuration):
+    def test_get_current_credentials_system_provider_success(
+        self, provider_configuration: ProviderConfiguration
+    ) -> None:
         """Test successfully getting credentials from system provider"""
         # Arrange
         provider_configuration.using_provider_type = ProviderType.SYSTEM
@@ -106,7 +115,7 @@ class TestProviderConfiguration:
         # Assert
         assert credentials == {"openai_api_key": "test_key"}
 
-    def test_get_current_credentials_model_disabled(self, provider_configuration):
+    def test_get_current_credentials_model_disabled(self, provider_configuration: ProviderConfiguration) -> None:
         """Test getting credentials when model is disabled"""
         # Arrange
         model_setting = ModelSettings(
@@ -122,7 +131,9 @@ class TestProviderConfiguration:
         with pytest.raises(ValueError, match="Model gpt-4 is disabled"):
             provider_configuration.get_current_credentials(ModelType.LLM, "gpt-4")
 
-    def test_get_current_credentials_custom_provider_with_models(self, provider_configuration):
+    def test_get_current_credentials_custom_provider_with_models(
+        self, provider_configuration: ProviderConfiguration
+    ) -> None:
         """Test getting credentials from custom provider with model configurations"""
         # Arrange
         provider_configuration.using_provider_type = ProviderType.CUSTOM
@@ -139,7 +150,7 @@ class TestProviderConfiguration:
         # Assert
         assert credentials == {"openai_api_key": "custom_key"}
 
-    def test_get_system_configuration_status_active(self, provider_configuration):
+    def test_get_system_configuration_status_active(self, provider_configuration: ProviderConfiguration) -> None:
         """Test getting active system configuration status"""
         # Arrange
         provider_configuration.system_configuration.enabled = True
@@ -150,7 +161,7 @@ class TestProviderConfiguration:
         # Assert
         assert status == SystemConfigurationStatus.ACTIVE
 
-    def test_get_system_configuration_status_unsupported(self, provider_configuration):
+    def test_get_system_configuration_status_unsupported(self, provider_configuration: ProviderConfiguration) -> None:
         """Test getting unsupported system configuration status"""
         # Arrange
         provider_configuration.system_configuration.enabled = False
@@ -161,7 +172,9 @@ class TestProviderConfiguration:
         # Assert
         assert status == SystemConfigurationStatus.UNSUPPORTED
 
-    def test_get_system_configuration_status_quota_exceeded(self, provider_configuration):
+    def test_get_system_configuration_status_quota_exceeded(
+        self, provider_configuration: ProviderConfiguration
+    ) -> None:
         """Test getting quota exceeded system configuration status"""
         # Arrange
         provider_configuration.system_configuration.enabled = True
@@ -174,7 +187,9 @@ class TestProviderConfiguration:
         # Assert
         assert status == SystemConfigurationStatus.QUOTA_EXCEEDED
 
-    def test_is_custom_configuration_available_with_provider(self, provider_configuration):
+    def test_is_custom_configuration_available_with_provider(
+        self, provider_configuration: ProviderConfiguration
+    ) -> None:
         """Test custom configuration availability with provider credentials"""
         # Arrange
         mock_provider = Mock()
@@ -188,7 +203,7 @@ class TestProviderConfiguration:
         # Assert
         assert result is True
 
-    def test_is_custom_configuration_available_with_models(self, provider_configuration):
+    def test_is_custom_configuration_available_with_models(self, provider_configuration: ProviderConfiguration) -> None:
         """Test custom configuration availability with model configurations"""
         # Arrange
         provider_configuration.custom_configuration.provider = None
@@ -200,7 +215,7 @@ class TestProviderConfiguration:
         # Assert
         assert result is True
 
-    def test_is_custom_configuration_available_false(self, provider_configuration):
+    def test_is_custom_configuration_available_false(self, provider_configuration: ProviderConfiguration) -> None:
         """Test custom configuration not available"""
         # Arrange
         provider_configuration.custom_configuration.provider = None
@@ -213,7 +228,9 @@ class TestProviderConfiguration:
         assert result is False
 
     @pytest.mark.parametrize("sqlite_session", [(Provider,)], indirect=True)
-    def test_get_provider_record_found(self, provider_configuration, sqlite_session: Session):
+    def test_get_provider_record_found(
+        self, provider_configuration: ProviderConfiguration, sqlite_session: Session
+    ) -> None:
         """Test getting provider record successfully"""
         provider = Provider(tenant_id="test_tenant", provider_name="openai")
         sqlite_session.add(provider)
@@ -224,7 +241,9 @@ class TestProviderConfiguration:
         assert result is provider
 
     @pytest.mark.parametrize("sqlite_session", [(Provider,)], indirect=True)
-    def test_get_provider_record_not_found(self, provider_configuration, sqlite_session: Session):
+    def test_get_provider_record_not_found(
+        self, provider_configuration: ProviderConfiguration, sqlite_session: Session
+    ) -> None:
         """Test getting provider record when not found"""
         sqlite_session.add(Provider(tenant_id="other_tenant", provider_name="openai"))
         sqlite_session.commit()
@@ -234,14 +253,20 @@ class TestProviderConfiguration:
         assert result is None
 
     def test_init_with_customizable_model_only(
-        self, mock_provider_entity, mock_system_configuration, mock_custom_configuration
-    ):
+        self,
+        mock_provider_entity: ProviderEntity,
+        mock_system_configuration: SystemConfiguration,
+        mock_custom_configuration: CustomConfiguration,
+    ) -> None:
         """Test initialization with customizable model only configuration"""
         # Arrange
         mock_provider_entity.configurate_methods = [ConfigurateMethod.CUSTOMIZABLE_MODEL]
 
         # Act
-        with patch("core.entities.provider_configuration.original_provider_configurate_methods", {}):
+        with patch(
+            "core.entities.provider_configuration.original_provider_configurate_methods",
+            dict[str, list[ConfigurateMethod]](),
+        ):
             config = ProviderConfiguration(
                 tenant_id="test_tenant",
                 provider=mock_provider_entity,
@@ -257,7 +282,9 @@ class TestProviderConfiguration:
         assert config.provider is not mock_provider_entity
         assert mock_provider_entity.configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]
 
-    def test_get_current_credentials_with_restricted_models(self, provider_configuration):
+    def test_get_current_credentials_with_restricted_models(
+        self, provider_configuration: ProviderConfiguration
+    ) -> None:
         """Test getting credentials with model restrictions"""
         # Arrange
         provider_configuration.using_provider_type = ProviderType.SYSTEM
@@ -271,8 +298,8 @@ class TestProviderConfiguration:
 
     @pytest.mark.parametrize("sqlite_session", [(Provider, ProviderCredential)], indirect=True)
     def test_get_specific_provider_credential_success(
-        self, monkeypatch: pytest.MonkeyPatch, provider_configuration, sqlite_session: Session
-    ):
+        self, monkeypatch: pytest.MonkeyPatch, provider_configuration: ProviderConfiguration, sqlite_session: Session
+    ) -> None:
         """Test getting specific provider credential successfully"""
         credential_id = "test_credential_id"
         credential = ProviderCredential(
@@ -296,8 +323,8 @@ class TestProviderConfiguration:
 
     @pytest.mark.parametrize("sqlite_session", [(Provider, ProviderCredential)], indirect=True)
     def test_get_specific_provider_credential_with_mixed_provider_names(
-        self, monkeypatch: pytest.MonkeyPatch, provider_configuration, sqlite_session: Session
-    ):
+        self, monkeypatch: pytest.MonkeyPatch, provider_configuration: ProviderConfiguration, sqlite_session: Session
+    ) -> None:
         provider_configuration.provider.provider = "langgenius/deepseek/deepseek"
         credential = ProviderCredential(
             tenant_id="test_tenant",
@@ -319,8 +346,8 @@ class TestProviderConfiguration:
 
     @pytest.mark.parametrize("sqlite_session", [(Provider, ProviderCredential)], indirect=True)
     def test_get_specific_provider_credential_not_found(
-        self, monkeypatch: pytest.MonkeyPatch, provider_configuration, sqlite_session: Session
-    ):
+        self, monkeypatch: pytest.MonkeyPatch, provider_configuration: ProviderConfiguration, sqlite_session: Session
+    ) -> None:
         """Test getting specific provider credential when not found"""
         credential_id = "nonexistent_credential_id"
         sqlite_session.add(Provider(tenant_id="other_tenant", provider_name="openai"))
@@ -334,7 +361,7 @@ class TestProviderConfiguration:
         with pytest.raises(ValueError, match=credential_id):
             provider_configuration._get_specific_provider_credential(credential_id)
 
-    def test_extract_secret_variables_with_secret_input(self, provider_configuration):
+    def test_extract_secret_variables_with_secret_input(self, provider_configuration: ProviderConfiguration) -> None:
         """Test extracting secret variables from credential form schemas"""
         # Arrange
         credential_form_schemas = [
@@ -367,7 +394,7 @@ class TestProviderConfiguration:
         assert "secret_token" in secret_variables
         assert "model_name" not in secret_variables
 
-    def test_extract_secret_variables_no_secret_input(self, provider_configuration):
+    def test_extract_secret_variables_no_secret_input(self, provider_configuration: ProviderConfiguration) -> None:
         """Test extracting secret variables when no secret input fields exist"""
         # Arrange
         credential_form_schemas = [
@@ -392,7 +419,7 @@ class TestProviderConfiguration:
         # Assert
         assert len(secret_variables) == 0
 
-    def test_extract_secret_variables_empty_list(self, provider_configuration):
+    def test_extract_secret_variables_empty_list(self, provider_configuration: ProviderConfiguration) -> None:
         """Test extracting secret variables from empty credential form schemas"""
         # Arrange
         credential_form_schemas = []
@@ -404,7 +431,9 @@ class TestProviderConfiguration:
         assert len(secret_variables) == 0
 
     @patch("core.entities.provider_configuration.encrypter")
-    def test_obfuscated_credentials_with_secret_variables(self, mock_encrypter, provider_configuration):
+    def test_obfuscated_credentials_with_secret_variables(
+        self, mock_encrypter: MagicMock, provider_configuration: ProviderConfiguration
+    ) -> None:
         """Test obfuscating credentials with secret variables"""
         # Arrange
         credentials = {
@@ -457,7 +486,7 @@ class TestProviderConfiguration:
         mock_encrypter.obfuscated_token.assert_any_call("sk-1234567890abcdef")
         mock_encrypter.obfuscated_token.assert_any_call("secret_value_123")
 
-    def test_obfuscated_credentials_no_secret_variables(self, provider_configuration):
+    def test_obfuscated_credentials_no_secret_variables(self, provider_configuration: ProviderConfiguration) -> None:
         """Test obfuscating credentials when no secret variables exist"""
         # Arrange
         credentials = {
@@ -493,7 +522,7 @@ class TestProviderConfiguration:
         # Assert
         assert obfuscated == credentials  # No changes expected
 
-    def test_obfuscated_credentials_empty_credentials(self, provider_configuration):
+    def test_obfuscated_credentials_empty_credentials(self, provider_configuration: ProviderConfiguration) -> None:
         """Test obfuscating empty credentials"""
         # Arrange
         credentials = {}

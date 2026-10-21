@@ -6,6 +6,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console import console_ns
@@ -28,11 +29,12 @@ from controllers.console.datasets.rag_pipeline.datasource_auth import (
     DatasourceUpdateProviderNameApi,
 )
 from core.plugin.impl.oauth import OAuthHandler
+from extensions.application_services.data_sources import build_data_source_credentials
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models.account import Account
-from services.credentials.query import CredentialQuery
-from services.data_source.credential_gateway import DatasourceProviderCredentialStore
+from repositories.credentials.query_repository import CredentialQueryRepository
 from services.data_source.provider_service import DatasourceProviderService
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.plugin.oauth_service import OAuthProxyService
 from tests.unit_tests.model_factories import make_account
 
@@ -40,9 +42,9 @@ _PROVIDER_ID = "langgenius/notion_datasource/notion"
 
 
 @pytest.fixture(autouse=True)
-def credential_query_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
-    query = MagicMock(spec=CredentialQuery)
-    providers = DatasourceProviderService(credentials=MagicMock(spec=DatasourceProviderCredentialStore))
+def credential_query_dependency(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> None:
+    query = CredentialQueryRepository(session_factory=sqlite_session_factory)
+    providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
     monkeypatch.setattr(
         import_module("controllers.console.datasets.rag_pipeline.datasource_auth"),
         "application_services",
@@ -138,7 +140,9 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value=oauth_client,
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", oauth_client
+                ),
             ) as get_oauth_client,
             patch.object(
                 OAuthProxyService,
@@ -165,7 +169,10 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             plugin_id="langgenius/notion_datasource",
             provider="notion",
             credential_id="cred-1",
-            extra_data={"visibility": "only_me"},
+            extra_data={
+                "visibility": "only_me",
+                "plugin_unique_identifier": "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            },
         )
         get_authorization_url.assert_called_once()
         assert get_authorization_url.call_args.kwargs["tenant_id"] == "tenant-1"
@@ -187,7 +194,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
                 return_value=None,
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="No OAuth Client Config for notion"):
                 method(api, "tenant-1", user, "notion")
 
     def test_get_without_credential_id_sets_cookie(self, app: Flask):
@@ -201,7 +208,9 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
+                ),
             ),
             patch.object(
                 OAuthProxyService,
@@ -221,6 +230,30 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
 
 
 class TestDatasourceOAuthCallback:
+    def test_callback_rejects_replaced_package_before_dispatch(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        plugin_id = "langgenius/notion_datasource"
+        context = {
+            "user_id": "user-1",
+            "tenant_id": "tenant-1",
+            "plugin_id": plugin_id,
+            "provider": "notion",
+            "plugin_unique_identifier": f"{plugin_id}:1.0.0@{'a' * 64}",
+        }
+        config = PluginOAuthClientConfig(f"{plugin_id}:2.0.0@{'b' * 64}", {"client_secret": "test-secret"})
+        monkeypatch.setattr(OAuthProxyService, "use_proxy_context", lambda _context_id: context)
+        monkeypatch.setattr(DatasourceProviderService, "get_oauth_client", lambda *_args, **_kwargs: config)
+
+        def unexpected_dispatch(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("Changed packages must not receive OAuth credentials")
+
+        monkeypatch.setattr(OAuthHandler, "get_credentials", unexpected_dispatch)
+        api = DatasourceOAuthCallback()
+        with app.test_request_context("/?context_id=ctx"):
+            with pytest.raises(Forbidden, match="Plugin changed"):
+                inspect.unwrap(api.get)(api, _PROVIDER_ID)
+
     def test_callback_success_new_credential(self, app: Flask):
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
@@ -234,6 +267,8 @@ class TestDatasourceOAuthCallback:
         context = {
             "user_id": "user-1",
             "tenant_id": "tenant-1",
+            "plugin_id": "langgenius/notion_datasource",
+            "provider": "notion",
             "credential_id": None,
         }
 
@@ -247,7 +282,10 @@ class TestDatasourceOAuthCallback:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc", "client_secret": "secret"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    {"client_id": "abc", "client_secret": "secret"},
+                ),
             ),
             patch.object(
                 OAuthHandler,
@@ -338,6 +376,8 @@ class TestDatasourceOAuthCallback:
         context = {
             "user_id": "user-1",
             "tenant_id": "tenant-1",
+            "plugin_id": "langgenius/notion_datasource",
+            "provider": "notion",
             "credential_id": "cred-1",
         }
 
@@ -351,7 +391,9 @@ class TestDatasourceOAuthCallback:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
+                ),
             ),
             patch.object(
                 OAuthHandler,
@@ -385,6 +427,8 @@ class TestDatasourceOAuthCallback:
         context = {
             "user_id": "user-1",
             "tenant_id": "tenant-1",
+            "plugin_id": "langgenius/notion_datasource",
+            "provider": "notion",
             "credential_id": None,
         }
 
@@ -398,7 +442,9 @@ class TestDatasourceOAuthCallback:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
+                ),
             ),
             patch.object(
                 OAuthHandler,
@@ -411,7 +457,7 @@ class TestDatasourceOAuthCallback:
                 return_value=None,
             ),
         ):
-            response = method(api, "notion")
+            response = method(api, _PROVIDER_ID)
 
         assert response.status_code == 302
 
@@ -465,7 +511,7 @@ class TestDatasourceAuth:
                 side_effect=CredentialsValidateFailedError("invalid"),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="invalid"):
                 method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
 
     def test_get_success(self, app: Flask):
@@ -496,7 +542,7 @@ class TestDatasourceAuth:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for DatasourceCredentialPayload\\\ncredentials"):
                 method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
 
     def test_get_empty_list(self, app: Flask):
@@ -557,7 +603,9 @@ class TestDatasourceAuthDeleteApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                ValueError, match="1 validation error for DatasourceCredentialDeletePayload\\\ncredential_id"
+            ):
                 method(api, DatasourceCredentialDeletePayload.model_validate(payload), "tenant-1", "notion")
 
 
@@ -879,7 +927,7 @@ class TestDatasourceAuthDefaultApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for DatasourceDefaultPayload\\\nid"):
                 method(api, DatasourceDefaultPayload.model_validate(payload), "tenant-1", "notion")
 
 
@@ -923,7 +971,7 @@ class TestDatasourceUpdateProviderNameApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for DatasourceUpdateNamePayload\\\nname"):
                 method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")
 
     def test_update_name_missing_credential_id(self, app: Flask):
@@ -936,5 +984,5 @@ class TestDatasourceUpdateProviderNameApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for DatasourceUpdateNamePayload\\\ncredential_id"):
                 method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")

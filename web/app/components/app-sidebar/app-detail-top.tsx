@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
+import { useStudioListHref } from '@/features/studio-list-navigation'
 import Link from '@/next/link'
 
 type AppDetailTopProps = {
@@ -24,6 +25,7 @@ type AppDetailTopProps = {
 
 export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
   const { t } = useTranslation(['app', 'navigation'])
+  const appsHref = useStudioListHref('/apps')
 
   if (!expand) {
     return (
@@ -60,7 +62,7 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
               <BreadcrumbSeparator className="system-md-regular" />
               <BreadcrumbItem className="shrink-0">
                 <BreadcrumbLink
-                  render={<Link href="/apps" />}
+                  render={<Link href={appsHref} />}
                   className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
                 >
                   {t(($) => $['menus.apps'], { ns: 'navigation' })}
@@ -80,7 +82,7 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
                   <button
                     type="button"
                     aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                    className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                    className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                   >
                     <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
                   </button>

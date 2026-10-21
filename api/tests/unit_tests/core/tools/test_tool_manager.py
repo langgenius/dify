@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import event
@@ -17,20 +17,32 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
+from core.helper.provider_cache import NoOpProviderCredentialCache
+from core.helper.provider_encryption import ProviderConfigEncrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
-    ApiProviderAuthType,
+    ToolEntity,
+    ToolIdentity,
     ToolInvokeFrom,
     ToolParameter,
+    ToolProviderEntity,
+    ToolProviderEntityWithPlugin,
+    ToolProviderIdentity,
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
+from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+from core.tools.workflow_as_tool.tool import WorkflowTool
+from graphon.runtime import VariablePool
 from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 
 class _CallableSessionProxy:
@@ -408,10 +420,12 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
 @patch("core.plugin.impl.oauth.OAuthHandler")
 @patch(
     "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
-    return_value={"client_id": "id"},
+    return_value=PluginOAuthClientConfig("langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "id"}),
 )
 @patch("core.tools.tool_manager.time.time", return_value=1000)
 @patch("core.helper.credential_utils.check_credential_policy_compliance")
+@pytest.mark.parametrize("client_credentials", [None, {}, {"client_id": "id"}])
+@pytest.mark.parametrize("plugin_provider", [False, True])
 def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     mock_check,
     mock_time,
@@ -420,6 +434,8 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     mock_create_provider_encrypter,
     monkeypatch: pytest.MonkeyPatch,
     tool_database: _ToolDatabase,
+    client_credentials: dict[str, str] | None,
+    plugin_provider: bool,
 ):
     tool = Mock()
     tool.fork_tool_runtime.return_value = "runtime-tool"
@@ -429,6 +445,29 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
         get_credentials_schema_by_type=Mock(return_value=[]),
     )
     tenant_id = "00000000-0000-0000-0000-000000000001"
+    identifier = "langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    mock_get_oauth_client.return_value = (
+        PluginOAuthClientConfig(identifier, client_credentials) if client_credentials is not None else None
+    )
+    if plugin_provider:
+        controller = PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin.model_validate(
+                {
+                    "identity": {
+                        "author": "langgenius",
+                        "name": "time",
+                        "description": {"en_US": "Time"},
+                        "icon": "icon.svg",
+                        "label": {"en_US": "Time"},
+                    },
+                    "credentials_schema": [{"name": "api_key", "type": "secret-input", "label": {"en_US": "API key"}}],
+                }
+            ),
+            plugin_id="langgenius/time",
+            plugin_unique_identifier=identifier,
+            tenant_id=tenant_id,
+        )
+        monkeypatch.setattr(controller, "get_tool", lambda _tool_name: tool)
     provider_id = "00000000-0000-0000-0000-000000000002"
     builtin_provider = _builtin_provider(
         provider_id=provider_id,
@@ -454,6 +493,7 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
             provider_id="time",
             tool_name="weekday",
             tenant_id=tenant_id,
+            credential_id=provider_id if plugin_provider else None,
         )
 
     assert result == "runtime-tool"
@@ -465,6 +505,11 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     assert persisted.expires_at == refreshed.expires_at
     assert persisted.encrypted_credentials == json.dumps({"token": "encrypted"})
     cache.delete.assert_called_once()
+    refresh = mock_oauth_handler_cls.return_value.refresh_credentials
+    refresh.assert_called_once()
+    assert refresh.call_args.kwargs["system_credentials"] == (client_credentials or {})
+    expected_identifier = identifier if plugin_provider or client_credentials is not None else None
+    assert refresh.call_args.kwargs["plugin_unique_identifier"] == expected_identifier
 
 
 def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error(
@@ -495,7 +540,9 @@ def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error
         patch("core.tools.tool_manager.time.time", return_value=1000),
         patch(
             "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
-            return_value={"client_id": "id"},
+            return_value=PluginOAuthClientConfig(
+                "langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "id"}
+            ),
         ),
         patch("core.plugin.impl.oauth.OAuthHandler") as oauth_handler_cls,
     ):
@@ -595,23 +642,50 @@ def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_da
     tool_database.session.add(workflow_provider)
     tool_database.session.commit()
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
-    workflow_tool = Mock()
-    workflow_tool.fork_tool_runtime.return_value = "wf-runtime"
-    workflow_controller = Mock()
-    workflow_controller.get_tools.return_value = [workflow_tool]
+    workflow_tool = WorkflowTool(
+        workflow_app_id=workflow_provider.app_id,
+        workflow_as_tool_id=provider_id,
+        version=workflow_provider.version,
+        workflow_id="00000000-0000-0000-0000-000000000003",
+        workflow_call_depth=0,
+        entity=ToolEntity(
+            identity=ToolIdentity(author="test", name="wf", label=I18nObject(en_US="Workflow"), provider=provider_id),
+        ),
+        runtime=ToolRuntime(tenant_id=tenant_id),
+    )
+    workflow_controller = WorkflowToolProviderController(
+        entity=ToolProviderEntity(
+            identity=ToolProviderIdentity(
+                author="test",
+                name=workflow_provider.name,
+                label=I18nObject(en_US=workflow_provider.label),
+                description=I18nObject(en_US=workflow_provider.description),
+                icon=workflow_provider.icon,
+            ),
+        ),
+        provider_id=provider_id,
+    )
+    workflow_controller.tools = [workflow_tool]
     with patch(
         "core.tools.tool_manager.ToolTransformService.workflow_provider_to_controller",
         return_value=workflow_controller,
     ):
-        assert (
-            ToolManager.get_tool_runtime(
-                provider_type=ToolProviderType.WORKFLOW,
-                provider_id=provider_id,
-                tool_name="wf",
-                tenant_id=tenant_id,
-            )
-            == "wf-runtime"
+        runtime_tool = ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.WORKFLOW,
+            provider_id=provider_id,
+            tool_name="wf",
+            tenant_id=tenant_id,
         )
+    assert isinstance(runtime_tool, WorkflowTool)
+    assert runtime_tool is not workflow_tool
+    assert runtime_tool.entity == workflow_tool.entity
+    assert runtime_tool.workflow_as_tool_id == provider_id
+    assert runtime_tool.runtime == ToolRuntime(
+        tenant_id=tenant_id,
+        invoke_from=InvokeFrom.DEBUGGER,
+        tool_invoke_from=ToolInvokeFrom.AGENT,
+    )
+    assert runtime_tool.execution_driver is None
 
 
 def test_get_tool_runtime_plugin_path():
@@ -702,6 +776,7 @@ def test_get_agent_runtime_apply_runtime_parameters():
         invoke_from=InvokeFrom.DEBUGGER,
         tool_invoke_from=ToolInvokeFrom.AGENT,
         credential_id=None,
+        execution_driver=None,
     )
 
 
@@ -749,6 +824,7 @@ def test_get_workflow_runtime_apply_runtime_parameters():
         invoke_from=InvokeFrom.DEBUGGER,
         tool_invoke_from=ToolInvokeFrom.WORKFLOW,
         credential_id=None,
+        execution_driver=None,
     )
 
 
@@ -812,6 +888,7 @@ def test_get_tool_runtime_from_plugin_only_uses_form_parameters():
         invoke_from=InvokeFrom.SERVICE_API,
         tool_invoke_from=ToolInvokeFrom.PLUGIN,
         credential_id=None,
+        execution_driver=None,
     )
 
 
@@ -1023,15 +1100,12 @@ def test_get_api_provider_controller_returns_controller_and_credentials(
     tool_database.session.add(provider)
     tool_database.session.commit()
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
-    controller = Mock()
+    built_controller, credentials = ToolManager.get_api_provider_controller(tenant_id, provider.id)
 
-    with patch("core.tools.tool_manager.ApiToolProviderController.from_db", return_value=controller) as mock_from_db:
-        built_controller, credentials = ToolManager.get_api_provider_controller(tenant_id, provider.id)
-
-    assert built_controller is controller
+    assert built_controller.provider_id == provider.id
+    assert built_controller.tenant_id == tenant_id
+    assert built_controller.tools == []
     assert credentials == provider.credentials
-    mock_from_db.assert_called_with(provider, ApiProviderAuthType.API_KEY_QUERY, session=ANY)
-    controller.load_bundled_tools.assert_called_once_with(provider.tools)
 
 
 def test_user_get_api_provider_masks_credentials_and_adds_labels(
@@ -1042,17 +1116,19 @@ def test_user_get_api_provider_masks_credentials_and_adds_labels(
     tool_database.session.add(provider)
     tool_database.session.commit()
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
-    controller = Mock()
+    cache = NoOpProviderCredentialCache()
+    encrypter = ProviderConfigEncrypter(
+        tenant_id=tenant_id,
+        config=[BasicProviderConfig(name="api_key_value", type=ProviderConfigType.SECRET_INPUT)],
+        provider_config_cache=cache,
+    )
+    with (
+        patch("core.tools.tool_manager.create_tool_provider_encrypter", return_value=(encrypter, cache)),
+        patch("core.tools.tool_manager.ToolLabelManager.get_tool_labels", return_value=["search"]),
+    ):
+        user_payload = ToolManager.user_get_api_provider(provider.name, tenant_id)
 
-    with patch("core.tools.tool_manager.ApiToolProviderController.from_db", return_value=controller):
-        encrypter = Mock()
-        encrypter.decrypt.return_value = {"api_key_value": "secret"}
-        encrypter.mask_plugin_credentials.return_value = {"api_key_value": "***"}
-        with patch("core.tools.tool_manager.create_tool_provider_encrypter", return_value=(encrypter, Mock())):
-            with patch("core.tools.tool_manager.ToolLabelManager.get_tool_labels", return_value=["search"]):
-                user_payload = ToolManager.user_get_api_provider(provider.name, tenant_id)
-
-    assert user_payload["credentials"]["api_key_value"] == "***"
+    assert user_payload["credentials"]["api_key_value"] == "******"
     assert user_payload["labels"] == ["search"]
 
 
@@ -1229,8 +1305,8 @@ def test_convert_tool_parameters_type_agent_and_workflow_branches():
     )
     assert plain == {"text": "hello"}
 
-    variable_pool = Mock()
-    variable_pool.get.return_value = SimpleNamespace(value="from-variable")
+    variable_pool = VariablePool()
+    variable_pool.add(["sys", "query"], "from-variable")
 
     with patch("core.tools.tool_manager.convert_template", return_value=SimpleNamespace(text="from-template")):
         mixed = ToolManager._convert_tool_parameters_type(
@@ -1258,7 +1334,7 @@ def test_convert_tool_parameters_type_constant_branch():
         required=False,
     )
     text_param.form = ToolParameter.ToolParameterForm.FORM
-    variable_pool = Mock()
+    variable_pool = VariablePool()
 
     constant = ToolManager._convert_tool_parameters_type(
         parameters=[text_param],
@@ -1278,7 +1354,7 @@ def test_convert_tool_parameters_type_model_selector_from_legacy_top_level_confi
         required=True,
     )
     model_param.form = ToolParameter.ToolParameterForm.FORM
-    variable_pool = Mock()
+    variable_pool = VariablePool()
 
     runtime_parameters = ToolManager._convert_tool_parameters_type(
         parameters=[model_param],
@@ -1314,7 +1390,7 @@ def test_convert_tool_parameters_type_model_selector_from_constant_value_config(
         required=True,
     )
     model_param.form = ToolParameter.ToolParameterForm.FORM
-    variable_pool = Mock()
+    variable_pool = VariablePool()
 
     runtime_parameters = ToolManager._convert_tool_parameters_type(
         parameters=[model_param],

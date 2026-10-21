@@ -15,14 +15,17 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from graphon.engine_events import NodeRunFailedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from graphon.graph_events import NodeRunFailedEvent
 from graphon.node_events.base import NodeRunResult
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from models import Account, Tenant
 from models.dataset import (
     Dataset,
@@ -83,17 +86,20 @@ class MockRepo:
     pass
 
 
-def test_get_published_workflow_by_id_locks_restore_source(mocker: MockerFixture) -> None:
-    session = mocker.Mock(spec=Session)
+def test_get_published_workflow_by_id_locks_restore_source(
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+) -> None:
+    session = rag_pipeline_service.session
     workflow = _make_workflow()
     workflow.version = "v1"
-    session.scalar.return_value = workflow
-    service = RagPipelineService.__new__(RagPipelineService)
-    service._session = session
+    session.add(workflow)
+    session.flush()
+    lookup = mocker.spy(session, "scalar")
+    service = rag_pipeline_service.service
 
     result = service.get_published_workflow_by_id(_make_pipeline(), workflow.id)
 
-    stmt = session.scalar.call_args.args[0]
+    stmt = lookup.call_args.args[0]
     sql = str(stmt.compile(dialect=postgresql.dialect()))
     assert result is workflow
     assert "FOR UPDATE" in sql
@@ -203,26 +209,29 @@ def _persist(session: Session, *entities: object) -> None:
     session.commit()
 
 
-def _make_failed_published_node_run() -> tuple[SimpleNamespace, NodeRunFailedEvent]:
-    class FakeVariablePool:
-        def __init__(self) -> None:
-            self._values = {
-                ("sys", "invoke_from"): SimpleNamespace(value=InvokeFrom.PUBLISHED_PIPELINE),
-                ("sys", "app_id"): SimpleNamespace(value="pipeline-1"),
-                ("sys", "dataset_id"): SimpleNamespace(value="dataset-1"),
-                ("sys", "document_id"): SimpleNamespace(value="doc-1"),
-            }
-
-        def get(self, path: list[str]) -> SimpleNamespace | None:
-            return self._values.get(tuple(path))
-
-    node_instance = SimpleNamespace(
-        workflow_id="wf-1",
-        node_type="start",
-        title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=FakeVariablePool()),
-        error_strategy=None,
+def _make_start_node(data: StartNodeData | None = None, variable_pool: VariablePool | None = None) -> StartNode:
+    return StartNode(
+        node_id="node-1",
+        data=data if data is not None else StartNodeData(title="Start"),
+        init_params=InitParams(workflow_id="wf-1", graph_config={}, run_context={}, call_depth=0),
+        runtime_state=RuntimeState(
+            workflow_id="wf-1",
+            variable_pool=variable_pool if variable_pool is not None else VariablePool(),
+            start_at=time.perf_counter(),
+        ),
     )
+
+
+def _make_failed_published_node_run() -> tuple[StartNode, NodeRunFailedEvent]:
+    variable_pool = VariablePool()
+    for name, value in {
+        "invoke_from": InvokeFrom.PUBLISHED_PIPELINE,
+        "app_id": "pipeline-1",
+        "dataset_id": "dataset-1",
+        "document_id": "doc-1",
+    }.items():
+        variable_pool.add(["sys", name], value)
+    node_instance = _make_start_node(variable_pool=variable_pool)
     run_result = NodeRunResult(
         status=WorkflowNodeExecutionStatus.FAILED,
         error="boom",
@@ -826,7 +835,7 @@ def test_run_datasource_node_preview_online_document(
 def test_handle_node_run_result_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    from graphon.graph_events import NodeRunSucceededEvent
+    from graphon.engine_events import NodeRunSucceededEvent
     from graphon.node_events.base import NodeRunResult
 
     # 1. Setup mock node and result
@@ -1059,11 +1068,26 @@ def test_set_datasource_variables_success(
     draft_wf.get_enclosing_node_type_and_id.return_value = None  # Avoid unpacking error
     mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=draft_wf)
 
-    execution = mocker.Mock(spec=WorkflowNodeExecution)
-    execution.id = "exec-1"
-    execution.process_data = {}
-    execution.inputs = {}
-    execution.outputs = {}
+    execution = WorkflowNodeExecution(
+        id="exec-1",
+        node_execution_id="node-exec-1",
+        workflow_id="wf-1",
+        workflow_execution_id="run-1",
+        index=1,
+        predecessor_node_id=None,
+        node_id="node-1",
+        node_type=BuiltinNodeTypes.DATASOURCE,
+        title="Datasource",
+        process_data={},
+        inputs={},
+        outputs={},
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=0,
+        metadata={},
+        created_at=datetime(2026, 1, 1),
+        finished_at=None,
+    )
     mocker.patch.object(rag_pipeline_service.service, "_handle_node_run_result", return_value=execution)
 
     # Mock Repository
@@ -1133,7 +1157,6 @@ def test_get_default_block_configs_success(rag_pipeline_service: RagPipelineServ
 
 
 def test_get_default_block_config_success(rag_pipeline_service: RagPipelineServiceTestContext) -> None:
-
     result = rag_pipeline_service.service.get_default_block_config(BuiltinNodeTypes.LLM)
     assert result is not None
     assert result["type"] == "llm"
@@ -1154,7 +1177,6 @@ def test_publish_workflow_raises_when_draft_workflow_missing(
 def test_get_default_block_config_returns_none_when_mapped_type_missing(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     mocker.patch("services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping", return_value={})
 
     assert rag_pipeline_service.service.get_default_block_config(BuiltinNodeTypes.START) is None
@@ -1163,7 +1185,6 @@ def test_get_default_block_config_returns_none_when_mapped_type_missing(
 def test_get_default_block_config_injects_http_request_filter(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     fake_node_cls = mocker.Mock()
     fake_node_cls.get_default_config.return_value = {"type": "http-request"}
     mocker.patch(
@@ -1411,16 +1432,15 @@ def test_handle_node_run_result_default_value_strategy(
 ) -> None:
     from datetime import datetime
 
-    from graphon.graph_events import NodeRunFailedEvent
+    from graphon.engine_events import NodeRunFailedEvent
     from graphon.node_events.base import NodeRunResult
 
-    node_instance = SimpleNamespace(
-        workflow_id="wf-1",
-        node_type=BuiltinNodeTypes.START,
-        title="Start",
-        error_strategy=ErrorStrategy.DEFAULT_VALUE,
-        default_value_dict={"fallback": "ok"},
-        graph_runtime_state=SimpleNamespace(variable_pool=mocker.Mock()),
+    node_instance = _make_start_node(
+        StartNodeData(
+            title="Start",
+            error_strategy=ErrorStrategy.DEFAULT_VALUE,
+            default_value=[{"key": "fallback", "value": "ok", "type": "string"}],
+        )
     )
 
     failed_result = NodeRunResult(
@@ -1595,7 +1615,6 @@ def test_set_datasource_variables_raises_when_node_id_missing(
 def test_get_default_block_configs_skips_empty_configs(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     http_node = mocker.Mock()
     http_node.get_default_config.return_value = {"type": "http-request"}
     empty_node = mocker.Mock()
@@ -1832,13 +1851,7 @@ def test_get_datasource_plugins_raises_when_workflow_not_found(
 def test_handle_node_run_result_raises_when_no_terminal_event(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    node_instance = SimpleNamespace(
-        workflow_id="wf-1",
-        node_type="start",
-        title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=SimpleNamespace(get=lambda _: None)),
-        error_strategy=None,
-    )
+    node_instance = _make_start_node()
 
     def _event_generator():
         yield object()
@@ -2058,7 +2071,6 @@ def test_publish_workflow_skips_dataset_update_for_non_knowledge_nodes(
 def test_get_default_block_config_returns_none_when_default_empty(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     node_cls = mocker.Mock()
     node_cls.get_default_config.return_value = None
     mocker.patch(
