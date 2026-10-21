@@ -1,8 +1,15 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderOwner,
+} from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import ModelProviderPage from '../index'
+
+const renderWithConsoleQuery = createNuqsTestRenderer(renderOwner)
 
 const providerSummaryFixture = {
   provider: 'openai',
@@ -21,21 +28,12 @@ const providerSummaryFixture = {
   },
 } satisfies ModelProviderSummaryResponse
 
-vi.mock('../hooks', () => ({
-  useDefaultModel: () => ({ data: null, isLoading: false }),
-  useLanguage: () => 'en_US',
-}))
-
 vi.mock('../provider-added-card', () => ({
   default: () => <div data-testid="provider-card" />,
 }))
 
 vi.mock('../provider-added-card/quota-panel', () => ({
   default: () => <div data-testid="quota-panel" />,
-}))
-
-vi.mock('../system-model-selector', () => ({
-  default: () => <div data-testid="system-model-selector" />,
 }))
 
 vi.mock('../install-from-marketplace', () => ({
@@ -99,78 +97,19 @@ vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const originalWorkspaces = actual.consoleQuery.workspaces
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: new Proxy(actual.consoleQuery, {
-      get(target, prop) {
-        if (prop === 'workspaces') {
-          return {
-            ...originalWorkspaces,
-            current: {
-              ...originalWorkspaces.current,
-              modelProviders: {
-                summary: {
-                  get: {
-                    queryKey: () =>
-                      originalWorkspaces.current.modelProviders.summary.get.queryKey(),
-                    queryOptions: () => ({
-                      ...originalWorkspaces.current.modelProviders.summary.get.queryOptions(),
-                      queryFn: () => new Promise(() => {}),
-                    }),
-                  },
-                },
-              },
-              plugin: {
-                ...originalWorkspaces.current.plugin,
-                list: {
-                  ...originalWorkspaces.current.plugin.list,
-                  installations: {
-                    ids: {
-                      post: {
-                        queryOptions: () => ({
-                          queryKey: [
-                            'workspaces',
-                            'current',
-                            'plugin',
-                            'list',
-                            'installations',
-                            'ids',
-                            'post',
-                          ],
-                          queryFn: () => new Promise(() => {}),
-                        }),
-                      },
-                    },
-                  },
-                  latestVersions: {
-                    post: {
-                      queryOptions: () => ({
-                        queryKey: [
-                          'workspaces',
-                          'current',
-                          'plugin',
-                          'list',
-                          'latestVersions',
-                          'post',
-                        ],
-                        queryFn: () => new Promise(() => {}),
-                      }),
-                    },
-                  },
-                },
-              },
-            },
-          }
-        }
-        return Reflect.get(target, prop)
-      },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.summary.get': () => new Promise(() => {}),
+      'workspaces.current.plugin.list.latestVersions.post': () => ({ versions: {} }),
     }),
   }
 })
 
 const renderPage: typeof renderWithConsoleQuery = (ui, options) => {
   const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
   queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
     data: [{ ...providerSummaryFixture } satisfies ModelProviderSummaryResponse],
     plugins: {},
@@ -181,10 +120,12 @@ const renderPage: typeof renderWithConsoleQuery = (ui, options) => {
 describe('ModelProviderPage non-cloud branch', () => {
   it('should skip the quota panel when cloud edition is disabled', () => {
     renderPage(<ModelProviderPage searchText="" />, {
-      systemFeatures: { enable_marketplace: false },
+      systemFeatures: { enable_marketplace: false, deployment_edition: 'COMMUNITY' },
     })
 
-    expect(screen.getByTestId('system-model-selector')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /modelProvider.systemModelSettings/ }),
+    ).toBeInTheDocument()
     expect(screen.queryByTestId('quota-panel')).not.toBeInTheDocument()
   })
 })

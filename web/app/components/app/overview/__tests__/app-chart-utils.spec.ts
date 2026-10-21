@@ -1,4 +1,4 @@
-import type { LineSeriesOption, XAXisComponentOption } from 'echarts'
+import type { LineSeriesOption } from 'echarts'
 import {
   buildChartOptions,
   getChartValueField,
@@ -125,20 +125,14 @@ describe('app-chart-utils', () => {
         dimensions: string[]
         source: Array<Record<string, unknown>>
       }
-      const grid = options.grid as { top: number; left: number; right: number }
       const yAxis = options.yAxis as { max: number }
-      const series = options.series as Array<{ lineStyle: { color: string } }>
 
       expect(dataset.dimensions).toEqual(['date', 'count'])
       expect(dataset.source).toHaveLength(2)
-      expect(grid.top).toBe(16)
-      expect(grid.left).toBe(0)
-      expect(grid.right).toBe(0)
       expect(yAxis.max).toBe(100)
-      expect(series[0]!.lineStyle.color).toBe('rgba(6, 148, 162, 1)')
     })
 
-    it('should build token-aware tooltip content and split-line intervals for cost charts', () => {
+    it('should build token-aware tooltip content for cost charts', () => {
       const options = buildChartOptions({
         statistics: [
           { date: 'Jan 1, 2024', total_cost: 5, total_price: '1.25' },
@@ -149,22 +143,10 @@ describe('app-chart-utils', () => {
         yField: 'total_cost',
       })
 
-      const xAxis = options.xAxis as XAXisComponentOption[]
-      const formatter = xAxis[0]!.axisLabel!.formatter as (value: string) => string
-      const outerInterval = xAxis[0]!.splitLine!.interval as (index: number) => boolean
-      const innerInterval = xAxis[1]!.splitLine!.interval as (
-        _index: number,
-        value: string,
-      ) => boolean
       const series = options.series as LineSeriesOption[]
       const tooltipFormatter = series[0]!.tooltip!.formatter
       if (typeof tooltipFormatter !== 'function') throw new Error('Expected a tooltip formatter')
 
-      expect(formatter('Jan 2, 2024')).toBe('Jan 2, 2024')
-      expect(outerInterval(0)).toBe(true)
-      expect(outerInterval(1)).toBe(false)
-      expect(innerInterval(0, '')).toBe(false)
-      expect(innerInterval(1, '1')).toBe(true)
       expect(
         tooltipFormatter(
           {

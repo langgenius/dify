@@ -34,21 +34,7 @@ const response = {
 const renderVariables = () => renderHook(() => useInputVariables('node-1'))
 
 describe('useInputVariables', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    getParams.mockResolvedValue(response)
-  })
-  it('fetches processing parameters for the current pipeline and node', async () => {
-    const { result } = renderVariables()
-    await waitFor(() => expect(result.current.paramsConfig?.variables).toHaveLength(1))
-    expect(result.current.paramsConfig?.variables[0]).toMatchObject(response.variables[0]!)
-    expect(getParams).toHaveBeenCalledWith({
-      params: { pipeline_id: 'pipeline-1' },
-      query: { node_id: 'node-1' },
-    })
-    expect(result.current.isFetchingParams).toBe(false)
-  })
-  it('stays fetching until processing parameters resolve', async () => {
+  it('loads the current pipeline and node parameters before exposing the configuration', async () => {
     const pending = createDeferred<typeof response>()
     getParams.mockReturnValue(pending.promise)
     const { result } = renderVariables()
@@ -56,6 +42,10 @@ describe('useInputVariables', () => {
     expect(result.current.paramsConfig).toBeUndefined()
     await act(async () => pending.resolve(response))
     await waitFor(() => expect(result.current.isFetchingParams).toBe(false))
-    expect(result.current.paramsConfig?.variables).toHaveLength(1)
+    expect(result.current.paramsConfig?.variables).toEqual(response.variables)
+    expect(getParams).toHaveBeenCalledWith({
+      params: { pipeline_id: 'pipeline-1' },
+      query: { node_id: 'node-1' },
+    })
   })
 })

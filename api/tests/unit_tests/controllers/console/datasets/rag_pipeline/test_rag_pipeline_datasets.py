@@ -171,7 +171,9 @@ class TestCreateRagPipelineDatasetApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                ValueError, match="1 validation error for RagPipelineDatasetImportPayload\\\nyaml_content"
+            ):
                 method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
 
 

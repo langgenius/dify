@@ -3,9 +3,9 @@ import type { ExternalHitTestingRecordResponse } from '@dify/contracts/api/conso
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -53,7 +53,7 @@ export const ResultItemExternal = memo(({ payload, positionId }: ResultItemExter
       <DialogContent className="w-full">
         <DialogHeader>
           <DialogTitle>{t(($) => $.chunkDetail, { ns: 'datasetHitTesting' })}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           <ResultItemMeta

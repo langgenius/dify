@@ -214,7 +214,12 @@ def test_website_estimate_parses_boolean_values(value: str | bool, expected: boo
 
 @pytest.mark.parametrize("values", [{"only_main_content": "invalid"}, {"urls": [42]}])
 def test_website_estimate_rejects_invalid_field_types(values: dict[str, object]) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for WebsiteInfo\\\nonly_main_content|1 validation error for WebsiteInfo\\\nurls\\.0)"
+        ),
+    ):
         _new_estimate_sources(
             {
                 "data_source_type": "website_crawl",
@@ -255,7 +260,15 @@ def test_new_estimate_sources_deduplicates_upload_ids_without_reordering() -> No
     ],
 )
 def test_new_estimate_sources_rejects_malformed_transport_shapes(info_list: dict[str, object]) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for FileInfo\\\nfile_ids|1 validation error for "
+            "list\\[NotionEstimateWorkspacePayload\\]\\\n0\\.pages\\.0\\.type|2 "
+            "validation errors for list\\[NotionEstimateWorkspacePayload\\]\\\n0\\."
+            "credential_id|Data source type not support)"
+        ),
+    ):
         _new_estimate_sources(info_list)
 
 

@@ -2,7 +2,7 @@ import { createContext, use } from 'react'
 
 export const FileUploadContext = createContext<{
   localUploadUrl?: string
-  remoteUploadUrl?: string
+  trialAppId?: string
 }>({})
 
 export function useFileUploadContext() {

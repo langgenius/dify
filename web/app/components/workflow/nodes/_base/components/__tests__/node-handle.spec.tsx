@@ -1,139 +1,21 @@
-import type { ReactNode } from 'react'
-import type { CommonNodeType } from '@/app/components/workflow/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { NodeProps } from 'reactflow'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import type { CommonNodeType, Edge } from '@/app/components/workflow/types'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { useEdges } from 'reactflow'
+import { createWorkflowSlice } from '@/app/components/workflow-app/store/workflow/workflow-slice'
+import {
+  CANVAS_NODES_STATUS_NAME,
+  CanvasNodesCatalogProbe,
+} from '@/app/components/workflow/__tests__/canvas-nodes-catalog-probe'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
-
-type MockHooksState = {
-  availablePrevBlocks: BlockEnum[]
-  availableNextBlocks: BlockEnum[]
-  isChatflow: boolean
-  isReadOnly: boolean
-}
-
-type MockStoreState = {
-  dataSourceList: unknown[]
-  nodes: unknown[]
-  shouldAutoOpenStartNodeSelector: boolean
-  setShouldAutoOpenStartNodeSelector?: (open: boolean) => void
-  setHasSelectedStartNode?: (selected: boolean) => void
-}
-
-const {
-  mockHandleNodeAdd,
-  mockSetShouldAutoOpenStartNodeSelector,
-  mockSetHasSelectedStartNode,
-  mockWorkflowStoreSetState,
-  mockHooksState,
-  mockStoreState,
-} = vi.hoisted(() => {
-  const mockHooksState: MockHooksState = {
-    availablePrevBlocks: [],
-    availableNextBlocks: [],
-    isChatflow: false,
-    isReadOnly: false,
-  }
-  const mockStoreState: MockStoreState = {
-    dataSourceList: [],
-    nodes: [],
-    shouldAutoOpenStartNodeSelector: false,
-    setShouldAutoOpenStartNodeSelector: undefined,
-    setHasSelectedStartNode: undefined,
-  }
-
-  return {
-    mockHandleNodeAdd: vi.fn(),
-    mockSetShouldAutoOpenStartNodeSelector: vi.fn(),
-    mockSetHasSelectedStartNode: vi.fn(),
-    mockWorkflowStoreSetState: vi.fn(),
-    mockHooksState,
-    mockStoreState,
-  }
-})
-
-type HandleProps = {
-  id?: string
-  className?: string
-  children?: ReactNode
-  onClick?: () => void
-}
-
-vi.mock('reactflow', () => ({
-  Handle: ({ id, className, children, onClick }: HandleProps) => (
-    <div
-      data-testid={`handle-${id ?? 'unknown'}`}
-      data-handleid={id}
-      className={className}
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') onClick?.()
-      }}
-    >
-      {children}
-    </div>
-  ),
-  Position: {
-    Left: 'left',
-    Right: 'right',
-  },
-  useStoreApi: () => ({
-    getState: () => ({ getNodes: () => [] }),
-  }),
-}))
-
-vi.mock('../../../../hooks/use-available-blocks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-available-blocks')>()
-
-  return {
-    ...actual,
-    useAvailableBlocks: () => ({
-      availablePrevBlocks: mockHooksState.availablePrevBlocks,
-      availableNextBlocks: mockHooksState.availableNextBlocks,
-    }),
-  }
-})
-
-vi.mock('../../../../hooks/use-nodes-interactions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-nodes-interactions')>()
-
-  return {
-    ...actual,
-    useNodesInteractions: () => ({
-      handleNodeAdd: mockHandleNodeAdd,
-    }),
-  }
-})
-
-vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-
-    useNodesReadOnly: () => ({
-      getNodesReadOnly: () => mockHooksState.isReadOnly,
-    }),
-  }
-})
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: MockStoreState) => T) => selector(mockStoreState),
-  useWorkflowStore: () => ({
-    setState: mockWorkflowStoreSetState,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      configsMap: { resourceKind: 'app-flow' },
-      availableNodesMetaData: { nodes: [] },
-    }),
-}))
 
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
@@ -163,249 +45,227 @@ vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: () => ({ data: undefined }),
 }))
 
-const createNodeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType => ({
-  type: BlockEnum.Code,
-  title: 'Node',
-  desc: '',
-  selected: false,
-  ...overrides,
-})
+function SourceHandleNode({ id, data }: NodeProps<CommonNodeType>) {
+  return (
+    <div role="group" aria-label={data.title}>
+      <span>{data.title}</span>
+      <NodeSourceHandle id={id} data={data} handleId="source-handle" />
+    </div>
+  )
+}
 
-const getAddNodeButton = () => screen.getByRole('button', { name: 'workflow.common.addBlock' })
-const queryAddNodeButton = () => screen.queryByRole('button', { name: 'workflow.common.addBlock' })
+function TargetHandleNode({ id, data }: NodeProps<CommonNodeType>) {
+  return (
+    <div role="group" aria-label={data.title}>
+      <span>{data.title}</span>
+      <NodeTargetHandle id={id} data={data} handleId="target-handle" />
+    </div>
+  )
+}
 
-const renderTargetHandle = (dataOverrides: Partial<CommonNodeType> = {}) => {
-  return render(
-    <NodeTargetHandle
-      id="target-node"
-      data={createNodeData(dataOverrides)}
-      handleId="target-handle"
-      nodeSelectorClassName="custom-selector"
-      handleClassName="custom-target-handle"
-    />,
+function CanvasEdgesProbe() {
+  const edges = useEdges<Edge['data']>()
+  return (
+    <output aria-label="Canvas edges">
+      {edges
+        .map(
+          (edge) =>
+            `${edge.source}:${edge.sourceHandle ?? ''}->${edge.target}:${edge.targetHandle ?? ''}`,
+        )
+        .join(',')}
+    </output>
+  )
+}
+
+const getCanvasNodeIds = () =>
+  screen
+    .getByLabelText(CANVAS_NODES_STATUS_NAME, { selector: 'output' })
+    .textContent!.split(',')
+    .filter(Boolean)
+    .map((nodeId) => nodeId.replace(/\*$/, ''))
+
+function renderHandle({
+  side,
+  type = BlockEnum.Code,
+  readOnly = false,
+  autoOpen = false,
+  chatflow = false,
+  connected = false,
+}: {
+  side: 'source' | 'target'
+  type?: BlockEnum
+  readOnly?: boolean
+  autoOpen?: boolean
+  chatflow?: boolean
+  connected?: boolean
+}) {
+  const id = side === 'source' ? 'source-node' : 'target-node'
+  const title = side === 'source' ? 'Source node' : 'Target node'
+  const nodes = [
+    createNode({
+      id,
+      width: 240,
+      height: 80,
+      position: { x: side === 'source' ? 100 : 500, y: 100 },
+      data: {
+        type,
+        title,
+        ...(connected && side === 'target' ? { _connectedTargetHandleIds: ['target-handle'] } : {}),
+      },
+    }),
+  ]
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '1.0.0' })
+  seedModelProviderQueries(queryClient)
+  seedAppDslVersion(queryClient, '1.0.0')
+
+  return renderWorkflowFlowComponent(
+    <>
+      <CanvasNodesCatalogProbe />
+      <CanvasEdgesProbe />
+    </>,
     {
-      resource: {
-        kind: 'app',
-        appId: 'app-1',
-        mode: mockHooksState.isChatflow ? 'advanced-chat' : 'workflow',
+      nodes,
+      edges: [],
+      queryClient,
+      resource: { kind: 'app', appId: 'app-1', mode: chatflow ? 'advanced-chat' : 'workflow' },
+      injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
+      initialStoreState: {
+        canvasReadOnly: readOnly,
+        shouldAutoOpenStartNodeSelector: autoOpen,
+        hasSelectedStartNode: true,
+      },
+      hooksStoreProps: { doSyncWorkflowDraft: async () => null },
+      reactFlowProps: {
+        fitView: false,
+        nodeTypes: {
+          [CUSTOM_NODE]: side === 'source' ? SourceHandleNode : TargetHandleNode,
+        },
       },
     },
   )
 }
 
-const renderSourceHandle = (
-  dataOverrides: Partial<CommonNodeType> = {},
-  propsOverrides: Partial<React.ComponentProps<typeof NodeSourceHandle>> = {},
-) => {
-  return render(
-    <NodeSourceHandle
-      id="source-node"
-      data={createNodeData(dataOverrides)}
-      handleId="source-handle"
-      nodeSelectorClassName="custom-selector"
-      handleClassName="custom-source-handle"
-      {...propsOverrides}
-    />,
-    {
-      resource: {
-        kind: 'app',
-        appId: 'app-1',
-        mode: mockHooksState.isChatflow ? 'advanced-chat' : 'workflow',
-      },
-    },
-  )
-}
-
-describe('node-handle', () => {
+describe('node handle insertion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-
-    mockHooksState.availablePrevBlocks = [BlockEnum.Code]
-    mockHooksState.availableNextBlocks = [BlockEnum.Code]
-    mockHooksState.isChatflow = false
-    mockHooksState.isReadOnly = false
-
-    mockStoreState.shouldAutoOpenStartNodeSelector = false
-    mockStoreState.setShouldAutoOpenStartNodeSelector = mockSetShouldAutoOpenStartNodeSelector
-    mockStoreState.setHasSelectedStartNode = mockSetHasSelectedStartNode
   })
 
-  // Target-side tests cover selector visibility, connection locking, and status rendering.
-  describe('NodeTargetHandle', () => {
-    it('should show the start tab when adding a node before the target node', async () => {
-      const user = userEvent.setup()
+  it('inserts and routes a node after the source handle through the real selector', async () => {
+    const user = userEvent.setup()
+    renderHandle({ side: 'source' })
+    const source = await screen.findByRole('group', { name: 'Source node' })
 
-      renderTargetHandle()
+    await user.click(within(source).getByRole('button', { name: 'workflow.common.addBlock' }))
+    expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'workflow.blocks.code' }))
 
-      await user.click(screen.getByTestId('handle-target-handle'))
-
-      expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toBeInTheDocument()
-    })
-
-    it('should toggle the target add trigger', () => {
-      renderTargetHandle()
-
-      const handle = screen.getByTestId('handle-target-handle')
-      const addNodeButton = getAddNodeButton()
-
-      expect(addNodeButton).toHaveClass('custom-selector')
-      expect(addNodeButton).toHaveClass('opacity-0')
-      expect(addNodeButton).toHaveClass('pointer-events-none')
-
-      fireEvent.click(addNodeButton)
-
-      expect(addNodeButton).toHaveAttribute('data-popup-open')
-      // Trigger stays pointer-events-none so it never steals mousedown from
-      // the underlying React Flow handle (drag-to-connect must keep working).
-      expect(addNodeButton).toHaveClass('pointer-events-none')
-
-      fireEvent.click(handle)
-
-      expect(addNodeButton).not.toHaveAttribute('data-popup-open')
-    })
-
-    it('should not render the target add trigger when the handle is already connected', () => {
-      renderTargetHandle({
-        _connectedTargetHandleIds: ['target-handle'],
-      })
-
-      fireEvent.click(screen.getByTestId('handle-target-handle'))
-
-      expect(queryAddNodeButton()).not.toBeInTheDocument()
-    })
-
-    it('should hide the target handle for workflow entry nodes', () => {
-      renderTargetHandle({ type: BlockEnum.TriggerPlugin })
-
-      expect(screen.getByTestId('handle-target-handle')).toHaveClass('opacity-0')
-    })
-
-    it('should keep the target add trigger visible when the node is selected', () => {
-      renderTargetHandle({
-        selected: true,
-      })
-
-      expect(getAddNodeButton()).toHaveClass('opacity-100')
-      expect(getAddNodeButton()).toHaveClass('pointer-events-none')
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const nodeIds = getCanvasNodeIds()
+    expect(nodeIds).toHaveLength(2)
+    const insertedNodeId = nodeIds.find((nodeId) => nodeId !== 'source-node')!
+    expect(screen.getByLabelText('Canvas edges')).toHaveTextContent(
+      `source-node:source-handle->${insertedNodeId}:target`,
+    )
   })
 
-  // Source-side tests cover selector opening paths, previous-node selection, and status styling.
-  describe('NodeSourceHandle', () => {
-    it('should show the start tab when adding a node after the source node', async () => {
-      const user = userEvent.setup()
+  it('inserts and routes a node before the target handle through the real selector', async () => {
+    const user = userEvent.setup()
+    renderHandle({ side: 'target' })
+    const target = await screen.findByRole('group', { name: 'Target node' })
 
-      renderSourceHandle()
+    await user.click(within(target).getByRole('button', { name: 'workflow.common.addBlock' }))
+    expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'workflow.blocks.code' }))
 
-      await user.click(screen.getByTestId('handle-source-handle'))
-
-      expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toBeInTheDocument()
-    })
-
-    it('should toggle the source add trigger', () => {
-      renderSourceHandle()
-
-      const handle = screen.getByTestId('handle-source-handle')
-      const addNodeButton = getAddNodeButton()
-
-      expect(addNodeButton).toHaveClass('opacity-0')
-
-      fireEvent.click(addNodeButton)
-
-      expect(addNodeButton).toHaveAttribute('data-popup-open')
-      expect(addNodeButton).toHaveClass('pointer-events-none')
-
-      fireEvent.click(handle)
-
-      expect(addNodeButton).not.toHaveAttribute('data-popup-open')
-    })
-
-    it('should keep the source add trigger visible when the node is selected', () => {
-      renderSourceHandle({
-        selected: true,
-      })
-
-      const addNodeButton = getAddNodeButton()
-
-      expect(addNodeButton).toHaveClass('custom-selector')
-      expect(addNodeButton).toHaveClass('opacity-100')
-      expect(addNodeButton).toHaveClass('pointer-events-none')
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const nodeIds = getCanvasNodeIds()
+    expect(nodeIds).toHaveLength(2)
+    const insertedNodeId = nodeIds.find((nodeId) => nodeId !== 'target-node')!
+    expect(screen.getByLabelText('Canvas edges')).toHaveTextContent(
+      `${insertedNodeId}:source->target-node:target-handle`,
+    )
   })
 
-  // Auto-open tests cover workflow start-trigger variants, chat-mode bypass, and store fallback paths.
-  describe('NodeSourceHandle auto-open', () => {
-    it('restores the previous focus when the start selector opens automatically', async () => {
-      const user = userEvent.setup()
-      render(<button type="button">Previous action</button>, {
-        resource: {
-          kind: 'app',
-          appId: 'app-1',
-          mode: mockHooksState.isChatflow ? 'advanced-chat' : 'workflow',
-        },
-      })
-      const previousAction = screen.getByRole('button', { name: 'Previous action' })
-      await user.click(previousAction)
-      mockStoreState.shouldAutoOpenStartNodeSelector = true
+  it('does not offer insertion from a connected target handle', async () => {
+    renderHandle({ side: 'target', connected: true })
+    const target = await screen.findByRole('group', { name: 'Target node' })
 
-      renderSourceHandle({ type: BlockEnum.Start })
-      await screen.findByRole('dialog')
+    expect(
+      within(target).queryByRole('button', { name: 'workflow.common.addBlock' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(getCanvasNodeIds()).toEqual(['target-node'])
+  })
+
+  it.each([
+    BlockEnum.Start,
+    BlockEnum.TriggerSchedule,
+    BlockEnum.TriggerWebhook,
+    BlockEnum.TriggerPlugin,
+  ])(
+    'auto-opens an entry-node selector once for %s and resets the workflow flags',
+    async (type) => {
+      const user = userEvent.setup()
+      const { store } = renderHandle({ side: 'source', type, autoOpen: true })
+
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      expect(store.getState().shouldAutoOpenStartNodeSelector).toBe(false)
+      expect(store.getState().hasSelectedStartNode).toBe(false)
+
       await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    },
+  )
 
-      await waitFor(() => expect(previousAction).toHaveFocus())
+  it('preserves the previous focus when the entry selector opens automatically', async () => {
+    const user = userEvent.setup()
+    render(<button type="button">Previous action</button>)
+    const previousAction = screen.getByRole('button', { name: 'Previous action' })
+    await user.click(previousAction)
+
+    renderHandle({ side: 'source', type: BlockEnum.Start, autoOpen: true })
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(previousAction).toHaveFocus())
+  })
+
+  it('skips auto-open for chatflow and resets only the request flag', () => {
+    const { store } = renderHandle({
+      side: 'source',
+      type: BlockEnum.Start,
+      autoOpen: true,
+      chatflow: true,
     })
 
-    it.each([
-      BlockEnum.Start,
-      BlockEnum.TriggerSchedule,
-      BlockEnum.TriggerWebhook,
-      BlockEnum.TriggerPlugin,
-    ])('should auto-open immediately for %s nodes', (type) => {
-      mockStoreState.shouldAutoOpenStartNodeSelector = true
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(store.getState().shouldAutoOpenStartNodeSelector).toBe(false)
+    expect(store.getState().hasSelectedStartNode).toBe(true)
+  })
 
-      renderSourceHandle({ type })
+  it('retains the auto-open request for a non-entry node', () => {
+    const { store } = renderHandle({ side: 'source', type: BlockEnum.Code, autoOpen: true })
 
-      const addNodeButton = getAddNodeButton()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(store.getState().shouldAutoOpenStartNodeSelector).toBe(true)
+    expect(store.getState().hasSelectedStartNode).toBe(true)
+  })
 
-      expect(addNodeButton).toHaveAttribute('data-popup-open')
-      expect(addNodeButton).toHaveClass('pointer-events-none')
-      expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
-      expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(false)
+  it('does not expose insertion controls or mutate the graph on a readonly canvas', async () => {
+    const { store } = renderHandle({
+      side: 'source',
+      type: BlockEnum.Start,
+      readOnly: true,
+      autoOpen: true,
     })
+    const source = await screen.findByRole('group', { name: 'Source node' })
 
-    it('should skip source auto-open in chat mode and only reset the start selector flag', () => {
-      mockHooksState.isChatflow = true
-      mockStoreState.shouldAutoOpenStartNodeSelector = true
-
-      renderSourceHandle({ type: BlockEnum.Start })
-
-      expect(getAddNodeButton()).toHaveClass('opacity-0')
-      expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
-      expect(mockSetHasSelectedStartNode).not.toHaveBeenCalled()
-    })
-
-    it('should use the workflow store fallback when the selector setters are unavailable', () => {
-      mockStoreState.shouldAutoOpenStartNodeSelector = true
-      mockStoreState.setShouldAutoOpenStartNodeSelector = undefined
-      mockStoreState.setHasSelectedStartNode = undefined
-
-      renderSourceHandle({ type: BlockEnum.Start })
-
-      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
-        shouldAutoOpenStartNodeSelector: false,
-      })
-      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ hasSelectedStartNode: false })
-    })
-
-    it('should not auto-open when the node type is not a workflow entry node', () => {
-      mockStoreState.shouldAutoOpenStartNodeSelector = true
-
-      renderSourceHandle({ type: BlockEnum.Code })
-
-      expect(getAddNodeButton()).toHaveClass('opacity-0')
-      expect(mockSetShouldAutoOpenStartNodeSelector).not.toHaveBeenCalled()
-      expect(mockSetHasSelectedStartNode).not.toHaveBeenCalled()
-      expect(mockWorkflowStoreSetState).not.toHaveBeenCalled()
-    })
+    expect(
+      within(source).queryByRole('button', { name: 'workflow.common.addBlock' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(getCanvasNodeIds()).toEqual(['source-node'])
+    expect(screen.getByLabelText('Canvas edges')).toBeEmptyDOMElement()
+    expect(store.getState().shouldAutoOpenStartNodeSelector).toBe(false)
   })
 })

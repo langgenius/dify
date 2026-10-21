@@ -1,7 +1,6 @@
 import importlib
 import json
 import sys
-import types
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -9,15 +8,16 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
 def _build_fake_psycopg2_modules():
-    psycopg2 = types.ModuleType("psycopg2")
+    psycopg2 = FakeModule("psycopg2")
     psycopg2.__path__ = []
-    psycopg2_extras = types.ModuleType("psycopg2.extras")
-    psycopg2_pool = types.ModuleType("psycopg2.pool")
+    psycopg2_extras = FakeModule("psycopg2.extras")
+    psycopg2_pool = FakeModule("psycopg2.pool")
 
     class SimpleConnectionPool:
         def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):

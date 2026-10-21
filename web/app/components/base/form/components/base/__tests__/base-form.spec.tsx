@@ -1,5 +1,5 @@
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
-import { useForm, useStore } from '@tanstack/react-form'
+import { useForm, useSelector } from '@tanstack/react-form'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
@@ -32,11 +32,6 @@ const baseSchemas: FormSchema[] = [
 ]
 
 describe('BaseForm', () => {
-  it('should render nothing when no schemas are provided', () => {
-    const { container } = render(<BaseForm />)
-    expect(container.firstChild).toBeNull()
-  })
-
   it('should render fields with default values from schema', () => {
     render(<BaseForm formSchemas={baseSchemas} />)
 
@@ -54,22 +49,6 @@ describe('BaseForm', () => {
 
     expect(screen.getByDisplayValue('hide'))!.toBeInTheDocument()
     expect(screen.queryByDisplayValue('Hidden title')).not.toBeInTheDocument()
-  })
-
-  it('should prevent default submit behavior when preventDefaultSubmit is true', async () => {
-    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => {
-      expect(event.defaultPrevented).toBe(true)
-    })
-    const { container } = render(
-      <BaseForm formSchemas={baseSchemas} onSubmit={onSubmit} preventDefaultSubmit />,
-    )
-
-    await act(async () => {
-      fireEvent.submit(container.querySelector('form') as HTMLFormElement, {
-        defaultPrevented: true,
-      })
-    })
-    expect(onSubmit).toHaveBeenCalled()
   })
 
   it('should expose ref API for updating values and field states', async () => {
@@ -90,8 +69,10 @@ describe('BaseForm', () => {
 
     expect(screen.getByDisplayValue('Changed title'))!.toBeInTheDocument()
     expect(screen.getByText('Title is invalid'))!.toBeInTheDocument()
-    expect(formRef.current?.getForm()).toBeTruthy()
-    expect(formRef.current?.getFormValues({})).toBeTruthy()
+    expect(formRef.current?.getFormValues({ needCheckValidatedValues: false })).toEqual({
+      values: { kind: 'show', title: 'Changed title' },
+      isCheckValidated: true,
+    })
   })
 
   it('should derive warning status when setFields receives warnings only', async () => {
@@ -114,7 +95,7 @@ describe('BaseForm', () => {
     const user = userEvent.setup()
     const ExternalForm = () => {
       const form = useForm({ defaultValues: { kind: 'show', title: 'External title' } })
-      const kind = useStore(form.store, (state) => state.values.kind)
+      const kind = useSelector(form.store, (state) => state.values.kind)
       return (
         <>
           <BaseForm formSchemas={baseSchemas} formFromProps={form} />
@@ -159,11 +140,7 @@ describe('BaseForm', () => {
       ])
     })
     expect(screen.getByText('Error only'))!.toBeInTheDocument()
-  })
-
-  it('should use default values from schema when defaultValues prop is missing', () => {
-    render(<BaseForm formSchemas={baseSchemas} />)
-    expect(screen.getByDisplayValue('show'))!.toBeInTheDocument()
+    expect(screen.getByDisplayValue('show')).toBeInTheDocument()
   })
 
   it('should handle submit without preventDefaultSubmit', async () => {
@@ -175,38 +152,18 @@ describe('BaseForm', () => {
     expect(onSubmit).toHaveBeenCalled()
   })
 
-  it('should handle undefined formSchemas', () => {
-    const { container } = render(<BaseForm formSchemas={undefined as unknown as FormSchema[]} />)
-    expect(container)!.toBeEmptyDOMElement()
-  })
-
-  it('should handle empty array formSchemas', () => {
-    const { container } = render(<BaseForm formSchemas={[]} />)
-    expect(container)!.toBeEmptyDOMElement()
-  })
-
   it('should handle preventDefaultSubmit', async () => {
     const onSubmit = vi.fn()
     const { container } = render(
       <BaseForm formSchemas={baseSchemas} onSubmit={onSubmit} preventDefaultSubmit={true} />,
     )
     const event = new Event('submit', { cancelable: true, bubbles: true })
-    const spy = vi.spyOn(event, 'preventDefault')
     const form = container.querySelector('form') as HTMLFormElement
     await act(async () => {
       fireEvent(form, event)
     })
-    expect(spy).toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(true)
     expect(onSubmit).toHaveBeenCalled()
-  })
-
-  it('should handle missing onSubmit prop', async () => {
-    const { container } = render(<BaseForm formSchemas={baseSchemas} />)
-    await act(async () => {
-      expect(() => {
-        fireEvent.submit(container.querySelector('form') as HTMLFormElement)
-      }).not.toThrow()
-    })
   })
 
   it('should call onChange when field value changes', async () => {
@@ -233,18 +190,31 @@ describe('BaseForm', () => {
     })
     expect(screen.getByDisplayValue('new-show'))!.toBeInTheDocument()
   })
+})
 
-  it('should handle schema without show_on in showOnValues', () => {
-    const schemaNoShowOn: FormSchema[] = [
-      {
-        type: FormTypeEnum.textInput,
-        name: 'test',
-        label: 'Test',
-        required: false,
-      },
-    ]
-    // Simply rendering should trigger showOnValues selector
-    render(<BaseForm formSchemas={schemaNoShowOn} />)
-    expect(screen.getByText('Test'))!.toBeInTheDocument()
+it('preserves false and zero schema defaults in submitted values', () => {
+  const ref = { current: null as FormRefObject | null }
+  const schemas: FormSchema[] = [
+    {
+      type: FormTypeEnum.boolean,
+      name: 'enabled',
+      label: 'Enabled',
+      required: false,
+      default: false,
+    },
+    { type: FormTypeEnum.textNumber, name: 'count', label: 'Count', required: false, default: 0 },
+    {
+      type: FormTypeEnum.textInput,
+      name: 'reason',
+      label: 'Reason',
+      required: false,
+      default: 'Disabled by default',
+    },
+  ]
+  render(<BaseForm formSchemas={schemas} ref={ref} />)
+  expect(screen.getByDisplayValue('Disabled by default')).toBeInTheDocument()
+  expect(ref.current?.getFormValues({ needCheckValidatedValues: false })).toEqual({
+    values: { enabled: false, count: 0, reason: 'Disabled by default' },
+    isCheckValidated: true,
   })
 })

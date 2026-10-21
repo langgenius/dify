@@ -10,15 +10,19 @@ import {
 } from '../value-content.helpers'
 
 describe('value-content helpers', () => {
-  const createVar = (overrides: Partial<VarInInspect>): VarInInspect =>
-    ({
-      id: 'var-1',
-      name: 'query',
-      type: VarInInspectType.node,
-      value_type: VarType.string,
-      value: '',
-      ...overrides,
-    }) as VarInInspect
+  const createVar = (overrides: Partial<VarInInspect>): VarInInspect => ({
+    id: 'var-1',
+    description: '',
+    edited: false,
+    is_truncated: false,
+    selector: ['node-1', 'query'],
+    visible: true,
+    name: 'query',
+    type: VarInInspectType.node,
+    value_type: VarType.string,
+    value: '',
+    ...overrides,
+  })
 
   it('should derive editor modes from the variable shape', () => {
     expect(
@@ -84,10 +88,21 @@ describe('value-content helpers', () => {
           },
         }),
       ),
-    ).toHaveLength(1)
+    ).toMatchObject([
+      {
+        id: '',
+        name: 'report.pdf',
+        size: 12,
+        transferMethod: 'remote_url',
+        url: 'https://example.com/report.pdf',
+        progress: 100,
+      },
+    ])
 
     expect(isFileValueUploaded([{ upload_file_id: 'file-1' }])).toBe(true)
-    expect(isFileValueUploaded([{ upload_file_id: '' }])).toBe(false)
+    expect(isFileValueUploaded([{ upload_file_id: 'uploaded' }, { upload_file_id: '' }])).toBe(
+      false,
+    )
     expect(
       formatInspectFileValue(
         createVar({
@@ -106,7 +121,16 @@ describe('value-content helpers', () => {
           ],
         }),
       ),
-    ).toHaveLength(1)
+    ).toMatchObject([
+      {
+        id: 'upload-2',
+        uploadedId: 'upload-2',
+        name: 'photo.png',
+        size: 20,
+        transferMethod: 'local_file',
+        progress: 100,
+      },
+    ])
   })
 
   it('should validate json input and surface parse errors', () => {

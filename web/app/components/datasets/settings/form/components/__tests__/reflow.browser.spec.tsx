@@ -1,12 +1,16 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { ReactElement } from 'react'
 import type { RetrievalConfig } from '@/types/app'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { render as renderBrowser } from 'vitest-browser-react'
 import datasetSettings from '@/i18n/locales/en-US/dataset-settings.json'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
@@ -17,32 +21,24 @@ vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: settings } = await import('@/i18n/locales/en-US/dataset-settings.json')
   const { default: creation } = await import('@/i18n/locales/en-US/dataset-creation.json')
-  return createReactI18nextMock({ ...settings, ...creation })
+  const { default: appDebug } = await import('@/i18n/locales/en-US/app-debug.json')
+  return createReactI18nextMock({ ...settings, ...creation, ...appDebug })
 })
-vi.mock('@/context/i18n', () => ({ useDocLink: () => (path: string) => path }))
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['settings-reflow-system-features'],
-    queryFn: async () => ({ deployment_edition: 'CLOUD' }),
-  }),
-}))
-// These independently tested controls do not own the warning or external field layout.
-vi.mock('@/app/components/datasets/settings/chunk-structure', () => ({ default: () => null }))
-vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({ default: () => null }))
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: () => null,
-}))
-vi.mock('@/app/components/datasets/common/multimodal-retrieval-guidance', () => ({
-  MultimodalRetrievalGuidance: () => null,
-  MultimodalRetrievalGuidanceLearnMore: () => null,
-}))
-vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({ default: () => null }))
-vi.mock('@/app/components/datasets/common/economical-retrieval-method-config', () => ({
-  default: () => null,
-}))
-vi.mock('@/app/components/datasets/external-knowledge-base/create/RetrievalSettings', () => ({
-  default: () => null,
-}))
+
+const render = async (ui: ReactElement) => {
+  const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  seedModelProviderQueries(queryClient)
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryKey(), {
+    retrieval_method: ['semantic_search', 'full_text_search', 'hybrid_search'],
+  })
+  return renderBrowser(
+    <Wrapper>
+      <NuqsTestingAdapter>{ui}</NuqsTestingAdapter>
+    </Wrapper>,
+  )
+}
 
 const mockRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
@@ -143,27 +139,20 @@ describe('Knowledge settings narrow-screen readability', () => {
   beforeEach(async () => {
     await page.viewport(320, 900)
   })
-  afterEach(async () => {
-    await page.viewport(1280, 720)
-  })
 
   // DOM presence checks miss text painted outside fixed-height warnings and long URL fields.
   // Keep the production sections and assert every rendered text line fits its visible field.
   it('keeps the full upgrade warning inside its panel after selecting High Quality', async () => {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const screen = await render(
-      <QueryClientProvider client={queryClient}>
-        <div className="@container/settings" style={{ width: 220 }}>
-          <UpgradeSettings />
-        </div>
-      </QueryClientProvider>,
+      <div className="@container/settings" style={{ width: 220 }}>
+        <UpgradeSettings />
+      </div>,
     )
     await screen.getByRole('radio', { name: /High Quality/ }).click()
     const warning = screen.getByText(datasetSettings['form.upgradeHighQualityTip'])
     await expect.element(warning).toBeVisible()
     const text = warning.element()
     expectTextWithin(text, text.parentElement!)
-    queryClient.clear()
   })
 
   it('wraps a long external API endpoint so the entire address can be read', async () => {

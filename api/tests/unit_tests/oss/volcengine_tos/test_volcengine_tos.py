@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from typing import override
+
 import pytest
 from tos import TosClientV2
 
@@ -12,7 +15,8 @@ pytest_plugins = ("tests.unit_tests.oss.__mock.volcengine_tos",)
 
 class TestVolcengineTos(BaseStorageTest):
     @pytest.fixture(autouse=True)
-    def setup_method(self, setup_volcengine_tos_mock, config_overrides):
+    @override
+    def setup_method(self, setup_volcengine_tos_mock: None, config_overrides: Callable[..., None]) -> None:
         """Executed before each test method."""
         config_overrides(
             VOLCENGINE_TOS_ACCESS_KEY="test_access_key",

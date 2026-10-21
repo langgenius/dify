@@ -115,7 +115,7 @@ class TestMailChangeMailTask:
         - Successful task completion
         """
         # Arrange: Create test data
-        account = self._create_test_account(db_session_with_containers)
+        self._create_test_account(db_session_with_containers)
         test_language = "zh-Hans"
         test_email = "new@example.com"
         test_code = "789012"

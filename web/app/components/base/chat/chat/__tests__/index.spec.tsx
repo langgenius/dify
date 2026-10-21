@@ -1,137 +1,45 @@
-import type { ChatConfig, ChatItem, OnSend } from '../../types'
+import type { ChatConfig, ChatItem } from '../../types'
 import type { ChatProps } from '../index'
-import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createTheme } from '../../embedded-chatbot/theme/theme'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import Chat from '../index'
 
-// ─── Why each mock exists ─────────────────────────────────────────────────────
-//
-// Answer        – transitively pulls Markdown (rehype/remark/katex), AgentContent,
-//                 WorkflowProcessItem and Operation; none can resolve in the test DOM runtime.
-// Question      – pulls Markdown, copy-to-clipboard, react-textarea-autosize.
-// ChatInputArea – pulls browser audio APIs unavailable in the test DOM runtime
-//                 and the VoiceInput / FileContextProvider chains.
-// es-toolkit/compat – debounce must return a fn with .cancel() or the cleanup
-//                 effect throws on unmount.
-//
-// NOT mocked (run real):
-//   ChatContextProvider – plain context wrapper, zero side-effects.
-//   TryToAsk            – only uses Button (base), Divider (base), i18n (global mock).
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Keep answer rendering at the component boundary; exercise real questions,
+// suggestions and input controls through Chat's shared context.
 vi.mock('../answer', () => ({
-  default: ({ item, responding }: { item: ChatItem; responding?: boolean }) => (
-    <div data-testid="answer-item" data-id={item.id} data-responding={String(!!responding)}>
-      {item.content}
-    </div>
-  ),
-}))
-
-vi.mock('../question', () => ({
-  default: ({ item, theme }: { item: ChatItem; theme?: { primaryColor: string } }) => (
-    <div data-testid="question-item" data-id={item.id} data-theme-color={theme?.primaryColor}>
-      {item.content}
-    </div>
-  ),
-}))
-
-vi.mock('../chat-input-area', () => ({
   default: ({
-    customPlaceholder,
-    disabled,
-    readonly,
-    footerNotice,
-    onBeforeSpeechToText,
-    speechToTextTarget,
-    theme,
+    item,
+    responding,
+    question,
   }: {
-    customPlaceholder?: string
-    disabled?: boolean
-    readonly?: boolean
-    footerNotice?: string
-    onBeforeSpeechToText?: () => Promise<unknown>
-    speechToTextTarget?: SpeechToTextTarget
-    theme?: { primaryColor: string }
+    item: ChatItem
+    responding?: boolean
+    question: string
   }) => (
-    <div
-      data-testid="chat-input-area"
-      data-custom-placeholder={customPlaceholder}
-      data-disabled={String(!!disabled)}
-      data-readonly={String(!!readonly)}
-      data-has-before-speech={String(!!onBeforeSpeechToText)}
-      data-speech-app-id={
-        speechToTextTarget?.type !== 'agent' ? speechToTextTarget?.appId : undefined
-      }
-      data-speech-source={
-        speechToTextTarget?.type === 'app'
-          ? speechToTextTarget.appSourceType
-          : speechToTextTarget?.type
-      }
-      data-theme-color={theme?.primaryColor}
-    >
-      {footerNotice}
-    </div>
+    <article aria-label={`Answer to ${question}`} aria-busy={!!responding}>
+      {item.content}
+    </article>
   ),
 }))
 
-// ─── ResizeObserver capture ───────────────────────────────────────────────────
-
-type ResizeCallback = (entries: ResizeObserverEntry[], observer: ResizeObserver) => void
-let capturedResizeCallbacks: ResizeCallback[] = []
-
-const makeResizeEntry = (blockSize: number, inlineSize: number): ResizeObserverEntry => ({
-  borderBoxSize: [{ blockSize, inlineSize } as ResizeObserverSize],
-  contentBoxSize: [{ blockSize, inlineSize } as ResizeObserverSize],
-  contentRect: new DOMRect(0, 0, inlineSize, blockSize),
-  devicePixelContentBoxSize: [{ blockSize, inlineSize } as ResizeObserverSize],
-  target: document.createElement('div'),
-})
-
-// ─── Factories ────────────────────────────────────────────────────────────────
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({}),
+  usePathname: () => '/chat',
+}))
 
 const makeChatItem = (overrides: Partial<ChatItem> = {}): ChatItem => ({
-  id: `item-${Math.random().toString(36).slice(2)}`,
+  id: 'message-1',
   content: 'Test content',
   isAnswer: false,
   ...overrides,
 })
+const renderChat = (props: Partial<ChatProps> = {}) =>
+  render(<Chat chatList={[]} {...props} />, { wrapper: createConsoleQueryWrapper().wrapper })
 
-const renderChat = (props: Partial<ChatProps> = {}) => render(<Chat chatList={[]} {...props} />)
-
-// ─── Suite ────────────────────────────────────────────────────────────────────
+const suggestionsConfig = { suggested_questions_after_answer: { enabled: true } } as ChatConfig
 
 describe('Chat', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    capturedResizeCallbacks = []
-
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-      cb(0)
-      return 0
-    })
-
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        private cb: ResizeCallback
-        constructor(cb: ResizeCallback) {
-          this.cb = cb
-          capturedResizeCallbacks.push(cb)
-        }
-
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      },
-    )
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
   describe('Agent response announcements', () => {
     const renderAgentContent: NonNullable<ChatProps['renderAgentContent']> = () => null
 
@@ -174,892 +82,134 @@ describe('Chat', () => {
     })
   })
 
-  describe('Rendering', () => {
-    it('should render chatNode when provided', () => {
-      renderChat({ chatNode: <div data-testid="slot-node">slot</div> })
-      expect(screen.getByTestId('slot-node')).toBeInTheDocument()
-    })
+  it('renders conversation order and marks only the latest answer as responding', async () => {
+    const chatList = [
+      makeChatItem({ id: 'q1', content: 'First question' }),
+      makeChatItem({ id: 'a1', content: 'First answer', isAnswer: true }),
+      makeChatItem({ id: 'q2', content: 'Second question' }),
+      makeChatItem({ id: 'a2', content: 'Second answer', isAnswer: true }),
+    ]
+    const { rerender } = renderChat({ chatList, isResponding: true })
+    expect(await screen.findByText('First question')).toBeInTheDocument()
+    expect(screen.getByText('Second question')).toBeInTheDocument()
+    const answers = screen.getAllByRole('article')
+    expect(answers.map((answer) => answer.textContent)).toEqual(['First answer', 'Second answer'])
+    expect(answers[0]).toHaveAccessibleName('Answer to First question')
+    expect(answers[1]).toHaveAccessibleName('Answer to Second question')
+    expect(answers[0]).toHaveAttribute('aria-busy', 'false')
+    expect(answers[1]).toHaveAttribute('aria-busy', 'true')
 
-    it('should apply flex-col to root when isTryApp=true', () => {
-      renderChat({ isTryApp: true })
-      expect(screen.getByTestId('chat-root')).toHaveClass('flex', 'flex-col')
-    })
-
-    it('should not have flex-col when isTryApp is falsy', () => {
-      renderChat({ isTryApp: false })
-      expect(screen.getByTestId('chat-root')).not.toHaveClass('flex-col')
-    })
-
-    it('should apply px-8 spacing by default', () => {
-      const { container } = renderChat({ noSpacing: false })
-      expect(container.querySelector('.w-full')).toHaveClass('px-8')
-    })
-
-    it('should omit px-8 when noSpacing=true', () => {
-      const { container } = renderChat({ noSpacing: true })
-      expect(container.querySelector('.w-full')).not.toHaveClass('px-8')
-    })
-  })
-
-  describe('Chat List', () => {
-    it('should render a Question for a non-answer item', () => {
-      renderChat({ chatList: [makeChatItem({ id: 'q1', isAnswer: false })] })
-      expect(screen.getByTestId('question-item')).toBeInTheDocument()
-    })
-
-    it('should render an Answer for an answer item', () => {
-      renderChat({ chatList: [makeChatItem({ id: 'a1', isAnswer: true })] })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should render both Question and Answer from a mixed chatList', () => {
-      renderChat({
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      expect(screen.getByTestId('question-item')).toBeInTheDocument()
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should pass responding=true only to the last answer when isResponding=true', () => {
-      renderChat({
-        isResponding: true,
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-          makeChatItem({ id: 'q2', isAnswer: false }),
-          makeChatItem({ id: 'a2', isAnswer: true }),
-        ],
-      })
-      const answers = screen.getAllByTestId('answer-item')
-      expect(answers[0]).toHaveAttribute('data-responding', 'false')
-      expect(answers[1]).toHaveAttribute('data-responding', 'true')
-    })
-
-    it('should pass responding=false to all answers when isResponding=false', () => {
-      renderChat({
-        isResponding: false,
-        chatList: [
-          makeChatItem({ id: 'a1', isAnswer: true }),
-          makeChatItem({ id: 'a2', isAnswer: true }),
-        ],
-      })
+    rerender(<Chat chatList={chatList} isResponding={false} />)
+    expect(
       screen
-        .getAllByTestId('answer-item')
-        .forEach((el) => expect(el).toHaveAttribute('data-responding', 'false'))
-    })
+        .getAllByRole('article')
+        .every((answer) => answer.getAttribute('aria-busy') === 'false'),
+    ).toBe(true)
+  })
 
-    it('should render correct counts for a long mixed chatList', () => {
-      const chatList = Array.from({ length: 6 }, (_, i) =>
-        makeChatItem({ id: `item-${i}`, isAnswer: i % 2 === 1 }),
-      )
-      renderChat({ chatList })
-      expect(screen.getAllByTestId('question-item')).toHaveLength(3)
-      expect(screen.getAllByTestId('answer-item')).toHaveLength(3)
+  it('sends a typed message without requiring upload configuration', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    renderChat({ onSend, inputPlaceholder: 'Ask the assistant' })
+    const input = screen.getByPlaceholderText('Ask the assistant')
+    await user.type(input, 'Hello{Enter}')
+    expect(onSend).toHaveBeenCalledExactlyOnceWith('Hello', [])
+    expect(input).toHaveValue('')
+  })
+
+  it.each([true, false])('enforces question editing configuration: %s', async (enabled) => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn()
+    const item = makeChatItem({ content: 'Original question' })
+    renderChat({
+      chatList: [item],
+      config: { questionEditEnable: enabled } as ChatConfig,
+      onRegenerate,
+      noChatInput: true,
+    })
+    if (!enabled) {
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.edit' }),
+      ).not.toBeInTheDocument()
+      return
+    }
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    await user.clear(screen.getByRole('textbox'))
+    await user.type(screen.getByRole('textbox'), 'Revised question{Enter}')
+    expect(onRegenerate).toHaveBeenCalledExactlyOnceWith(item, {
+      message: 'Revised question',
+      files: undefined,
     })
   })
 
-  describe('Stop Responding Button', () => {
-    it('should show the stop button when isResponding=true and noStopResponding is falsy', () => {
-      renderChat({ isResponding: true, noStopResponding: false })
-      expect(screen.getByTestId('stop-responding-container')).toBeInTheDocument()
+  it('switches to the selected question sibling', async () => {
+    const user = userEvent.setup()
+    const switchSibling = vi.fn()
+    renderChat({
+      chatList: [makeChatItem({ siblingCount: 2, siblingIndex: 0, nextSibling: 'question-2' })],
+      switchSibling,
     })
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(switchSibling).toHaveBeenCalledExactlyOnceWith('question-2')
+  })
 
-    it('should hide the stop button when noStopResponding=true', () => {
-      renderChat({ isResponding: true, noStopResponding: true })
-      expect(screen.queryByTestId('stop-responding-container')).not.toBeInTheDocument()
+  it('stops a response once and removes the control when responding ends', async () => {
+    const user = userEvent.setup()
+    const onStopResponding = vi.fn()
+    const { rerender } = renderChat({ isResponding: true, onStopResponding, noChatInput: true })
+    await user.click(screen.getByRole('button', { name: /stopResponding/i }))
+    expect(onStopResponding).toHaveBeenCalledTimes(1)
+    rerender(<Chat chatList={[]} isResponding={false} noChatInput />)
+    expect(screen.queryByRole('button', { name: /stopResponding/i })).not.toBeInTheDocument()
+  })
+
+  it('hides the stop action when the owner disables it', () => {
+    renderChat({ isResponding: true, noStopResponding: true })
+    expect(screen.queryByRole('button', { name: /stopResponding/i })).not.toBeInTheDocument()
+  })
+
+  it('sends the selected suggested question', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    renderChat({
+      config: suggestionsConfig,
+      suggestedQuestions: ['First question', 'Second question'],
+      onSend,
     })
+    await user.click(screen.getByRole('button', { name: 'Second question' }))
+    expect(onSend).toHaveBeenCalledExactlyOnceWith('Second question')
+  })
 
-    it('should hide the stop button when isResponding=false', () => {
-      renderChat({ isResponding: false, noStopResponding: false })
-      expect(screen.queryByTestId('stop-responding-container')).not.toBeInTheDocument()
+  it.each([
+    { config: undefined },
+    { config: { suggested_questions_after_answer: { enabled: false } } as ChatConfig },
+    { suggestedQuestions: [] },
+    { onSend: undefined },
+  ])('hides unavailable suggestions: %j', (overrides) => {
+    renderChat({
+      config: suggestionsConfig,
+      suggestedQuestions: ['Ask this'],
+      onSend: vi.fn(),
+      ...overrides,
     })
+    expect(screen.queryByRole('button', { name: 'Ask this' })).not.toBeInTheDocument()
+  })
 
-    it('should call onStopResponding when the stop button is clicked', async () => {
+  it.each([{ readonly: true }, { inputDisabled: true }])(
+    'prevents input when %j',
+    async (props) => {
       const user = userEvent.setup()
-      const onStopResponding = vi.fn()
-      renderChat({ isResponding: true, noStopResponding: false, onStopResponding })
-
-      await user.click(screen.getByText(/stopResponding/i))
-
-      expect(onStopResponding).toHaveBeenCalledTimes(1)
-    })
-
-    it('should render the stopResponding i18n key', () => {
-      renderChat({ isResponding: true, noStopResponding: false })
-      expect(screen.getByText(/stopResponding/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('TryToAsk (real component)', () => {
-    const tryToAskConfig: ChatConfig = {
-      suggested_questions_after_answer: { enabled: true },
-    } as ChatConfig
-
-    const mockOnSend = vi.fn() as unknown as OnSend
-
-    it('should render the tryToAsk i18n key when all conditions are met', () => {
-      renderChat({
-        config: tryToAskConfig,
-        suggestedQuestions: ['What is AI?'],
-        onSend: mockOnSend,
-      })
-      expect(screen.getByText(/tryToAsk/i)).toBeInTheDocument()
-    })
-
-    it('should render each suggested question as a button', () => {
-      renderChat({
-        config: tryToAskConfig,
-        suggestedQuestions: ['First question', 'Second question'],
-        onSend: mockOnSend,
-      })
-      expect(screen.getByText('First question')).toBeInTheDocument()
-      expect(screen.getByText('Second question')).toBeInTheDocument()
-    })
-
-    it('should call onSend with the question text when a suggestion button is clicked', async () => {
-      const user = userEvent.setup()
-      const onSend = vi.fn() as unknown as OnSend
-      renderChat({
-        config: tryToAskConfig,
-        suggestedQuestions: ['Ask this'],
-        onSend,
-      })
-
-      await user.click(screen.getByText('Ask this'))
-
-      expect(onSend).toHaveBeenCalledWith('Ask this')
-    })
-
-    it('should not render TryToAsk when suggested_questions_after_answer is disabled', () => {
-      renderChat({
-        config: { suggested_questions_after_answer: { enabled: false } } as ChatConfig,
-        suggestedQuestions: ['q1'],
-        onSend: mockOnSend,
-      })
-      expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
-    })
-
-    it('should not render TryToAsk when suggestedQuestions is an empty array', () => {
-      renderChat({
-        config: tryToAskConfig,
-        suggestedQuestions: [],
-        onSend: mockOnSend,
-      })
-      expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
-    })
-
-    it('should not render TryToAsk when suggestedQuestions is undefined', () => {
-      renderChat({
-        config: tryToAskConfig,
-        suggestedQuestions: undefined,
-        onSend: mockOnSend,
-      })
-      expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
-    })
-
-    it('should not render TryToAsk when onSend is undefined', () => {
-      renderChat({
-        config: tryToAskConfig,
-        suggestedQuestions: ['q1'],
-        onSend: undefined,
-      })
-      expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
-    })
-
-    it('should not render TryToAsk when config is undefined', () => {
-      renderChat({
-        config: undefined,
-        suggestedQuestions: ['q1'],
-        onSend: mockOnSend,
-      })
-      expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('ChatInputArea', () => {
-    it('should render when noChatInput is falsy', () => {
-      renderChat({ noChatInput: false })
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
-    })
-
-    it('should not render when noChatInput=true', () => {
-      renderChat({ noChatInput: true })
-      expect(screen.queryByTestId('chat-input-area')).not.toBeInTheDocument()
-    })
-
-    it('should pass disabled=true when inputDisabled=true', () => {
-      renderChat({ inputDisabled: true })
-      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-disabled', 'true')
-    })
-
-    it('should pass disabled=false when inputDisabled is falsy', () => {
-      renderChat({ inputDisabled: false })
-      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-disabled', 'false')
-    })
-
-    it('should pass readonly=true to ChatInputArea when readonly=true', () => {
-      renderChat({ readonly: true })
-      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-readonly', 'true')
-    })
-
-    it('should pass the explicit speech-to-text target to ChatInputArea', () => {
-      renderChat({
-        speechToTextTarget: {
-          type: 'consoleApp',
-          appId: 'app-123',
-        },
-      })
-      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-speech-app-id', 'app-123')
-      expect(screen.getByTestId('chat-input-area')).toHaveAttribute(
-        'data-speech-source',
-        'consoleApp',
-      )
-    })
-
-    it('should pass the save-before-transcribe callback to ChatInputArea', () => {
-      renderChat({ onBeforeSpeechToText: vi.fn().mockResolvedValue(undefined) })
-
-      expect(screen.getByTestId('chat-input-area')).toHaveAttribute(
-        'data-has-before-speech',
-        'true',
-      )
-    })
-  })
-
-  describe('Window Resize', () => {
-    it('should register a resize listener on mount', () => {
-      const addSpy = vi.spyOn(window, 'addEventListener')
-      renderChat()
-      expect(addSpy).toHaveBeenCalledWith('resize', expect.any(Function))
-    })
-
-    it('should remove the resize listener on unmount', () => {
-      const removeSpy = vi.spyOn(window, 'removeEventListener')
-      const { unmount } = renderChat()
-      unmount()
-      expect(removeSpy).toHaveBeenCalledWith('resize', expect.any(Function))
-    })
-
-    it('should not throw when the resize event fires', () => {
-      renderChat()
-      expect(() => window.dispatchEvent(new Event('resize'))).not.toThrow()
-    })
-  })
-
-  describe('ResizeObserver Callbacks', () => {
-    it('should set paddingBottom on chatContainer from the footer blockSize', () => {
-      renderChat({
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      const containerCb = capturedResizeCallbacks[0]
-      if (containerCb) {
-        act(() => containerCb([makeResizeEntry(80, 400)], {} as ResizeObserver))
-        expect(screen.getByTestId('chat-container').style.paddingBottom).toBe('80px')
-      }
-    })
-
-    it('should set footer width from the container inlineSize', () => {
-      renderChat()
-      const footerCb = capturedResizeCallbacks[1]
-      if (footerCb) {
-        act(() => footerCb([makeResizeEntry(50, 600)], {} as ResizeObserver))
-        expect(screen.getByTestId('chat-footer').style.width).toBe('600px')
-      }
-    })
-
-    it('should disconnect both observers on unmount', () => {
-      const disconnectSpy = vi.fn()
-      vi.stubGlobal(
-        'ResizeObserver',
-        class {
-          observe() {}
-          unobserve() {}
-          disconnect = disconnectSpy
-        },
-      )
-      const { unmount } = renderChat()
-      unmount()
-      expect(disconnectSpy).toHaveBeenCalled()
-    })
-  })
-
-  describe('Scroll Behavior', () => {
-    it('should not throw when chatList has 1 item (scroll guard: length > 1 not met)', () => {
-      expect(() => renderChat({ chatList: [makeChatItem({ id: 'q1' })] })).not.toThrow()
-    })
-
-    it('should not throw when a scroll event fires on the container', () => {
-      renderChat()
-      expect(() =>
-        screen.getByTestId('chat-container').dispatchEvent(new Event('scroll')),
-      ).not.toThrow()
-    })
-
-    it('should set userScrolled when distanceToBottom exceeds threshold', () => {
-      renderChat()
-      const container = screen.getByTestId('chat-container')
-      Object.defineProperty(container, 'scrollHeight', { value: 1000, configurable: true })
-      Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true })
-      Object.defineProperty(container, 'scrollTop', { value: 0, configurable: true })
-      expect(() => container.dispatchEvent(new Event('scroll'))).not.toThrow()
-    })
-
-    it('should not set userScrolled when distanceToBottom is within threshold', () => {
-      renderChat()
-      const container = screen.getByTestId('chat-container')
-      Object.defineProperty(container, 'scrollHeight', { value: 500, configurable: true })
-      Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true })
-      Object.defineProperty(container, 'scrollTop', { value: 99, configurable: true })
-      expect(() => container.dispatchEvent(new Event('scroll'))).not.toThrow()
-    })
-  })
-
-  describe('ChatList Scroll Reset', () => {
-    it('should not throw with empty chatList (length <= 1 branch)', () => {
-      expect(() => renderChat({ chatList: [] })).not.toThrow()
-    })
-
-    it('should not throw with exactly one item (length <= 1 branch)', () => {
-      expect(() => renderChat({ chatList: [makeChatItem({ id: 'msg-1' })] })).not.toThrow()
-    })
-
-    it('should reset scroll state when the first message ID changes on rerender', () => {
-      const { rerender } = renderChat({
-        chatList: [makeChatItem({ id: 'first' }), makeChatItem({ id: 'second' })],
-      })
-      expect(() =>
-        rerender(
-          <Chat
-            chatList={[makeChatItem({ id: 'new-first' }), makeChatItem({ id: 'new-second' })]}
-          />,
-        ),
-      ).not.toThrow()
-    })
-
-    it('should not reset scroll when the first message ID is unchanged', () => {
-      const item1 = makeChatItem({ id: 'stable-id' })
-      const { rerender } = renderChat({ chatList: [item1, makeChatItem({ id: 'second' })] })
-      expect(() =>
-        rerender(<Chat chatList={[item1, makeChatItem({ id: 'third' })]} />),
-      ).not.toThrow()
-    })
-  })
-
-  describe('Sidebar Collapse State', () => {
-    it('should schedule a resize via setTimeout when sidebarCollapseState becomes false', () => {
-      vi.useFakeTimers()
-      const { rerender } = renderChat({ sidebarCollapseState: true })
-      rerender(<Chat chatList={[]} sidebarCollapseState={false} />)
-      expect(() => vi.runAllTimers()).not.toThrow()
-      vi.useRealTimers()
-    })
-
-    it('should not schedule a resize when sidebarCollapseState stays true', () => {
-      vi.useFakeTimers()
-      renderChat({ sidebarCollapseState: true })
-      expect(() => vi.runAllTimers()).not.toThrow()
-      vi.useRealTimers()
-    })
-  })
-
-  describe('Question Rendering with Config', () => {
-    it('should pass questionEditEnable from config to Question component', () => {
-      renderChat({
-        config: { questionEditEnable: true } as ChatConfig,
-        chatList: [makeChatItem({ id: 'q1', isAnswer: false })],
-      })
-      expect(screen.getByTestId('question-item')).toBeInTheDocument()
-    })
-
-    it('should pass undefined questionEditEnable to Question when config has no questionEditEnable', () => {
-      renderChat({
-        config: {} as ChatConfig,
-        chatList: [makeChatItem({ id: 'q1', isAnswer: false })],
-      })
-      expect(screen.getByTestId('question-item')).toBeInTheDocument()
-    })
-
-    it('should pass theme to Question', () => {
-      const theme = createTheme('#123456')
-
-      renderChat({
-        theme,
-        chatList: [makeChatItem({ id: 'q1', isAnswer: false })],
-      })
-      expect(screen.getByTestId('question-item')).toHaveAttribute('data-theme-color', '#123456')
-    })
-
-    it('should pass switchSibling to Question component', () => {
-      const switchSibling = vi.fn()
-      renderChat({
-        switchSibling,
-        chatList: [makeChatItem({ id: 'q1', isAnswer: false })],
-      })
-      expect(screen.getByTestId('question-item')).toBeInTheDocument()
-    })
-
-    it('should pass hideAvatar to Question component', () => {
-      renderChat({
-        hideAvatar: true,
-        chatList: [makeChatItem({ id: 'q1', isAnswer: false })],
-      })
-      expect(screen.getByTestId('question-item')).toBeInTheDocument()
-    })
-  })
-
-  describe('Answer Rendering with Config and Props', () => {
-    it('should pass appData to Answer component', () => {
-      const appData = { site: { title: 'Test App' } }
-      renderChat({
-        appData: appData as unknown as ChatProps['appData'],
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should pass config to Answer component', () => {
-      const config = { someOption: true }
-      renderChat({
-        config: config as unknown as ChatConfig,
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should pass answerIcon to Answer component', () => {
-      renderChat({
-        answerIcon: <div data-testid="test-answer-icon">Icon</div>,
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should pass hideProcessDetail to Answer component', () => {
-      renderChat({
-        hideProcessDetail: true,
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should pass noChatInput to Answer component', () => {
-      renderChat({
-        noChatInput: true,
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should pass onHumanInputFormSubmit to Answer component', () => {
-      const onHumanInputFormSubmit = vi.fn()
-      renderChat({
-        onHumanInputFormSubmit,
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-  })
-
-  describe('TryToAsk Conditions', () => {
-    const tryToAskConfig: ChatConfig = {
-      suggested_questions_after_answer: { enabled: true },
-    } as ChatConfig
-
-    it('should not render TryToAsk when all required fields are present', () => {
-      renderChat({
-        config: tryToAskConfig,
-        suggestedQuestions: [],
-        onSend: vi.fn() as unknown as OnSend,
-      })
-      expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
-    })
-
-    it('should render TryToAsk with one suggested question', () => {
-      renderChat({
-        config: tryToAskConfig,
-        suggestedQuestions: ['Single question'],
-        onSend: vi.fn() as unknown as OnSend,
-      })
-      expect(screen.getByText(/tryToAsk/i)).toBeInTheDocument()
-    })
-
-    it('should render TryToAsk with multiple suggested questions', () => {
-      renderChat({
-        config: tryToAskConfig,
-        suggestedQuestions: ['Q1', 'Q2', 'Q3'],
-        onSend: vi.fn() as unknown as OnSend,
-      })
-      expect(screen.getByText(/tryToAsk/i)).toBeInTheDocument()
-      expect(screen.getByText('Q1')).toBeInTheDocument()
-      expect(screen.getByText('Q2')).toBeInTheDocument()
-      expect(screen.getByText('Q3')).toBeInTheDocument()
-    })
-
-    it('should not render TryToAsk when suggested_questions_after_answer?.enabled is false', () => {
-      renderChat({
-        config: { suggested_questions_after_answer: { enabled: false } } as ChatConfig,
-        suggestedQuestions: ['q1', 'q2'],
-        onSend: vi.fn() as unknown as OnSend,
-      })
-      expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
-    })
-
-    it('should not render TryToAsk when suggested_questions_after_answer is undefined', () => {
-      renderChat({
-        config: {} as ChatConfig,
-        suggestedQuestions: ['q1'],
-        onSend: vi.fn() as unknown as OnSend,
-      })
-      expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
-    })
-
-    it('should not render TryToAsk when onSend callback is not provided even with config and questions', () => {
-      renderChat({
-        config: tryToAskConfig,
-        suggestedQuestions: ['q1', 'q2'],
-        onSend: undefined,
-      })
-      expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('ChatInputArea Configuration', () => {
-    it('should pass all config options to ChatInputArea', () => {
-      const config: ChatConfig = {
-        file_upload: { enabled: true },
-        speech_to_text: { enabled: true },
-      } as unknown as ChatConfig
-
-      renderChat({
-        noChatInput: false,
-        config,
-      })
-
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
-    })
-
-    it('should pass appData.site.title as botName to ChatInputArea', () => {
-      renderChat({
-        appData: { site: { title: 'MyBot' } } as unknown as ChatProps['appData'],
-        noChatInput: false,
-      })
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
-    })
-
-    it('should pass appData.site.input_placeholder as customPlaceholder to ChatInputArea', () => {
-      renderChat({
-        appData: {
-          site: { input_placeholder: 'Ask the assistant' },
-        } as unknown as ChatProps['appData'],
-        noChatInput: false,
-      })
-      expect(screen.getByTestId('chat-input-area')).toHaveAttribute(
-        'data-custom-placeholder',
-        'Ask the assistant',
-      )
-    })
-
-    it('should pass Bot as default botName when appData.site.title is missing', () => {
-      renderChat({
-        appData: {} as unknown as ChatProps['appData'],
-        noChatInput: false,
-      })
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
-    })
-
-    it('should pass showFeatureBar to ChatInputArea', () => {
-      renderChat({
-        noChatInput: false,
-        showFeatureBar: true,
-      })
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
-    })
-
-    it('should pass showFileUpload to ChatInputArea', () => {
-      renderChat({
-        noChatInput: false,
-        showFileUpload: true,
-      })
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
-    })
-
-    it('should pass featureBarDisabled based on isResponding', () => {
-      const { rerender } = renderChat({
-        noChatInput: false,
-        isResponding: false,
-      })
-
-      rerender(<Chat chatList={[]} noChatInput={false} isResponding={true} />)
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
-    })
-
-    it('should pass onFeatureBarClick callback to ChatInputArea', () => {
-      const onFeatureBarClick = vi.fn()
-      renderChat({
-        noChatInput: false,
-        onFeatureBarClick,
-      })
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
-    })
-
-    it('should pass footer notice to ChatInputArea', () => {
-      renderChat({
-        noChatInput: false,
-        footerNotice: 'Agent runs in a Linux sandbox.',
-      })
-
-      expect(screen.getByTestId('chat-input-area')).toHaveTextContent(
-        'Agent runs in a Linux sandbox.',
-      )
-    })
-
-    it('should pass inputs and inputsForm to ChatInputArea', () => {
-      const inputs = { field1: 'value1' }
-      const inputsForm = [{ key: 'field1', type: 'text' }]
-
-      renderChat({
-        noChatInput: false,
-        inputs,
-        inputsForm: inputsForm as unknown as ChatProps['inputsForm'],
-      })
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
-    })
-
-    it('should pass theme to ChatInputArea', () => {
-      const theme = createTheme('#654321')
-
-      renderChat({
-        noChatInput: false,
-        theme,
-      })
-      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-theme-color', '#654321')
-    })
-  })
-
-  describe('Footer Visibility Logic', () => {
-    it('should show footer when hasTryToAsk is true', () => {
-      renderChat({
-        config: { suggested_questions_after_answer: { enabled: true } } as ChatConfig,
-        suggestedQuestions: ['q1'],
-        onSend: vi.fn() as unknown as OnSend,
-      })
-      expect(screen.getByTestId('chat-footer')).toBeInTheDocument()
-    })
-
-    it('should show footer when hasTryToAsk is false but noChatInput is false', () => {
-      renderChat({
-        noChatInput: false,
-      })
-      expect(screen.getByTestId('chat-footer')).toBeInTheDocument()
-    })
-
-    it('should show footer when hasTryToAsk is false and noChatInput is false', () => {
-      renderChat({
-        config: { suggested_questions_after_answer: { enabled: false } } as ChatConfig,
-        noChatInput: false,
-      })
-      expect(screen.getByTestId('chat-footer')).toBeInTheDocument()
-    })
-
-    it('should show footer when isResponding and noStopResponding is false', () => {
-      renderChat({
-        isResponding: true,
-        noStopResponding: false,
-        noChatInput: true,
-      })
-      expect(screen.getByTestId('chat-footer')).toBeInTheDocument()
-    })
-
-    it('should show footer when any footer content condition is true', () => {
-      renderChat({
-        isResponding: true,
-        noStopResponding: false,
-        noChatInput: true,
-      })
-      expect(screen.getByTestId('chat-footer')).toHaveClass('bg-chat-input-mask')
-    })
-
-    it('should let footer blank space pass pointer events through', () => {
-      renderChat({ noChatInput: false })
-      const footer = screen.getByTestId('chat-footer')
-      expect(footer).toHaveClass('pointer-events-none')
-      expect(footer.firstElementChild).toHaveClass('pointer-events-none')
-    })
-
-    it('should keep the stop responding button clickable inside the pass-through footer', () => {
-      renderChat({
-        isResponding: true,
-        noStopResponding: false,
-        noChatInput: true,
-      })
-      expect(screen.getByRole('button', { name: /stopResponding/i })).toHaveClass(
-        'pointer-events-auto',
-      )
-    })
-  })
-
-  describe('Container and Spacing Variations', () => {
-    it('should apply both px-0 and px-8 when isTryApp is true and noSpacing is false', () => {
-      renderChat({
-        isTryApp: true,
-        noSpacing: false,
-      })
-      expect(screen.getByTestId('chat-container')).toHaveClass('h-0', 'grow')
-    })
-
-    it('should apply px-0 when isTryApp is true', () => {
-      renderChat({
-        isTryApp: true,
-        chatContainerInnerClassName: 'test-class',
-      })
-      expect(screen.getByTestId('chat-container')).toBeInTheDocument()
-    })
-
-    it('should not apply h-0 grow when isTryApp is false', () => {
-      renderChat({
-        isTryApp: false,
-      })
-      expect(screen.getByTestId('chat-container')).not.toHaveClass('h-0', 'grow')
-    })
-  })
-
-  describe('Multiple Items and Index Handling', () => {
-    it('should correctly identify last answer in a 10-item chat list', () => {
-      const chatList = Array.from({ length: 10 }, (_, i) =>
-        makeChatItem({ id: `item-${i}`, isAnswer: i % 2 === 1 }),
-      )
-      renderChat({ isResponding: true, chatList })
-      const answers = screen.getAllByTestId('answer-item')
-      expect(answers[answers.length - 1]).toHaveAttribute('data-responding', 'true')
-    })
-
-    it('should pass correct question content to Answer', () => {
-      const q1 = makeChatItem({ id: 'q1', isAnswer: false, content: 'First question' })
-      const a1 = makeChatItem({ id: 'a1', isAnswer: true, content: 'First answer' })
-      renderChat({ chatList: [q1, a1] })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should handle answer without preceding question (edge case)', () => {
-      renderChat({
-        chatList: [makeChatItem({ id: 'a1', isAnswer: true })],
-      })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should correctly calculate index for each item in chatList', () => {
-      const chatList = [
-        makeChatItem({ id: 'q1', isAnswer: false }),
-        makeChatItem({ id: 'a1', isAnswer: true }),
-        makeChatItem({ id: 'q2', isAnswer: false }),
-        makeChatItem({ id: 'a2', isAnswer: true }),
-      ]
-      renderChat({ chatList })
-
-      const answers = screen.getAllByTestId('answer-item')
-      expect(answers).toHaveLength(2)
-    })
-  })
-
-  describe('Sidebar Collapse Multiple Transitions', () => {
-    it('should trigger resize when sidebarCollapseState transitions from true to false multiple times', () => {
-      vi.useFakeTimers()
-      const { rerender } = renderChat({ sidebarCollapseState: true })
-
-      rerender(<Chat chatList={[]} sidebarCollapseState={false} />)
-      vi.advanceTimersByTime(200)
-
-      rerender(<Chat chatList={[]} sidebarCollapseState={true} />)
-
-      rerender(<Chat chatList={[]} sidebarCollapseState={false} />)
-      vi.advanceTimersByTime(200)
-
-      expect(() => vi.runAllTimers()).not.toThrow()
-      vi.useRealTimers()
-    })
-
-    it('should not trigger resize when sidebarCollapseState stays at false', () => {
-      vi.useFakeTimers()
-      const { rerender } = renderChat({ sidebarCollapseState: false })
-
-      rerender(<Chat chatList={[]} sidebarCollapseState={false} />)
-
-      expect(() => vi.runAllTimers()).not.toThrow()
-      vi.useRealTimers()
-    })
-
-    it('should handle undefined sidebarCollapseState', () => {
-      renderChat({ sidebarCollapseState: undefined })
-      expect(screen.getByTestId('chat-root')).toBeInTheDocument()
-    })
-  })
-
-  describe('Scroll Behavior Edge Cases', () => {
-    it('should handle rapid scroll events', () => {
-      renderChat({ chatList: [makeChatItem({ id: 'q1' }), makeChatItem({ id: 'q2' })] })
-      const container = screen.getByTestId('chat-container')
-
-      for (let i = 0; i < 10; i++) {
-        expect(() => container.dispatchEvent(new Event('scroll'))).not.toThrow()
-      }
-    })
-
-    it('should handle scroll when chatList changes', () => {
-      const { rerender } = renderChat({ chatList: [makeChatItem({ id: 'q1' })] })
-
-      rerender(<Chat chatList={[makeChatItem({ id: 'q1' }), makeChatItem({ id: 'q2' })]} />)
-
-      expect(() =>
-        screen.getByTestId('chat-container').dispatchEvent(new Event('scroll')),
-      ).not.toThrow()
-    })
-
-    it('should handle resize event multiple times', () => {
-      renderChat()
-      for (let i = 0; i < 5; i++) {
-        expect(() => window.dispatchEvent(new Event('resize'))).not.toThrow()
-      }
-    })
-  })
-
-  describe('Responsive Behavior', () => {
-    it('should handle different chat container heights', () => {
-      renderChat({
-        chatList: [makeChatItem({ id: 'q1' }), makeChatItem({ id: 'q2' })],
-      })
-      const container = screen.getByTestId('chat-container')
-      Object.defineProperty(container, 'clientHeight', { value: 800, configurable: true })
-      expect(() => container.dispatchEvent(new Event('scroll'))).not.toThrow()
-    })
-
-    it('should handle body width changes on resize', () => {
-      renderChat()
-      Object.defineProperty(document.body, 'clientWidth', { value: 1920, configurable: true })
-      expect(() => window.dispatchEvent(new Event('resize'))).not.toThrow()
-    })
+      const onSend = vi.fn()
+      renderChat({ ...props, onSend })
+      await user.type(screen.getByRole('textbox'), 'Blocked{Enter}')
+      expect(onSend).not.toHaveBeenCalled()
+      expect(screen.getByRole('textbox')).toHaveValue('')
+    },
+  )
+
+  it('removes the input while keeping custom conversation content', () => {
+    renderChat({ noChatInput: true, chatNode: <p>Conversation archived</p> })
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.getByText('Conversation archived')).toBeInTheDocument()
   })
 })

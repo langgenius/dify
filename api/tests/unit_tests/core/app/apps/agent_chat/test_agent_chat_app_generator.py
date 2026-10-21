@@ -23,6 +23,7 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -74,7 +75,7 @@ def generator(
     assert agent_records[0].id == "conv"
     # Keep trace configuration lookup and initialization real, but do not schedule background timers.
     monkeypatch.setattr(TraceQueueManager, "start_timer", lambda _manager: None)
-    return AgentChatAppGenerator()
+    return AgentChatAppGenerator(execution_driver=WorkflowRunAgg.run)
 
 
 @pytest.fixture
@@ -119,7 +120,7 @@ class TestAgentChatAppGeneratorGenerate:
     def test_generate_rejects_blocking_mode(self, generator: AgentChatAppGenerator, sqlite_session: Session) -> None:
         app_model = _app()
         user = _account()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Agent Chat App does not support blocking mode"):
             generator.generate(
                 session=sqlite_session,
                 app_model=app_model,
@@ -132,7 +133,7 @@ class TestAgentChatAppGeneratorGenerate:
     def test_generate_requires_query(self, generator: AgentChatAppGenerator, sqlite_session: Session) -> None:
         app_model = _app()
         user = _account()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="query is required"):
             generator.generate(
                 session=sqlite_session,
                 app_model=app_model,
@@ -145,7 +146,7 @@ class TestAgentChatAppGeneratorGenerate:
     def test_generate_rejects_non_string_query(self, generator: AgentChatAppGenerator, sqlite_session: Session) -> None:
         app_model = _app()
         user = _account()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
                 session=sqlite_session,
                 app_model=app_model,
@@ -162,7 +163,7 @@ class TestAgentChatAppGeneratorGenerate:
         user = _account()
         generator._get_app_model_config = CallRecorder(AppModelConfig(app_id="app1"))  # type: ignore[method-assign]
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Only in App debug mode can override model config"):
             generator.generate(
                 session=sqlite_session,
                 app_model=app_model,

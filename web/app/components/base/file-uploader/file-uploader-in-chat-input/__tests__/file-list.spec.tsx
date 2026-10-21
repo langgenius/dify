@@ -1,130 +1,52 @@
 import type { FileEntity } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { TransferMethod } from '@/types/app'
 import { FileContextProvider } from '../../store'
-import { FileList, FileListInChatInput } from '../file-list'
+import { FileListInChatInput } from '../file-list'
 
-vi.mock('../../hooks', () => ({
-  useFile: () => ({
-    handleRemoveFile: vi.fn(),
-    handleReUploadFile: vi.fn(),
-  }),
-}))
+vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/' }))
 
-vi.mock('@/utils/download', () => ({
-  downloadUrl: vi.fn(),
-}))
-
-const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
-  id: `file-${Math.random()}`,
-  name: 'document.pdf',
-  size: 1024,
-  type: 'application/pdf',
-  progress: 100,
-  transferMethod: TransferMethod.local_file,
-  supportFileType: 'document',
-  ...overrides,
-})
-
-describe('FileList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render FileImageItem for image files', () => {
-    const files = [
-      createFile({
-        name: 'photo.png',
-        type: 'image/png',
-        supportFileType: 'image',
-        base64Url: 'data:image/png;base64,abc',
-      }),
-    ]
-    render(<FileList files={files} />)
-
-    expect(screen.getByRole('img')).toBeInTheDocument()
-  })
-
-  it('should render FileItem for non-image files', () => {
-    const files = [
-      createFile({
-        name: 'document.pdf',
-        supportFileType: 'document',
-      }),
-    ]
-    render(<FileList files={files} />)
-
-    expect(screen.getByText(/document\.pdf/i)).toBeInTheDocument()
-  })
-
-  it('should render both image and non-image files', () => {
-    const files = [
-      createFile({
-        name: 'photo.png',
-        type: 'image/png',
-        supportFileType: 'image',
-        base64Url: 'data:image/png;base64,abc',
-      }),
-      createFile({ name: 'doc.pdf', supportFileType: 'document' }),
-    ]
-    render(<FileList files={files} />)
-
-    expect(screen.getByRole('img')).toBeInTheDocument()
-    expect(screen.getByText(/doc\.pdf/i)).toBeInTheDocument()
-  })
-
-  it('should render empty list when no files', () => {
-    render(<FileList files={[]} />)
-
-    expect(screen.queryAllByRole('img')).toHaveLength(0)
-  })
-
-  it('should render multiple files', () => {
-    const files = [
-      createFile({ name: 'a.pdf' }),
-      createFile({ name: 'b.pdf' }),
-      createFile({ name: 'c.pdf' }),
-    ]
-    render(<FileList files={files} />)
-
-    expect(screen.getByText(/a\.pdf/i)).toBeInTheDocument()
-    expect(screen.getByText(/b\.pdf/i)).toBeInTheDocument()
-    expect(screen.getByText(/c\.pdf/i)).toBeInTheDocument()
-  })
-})
-
-describe('FileListInChatInput', () => {
-  let mockStoreFiles: FileEntity[] = []
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockStoreFiles = []
-  })
-
-  it('should render FileList with files from store', () => {
-    mockStoreFiles = [createFile({ name: 'test.pdf' })]
-    const fileConfig = { enabled: true, allowed_file_types: ['document'] } as FileUpload
-
-    render(
-      <FileContextProvider value={mockStoreFiles}>
-        <FileListInChatInput fileConfig={fileConfig} />
-      </FileContextProvider>,
-    )
-
-    expect(screen.getByText(/test\.pdf/i)).toBeInTheDocument()
-  })
-
-  it('should render empty FileList when store has no files', () => {
-    const fileConfig = { enabled: true, allowed_file_types: ['document'] } as FileUpload
-
-    render(
-      <FileContextProvider value={mockStoreFiles}>
-        <FileListInChatInput fileConfig={fileConfig} />
-      </FileContextProvider>,
-    )
-
-    expect(screen.queryAllByRole('img')).toHaveLength(0)
-    expect(screen.queryByText(/\.pdf/i)).not.toBeInTheDocument()
-  })
+it('removes the selected attachment from a mixed chat file list and reports the remaining files', async () => {
+  const user = userEvent.setup()
+  const files: FileEntity[] = [
+    {
+      id: 'photo',
+      name: 'photo.png',
+      type: 'image/png',
+      size: 1024,
+      progress: 100,
+      transferMethod: TransferMethod.local_file,
+      supportFileType: 'image',
+      base64Url: 'data:image/png;base64,abc',
+    },
+    {
+      id: 'document',
+      name: 'document.pdf',
+      type: 'application/pdf',
+      size: 2048,
+      progress: 100,
+      transferMethod: TransferMethod.local_file,
+      supportFileType: 'document',
+    },
+  ]
+  const config: FileUpload = { enabled: true, allowed_file_types: ['image', 'document'] }
+  const onChange = vi.fn()
+  render(
+    <FileContextProvider value={files} onChange={onChange}>
+      <FileListInChatInput fileConfig={config} />
+    </FileContextProvider>,
+    { wrapper: createConsoleQueryWrapper().wrapper },
+  )
+  expect(screen.getByRole('img')).toBeInTheDocument()
+  expect(screen.getByText('document.pdf')).toBeInTheDocument()
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[0]!)
+  expect(screen.queryByRole('img')).not.toBeInTheDocument()
+  expect(screen.getByText('document.pdf')).toBeInTheDocument()
+  expect(onChange).toHaveBeenLastCalledWith([files[1]])
+  await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+  expect(screen.queryByText('document.pdf')).not.toBeInTheDocument()
+  expect(onChange).toHaveBeenLastCalledWith([])
 })

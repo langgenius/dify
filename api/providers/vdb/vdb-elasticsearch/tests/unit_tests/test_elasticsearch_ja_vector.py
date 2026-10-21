@@ -1,17 +1,18 @@
 import importlib
 import json
 import sys
-import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from elasticsearch import NotFoundError
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from models.dataset import Dataset
 
 
 def _build_fake_elasticsearch_modules():
-    elasticsearch = types.ModuleType("elasticsearch")
+    elasticsearch = FakeModule("elasticsearch")
 
     class ConnectionError(Exception):
         pass
@@ -27,19 +28,24 @@ def _build_fake_elasticsearch_modules():
 
     elasticsearch.Elasticsearch = Elasticsearch
     elasticsearch.ConnectionError = ConnectionError
+    elasticsearch.__dict__["NotFoundError"] = NotFoundError
     return {"elasticsearch": elasticsearch}
 
 
 @pytest.fixture
 def elasticsearch_ja_module(monkeypatch: pytest.MonkeyPatch):
-    for name, module in _build_fake_elasticsearch_modules().items():
-        monkeypatch.setitem(sys.modules, name, module)
-
     import dify_vdb_elasticsearch.elasticsearch_ja_vector as ja_module
     import dify_vdb_elasticsearch.elasticsearch_vector as base_module
 
-    importlib.reload(base_module)
-    return importlib.reload(ja_module)
+    try:
+        with monkeypatch.context() as module_patch:
+            for name, fake_module in _build_fake_elasticsearch_modules().items():
+                module_patch.setitem(sys.modules, name, fake_module)
+            importlib.reload(base_module)
+            yield importlib.reload(ja_module)
+    finally:
+        importlib.reload(base_module)
+        importlib.reload(ja_module)
 
 
 def test_create_collection_cache_hit(elasticsearch_ja_module, monkeypatch: pytest.MonkeyPatch):

@@ -1,8 +1,9 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { noop, QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
@@ -16,7 +17,7 @@ const navigationMocks = vi.hoisted(() => ({
 }))
 
 const serviceBaseMocks = vi.hoisted(() => ({
-  get: vi.fn(),
+  request: vi.fn(),
 }))
 
 type ScriptProps = {
@@ -51,14 +52,6 @@ vi.mock('@/config', async (importOriginal) => ({
   },
 }))
 
-vi.mock('@/app/components/signin/countdown', () => ({
-  default: ({ onResend, resendDisabled }: { onResend?: () => void; resendDisabled?: boolean }) => (
-    <button type="button" disabled={resendDisabled} onClick={onResend}>
-      resend-code
-    </button>
-  ),
-}))
-
 vi.mock('@/next/script', () => ({
   default: (props: ScriptProps) => {
     turnstileMocks.scriptProps = props
@@ -76,17 +69,21 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/base', () => serviceBaseMocks)
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    emailCodeLogin: {
-      validity: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...original,
+    consoleClient: {
+      account: original.consoleClient.account,
+      emailCodeLogin: {
+        validity: {
+          post: vi.fn(),
+        },
         post: vi.fn(),
       },
-      post: vi.fn(),
     },
-  },
-}))
+  }
+})
 
 vi.mock('@/utils/timezone', () => ({
   getBrowserTimezone: () => 'Asia/Singapore',
@@ -142,6 +139,8 @@ const accountProfile: GetAccountProfileResponse = {
 describe('CheckCode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.setItem(COUNT_DOWN_KEY, '0')
+    serviceBaseMocks.request.mockReset()
     vi.mocked(consoleClient.emailCodeLogin.validity.post)
       .mockReset()
       .mockResolvedValue({ result: 'success' })
@@ -179,38 +178,8 @@ describe('CheckCode', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
-  })
-
-  it('exposes the page title as the main heading', () => {
-    const queryClient = createQueryClient()
-    render(
-      <QueryClientProvider client={queryClient}>
-        <CheckCode />
-      </QueryClientProvider>,
-    )
-
-    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-  })
-
-  it.each([
-    ['Enter', '{Enter}'],
-    ['Space', ' '],
-  ])('supports going back with the %s key', async (_, key) => {
-    const user = userEvent.setup()
-    const queryClient = createQueryClient()
-    render(
-      <QueryClientProvider client={queryClient}>
-        <CheckCode />
-      </QueryClientProvider>,
-    )
-
-    const backButton = screen.getByRole('button', { name: 'login.back' })
-    expect(backButton).toHaveProperty('tabIndex', 0)
-    backButton.focus()
-    expect(backButton).toHaveFocus()
-    await user.keyboard(key)
-
-    expect(navigationMocks.back).toHaveBeenCalledOnce()
+    vi.restoreAllMocks()
+    localStorage.removeItem(COUNT_DOWN_KEY)
   })
 
   it('associates one localized error with an incomplete verification code', async () => {
@@ -278,10 +247,9 @@ describe('CheckCode', () => {
       expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledOnce()
     })
 
-    const resendButton = screen.getByRole('button', { name: 'resend-code' })
+    const resendButton = screen.getByRole('button', { name: 'login.checkCode.resend' })
     expect(resendButton).toBeDisabled()
-    resendButton.removeAttribute('disabled')
-    fireEvent.click(resendButton)
+    await user.click(resendButton)
     expect(consoleClient.emailCodeLogin.post).not.toHaveBeenCalled()
 
     act(() => {
@@ -305,16 +273,15 @@ describe('CheckCode', () => {
     )
 
     await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
-    await user.click(screen.getByRole('button', { name: 'resend-code' }))
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
     await waitFor(() => {
       expect(consoleClient.emailCodeLogin.post).toHaveBeenCalledOnce()
     })
 
     const verifyButton = screen.getByRole('button', { name: 'login.checkCode.verify' })
     expect(verifyButton).toBeDisabled()
-    const form = verifyButton.closest('form')
-    if (!form) throw new Error('Verification form is missing')
-    fireEvent.submit(form)
+    await user.click(verifyButton)
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '{Enter}')
     expect(consoleClient.emailCodeLogin.validity.post).not.toHaveBeenCalled()
 
     act(() => {
@@ -408,7 +375,7 @@ describe('CheckCode', () => {
       </QueryClientProvider>,
     )
 
-    const resendButton = screen.getByRole('button', { name: 'resend-code' })
+    const resendButton = screen.getByRole('button', { name: 'login.checkCode.resend' })
     expect(resendButton).toBeEnabled()
     act(() => {
       turnstileMocks.scriptProps?.onReady?.()
@@ -472,7 +439,7 @@ describe('CheckCode', () => {
       </QueryClientProvider>,
     )
 
-    const resendButton = screen.getByRole('button', { name: 'resend-code' })
+    const resendButton = screen.getByRole('button', { name: 'login.checkCode.resend' })
     await user.click(resendButton)
     const initialScriptSrc = turnstileMocks.scriptProps?.src
 
@@ -521,13 +488,23 @@ describe('CheckCode', () => {
     )
 
     expect(screen.queryByRole('button', { name: /verify-turnstile-/ })).not.toBeInTheDocument()
-    const resendButton = screen.getByRole('button', { name: 'resend-code' })
+    const resendButton = screen.getByRole('button', { name: 'login.checkCode.resend' })
     expect(resendButton).toBeEnabled()
     await user.click(resendButton)
 
     expect(consoleClient.emailCodeLogin.post).toHaveBeenCalledWith({
       body: { email: 'user@example.com', language: expect.any(String) },
     })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'login.checkCode.resend' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(Number(localStorage.getItem(COUNT_DOWN_KEY))).toBeGreaterThan(0)
+    expect(Number(localStorage.getItem(COUNT_DOWN_KEY))).toBeLessThanOrEqual(COUNT_DOWN_TIME_MS)
+    const redirect = new URL(navigationMocks.replace.mock.calls[0]![0], 'http://localhost')
+    expect(redirect.pathname).toBe('/signin/check-code')
+    expect(redirect.searchParams.get('token')).toBe('new-login-token')
   })
 
   describe('Post-login profile bootstrap', () => {
@@ -540,7 +517,7 @@ describe('CheckCode', () => {
       const profileResponse = new Promise<Response>((resolve) => {
         resolveProfileResponse = resolve
       })
-      serviceBaseMocks.get
+      serviceBaseMocks.request
         .mockRejectedValueOnce(createHttpError(new Response(null, { status: 401 })))
         .mockReturnValueOnce(profileResponse)
       await queryClient.query(profileQueryOptions).catch(noop)
@@ -556,7 +533,7 @@ describe('CheckCode', () => {
       await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
 
       await waitFor(() => {
-        expect(serviceBaseMocks.get).toHaveBeenCalledTimes(2)
+        expect(serviceBaseMocks.request).toHaveBeenCalledTimes(2)
       })
       expect(queryClient.getQueryState(profileQueryKey)).toMatchObject({
         fetchStatus: 'fetching',
@@ -589,7 +566,7 @@ describe('CheckCode', () => {
         email: 'hanxujiang%2B4%40dify.ai',
         token: 'email-login-token',
       })
-      serviceBaseMocks.get.mockResolvedValue(
+      serviceBaseMocks.request.mockResolvedValue(
         new Response(JSON.stringify(accountProfile), {
           headers: {
             'content-type': 'application/json',

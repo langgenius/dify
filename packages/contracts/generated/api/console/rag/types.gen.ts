@@ -189,9 +189,7 @@ export type WorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
+export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type DefaultBlockConfigResponse = {
   [key: string]: unknown
@@ -363,6 +361,8 @@ export type WorkflowDraftVariablePatchPayload = {
   name?: string | null
   value?: unknown | null
 }
+
+export type RagPipelinePublishedWorkflowResponse = WorkflowResponse | null
 
 export type RagPipelineWorkflowPublishResponse = {
   created_at: number
@@ -559,6 +559,13 @@ export type SimpleEndUser = {
   id: string
   is_anonymous: boolean
   session_id?: string | null
+  type: string
+}
+
+export type DefaultBlockConfigItemResponse = {
+  config: {
+    [key: string]: unknown
+  }
   type: string
 }
 
@@ -2066,7 +2073,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishError =
   GetRagPipelinesByPipelineIdWorkflowsPublishErrors[keyof GetRagPipelinesByPipelineIdWorkflowsPublishErrors]
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishResponses = {
-  200: WorkflowResponse
+  200: RagPipelinePublishedWorkflowResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishResponse =

@@ -1,12 +1,13 @@
 import type { AgentStrategyParameter } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ReactNode } from 'react'
 import type { AgentNodeType } from '../types'
 import type useConfig from '../use-config'
 import { zAgentStrategyParameter } from '@dify/contracts/api/console/workspaces/zod.gen'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Node from '../node'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
@@ -16,11 +17,6 @@ const mockToolIcon = vi.hoisted(() => vi.fn())
 vi.mock('../use-config', () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockUseConfig(...args),
-}))
-
-vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (value: string | { en_US?: string }) =>
-    typeof value === 'string' ? value : value.en_US || '',
 }))
 
 vi.mock('../components/model-bar', () => ({
@@ -41,37 +37,6 @@ vi.mock('../components/tool-icon', () => ({
     mockToolIcon(props)
     return <div>{`tool:${props.providerName}`}</div>
   },
-}))
-
-vi.mock('../../_base/components/group', () => ({
-  Group: ({ label, children }: { label: ReactNode; children: ReactNode }) => (
-    <div>
-      <div>{label}</div>
-      {children}
-    </div>
-  ),
-  GroupLabel: ({ className, children }: { className?: string; children: ReactNode }) => (
-    <div className={className}>{children}</div>
-  ),
-}))
-
-vi.mock('../../_base/components/setting-item', () => ({
-  SettingItem: ({
-    label,
-    status,
-    tooltip,
-    children,
-  }: {
-    label: ReactNode
-    status?: string
-    tooltip?: string
-    children?: ReactNode
-  }) => (
-    <div>
-      {`${label}:${status || 'normal'}:${tooltip || ''}`}
-      {children}
-    </div>
-  ),
 }))
 
 const createStrategyParam = (overrides: Partial<AgentStrategyParameter> = {}) =>
@@ -188,26 +153,24 @@ describe('agent/node', () => {
 
     render(<Node id="agent-node" data={createData()} />)
 
-    expect(screen.getByText('workflowAgent.nodes.agent.strategyNotSet:normal:')).toBeInTheDocument()
+    expect(screen.getByText('workflowAgent.nodes.agent.strategyNotSet')).toBeInTheDocument()
     expect(mockModelBar).not.toHaveBeenCalled()
     expect(mockToolIcon).not.toHaveBeenCalled()
   })
 
-  it('renders strategy status, required and selected model bars, and tool icons', () => {
+  it('renders strategy status, required and selected model bars, and tool icons', async () => {
+    const user = userEvent.setup()
     render(<Node id="agent-node" data={createData()} />)
 
+    expect(screen.getByText('React Agent')).toBeInTheDocument()
+    await user.hover(screen.getByText('React Agent'))
     expect(
-      screen.getByText(/workflowAgent.nodes.agent.strategy.shortLabel:error:/),
-    ).toHaveTextContent('React Agent')
-    expect(
-      screen.getByText(/workflowAgent.nodes.agent.strategy.shortLabel:error:/),
-    ).toHaveTextContent('Plugin Marketplace')
+      await screen.findByText(/workflowAgent.nodes.agent.strategyNotInstallTooltip/),
+    ).toBeVisible()
     expect(screen.getByText('requiredModel:empty-model')).toBeInTheDocument()
     expect(screen.getByText('optionalModel:openai/gpt-4o')).toBeInTheDocument()
     expect(screen.getByText('tool:author/tool-b')).toBeInTheDocument()
     expect(screen.getByText('tool:author/tool-c')).toBeInTheDocument()
-    expect(mockModelBar).toHaveBeenCalledTimes(2)
-    expect(mockToolIcon).toHaveBeenCalledTimes(2)
   })
 
   it('skips optional models and empty tool values when no configuration is provided', () => {

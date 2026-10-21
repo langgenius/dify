@@ -66,7 +66,7 @@ const WorkflowVariableBlockReplacementBlock = ({
   useEffect(() => {
     resetReg()
     return mergeRegister(editor.registerNodeTransform(CustomTextNode, transformListener))
-  }, [])
+  }, [editor, transformListener])
 
   return null
 }

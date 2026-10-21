@@ -36,6 +36,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from machinery.context import RequestContext
+from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -123,26 +124,26 @@ class CompletionApi(Resource):
             raise NotFoundError("Installed app not found") from None
         except AccountNotFoundError:
             raise UnauthorizedError("Account no longer exists.") from None
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFoundError("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route(
@@ -165,7 +166,6 @@ class CompletionStopApi(Resource):
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
             user_id=request_context.account_id,
-            app_mode=AppMode.value_of(app_mode),
         )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK
@@ -213,28 +213,28 @@ class ChatApi(Resource):
             raise NotFoundError("Installed app not found") from None
         except AccountNotFoundError:
             raise UnauthorizedError("Account no longer exists.") from None
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFoundError("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route(
@@ -253,11 +253,19 @@ class ChatStopApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        application_services().app_tasks.stop_task(
-            task_id=task_id,
-            invoke_from=InvokeFrom.EXPLORE,
-            user_id=request_context.account_id,
-            app_mode=app_mode,
-        )
+        if app_mode == AppMode.ADVANCED_CHAT:
+            application_services().app_tasks.stop_workflow_task(
+                tenant_id=installed_app.app_owner_tenant_id,
+                app_id=installed_app.app_id,
+                task_id=task_id,
+                app_mode=app_mode,
+                owner=(CreatorUserRole.ACCOUNT, request_context.account_id),
+            )
+        else:
+            application_services().app_tasks.stop_task(
+                task_id=task_id,
+                invoke_from=InvokeFrom.EXPLORE,
+                user_id=request_context.account_id,
+            )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK

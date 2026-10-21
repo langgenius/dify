@@ -24,6 +24,50 @@ def identity():
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("legacy_first", [False, True])
+async def test_tools_with_different_package_bindings_do_not_share_a_daemon_client(legacy_first):
+    identifiers: list[str | None] = [f"langgenius/search:{version}.0.0@{'a' * 32}" for version in (1, 2)]
+    if legacy_first:
+        identifiers[0] = None
+    config = tools_layer.Config(
+        tools=[
+            {
+                "plugin_id": "langgenius/search",
+                **({"plugin_unique_identifier": identifier} if identifier is not None else {}),
+                "provider": "search",
+                "tool_name": "search",
+                "name": name,
+                "credential_type": "unauthorized",
+            }
+            for identifier, name in zip(identifiers, ("old_search", "new_search"), strict=True)
+        ]
+    )
+    seen = []
+
+    def handler(request):
+        seen.append(request.headers.get("X-Plugin-Unique-Identifier"))
+        return httpx.Response(
+            200,
+            text='data: {"code":0,"message":"","data":{"type":"text","message":{"text":"ok"}}}\n',
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        deps = Deps(
+            layers={
+                "tools": {"config": config.model_dump(mode="json"), "state": {}},
+                "execution_context": {"config": identity().model_dump(mode="json"), "state": {}},
+            },
+            services=Services(client, client, plugin_daemon_api_key="daemon-secret"),
+            run_id="test",
+        )
+        toolset = tools_layer.Toolset("tools")
+        await invoke_native_tool(deps, toolset, "old_search", {})
+        await invoke_native_tool(deps, toolset, "new_search", {})
+
+    assert seen == identifiers
+
+
+@pytest.mark.anyio
 async def test_native_plugin_tool_prepares_schema_merges_hidden_parameters_and_decodes_stream():
     schema = {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
     config = tools_layer.Config(
@@ -42,6 +86,7 @@ async def test_native_plugin_tool_prepares_schema_merges_hidden_parameters_and_d
                     {"name": "scope", "type": "string", "form": "form", "required": True},
                     {"name": "region", "type": "string", "form": "form", "default": "global"},
                 ],
+                "plugin_unique_identifier": "langgenius/search:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             }
         ]
     )
@@ -50,6 +95,7 @@ async def test_native_plugin_tool_prepares_schema_merges_hidden_parameters_and_d
     def handler(request):
         assert request.url.path == "/plugin/tenant/dispatch/tool/invoke"
         assert request.headers["X-Plugin-ID"] == "langgenius/search"
+        assert request.headers["X-Plugin-Unique-Identifier"] == config.tools[0].plugin_unique_identifier
         assert request.headers["X-Api-Key"] == "daemon-secret"
         seen.append(json.loads(request.content))
         return httpx.Response(
@@ -100,6 +146,7 @@ async def test_native_plugin_tool_converts_file_inputs(value, download):
                 "credential_type": "unauthorized",
                 "parameters": [{"name": "source", "type": "file", "form": "llm", "required": True}],
                 "parameters_json_schema": {"type": "object", "properties": {"source": {}}, "required": ["source"]},
+                "plugin_unique_identifier": "files:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             }
         ]
     )

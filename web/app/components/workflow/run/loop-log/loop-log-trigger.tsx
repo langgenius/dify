@@ -5,56 +5,23 @@ import { useTranslation } from 'react-i18next'
 
 type LoopLogTriggerProps = {
   nodeInfo: NodeTracing
-  allExecutions?: NodeTracing[]
   onShowLoopResultList: (
     loopResultList: NodeTracing[][],
     loopResultDurationMap: LoopDurationMap,
     loopVariableMap: LoopVariableMap,
   ) => void
 }
-const LoopLogTrigger = ({ nodeInfo, allExecutions, onShowLoopResultList }: LoopLogTriggerProps) => {
+const LoopLogTrigger = ({ nodeInfo, onShowLoopResultList }: LoopLogTriggerProps) => {
   const { t } = useTranslation(['workflow', 'workflowLogic'])
-
-  const filterNodesForInstance = (key: string): NodeTracing[] => {
-    if (!allExecutions) return []
-
-    const parallelNodes = allExecutions.filter(
-      (exec) => exec.execution_metadata?.parallel_mode_run_id === key,
-    )
-    if (parallelNodes.length > 0) return parallelNodes
-
-    const serialIndex = Number.parseInt(key, 10)
-    if (!Number.isNaN(serialIndex)) {
-      const serialNodes = allExecutions.filter(
-        (exec) =>
-          exec.execution_metadata?.loop_id === nodeInfo.node_id &&
-          exec.execution_metadata?.loop_index === serialIndex,
-      )
-      if (serialNodes.length > 0) return serialNodes
-    }
-
-    return []
-  }
 
   const handleOnShowLoopDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
-
     const loopNodeMeta = nodeInfo.execution_metadata
     const loopDurMap = nodeInfo?.loopDurationMap || loopNodeMeta?.loop_duration_map || {}
     const loopVarMap = loopNodeMeta?.loop_variable_map || {}
 
-    let structuredList: NodeTracing[][] = []
-    if (nodeInfo.details?.length) {
-      structuredList = nodeInfo.details
-    } else if (loopNodeMeta?.loop_duration_map) {
-      const instanceKeys = Object.keys(loopNodeMeta.loop_duration_map)
-      structuredList = instanceKeys
-        .map((key) => filterNodesForInstance(key))
-        .filter((branchNodes) => branchNodes.length > 0)
-    }
-
-    onShowLoopResultList(structuredList, loopDurMap, loopVarMap)
+    onShowLoopResultList(nodeInfo.details ?? [], loopDurMap, loopVarMap)
   }
 
   let displayLoopCount = 0

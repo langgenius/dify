@@ -9,10 +9,6 @@ import {
 } from '../use-edges-interactions.helpers'
 
 describe('use-edges-interactions.helpers', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('applyConnectedHandleNodeData should merge connected handle metadata into matching nodes', () => {
     const nodes = [
       createNode({ id: 'node-1', data: { title: 'Source' } }),
@@ -36,6 +32,9 @@ describe('use-edges-interactions.helpers', () => {
     expect(result[0]!.data._connectedSourceHandleIds).toEqual(['branch-a'])
     expect(result[1]!.data._connectedSourceHandleIds).toEqual([])
     expect(result[1]!.data._connectedTargetHandleIds).toEqual(['target'])
+    expect(result.map((node) => node.data.title)).toEqual(['Source', 'Target'])
+    expect(nodes[0]!.data._connectedSourceHandleIds).toEqual([])
+    expect(nodes[1]!.data._connectedTargetHandleIds).toEqual([])
   })
 
   it('clearEdgeMenuIfNeeded should return true only when the open menu belongs to a removed edge', () => {

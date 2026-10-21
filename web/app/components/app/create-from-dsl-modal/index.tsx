@@ -1,15 +1,15 @@
 'use client'
 
 import type { AppImportPayload, AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -62,7 +62,7 @@ type ImportSource =
   | { type: (typeof CreateFromDSLModalTab)['FROM_FILE']; file: File }
   | { type: (typeof CreateFromDSLModalTab)['FROM_URL']; url: string }
 
-const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 function getImportedAppMode(mode?: string | null): AppMode | undefined {
   switch (mode) {
@@ -325,7 +325,7 @@ function CreateFromDSLModal({
         >
           <DialogHeader>
             <DialogTitle>{t(($) => $.importApp, { ns: 'app' })}</DialogTitle>
-            <DialogCloseButton
+            <DialogHeaderCloseButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               disabled={isImporting}
             />

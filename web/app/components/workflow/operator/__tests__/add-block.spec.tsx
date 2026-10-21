@@ -1,5 +1,4 @@
 import type { NodeDefault } from '../../types'
-import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createNode } from '../../__tests__/fixtures'
@@ -8,14 +7,12 @@ import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
 import AddBlock from '../add-block'
 
-const { mockHandlePaneContextmenuCancel, mockWorkflowStoreSetState } = vi.hoisted(() => ({
+const { mockHandlePaneContextmenuCancel } = vi.hoisted(() => ({
   mockHandlePaneContextmenuCancel: vi.fn(),
-  mockWorkflowStoreSetState: vi.fn(),
 }))
 
 let mockNodesReadOnly = false
 let chatflowMode = false
-let mockFlowType: EditorResource['kind'] = 'app'
 
 const answerBlock: NodeDefault = {
   metaData: {
@@ -40,10 +37,6 @@ vi.mock('../../hooks/use-available-blocks', () => ({
   }),
 }))
 
-vi.mock('../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: mockNodesReadOnly }),
-}))
-
 vi.mock('../../hooks/use-nodes-meta-data', () => ({
   useNodesMetaData: () => ({
     nodesMap: { [BlockEnum.Answer]: answerBlock },
@@ -54,20 +47,6 @@ vi.mock('../../hooks/use-panel-interactions', () => ({
   usePanelInteractions: () => ({
     handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
   }),
-}))
-
-vi.mock('../../hooks-store', () => ({
-  useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      configsMap: { resourceKind: mockFlowType },
-      availableNodesMetaData: { nodes: [answerBlock] },
-    }),
-}))
-
-vi.mock('../../store', () => ({
-  useStore: (selector: (state: { dataSourceList: unknown[]; nodes: unknown[] }) => unknown) =>
-    selector({ dataSourceList: [], nodes: [] }),
-  useWorkflowStore: () => ({ setState: mockWorkflowStoreSetState }),
 }))
 
 vi.mock('@/service/use-plugins', () => ({
@@ -103,6 +82,8 @@ const renderWithReactFlow = (nodes: Array<ReturnType<typeof createNode>> = []) =
     resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
     nodes,
     edges: [],
+    initialStoreState: { canvasReadOnly: mockNodesReadOnly },
+    hooksStoreProps: { availableNodesMetaData: { nodes: [answerBlock] } },
   })
 
 describe('AddBlock', () => {
@@ -110,7 +91,6 @@ describe('AddBlock', () => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
     chatflowMode = false
-    mockFlowType = 'app'
   })
 
   it('opens the real selector and exposes its open state', async () => {
@@ -160,7 +140,7 @@ describe('AddBlock', () => {
 
   it('creates a candidate node after selecting a real block option', async () => {
     const user = userEvent.setup()
-    renderWithReactFlow([
+    const { store } = renderWithReactFlow([
       createNode({ id: 'node-1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Answer } }),
       createNode({ id: 'node-2', position: { x: 80, y: 0 }, data: { type: BlockEnum.Answer } }),
     ])
@@ -168,7 +148,7 @@ describe('AddBlock', () => {
     await user.click(screen.getByRole('button', { name: 'workflow.common.addBlock' }))
     await user.click(screen.getByRole('button', { name: 'Answer' }))
 
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
+    expect(store.getState()).toMatchObject({
       candidateNode: expect.objectContaining({
         id: expect.any(String),
         type: 'custom',

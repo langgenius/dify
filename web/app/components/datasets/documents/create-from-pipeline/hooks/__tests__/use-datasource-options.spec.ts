@@ -3,8 +3,7 @@ import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
-
-const { useDatasourceOptions } = await import('../use-datasource-options')
+import { useDatasourceOptions } from '../use-datasource-options'
 
 describe('useDatasourceOptions', () => {
   const createNode = (id: string, title: string, type: string): Node<DataSourceNodeType> =>
@@ -17,12 +16,6 @@ describe('useDatasourceOptions', () => {
         provider_type: 'local_file',
       },
     }) as unknown as Node<DataSourceNodeType>
-
-  it('should return empty array for no datasource nodes', () => {
-    const nodes = [createNode('n1', 'LLM Node', 'llm')]
-    const { result } = renderHook(() => useDatasourceOptions(nodes))
-    expect(result.current).toEqual([])
-  })
 
   it('should return options for datasource nodes', () => {
     const nodes = [

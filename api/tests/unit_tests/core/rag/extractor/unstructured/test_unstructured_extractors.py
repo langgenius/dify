@@ -43,7 +43,7 @@ def _install_chunk_by_title(monkeypatch: pytest.MonkeyPatch, chunks: list[Text])
 
 
 class TestUnstructuredMarkdownMsgXml:
-    def test_markdown_extractor_without_api(self, monkeypatch: pytest.MonkeyPatch):
+    def test_markdown_extractor_without_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_chunk_by_title(monkeypatch, [Text(text=" chunk-1 "), Text(text=" chunk-2 ")])
         _register_module(monkeypatch, "unstructured.partition.md", partition_md=lambda filename: [Text(text="x")])
 
@@ -51,11 +51,11 @@ class TestUnstructuredMarkdownMsgXml:
 
         assert [doc.page_content for doc in docs] == ["chunk-1", "chunk-2"]
 
-    def test_markdown_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch):
+    def test_markdown_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_chunk_by_title(monkeypatch, [Text(text=" via-api ")])
-        calls = {}
+        calls: dict[str, str] = {}
 
-        def partition_via_api(filename, api_url, api_key):
+        def partition_via_api(filename: str, api_url: str, api_key: str) -> list[Text]:
             calls.update({"filename": filename, "api_url": api_url, "api_key": api_key})
             return [Text(text="ignored")]
 
@@ -66,17 +66,17 @@ class TestUnstructuredMarkdownMsgXml:
         assert docs[0].page_content == "via-api"
         assert calls == {"filename": "/tmp/file.md", "api_url": "https://u", "api_key": "k"}
 
-    def test_msg_extractor_local(self, monkeypatch: pytest.MonkeyPatch):
+    def test_msg_extractor_local(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_chunk_by_title(monkeypatch, [Text(text="msg-doc")])
         _register_module(monkeypatch, "unstructured.partition.msg", partition_msg=lambda filename: [Text(text="x")])
 
         assert UnstructuredMsgExtractor("/tmp/file.msg").extract()[0].page_content == "msg-doc"
 
-    def test_msg_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch):
+    def test_msg_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_chunk_by_title(monkeypatch, [Text(text="msg-doc")])
-        calls = {}
+        calls: dict[str, str] = {}
 
-        def partition_via_api(filename, api_url, api_key):
+        def partition_via_api(filename: str, api_url: str, api_key: str) -> list[Text]:
             calls.update({"filename": filename, "api_url": api_url, "api_key": api_key})
             return [Text(text="x")]
 
@@ -88,12 +88,12 @@ class TestUnstructuredMarkdownMsgXml:
         )
         assert calls["filename"] == "/tmp/file.msg"
 
-    def test_xml_extractor_local_and_api(self, monkeypatch: pytest.MonkeyPatch):
+    def test_xml_extractor_local_and_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_chunk_by_title(monkeypatch, [Text(text="xml-doc")])
 
-        xml_calls = {}
+        xml_calls: dict[str, str | bool] = {}
 
-        def partition_xml(filename, xml_keep_tags):
+        def partition_xml(filename: str, xml_keep_tags: bool) -> list[Text]:
             xml_calls.update({"filename": filename, "xml_keep_tags": xml_keep_tags})
             return [Text(text="x")]
 
@@ -102,9 +102,9 @@ class TestUnstructuredMarkdownMsgXml:
         assert UnstructuredXmlExtractor("/tmp/file.xml").extract()[0].page_content == "xml-doc"
         assert xml_calls == {"filename": "/tmp/file.xml", "xml_keep_tags": True}
 
-        api_calls = {}
+        api_calls: dict[str, str] = {}
 
-        def partition_via_api(filename, api_url, api_key):
+        def partition_via_api(filename: str, api_url: str, api_key: str) -> list[Text]:
             api_calls.update({"filename": filename, "api_url": api_url, "api_key": api_key})
             return [Text(text="x")]
 
@@ -118,9 +118,11 @@ class TestUnstructuredMarkdownMsgXml:
 
 
 class TestUnstructuredEmailAndEpub:
-    def test_email_extractor_local_decodes_html_and_suppresses_decode_errors(self, monkeypatch: pytest.MonkeyPatch):
+    def test_email_extractor_local_decodes_html_and_suppresses_decode_errors(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _register_unstructured_packages(monkeypatch)
-        captured = {}
+        captured: dict[str, list[Text]] = {}
 
         def chunk_by_title(elements: list[Text], max_characters: int, combine_text_under_n_chars: int) -> list[Text]:
             captured["elements"] = list(elements)
@@ -142,7 +144,7 @@ class TestUnstructuredEmailAndEpub:
         assert "Hello Email" in chunk_elements[0].text
         assert chunk_elements[1].text == bad_base64
 
-    def test_email_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch):
+    def test_email_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_chunk_by_title(monkeypatch, [Text(text="api-email")])
         _register_module(
             monkeypatch,
@@ -154,15 +156,15 @@ class TestUnstructuredEmailAndEpub:
 
         assert docs[0].page_content == "api-email"
 
-    def test_epub_extractor_local_and_api(self, monkeypatch: pytest.MonkeyPatch):
+    def test_epub_extractor_local_and_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_chunk_by_title(monkeypatch, [Text(text="epub-doc")])
 
         calls = {"download": 0, "partition": 0}
 
-        def fake_download_pandoc():
+        def fake_download_pandoc() -> None:
             calls["download"] += 1
 
-        def partition_epub(filename, xml_keep_tags):
+        def partition_epub(filename: str, xml_keep_tags: bool) -> list[Text]:
             calls["partition"] += 1
             assert xml_keep_tags is True
             return [Text(text="x")]
@@ -186,11 +188,11 @@ class TestUnstructuredEmailAndEpub:
 
 
 class TestUnstructuredPPTAndPPTX:
-    def test_ppt_extractor_requires_api_url(self):
+    def test_ppt_extractor_requires_api_url(self) -> None:
         with pytest.raises(NotImplementedError, match="Unstructured API Url is not configured"):
             UnstructuredPPTExtractor("/tmp/file.ppt").extract()
 
-    def test_ppt_extractor_groups_text_by_page(self, monkeypatch: pytest.MonkeyPatch):
+    def test_ppt_extractor_groups_text_by_page(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _register_unstructured_packages(monkeypatch)
         _register_module(
             monkeypatch,
@@ -207,7 +209,7 @@ class TestUnstructuredPPTAndPPTX:
 
         assert [doc.page_content for doc in docs] == ["A\nB", "C"]
 
-    def test_pptx_extractor_local_and_api(self, monkeypatch: pytest.MonkeyPatch):
+    def test_pptx_extractor_local_and_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _register_unstructured_packages(monkeypatch)
         _register_module(
             monkeypatch,
@@ -236,7 +238,7 @@ class TestUnstructuredPPTAndPPTX:
 
 
 class TestUnstructuredWord:
-    def _install_doc_modules(self, monkeypatch: pytest.MonkeyPatch, version: str, filetype_value):
+    def _install_doc_modules(self, monkeypatch: pytest.MonkeyPatch, version: str, filetype_value: str) -> None:
         _register_unstructured_packages(monkeypatch)
 
         class FileType:
@@ -262,29 +264,26 @@ class TestUnstructuredWord:
         _register_module(
             monkeypatch,
             "unstructured.chunking.title",
-            chunk_by_title=lambda elements, max_characters, combine_text_under_n_chars: [
-                Text(text="chunk-1"),
-                Text(text="chunk-2"),
-            ],
+            chunk_by_title=lambda elements, max_characters, combine_text_under_n_chars: elements,
         )
 
-    def test_word_extractor_rejects_doc_on_old_unstructured_version(self, monkeypatch: pytest.MonkeyPatch):
+    def test_word_extractor_rejects_doc_on_old_unstructured_version(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._install_doc_modules(monkeypatch, version="0.4.10", filetype_value="doc")
 
         with pytest.raises(ValueError, match="Partitioning .doc files is only supported"):
             UnstructuredWordExtractor("/tmp/file.doc", "https://u", "k").extract()
 
-    def test_word_extractor_doc_and_docx_paths(self, monkeypatch: pytest.MonkeyPatch):
+    def test_word_extractor_doc_and_docx_paths(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._install_doc_modules(monkeypatch, version="0.4.11", filetype_value="doc")
 
         docs = UnstructuredWordExtractor("/tmp/file.doc", "https://u", "k").extract()
-        assert [doc.page_content for doc in docs] == ["chunk-1", "chunk-2"]
+        assert [doc.page_content for doc in docs] == ["api-doc"]
 
         self._install_doc_modules(monkeypatch, version="0.5.0", filetype_value="not-doc")
         docs = UnstructuredWordExtractor("/tmp/file.docx", "https://u", "k").extract()
-        assert [doc.page_content for doc in docs] == ["chunk-1", "chunk-2"]
+        assert [doc.page_content for doc in docs] == ["docx-doc"]
 
-    def test_word_extractor_magic_import_error_fallback_to_extension(self, monkeypatch: pytest.MonkeyPatch):
+    def test_word_extractor_magic_import_error_fallback_to_extension(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._install_doc_modules(monkeypatch, version="0.4.10", filetype_value="not-used")
         monkeypatch.setitem(sys.modules, "magic", None)
 

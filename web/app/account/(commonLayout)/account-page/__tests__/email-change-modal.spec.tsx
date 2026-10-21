@@ -11,25 +11,19 @@ vi.mock('@/app/notifications', () => ({
   toast: { error: vi.fn() },
 }))
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    account: {
-      changeEmail: {
-        checkEmailUnique: {
-          post: vi.fn(),
-        },
-        reset: {
-          post: vi.fn(),
-        },
-        post: vi.fn(),
-        validity: {
-          post: vi.fn(),
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'account.changeEmail.checkEmailUnique.post': vi.fn(),
+      'account.changeEmail.reset.post': vi.fn(),
+      'account.changeEmail.post': vi.fn(),
+      'account.changeEmail.validity.post': vi.fn(),
+    }),
+  }
+})
 
 vi.mock('@/service/use-common', () => ({
   useLogout: () => ({ mutateAsync: mockLogout }),

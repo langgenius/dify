@@ -63,6 +63,12 @@ const useRefreshPluginList = () => {
       if (refreshAllType || !manifest) invalidateInstalledPluginList()
       else invalidateInstalledPluginList(manifest.category)
       invalidateCheckInstalled()
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
+      })
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.list.latestVersions.post.key(),
+      })
 
       // tool page, tool select
       if ((manifest && PluginCategoryEnum.tool.includes(manifest.category)) || refreshAllType) {

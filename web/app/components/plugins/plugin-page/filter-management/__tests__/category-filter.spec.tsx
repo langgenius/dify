@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -27,19 +27,6 @@ describe('CategoriesFilter', () => {
     vi.clearAllMocks()
     const mod = await import('../category-filter')
     CategoriesFilter = mod.default
-  })
-
-  it('should show "allCategories" when no categories selected', () => {
-    render(<CategoriesFilter value={[]} onChange={vi.fn()} />)
-
-    expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
-  })
-
-  it('should show selected category labels', () => {
-    render(<CategoriesFilter value={['tool']} onChange={vi.fn()} />)
-
-    const toolElements = screen.getAllByText('Tool')
-    expect(toolElements.length).toBeGreaterThanOrEqual(1)
   })
 
   it('should show +N when more than 2 selected', () => {
@@ -73,31 +60,23 @@ describe('CategoriesFilter', () => {
     expect(screen.getByRole('button', { name: 'plugin.allCategories' })).toHaveFocus()
   })
 
-  it('should render category options in dropdown', () => {
-    render(<CategoriesFilter value={[]} onChange={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.allCategories' }))
-
-    expect(screen.getByText('Tool'))!.toBeInTheDocument()
-    expect(screen.getByText('Model'))!.toBeInTheDocument()
-    expect(screen.getByText('Extension'))!.toBeInTheDocument()
-  })
-
-  it('should toggle category on option click', () => {
+  it('should toggle category on option click', async () => {
+    const user = userEvent.setup()
     const mockOnChange = vi.fn()
     render(<CategoriesFilter value={[]} onChange={mockOnChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.allCategories' }))
-    fireEvent.click(screen.getByText('Tool'))
+    await user.click(screen.getByRole('button', { name: 'plugin.allCategories' }))
+    await user.click(screen.getByText('Tool'))
     expect(mockOnChange).toHaveBeenCalledWith(['tool'])
   })
 
-  it('should remove category when clicking already selected', () => {
+  it('should remove category when clicking already selected', async () => {
+    const user = userEvent.setup()
     const mockOnChange = vi.fn()
     render(<CategoriesFilter value={['tool']} onChange={mockOnChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /Tool/ }))
-    const toolElements = screen.getAllByText('Tool')
-    fireEvent.click(toolElements[toolElements.length - 1]!)
+    await user.click(screen.getByRole('button', { name: /Tool/ }))
+    await user.click(within(await screen.findByRole('dialog')).getByText('Tool'))
     expect(mockOnChange).toHaveBeenCalledWith([])
   })
 
@@ -106,6 +85,8 @@ describe('CategoriesFilter', () => {
     render(<CategoriesFilter value={[]} onChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'plugin.allCategories' }))
+    expect(within(await screen.findByRole('dialog')).getByText('Tool')).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByText('Extension')).toBeInTheDocument()
     await user.type(screen.getByRole('searchbox', { name: 'plugin.searchCategories' }), 'mod')
 
     expect(screen.queryByText('Tool')).not.toBeInTheDocument()

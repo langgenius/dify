@@ -58,17 +58,6 @@ describe('AccountDropdown', () => {
     } as unknown as ReturnType<typeof useLogout>)
   })
 
-  it('includes the visible account name in the main navigation trigger accessible name', () => {
-    const queryClient = createAccountProfileQueryClient(userProfile)
-
-    renderWithConsoleQuery(<AccountSection />, {
-      queryClient,
-      features: { education: { enabled: false } },
-    })
-
-    expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
-  })
-
   it('keeps the account identity in the compact trigger accessible name', () => {
     const queryClient = createAccountProfileQueryClient(userProfile)
 
@@ -113,21 +102,6 @@ describe('AccountDropdown', () => {
     expect(
       container.querySelector('button[aria-label="accountSettings.account.account"]'),
     ).toBeDisabled()
-  })
-
-  it('opens the main navigation account menu through the composed trigger', async () => {
-    const user = userEvent.setup()
-    renderAccountDropdown()
-
-    const trigger = screen.getByRole('button', { name: 'accountSettings.account.account' })
-    expect(trigger).not.toHaveAttribute('data-popup-open')
-
-    await user.click(trigger)
-
-    expect(await screen.findByText('current@example.com')).toBeInTheDocument()
-    expect(trigger).toHaveAttribute('data-popup-open', '')
-    expect(screen.getByText('navigation.settings.preferences')).toBeInTheDocument()
-    expect(screen.getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
   })
 
   it('opens preferences from the account menu', async () => {

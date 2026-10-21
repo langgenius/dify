@@ -7,14 +7,6 @@ import { renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState } from 
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import ModerationSettingModal from '../moderation-setting-modal'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'codeBasedExtension.get': () => ({ data: { data: [] } }),
-    'workspaces.current.modelProviders.get': () => ({ data: { data: [] }, isPending: false }),
-  })
-})
-
 const { getExtensions, createExtension } = vi.hoisted(() => ({
   getExtensions: vi.fn<ConsoleClient['apiBasedExtension']['get']>(),
   createExtension: vi.fn<ConsoleClient['apiBasedExtension']['post']>(),
@@ -22,6 +14,7 @@ const { getExtensions, createExtension } = vi.hoisted(() => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   const { createConsoleQuery } = await import('@/service/console/query-policies')
   const consoleClient = new Proxy(actual.consoleClient, {
     get(target, property, receiver) {
@@ -35,7 +28,14 @@ vi.mock('@/service/console', async (importOriginal) => {
       return Reflect.get(target, property, receiver)
     },
   })
-  return { ...actual, consoleClient, consoleQuery: createConsoleQuery(consoleClient) }
+  return {
+    ...actual,
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
+      'codeBasedExtension.get': () => ({ data: [] }),
+      'workspaces.current.modelProviders.get': () => ({ data: [] }),
+    }),
+  }
 })
 
 const existingExtension: ApiBasedExtensionResponse = {

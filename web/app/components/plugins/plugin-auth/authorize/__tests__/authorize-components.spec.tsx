@@ -72,3 +72,20 @@ it('opens settings for an unconfigured OAuth provider and saves the entered clie
   })
   expect(commands.authorize).not.toHaveBeenCalled()
 })
+
+it('keeps a disabled API key action closed and allows cancellation once enabled', async () => {
+  const user = userEvent.setup()
+  const { rerender } = render(
+    <AddApiKeyButton pluginPayload={payload} buttonText="Add key" disabled />,
+  )
+  const button = screen.getByRole('button', { name: 'Add key' })
+  expect(button).toBeDisabled()
+  await user.click(button)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  rerender(<AddApiKeyButton pluginPayload={payload} buttonText="Add key" />)
+  await user.click(button)
+  expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(commands.add).not.toHaveBeenCalled()
+})

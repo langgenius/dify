@@ -1,7 +1,8 @@
 import type { InputVar, Node } from '../../../types'
 import type { LoopNodeType } from '../types'
 import type { NodeTracing } from '@/types/workflow'
-import { act, renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { useNodes } from 'reactflow'
 import {
   BlockEnum,
   ErrorHandleMode,
@@ -9,16 +10,10 @@ import {
   ValueType,
   VarType,
 } from '@/app/components/workflow/types'
+import { createEdge, createNode, createNodeTracing } from '../../../__tests__/fixtures'
+import { renderWorkflowFlowHook } from '../../../__tests__/workflow-test-env'
 import { ComparisonOperator, LogicalOperator } from '../types'
 import useSingleRunFormParams from '../use-single-run-form-params'
-
-const mockUseIsNodeInLoop = vi.hoisted(() => vi.fn())
-const mockUseWorkflow = vi.hoisted(() => vi.fn())
-
-vi.mock('../../../hooks/use-workflow', () => ({
-  useIsNodeInLoop: (...args: unknown[]) => mockUseIsNodeInLoop(...args),
-  useWorkflow: () => mockUseWorkflow(),
-}))
 
 const createLoopNode = (overrides: Partial<LoopNodeType> = {}): LoopNodeType => ({
   title: 'Loop',
@@ -40,6 +35,7 @@ const createVariableNode = (id: string, title: string, type: BlockEnum = BlockEn
       title,
       type,
       desc: '',
+      tool_configurations: {},
       tool_parameters:
         id === 'tool-a'
           ? {
@@ -58,55 +54,35 @@ const createInputVar = (variable: string): InputVar => ({
   required: false,
 })
 
-const createRunTrace = (): NodeTracing => ({
-  id: 'trace-1',
-  index: 0,
-  predecessor_node_id: '',
-  node_id: 'loop-node',
-  node_type: BlockEnum.Loop,
-  title: 'Loop',
-  inputs: {},
-  inputs_truncated: false,
-  process_data: {},
-  process_data_truncated: false,
-  outputs_truncated: false,
-  status: 'succeeded',
-  elapsed_time: 1,
-  metadata: { iterator_length: 0, iterator_index: 0, loop_length: 2, loop_index: 1 },
-  execution_metadata: {
-    total_tokens: 0,
-    total_price: 0,
-    currency: 'USD',
-    loop_index: 1,
-  },
-  created_at: 0,
-  created_by: {
-    id: 'user-1',
-    name: 'User',
-    email: 'user@example.com',
-  },
-  finished_at: 1,
-})
-
-describe('useSingleRunFormParams', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseIsNodeInLoop.mockReturnValue({
-      isNodeInLoop: (nodeId: string) => nodeId === 'inner-node',
-    })
-    mockUseWorkflow.mockReturnValue({
-      getLoopNodeChildren: () => [
-        createVariableNode('tool-a', 'Tool A'),
-        createVariableNode('loop-node', 'Loop Node'),
-        createVariableNode('inner-node', 'Inner Node'),
-      ],
-      getBeforeNodesInSameBranch: () => [
-        createVariableNode('start-node', 'Start Node', BlockEnum.Start),
-      ],
-    })
+const createRunTrace = () =>
+  createNodeTracing({
+    id: 'trace-1',
+    node_id: 'loop-node',
+    node_type: BlockEnum.Loop,
+    title: 'Loop',
+    status: 'succeeded',
+    execution_metadata: { total_tokens: 0, total_price: 0, currency: 'USD', loop_index: 1 },
   })
 
-  it('should build single-run forms and filter out loop-local variables', () => {
+const renderHook = <T>(callback: () => T) =>
+  renderWorkflowFlowHook(
+    () => {
+      useNodes()
+      return callback()
+    },
+    {
+      nodes: [
+        createVariableNode('start-node', 'Start Node', BlockEnum.Start),
+        createNode({ id: 'loop-node', data: createLoopNode() }),
+        { ...createVariableNode('tool-a', 'Tool A'), parentId: 'loop-node' },
+        { ...createVariableNode('inner-node', 'Inner Node'), parentId: 'loop-node' },
+      ],
+      edges: [createEdge({ source: 'start-node', target: 'loop-node' })],
+    },
+  )
+
+describe('useSingleRunFormParams', () => {
+  it('should build single-run forms and filter out loop-local variables', async () => {
     const toVarInputs = vi.fn((variables: Array<{ variable: string }>) =>
       variables.map((item) => createInputVar(item.variable)),
     )
@@ -154,9 +130,11 @@ describe('useSingleRunFormParams', () => {
       }),
     )
 
-    expect(toVarInputs).toHaveBeenCalledWith([
-      expect.objectContaining({ variable: 'start-node.answer' }),
-    ])
+    await waitFor(() =>
+      expect(toVarInputs).toHaveBeenCalledWith([
+        expect.objectContaining({ variable: 'start-node.answer' }),
+      ]),
+    )
     expect(result.current.forms).toHaveLength(1)
     expect(result.current.forms[0]!.inputs).toEqual([
       createInputVar('start-node.answer'),

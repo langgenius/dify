@@ -4,13 +4,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { useForm, useStore } from '@tanstack/react-form'
+import { useForm, useSelector } from '@tanstack/react-form'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
@@ -22,7 +22,7 @@ import {
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
 
-export type OAuthClientSettingsProps = {
+type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -144,7 +144,7 @@ const OAuthClientSettings = ({
   const form = useForm({
     defaultValues: editValues || defaultValues,
   })
-  const __oauth_client__ = useStore(form.store, (s) => s.values.__oauth_client__)
+  const __oauth_client__ = useSelector(form.store, (s) => s.values.__oauth_client__)
   const isDisabled = disabled || doingAction
 
   return (
@@ -152,7 +152,7 @@ const OAuthClientSettings = ({
       <DialogContent backdropProps={{ forceRender: true }}>
         <DialogHeader>
           <DialogTitle>{t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           {pluginPayload.detail && (

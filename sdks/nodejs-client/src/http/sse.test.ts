@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream'
 import { describe, expect, it } from 'vite-plus/test'
+import { APIError } from '../errors/dify-error'
 import { createBinaryStream, createSseStream, parseSseStream } from './sse'
 
 describe('sse parsing', () => {
@@ -81,6 +82,67 @@ describe('sse parsing', () => {
     })
     const text = await sseStream.toText()
     expect(text).toBe('hello world')
+  })
+
+  it.each([
+    '',
+    'data: {"event":"message","answer":"partial answer"}\n\n',
+    [
+      'data: {"event":"text_chunk","data":{"text":"partial answer"}}\n\n',
+      'data: {"event":"message_replace","answer":"replacement"}\n\n',
+    ].join(''),
+  ])('toText rejects a streamed API error after %j', async (prefix) => {
+    const error = {
+      event: 'error',
+      status: 429,
+      code: 'rate_limit_error',
+      message: 'Rate limit reached',
+    }
+    const stream = Readable.from([prefix, `data: ${JSON.stringify(error)}\n\n`])
+    const sseStream = createSseStream(stream, {
+      status: 200,
+      headers: {},
+      requestId: 'req-stream',
+    })
+
+    const result = sseStream.toText()
+    await expect(result).rejects.toBeInstanceOf(APIError)
+    await expect(result).rejects.toMatchObject({
+      message: error.message,
+      statusCode: error.status,
+      responseBody: error,
+      requestId: 'req-stream',
+    })
+  })
+
+  it('keeps streamed API errors available to event consumers', async () => {
+    const error = { event: 'error', status: 400, code: 'invalid_param', message: 'Invalid input' }
+    const stream = createSseStream(Readable.from([`data: ${JSON.stringify(error)}\n\n`]), {
+      status: 200,
+      headers: {},
+    })
+    const events = []
+    for await (const event of stream) {
+      events.push(event.data)
+    }
+
+    expect(events).toEqual([error])
+  })
+
+  it('rejects malformed error metadata without collecting its text', async () => {
+    const error = { event: 'error', message: null, status: '429', answer: 'not a success' }
+    const stream = createSseStream(Readable.from([`data: ${JSON.stringify(error)}\n\n`]), {
+      status: 200,
+      headers: {},
+    })
+
+    await expect(stream.toText()).rejects.toMatchObject({
+      name: 'APIError',
+      message: 'Stream returned an error',
+      statusCode: undefined,
+      responseBody: error,
+      requestId: undefined,
+    })
   })
 
   it('toText extracts text from string data', async () => {

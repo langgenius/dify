@@ -93,7 +93,7 @@ export const AuthorizedItem = ({
           disableDelete={disableDelete}
           showSelectedIcon={showItemSelectedIcon}
           selectedCredentialId={selectedCredentialId}
-          onItemClick={handleItemClick}
+          onItemClick={onItemClick ? handleItemClick : undefined}
           disableDeleteButShowAction={disableDeleteButShowAction}
           disableDeleteTip={disableDeleteTip}
         />
