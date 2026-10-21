@@ -1,8 +1,8 @@
-import json
 from http import HTTPStatus
-from typing import Never
+from typing import Any, Never
 
 import httpx
+from pydantic import TypeAdapter, ValidationError
 
 from core.helper.http_client_pooling import get_pooled_http_client
 from services.auth.errors import (
@@ -11,6 +11,8 @@ from services.auth.errors import (
     InvalidDataSourceApiKeyAuthCredentialsError,
 )
 from services.data_source.entities.api_key_auth import DataSourceApiKeyAuthCredentials
+
+_error_response_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 _http_client: httpx.Client = get_pooled_http_client(
     "auth:jina",
@@ -47,7 +49,7 @@ class JinaAuth:
     def _post_request(self, url, data, headers):
         return _http_client.post(url, headers=headers, json=data)
 
-    def _handle_error(self, response) -> Never:
+    def _handle_error(self, response: httpx.Response) -> Never:
         if (
             response.status_code == HTTPStatus.TOO_MANY_REQUESTS
             or response.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR
@@ -56,8 +58,10 @@ class JinaAuth:
 
         if response.status_code in {402, 409}:
             try:
-                error_message = response.json().get("error", "Unknown error occurred")
-            except json.JSONDecodeError:
+                error_message = _error_response_adapter.validate_json(response.text, strict=True).get(
+                    "error", "Unknown error occurred"
+                )
+            except ValidationError:
                 error_message = response.text or "Unknown error occurred"
             raise DataSourceApiKeyAuthCredentialValidationError(
                 f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}"
@@ -65,8 +69,10 @@ class JinaAuth:
         else:
             if response.text:
                 try:
-                    error_message = json.loads(response.text).get("error", "Unknown error occurred")
-                except json.JSONDecodeError:
+                    error_message = _error_response_adapter.validate_json(response.text, strict=True).get(
+                        "error", "Unknown error occurred"
+                    )
+                except ValidationError:
                     error_message = response.text
                 raise DataSourceApiKeyAuthCredentialValidationError(
                     f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}"

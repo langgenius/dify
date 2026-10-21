@@ -92,14 +92,75 @@ class TestJinaAuth:
             auth.validate_credentials()
         assert str(exc_info.value) == "Failed to authorize. Status code: 409. Error: Conflict error"
 
+    @pytest.mark.parametrize("status_code", [402, 409, 403])
+    @pytest.mark.parametrize("response_text", ['["Forbidden"]', "[]", "null", '"Forbidden"', "123", "false"])
+    @patch("services.data_source.auth.jina.jina._http_client.post", autospec=True)
+    def test_should_handle_non_object_json_error_response(
+        self, mock_post: MagicMock, status_code: int, response_text: str
+    ) -> None:
+        mock_post.return_value = httpx.Response(status_code, text=response_text)
+
+        with pytest.raises(DataSourceApiKeyAuthCredentialValidationError) as exc_info:
+            JinaAuth(_credentials()).validate_credentials()
+
+        assert str(exc_info.value) == f"Failed to authorize. Status code: {status_code}. Error: {response_text}"
+
+    @pytest.mark.parametrize("status_code", [402, 409, 403])
+    @pytest.mark.parametrize(
+        ("response_text", "expected_error"),
+        [
+            ('{"error":"Forbidden","extra":"ignored"}', "Forbidden"),
+            ('{"message":"Denied"}', "Unknown error occurred"),
+            ('{"error":""}', ""),
+            ('{"error":null}', "None"),
+            ('{"error":{"message":"Denied"}}', "{'message': 'Denied'}"),
+            ('{"error":["Denied"]}', "['Denied']"),
+        ],
+    )
+    @patch("services.data_source.auth.jina.jina._http_client.post", autospec=True)
+    def test_should_preserve_json_object_error_values(
+        self, mock_post: MagicMock, status_code: int, response_text: str, expected_error: str
+    ) -> None:
+        mock_post.return_value = httpx.Response(status_code, text=response_text)
+
+        with pytest.raises(DataSourceApiKeyAuthCredentialValidationError) as exc_info:
+            JinaAuth(_credentials()).validate_credentials()
+
+        assert str(exc_info.value) == f"Failed to authorize. Status code: {status_code}. Error: {expected_error}"
+
+    @pytest.mark.parametrize("status_code", [402, 409, 403])
+    @pytest.mark.parametrize("response_text", ["Forbidden", '{"error":'])
+    @patch("services.data_source.auth.jina.jina._http_client.post", autospec=True)
+    def test_should_preserve_unparseable_error_response_text(
+        self, mock_post: MagicMock, status_code: int, response_text: str
+    ) -> None:
+        mock_post.return_value = httpx.Response(status_code, text=response_text)
+
+        with pytest.raises(DataSourceApiKeyAuthCredentialValidationError) as exc_info:
+            JinaAuth(_credentials()).validate_credentials()
+
+        assert str(exc_info.value) == f"Failed to authorize. Status code: {status_code}. Error: {response_text}"
+
+    @pytest.mark.parametrize("status_code", [402, 409])
+    @patch("services.data_source.auth.jina.jina._http_client.post", autospec=True)
+    def test_should_preserve_empty_known_error_response(self, mock_post: MagicMock, status_code: int) -> None:
+        mock_post.return_value = httpx.Response(status_code)
+
+        with pytest.raises(DataSourceApiKeyAuthCredentialValidationError) as exc_info:
+            JinaAuth(_credentials()).validate_credentials()
+
+        assert str(exc_info.value) == f"Failed to authorize. Status code: {status_code}. Error: Unknown error occurred"
+
     @pytest.mark.parametrize("status_code", [429, 500, 502, 503])
+    @pytest.mark.parametrize("response_text", ["", "null"])
     @patch("services.data_source.auth.jina.jina._http_client.post", autospec=True)
     def test_should_map_upstream_failure_to_provider_unavailable(
         self,
         mock_post: MagicMock,
         status_code: int,
+        response_text: str,
     ) -> None:
-        mock_post.return_value = httpx.Response(status_code)
+        mock_post.return_value = httpx.Response(status_code, text=response_text)
 
         auth = JinaAuth(_credentials())
 
