@@ -67,6 +67,14 @@ class MessageContext:
     answer: str | None = None
 
 
+@dataclass(frozen=True)
+class HumanInputFormSnapshot:
+    expiration_time: int
+    rendered_content: str
+    default_values: Mapping[str, Any] | None
+    display_in_ui: bool
+
+
 @dataclass
 class BufferState:
     queue: queue.Queue[Mapping[str, Any]]
@@ -384,6 +392,11 @@ def _build_snapshot_events(
         pause_reasons = _filter_open_pause_reasons(pause_entity.get_pause_reasons(), session_maker=session_maker)
 
     if pause_reasons:
+        human_input_form_snapshots = _load_human_input_form_snapshots(
+            pause_reasons,
+            workflow_run=workflow_run,
+            session_maker=session_maker,
+        )
         for human_input_event in _build_human_input_required_events(
             workflow_run_id=workflow_run.id,
             task_id=task_id,
@@ -391,6 +404,7 @@ def _build_snapshot_events(
             session_maker=session_maker,
             human_input_surface=human_input_surface,
             variable_pool=variable_pool,
+            form_snapshots_by_id=human_input_form_snapshots,
         ):
             _apply_message_context(human_input_event, message_context)
             events.append(human_input_event)
@@ -403,6 +417,7 @@ def _build_snapshot_events(
             resumption_context=resumption_context,
             session_maker=session_maker,
             human_input_surface=human_input_surface,
+            form_snapshots_by_id=human_input_form_snapshots,
         )
         if pause_event is not None:
             _apply_message_context(pause_event, message_context)
@@ -498,6 +513,44 @@ def _filter_open_pause_reasons(
     ]
 
 
+def _load_human_input_form_snapshots(
+    pause_reasons: Sequence[PauseReason],
+    *,
+    workflow_run: WorkflowRun,
+    session_maker: sessionmaker[Session] | None,
+) -> dict[str, HumanInputFormSnapshot]:
+    form_ids = [reason.form_id for reason in pause_reasons if isinstance(reason, HumanInputRequired)]
+    if not form_ids or session_maker is None:
+        return {}
+
+    stmt = select(
+        HumanInputForm.id,
+        HumanInputForm.expiration_time,
+        HumanInputForm.form_definition,
+        HumanInputForm.rendered_content,
+    ).where(
+        HumanInputForm.id.in_(form_ids),
+        HumanInputForm.workflow_run_id == workflow_run.id,
+        HumanInputForm.app_id == workflow_run.app_id,
+        HumanInputForm.tenant_id == workflow_run.tenant_id,
+    )
+    snapshots: dict[str, HumanInputFormSnapshot] = {}
+    with session_maker() as session:
+        for form_id, expiration_time, form_definition, rendered_content in session.execute(stmt):
+            try:
+                definition_payload = json.loads(form_definition) if form_definition else {}
+            except (TypeError, json.JSONDecodeError):
+                definition_payload = {}
+            default_values = definition_payload.get("default_values")
+            snapshots[str(form_id)] = HumanInputFormSnapshot(
+                expiration_time=to_utc_timestamp(expiration_time),
+                rendered_content=rendered_content,
+                default_values=default_values if isinstance(default_values, dict) else None,
+                display_in_ui=bool(definition_payload.get("display_in_ui")),
+            )
+    return snapshots
+
+
 def _build_human_input_required_events(
     *,
     workflow_run_id: str,
@@ -506,24 +559,13 @@ def _build_human_input_required_events(
     session_maker: sessionmaker[Session] | None,
     human_input_surface: HumanInputSurface | None,
     variable_pool: ReadOnlyVariablePool | None,
+    form_snapshots_by_id: Mapping[str, HumanInputFormSnapshot],
 ) -> list[dict[str, Any]]:
     human_input_form_ids = [reason.form_id for reason in pause_reasons if isinstance(reason, HumanInputRequired)]
 
-    expiration_times_by_form_id: dict[str, int] = {}
-    display_in_ui_by_form_id: dict[str, bool] = {}
     dispositions_by_form_id: dict[str, FormDisposition] = {}
     if human_input_form_ids and session_maker is not None:
-        stmt = select(HumanInputForm.id, HumanInputForm.expiration_time, HumanInputForm.form_definition).where(
-            HumanInputForm.id.in_(human_input_form_ids)
-        )
         with session_maker() as session:
-            for form_id, expiration_time, form_definition in session.execute(stmt):
-                expiration_times_by_form_id[str(form_id)] = to_utc_timestamp(expiration_time)
-                try:
-                    definition_payload = json.loads(form_definition) if form_definition else {}
-                except (TypeError, json.JSONDecodeError):
-                    definition_payload = {}
-                display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
             dispositions_by_form_id = load_form_dispositions_by_form_id(
                 human_input_form_ids,
                 session=session,
@@ -537,8 +579,8 @@ def _build_human_input_required_events(
 
         form_id = reason.form_id
 
-        expiration_time = expiration_times_by_form_id.get(form_id)
-        if expiration_time is None:
+        form_snapshot = form_snapshots_by_id.get(form_id)
+        if form_snapshot is None:
             continue
 
         resolved_inputs = resolve_variable_select_input_options(
@@ -554,14 +596,18 @@ def _build_human_input_required_events(
                 form_id=form_id,
                 node_id=reason.node_id,
                 node_title=reason.node_title,
-                form_content=reason.form_content,
+                form_content=form_snapshot.rendered_content,
                 inputs=resolved_inputs,
                 actions=reason.actions,
-                display_in_ui=display_in_ui_by_form_id.get(form_id, False),
+                display_in_ui=form_snapshot.display_in_ui,
                 form_token=disposition.form_token if disposition else None,
                 approval_channels=list(disposition.approval_channels) if disposition else [],
-                resolved_default_values=reason.resolved_default_values,
-                expiration_time=expiration_time,
+                resolved_default_values=(
+                    form_snapshot.default_values
+                    if form_snapshot.default_values is not None
+                    else reason.resolved_default_values
+                ),
+                expiration_time=form_snapshot.expiration_time,
             ),
         )
         payload = response.model_dump(mode="json")
@@ -636,6 +682,7 @@ def _build_pause_event(
     resumption_context: WorkflowResumptionContext | None,
     session_maker: sessionmaker[Session] | None,
     human_input_surface: HumanInputSurface | None = None,
+    form_snapshots_by_id: Mapping[str, HumanInputFormSnapshot] | None = None,
 ) -> dict[str, Any] | None:
     paused_nodes: list[str] = []
     outputs: dict[str, Any] = {}
@@ -669,12 +716,11 @@ def _build_pause_event(
                 session=session,
                 surface=human_input_surface,
             )
-            stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(
-                HumanInputForm.id.in_(human_input_form_ids)
-            )
-            for row in session.execute(stmt):
-                form_id, expiration_time, *_rest = row
-                expiration_times_by_form_id[str(form_id)] = to_utc_timestamp(expiration_time)
+            expiration_times_by_form_id = {
+                form_id: snapshot.expiration_time
+                for form_id, snapshot in (form_snapshots_by_id or {}).items()
+                if form_id in human_input_form_ids
+            }
         # Reconnect paths must preserve the same pause-reason contract as live streams;
         # otherwise clients see schema drift after resume.
         reasons = enrich_human_input_pause_reasons(
@@ -682,6 +728,17 @@ def _build_pause_event(
             dispositions_by_form_id=dispositions_by_form_id,
             expiration_times_by_form_id=expiration_times_by_form_id,
         )
+
+    for reason in reasons:
+        form_id = reason.get("form_id")
+        form_snapshot = (form_snapshots_by_id or {}).get(form_id) if isinstance(form_id, str) else None
+        if form_snapshot is None or reason.get("TYPE") != DifyHITLEventType.HUMAN_INPUT_REQUIRED:
+            continue
+        reason["form_content"] = form_snapshot.rendered_content
+        if form_snapshot.default_values is not None:
+            reason["resolved_default_values"] = dict(form_snapshot.default_values)
+        reason["display_in_ui"] = form_snapshot.display_in_ui
+        reason["expiration_time"] = form_snapshot.expiration_time
 
     response = WorkflowPauseStreamResponse(
         task_id=task_id,
