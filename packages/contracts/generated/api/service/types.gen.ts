@@ -4348,6 +4348,7 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionErrors = {
+  400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
