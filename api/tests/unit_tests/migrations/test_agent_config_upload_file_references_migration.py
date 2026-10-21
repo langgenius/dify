@@ -58,8 +58,10 @@ def _soul(file_id: str, *, file_kind: str = "upload_file", is_missing: bool = Fa
     )
 
 
-def test_upgrade_bounded_backfill_covers_drafts_and_snapshots() -> None:
+def test_upgrade_adds_reference_schema_without_activating_legacy_rows() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
+    with engine.begin() as connection:
+        connection.exec_driver_sql("PRAGMA foreign_keys=ON")
     metadata = sa.MetaData()
     uploads = sa.Table(
         "upload_files",
@@ -132,10 +134,11 @@ def test_upgrade_bounded_backfill_covers_drafts_and_snapshots() -> None:
                 references.c.upload_file_id,
             ).order_by(references.c.owner_kind, references.c.owner_id)
         ).all()
-    assert len(rows) == 502
-    assert ("draft", "draft-0500", "shared-file") in rows
-    assert ("snapshot", "snapshot-1", "snapshot-file") in rows
-    assert all(row.owner_id not in {"draft-foreign", "draft-tool-file", "draft-missing"} for row in rows)
+    assert rows == []
+
+    with engine.begin() as connection:
+        connection.execute(uploads.delete())
+        assert connection.scalar(sa.select(sa.func.count()).select_from(uploads)) == 0
 
     _run_step(module, engine, "downgrade")
     assert "agent_config_upload_file_references" not in sa.inspect(engine).get_table_names()

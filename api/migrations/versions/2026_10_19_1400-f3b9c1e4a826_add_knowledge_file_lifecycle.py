@@ -367,12 +367,10 @@ def upgrade() -> None:
         ["tenant_id", "app_id", "node_id", "draft_variable_id"],
         unique=False,
     )
-    if op.get_context().as_sql:
-        op.execute(
-            "-- Upload-file reference backfill requires an online upgrade; offline SQL renders DDL for review only."
-        )
-    else:
-        _backfill_references()
+    # Reference rows are activated only after every legacy file-deletion path
+    # understands the ownership tables.  Keep this revision schema-only so
+    # older runtimes can continue deleting UploadFile rows during a rolling
+    # deployment.
 
 
 def downgrade() -> None:

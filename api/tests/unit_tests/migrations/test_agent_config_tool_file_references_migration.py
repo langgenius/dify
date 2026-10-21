@@ -66,8 +66,10 @@ def _soul(
     )
 
 
-def test_upgrade_adds_cleanup_marker_and_bounded_tool_file_owner_backfill() -> None:
+def test_upgrade_adds_reference_schema_without_activating_legacy_rows() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
+    with engine.begin() as connection:
+        connection.exec_driver_sql("PRAGMA foreign_keys=ON")
     metadata = sa.MetaData()
     tool_files = sa.Table(
         "tool_files",
@@ -175,10 +177,12 @@ def test_upgrade_adds_cleanup_marker_and_bounded_tool_file_owner_backfill() -> N
                 references.c.owner_kind, references.c.owner_id
             )
         ).all()
-    assert len(rows) == 502
-    assert ("snapshot", snapshot_file_id) in rows
-    assert all(row.tool_file_id != foreign_file_id for row in rows)
+    assert rows == []
     assert any(column["name"] == "cleanup_started_at" for column in sa.inspect(engine).get_columns("tool_files"))
+
+    with engine.begin() as connection:
+        connection.execute(tool_files.delete())
+        assert connection.scalar(sa.select(sa.func.count()).select_from(tool_files)) == 0
 
     _run_step(module, engine, "downgrade")
     assert "agent_config_tool_file_references" not in sa.inspect(engine).get_table_names()

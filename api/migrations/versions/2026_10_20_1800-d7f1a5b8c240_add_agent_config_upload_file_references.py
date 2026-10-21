@@ -149,14 +149,9 @@ def upgrade() -> None:
         ["tenant_id", "owner_kind", "owner_id"],
         unique=False,
     )
-    if op.get_context().as_sql:
-        op.execute(
-            "-- Agent-config upload-file reference backfill requires an online upgrade; "
-            "offline SQL renders DDL for review only."
-        )
-    else:
-        _backfill_owner_table(table_name="agent_config_drafts", owner_kind="draft")
-        _backfill_owner_table(table_name="agent_config_snapshots", owner_kind="snapshot")
+    # Reference rows are activated only after every legacy file-deletion path
+    # understands the ownership table.  Keep this revision schema-only during
+    # rolling deployment.
 
 
 def downgrade() -> None:

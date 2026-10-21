@@ -45,8 +45,10 @@ def _run_step(module: _MigrationModule, engine: sa.Engine, step: Literal["upgrad
             module.op = original_op
 
 
-def test_upgrade_backfills_upload_local_and_segment_image_references() -> None:
+def test_upgrade_adds_reference_schema_without_activating_legacy_rows() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
+    with engine.begin() as connection:
+        connection.exec_driver_sql("PRAGMA foreign_keys=ON")
     metadata = sa.MetaData()
     uploads = sa.Table(
         "upload_files",
@@ -238,19 +240,16 @@ def test_upgrade_backfills_upload_local_and_segment_image_references() -> None:
                 workflow_references.c.upload_file_id,
             ).order_by(workflow_references.c.draft_variable_id)
         ).all()
-    assert sum(row.kind == "document_source" for row in rows) == 1003
-    assert sum(row.kind == "segment_image" for row in rows) == 502
-    assert ("document_source", "document-local", "file-local") in rows
-    assert ("document_source", "bulk-document-1000", "file-upload") in rows
-    assert ("segment_image", "bulk-segment-0500", "file-image") in rows
-    assert len(workflow_rows) == 503
-    assert ("tenant-1", "workflow-app-1", "draft-array", "node-2", "workflow-array-file") in workflow_rows
-    assert ("tenant-1", "workflow-app-1", "draft-file", "node-1", "workflow-file") in workflow_rows
-    assert ("tenant-1", "workflow-app-1", "bulk-draft-0500", "bulk-node", "workflow-file") in workflow_rows
+    assert rows == []
+    assert workflow_rows == []
     inspector = sa.inspect(engine)
     assert "knowledge_cleanup_started_at" in {column["name"] for column in inspector.get_columns("upload_files")}
     assert "indexing_generation" in {column["name"] for column in inspector.get_columns("documents")}
     assert "indexing_generation" in {column["name"] for column in inspector.get_columns("document_segments")}
+
+    with engine.begin() as connection:
+        connection.execute(uploads.delete())
+        assert connection.scalar(sa.select(sa.func.count()).select_from(uploads)) == 0
 
     _run_step(module, engine, "downgrade")
     assert "knowledge_upload_file_references" not in sa.inspect(engine).get_table_names()
