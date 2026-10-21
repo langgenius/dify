@@ -43,7 +43,7 @@ const SegmentList = ({
   embeddingAvailable,
   onClearFilter,
 }: ISegmentListProps & {
-  ref: React.LegacyRef<HTMLDivElement>
+  ref: React.Ref<HTMLDivElement>
 }) => {
   const { t } = useTranslation(['datasetDocuments'])
   const docForm = useDocumentContext((s) => s.docForm)

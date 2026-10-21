@@ -11,6 +11,7 @@ vi.mock('@/app/components/base/markdown', () => ({
 
 describe('SubmittedHumanInputContent Integration', () => {
   const mockFormData: HumanInputFilledFormData = {
+    form_id: 'form-1',
     rendered_content: 'Rendered **Markdown** content',
     action_id: 'btn_1',
     action_text: 'Submit Action',

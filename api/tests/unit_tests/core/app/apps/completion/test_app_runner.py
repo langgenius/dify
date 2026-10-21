@@ -26,9 +26,10 @@ from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.provider_configuration import ProviderModelBundle
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.moderation.base import ModerationError
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_runtime
 from core.provider_manager import ProviderManager
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
@@ -41,7 +42,6 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.dataset import Dataset
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, IconType, Message
@@ -113,9 +113,17 @@ def model_runtime(monkeypatch: pytest.MonkeyPatch) -> tuple[ProviderModelBundle,
     bundle = config.provider_model_bundle
     bundle.configuration.tenant_id = TENANT_ID
     bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "token"})
-    bundle.model_type_instance = LargeLanguageModel(
-        provider_schema=bundle.configuration.provider,
-        model_runtime=create_plugin_model_runtime(tenant_id=TENANT_ID),
+    provider_declaration = PluginModelProviderDeclaration.model_validate(
+        {
+            **bundle.configuration.provider.model_dump(),
+            "plugin_unique_identifier": "langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "installation_source": None,
+        }
+    )
+    bundle.model_type_instance = create_model_type_instance(
+        runtime=create_plugin_model_runtime(tenant_id=TENANT_ID),
+        provider_schema=provider_declaration,
+        model_type=ModelType.LLM,
     )
     calls: list[RecordedCall] = []
     events: list[str] = []
@@ -469,7 +477,11 @@ class TestCompletionAppRunner:
                     "method": "POST",
                     "path": f"plugin/{TENANT_ID}/dispatch/llm/invoke",
                     "type_": LLMResultChunk,
-                    "headers": {"X-Plugin-ID": "langgenius/openai", "Content-Type": "application/json"},
+                    "headers": {
+                        "X-Plugin-ID": "langgenius/openai",
+                        "X-Plugin-Unique-Identifier": "langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        "Content-Type": "application/json",
+                    },
                     "data": {
                         "app_id": APP_ID,
                         "data": {

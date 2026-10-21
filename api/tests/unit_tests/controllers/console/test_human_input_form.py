@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import ANY, Mock
 
 import pytest
-from flask import Flask, Response
+from flask import Flask, Response, has_request_context
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 
 from controllers.common.errors import NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.common.rbac import locators as rbac_locators
 from controllers.console import human_input_form as human_input_form_module
 from controllers.console.human_input_form import (
     ConsoleHumanInputFormApi,
@@ -20,6 +23,7 @@ from controllers.console.human_input_form import (
     WorkflowResponseConverter,
     _jsonify_form_definition,
 )
+from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.human_input_policy import HumanInputSurface
 from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
 from core.workflow.nodes.human_input.enums import ValueSourceType
@@ -29,8 +33,11 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
+from services.enterprise.rbac_service import RBACService
+from services.entities.app_entities import AppAgentBinding
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app
+from tests.unit_tests.rbac_fakes import RBACDomain
 
 
 @pytest.fixture(autouse=True)
@@ -381,9 +388,41 @@ def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     assert "data" in response.get_data(as_text=True)
 
 
-def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("rbac_enabled", "has_permission", "is_maintainer", "agent_backed", "include_node_details"),
+    [
+        (True, False, False, False, False),
+        (True, True, False, False, True),
+        (True, False, True, False, True),
+        (True, True, False, True, False),
+        (False, False, False, False, True),
+    ],
+    ids=["run-only", "app-manager", "maintainer", "agent-app", "rbac-disabled"],
+)
+def test_workflow_events_snapshot_can_continue_across_pauses(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    rbac_domain: RBACDomain,
+    rbac_enabled: bool,
+    has_permission: bool,
+    is_maintainer: bool,
+    agent_backed: bool,
+    include_node_details: bool,
+    mocker: MockerFixture,
+) -> None:
     workflow_run = _workflow_run()
     app_model = _app()
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=rbac_enabled)
+    check_access = mocker.patch.object(RBACService.CheckAccess, "check", return_value=has_permission)
+    monkeypatch.setattr(rbac_locators, "application_services", lambda: rbac_domain)
+    monkeypatch.setattr(
+        rbac_domain.rbac.queries,
+        "get_app_agent_binding",
+        lambda *_args, **_kwargs: AppAgentBinding(id="agent-1", workflow_only=False) if agent_backed else None,
+    )
+    monkeypatch.setattr(
+        rbac_domain.rbac.queries, "get_app_maintainer", lambda *_args, **_kwargs: "user-1" if is_maintainer else None
+    )
 
     class _RepoStub:
         def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
@@ -391,9 +430,13 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
 
     snapshot_calls: list[dict[str, object]] = []
 
-    def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
+    def snapshot_events() -> Iterator[dict[str, str]]:
+        assert has_request_context()
+        yield {"event": "snapshot"}
+
+    def snapshot_builder(**kwargs: object) -> Iterator[dict[str, str]]:
         snapshot_calls.append(kwargs)
-        return [{"event": "snapshot"}]
+        return snapshot_events()
 
     monkeypatch.setattr(
         DifyAPIRepositoryFactory,
@@ -427,6 +470,17 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
             "app_id": "app-1",
             "session_maker": ANY,
             "human_input_surface": HumanInputSurface.CONSOLE,
+            "include_node_details": include_node_details,
             "close_on_pause": False,
         }
     ]
+    if rbac_enabled and not is_maintainer and not agent_backed:
+        check_access.assert_called_once_with(
+            "t1",
+            "user-1",
+            scene=RBACPermission.APP_CREATE_AND_MANAGEMENT,
+            resource_type=RBACResourceScope.APP,
+            resource_id="app-1",
+        )
+    else:
+        check_access.assert_not_called()

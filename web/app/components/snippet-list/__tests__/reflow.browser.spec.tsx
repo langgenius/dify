@@ -12,6 +12,7 @@ const mockQueryState = vi.hoisted(() => ({
   creatorIDs: [] as string[],
   keywords: '',
   tagIDs: [] as string[],
+  publishStatus: 'all' as const,
 }))
 
 vi.mock('@/service/use-snippets', async (importOriginal) => ({
@@ -26,6 +27,8 @@ vi.mock('../hooks/use-snippets-query-state', () => ({
     setCreatorIDs: vi.fn(),
     setKeywords: vi.fn(),
     setTagIDs: vi.fn(),
+    setPublishStatus: vi.fn(),
+    flush: vi.fn().mockResolvedValue(new URLSearchParams()),
   }),
 }))
 

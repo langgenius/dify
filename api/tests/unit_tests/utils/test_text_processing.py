@@ -72,5 +72,5 @@ from core.tools.utils.text_processing_utils import remove_leading_symbols
         ("\n换行", "\n换行"),
     ],
 )
-def test_remove_leading_symbols(input_text, expected_output):
+def test_remove_leading_symbols(input_text: str, expected_output: str) -> None:
     assert remove_leading_symbols(input_text) == expected_output
