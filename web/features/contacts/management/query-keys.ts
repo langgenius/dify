@@ -9,13 +9,17 @@ export const contactsManagementQueryKeys = {
   detail: (workspaceId: string, contactId: string | null) =>
     [...contactsManagementQueryKeys.all(workspaceId), 'detail', contactId] as const,
   directory: (
-    context: Pick<ContactsFeatureContextValue, 'deployment' | 'workspaceId'>,
+    context: Pick<
+      ContactsFeatureContextValue,
+      'deployment' | 'imBindingCentrallyManaged' | 'workspaceId'
+    >,
     query: Omit<ContactsListQuery, 'deployment' | 'page'>,
   ) =>
     [
       ...contactsManagementQueryKeys.all(context.workspaceId),
       'directory',
       context.deployment,
+      context.imBindingCentrallyManaged,
       query,
     ] as const,
   availablePlatformContacts: (

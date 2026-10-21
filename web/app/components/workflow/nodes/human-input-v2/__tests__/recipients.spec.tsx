@@ -1,24 +1,35 @@
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type {
   CurrentWorkspaceSummaryResponse,
   ListContactOptionsResponse,
   ListContactsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2Recipient } from '../types'
 import type { Node } from '@/app/components/workflow/types'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render as renderComponent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useState } from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
+import { createTestQueryClient } from '@/test/query-client'
 import Recipients from '../components/recipients'
 
 const runtimeApi = vi.hoisted(() => ({
+  features: vi.fn<() => Promise<GetFeaturesResponse>>(),
   summary: vi.fn<() => Promise<CurrentWorkspaceSummaryResponse>>(),
   contacts:
     vi.fn<
@@ -33,6 +44,7 @@ vi.mock('@/service/console', async () => {
   const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
   return {
     consoleQuery: createTanstackQueryUtils({
+      features: { get: runtimeApi.features },
       workspaces: {
         current: {
           summary: { get: runtimeApi.summary },
@@ -73,6 +85,18 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
     )
   },
 }))
+
+const createFeaturesFixture = (centrallyManaged?: boolean): GetFeaturesResponse => ({
+  ...zGetFeaturesResponse.parse({}),
+  ...(centrallyManaged === undefined ? {} : { im_binding_centrally_managed: centrallyManaged }),
+})
+
+const render = (ui: ReactElement, queryClient = createTestQueryClient()) =>
+  renderComponent(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
 
 const contact: ContactRecipientOption = {
   id: 'contact-evan',
@@ -128,8 +152,171 @@ const Harness = ({
 describe('Human Input v2 Recipients', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    runtimeApi.features.mockReset().mockResolvedValue(createFeaturesFixture(true))
     runtimeApi.contacts.mockResolvedValue({ data: [], total: 7, page: 1, limit: 1 })
     runtimeApi.options.mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 })
+  })
+
+  it('shows the enterprise platform tab when workspace features explicitly enable centrally managed IM bindings', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+
+    expect(await screen.findByRole('tab', { name: 'contacts.type.platform' })).toBeInTheDocument()
+    expect(runtimeApi.features).toHaveBeenCalledOnce()
+  })
+
+  it.each([false, undefined])(
+    'hides the enterprise platform tab when centrally managed IM bindings are %s and keeps the other sources usable',
+    async (centrallyManaged) => {
+      const user = userEvent.setup()
+      runtimeApi.features.mockResolvedValue(createFeaturesFixture(centrallyManaged))
+      const externalContact: ContactRecipientOption = {
+        id: 'external-contact',
+        name: 'External Reviewer',
+        email: 'external@example.com',
+        source: 'external',
+      }
+      render(
+        <Harness
+          optionProvider={provider({
+            search: vi.fn(async () => [contact, organizationContact, externalContact]),
+          })}
+        />,
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+      )
+      await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+      expect(screen.queryByRole('tab', { name: 'contacts.type.platform' })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('tab')).toHaveLength(3)
+      expect(
+        screen.getByRole('tab', {
+          name: 'workflow.nodes.humanInputV2.recipients.contactSource.all',
+        }),
+      ).toHaveAttribute('aria-selected', 'true')
+
+      await user.click(
+        screen.getByRole('tab', {
+          name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+        }),
+      )
+      expect(
+        screen.getByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'External Reviewer · external@example.com' }),
+      ).not.toBeInTheDocument()
+      await user.click(
+        screen.getByRole('tab', {
+          name: 'workflow.nodes.humanInputV2.recipients.contactSource.external',
+        }),
+      )
+      expect(
+        screen.getByRole('button', { name: 'External Reviewer · external@example.com' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+      ).not.toBeInTheDocument()
+    },
+  )
+
+  it('keeps the enterprise platform tab hidden until the workspace feature request succeeds', async () => {
+    const user = userEvent.setup()
+    let finishFeatures: (features: GetFeaturesResponse) => void = () => undefined
+    runtimeApi.features.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishFeatures = resolve
+        }),
+    )
+    render(<Harness />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+    expect(screen.queryByRole('tab', { name: 'contacts.type.platform' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab')).toHaveLength(3)
+
+    await act(async () => {
+      finishFeatures(createFeaturesFixture(true))
+    })
+    expect(await screen.findByRole('tab', { name: 'contacts.type.platform' })).toBeInTheDocument()
+  })
+
+  it('keeps the enterprise platform tab hidden when the workspace feature request fails', async () => {
+    const user = userEvent.setup()
+    const queryClient = createTestQueryClient()
+    runtimeApi.features.mockRejectedValue(new Error('Features unavailable'))
+    render(<Harness />, queryClient)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await waitFor(() =>
+      expect(queryClient.getQueryState(consoleQuery.features.get.queryKey())?.status).toBe('error'),
+    )
+
+    expect(screen.queryByRole('tab', { name: 'contacts.type.platform' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab')).toHaveLength(3)
+    expect(
+      await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+  })
+
+  it('returns to all sources when centrally managed IM bindings are disabled without changing recipients', async () => {
+    const user = userEvent.setup()
+    const queryClient = createTestQueryClient()
+    const observe = vi.fn()
+    render(
+      <Harness
+        initial={[{ type: 'contact', contact_id: organizationContact.id }]}
+        observe={observe}
+        optionProvider={provider({
+          search: vi.fn(async () => [contact, organizationContact]),
+          resolve: vi.fn(async () => [organizationContact]),
+        })}
+      />,
+      queryClient,
+    )
+    const recipientLabel = await screen.findByRole('button', {
+      name: 'Amanda Lin · amanda@example.com',
+    })
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await user.click(await screen.findByRole('tab', { name: 'contacts.type.platform' }))
+    expect(screen.getByRole('tab', { name: 'contacts.type.platform' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).not.toBeInTheDocument()
+
+    runtimeApi.features.mockResolvedValue(createFeaturesFixture(false))
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+    })
+
+    await waitFor(() =>
+      expect(screen.queryByRole('tab', { name: 'contacts.type.platform' })).not.toBeInTheDocument(),
+    )
+    expect(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.all',
+      }),
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(
+      screen.getByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+    expect(recipientLabel).toBeInTheDocument()
+    expect(observe).not.toHaveBeenCalled()
   })
 
   it('searches and selects real contacts directly from the main recipient input', async () => {
@@ -539,6 +726,178 @@ describe('Human Input v2 Recipients', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('finds workspace contacts beyond a full external page when switching source tabs', async () => {
+    const user = userEvent.setup()
+    const externalContacts: ContactRecipientOption[] = Array.from({ length: 20 }, (_, index) => ({
+      id: `external-${index}`,
+      name: `External ${index}`,
+      email: `external-${index}@example.com`,
+      source: 'external',
+    }))
+    const searchPage = vi
+      .fn()
+      .mockResolvedValueOnce({ data: externalContacts, page: 1, hasMore: true })
+      .mockResolvedValueOnce({ data: [contact], page: 2, hasMore: false })
+    render(<Harness optionProvider={provider({ searchPage })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await screen.findByRole('button', { name: 'External 0 · external-0@example.com' })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+      }),
+    )
+
+    expect(
+      await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+    expect(searchPage).toHaveBeenLastCalledWith('', 2)
+    expect(
+      screen.queryByRole('button', { name: 'workflow.common.loadMore' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps loaded sources and manual pagination after finding a filtered contact', async () => {
+    const user = userEvent.setup()
+    const laterContact = {
+      ...contact,
+      id: 'contact-jane',
+      name: 'Jane Workspace',
+      email: 'jane@example.com',
+    }
+    const searchPage = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [organizationContact], page: 1, hasMore: true })
+      .mockResolvedValueOnce({ data: [contact], page: 2, hasMore: true })
+      .mockResolvedValueOnce({ data: [laterContact], page: 3, hasMore: false })
+    render(<Harness optionProvider={provider({ searchPage })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await screen.findByRole('button', { name: 'Amanda Lin · amanda@example.com' })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+      }),
+    )
+    await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+    expect(searchPage).toHaveBeenCalledTimes(2)
+
+    await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
+    expect(
+      await screen.findByRole('button', { name: 'Jane Workspace · jane@example.com' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.all',
+      }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Amanda Lin · amanda@example.com' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Jane Workspace · jane@example.com' }),
+    ).toBeInTheDocument()
+    expect(searchPage).toHaveBeenLastCalledWith('', 3)
+  })
+
+  it('checks remaining pages before showing an empty source and lets failed pages retry', async () => {
+    const user = userEvent.setup()
+    const searchPage = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [organizationContact], page: 1, hasMore: true })
+      .mockRejectedValueOnce(new Error('Page unavailable'))
+      .mockResolvedValueOnce({ data: [], page: 2, hasMore: true })
+      .mockResolvedValueOnce({ data: [organizationContact], page: 3, hasMore: false })
+    render(<Harness optionProvider={provider({ searchPage })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await screen.findByRole('button', { name: 'Amanda Lin · amanda@example.com' })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+      }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'workflow.nodes.humanInputV2.recipients.loadError',
+    )
+    expect(searchPage).toHaveBeenCalledTimes(2)
+    expect(
+      screen.queryByText('workflow.nodes.humanInputV2.recipients.noResults'),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
+    expect(
+      await screen.findByText('workflow.nodes.humanInputV2.recipients.noResults'),
+    ).toBeInTheDocument()
+    expect(searchPage.mock.calls.map(([, page]) => page)).toEqual([1, 2, 2, 3])
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflow.common.loadMore' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('ignores an older filtered page after the search query changes', async () => {
+    const user = userEvent.setup()
+    let finishOldPage: (result: {
+      data: ContactRecipientOption[]
+      page: number
+      hasMore: boolean
+    }) => void = () => undefined
+    const newContact = { ...contact, id: 'new-contact', name: 'Zoe Workspace' }
+    const searchPage = vi.fn((query: string, page: number) => {
+      if (query === 'Z') return Promise.resolve({ data: [newContact], page: 1, hasMore: false })
+      if (page === 1)
+        return Promise.resolve({ data: [organizationContact], page: 1, hasMore: true })
+      return new Promise<{ data: ContactRecipientOption[]; page: number; hasMore: boolean }>(
+        (resolve) => {
+          finishOldPage = resolve
+        },
+      )
+    })
+    render(<Harness optionProvider={provider({ searchPage })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await screen.findByRole('button', { name: 'Amanda Lin · amanda@example.com' })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+      }),
+    )
+    await waitFor(() => expect(searchPage).toHaveBeenLastCalledWith('', 2))
+    await user.type(
+      screen.getByRole('textbox', { name: 'workflow.nodes.humanInputV2.recipients.search' }),
+      'Z',
+    )
+    expect(
+      await screen.findByRole('button', { name: 'Zoe Workspace · evan@example.com' }),
+    ).toBeInTheDocument()
+
+    await act(async () => {
+      finishOldPage({ data: [contact], page: 2, hasMore: false })
+    })
+    expect(
+      screen.getByRole('button', { name: 'Zoe Workspace · evan@example.com' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).not.toBeInTheDocument()
+    expect(searchPage).toHaveBeenLastCalledWith('Z', 1)
+  })
+
   it('keeps the latest search results when an older response arrives last', async () => {
     const user = userEvent.setup()
     let finishInitial: (options: ContactRecipientOption[]) => void = () => undefined
@@ -626,6 +985,241 @@ describe('Human Input v2 Recipients', () => {
         name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
       }),
     ).not.toBeInTheDocument()
+  })
+
+  describe('Backspace in the main recipient input', () => {
+    it.each([
+      { type: 'contact', contact_id: contact.id },
+      { type: 'onetime_email', email: 'last@example.com' },
+      { type: 'dynamic_email', selector: ['start', 'email'] },
+      { type: 'initiator' },
+      { type: 'all_workspace_contacts' },
+    ] satisfies HumanInputV2Recipient[])(
+      'removes only the preceding $type recipient and keeps input focus',
+      async (lastRecipient) => {
+        const user = userEvent.setup()
+        const observe = vi.fn()
+        const firstRecipient: HumanInputV2Recipient = {
+          type: 'onetime_email',
+          email: 'first@example.com',
+        }
+        render(<Harness initial={[firstRecipient, lastRecipient]} observe={observe} />)
+        const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+
+        await user.click(input)
+        await user.keyboard('{Backspace}')
+
+        expect(observe).toHaveBeenCalledExactlyOnceWith([firstRecipient])
+        expect(input).toHaveFocus()
+        expect(input).toHaveValue('')
+      },
+    )
+
+    it.each(['text', ' ', 'selected text'])(
+      'preserves recipients while Backspace deletes the input draft: %j',
+      async (draft) => {
+        const user = userEvent.setup()
+        const observe = vi.fn()
+        render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+        const input = screen.getByRole('textbox', {
+          name: 'workflow.nodes.humanInputV2.recipients.placeholder',
+        })
+        await user.type(input, draft)
+        if (draft === 'selected text') {
+          act(() => {
+            if (input instanceof HTMLInputElement) input.setSelectionRange(0, draft.length)
+          })
+        }
+
+        await user.keyboard('{Backspace}')
+
+        expect(input).toHaveValue(draft === 'selected text' ? '' : draft.slice(0, -1))
+        expect(observe).not.toHaveBeenCalled()
+      },
+    )
+
+    it.each(['ctrlKey', 'metaKey', 'altKey', 'shiftKey'])(
+      'leaves modified Backspace to the input when %s is held',
+      (modifier) => {
+        const observe = vi.fn()
+        render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+        const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+
+        expect(fireEvent.keyDown(input, { key: 'Backspace', [modifier]: true })).toBe(true)
+        expect(observe).not.toHaveBeenCalled()
+      },
+    )
+
+    it('does not delete recipients while an IME composition handles Backspace', () => {
+      const observe = vi.fn()
+      render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+      const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+
+      expect(fireEvent.keyDown(input, { key: 'Backspace', isComposing: true })).toBe(true)
+      expect(observe).not.toHaveBeenCalled()
+    })
+
+    it('consumes held-key repeats without deleting more recipients', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(
+        <Harness
+          initial={[{ type: 'initiator' }, { type: 'onetime_email', email: 'last@example.com' }]}
+          observe={observe}
+        />,
+      )
+      const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+      await user.click(input)
+      await user.keyboard('{Backspace}')
+      expect(observe).toHaveBeenCalledExactlyOnceWith([{ type: 'initiator' }])
+
+      expect(fireEvent.keyDown(input, { key: 'Backspace', repeat: true })).toBe(false)
+      expect(observe).toHaveBeenCalledTimes(1)
+      expect(input).toHaveFocus()
+      await user.keyboard('{Backspace}')
+      expect(observe).toHaveBeenLastCalledWith([])
+    })
+
+    it('keeps an empty recipient list unchanged', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(<Harness observe={observe} />)
+      const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+
+      await user.click(input)
+      await user.keyboard('{Backspace}')
+
+      expect(observe).not.toHaveBeenCalled()
+      expect(input).toHaveFocus()
+    })
+
+    it('closes the editor when Backspace removes its recipient', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(
+        <Harness
+          initial={[{ type: 'initiator' }, { type: 'onetime_email', email: 'last@example.com' }]}
+          observe={observe}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: /recipients\.edit:.*last@example.com/ }))
+      expect(
+        screen.getByRole('group', { name: 'workflow.nodes.humanInputV2.recipients.editRecipient' }),
+      ).toBeInTheDocument()
+      const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+      await user.click(input)
+      await user.keyboard('{Backspace}')
+
+      expect(observe).toHaveBeenCalledExactlyOnceWith([{ type: 'initiator' }])
+      expect(
+        screen.queryByRole('group', {
+          name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
+        }),
+      ).not.toBeInTheDocument()
+      expect(input).toHaveFocus()
+    })
+
+    it('preserves another recipient editor draft when Backspace removes the last recipient', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      const firstRecipient: HumanInputV2Recipient = {
+        type: 'onetime_email',
+        email: 'first@example.com',
+      }
+      render(<Harness initial={[firstRecipient, { type: 'initiator' }]} observe={observe} />)
+      await user.click(screen.getByRole('button', { name: /recipients\.edit:.*first@example.com/ }))
+      const editor = screen.getByRole('group', {
+        name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
+      })
+      const editorInput = within(editor).getByRole('textbox', {
+        name: 'workflow.nodes.humanInputV2.recipients.emailLabel',
+      })
+      await user.clear(editorInput)
+      await user.type(editorInput, 'edited@example.com')
+      await user.click(screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'))
+      await user.keyboard('{Backspace}')
+
+      expect(observe).toHaveBeenCalledExactlyOnceWith([firstRecipient])
+      expect(editorInput).toHaveValue('edited@example.com')
+      await user.click(
+        within(editor).getByRole('button', {
+          name: 'workflow.nodes.humanInputV2.recipients.confirm',
+        }),
+      )
+      expect(observe).toHaveBeenLastCalledWith([
+        { type: 'onetime_email', email: 'edited@example.com' },
+      ])
+    })
+
+    it('keeps focus in the main input after closing its search and deleting a recipient', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+      const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+      await user.type(input, 'Evan')
+      await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+      await user.clear(input)
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(input).toHaveFocus()
+
+      await user.keyboard('{Backspace}')
+
+      expect(observe).toHaveBeenCalledExactlyOnceWith([])
+      expect(input).toHaveFocus()
+    })
+
+    it('does not remove recipients from the separate picker search or email editor', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(
+        <Harness
+          initial={[{ type: 'initiator' }, { type: 'onetime_email', email: 'last@example.com' }]}
+          observe={observe}
+        />,
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+      )
+      const search = screen.getByRole('textbox', {
+        name: 'workflow.nodes.humanInputV2.recipients.search',
+      })
+      await user.click(search)
+      await user.keyboard('{Backspace}{Escape}')
+      await user.click(screen.getByRole('button', { name: /recipients\.edit:.*last@example.com/ }))
+      const editorInput = screen.getByRole('textbox', {
+        name: 'workflow.nodes.humanInputV2.recipients.emailLabel',
+      })
+      await user.clear(editorInput)
+      await user.keyboard('{Backspace}')
+
+      expect(observe).not.toHaveBeenCalled()
+      expect(editorInput).toHaveValue('')
+    })
+
+    it('does not expose a main input or remove recipients in readonly mode', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(
+        <Harness
+          initial={[{ type: 'contact', contact_id: contact.id }]}
+          readonly
+          observe={observe}
+        />,
+      )
+      const chip = await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+      expect(
+        screen.queryByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'),
+      ).not.toBeInTheDocument()
+      act(() => chip.focus())
+      await user.keyboard('{Backspace}')
+
+      expect(observe).not.toHaveBeenCalled()
+      expect(chip).toBeInTheDocument()
+    })
   })
 
   it('opens the selected contact editor instead of leaving its hover card over the controls', async () => {

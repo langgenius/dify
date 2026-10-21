@@ -24,6 +24,7 @@ import {
   isCurrentWorkspaceDatasetOperatorAtom,
   isCurrentWorkspaceManagerAtom,
 } from '@/context/workspace-state'
+import { selectIMBindingCentrallyManaged } from '@/features/contacts/im-binding-capability'
 import { ContactsImPlatformAccountSettingPage } from '@/features/contacts/im-platform/account-setting-page'
 import { isContactsImPlatformEnabled } from '@/features/contacts/im-platform/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -68,11 +69,8 @@ export default function AccountSetting({
     'accountSettings',
     'contacts',
   ])
-  const { data: enableReplaceWebAppLogo } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (features) => features.can_replace_logo,
-    }),
-  )
+  const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
+  const enableReplaceWebAppLogo = featuresQuery.data?.can_replace_logo
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -86,9 +84,9 @@ export default function AccountSetting({
     systemFeatures.deployment_edition === 'CLOUD' && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
-  const canViewContactsImPlatform = isContactsImPlatformEnabled(
-    systemFeatures.deployment_edition === 'ENTERPRISE',
-  )
+  const canViewContactsImPlatform =
+    featuresQuery.isSuccess &&
+    isContactsImPlatformEnabled(selectIMBindingCentrallyManaged(featuresQuery.data))
   const activeMenu = (() => {
     if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES

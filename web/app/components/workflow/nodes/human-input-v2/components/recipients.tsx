@@ -20,6 +20,7 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import { VariableLabelInEditor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { selectIMBindingCentrallyManaged } from '@/features/contacts/im-binding-capability'
 import { consoleQuery } from '@/service/console'
 import { useContactRecipientOptionProvider } from '../contact-provider'
 import {
@@ -86,6 +87,18 @@ const RecipientsContent = ({
   const [query, setQuery] = useState('')
   const [options, setOptions] = useState<ContactRecipientOption[]>([])
   const [sourceFilter, setSourceFilter] = useState<ContactSourceFilter>('all')
+  const centrallyManagedQuery = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: selectIMBindingCentrallyManaged,
+      retry: false,
+    }),
+  )
+  const centrallyManaged = centrallyManagedQuery.isSuccess && centrallyManagedQuery.data === true
+  const availableSourceFilters = contactSourceFilters.filter(
+    (filter) => filter !== 'organization' || centrallyManaged,
+  )
+  const activeSourceFilter =
+    sourceFilter === 'organization' && !centrallyManaged ? 'all' : sourceFilter
   const [resolvedOptions, setResolvedOptions] = useState<ContactRecipientOption[]>([])
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -112,8 +125,10 @@ const RecipientsContent = ({
   )
   const visibleOptions = useMemo(
     () =>
-      sourceFilter === 'all' ? options : options.filter((option) => option.source === sourceFilter),
-    [options, sourceFilter],
+      activeSourceFilter === 'all'
+        ? options
+        : options.filter((option) => option.source === activeSourceFilter),
+    [options, activeSourceFilter],
   )
   const recipientRows = useMemo(() => {
     const occurrences = new Map<string, number>()
@@ -198,6 +213,33 @@ const RecipientsContent = ({
     if (!hasMore || loading || loadingMore) return
     void loadOptions(searchQueryRef.current, searchPage + 1)
   }
+
+  useEffect(() => {
+    // The editor-safe endpoint paginates all sources together. Keep looking until the
+    // selected source has a result, or the server confirms that no later page exists.
+    if (
+      !open ||
+      activeSourceFilter === 'all' ||
+      visibleOptions.length > 0 ||
+      !hasMore ||
+      loading ||
+      loadingMore ||
+      loadError
+    )
+      return
+
+    void loadOptions(searchQueryRef.current, searchPage + 1)
+  }, [
+    hasMore,
+    loadError,
+    loadOptions,
+    loading,
+    loadingMore,
+    open,
+    searchPage,
+    activeSourceFilter,
+    visibleOptions.length,
+  ])
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (readonly) return
@@ -557,7 +599,26 @@ const RecipientsContent = ({
                   }
                 }}
                 onKeyDown={(event) => {
-                  if (event.nativeEvent.isComposing) return
+                  if (readonly || event.nativeEvent.isComposing) return
+                  if (
+                    event.key === 'Backspace' &&
+                    !event.altKey &&
+                    !event.ctrlKey &&
+                    !event.metaKey &&
+                    !event.shiftKey &&
+                    emailDraft === '' &&
+                    value.length > 0
+                  ) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    if (event.repeat) return
+                    const lastIndex = value.length - 1
+                    if (editor?.index === lastIndex) closeEditor()
+                    onChange(removeRecipient(value, lastIndex))
+                    setSearchFromInput(true)
+                    setOpen(false)
+                    return
+                  }
                   if (event.key === '/' && !emailDraft.trim()) {
                     event.preventDefault()
                     variableTriggerRef.current?.click()
@@ -696,15 +757,16 @@ const RecipientsContent = ({
                     ns: 'workflow',
                   })}
                 >
-                  {contactSourceFilters.map((filter) => (
+                  {availableSourceFilters.map((filter) => (
                     <button
                       key={filter}
                       type="button"
                       role="tab"
-                      aria-selected={sourceFilter === filter}
+                      aria-selected={activeSourceFilter === filter}
                       className={cn(
                         'shrink-0 rounded-md border-0 bg-transparent px-2 py-1 system-xs-medium text-text-tertiary focus-visible:ring-1 focus-visible:ring-state-accent-solid',
-                        sourceFilter === filter && 'bg-state-base-hover-alt text-text-primary',
+                        activeSourceFilter === filter &&
+                          'bg-state-base-hover-alt text-text-primary',
                       )}
                       onClick={() => setSourceFilter(filter)}
                     >
@@ -819,10 +881,10 @@ const RecipientsContent = ({
                       {t(($) => $['common.loadMore'], { ns: 'workflow' })}
                     </Button>
                   )}
-                  {(sourceFilter === 'all' || sourceFilter === 'workspace') && (
+                  {(activeSourceFilter === 'all' || activeSourceFilter === 'workspace') && (
                     <div className="my-1 h-px bg-divider-subtle" />
                   )}
-                  {sourceFilter === 'all' && (
+                  {activeSourceFilter === 'all' && (
                     <button
                       type="button"
                       aria-label={t(($) => $['nodes.humanInputV2.recipients.type.initiator'], {
@@ -849,7 +911,7 @@ const RecipientsContent = ({
                       </span>
                     </button>
                   )}
-                  {(sourceFilter === 'all' || sourceFilter === 'workspace') && (
+                  {(activeSourceFilter === 'all' || activeSourceFilter === 'workspace') && (
                     <button
                       type="button"
                       aria-label={t(

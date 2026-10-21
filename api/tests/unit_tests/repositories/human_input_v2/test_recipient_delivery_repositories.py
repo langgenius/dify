@@ -21,7 +21,7 @@ from sqlalchemy.pool import ConnectionPoolEntry
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
-from core.human_input_v2.shared.values import ContactId, NormalizedEmail, RecipientId, TenantId
+from core.human_input_v2.shared.values import ContactId, IMBindingId, NormalizedEmail, RecipientId, TenantId
 from core.workflow.nodes.human_input_v2.entities import (
     AllWorkspaceContacts,
     Contact,
@@ -61,6 +61,7 @@ from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlche
 _TENANT = TenantId("00000000-0000-0000-0000-000000000001")
 _FORM = "00000000-0000-0000-0000-000000000002"
 _CONTACT = ContactId("00000000-0000-0000-0000-000000000003")
+_BINDING = IMBindingId("00000000-0000-0000-0000-000000000004")
 _HASH = "a" * 64
 
 
@@ -71,10 +72,25 @@ def test_im_snapshot_preserves_the_chosen_message_type(message_type: str) -> Non
             "im_provider": IMProvider.SLACK,
             "im_tenant_id": "team",
             "im_provider_user_id": "user",
+            "im_binding_id": _BINDING,
             "message_type": message_type,
         }
     )
     assert snapshot.model_dump(mode="json")["message_type"] == message_type
+
+
+@pytest.mark.parametrize("binding_fields", [{}, {"im_binding_id": None}])
+def test_im_snapshot_requires_binding_id(binding_fields: dict[str, JsonValue]) -> None:
+    with pytest.raises(ValidationError, match="im_binding_id"):
+        IMUserTargetSnapshot.model_validate(
+            {
+                "im_provider": IMProvider.SLACK,
+                "im_tenant_id": "team",
+                "im_provider_user_id": "user",
+                "message_type": "card",
+                **binding_fields,
+            }
+        )
 
 
 @pytest.mark.parametrize("message_fields", [{}, {"message_type": None}])
@@ -85,6 +101,7 @@ def test_im_snapshot_requires_message_type(message_fields: dict[str, JsonValue])
                 "im_provider": IMProvider.SLACK,
                 "im_tenant_id": "team",
                 "im_provider_user_id": "user",
+                "im_binding_id": _BINDING,
                 **message_fields,
             }
         )
@@ -149,6 +166,7 @@ def _im_params(recipient_id: RecipientId, message_type: IMMessageType) -> Delive
             im_provider=IMProvider.SLACK,
             im_tenant_id="team",
             im_provider_user_id="user",
+            im_binding_id=_BINDING,
             message_type=message_type,
         ),
     )
@@ -173,6 +191,7 @@ def test_im_locator_round_trips_independently_of_attempts_and_cannot_be_replaced
         assert isinstance(accepted.target_snapshot, IMUserTargetSnapshot)
         assert accepted.target_snapshot.message_locator == locator
         assert accepted.target_snapshot.im_provider_user_id == "user"
+        assert accepted.target_snapshot.im_binding_id == _BINDING
         assert accepted.target_snapshot.im_tenant_id == "team"
         assert (
             repo.set_im_message_locator(
@@ -194,6 +213,7 @@ def test_im_locator_round_trips_independently_of_attempts_and_cannot_be_replaced
         assert reloaded is not None
         assert isinstance(reloaded.target_snapshot, IMUserTargetSnapshot)
         assert reloaded.target_snapshot.message_type == message_type
+        assert reloaded.target_snapshot.im_binding_id == _BINDING
         assert reloaded.target_snapshot.message_locator == locator
         assert repo.get_delivery(tenant_id=_TENANT, form_id=_FORM, delivery_id=delivery.id) == reloaded
         assert repo.list_deliveries(tenant_id=_TENANT, form_id=_FORM) == (reloaded,)
@@ -425,6 +445,7 @@ def test_failed_batch_is_rolled_back_by_the_caller_transaction(delivery_engine: 
                     im_provider=provider,
                     im_tenant_id="provider-tenant",
                     im_provider_user_id="provider-user",
+                    im_binding_id=_BINDING,
                     message_type=IMMessageType.CARD,
                 ),
                 SubmissionAuthType.IM,
@@ -740,6 +761,7 @@ def test_initiator_delivery_lookup_is_scoped_to_form_and_tenant(delivery_engine:
                     im_provider=IMProvider.SLACK,
                     im_tenant_id="team",
                     im_provider_user_id="user",
+                    im_binding_id=_BINDING,
                     message_type=IMMessageType.CARD,
                 ),
                 auth_type=SubmissionAuthType.IM,

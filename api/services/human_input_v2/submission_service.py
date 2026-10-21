@@ -41,7 +41,9 @@ from repositories.human_input_v2.sqlalchemy_audit_repository import SQLAlchemyAu
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
+from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import SQLAlchemyIMWebhookChannelRepository
+from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
 from services.human_input_v2.email_otp_service import (
     EmailOtpError,
@@ -519,6 +521,17 @@ class HumanInputSubmissionService:
             raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
         recipient = SQLAlchemyRecipientRepository(session, form.tenant_id, form.id).get_recipient(delivery.recipient_id)
         if recipient is None or not isinstance(recipient.subject, ContactRecipientSubject):
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        # Matching a Provider user must not revive a card after rebinding.
+        # The delivered Binding must still be effective for this Contact.
+        contact = SQLAlchemyContactRepository(session).get_contacts_by_id(form.tenant_id, recipient.subject.contact_id)
+        if contact is None or contact.type is ContactType.EXTERNAL:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        binding = SQLAlchemyIMBindingRepository(session, route.channel.id).get_effective(form.tenant_id, contact.id)
+        if binding is None or binding.id != target.im_binding_id:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        identity = SQLAlchemyIMIdentityRepository(session, route.channel.id).get(binding.identity_id)
+        if identity is None or identity.provider_user_id != actor.provider_user_id:
             raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
         return form, recipient
 

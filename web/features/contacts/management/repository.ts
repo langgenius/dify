@@ -124,7 +124,9 @@ export function createContactsApiRepository(
     throw new Error('This contact operation is not connected yet')
   }
   const canImportPlatformContacts = Boolean(
-    context?.workspaceId && context.deployment === 'ee' && context.permissions.canManageContacts,
+    context?.workspaceId &&
+    context.imBindingCentrallyManaged &&
+    context.permissions.canManageContacts,
   )
 
   return {

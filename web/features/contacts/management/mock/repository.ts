@@ -286,7 +286,7 @@ export function createContactsMockRepository({
         return { contactId: null, contactOutcome: 'not_found', kind: 'removed' }
       }
 
-      if (scenario.deployment === 'ee' && command.keepAsPlatformContact) {
+      if (scenario.imBindingCentrallyManaged && command.keepAsPlatformContact) {
         contacts = contacts.map((item) => {
           if (item.id !== contact.id) return item
           return {

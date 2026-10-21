@@ -185,14 +185,17 @@ function ContactIMBindingEditor({
   onRestore: () => void
 }) {
   const { t } = useTranslation(['contacts'])
+  const { imBindingCentrallyManaged: centrallyManaged } = useContactsFeatureContext()
   const providerLabel = getContactChannelLabel(provider)
   const boundIdentity = getBoundIMIdentity(contact, binding)
   const organizationIdentity = binding?.scope === 'organization' ? boundIdentity : undefined
-  const [mode, setMode] = useState(binding?.scope === 'workspace' ? 'workspace' : 'organization')
+  const [mode, setMode] = useState(
+    !centrallyManaged || binding?.scope === 'workspace' ? 'workspace' : 'organization',
+  )
   const [search, setSearch] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [identity, setIdentity] = useState<IMIdentityOption | null>(() =>
-    binding?.scope === 'workspace' ? (boundIdentity ?? null) : null,
+    !centrallyManaged || binding?.scope === 'workspace' ? (boundIdentity ?? null) : null,
   )
   const identities = useContactIMIdentities(search)
   const options = [
@@ -205,8 +208,9 @@ function ContactIMBindingEditor({
       ].map((identity) => [identity.id, identity]),
     ).values(),
   ]
-  const canSave =
-    mode === 'workspace'
+  const canSave = !centrallyManaged
+    ? identity !== null && (binding?.scope !== 'organization' || identity.id !== boundIdentity?.id)
+    : mode === 'workspace'
       ? identity !== null && (binding?.scope !== 'workspace' || identity.id !== boundIdentity?.id)
       : binding?.scope === 'workspace'
   return (
@@ -214,7 +218,7 @@ function ContactIMBindingEditor({
       onSubmit={(event) => {
         event.preventDefault()
         if (!canSave || saving) return
-        if (mode === 'workspace' && identity) onSave(identity.id)
+        if ((!centrallyManaged || mode === 'workspace') && identity) onSave(identity.id)
         else if (mode === 'organization') onRestore()
       }}
       className="relative flex flex-col"
@@ -224,10 +228,12 @@ function ContactIMBindingEditor({
           {t(($) => $['imBinding.changeTitle'], { provider: providerLabel })}
         </DialogTitle>
         <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['imBinding.modeDescription'], {
-            name: contact.name,
-            provider: providerLabel,
-          })}
+          {centrallyManaged
+            ? t(($) => $['imBinding.modeDescription'], {
+                name: contact.name,
+                provider: providerLabel,
+              })
+            : t(($) => $['imBinding.description'])}
         </DialogDescription>
       </div>
       <DialogClose
@@ -243,180 +249,180 @@ function ContactIMBindingEditor({
         }
       />
       <div className="px-6 pt-2">
-        <RadioGroup
-          aria-label={t(($) => $['imBinding.modeLabel'])}
-          className="flex-col items-stretch gap-5"
-          value={mode}
-          onValueChange={(value) => {
-            setMode(value)
-            setPickerOpen(false)
-          }}
-          disabled={saving}
-        >
-          <div className="space-y-1.5">
-            <label className="flex min-h-5 cursor-pointer items-center gap-2 system-sm-medium text-text-secondary">
-              <Radio value="organization" />
-              {t(($) => $['imBinding.organizationMode'])}
-            </label>
-            <div className="ml-6 flex h-9 items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2.5 system-xs-regular text-text-tertiary">
-              {organizationIdentity ? (
-                <>
-                  <IMIdentityAvatar identity={organizationIdentity} size="xs" />
-                  <span className="truncate text-text-secondary">
-                    {organizationIdentity.display_name ||
-                      organizationIdentity.email ||
-                      organizationIdentity.provider_user_id}
-                  </span>
-                  {organizationIdentity.display_name && (
-                    <span className="truncate">{organizationIdentity.email}</span>
-                  )}
-                </>
-              ) : binding ? (
-                t(($) => $['imBinding.organizationUnavailable'])
-              ) : (
-                t(($) => $['imBinding.noOrganizationBinding'])
-              )}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="flex min-h-5 cursor-pointer items-center gap-2 system-sm-medium text-text-secondary">
-              <Radio value="workspace" />
-              {t(($) => $['imBinding.workspaceMode'])}
-            </label>
-            {mode === 'workspace' && (
-              <div className="ml-6">
-                <Combobox
-                  items={options}
-                  filter={null}
-                  highlightItemOnHover={false}
-                  value={identity}
-                  onValueChange={setIdentity}
-                  inputValue={search}
-                  onInputValueChange={setSearch}
-                  open={pickerOpen}
-                  onOpenChange={(nextOpen) => {
-                    setPickerOpen(nextOpen)
-                    if (nextOpen) setSearch('')
-                  }}
-                  itemToStringLabel={(item) =>
-                    item.display_name || item.email || item.provider_user_id
-                  }
-                  isItemEqualToValue={(item, value) => item.id === value.id}
-                  disabled={saving}
-                >
-                  <ComboboxTrigger
-                    aria-label={t(($) => $['imBinding.contactLabel'])}
-                    className="h-9 gap-2 rounded-lg py-1.5 pr-2.5 pl-1.5"
-                  >
-                    {identity ? (
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        <IMIdentityAvatar identity={identity} />
-                        <span className="max-w-1/2 shrink-0 truncate system-sm-medium">
-                          {identity.display_name && !identity.display_name.startsWith('@') && '@'}
-                          {identity.display_name || identity.email || identity.provider_user_id}
-                        </span>
-                        <span className="truncate system-xs-regular text-text-tertiary">
-                          {identity.email}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="px-2 text-components-input-text-placeholder">
-                        {binding?.scope === 'workspace'
-                          ? t(($) => $['imBinding.currentWorkspaceIdentity'])
-                          : t(($) => $['imBinding.select'])}
-                      </span>
+        {centrallyManaged && (
+          <RadioGroup
+            aria-label={t(($) => $['imBinding.modeLabel'])}
+            className="flex-col items-stretch gap-5"
+            value={mode}
+            onValueChange={(value) => {
+              setMode(value)
+              setPickerOpen(false)
+            }}
+            disabled={saving}
+          >
+            <div className="space-y-1.5">
+              <label className="flex min-h-5 cursor-pointer items-center gap-2 system-sm-medium text-text-secondary">
+                <Radio value="organization" />
+                {t(($) => $['imBinding.organizationMode'])}
+              </label>
+              <div className="ml-6 flex h-9 items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2.5 system-xs-regular text-text-tertiary">
+                {organizationIdentity ? (
+                  <>
+                    <IMIdentityAvatar identity={organizationIdentity} size="xs" />
+                    <span className="truncate text-text-secondary">
+                      {organizationIdentity.display_name ||
+                        organizationIdentity.email ||
+                        organizationIdentity.provider_user_id}
+                    </span>
+                    {organizationIdentity.display_name && (
+                      <span className="truncate">{organizationIdentity.email}</span>
                     )}
-                  </ComboboxTrigger>
-                  <ComboboxPortal>
-                    <ComboboxPositioner>
-                      <ComboboxPopup
-                        aria-label={t(($) => $['imBinding.contactLabel'])}
-                        className="bg-components-panel-bg-blur backdrop-blur-[5px]"
-                        onKeyDown={(event) => {
-                          if (event.key === 'Escape') {
-                            event.stopPropagation()
-                            setPickerOpen(false)
-                          }
-                        }}
-                      >
-                        <div className="p-2 pb-1">
-                          <ComboboxInputGroup className="h-8 border-0 shadow-none hover:bg-components-input-bg-normal has-[input:focus]:bg-components-input-bg-normal has-[input:focus]:shadow-none has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-state-accent-solid data-focused:bg-components-input-bg-normal data-focused:shadow-none data-popup-open:bg-components-input-bg-normal">
-                            <span
-                              aria-hidden
-                              className="ml-2 i-ri-search-line size-4 shrink-0 text-text-quaternary"
-                            />
-                            <ComboboxInput
-                              aria-label={t(($) => $['imBinding.searchProvider'], {
-                                provider: providerLabel,
-                              })}
-                              placeholder={t(($) => $['imBinding.searchProvider'], {
-                                provider: providerLabel,
-                              })}
-                              className="h-8 py-0 pl-1.5"
-                            />
-                          </ComboboxInputGroup>
-                        </div>
-                        <ComboboxStatus>
-                          {identities.isPending ? t(($) => $['imBinding.loading']) : null}
-                        </ComboboxStatus>
-                        {identities.isError && (
-                          <div className="px-3 py-2">
-                            <p role="alert" className="system-xs-regular text-text-destructive">
-                              {t(($) => $[imErrorKey(identities.error, true)])}
-                            </p>
-                            <Button
-                              className="mt-2"
-                              onClick={() => {
-                                void identities.refetch()
-                              }}
-                            >
-                              {t(($) => $['action.retry'])}
-                            </Button>
-                          </div>
-                        )}
-                        {!identities.isPending && !identities.isError && options.length === 0 && (
-                          <p className="px-3 py-2 system-xs-regular text-text-tertiary">
-                            {t(($) => $['imBinding.empty'])}
-                          </p>
-                        )}
-                        <ComboboxList<IMIdentityOption>>
-                          {(option) => (
-                            <ComboboxItem
-                              key={option.id}
-                              value={option}
-                              className="flex h-8 gap-2 py-1 pr-3 pl-2"
-                            >
-                              <IMIdentityAvatar identity={option} />
-                              <span className="min-w-0 flex-1 truncate system-sm-medium">
-                                {option.display_name || option.email || option.provider_user_id}
-                              </span>
-                              <span className="max-w-1/2 shrink-0 truncate text-right system-xs-regular text-text-quaternary">
-                                {option.email || option.provider_user_id}
-                              </span>
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                        {identities.hasNextPage && (
-                          <div className="p-2 pt-1">
-                            <Button
-                              className="w-full"
-                              loading={identities.isFetchingNextPage}
-                              onClick={() => {
-                                void identities.fetchNextPage()
-                              }}
-                            >
-                              {t(($) => $['action.loadMore'])}
-                            </Button>
-                          </div>
-                        )}
-                      </ComboboxPopup>
-                    </ComboboxPositioner>
-                  </ComboboxPortal>
-                </Combobox>
+                  </>
+                ) : binding ? (
+                  t(($) => $['imBinding.organizationUnavailable'])
+                ) : (
+                  t(($) => $['imBinding.noOrganizationBinding'])
+                )}
               </div>
-            )}
+            </div>
+            <div className="space-y-1.5">
+              <label className="flex min-h-5 cursor-pointer items-center gap-2 system-sm-medium text-text-secondary">
+                <Radio value="workspace" />
+                {t(($) => $['imBinding.workspaceMode'])}
+              </label>
+            </div>
+          </RadioGroup>
+        )}
+        {(!centrallyManaged || mode === 'workspace') && (
+          <div className={cn(centrallyManaged && 'mt-1.5 ml-6')}>
+            <Combobox
+              items={options}
+              filter={null}
+              highlightItemOnHover={false}
+              value={identity}
+              onValueChange={setIdentity}
+              inputValue={search}
+              onInputValueChange={setSearch}
+              open={pickerOpen}
+              onOpenChange={(nextOpen) => {
+                setPickerOpen(nextOpen)
+                if (nextOpen) setSearch('')
+              }}
+              itemToStringLabel={(item) => item.display_name || item.email || item.provider_user_id}
+              isItemEqualToValue={(item, value) => item.id === value.id}
+              disabled={saving}
+            >
+              <ComboboxTrigger
+                aria-label={t(($) => $['imBinding.contactLabel'])}
+                className="h-9 gap-2 rounded-lg py-1.5 pr-2.5 pl-1.5"
+              >
+                {identity ? (
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <IMIdentityAvatar identity={identity} />
+                    <span className="max-w-1/2 shrink-0 truncate system-sm-medium">
+                      {identity.display_name && !identity.display_name.startsWith('@') && '@'}
+                      {identity.display_name || identity.email || identity.provider_user_id}
+                    </span>
+                    <span className="truncate system-xs-regular text-text-tertiary">
+                      {identity.email}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="px-2 text-components-input-text-placeholder">
+                    {binding?.scope === 'workspace'
+                      ? t(($) => $['imBinding.currentWorkspaceIdentity'])
+                      : t(($) => $['imBinding.select'])}
+                  </span>
+                )}
+              </ComboboxTrigger>
+              <ComboboxPortal>
+                <ComboboxPositioner>
+                  <ComboboxPopup
+                    aria-label={t(($) => $['imBinding.contactLabel'])}
+                    className="bg-components-panel-bg-blur backdrop-blur-[5px]"
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        event.stopPropagation()
+                        setPickerOpen(false)
+                      }
+                    }}
+                  >
+                    <div className="p-2 pb-1">
+                      <ComboboxInputGroup className="h-8 border-0 shadow-none hover:bg-components-input-bg-normal has-[input:focus]:bg-components-input-bg-normal has-[input:focus]:shadow-none has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-state-accent-solid data-focused:bg-components-input-bg-normal data-focused:shadow-none data-popup-open:bg-components-input-bg-normal">
+                        <span
+                          aria-hidden
+                          className="ml-2 i-ri-search-line size-4 shrink-0 text-text-quaternary"
+                        />
+                        <ComboboxInput
+                          aria-label={t(($) => $['imBinding.searchProvider'], {
+                            provider: providerLabel,
+                          })}
+                          placeholder={t(($) => $['imBinding.searchProvider'], {
+                            provider: providerLabel,
+                          })}
+                          className="h-8 py-0 pl-1.5"
+                        />
+                      </ComboboxInputGroup>
+                    </div>
+                    <ComboboxStatus>
+                      {identities.isPending ? t(($) => $['imBinding.loading']) : null}
+                    </ComboboxStatus>
+                    {identities.isError && (
+                      <div className="px-3 py-2">
+                        <p role="alert" className="system-xs-regular text-text-destructive">
+                          {t(($) => $[imErrorKey(identities.error, true)])}
+                        </p>
+                        <Button
+                          className="mt-2"
+                          onClick={() => {
+                            void identities.refetch()
+                          }}
+                        >
+                          {t(($) => $['action.retry'])}
+                        </Button>
+                      </div>
+                    )}
+                    {!identities.isPending && !identities.isError && options.length === 0 && (
+                      <p className="px-3 py-2 system-xs-regular text-text-tertiary">
+                        {t(($) => $['imBinding.empty'])}
+                      </p>
+                    )}
+                    <ComboboxList<IMIdentityOption>>
+                      {(option) => (
+                        <ComboboxItem
+                          key={option.id}
+                          value={option}
+                          className="flex h-8 gap-2 py-1 pr-3 pl-2"
+                        >
+                          <IMIdentityAvatar identity={option} />
+                          <span className="min-w-0 flex-1 truncate system-sm-medium">
+                            {option.display_name || option.email || option.provider_user_id}
+                          </span>
+                          <span className="max-w-1/2 shrink-0 truncate text-right system-xs-regular text-text-quaternary">
+                            {option.email || option.provider_user_id}
+                          </span>
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                    {identities.hasNextPage && (
+                      <div className="p-2 pt-1">
+                        <Button
+                          className="w-full"
+                          loading={identities.isFetchingNextPage}
+                          onClick={() => {
+                            void identities.fetchNextPage()
+                          }}
+                        >
+                          {t(($) => $['action.loadMore'])}
+                        </Button>
+                      </div>
+                    )}
+                  </ComboboxPopup>
+                </ComboboxPositioner>
+              </ComboboxPortal>
+            </Combobox>
           </div>
-        </RadioGroup>
+        )}
         {Boolean(error) && (
           <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
             {t(($) => $[imErrorKey(error)])}
@@ -459,7 +465,7 @@ function ContactIMChannels({
   const remove = useRemoveContactIMBinding()
   const canBind =
     canManage &&
-    context.deployment !== 'ee' &&
+    context.imBindingCentrallyManaged !== undefined &&
     repository.supportsIMBindings === true &&
     contact.type !== 'external'
   const configured = useContactIMChannels(canBind)
@@ -528,7 +534,7 @@ function ContactIMChannels({
                         ? identity.display_name || identity.email || identity.provider_user_id
                         : t(($) => $['imBinding.identityUnavailable'])}
                     </span>
-                    {binding?.scope === 'workspace' && (
+                    {context.imBindingCentrallyManaged && binding?.scope === 'workspace' && (
                       <span className="shrink-0 rounded-[5px] px-1 system-2xs-medium-uppercase text-text-tertiary inset-ring-1 inset-ring-divider-deep">
                         {t(($) => $['imBinding.customized'])}
                       </span>
@@ -584,7 +590,7 @@ function ContactIMChannels({
           </Button>
         </div>
       )}
-      {context.deployment === 'ee' && contact.type !== 'external' && (
+      {context.imBindingCentrallyManaged && contact.type !== 'external' && (
         <p className="mt-2 system-xs-regular text-text-tertiary">
           {t(($) => $['imBinding.enterpriseReadOnly'])}
         </p>
@@ -598,19 +604,41 @@ function ContactIMChannels({
         <DialogContent className="w-120 p-0">
           {editingProvider && (
             <ContactIMBindingEditor
+              key={`${editingProvider}:${context.imBindingCentrallyManaged}`}
               contact={contact}
               provider={editingProvider}
               binding={editingBinding}
               saving={busy}
               error={save.error || remove.error}
-              onSave={(identityId) =>
+              onSave={(identityId) => {
+                if (!canBind || context.imBindingCentrallyManaged === undefined) return
                 save.mutate(
-                  { contactId: contact.id, identityId, override: true },
-                  { onSuccess: () => setOpen(false) },
+                  {
+                    contactId: contact.id,
+                    identityId,
+                    override: context.imBindingCentrallyManaged,
+                  },
+                  {
+                    onSuccess: () => {
+                      if (
+                        !context.imBindingCentrallyManaged &&
+                        editingBinding?.scope === 'workspace'
+                      ) {
+                        remove.mutate(
+                          { contactId: contact.id, binding: editingBinding },
+                          { onSuccess: () => setOpen(false) },
+                        )
+                      } else setOpen(false)
+                    },
+                  },
                 )
-              }
+              }}
               onRestore={() => {
-                if (editingBinding?.scope === 'workspace') {
+                if (
+                  canBind &&
+                  context.imBindingCentrallyManaged &&
+                  editingBinding?.scope === 'workspace'
+                ) {
                   remove.mutate(
                     { contactId: contact.id, binding: editingBinding },
                     { onSuccess: () => setOpen(false) },

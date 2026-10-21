@@ -481,12 +481,27 @@ def test_initiator_token_is_encrypted_and_recovered_without_another_delivery(con
 
 
 @pytest.mark.parametrize("supports_card", [True, False])
-def test_im_assessment_controls_message_form_and_auth_without_losing_email(context: Context, providers, supports_card):
+@pytest.mark.parametrize("workspace_override", [False, True])
+def test_im_assessment_controls_message_form_and_auth_without_losing_email(
+    context: Context, providers, supports_card, workspace_override
+):
     from core.human_input_v2.im_integration.adapters.entities import CardAssessment
     from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot, SubmissionAuthType
     from services.human_input_v2.composition import build_human_input_delivery_service
 
     _add_im(context)
+    with context.sessions.begin() as session:
+        binding = session.scalars(sa.select(HumanInputIMBinding)).one()
+        expected_binding_id = binding.id
+        if workspace_override:
+            override = HumanInputIMBindingWorkspaceOverride(
+                channel_id=binding.channel_id,
+                tenant_id=_TENANT,
+                contact_id=binding.contact_id,
+                im_identity_id=binding.im_identity_id,
+            )
+            session.add(override)
+            expected_binding_id = override.id
     adapter, email_send = providers
     adapter.dynamic_card_messaging.assess.return_value = CardAssessment(
         supports_card, None if supports_card else "file input"
@@ -503,6 +518,8 @@ def test_im_assessment_controls_message_form_and_auth_without_losing_email(conte
     with context.sessions() as session:
         deliveries = list(session.scalars(sa.select(HumanInputDelivery)))
         im_delivery = next(d for d in deliveries if isinstance(d.target_snapshot, IMUserTargetSnapshot))
+        assert isinstance(im_delivery.target_snapshot, IMUserTargetSnapshot)
+        assert im_delivery.target_snapshot.im_binding_id == expected_binding_id
         assert im_delivery.target_snapshot.message_type == ("card" if supports_card else "link")
         assert im_delivery.auth_type == (SubmissionAuthType.IM if supports_card else SubmissionAuthType.CONSOLE)
         assert im_delivery.target_snapshot.message_locator == "provider-message"
@@ -1635,6 +1652,7 @@ def console_approval(context: Context):
 
 def test_submission_fans_out_each_created_im_card_after_commit(context: Context, console_approval, monkeypatch):
     from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
+    from core.human_input_v2.shared.values import IMBindingId
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryAttemptCreateParams, DeliveryStatus
     from repositories.human_input_v2.delivery_repository import (
         DeliveryCreateParams,
@@ -1671,6 +1689,7 @@ def test_submission_fans_out_each_created_im_card_after_commit(context: Context,
                         im_provider=IMProvider.SLACK,
                         im_tenant_id="provider-team",
                         im_provider_user_id="im-user",
+                        im_binding_id=IMBindingId(str(uuid4())),
                         message_type=message_type,
                     ),
                 ),

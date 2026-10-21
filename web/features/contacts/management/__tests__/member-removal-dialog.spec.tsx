@@ -1,9 +1,11 @@
+import type { ContactsFeatureContextValue } from '../types'
 import type { Member } from '@/models/common'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ContactsManagementMockProvider } from '../composition'
+import { ContactsManagementProvider } from '../composition'
 import { MemberRemovalContactImpactDialog } from '../member-removal-dialog'
+import { createContactsMockRepository } from '../mock/repository'
 import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
 
 const member: Member = {
@@ -20,32 +22,100 @@ const member: Member = {
   status: 'active',
 }
 
-function renderDialog(scenarioName: ContactsMockScenario, wait?: () => Promise<void>) {
+function renderDialog(
+  scenarioName: ContactsMockScenario,
+  wait?: () => Promise<void>,
+  imBindingCentrallyManaged?: boolean,
+  capabilityState: Partial<
+    Pick<
+      ContactsFeatureContextValue,
+      'imBindingCentrallyManaged' | 'imBindingCapabilityError' | 'retryIMBindingCapability'
+    >
+  > = {},
+) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
   })
   const onOpenChange = vi.fn()
   const onRemoved = vi.fn()
-  const scenario = createContactsMockScenario(scenarioName)
+  const baseScenario = createContactsMockScenario(scenarioName)
+  const scenario = {
+    ...baseScenario,
+    imBindingCentrallyManaged: imBindingCentrallyManaged ?? baseScenario.imBindingCentrallyManaged,
+  }
+  const repository = createContactsMockRepository({ scenario, wait })
+  const removeMember = vi.spyOn(repository, 'removeMember')
   render(
     <QueryClientProvider client={queryClient}>
-      <ContactsManagementMockProvider scenario={scenario} wait={wait}>
+      <ContactsManagementProvider
+        context={{
+          deployment: scenario.deployment,
+          imBindingCentrallyManaged: scenario.imBindingCentrallyManaged,
+          permissions: scenario.permissions,
+          workspaceId: scenario.workspaceId,
+          ...capabilityState,
+        }}
+        repository={repository}
+      >
         <MemberRemovalContactImpactDialog
           member={member}
           open
           onOpenChange={onOpenChange}
           onRemoved={onRemoved}
         />
-      </ContactsManagementMockProvider>
+      </ContactsManagementProvider>
     </QueryClientProvider>,
   )
-  return { onOpenChange, onRemoved }
+  return { onOpenChange, onRemoved, removeMember }
 }
 
 describe('MemberRemovalContactImpactDialog', () => {
+  it('does not allow removal before the binding capability is known', async () => {
+    const user = userEvent.setup()
+    const { removeMember, onRemoved } = renderDialog(
+      ContactsMockScenario.CeMixed,
+      undefined,
+      undefined,
+      {
+        imBindingCentrallyManaged: undefined,
+      },
+    )
+    const remove = screen.getByRole('button', { name: 'contacts.memberRemoval.remove' })
+
+    expect(remove).toBeDisabled()
+    await user.click(remove)
+
+    expect(removeMember).not.toHaveBeenCalled()
+    expect(onRemoved).not.toHaveBeenCalled()
+  })
+
+  it('offers retry after a capability failure without submitting a member removal', async () => {
+    const user = userEvent.setup()
+    const retry = vi.fn()
+    const { removeMember, onRemoved } = renderDialog(
+      ContactsMockScenario.EeMixed,
+      undefined,
+      undefined,
+      {
+        imBindingCentrallyManaged: undefined,
+        imBindingCapabilityError: new Error('Features unavailable'),
+        retryIMBindingCapability: retry,
+      },
+    )
+
+    expect(screen.getByRole('button', { name: 'contacts.memberRemoval.remove' })).toBeDisabled()
+    expect(screen.getByRole('alert')).toHaveTextContent('contacts.directory.errorTitle')
+    expect(screen.queryByText('contacts.memberRemoval.failed')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'contacts.action.retry' }))
+
+    expect(retry).toHaveBeenCalledOnce()
+    expect(removeMember).not.toHaveBeenCalled()
+    expect(onRemoved).not.toHaveBeenCalled()
+  })
+
   it('defaults EE retention to selected and submits the visible choice', async () => {
     const user = userEvent.setup()
-    const { onOpenChange, onRemoved } = renderDialog(ContactsMockScenario.EeMixed)
+    const { onOpenChange, onRemoved, removeMember } = renderDialog(ContactsMockScenario.EeMixed)
     const retention = screen.getByRole('checkbox', {
       name: /contacts\.memberRemoval\.keepPlatform/,
     })
@@ -56,6 +126,33 @@ describe('MemberRemovalContactImpactDialog', () => {
 
     await waitFor(() => expect(onRemoved).toHaveBeenCalledOnce())
     expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(removeMember).toHaveBeenCalledWith({ keepAsPlatformContact: false, memberId: member.id })
+  })
+
+  it('offers retention in Community edition when bindings are centrally managed', async () => {
+    const user = userEvent.setup()
+    const { removeMember, onRemoved } = renderDialog(ContactsMockScenario.CeMixed, undefined, true)
+
+    expect(
+      screen.getByRole('checkbox', { name: /contacts\.memberRemoval\.keepPlatform/ }),
+    ).toBeChecked()
+    expect(screen.getByText('contacts.memberRemoval.eeDescription')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+
+    await waitFor(() => expect(onRemoved).toHaveBeenCalledOnce())
+    expect(removeMember).toHaveBeenCalledWith({ keepAsPlatformContact: true, memberId: member.id })
+  })
+
+  it('does not retain a platform contact in Enterprise edition when bindings are workspace-managed', async () => {
+    const user = userEvent.setup()
+    const { removeMember, onRemoved } = renderDialog(ContactsMockScenario.EeMixed, undefined, false)
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.getByText('contacts.memberRemoval.standardDescription')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+
+    await waitFor(() => expect(onRemoved).toHaveBeenCalledOnce())
+    expect(removeMember).toHaveBeenCalledWith({ keepAsPlatformContact: false, memberId: member.id })
   })
 
   it.each([ContactsMockScenario.CeMixed, ContactsMockScenario.SaasMixed])(

@@ -33,6 +33,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
 )
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
+from core.human_input_v2.shared.values import IMBindingId
 from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.nodes.human_input_v2.entities import Initiator
 from enums import DeploymentEdition
@@ -121,6 +122,7 @@ class _EmailTarget:
 @dataclass(frozen=True, slots=True)
 class _IMTarget:
     channel: IMChannel
+    binding_id: IMBindingId
     user_id: ProviderUserId
 
 
@@ -252,8 +254,14 @@ class HumanInputDeliveryService:
                                 if binding is not None
                                 else None
                             )
-                            if identity is not None:
-                                targets.append(_IMTarget(channel, ProviderUserId(identity.provider_user_id)))
+                            if binding is not None and identity is not None:
+                                targets.append(
+                                    _IMTarget(
+                                        channel=channel,
+                                        binding_id=binding.id,
+                                        user_id=ProviderUserId(identity.provider_user_id),
+                                    )
+                                )
                 case EmailRecipientSubject(address):
                     email = address.value
                 case EndUserRecipientSubject(end_user_id):
@@ -348,6 +356,7 @@ class HumanInputDeliveryService:
                 im_provider=channel.provider,
                 im_tenant_id=channel.provider_tenant_id,
                 im_provider_user_id=user_id,
+                im_binding_id=target.binding_id,
                 message_type=message_type,
             )
             delivery = self._prepare_delivery(context, snapshot, auth_type, token)
