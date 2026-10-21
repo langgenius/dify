@@ -41,7 +41,7 @@ export const TextEditorSection = ({
           previewType={PreviewType.Markdown}
           varType={currentVar.value_type}
           mdString={typeof value === 'string' ? value : String(value ?? '')}
-          readonly={textEditorDisabled}
+          readonly={textEditorDisabled || isTruncated}
           handleTextChange={onTextChange}
           className={cn(isTruncated && 'pt-9')}
         />

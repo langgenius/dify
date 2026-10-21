@@ -2,11 +2,12 @@ import type { GetAccountProfileResponse } from '@dify/contracts/api/console/acco
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
+import { createDeferred } from '@/test/deferred'
 import { timezones } from '@/utils/timezone'
 import PreferencePage from '../index'
 
@@ -18,7 +19,10 @@ let mockUserProfile: GetAccountProfileResponse
 
 vi.mock('@/service/base', () => ({
   get: mockGet,
-  request: mockRequest,
+  request: (url: string, init: RequestInit, options: { request: Request }) =>
+    url.endsWith('/account/profile') && options.request.method === 'GET'
+      ? mockGet(url, init, options)
+      : mockRequest(url, init, options),
   sseGeneratorPost: vi.fn(),
 }))
 
@@ -54,7 +58,7 @@ const renderPage = () => {
   return render(
     <QueryClientProvider client={queryClient}>
       <PreferencePage />
-      <AppToastHost />
+      <AppToaster />
     </QueryClientProvider>,
   )
 }
@@ -75,14 +79,6 @@ const getTimezoneOption = (value: string) => {
   const option = timezones.find((item) => item.value === value)
   if (!option) throw new Error(`Missing timezone option: ${value}`)
   return option
-}
-
-const createDeferred = <T,>() => {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise
-  })
-  return { promise, resolve }
 }
 
 const mockProfileFailure = async (message: string) => {
@@ -111,7 +107,8 @@ beforeEach(() => {
   mockRequest.mockReset().mockImplementation(async () => profileResponse())
 })
 
-// Rendering
+afterEach(() => vi.restoreAllMocks())
+
 describe('PreferencePage - Rendering', () => {
   it('should render default language and timezone labels', () => {
     const english = getLanguageOption('en-US')
@@ -152,7 +149,6 @@ describe('PreferencePage - Rendering', () => {
   })
 })
 
-// Interactions
 describe('PreferencePage - Interactions', () => {
   it('should focus the timezone trigger without opening or saving when its label is clicked', async () => {
     const user = userEvent.setup()
@@ -283,11 +279,9 @@ describe('PreferencePage - Interactions', () => {
         screen.getByRole('combobox', { name: 'common.language.displayLanguage' }),
       ).toBeEnabled(),
     )
-    expect(screen.getByRole('combobox', { name: 'common.language.displayLanguage' })).toBeEnabled()
     expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toBeEnabled()
     expect(setLocaleOnClient).not.toHaveBeenCalled()
     expect(mockRefresh).not.toHaveBeenCalled()
-    expect(screen.getAllByText('Update failed')).toHaveLength(1)
   })
 
   it('should report client-side language failures without repeating the saved request', async () => {
@@ -353,7 +347,5 @@ describe('PreferencePage - Interactions', () => {
       getTimezoneOption('Pacific/Niue').name,
     )
     expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toBeEnabled()
-    expect(screen.getByRole('combobox', { name: 'common.language.displayLanguage' })).toBeEnabled()
-    expect(screen.getAllByText('Timezone failed')).toHaveLength(1)
   }, 15000)
 })

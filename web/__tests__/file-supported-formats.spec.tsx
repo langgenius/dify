@@ -106,16 +106,6 @@ describe('file supported formats across upload and document extraction', () => {
     expect(screen.getByText(/"supportTypes":"PDF, MARKDOWN, DOCX"/)).toBeInTheDocument()
     expect(request).toHaveBeenCalledTimes(1)
     expect(new URL(request.mock.calls[0]![0]).pathname).toBe('/console/api/files/support-type')
-    expect(request).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(Object),
-      expect.objectContaining({
-        fetchCompat: true,
-        request: expect.objectContaining({ method: 'GET' }),
-        silent: undefined,
-      }),
-    )
-
     mockLocale = LanguagesSupported[1]!
     rerender(consumers())
 

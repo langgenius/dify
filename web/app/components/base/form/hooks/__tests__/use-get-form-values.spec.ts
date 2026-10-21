@@ -4,6 +4,8 @@ import { toast } from '@/app/notifications'
 import { FormTypeEnum } from '../../types'
 import { useGetFormValues } from '../use-get-form-values'
 
+afterEach(() => vi.restoreAllMocks())
+
 const setup = () =>
   renderHook(() => {
     const form = useForm({ defaultValues: { name: 'Alice', password: 'saved-secret' } })

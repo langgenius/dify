@@ -1,7 +1,6 @@
 import type { IChatItem } from '../chat/type'
 import type { ChatItem, ChatItemInTree } from '../types'
-import { get } from 'es-toolkit/compat'
-import { UUID_NIL } from '../constants'
+import { gzipSync } from 'node:zlib'
 import {
   buildChatItemTree,
   getLastAnswer,
@@ -21,273 +20,76 @@ import multiRootNodesWithLegacyTestMessages from './multiRootNodesWithLegacyTest
 import partialMessages from './partialMessages.json'
 import realWorldMessages from './realWorldMessages.json'
 
-function visitNode(tree: ChatItemInTree | ChatItemInTree[], path: string): ChatItemInTree {
-  return get(tree, path)
-}
+const ids = (messages: ChatItemInTree[]) => messages.map((message) => message.id)
 
-class MockDecompressionStream {
-  readable: unknown
-  writable: unknown
-  constructor() {
-    this.readable = {}
-    this.writable = {}
-  }
-}
-
-describe('build chat item tree and get thread messages', () => {
-  const tree1 = buildChatItemTree(branchedTestMessages as ChatItemInTree[])
-
-  it('should build chat item tree1', () => {
-    const a1 = visitNode(tree1, '0.children.0')
-    expect(a1.id).toBe('1')
-    expect(a1.children).toHaveLength(2)
-
-    const a2 = visitNode(a1, 'children.0.children.0')
-    expect(a2.id).toBe('2')
-    expect(a2.siblingIndex).toBe(0)
-
-    const a3 = visitNode(a2, 'children.0.children.0')
-    expect(a3.id).toBe('3')
-
-    const a4 = visitNode(a1, 'children.1.children.0')
-    expect(a4.id).toBe('4')
-    expect(a4.siblingIndex).toBe(1)
+describe('chat histories', () => {
+  it.each([
+    ['branched', branchedTestMessages, ['question-1', '1', 'question-4', '4']],
+    [
+      'legacy',
+      legacyTestMessages,
+      ['question-1', '1', 'question-2', '2', 'question-3', '3', 'question-4', '4'],
+    ],
+    ['mixed', mixedTestMessages, ['question-1', '1', 'question-4', '4']],
+    ['multiple roots', multiRootNodesMessages, ['question-5', '5']],
+    ['legacy and multiple roots', multiRootNodesWithLegacyTestMessages, ['question-5', '5']],
+  ])('selects the latest thread from %s history', (_name, messages, expected) => {
+    const tree = buildChatItemTree(messages as ChatItemInTree[])
+    expect(ids(getThreadMessages(tree))).toEqual(expected)
   })
 
-  it('should get thread messages from tree1, using the last message as the target', () => {
-    const threadChatItems1_1 = getThreadMessages(tree1)
-    expect(threadChatItems1_1).toHaveLength(4)
-
-    const q1 = visitNode(threadChatItems1_1, '0')
-    const a1 = visitNode(threadChatItems1_1, '1')
-    const q4 = visitNode(threadChatItems1_1, '2')
-    const a4 = visitNode(threadChatItems1_1, '3')
-
-    expect(q1.id).toBe('question-1')
-    expect(a1.id).toBe('1')
-    expect(q4.id).toBe('question-4')
-    expect(a4.id).toBe('4')
-
-    expect(a4.siblingCount).toBe(2)
-    expect(a4.siblingIndex).toBe(1)
+  it('selects an earlier branch with navigation to its sibling', () => {
+    const tree = buildChatItemTree(branchedTestMessages as ChatItemInTree[])
+    const thread = getThreadMessages(tree, '3')
+    expect(ids(thread)).toEqual(['question-1', '1', 'question-2', '2', 'question-3', '3'])
+    expect(thread[3]).toMatchObject({ siblingIndex: 0, siblingCount: 2, nextSibling: '4' })
+    expect(getThreadMessages(tree)[3]).toMatchObject({
+      siblingIndex: 1,
+      siblingCount: 2,
+      prevSibling: '2',
+    })
   })
 
-  it('should get thread messages from tree1, using the message with id 3 as the target', () => {
-    const threadChatItems1_2 = getThreadMessages(tree1, '3')
-    expect(threadChatItems1_2).toHaveLength(6)
-
-    const q1 = visitNode(threadChatItems1_2, '0')
-    const a1 = visitNode(threadChatItems1_2, '1')
-    const q2 = visitNode(threadChatItems1_2, '2')
-    const a2 = visitNode(threadChatItems1_2, '3')
-    const q3 = visitNode(threadChatItems1_2, '4')
-    const a3 = visitNode(threadChatItems1_2, '5')
-
-    expect(q1.id).toBe('question-1')
-    expect(a1.id).toBe('1')
-    expect(q2.id).toBe('question-2')
-    expect(a2.id).toBe('2')
-    expect(q3.id).toBe('question-3')
-    expect(a3.id).toBe('3')
-
-    expect(a2.siblingCount).toBe(2)
-    expect(a2.siblingIndex).toBe(0)
+  it('keeps independent conversations and chooses descendants of the requested answer', () => {
+    const tree = buildChatItemTree(realWorldMessages as ChatItemInTree[])
+    expect(ids(tree)).toEqual([
+      'question-ff4c2b43-48a5-47ad-9dc5-08b34ddba61b',
+      'question-cd5affb0-7bc2-4a6f-be7e-25e74595c9dd',
+    ])
+    expect(
+      getThreadMessages(tree)
+        .filter((item) => item.isAnswer)
+        .map((item) => item.id),
+    ).toEqual([
+      'cd5affb0-7bc2-4a6f-be7e-25e74595c9dd',
+      '684b5396-4e91-4043-88e9-aabe48b21acc',
+      '19904a7b-7494-4ed8-b72c-1d18668cea8c',
+    ])
+    expect(
+      getThreadMessages(tree, 'ff4c2b43-48a5-47ad-9dc5-08b34ddba61b')
+        .filter((item) => item.isAnswer)
+        .map((item) => item.id),
+    ).toEqual([
+      'ff4c2b43-48a5-47ad-9dc5-08b34ddba61b',
+      '73bbad14-d915-499d-87bf-0df14d40779d',
+      '4c5d0841-1206-463e-95d8-71f812877658',
+    ])
   })
 
-  const tree2 = buildChatItemTree(legacyTestMessages as ChatItemInTree[])
-  it('should work with legacy chat items', () => {
-    expect(tree2).toHaveLength(1)
-    const q1 = visitNode(tree2, '0')
-    const a1 = visitNode(q1, 'children.0')
-    const q2 = visitNode(a1, 'children.0')
-    const a2 = visitNode(q2, 'children.0')
-    const q3 = visitNode(a2, 'children.0')
-    const a3 = visitNode(q3, 'children.0')
-    const q4 = visitNode(a3, 'children.0')
-    const a4 = visitNode(q4, 'children.0')
-
-    expect(q1.id).toBe('question-1')
-    expect(a1.id).toBe('1')
-    expect(q2.id).toBe('question-2')
-    expect(a2.id).toBe('2')
-    expect(q3.id).toBe('question-3')
-    expect(a3.id).toBe('3')
-    expect(q4.id).toBe('question-4')
-    expect(a4.id).toBe('4')
-  })
-
-  it('should get thread messages from tree2, using the last message as the target', () => {
-    const threadMessages2 = getThreadMessages(tree2)
-    expect(threadMessages2).toHaveLength(8)
-
-    const q1 = visitNode(threadMessages2, '0')
-    const a1 = visitNode(threadMessages2, '1')
-    const q2 = visitNode(threadMessages2, '2')
-    const a2 = visitNode(threadMessages2, '3')
-    const q3 = visitNode(threadMessages2, '4')
-    const a3 = visitNode(threadMessages2, '5')
-    const q4 = visitNode(threadMessages2, '6')
-    const a4 = visitNode(threadMessages2, '7')
-
-    expect(q1.id).toBe('question-1')
-    expect(a1.id).toBe('1')
-    expect(q2.id).toBe('question-2')
-    expect(a2.id).toBe('2')
-    expect(q3.id).toBe('question-3')
-    expect(a3.id).toBe('3')
-    expect(q4.id).toBe('question-4')
-    expect(a4.id).toBe('4')
-
-    expect(a1.siblingCount).toBe(1)
-    expect(a1.siblingIndex).toBe(0)
-    expect(a2.siblingCount).toBe(1)
-    expect(a2.siblingIndex).toBe(0)
-    expect(a3.siblingCount).toBe(1)
-    expect(a3.siblingIndex).toBe(0)
-    expect(a4.siblingCount).toBe(1)
-    expect(a4.siblingIndex).toBe(0)
-  })
-
-  const tree3 = buildChatItemTree(mixedTestMessages as ChatItemInTree[])
-  it('should build mixed chat items tree', () => {
-    expect(tree3).toHaveLength(1)
-
-    const a1 = visitNode(tree3, '0.children.0')
-    expect(a1.id).toBe('1')
-    expect(a1.children).toHaveLength(2)
-
-    const a2 = visitNode(a1, 'children.0.children.0')
-    expect(a2.id).toBe('2')
-    expect(a2.siblingIndex).toBe(0)
-
-    const a3 = visitNode(a2, 'children.0.children.0')
-    expect(a3.id).toBe('3')
-
-    const a4 = visitNode(a1, 'children.1.children.0')
-    expect(a4.id).toBe('4')
-    expect(a4.siblingIndex).toBe(1)
-  })
-
-  it('should get thread messages from tree3, using the last message as the target', () => {
-    const threadMessages3_1 = getThreadMessages(tree3)
-    expect(threadMessages3_1).toHaveLength(4)
-
-    const q1 = visitNode(threadMessages3_1, '0')
-    const a1 = visitNode(threadMessages3_1, '1')
-    const q4 = visitNode(threadMessages3_1, '2')
-    const a4 = visitNode(threadMessages3_1, '3')
-
-    expect(q1.id).toBe('question-1')
-    expect(a1.id).toBe('1')
-    expect(q4.id).toBe('question-4')
-    expect(a4.id).toBe('4')
-
-    expect(a4.siblingCount).toBe(2)
-    expect(a4.siblingIndex).toBe(1)
-  })
-
-  it('should get thread messages from tree3, using the message with id 3 as the target', () => {
-    const threadMessages3_2 = getThreadMessages(tree3, '3')
-    expect(threadMessages3_2).toHaveLength(6)
-
-    const q1 = visitNode(threadMessages3_2, '0')
-    const a1 = visitNode(threadMessages3_2, '1')
-    const q2 = visitNode(threadMessages3_2, '2')
-    const a2 = visitNode(threadMessages3_2, '3')
-    const q3 = visitNode(threadMessages3_2, '4')
-    const a3 = visitNode(threadMessages3_2, '5')
-
-    expect(q1.id).toBe('question-1')
-    expect(a1.id).toBe('1')
-    expect(q2.id).toBe('question-2')
-    expect(a2.id).toBe('2')
-    expect(q3.id).toBe('question-3')
-    expect(a3.id).toBe('3')
-
-    expect(a2.siblingCount).toBe(2)
-    expect(a2.siblingIndex).toBe(0)
-  })
-
-  const tree4 = buildChatItemTree(multiRootNodesMessages as ChatItemInTree[])
-  it('should build multi root nodes chat items tree', () => {
-    expect(tree4).toHaveLength(2)
-
-    const a5 = visitNode(tree4, '1.children.0')
-    expect(a5.id).toBe('5')
-    expect(a5.siblingIndex).toBe(1)
-  })
-
-  it('should get thread messages from tree4, using the last message as the target', () => {
-    const threadMessages4 = getThreadMessages(tree4)
-    expect(threadMessages4).toHaveLength(2)
-
-    const a1 = visitNode(threadMessages4, '0.children.0')
-    expect(a1.id).toBe('5')
-  })
-
-  it('should get thread messages from tree4, using the message with id 2 as the target', () => {
-    const threadMessages4_1 = getThreadMessages(tree4, '2')
-    expect(threadMessages4_1).toHaveLength(6)
-    const a1 = visitNode(threadMessages4_1, '1')
-    expect(a1.id).toBe('1')
-    const a2 = visitNode(threadMessages4_1, '3')
-    expect(a2.id).toBe('2')
-    const a3 = visitNode(threadMessages4_1, '5')
-    expect(a3.id).toBe('3')
-  })
-
-  const tree5 = buildChatItemTree(multiRootNodesWithLegacyTestMessages as ChatItemInTree[])
-  it('should work with multi root nodes chat items with legacy chat items', () => {
-    expect(tree5).toHaveLength(2)
-
-    const q5 = visitNode(tree5, '1')
-    expect(q5.id).toBe('question-5')
-    expect(q5.parentMessageId).toBe(null)
-
-    const a5 = visitNode(q5, 'children.0')
-    expect(a5.id).toBe('5')
-    expect(a5.children).toHaveLength(0)
-  })
-
-  it('should get thread messages from tree5, using the last message as the target', () => {
-    const threadMessages5 = getThreadMessages(tree5)
-    expect(threadMessages5).toHaveLength(2)
-
-    const q5 = visitNode(threadMessages5, '0')
-    const a5 = visitNode(threadMessages5, '1')
-
-    expect(q5.id).toBe('question-5')
-    expect(a5.id).toBe('5')
-
-    expect(a5.siblingCount).toBe(2)
-    expect(a5.siblingIndex).toBe(1)
-  })
-
-  const tree6 = buildChatItemTree(realWorldMessages as ChatItemInTree[])
-  it('should work with real world messages', () => {
-    expect(tree6).toMatchSnapshot()
-  })
-
-  it('should get thread messages from tree6, using the last message as target', () => {
-    const threadMessages6_1 = getThreadMessages(tree6)
-    expect(threadMessages6_1).toMatchSnapshot()
-  })
-
-  it('should get thread messages from tree6, using specified message as target', () => {
-    const threadMessages6_2 = getThreadMessages(tree6, 'ff4c2b43-48a5-47ad-9dc5-08b34ddba61b')
-    expect(threadMessages6_2).toMatchSnapshot()
-  })
-
-  const partialMessages1 = (realWorldMessages as ChatItemInTree[]).slice(-10)
-  const tree7 = buildChatItemTree(partialMessages1)
-  it('should work with partial messages 1', () => {
-    expect(tree7).toMatchSnapshot()
-  })
-
-  const partialMessages2 = partialMessages as ChatItemInTree[]
-  const tree8 = buildChatItemTree(partialMessages2)
-  it('should work with partial messages 2', () => {
-    expect(tree8).toMatchSnapshot()
+  it('promotes messages whose parent was not fetched while retaining their descendants', () => {
+    const tree = buildChatItemTree(partialMessages as ChatItemInTree[])
+    expect(ids(tree)).toEqual([
+      'question-ebb73fe2-15de-46dd-aab5-75416d8448eb',
+      'question-3553d508-3850-462e-8594-078539f940f9',
+      'question-507f9df9-1f06-4a57-bb38-f00228c42c22',
+    ])
+    const thread = getThreadMessages(tree)
+    expect(ids(thread)).toEqual(partialMessages.slice(4).map((message) => message.id))
+    expect(thread[1]).toMatchObject({
+      siblingCount: 3,
+      siblingIndex: 2,
+      prevSibling: '3553d508-3850-462e-8594-078539f940f9',
+    })
   })
 })
 
@@ -295,126 +97,73 @@ describe('chat utils - url params and answer helpers', () => {
   const setSearch = (search: string) => {
     window.history.replaceState({}, '', `${window.location.pathname}${search}`)
   }
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.stubGlobal('DecompressionStream', MockDecompressionStream)
-    vi.stubGlobal(
-      'TextDecoder',
-      class {
-        decode() {
-          return 'decompressed_text'
-        }
-      },
-    )
-
-    const mockPipeThrough = vi.fn().mockReturnValue({})
-    vi.stubGlobal(
-      'Response',
-      class {
-        body = { pipeThrough: mockPipeThrough }
-        arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(8))
-      },
-    )
-    setSearch('')
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
+  beforeEach(() => setSearch(''))
+  afterEach(() => setSearch(''))
 
   describe('URL Parameter Extractors', () => {
-    it('getRawInputsFromUrlParams extracts inputs except sys. and user.', async () => {
-      setSearch('?custom=123&sys.param=456&user.param=789&encoded=a%20b')
-      const res = await getRawInputsFromUrlParams()
-      expect(res).toEqual({ custom: '123', encoded: 'a b' })
-    })
+    const compressed = (value: string) => gzipSync(value).toString('base64')
 
-    it('getRawInputsFromUrlParams keeps encoded launch params as decoded plain values', async () => {
-      setSearch(`?custom=${encodeURIComponent('YWJjZA==')}`)
-      const res = await getRawInputsFromUrlParams()
-      expect(res).toEqual({ custom: 'YWJjZA==' })
-    })
-
-    it('getRawUserVariablesFromUrlParams extracts only user. prefixed params', async () => {
-      setSearch('?custom=123&sys.param=456&user.param=789&user.encoded=a%20b')
-      const res = await getRawUserVariablesFromUrlParams()
-      expect(res).toEqual({ param: '789', encoded: 'a b' })
-    })
-
-    it('getRawUserVariablesFromUrlParams keeps encoded user values as decoded plain values', async () => {
-      setSearch(`?user.param=${encodeURIComponent('YWJjZA==')}`)
-      const res = await getRawUserVariablesFromUrlParams()
-      expect(res).toEqual({ param: 'YWJjZA==' })
-    })
-
-    it('getProcessedInputsFromUrlParams decompresses base64 inputs', async () => {
-      setSearch(`?custom=${encodeURIComponent('YWJjZA==')}&sys.param=456&user.param=789`)
-      const res = await getProcessedInputsFromUrlParams()
-      expect(res).toEqual({ custom: 'decompressed_text' })
-    })
-
-    it('getProcessedInputsFromUrlParams returns undefined for plain decoded values', async () => {
-      vi.stubGlobal('atob', () => {
-        throw new Error('invalid')
-      })
-      setSearch('?custom=a%20b')
-      const res = await getProcessedInputsFromUrlParams()
-      expect(res).toEqual({ custom: undefined })
-    })
-
-    it('getProcessedSystemVariablesFromUrlParams decompresses sys. prefixed params', async () => {
-      setSearch(`?custom=123&sys.param=${encodeURIComponent('YWJjZA==')}&user.param=789`)
-      const res = await getProcessedSystemVariablesFromUrlParams()
-      expect(res).toEqual({ param: 'decompressed_text' })
-    })
-
-    it('getProcessedSystemVariablesFromUrlParams returns undefined for plain decoded values', async () => {
-      vi.stubGlobal('atob', () => {
-        throw new Error('invalid')
-      })
-      setSearch('?sys.param=a%20b')
-      const res = await getProcessedSystemVariablesFromUrlParams()
-      expect(res).toEqual({ param: undefined })
-    })
-
-    it('getProcessedSystemVariablesFromUrlParams parses redirect_url without query string', async () => {
+    it('keeps raw inputs and user variables separate and decodes URL encoding once', async () => {
       setSearch(
-        `?redirect_url=${encodeURIComponent('http://example.com')}&sys.param=${encodeURIComponent('YWJjZA==')}`,
+        `?${new URLSearchParams({
+          custom: '100% + / %2F',
+          'sys.param': 'system',
+          'user.name': '用户 %20',
+        })}`,
       )
-      const res = await getProcessedSystemVariablesFromUrlParams()
-      expect(res).toEqual({ param: 'decompressed_text' })
+      expect(await getRawInputsFromUrlParams()).toEqual({ custom: '100% + / %2F' })
+      expect(await getRawUserVariablesFromUrlParams()).toEqual({ name: '用户 %20' })
     })
 
-    it('getProcessedSystemVariablesFromUrlParams parses redirect_url', async () => {
+    it.each([
+      ['inputs', '', getProcessedInputsFromUrlParams],
+      ['system', 'sys.', getProcessedSystemVariablesFromUrlParams],
+      ['user', 'user.', getProcessedUserVariablesFromUrlParams],
+    ] as const)(
+      'decompresses real UTF-8 gzip %s and isolates malformed values',
+      async (_name, prefix, extract) => {
+        setSearch(
+          `?${new URLSearchParams({
+            [`${prefix}valid`]: compressed('你好 👋 + 100%'),
+            [`${prefix}invalid`]: 'not base64!',
+            [`${prefix}notGzip`]: btoa('plain bytes'),
+            [`${prefix}empty`]: compressed(''),
+          })}`,
+        )
+        expect(await extract()).toEqual({
+          valid: '你好 👋 + 100%',
+          invalid: undefined,
+          notGzip: undefined,
+          empty: '',
+        })
+      },
+    )
+
+    it('selects each compressed namespace without leaking the others', async () => {
       setSearch(
-        `?redirect_url=${encodeURIComponent(`http://example.com?sys.redirected=${encodeURIComponent('YWJjZA==')}`)}&sys.param=${encodeURIComponent('YWJjZA==')}`,
+        `?${new URLSearchParams({ custom: compressed('input'), 'sys.param': compressed('system'), 'user.param': compressed('user') })}`,
       )
-      const res = await getProcessedSystemVariablesFromUrlParams()
-      expect(res).toEqual({ param: 'decompressed_text', redirected: 'decompressed_text' })
+      expect(await getProcessedInputsFromUrlParams()).toEqual({ custom: 'input' })
+      expect(await getProcessedSystemVariablesFromUrlParams()).toEqual({ param: 'system' })
+      expect(await getProcessedUserVariablesFromUrlParams()).toEqual({ param: 'user' })
     })
 
-    it('getProcessedUserVariablesFromUrlParams decompresses user. prefixed params', async () => {
-      setSearch(`?custom=123&sys.param=456&user.param=${encodeURIComponent('YWJjZA==')}`)
-      const res = await getProcessedUserVariablesFromUrlParams()
-      expect(res).toEqual({ param: 'decompressed_text' })
-    })
-
-    it('getProcessedUserVariablesFromUrlParams returns undefined for plain decoded values', async () => {
-      vi.stubGlobal('atob', () => {
-        throw new Error('invalid')
+    it('merges redirect system variables and gives redirect values precedence', async () => {
+      const redirect = `https://example.com?${new URLSearchParams({ 'sys.param': compressed('redirect'), 'sys.extra': compressed('extra'), custom: compressed('ignored') })}`
+      setSearch(
+        `?${new URLSearchParams({ redirect_url: redirect, 'sys.param': compressed('outer') })}`,
+      )
+      expect(await getProcessedSystemVariablesFromUrlParams()).toEqual({
+        param: 'redirect',
+        extra: 'extra',
       })
-      setSearch('?user.param=a%20b')
-      const res = await getProcessedUserVariablesFromUrlParams()
-      expect(res).toEqual({ param: undefined })
     })
 
-    it('decodeBase64AndDecompress failure returns undefined softly', async () => {
-      vi.stubGlobal('atob', () => {
-        throw new Error('invalid')
-      })
-      setSearch(`?custom=${encodeURIComponent('YWJjZA==')}`)
-      const res = await getProcessedInputsFromUrlParams()
-      expect(res).toEqual({ custom: undefined })
+    it('keeps system variables when the redirect has no query', async () => {
+      setSearch(
+        `?${new URLSearchParams({ redirect_url: 'https://example.com', 'sys.param': compressed('outer') })}`,
+      )
+      expect(await getProcessedSystemVariablesFromUrlParams()).toEqual({ param: 'outer' })
     })
   })
 
@@ -479,23 +228,6 @@ describe('chat utils - url params and answer helpers', () => {
   })
 
   describe('ChatItem Tree Builders', () => {
-    it('buildChatItemTree builds a flat tree for legacy messages (parentMessageId = UUID_NIL)', () => {
-      const list: IChatItem[] = [
-        { id: 'q1', isAnswer: false, parentMessageId: UUID_NIL } as IChatItem,
-        { id: 'a1', isAnswer: true, parentMessageId: UUID_NIL } as IChatItem,
-        { id: 'q2', isAnswer: false, parentMessageId: UUID_NIL } as IChatItem,
-        { id: 'a2', isAnswer: true, parentMessageId: UUID_NIL } as IChatItem,
-      ]
-
-      const tree = buildChatItemTree(list)
-      expect(tree.length).toBe(1)
-      expect(tree[0]!.id).toBe('q1')
-      expect(tree[0]!.children?.[0]!.id).toBe('a1')
-      expect(tree[0]!.children?.[0]!.children?.[0]!.id).toBe('q2')
-      expect(tree[0]!.children?.[0]!.children?.[0]!.children?.[0]!.id).toBe('a2')
-      expect(tree[0]!.children?.[0]!.children?.[0]!.children?.[0]!.siblingIndex).toBe(0)
-    })
-
     it('buildChatItemTree builds nested tree based on parentMessageId', () => {
       const list: IChatItem[] = [
         { id: 'q1', isAnswer: false, parentMessageId: null } as IChatItem,
@@ -550,96 +282,6 @@ describe('chat utils - url params and answer helpers', () => {
       const tree = [{ id: 'q1', isAnswer: false, children: [] }]
       const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'missing')
       expect(thread.length).toBe(0)
-    })
-
-    it('getThreadMessages target not found with undefined children', () => {
-      const tree = [{ id: 'q1', isAnswer: false }]
-      const thread = getThreadMessages(tree as ChatItemInTree[], 'missing')
-      expect(thread.length).toBe(0)
-    })
-
-    it('getThreadMessages flat path logic', () => {
-      const tree = [
-        {
-          id: 'q1',
-          isAnswer: false,
-          children: [
-            {
-              id: 'a1',
-              isAnswer: true,
-              siblingIndex: 0,
-              children: [
-                {
-                  id: 'q2',
-                  isAnswer: false,
-                  children: [
-                    {
-                      id: 'a2',
-                      isAnswer: true,
-                      siblingIndex: 0,
-                      children: [],
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ]
-
-      const thread = getThreadMessages(tree as unknown as ChatItemInTree[])
-      expect(thread.length).toBe(4)
-      expect(thread.map((t) => t.id)).toEqual(['q1', 'a1', 'q2', 'a2'])
-      expect(thread[1]!.siblingCount).toBe(1)
-      expect(thread[3]!.siblingCount).toBe(1)
-    })
-
-    it('getThreadMessages to specific target', () => {
-      const tree = [
-        {
-          id: 'q1',
-          isAnswer: false,
-          children: [
-            {
-              id: 'a1',
-              isAnswer: true,
-              siblingIndex: 0,
-              children: [
-                {
-                  id: 'q2',
-                  isAnswer: false,
-                  children: [
-                    {
-                      id: 'a2',
-                      isAnswer: true,
-                      siblingIndex: 0,
-                      children: [],
-                    },
-                  ],
-                },
-                {
-                  id: 'q3',
-                  isAnswer: false,
-                  children: [
-                    {
-                      id: 'a3',
-                      isAnswer: true,
-                      siblingIndex: 1,
-                      children: [],
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ]
-
-      const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'a3')
-      expect(thread.length).toBe(4)
-      expect(thread.map((t) => t.id)).toEqual(['q1', 'a1', 'q3', 'a3'])
-      expect(thread[3]!.prevSibling).toBe('a2')
-      expect(thread[3]!.nextSibling).toBeUndefined()
     })
 
     it('getThreadMessages targetNode has descendants', () => {

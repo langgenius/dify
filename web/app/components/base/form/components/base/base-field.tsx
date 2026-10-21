@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { useStore } from '@tanstack/react-form'
+import { useSelector } from '@tanstack/react-form'
 import { isValidElement, memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
@@ -156,7 +156,7 @@ const BaseField = ({
   const labelId = `${controlId}-label`
   const descriptionId = `${controlId}-description`
   const messageId = `${controlId}-message`
-  const meta = useStore(field.form.store, (state) => state.fieldMeta[field.name])
+  const meta = useSelector(field.form.store, (state) => state.fieldMeta[field.name])
   // Nonempty external errors take priority; clearing them restores client validation.
   const errors = fieldState?.errors?.length ? fieldState.errors : meta?.isTouched ? meta.errors : []
   const validateStatus =
@@ -204,7 +204,7 @@ const BaseField = ({
     return Array.from(variables)
   }, [options])
 
-  const watchedValues = useStore(field.form.store, (s) => {
+  const watchedValues = useSelector(field.form.store, (s) => {
     const result: Record<string, unknown> = {}
     for (const variable of watchedVariables) result[variable] = s.values[variable]
 
@@ -230,7 +230,7 @@ const BaseField = ({
     )
   }, [options, renderI18nObject, watchedValues])
 
-  const value = useStore(field.form.store, (s) => s.values[field.name])
+  const value = useSelector(field.form.store, (s) => s.values[field.name])
   const stringValue = typeof value === 'string' ? value : undefined
   const booleanValue = typeof value === 'boolean' ? value : undefined
 
@@ -443,6 +443,7 @@ const BaseField = ({
               {...controlProps}
               aria-labelledby={labelId}
               name={field.name}
+              disabled={disabled}
               title={name}
               value={value}
               onChange={(v) => field.handleChange(v)}
@@ -507,13 +508,13 @@ const BaseField = ({
                 <FieldsetLegend className="sr-only">{translatedLabel || name}</FieldsetLegend>
                 <FieldItem>
                   <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
-                    <Radio value={true} />
+                    <Radio value={true} disabled={disabled} />
                     True
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
                   <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
-                    <Radio value={false} />
+                    <Radio value={false} disabled={disabled} />
                     False
                   </FieldLabel>
                 </FieldItem>

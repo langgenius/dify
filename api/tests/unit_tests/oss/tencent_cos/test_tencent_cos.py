@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,13 +18,16 @@ pytest_plugins = ("tests.unit_tests.oss.__mock.tencent_cos",)
 
 class TestTencentCos(BaseStorageTest):
     @pytest.fixture(autouse=True)
-    def setup_method(self, setup_tencent_cos_mock):
+    @override
+    def setup_method(self, setup_tencent_cos_mock: None) -> None:
         """Executed before each test method."""
         with patch.object(CosConfig, "__init__", return_value=None, autospec=True):
             self.storage = TencentCosStorage()
         self.storage.bucket_name = get_example_bucket()
 
-    def test_download(self, tmp_path: Path):
+    # Replaces the base test so the download lands in tmp_path; the extra fixture argument narrows the signature.
+    @override
+    def test_download(self, tmp_path: Path) -> None:  # pyrefly: ignore[bad-override]
         destination = tmp_path / "download.txt"
         self.storage.download(get_example_filename(), str(destination))
         assert destination.read_bytes() == get_example_data()
@@ -32,7 +36,7 @@ class TestTencentCos(BaseStorageTest):
 class TestTencentCosConfiguration:
     """Tests for TencentCosStorage initialization with different configurations."""
 
-    def test_init_with_custom_domain(self):
+    def test_init_with_custom_domain(self) -> None:
         """Test initialization with custom domain configured."""
         # Mock dify_config to return custom domain configuration
         mock_dify_config = MagicMock()
@@ -64,7 +68,7 @@ class TestTencentCosConfiguration:
             assert call_kwargs["SecretKey"] == "test-secret-key"
             assert call_kwargs["Scheme"] == "https"
 
-    def test_init_with_region(self):
+    def test_init_with_region(self) -> None:
         """Test initialization with region configured (no custom domain)."""
         # Mock dify_config to return region configuration
         mock_dify_config = MagicMock()

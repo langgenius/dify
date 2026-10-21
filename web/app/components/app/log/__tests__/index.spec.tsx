@@ -1,11 +1,23 @@
 import type { CloudSandboxPlanState } from '../cloud-sandbox-retention'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import Logs from '../index'
+
+vi.mock('react-i18next', () => {
+  const mock = createReactI18nextMock()
+  return {
+    ...mock,
+    useTranslation: (...args: Parameters<typeof mock.useTranslation>) => ({
+      ...mock.useTranslation(...args),
+      ready: true,
+    }),
+  }
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
@@ -83,7 +95,7 @@ describe('Logs', () => {
       screen.getByRole('link', { name: /(?:^|\.)operation\.learnMore(?=$|:)/ }),
     ).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/logs')
     expect(screen.getByText('retention-upgrade-notice')).toBeInTheDocument()
-    expect(screen.getByText('loading-logs')).toBeInTheDocument()
+    expect(screen.getByText('list-total-')).toBeInTheDocument()
   })
 
   it('should render the empty state for completion apps without logs', async () => {
@@ -102,10 +114,11 @@ describe('Logs', () => {
         params: { app_id: 'app-2' },
       }),
     )
-    expect(await screen.findByText('empty-logs')).toBeInTheDocument()
+    expect(await screen.findByText('list-total-0')).toBeInTheDocument()
   })
 
   it('should update the page query parameter when pagination changes', async () => {
+    const user = userEvent.setup()
     getChatConversations.mockResolvedValue({
       total: APP_PAGE_LIMIT + 1,
       data: [],
@@ -116,7 +129,7 @@ describe('Logs', () => {
 
     render(<Logs appDetail={createAppDetailFixture({ id: 'app-3', mode: 'chat' })} />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Go to page 2' }))
+    await user.click(await screen.findByRole('button', { name: 'Go to page 2' }))
 
     expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
   })

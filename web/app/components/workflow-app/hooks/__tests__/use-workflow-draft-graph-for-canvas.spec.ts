@@ -1,13 +1,10 @@
 import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useWorkflowDraftGraphForCanvas } from '../use-workflow-draft-graph-for-canvas'
 
 describe('useWorkflowDraftGraphForCanvas', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should restore a local start placeholder for workflow graphs without an entry node', () => {
     const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
@@ -38,11 +35,11 @@ describe('useWorkflowDraftGraphForCanvas', () => {
     BlockEnum.TriggerPlugin,
     BlockEnum.StartPlaceholder,
   ])('should preserve existing %s entry nodes', (type) => {
-    const node = { id: 'entry', data: { type } }
+    const node = createNode({ id: 'entry', data: { type } })
     const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas({
-      nodes: [node] as never,
+      nodes: [node],
       edges: [],
     })
 
@@ -61,21 +58,21 @@ describe('useWorkflowDraftGraphForCanvas', () => {
   })
 
   it('should reuse the provided local start placeholder template when available', () => {
-    const localStartPlaceholder = {
+    const localStartPlaceholder = createNode({
       id: 'start-placeholder',
       data: { type: BlockEnum.StartPlaceholder },
-    }
-    const draftNode = { id: 'llm', data: { type: BlockEnum.LLM } }
+    })
+    const draftNode = createNode({ id: 'llm', data: { type: BlockEnum.LLM } })
     const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas(
       {
-        nodes: [draftNode] as never,
+        nodes: [draftNode],
         edges: [],
         viewport: { x: 1, y: 2, zoom: 0.5 },
       },
       {
-        localStartPlaceholderNodes: [localStartPlaceholder] as never,
+        localStartPlaceholderNodes: [localStartPlaceholder],
       },
     )
 

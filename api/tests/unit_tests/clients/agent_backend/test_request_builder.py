@@ -89,7 +89,7 @@ def test_request_builder_outputs_dify_agent_create_run_request() -> None:
 
 def test_request_builder_separates_agent_soul_and_workflow_job_prompt() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
-    layers = {layer.name: layer for layer in request.composition.layers}
+    {layer.name: layer for layer in request.composition.layers}
 
     dumped = request.model_dump(mode="json")
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are a careful reviewer."
@@ -207,6 +207,7 @@ def test_request_builder_adds_dify_plugin_tools_layer_when_configured() -> None:
                 runtime_parameters={},
                 parameters=[],
                 parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                plugin_unique_identifier="langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
     )

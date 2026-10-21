@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
+import { useStudioListHref } from '@/features/studio-list-navigation'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 
@@ -27,6 +28,7 @@ type SnippetDetailTopProps = {
 export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopProps) {
   const { t } = useTranslation(['app', 'common', 'workflow', 'navigation'])
   const router = useRouter()
+  const snippetsHref = useStudioListHref('/snippets')
 
   if (!expand) {
     return (
@@ -67,7 +69,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
           <BreadcrumbSeparator className="system-md-regular" />
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink
-              render={<Link href="/snippets" />}
+              render={<Link href={snippetsHref} />}
               className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
             >
               {t(($) => $['tabs.snippets'], { ns: 'workflow' })}

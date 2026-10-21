@@ -408,6 +408,10 @@ def test_agent_app_list_and_create_use_agent_route(
         "load_app_backing_agents_by_app_id",
         lambda _self, **kwargs: {
             "app-list": Agent(
+                tenant_id="tenant-1",
+                name="Agent",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.AGENT_APP,
                 id="agent-list",
                 app_id="app-list",
                 backing_app_id=None,
@@ -420,6 +424,10 @@ def test_agent_app_list_and_create_use_agent_route(
         roster_controller.AgentRosterService,
         "get_app_backing_agent",
         lambda _self, **kwargs: Agent(
+            tenant_id="tenant-1",
+            name="Agent",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
             id="agent-created",
             app_id="app-created",
             backing_app_id=None,
@@ -1028,6 +1036,10 @@ def test_agent_app_update_allows_empty_role(
         roster_controller.AgentRosterService,
         "get_app_backing_agent",
         lambda _self, **kwargs: Agent(
+            tenant_id="tenant-1",
+            name="Agent",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
             id=agent_id,
             app_id="app-1",
             backing_app_id=None,
@@ -2070,7 +2082,13 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
 
         def get_app_backing_agent(self, **kwargs: object) -> object:
             calls.append({"get_app_backing_agent": kwargs})
-            return Agent(id="backing-agent")
+            return Agent(
+                tenant_id="tenant-1",
+                name="Agent",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.AGENT_APP,
+                id="backing-agent",
+            )
 
     monkeypatch.setattr(completion_controller, "AgentRosterService", FakeRosterService)
     explicit_id = completion_controller._resolve_current_user_agent_debug_conversation_id(

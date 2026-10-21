@@ -43,46 +43,11 @@ describe('AudioPlayerManager', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockState.instances = []
-    Reflect.set(AudioPlayerManager, 'instance', undefined)
-  })
-
-  describe('getInstance', () => {
-    it('should return the same singleton instance across calls', () => {
-      const first = AudioPlayerManager.getInstance()
-      const second = AudioPlayerManager.getInstance()
-
-      expect(first).toBe(second)
-    })
   })
 
   describe('getAudioPlayer', () => {
-    it('should create a new audio player when no existing player is cached', () => {
-      const manager = AudioPlayerManager.getInstance()
-      const callback = vi.fn()
-
-      const result = manager.getAudioPlayer(
-        '/text-to-audio',
-        false,
-        'msg-1',
-        'hello',
-        'en-US',
-        callback,
-      )
-
-      expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(1)
-      expect(mockAudioPlayerConstructor).toHaveBeenCalledWith(
-        '/text-to-audio',
-        false,
-        'msg-1',
-        'hello',
-        'en-US',
-        callback,
-      )
-      expect(result).toBe(mockState.instances[0])
-    })
-
     it('should reuse existing player and update callback when msg id is unchanged', () => {
-      const manager = AudioPlayerManager.getInstance()
+      const manager = new AudioPlayerManager()
       const firstCallback = vi.fn()
       const secondCallback = vi.fn()
 
@@ -103,14 +68,21 @@ describe('AudioPlayerManager', () => {
         secondCallback,
       )
 
-      expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(1)
+      expect(mockAudioPlayerConstructor).toHaveBeenCalledExactlyOnceWith(
+        '/text-to-audio',
+        false,
+        'msg-1',
+        'hello',
+        'en-US',
+        firstCallback,
+      )
       expect(first).toBe(second)
       expect(mockState.instances[0]!.setCallback).toHaveBeenCalledTimes(1)
       expect(mockState.instances[0]!.setCallback).toHaveBeenCalledWith(secondCallback)
     })
 
     it('should cleanup existing player and create a new one when msg id changes', () => {
-      const manager = AudioPlayerManager.getInstance()
+      const manager = new AudioPlayerManager()
       const callback = vi.fn()
       manager.getAudioPlayer('/text-to-audio', false, 'msg-1', 'hello', 'en-US', callback)
       const previous = mockState.instances[0]
@@ -130,7 +102,7 @@ describe('AudioPlayerManager', () => {
     })
 
     it('should swallow cleanup errors and still create a new player', () => {
-      const manager = AudioPlayerManager.getInstance()
+      const manager = new AudioPlayerManager()
       const callback = vi.fn()
       manager.getAudioPlayer('/text-to-audio', false, 'msg-1', 'hello', 'en-US', callback)
       const previous = mockState.instances[0]
@@ -149,7 +121,7 @@ describe('AudioPlayerManager', () => {
 
   describe('resetMsgId', () => {
     it('should forward reset message id to the cached audio player when present', () => {
-      const manager = AudioPlayerManager.getInstance()
+      const manager = new AudioPlayerManager()
       const callback = vi.fn()
       manager.getAudioPlayer('/text-to-audio', false, 'msg-1', 'hello', 'en-US', callback)
 
@@ -157,12 +129,16 @@ describe('AudioPlayerManager', () => {
 
       expect(mockState.instances[0]!.resetMsgId).toHaveBeenCalledTimes(1)
       expect(mockState.instances[0]!.resetMsgId).toHaveBeenCalledWith('msg-updated')
-    })
-
-    it('should not throw when resetting message id without an audio player', () => {
-      const manager = AudioPlayerManager.getInstance()
-
-      expect(() => manager.resetMsgId('msg-updated')).not.toThrow()
+      const reused = manager.getAudioPlayer(
+        '/text-to-audio',
+        false,
+        'msg-updated',
+        'hello',
+        'en-US',
+        callback,
+      )
+      expect(reused).toBe(mockState.instances[0])
+      expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(1)
     })
   })
 })

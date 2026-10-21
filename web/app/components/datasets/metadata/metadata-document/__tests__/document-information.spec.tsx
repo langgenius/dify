@@ -13,8 +13,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.documents.metadata.post': (input) => vi.fn()(input),
-      'datasets.byDatasetId.metadata.post': (input) => vi.fn()(input),
       'datasets.byDatasetId.documents.byDocumentId.get': async () => ({ doc_metadata: [] }),
       'datasets.byDatasetId.metadata.get': async () => ({ built_in_field_enabled: false }),
     }),

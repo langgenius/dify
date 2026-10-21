@@ -91,7 +91,7 @@ it('initializes a builder, verifies entered credentials and submits validated co
     <CommonCreateModal createType={SupportedCreationMethods.APIKEY} onClose={onClose} />,
   )
   await waitFor(() =>
-    expect(requests.create).toHaveBeenCalledWith({
+    expect(requests.create).toHaveBeenCalledExactlyOnceWith({
       params: { provider: 'provider-a' },
       body: { credential_type: TriggerCredentialType.ApiKey },
     }),
@@ -179,10 +179,13 @@ it('debounces manual property edits and validates them before creating the subsc
   renderWithConsoleQuery(
     <CommonCreateModal
       createType={SupportedCreationMethods.MANUAL}
-      builder={builder}
+      builder={{ ...builder, endpoint: 'http://127.0.0.1/callback' }}
       onClose={onClose}
     />,
   )
+  expect(
+    await screen.findByText('pluginTrigger.modal.form.callbackUrl.privateAddressWarning'),
+  ).toBeInTheDocument()
   await user.type(screen.getByRole('textbox', { name: subscriptionName }), 'Manual updates')
   await user.click(screen.getByRole('button', { name: createName }))
   expect(requests.build).not.toHaveBeenCalled()

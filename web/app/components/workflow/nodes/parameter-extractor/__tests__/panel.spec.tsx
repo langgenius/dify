@@ -1,225 +1,105 @@
 import type { ParameterExtractorNodeType } from '../types'
-import type { PanelProps } from '@/types/workflow'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import Panel from '../panel'
 import { ParamType, ReasoningModeType } from '../types'
-import useConfig from '../use-config'
 
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    __esModule: true,
-    default: ({
-      setModel,
-      onCompletionParamsChange,
-    }: {
-      setModel: (model: { provider: string; modelId: string; mode?: string }) => void
-      onCompletionParamsChange: (params: Record<string, unknown>) => void
-    }) => (
-      <div>
-        <button
-          type="button"
-          onClick={() =>
-            setModel({
-              provider: 'anthropic',
-              modelId: 'claude-3-7-sonnet',
-              mode: 'chat' as const,
-            })
-          }
-        >
-          set-model
-        </button>
-        <button type="button" onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>
-          set-params
-        </button>
-      </div>
-    ),
-  }),
-)
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  __esModule: true,
-  default: ({ onChange }: { onChange: (value: string[]) => void }) => (
-    <button type="button" onClick={() => onChange(['node-1', 'query'])}>
-      pick-var
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/config-vision', () => ({
-  __esModule: true,
-  default: ({
-    onEnabledChange,
-    onConfigChange,
-  }: {
-    onEnabledChange: (enabled: boolean) => void
-    onConfigChange: (value: { detail: string }) => void
-  }) => (
-    <div>
-      <button type="button" onClick={() => onEnabledChange(true)}>
-        vision-toggle
-      </button>
-      <button type="button" onClick={() => onConfigChange({ detail: 'high' })}>
-        vision-config
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
-  __esModule: true,
-  default: ({ onChange }: { onChange: (value: string) => void }) => (
-    <button type="button" onClick={() => onChange('Updated instruction')}>
-      instruction-editor
-    </button>
-  ),
-}))
-
-vi.mock('../components/extract-parameter/import-from-tool', () => ({
-  __esModule: true,
-  default: ({ onImport }: { onImport: (params: unknown[]) => void }) => (
-    <button type="button" onClick={() => onImport([{ name: 'budget' }])}>
-      import-from-tool
-    </button>
-  ),
-}))
-
-vi.mock('../components/reasoning-mode-picker', () => ({
-  __esModule: true,
-  default: ({ onChange }: { onChange: (value: ReasoningModeType) => void }) => (
-    <button type="button" onClick={() => onChange(ReasoningModeType.functionCall)}>
-      set-reasoning-mode
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => ({
-  __esModule: true,
-  default: ({ onChange }: { onChange: (value: { enabled: boolean }) => void }) => (
-    <button type="button" onClick={() => onChange({ enabled: true })}>
-      memory-config
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
-}))
-
-vi.mock('../use-config', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const mockUseConfig = vi.mocked(useConfig)
-
-const createData = (
-  overrides: Partial<ParameterExtractorNodeType> = {},
-): ParameterExtractorNodeType => ({
-  title: 'Parameter Extractor',
-  desc: '',
-  type: BlockEnum.ParameterExtractor,
-  model: {
-    provider: 'openai',
-    name: 'gpt-4o',
-    mode: 'chat' as const,
-    completion_params: {},
-  } as ParameterExtractorNodeType['model'],
-  query: ['node-1', 'query'],
-  reasoning_mode: ReasoningModeType.prompt,
-  parameters: [
-    {
-      name: 'city',
-      type: ParamType.string,
-      description: 'City name',
-      required: false,
-    },
-  ],
-  instruction: 'Extract city and budget',
-  vision: {
-    enabled: false,
-  },
-  ...overrides,
-})
-
-const panelProps = {} as PanelProps
-
-describe('parameter-extractor/panel', () => {
-  const handleModelChanged = vi.fn()
-  const handleCompletionParamsChange = vi.fn()
-  const handleInputVarChange = vi.fn()
-  const handleVisionResolutionEnabledChange = vi.fn()
-  const handleVisionResolutionChange = vi.fn()
-  const handleImportFromTool = vi.fn()
-  const addExtractParameter = vi.fn()
-  const handleInstructionChange = vi.fn()
-  const handleMemoryChange = vi.fn()
-  const handleReasoningModeChange = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseConfig.mockReturnValue({
-      readOnly: false,
-      handleInputVarChange,
-      filterVar: vi.fn(() => true),
-      isChatflow: true,
-      inputs: createData(),
-      isChatModel: true,
-      isCompletionModel: false,
-      handleModelChanged,
-      handleCompletionParamsChange,
-      handleImportFromTool,
-      handleExactParamsChange: vi.fn(),
-      addExtractParameter,
-      handleInstructionChange,
-      hasSetBlockStatus: { history: false, query: false, context: false },
-      availableVars: [],
-      availableNodesWithParent: [],
-      isSupportFunctionCall: true,
-      handleReasoningModeChange,
-      handleMemoryChange,
-      isVisionModel: true,
-      handleVisionResolutionEnabledChange,
-      handleVisionResolutionChange,
-    } as ReturnType<typeof useConfig>)
+it('adds a parameter to the node and exposes it as an output after closing the dialog', async () => {
+  const user = userEvent.setup()
+  const data: ParameterExtractorNodeType = {
+    title: 'Parameter Extractor',
+    desc: '',
+    type: BlockEnum.ParameterExtractor,
+    model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
+    query: [],
+    reasoning_mode: ReasoningModeType.prompt,
+    parameters: [
+      { name: 'city', type: ParamType.string, description: 'City name', required: false },
+    ],
+    instruction: 'Extract city and budget',
+    vision: { enabled: false },
+  }
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [createCatalogModelFixture({ model: 'gpt-4o', model_properties: { mode: 'chat' } })],
+    }),
+  ])
+  queryClient.setQueryDefaults(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+    { initialData: { data: [] } },
+  )
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
   })
 
-  it('adds a parameter through the real dialog and closes it after submission', async () => {
-    const user = userEvent.setup()
+  function NodePanel() {
+    const node = useNodes<ParameterExtractorNodeType>().find((node) => node.id === 'extractor')
+    if (!node) return null
+    return (
+      <Panel
+        id={node.id}
+        data={node.data}
+        panelProps={{
+          getInputVars: () => [],
+          toVarInputs: () => [],
+          runInputData: {},
+          runInputDataRef: { current: {} },
+          setRunInputData: () => {},
+          runResult: null,
+        }}
+      />
+    )
+  }
+  const render = createNuqsTestRenderer((ui) =>
+    renderWorkflowFlowComponent(<EventEmitterContextProvider>{ui}</EventEmitterContextProvider>, {
+      queryClient,
+      nodes: [createNode({ id: 'extractor', data })],
+    }),
+  )
+  render(<NodePanel />)
 
-    render(<Panel id="node-1" data={createData()} panelProps={panelProps} />)
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
-      }),
-    )
-    await user.type(
-      screen.getByRole('textbox', {
-        name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.name',
-      }),
-      'budget',
-    )
-    await user.type(
-      screen.getByRole('textbox', {
-        name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.description',
-      }),
-      'Budget amount',
-    )
-    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(addExtractParameter).toHaveBeenCalledExactlyOnceWith(
-      {
-        name: 'budget',
-        type: ParamType.string,
-        description: 'Budget amount',
-        required: false,
-      },
-      undefined,
-    )
-  })
+  await user.click(
+    await screen.findByRole('button', {
+      name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
+    }),
+  )
+  await user.type(
+    screen.getByRole('textbox', {
+      name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.name',
+    }),
+    'budget',
+  )
+  await user.type(
+    screen.getByRole('textbox', {
+      name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.description',
+    }),
+    'Budget amount',
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.getByText('budget')).toBeInTheDocument()
+  const outputTrigger = screen.getByRole('button', { name: /outputVars/ })
+  await user.click(outputTrigger)
+  const outputs = within(document.getElementById(outputTrigger.getAttribute('aria-controls')!)!)
+  expect(outputs.getByText('budget')).toBeInTheDocument()
+  expect(outputs.getByText('Budget amount')).toBeInTheDocument()
 })

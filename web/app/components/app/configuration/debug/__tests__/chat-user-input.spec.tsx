@@ -1,693 +1,221 @@
-import type { Inputs, ModelConfig } from '@/models/debug'
-import type { PromptVariable } from '@/types/app'
-import { fireEvent, screen } from '@testing-library/react'
+import type { Inputs, PromptVariable } from '@/models/debug'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import DebugConfigurationContext from '@/context/debug-configuration'
 import { renderWithDebugConfiguration } from '@/test/debug-configuration'
+import {
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
 import ChatUserInput from '../chat-user-input'
 
-let configuration: Parameters<typeof renderWithDebugConfiguration>[1] = {}
-const render = (ui: Parameters<typeof renderWithDebugConfiguration>[0]) =>
-  renderWithDebugConfiguration(ui, configuration)
+const variable = (overrides: Partial<PromptVariable> = {}): PromptVariable => ({
+  key: 'name',
+  name: 'Name',
+  type: 'string',
+  required: true,
+  ...overrides,
+})
+const modelConfig = (variables: PromptVariable[]) =>
+  createModelConfigFixture({
+    configs: { prompt_template: '', prompt_variables: variables },
+  })
 
-const mockSetInputs = vi.fn()
-
-vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({
-    name,
-    value,
-    required,
-    onChange,
-    readonly,
-  }: {
-    name: string
-    value: boolean
-    required?: boolean
-    onChange: (value: boolean) => void
-    readonly?: boolean
-  }) => (
-    <div data-testid={`bool-input-${name}`}>
-      <input
-        type="checkbox"
-        checked={value}
-        onChange={(e) => onChange(e.target.checked)}
-        disabled={readonly}
-        data-required={required}
-      />
-      <span>{name}</span>
-    </div>
-  ),
-}))
-
-// Extended type to match runtime behavior (includes 'paragraph', 'checkbox', 'default')
-type ExtendedPromptVariable = {
-  key: string
-  name: string
-  type: 'string' | 'number' | 'select' | 'paragraph' | 'checkbox'
-  required: boolean
-  options?: string[]
-  max_length?: number
-  default?: string | null
+function renderInputs(
+  variables: PromptVariable[],
+  initialInputs: Inputs = {},
+  permissions = { readonly: false, canTestAndRun: true },
+) {
+  const onChange = vi.fn()
+  function Form() {
+    const [inputs, setInputs] = useState(initialInputs)
+    const value = createDebugConfigurationFixture({
+      ...permissions,
+      modelConfig: modelConfig(variables),
+      setInputs: (nextInputs) => {
+        onChange(nextInputs)
+        setInputs(nextInputs)
+      },
+    })
+    return (
+      <DebugConfigurationContext.Provider value={value}>
+        <ChatUserInput inputs={inputs} />
+      </DebugConfigurationContext.Provider>
+    )
+  }
+  return { ...render(<Form />), onChange }
 }
 
-const createPromptVariable = (
-  overrides: Partial<ExtendedPromptVariable> = {},
-): ExtendedPromptVariable => ({
-  key: 'test-key',
-  name: 'Test Name',
-  type: 'string',
-  required: false,
-  ...overrides,
-})
-
-const createModelConfig = (promptVariables: ExtendedPromptVariable[] = []): ModelConfig =>
-  ({
-    provider: 'openai',
-    model_id: 'gpt-4',
-    mode: 'chat',
-    configs: {
-      prompt_template: '',
-      prompt_variables: promptVariables as PromptVariable[],
-    },
-  }) as ModelConfig
-
-const createContextValue = (
-  overrides: Partial<{
-    modelConfig: ModelConfig
-    setInputs: (inputs: Inputs) => void
-    readonly: boolean
-    canTestAndRun: boolean
-  }> = {},
-) => ({
-  modelConfig: createModelConfig(),
-  setInputs: mockSetInputs,
-  readonly: false,
-  canTestAndRun: true,
-  ...overrides,
-})
-
 describe('ChatUserInput', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    configuration = createContextValue()
+  it('omits variables without a usable key or name', () => {
+    const { container } = renderInputs([
+      variable({ key: '' }),
+      variable({ key: '   ' }),
+      variable({ name: '' }),
+      variable({ name: '   ' }),
+    ])
+    expect(container).toBeEmptyDOMElement()
   })
 
-  describe('Rendering', () => {
-    it('should return null when no prompt variables exist', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([]),
-      })
+  it('renders no form without prompt variables', () => {
+    const { container } = renderInputs([])
+    expect(container).toBeEmptyDOMElement()
+  })
 
-      const { container } = render(<ChatUserInput inputs={{}} />)
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('should return null when prompt variables have empty keys', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: '', name: 'Test' }),
-          createPromptVariable({ key: '   ', name: 'Test2' }),
-        ]),
-      })
-
-      const { container } = render(<ChatUserInput inputs={{}} />)
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('should return null when prompt variables have empty names', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'key1', name: '' }),
-          createPromptVariable({ key: 'key2', name: '   ' }),
-        ]),
-      })
-
-      const { container } = render(<ChatUserInput inputs={{}} />)
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('should render string input type', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument()
-    })
-
-    it('should render paragraph input type', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'description', name: 'Description', type: 'paragraph' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument()
-    })
-
-    it('should render select input type', async () => {
+  it.each([
+    {
+      type: 'string',
+      role: 'textbox',
+      previous: 'Old name',
+      next: 'New name',
+      expected: 'New name',
+    },
+    {
+      type: 'paragraph',
+      role: 'textbox',
+      previous: 'Old description',
+      next: 'New description',
+      expected: 'New description',
+    },
+    { type: 'number', role: 'spinbutton', previous: 42, next: '100', expected: '100' },
+  ])(
+    'edits $type values while preserving other inputs',
+    async ({ type, role, previous, next, expected }) => {
       const user = userEvent.setup()
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({
-            key: 'choice',
-            name: 'Choice',
-            type: 'select',
-            options: ['A', 'B', 'C'],
-          }),
-        ]),
+      const { onChange } = renderInputs([variable({ type })], {
+        name: previous,
+        other: 'preserved',
       })
+      const input = screen.getByRole(role, { name: 'Name' })
+      expect(input).toHaveValue(previous)
+      await user.clear(input)
+      await user.type(input, next)
+      expect(onChange).toHaveBeenLastCalledWith({ name: expected, other: 'preserved' })
+    },
+  )
 
-      render(<ChatUserInput inputs={{}} />)
-      const select = screen.getByRole('combobox', { name: 'Choice' })
-      await user.click(select)
-      expect(await screen.findByRole('option', { name: 'A' })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: 'B' })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: 'C' })).toBeInTheDocument()
+  it('changes the selected option and preserves other inputs', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderInputs([variable({ type: 'select', options: ['A', 'B', 'C'] })], {
+      name: 'A',
+      other: 'preserved',
     })
-
-    it('should render number input type', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      const input = screen.getByRole('spinbutton', { name: 'Count' })
-      expect(input).toBeInTheDocument()
-      expect(input).toHaveAttribute('type', 'number')
-    })
-
-    it('should render checkbox input type', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('bool-input-Enabled')).toBeInTheDocument()
-    })
-
-    it('should render multiple input types', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-          createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
-          createPromptVariable({
-            key: 'choice',
-            name: 'Choice',
-            type: 'select',
-            options: ['X', 'Y'],
-          }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument()
-      expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'Choice' })).toBeInTheDocument()
-    })
-
-    it('should show optional label for non-required fields', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', required: false }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByText(/(?:^|\.)panel\.optional(?=$|:)/)).toBeInTheDocument()
-    })
-
-    it('should not show optional label for required fields', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', required: true }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.queryByText(/(?:^|\.)panel\.optional(?=$|:)/)).not.toBeInTheDocument()
-    })
-
-    it('should use key as label when name is not provided', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'myKey', name: '', type: 'string' }),
-        ]),
-      })
-
-      // This should actually return null because name is empty
-      const { container } = render(<ChatUserInput inputs={{}} />)
-      expect(container.firstChild).toBeNull()
-    })
+    const select = screen.getByRole('combobox', { name: 'Name' })
+    expect(select).toHaveTextContent('A')
+    await user.click(select)
+    await user.click(await screen.findByRole('option', { name: 'B' }))
+    expect(select).toHaveTextContent('B')
+    expect(onChange).toHaveBeenLastCalledWith({ name: 'B', other: 'preserved' })
   })
 
-  describe('Input Values', () => {
-    it('should display existing input values for string type', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ name: 'John' }} />)
-      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('John')
-    })
-
-    it('should display existing input values for paragraph type', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ desc: 'Long text here' }} />)
-      expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('Long text here')
-    })
-
-    it('should display existing input values for number type', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ count: 42 }} />)
-      // Number type input still uses string value internally
-      expect(screen.getByRole('spinbutton', { name: 'Count' })).toHaveValue(42)
-    })
-
-    it('should display checkbox as checked when value is truthy', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ enabled: true }} />)
-      const checkbox = screen.getByTestId('bool-input-Enabled').querySelector('input')
-      expect(checkbox).toBeChecked()
-    })
-
-    it('should display checkbox as unchecked when value is falsy', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ enabled: false }} />)
-      const checkbox = screen.getByTestId('bool-input-Enabled').querySelector('input')
-      expect(checkbox).not.toBeChecked()
-    })
-
-    it('should handle empty string values', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ name: '' }} />)
-      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('')
-    })
-
-    it('should handle undefined values', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('')
-    })
+  it('toggles a boolean in both directions', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderInputs([variable({ type: 'checkbox' })], { name: false })
+    const checkbox = screen.getByRole('checkbox', { name: 'Name' })
+    expect(checkbox).not.toBeChecked()
+    await user.click(checkbox)
+    expect(checkbox).toBeChecked()
+    expect(onChange).toHaveBeenLastCalledWith({ name: true })
+    await user.click(checkbox)
+    expect(checkbox).not.toBeChecked()
+    expect(onChange).toHaveBeenLastCalledWith({ name: false })
   })
 
-  describe('User Interactions', () => {
-    it('should call setInputs when string input changes', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      })
+  it.each([true, false])(
+    'shows the optional hint only for optional fields (required=%s)',
+    (required) => {
+      renderInputs([variable({ required })])
+      const hint = screen.queryByText(/(?:^|\.)panel\.optional(?=$|:)/)
+      if (required) expect(hint).not.toBeInTheDocument()
+      else expect(hint).toBeVisible()
+    },
+  )
 
-      render(<ChatUserInput inputs={{}} />)
-      fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
-        target: { value: 'New Value' },
-      })
+  it('allows test input despite readonly configuration when test/run is permitted', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderInputs([variable()], {}, { readonly: true, canTestAndRun: true })
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Ada')
+    expect(onChange).toHaveBeenLastCalledWith({ name: 'Ada' })
+  })
 
-      expect(mockSetInputs).toHaveBeenCalledWith({ name: 'New Value' })
-    })
-
-    it('should call setInputs when paragraph input changes', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), {
-        target: { value: 'New Description' },
-      })
-
-      expect(mockSetInputs).toHaveBeenCalledWith({ desc: 'New Description' })
-    })
-
-    it('should call setInputs when select input changes', async () => {
+  it.each([true, false])(
+    'blocks input without test/run permission regardless of configuration readonly=%s',
+    async (readonly) => {
       const user = userEvent.setup()
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({
-            key: 'choice',
-            name: 'Choice',
-            type: 'select',
-            options: ['A', 'B', 'C'],
-          }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ choice: 'A' }} />)
-      await user.click(screen.getByRole('combobox', { name: 'Choice' }))
-      await user.click(await screen.findByRole('option', { name: 'B' }))
-
-      expect(mockSetInputs).toHaveBeenCalledWith({ choice: 'B' })
-    })
-
-    it('should call setInputs when number input changes', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'count', name: 'Count', type: 'number' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      fireEvent.change(screen.getByRole('spinbutton', { name: 'Count' }), {
-        target: { value: '100' },
-      })
-
-      expect(mockSetInputs).toHaveBeenCalledWith({ count: '100' })
-    })
-
-    it('should call setInputs when checkbox changes', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ enabled: false }} />)
-      const checkbox = screen.getByTestId('bool-input-Enabled').querySelector('input')!
-      fireEvent.click(checkbox)
-
-      expect(mockSetInputs).toHaveBeenCalledWith({ enabled: true })
-    })
-
-    it('should not call setInputs for unknown keys', () => {
-      const filteredPromptVariables = {
-        length: 1,
-        forEach: vi.fn(),
-        map: (callback: (value: ExtendedPromptVariable, index: number) => unknown) => [
-          callback(createPromptVariable({ key: 'name', name: 'Name', type: 'string' }), 0),
+      const { onChange } = renderInputs(
+        [
+          variable(),
+          variable({ key: 'description', name: 'Description', type: 'paragraph' }),
+          variable({ key: 'count', name: 'Count', type: 'number' }),
+          variable({ key: 'choice', name: 'Choice', type: 'select', options: ['A'] }),
+          variable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
         ],
+        {},
+        { readonly, canTestAndRun: false },
+      )
+      for (const input of screen.getAllByRole('textbox')) {
+        expect(input).toHaveAttribute('readonly')
+        await user.type(input, 'blocked')
       }
-      configuration = createContextValue({
-        modelConfig: {
-          ...createModelConfig(),
-          configs: {
-            prompt_template: '',
-            prompt_variables: {
-              filter: () => filteredPromptVariables,
-            } as unknown as PromptVariable[],
-          },
-        },
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-
-      fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
-        target: { value: 'Valid' },
-      })
-
-      expect(mockSetInputs).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('Debug Permission', () => {
-    it('should keep string input editable when configuration is readonly but test/run is allowed', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-        readonly: true,
-        canTestAndRun: true,
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByRole('textbox', { name: 'Name' })).not.toHaveAttribute('readonly')
-    })
-
-    it('should set string input as readonly when test/run is denied even if configuration is editable', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-        readonly: false,
-        canTestAndRun: false,
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('readonly')
-    })
-
-    it('should set string input as readonly when configuration is readonly and test/run is denied', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-        readonly: true,
-        canTestAndRun: false,
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('readonly')
-    })
-
-    it('should set paragraph input as readonly when configuration is readonly and test/run is denied', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
-        ]),
-        readonly: true,
-        canTestAndRun: false,
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByRole('textbox', { name: 'Description' })).toHaveAttribute('readonly')
-    })
-
-    it('should disable select when configuration is readonly and test/run is denied', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({
-            key: 'choice',
-            name: 'Choice',
-            type: 'select',
-            options: ['A', 'B'],
-          }),
-        ]),
-        readonly: true,
-        canTestAndRun: false,
-      })
-
-      render(<ChatUserInput inputs={{}} />)
+      expect(screen.getByRole('spinbutton', { name: 'Count' })).toHaveAttribute('readonly')
       expect(screen.getByRole('combobox', { name: 'Choice' })).toBeDisabled()
+      const checkbox = screen.getByRole('checkbox', { name: 'Enabled' })
+      expect(checkbox).toHaveAttribute('aria-disabled', 'true')
+      await user.click(checkbox)
+      expect(onChange).not.toHaveBeenCalled()
+    },
+  )
+
+  it('initializes missing and empty values together without replacing existing values', () => {
+    const setInputs = vi.fn()
+    renderWithDebugConfiguration(<ChatUserInput inputs={{ existing: 'Keep', empty: '' }} />, {
+      modelConfig: modelConfig([
+        variable({ key: 'name', default: 'Default Name' }),
+        variable({ key: 'empty', default: 'Filled' }),
+        variable({ key: 'existing', default: 'Replace' }),
+        variable({ key: 'count', type: 'number', default: 0 }),
+        variable({ key: 'enabled', type: 'checkbox', default: false }),
+      ]),
+      setInputs,
     })
-
-    it('should disable checkbox when configuration is readonly and test/run is denied', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
-        ]),
-        readonly: true,
-        canTestAndRun: false,
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      const checkbox = screen.getByTestId('bool-input-Enabled').querySelector('input')
-      expect(checkbox).toBeDisabled()
-    })
-  })
-
-  describe('Default Values', () => {
-    it('should initialize inputs with default values when field is empty', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({
-            key: 'name',
-            name: 'Name',
-            type: 'string',
-            default: 'Default Name',
-          }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-
-      expect(mockSetInputs).toHaveBeenCalledWith({ name: 'Default Name' })
-    })
-
-    it('should not override existing values with defaults', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', default: 'Default' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ name: 'Existing Value' }} />)
-
-      // setInputs should not be called since there's already a value
-      expect(mockSetInputs).not.toHaveBeenCalled()
-    })
-
-    it('should handle multiple default values', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({
-            key: 'name',
-            name: 'Name',
-            type: 'string',
-            default: 'Default Name',
-          }),
-          createPromptVariable({ key: 'count', name: 'Count', type: 'number', default: '10' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-
-      expect(mockSetInputs).toHaveBeenCalledWith({
-        name: 'Default Name',
-        count: '10',
-      })
-    })
-
-    it('should not set default when default is empty string', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', default: '' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-
-      expect(mockSetInputs).not.toHaveBeenCalled()
-    })
-
-    it('should not set default when default is undefined', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-
-      expect(mockSetInputs).not.toHaveBeenCalled()
-    })
-
-    it('should not set default when default is null', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({
-            key: 'name',
-            name: 'Name',
-            type: 'string',
-            default: null as unknown as string,
-          }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-
-      expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(setInputs).toHaveBeenCalledWith({
+      existing: 'Keep',
+      empty: 'Filled',
+      name: 'Default Name',
+      count: 0,
+      enabled: false,
     })
   })
 
-  describe('Input constraints', () => {
-    it('preserves the text length constraint', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string', max_length: 50 }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-
-      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('maxLength', '50')
-    })
+  it('does not update populated values or fields without defaults', () => {
+    const { onChange } = renderInputs(
+      [
+        variable({ default: '' }),
+        variable({ key: 'missing' }),
+        variable({ key: 'existing', default: 'Replace' }),
+      ],
+      { existing: 'Keep' },
+    )
+    expect(onChange).not.toHaveBeenCalled()
   })
 
-  describe('Edge Cases', () => {
-    it('should show no options when a select has no configured choices', async () => {
-      const user = userEvent.setup()
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: [] }),
-        ]),
-      })
+  it('enforces the configured text length during editing', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderInputs([variable({ max_length: 5 })])
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), '123456')
+    expect(onChange).toHaveBeenLastCalledWith({ name: '12345' })
+  })
 
-      render(<ChatUserInput inputs={{}} />)
-      const select = screen.getByRole('combobox', { name: 'Choice' })
-      await user.click(select)
-      expect(screen.queryAllByRole('option')).toHaveLength(0)
-    })
+  it('shows no options when a select has no configured choices', async () => {
+    const user = userEvent.setup()
+    renderInputs([variable({ type: 'select', options: [] })])
+    await user.click(screen.getByRole('combobox', { name: 'Name' }))
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+  })
 
-    it('should preserve other input values when updating one field', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
-          createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ name: 'Existing', desc: 'Also Existing' }} />)
-      fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
-        target: { value: 'Updated' },
-      })
-
-      expect(mockSetInputs).toHaveBeenCalledWith({
-        name: 'Updated',
-        desc: 'Also Existing',
-      })
-    })
-
-    it('should convert non-string values to string for display', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'value', name: 'Value', type: 'string' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{ value: 123 as unknown as string }} />)
-      expect(screen.getByRole('textbox', { name: 'Value' })).toHaveValue('123')
-    })
-
-    it('should not hide label for checkbox type', () => {
-      configuration = createContextValue({
-        modelConfig: createModelConfig([
-          createPromptVariable({ key: 'enabled', name: 'Is Enabled', type: 'checkbox' }),
-        ]),
-      })
-
-      render(<ChatUserInput inputs={{}} />)
-      // For checkbox, the label is rendered inside BoolInput, not in the header
-      expect(screen.queryByText('Is Enabled')).toBeInTheDocument()
-    })
+  it('displays numeric values in a string field', () => {
+    renderInputs([variable()], { name: 123 })
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('123')
   })
 })

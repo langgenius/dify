@@ -323,7 +323,7 @@ export const useWorkflowComment = () => {
       } catch (e) {
         console.warn('Failed to load workflow comment detail', e)
       } finally {
-        setActiveCommentLoading(false)
+        if (activeCommentIdRef.current === comment.id) setActiveCommentLoading(false)
       }
     },
     [

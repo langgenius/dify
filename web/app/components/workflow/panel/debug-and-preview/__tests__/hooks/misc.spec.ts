@@ -1,19 +1,15 @@
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { act } from '@testing-library/react'
-import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { renderWorkflowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useChat } from '../../hooks'
 
 const mockHandleRun = vi.fn()
 const mockNotify = vi.fn()
 const mockFetchInspectVars = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
-const mockSetIterTimes = vi.fn()
-const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
 const mockGetNodes = vi.fn((): { id: string; type: string; data: Record<string, unknown> }[] => [])
-
-let mockWorkflowRunningData: { result: { status: string } } | null = null
 
 vi.mock('@/service/base', () => ({
   sseGet: (...args: unknown[]) => mockSseGet(...args),
@@ -52,25 +48,8 @@ vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
-vi.mock('../../../../hooks-store', () => ({
-  useHooksStore: () => null,
-}))
-
-vi.mock('../../../../store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setIterTimes: mockSetIterTimes,
-      setLoopTimes: mockSetLoopTimes,
-      inputs: {},
-      workflowRunningData: mockWorkflowRunningData,
-    }),
-  }),
-  useStore: () => vi.fn(),
-}))
-
 const resetMocksAndWorkflowState = () => {
   vi.clearAllMocks()
-  mockWorkflowRunningData = null
 }
 
 describe('useChat – handleSwitchSibling', () => {
@@ -106,7 +85,7 @@ describe('useChat – handleSwitchSibling', () => {
 
     act(() => {
       sendCallbacks.onHumanInputRequired({
-        data: { node_id: 'human-n', form_token: 'ft-1' },
+        data: { form_id: 'form-human-n', node_id: 'human-n', form_token: 'ft-1' },
       })
     })
 
@@ -118,7 +97,11 @@ describe('useChat – handleSwitchSibling', () => {
       result.current.handleSwitchSibling('msg-switch', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalled()
+    expect(mockSseGet).toHaveBeenCalledWith(
+      '/workflow/wfr-switch/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      expect.objectContaining({ onData: expect.any(Function), onCompleted: expect.any(Function) }),
+    )
   })
 
   it('should not call handleResume when target has no humanInputFormDataList', async () => {
@@ -150,18 +133,6 @@ describe('useChat – handleSwitchSibling', () => {
 
     act(() => {
       result.current.handleSwitchSibling('msg-switch', {})
-    })
-
-    expect(mockSseGet).not.toHaveBeenCalled()
-  })
-
-  it('should return undefined from findMessageInTree when not found', () => {
-    const { result } = renderHook(() => useChat({}), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
-
-    act(() => {
-      result.current.handleSwitchSibling('nonexistent-id', {})
     })
 
     expect(mockSseGet).not.toHaveBeenCalled()
@@ -216,7 +187,7 @@ describe('useChat – handleSwitchSibling', () => {
 
     act(() => {
       sendCallbacks.onHumanInputRequired({
-        data: { node_id: 'h-child', form_token: 'ft-c' },
+        data: { form_id: 'form-h-child', node_id: 'h-child', form_token: 'ft-c' },
       })
     })
 
@@ -228,7 +199,11 @@ describe('useChat – handleSwitchSibling', () => {
       result.current.handleSwitchSibling('msg-child', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalled()
+    expect(mockSseGet).toHaveBeenCalledWith(
+      '/workflow/wfr-2/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      expect.objectContaining({ onData: expect.any(Function), onCompleted: expect.any(Function) }),
+    )
   })
 })
 
@@ -306,13 +281,6 @@ describe('useChat – conversationId and setTargetMessageId', () => {
     resetMocksAndWorkflowState()
   })
 
-  it('should initially be an empty string', () => {
-    const { result } = renderHook(() => useChat({}), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
-    expect(result.current.conversationId).toBe('')
-  })
-
   it('setTargetMessageId should change chatList thread path', () => {
     const prevChatTree: ChatItemInTree[] = [
       {
@@ -351,24 +319,27 @@ describe('useChat – conversationId and setTargetMessageId', () => {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
 
-    const defaultList = result.current.chatList
-    expect(defaultList.some((item) => item.id === 'a1')).toBe(true)
-
     act(() => {
       result.current.setTargetMessageId('a2-branch-a')
     })
 
-    const listA = result.current.chatList
-    expect(listA.some((item) => item.id === 'a2-branch-a')).toBe(true)
-    expect(listA.some((item) => item.id === 'a2-branch-b')).toBe(false)
+    expect(result.current.chatList.map((item) => item.id)).toEqual([
+      'q1',
+      'a1',
+      'q2-branch-a',
+      'a2-branch-a',
+    ])
 
     act(() => {
       result.current.setTargetMessageId('a2-branch-b')
     })
 
-    const listB = result.current.chatList
-    expect(listB.some((item) => item.id === 'a2-branch-b')).toBe(true)
-    expect(listB.some((item) => item.id === 'a2-branch-a')).toBe(false)
+    expect(result.current.chatList.map((item) => item.id)).toEqual([
+      'q1',
+      'a1',
+      'q2-branch-b',
+      'a2-branch-b',
+    ])
   })
 })
 
@@ -417,6 +388,23 @@ describe('useChat – updateCurrentQAOnTree with parent_message_id', () => {
     })
 
     expect(mockHandleRun).toHaveBeenCalledTimes(2)
-    expect(result.current.chatList.length).toBeGreaterThan(0)
+    expect(mockHandleRun).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: 'follow up', parent_message_id: 'msg-1' }),
+      expect.any(Object),
+    )
+    act(() => {
+      capturedCallbacks.onData('answer2', true, {
+        conversationId: 'c1',
+        messageId: 'msg-2',
+        taskId: 't2',
+      })
+    })
+    expect(result.current.conversationId).toBe('c1')
+    expect(result.current.chatList.map(({ id, content }) => ({ id, content }))).toEqual([
+      { id: 'question-msg-1', content: 'first' },
+      { id: 'msg-1', content: 'answer1' },
+      { id: 'question-msg-2', content: 'follow up' },
+      { id: 'msg-2', content: 'answer2' },
+    ])
   })
 })

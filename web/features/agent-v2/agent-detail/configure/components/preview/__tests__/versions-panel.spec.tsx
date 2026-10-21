@@ -1,6 +1,6 @@
 import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactElement } from 'react'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import {
@@ -212,7 +212,7 @@ describe('AgentPreviewVersionsPanel', () => {
       expect(onSelectVersion).not.toHaveBeenCalled()
       await user.click(within(dialog).getByRole('button', { name: /restore/i }))
       await waitFor(() => expect(onSelectVersion).toHaveBeenCalledWith(null))
-      expect(exportState.restoreVersion.mock.calls[0]?.[0]).toEqual({
+      expect(exportState.restoreVersion).toHaveBeenCalledExactlyOnceWith({
         params: { agent_id: 'agent-1', version_id: 'version-0' },
       })
       expect(onVersionRestored.mock.invocationCallOrder[0]).toBeLessThan(
@@ -316,7 +316,8 @@ describe('AgentPreviewVersionsPanel', () => {
   })
 
   describe('Version selection', () => {
-    it('should notify the selected version when a version row is clicked', () => {
+    it('should notify the selected version when a version row is clicked', async () => {
+      const user = userEvent.setup()
       const handleSelectVersion = vi.fn()
 
       render(
@@ -329,12 +330,13 @@ describe('AgentPreviewVersionsPanel', () => {
         { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
-      fireEvent.click(screen.getByRole('button', { name: /^Initial release/i }))
+      await user.click(screen.getByRole('button', { name: /^Initial release/i }))
 
       expect(handleSelectVersion).toHaveBeenCalledWith('version-0')
     })
 
-    it('should notify null when the current draft row is clicked', () => {
+    it('should notify null when the current draft row is clicked', async () => {
+      const user = userEvent.setup()
       const handleSelectVersion = vi.fn()
 
       render(
@@ -347,14 +349,14 @@ describe('AgentPreviewVersionsPanel', () => {
         { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
-      fireEvent.click(screen.getByRole('button', { name: /currentDraft/i }))
+      await user.click(screen.getByRole('button', { name: /currentDraft/i }))
 
       expect(handleSelectVersion).toHaveBeenCalledWith(null)
     })
   })
 
   describe('Version filter', () => {
-    it('exposes which filter option is selected', async () => {
+    it('should only show current user versions when only yours is selected', async () => {
       const user = userEvent.setup()
       render(
         <AgentPreviewVersionsPanel
@@ -367,51 +369,13 @@ describe('AgentPreviewVersionsPanel', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /filter/i }))
-      expect(screen.getByRole('button', { name: /all/i })).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.getByRole('button', { name: /onlyYours/i })).toHaveAttribute(
-        'aria-pressed',
-        'false',
-      )
-
       await user.click(screen.getByRole('button', { name: /onlyYours/i }))
+
       expect(screen.getByRole('button', { name: /all/i })).toHaveAttribute('aria-pressed', 'false')
       expect(screen.getByRole('button', { name: /onlyYours/i })).toHaveAttribute(
         'aria-pressed',
         'true',
       )
-    })
-
-    it('should show filter options when the filter trigger is clicked', () => {
-      render(
-        <AgentPreviewVersionsPanel
-          agentId="agent-1"
-          activeVersionId="version-2"
-          onSelectVersion={vi.fn()}
-          onClose={vi.fn()}
-        />,
-        { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: /filter/i }))
-
-      expect(screen.getByRole('button', { name: /all/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /onlyYours/i })).toBeInTheDocument()
-      expect(screen.queryByText(/onlyShowNamedVersions/i)).not.toBeInTheDocument()
-    })
-
-    it('should only show current user versions when only yours is selected', () => {
-      render(
-        <AgentPreviewVersionsPanel
-          agentId="agent-1"
-          activeVersionId="version-2"
-          onSelectVersion={vi.fn()}
-          onClose={vi.fn()}
-        />,
-        { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: /filter/i }))
-      fireEvent.click(screen.getByRole('button', { name: /onlyYours/i }))
 
       expect(screen.getByRole('button', { name: /^Published update/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /^Initial release/i })).toBeInTheDocument()

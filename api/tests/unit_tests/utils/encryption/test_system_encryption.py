@@ -1,6 +1,7 @@
 import base64
 import hashlib
-from unittest.mock import patch
+from collections.abc import Callable
+from unittest.mock import MagicMock, patch
 
 import pytest
 from Crypto.Cipher import AES
@@ -20,34 +21,34 @@ from core.tools.utils.system_encryption import (
 class TestSystemEncrypter:
     """Test cases for SystemEncrypter class"""
 
-    def test_init_with_secret_key(self):
+    def test_init_with_secret_key(self) -> None:
         """Test initialization with provided secret key"""
         secret_key = "test_secret_key"
         encrypter = SystemEncrypter(secret_key=secret_key)
         expected_key = hashlib.sha256(secret_key.encode()).digest()
         assert encrypter.key == expected_key
 
-    def test_init_with_none_secret_key(self, config_overrides):
+    def test_init_with_none_secret_key(self, config_overrides: Callable[..., None]) -> None:
         """Test initialization with None secret key falls back to config"""
         config_overrides(SECRET_KEY="config_secret")
         encrypter = SystemEncrypter(secret_key=None)
         expected_key = hashlib.sha256(b"config_secret").digest()
         assert encrypter.key == expected_key
 
-    def test_init_with_empty_secret_key(self):
+    def test_init_with_empty_secret_key(self) -> None:
         """Test initialization with empty secret key"""
         encrypter = SystemEncrypter(secret_key="")
         expected_key = hashlib.sha256(b"").digest()
         assert encrypter.key == expected_key
 
-    def test_init_without_secret_key_uses_config(self, config_overrides):
+    def test_init_without_secret_key_uses_config(self, config_overrides: Callable[..., None]) -> None:
         """Test initialization without secret key uses config"""
         config_overrides(SECRET_KEY="default_secret")
         encrypter = SystemEncrypter()
         expected_key = hashlib.sha256(b"default_secret").digest()
         assert encrypter.key == expected_key
 
-    def test_encrypt_params_basic(self):
+    def test_encrypt_params_basic(self) -> None:
         """Test basic parameters encryption"""
         encrypter = SystemEncrypter("test_secret")
         params = {"client_id": "test_id", "client_secret": "test_secret"}
@@ -62,7 +63,7 @@ class TestSystemEncrypter:
         except Exception:
             pytest.fail("Encrypted result is not valid base64")
 
-    def test_encrypt_params_empty_dict(self):
+    def test_encrypt_params_empty_dict(self) -> None:
         """Test encryption with empty dictionary"""
         encrypter = SystemEncrypter("test_secret")
         params = {}
@@ -71,7 +72,7 @@ class TestSystemEncrypter:
         assert isinstance(encrypted, str)
         assert len(encrypted) > 0
 
-    def test_encrypt_params_complex_data(self):
+    def test_encrypt_params_complex_data(self) -> None:
         """Test encryption with complex data structures"""
         encrypter = SystemEncrypter("test_secret")
         params = {
@@ -88,7 +89,7 @@ class TestSystemEncrypter:
         assert isinstance(encrypted, str)
         assert len(encrypted) > 0
 
-    def test_encrypt_params_unicode_data(self):
+    def test_encrypt_params_unicode_data(self) -> None:
         """Test encryption with unicode data"""
         encrypter = SystemEncrypter("test_secret")
         params = {"client_id": "test_id", "client_secret": "test_secret", "description": "This is a test case 🚀"}
@@ -97,7 +98,7 @@ class TestSystemEncrypter:
         assert isinstance(encrypted, str)
         assert len(encrypted) > 0
 
-    def test_encrypt_params_large_data(self):
+    def test_encrypt_params_large_data(self) -> None:
         """Test encryption with large data"""
         encrypter = SystemEncrypter("test_secret")
         params = {
@@ -109,17 +110,19 @@ class TestSystemEncrypter:
         assert isinstance(encrypted, str)
         assert len(encrypted) > 0
 
-    def test_encrypt_params_invalid_input(self):
+    def test_encrypt_params_invalid_input(self) -> None:
         """Test encryption with invalid input types"""
         encrypter = SystemEncrypter("test_secret")
 
-        with pytest.raises(Exception):  # noqa: B017
-            encrypter.encrypt_params(None)
+        with pytest.raises(Exception, match="Encryption failed: 'NoneType' object is not iterable"):
+            encrypter.encrypt_params(None)  # pyrefly: ignore[bad-argument-type]
 
-        with pytest.raises(Exception):  # noqa: B017
-            encrypter.encrypt_params("not_a_dict")
+        with pytest.raises(
+            Exception, match=("Encryption failed: dictionary update sequence element \\#0 has length 1; 2 is required")
+        ):
+            encrypter.encrypt_params("not_a_dict")  # pyrefly: ignore[bad-argument-type]
 
-    def test_decrypt_params_basic(self):
+    def test_decrypt_params_basic(self) -> None:
         """Test basic parameters decryption"""
         encrypter = SystemEncrypter("test_secret")
         original_params = {"client_id": "test_id", "client_secret": "test_secret"}
@@ -129,7 +132,7 @@ class TestSystemEncrypter:
 
         assert decrypted == original_params
 
-    def test_decrypt_params_empty_dict(self):
+    def test_decrypt_params_empty_dict(self) -> None:
         """Test decryption of empty dictionary"""
         encrypter = SystemEncrypter("test_secret")
         original_params = {}
@@ -139,7 +142,7 @@ class TestSystemEncrypter:
 
         assert decrypted == original_params
 
-    def test_decrypt_params_complex_data(self):
+    def test_decrypt_params_complex_data(self) -> None:
         """Test decryption with complex data structures"""
         encrypter = SystemEncrypter("test_secret")
         original_params = {
@@ -157,7 +160,7 @@ class TestSystemEncrypter:
 
         assert decrypted == original_params
 
-    def test_decrypt_params_unicode_data(self):
+    def test_decrypt_params_unicode_data(self) -> None:
         """Test decryption with unicode data"""
         encrypter = SystemEncrypter("test_secret")
         original_params = {
@@ -171,7 +174,7 @@ class TestSystemEncrypter:
 
         assert decrypted == original_params
 
-    def test_decrypt_params_large_data(self):
+    def test_decrypt_params_large_data(self) -> None:
         """Test decryption with large data"""
         encrypter = SystemEncrypter("test_secret")
         original_params = {
@@ -184,37 +187,37 @@ class TestSystemEncrypter:
 
         assert decrypted == original_params
 
-    def test_decrypt_params_invalid_base64(self):
+    def test_decrypt_params_invalid_base64(self) -> None:
         """Test decryption with invalid base64 data"""
         encrypter = SystemEncrypter("test_secret")
 
         with pytest.raises(EncryptionError):
             encrypter.decrypt_params("invalid_base64!")
 
-    def test_decrypt_params_empty_string(self):
+    def test_decrypt_params_empty_string(self) -> None:
         """Test decryption with empty string"""
         encrypter = SystemEncrypter("test_secret")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data cannot be empty") as exc_info:
             encrypter.decrypt_params("")
 
         assert "encrypted_data cannot be empty" in str(exc_info.value)
 
-    def test_decrypt_params_non_string_input(self):
+    def test_decrypt_params_non_string_input(self) -> None:
         """Test decryption with non-string input"""
         encrypter = SystemEncrypter("test_secret")
 
-        with pytest.raises(ValueError) as exc_info:
-            encrypter.decrypt_params(123)
+        with pytest.raises(ValueError, match="encrypted_data must be a string") as exc_info:
+            encrypter.decrypt_params(123)  # pyrefly: ignore[bad-argument-type]
 
         assert "encrypted_data must be a string" in str(exc_info.value)
 
-        with pytest.raises(ValueError) as exc_info:
-            encrypter.decrypt_params(None)
+        with pytest.raises(ValueError, match="encrypted_data must be a string") as exc_info:
+            encrypter.decrypt_params(None)  # pyrefly: ignore[bad-argument-type]
 
         assert "encrypted_data must be a string" in str(exc_info.value)
 
-    def test_decrypt_params_too_short_data(self):
+    def test_decrypt_params_too_short_data(self) -> None:
         """Test decryption with too short encrypted data"""
         encrypter = SystemEncrypter("test_secret")
 
@@ -226,7 +229,7 @@ class TestSystemEncrypter:
 
         assert "Invalid encrypted data format" in str(exc_info.value)
 
-    def test_decrypt_params_corrupted_data(self):
+    def test_decrypt_params_corrupted_data(self) -> None:
         """Test decryption with corrupted data"""
         encrypter = SystemEncrypter("test_secret")
 
@@ -236,7 +239,7 @@ class TestSystemEncrypter:
         with pytest.raises(EncryptionError):
             encrypter.decrypt_params(corrupted_data)
 
-    def test_decrypt_params_wrong_key(self):
+    def test_decrypt_params_wrong_key(self) -> None:
         """Test decryption with wrong key"""
         encrypter1 = SystemEncrypter("secret1")
         encrypter2 = SystemEncrypter("secret2")
@@ -247,12 +250,12 @@ class TestSystemEncrypter:
         with pytest.raises(EncryptionError):
             encrypter2.decrypt_params(encrypted)
 
-    def test_encryption_decryption_consistency(self):
+    def test_encryption_decryption_consistency(self) -> None:
         """Test that encryption and decryption are consistent"""
         encrypter = SystemEncrypter("test_secret")
 
         test_cases = [
-            {},
+            dict[str, object](),
             {"simple": "value"},
             {"client_id": "id", "client_secret": "secret"},
             {"complex": {"nested": {"deep": "value"}}},
@@ -266,7 +269,7 @@ class TestSystemEncrypter:
             decrypted = encrypter.decrypt_params(encrypted)
             assert decrypted == original_params, f"Failed for case: {original_params}"
 
-    def test_encryption_randomness(self):
+    def test_encryption_randomness(self) -> None:
         """Test that encryption produces different results for same input"""
         encrypter = SystemEncrypter("test_secret")
         params = {"client_id": "test_id", "client_secret": "test_secret"}
@@ -282,7 +285,7 @@ class TestSystemEncrypter:
         decrypted2 = encrypter.decrypt_params(encrypted2)
         assert decrypted1 == decrypted2 == params
 
-    def test_different_secret_keys_produce_different_results(self):
+    def test_different_secret_keys_produce_different_results(self) -> None:
         """Test that different secret keys produce different encrypted results"""
         encrypter1 = SystemEncrypter("secret1")
         encrypter2 = SystemEncrypter("secret2")
@@ -301,7 +304,7 @@ class TestSystemEncrypter:
         assert decrypted1 == decrypted2 == params
 
     @patch("core.tools.utils.system_encryption.get_random_bytes")
-    def test_encrypt_params_crypto_error(self, mock_get_random_bytes):
+    def test_encrypt_params_crypto_error(self, mock_get_random_bytes: MagicMock) -> None:
         """Test encryption when crypto operation fails"""
         mock_get_random_bytes.side_effect = Exception("Crypto error")
 
@@ -314,7 +317,7 @@ class TestSystemEncrypter:
         assert "Encryption failed" in str(exc_info.value)
 
     @patch("core.tools.utils.system_encryption.TypeAdapter")
-    def test_encrypt_params_serialization_error(self, mock_type_adapter):
+    def test_encrypt_params_serialization_error(self, mock_type_adapter: MagicMock) -> None:
         """Test encryption when JSON serialization fails"""
         mock_type_adapter.return_value.dump_json.side_effect = Exception("Serialization error")
 
@@ -326,7 +329,7 @@ class TestSystemEncrypter:
 
         assert "Encryption failed" in str(exc_info.value)
 
-    def test_decrypt_params_invalid_json(self):
+    def test_decrypt_params_invalid_json(self) -> None:
         """Test decryption with invalid JSON data"""
         encrypter = SystemEncrypter("test_secret")
 
@@ -342,7 +345,7 @@ class TestSystemEncrypter:
         with pytest.raises(EncryptionError):
             encrypter.decrypt_params(encoded)
 
-    def test_key_derivation_consistency(self):
+    def test_key_derivation_consistency(self) -> None:
         """Test that key derivation is consistent"""
         secret_key = "test_secret"
         encrypter1 = SystemEncrypter(secret_key)
@@ -357,7 +360,7 @@ class TestSystemEncrypter:
 class TestFactoryFunctions:
     """Test cases for factory functions"""
 
-    def test_create_system_encrypter_with_secret(self):
+    def test_create_system_encrypter_with_secret(self) -> None:
         """Test factory function with secret key"""
         secret_key = "test_secret"
         encrypter = create_system_encrypter(secret_key)
@@ -366,7 +369,7 @@ class TestFactoryFunctions:
         expected_key = hashlib.sha256(secret_key.encode()).digest()
         assert encrypter.key == expected_key
 
-    def test_create_system_encrypter_without_secret(self, config_overrides):
+    def test_create_system_encrypter_without_secret(self, config_overrides: Callable[..., None]) -> None:
         """Test factory function without secret key"""
         config_overrides(SECRET_KEY="config_secret")
         encrypter = create_system_encrypter()
@@ -375,7 +378,7 @@ class TestFactoryFunctions:
         expected_key = hashlib.sha256(b"config_secret").digest()
         assert encrypter.key == expected_key
 
-    def test_create_system_encrypter_with_none_secret(self, config_overrides):
+    def test_create_system_encrypter_with_none_secret(self, config_overrides: Callable[..., None]) -> None:
         """Test factory function with None secret key"""
         config_overrides(SECRET_KEY="config_secret")
         encrypter = create_system_encrypter(None)
@@ -388,7 +391,7 @@ class TestFactoryFunctions:
 class TestGlobalEncrypterInstance:
     """Test cases for global encrypter instance"""
 
-    def test_get_system_encrypter_singleton(self):
+    def test_get_system_encrypter_singleton(self) -> None:
         """Test that get_system_encrypter returns singleton instance"""
         # Clear the global instance first
         import core.tools.utils.system_encryption
@@ -401,7 +404,7 @@ class TestGlobalEncrypterInstance:
         assert encrypter1 is encrypter2
         assert isinstance(encrypter1, SystemEncrypter)
 
-    def test_get_system_encrypter_uses_config(self, config_overrides):
+    def test_get_system_encrypter_uses_config(self, config_overrides: Callable[..., None]) -> None:
         """Test that global encrypter uses config"""
         # Clear the global instance first
         import core.tools.utils.system_encryption
@@ -418,7 +421,7 @@ class TestGlobalEncrypterInstance:
 class TestConvenienceFunctions:
     """Test cases for convenience functions"""
 
-    def test_encrypt_system_params(self):
+    def test_encrypt_system_params(self) -> None:
         """Test encrypt_system_params convenience function"""
         params = {"client_id": "test_id", "client_secret": "test_secret"}
 
@@ -427,7 +430,7 @@ class TestConvenienceFunctions:
         assert isinstance(encrypted, str)
         assert len(encrypted) > 0
 
-    def test_decrypt_system_params(self):
+    def test_decrypt_system_params(self) -> None:
         """Test decrypt_system_params convenience function"""
         params = {"client_id": "test_id", "client_secret": "test_secret"}
 
@@ -436,10 +439,10 @@ class TestConvenienceFunctions:
 
         assert decrypted == params
 
-    def test_convenience_functions_consistency(self):
+    def test_convenience_functions_consistency(self) -> None:
         """Test that convenience functions work consistently"""
         test_cases = [
-            {},
+            dict[str, object](),
             {"simple": "value"},
             {"client_id": "id", "client_secret": "secret"},
             {"complex": {"nested": {"deep": "value"}}},
@@ -452,30 +455,30 @@ class TestConvenienceFunctions:
             decrypted = decrypt_system_params(encrypted)
             assert decrypted == original_params, f"Failed for case: {original_params}"
 
-    def test_convenience_functions_with_errors(self):
+    def test_convenience_functions_with_errors(self) -> None:
         """Test convenience functions with error conditions"""
         # Test encryption with invalid input
-        with pytest.raises(Exception):  # noqa: B017
-            encrypt_system_params(None)
+        with pytest.raises(Exception, match="Encryption failed: 'NoneType' object is not iterable"):
+            encrypt_system_params(None)  # pyrefly: ignore[bad-argument-type]
 
         # Test decryption with invalid input
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="encrypted_data cannot be empty"):
             decrypt_system_params("")
 
-        with pytest.raises(ValueError):
-            decrypt_system_params(None)
+        with pytest.raises(ValueError, match="encrypted_data must be a string"):
+            decrypt_system_params(None)  # pyrefly: ignore[bad-argument-type]
 
 
 class TestErrorHandling:
     """Test cases for error handling"""
 
-    def test_encryption_error_inheritance(self):
+    def test_encryption_error_inheritance(self) -> None:
         """Test that EncryptionError is a proper exception"""
         error = EncryptionError("Test error")
         assert isinstance(error, Exception)
         assert str(error) == "Test error"
 
-    def test_encryption_error_with_cause(self):
+    def test_encryption_error_with_cause(self) -> None:
         """Test EncryptionError with cause"""
         original_error = ValueError("Original error")
         error = EncryptionError("Wrapper error")
@@ -485,18 +488,18 @@ class TestErrorHandling:
         assert str(error) == "Wrapper error"
         assert error.__cause__ is original_error
 
-    def test_error_messages_are_informative(self):
+    def test_error_messages_are_informative(self) -> None:
         """Test that error messages are informative"""
         encrypter = SystemEncrypter("test_secret")
 
         # Test empty string error
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data cannot be empty") as exc_info:
             encrypter.decrypt_params("")
         assert "encrypted_data cannot be empty" in str(exc_info.value)
 
         # Test non-string error
-        with pytest.raises(ValueError) as exc_info:
-            encrypter.decrypt_params(123)
+        with pytest.raises(ValueError, match="encrypted_data must be a string") as exc_info:
+            encrypter.decrypt_params(123)  # pyrefly: ignore[bad-argument-type]
         assert "encrypted_data must be a string" in str(exc_info.value)
 
         # Test invalid format error
@@ -509,7 +512,7 @@ class TestErrorHandling:
 class TestEdgeCases:
     """Test cases for edge cases and boundary conditions"""
 
-    def test_very_long_secret_key(self):
+    def test_very_long_secret_key(self) -> None:
         """Test with very long secret key"""
         long_secret = "x" * 10000
         encrypter = SystemEncrypter(long_secret)
@@ -523,7 +526,7 @@ class TestEdgeCases:
         decrypted = encrypter.decrypt_params(encrypted)
         assert decrypted == params
 
-    def test_special_characters_in_secret_key(self):
+    def test_special_characters_in_secret_key(self) -> None:
         """Test with special characters in secret key"""
         special_secret = "!@#$%^&*()_+-=[]{}|;':\",./<>?`~test🚀"
         encrypter = SystemEncrypter(special_secret)
@@ -533,13 +536,13 @@ class TestEdgeCases:
         decrypted = encrypter.decrypt_params(encrypted)
         assert decrypted == params
 
-    def test_empty_values_in_params(self):
+    def test_empty_values_in_params(self) -> None:
         """Test with empty values in params"""
         params = {
             "client_id": "",
             "client_secret": "",
-            "empty_dict": {},
-            "empty_list": [],
+            "empty_dict": dict[str, object](),
+            "empty_list": list[object](),
             "empty_string": "",
             "zero": 0,
             "false": False,
@@ -551,7 +554,7 @@ class TestEdgeCases:
         decrypted = encrypter.decrypt_params(encrypted)
         assert decrypted == params
 
-    def test_deeply_nested_params(self):
+    def test_deeply_nested_params(self) -> None:
         """Test with deeply nested params"""
         params = {"level1": {"level2": {"level3": {"level4": {"level5": {"deep_value": "found"}}}}}}
 
@@ -560,7 +563,7 @@ class TestEdgeCases:
         decrypted = encrypter.decrypt_params(encrypted)
         assert decrypted == params
 
-    def test_params_with_all_json_types(self):
+    def test_params_with_all_json_types(self) -> None:
         """Test with all JSON-supported data types"""
         params = {
             "string": "test_string",
@@ -583,7 +586,7 @@ class TestEdgeCases:
 class TestPerformance:
     """Test cases for performance considerations"""
 
-    def test_large_params(self):
+    def test_large_params(self) -> None:
         """Test with large params"""
         large_value = "x" * 100000  # 100KB
         params = {"client_id": "test_id", "large_data": large_value}
@@ -593,7 +596,7 @@ class TestPerformance:
         decrypted = encrypter.decrypt_params(encrypted)
         assert decrypted == params
 
-    def test_many_fields_params(self):
+    def test_many_fields_params(self) -> None:
         """Test with many fields in params"""
         params = {f"field_{i}": f"value_{i}" for i in range(1000)}
 
@@ -602,7 +605,7 @@ class TestPerformance:
         decrypted = encrypter.decrypt_params(encrypted)
         assert decrypted == params
 
-    def test_repeated_encryption_decryption(self):
+    def test_repeated_encryption_decryption(self) -> None:
         """Test repeated encryption and decryption operations"""
         encrypter = SystemEncrypter("test_secret")
         params = {"client_id": "test_id", "client_secret": "test_secret"}

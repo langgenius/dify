@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedAppDetail } from '@/test/console/query-data'
@@ -20,6 +21,10 @@ const render = (ui: ReactElement) => {
       mode: 'workflow' as const,
       permission_keys: [],
     }),
+  )
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.triggers.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    { data: [] },
   )
   return renderWithConsoleState(ui, {
     wrapper: createQueryClientWrapper(queryClient),
@@ -45,19 +50,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-1' }),
   useSearchParams: () => ({ get: () => null }),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'apps.byAppId.triggers.get': () => ({}),
-  })
-})
-
-vi.mock('../hooks/use-get-run-and-trace-url', () => ({
-  useGetRunAndTraceUrl: () => ({
-    getWorkflowRunAndTraceUrl: () => ({ runUrl: '' }),
-  }),
 }))
 
 vi.mock('../hooks/use-workflow-init', async () => {

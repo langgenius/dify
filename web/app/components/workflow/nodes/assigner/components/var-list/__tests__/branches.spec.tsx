@@ -34,20 +34,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
   ),
 }))
 
-vi.mock('../../operation-selector', () => ({
-  __esModule: true,
-  default: ({ onSelect }: { onSelect: (item: { value: string }) => void }) => (
-    <div>
-      <button type="button" onClick={() => onSelect({ value: WriteMode.set })}>
-        operation-set
-      </button>
-      <button type="button" onClick={() => onSelect({ value: WriteMode.overwrite })}>
-        operation-overwrite
-      </button>
-    </div>
-  ),
-}))
-
 const createOperation = (
   overrides: Partial<ComponentProps<typeof VarList>['list'][number]> = {},
 ): ComponentProps<typeof VarList>['list'][number] => ({
@@ -131,7 +117,14 @@ describe('assigner/var-list branches', () => {
       ],
     })
 
-    await user.click(screen.getByRole('button', { name: 'operation-overwrite' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowLogic.nodes.assigner.operations.set' }),
+    )
+    await user.click(
+      await screen.findByRole('menuitemradio', {
+        name: 'workflowLogic.nodes.assigner.operations.over-write',
+      }),
+    )
 
     expect(handleChange).toHaveBeenLastCalledWith([
       createOperation({

@@ -43,29 +43,26 @@ vi.mock('@/service/marketplace', async (importOriginal) => {
     ...original,
     marketplaceQuery: {
       searchAdvanced: {
-        queryOptions: ({ input }: { input: unknown }) => ({
-          queryKey: ['marketplace', 'plugins', input],
+        queryOptions: (
+          options: Parameters<typeof original.marketplaceQuery.searchAdvanced.queryOptions>[0],
+        ) => ({
+          ...original.marketplaceQuery.searchAdvanced.queryOptions(options),
           queryFn: () => ({ data: { plugins: [], total: 0 } }),
         }),
       },
       templateSearch: {
-        queryOptions: ({ input }: { input: unknown }) => ({
-          queryKey: ['marketplace', 'templates', input],
-          queryFn: () => mockTemplateSearch(input),
+        queryOptions: (
+          options: Parameters<typeof original.marketplaceQuery.templateSearch.queryOptions>[0],
+        ) => ({
+          ...original.marketplaceQuery.templateSearch.queryOptions(options),
+          queryFn: () => mockTemplateSearch(options.input),
         }),
       },
     },
   }
 })
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      gcTime: 0,
-      retry: false,
-    },
-  },
-})
+let queryClient: QueryClient
 
 function Wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -102,7 +99,7 @@ function PinnedHeaderState() {
 
 describe('Marketplace search autocomplete layout', () => {
   beforeEach(() => {
-    queryClient.clear()
+    queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } })
     mockTemplateSearch.mockReset()
     mockTemplateSearch.mockResolvedValue({ data: { templates: [], total: 0 } })
   })
@@ -135,7 +132,9 @@ describe('Marketplace search autocomplete layout', () => {
       </Wrapper>,
     )
 
-    const scrollContainer = screen.getByTestId('marketplace-scroll-container').element()
+    const container = screen.getByTestId('marketplace-scroll-container')
+    await expect.element(container).toBeVisible()
+    const scrollContainer = container.element()
     scrollContainer.scrollTop = 300
     scrollContainer.dispatchEvent(new Event('scroll'))
     await new Promise(requestAnimationFrame)
@@ -147,6 +146,7 @@ describe('Marketplace search autocomplete layout', () => {
       .getByRole('region', { name: 'navigation.mainNav.marketplace' })
       .element()
     const scrollTopBefore = scrollContainer.scrollTop
+    await expect.element(input).toBeVisible()
     const inputTopBefore = input.element().getBoundingClientRect().top
     const navigationTopBefore = catalogNavigation.getBoundingClientRect().top
 

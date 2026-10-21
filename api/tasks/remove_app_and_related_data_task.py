@@ -58,12 +58,63 @@ from services.app_storage_cleanup_service import cleanup_app_storage
 
 logger = logging.getLogger(__name__)
 
+NETWORK_ACCESS_BINDING_CLEANUP_DELAY_SECONDS = 10
+NETWORK_ACCESS_BINDING_CLEANUP_RETRY_BASE_SECONDS = 15
+NETWORK_ACCESS_BINDING_CLEANUP_RETRY_MAX_SECONDS = 10 * 60
+
+
+def _network_access_binding_cleanup_retry_delay(retries: int) -> int:
+    exponent = min(max(retries, 0), 6)
+    return min(
+        NETWORK_ACCESS_BINDING_CLEANUP_RETRY_BASE_SECONDS * (2**exponent),
+        NETWORK_ACCESS_BINDING_CLEANUP_RETRY_MAX_SECONDS,
+    )
+
+
+@shared_task(queue="app_deletion", bind=True, max_retries=24)
+def cleanup_app_network_access_group_binding_task(self, tenant_id: str, app_id: str) -> None:
+    """Reliably remove a SaaS binding after its owning App was committed deleted."""
+
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        return
+    try:
+        # Import lazily because AppService imports this task module while the
+        # application-service composition root imports AppService dependencies.
+        from extensions.ext_application_services import application_services
+
+        application_services().network_access_groups.cleanup_app_binding(
+            workspace_id=tenant_id,
+            app_id=app_id,
+        )
+    except Exception as e:
+        countdown = _network_access_binding_cleanup_retry_delay(self.request.retries)
+        logger.exception(
+            "Failed to clean up App network access group binding",
+            extra={"tenant_id": tenant_id, "app_id": app_id, "retry_countdown": countdown},
+        )
+        raise self.retry(exc=e, countdown=countdown) from e
+
+
+def _schedule_app_network_access_group_binding_cleanup(tenant_id: str, app_id: str) -> None:
+    """Schedule only from App lifecycle cleanup, never account/member deletion."""
+
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        return
+    cleanup_app_network_access_group_binding_task.apply_async(
+        kwargs={"tenant_id": tenant_id, "app_id": app_id},
+        countdown=NETWORK_ACCESS_BINDING_CLEANUP_DELAY_SECONDS,
+    )
+
 
 @shared_task(queue="app_deletion", bind=True, max_retries=3)
 def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     logger.info(click.style(f"Start deleting app and related data: {tenant_id}:{app_id}", fg="green"))
     start_at = time.perf_counter()
     try:
+        # AppService publishes this task after the App transaction commits.
+        # Schedule the independent high-retry SaaS cleanup before legacy local
+        # cleanup so a later local failure cannot strand the binding.
+        _schedule_app_network_access_group_binding_cleanup(tenant_id, app_id)
         # Preserve ownership records until storage cleanup succeeds, so retries
         # can still locate files. External I/O runs outside DB transactions.
         cleanup_app_storage(tenant_id, app_id)
@@ -80,8 +131,8 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_app_dataset_joins(tenant_id, app_id)
         _delete_workflow_agent_node_bindings(tenant_id, app_id)
         _delete_app_workflows(tenant_id, app_id)
-        _delete_app_workflow_runs(tenant_id, app_id)
         _delete_app_workflow_node_executions(tenant_id, app_id)
+        _delete_app_workflow_runs(tenant_id, app_id)
         _delete_app_workflow_app_logs(tenant_id, app_id)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ARCHIVE_STORAGE_ENABLED:
             _delete_app_workflow_archive_logs(tenant_id, app_id)
@@ -103,10 +154,10 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         logger.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
     except SQLAlchemyError as e:
         logger.exception(click.style(f"Database error occurred while deleting app {app_id} and related data", fg="red"))
-        raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
+        raise self.retry(exc=e, countdown=60) from e  # Retry after 60 seconds
     except Exception as e:
         logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
-        raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
+        raise self.retry(exc=e, countdown=60) from e  # Retry after 60 seconds
 
 
 def _delete_app_model_configs(tenant_id: str, app_id: str):

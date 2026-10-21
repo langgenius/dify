@@ -4,18 +4,20 @@ Console/Studio Human Input Form APIs.
 
 import json
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from typing import Any
 
-from flask import Response, jsonify, request
+from flask import Response, jsonify, request, stream_with_context
 from flask_restx import Resource
 from pydantic import RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import EventStreamResponse
 from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
@@ -31,6 +33,7 @@ from core.app.apps.common.workflow_response_converter import WorkflowResponseCon
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
+from core.workflow.nodes.human_input.entities import FormInputConfig
 from extensions.ext_database import db
 from libs.external_api import error_responses
 from libs.login import login_required
@@ -68,8 +71,10 @@ register_response_schema_models(
 )
 
 
-def _jsonify_form_definition(form: Form) -> Response:
+def _jsonify_form_definition(form: Form, *, inputs: Sequence[FormInputConfig] | None = None) -> Response:
     payload = form.get_definition().model_dump()
+    if inputs is not None:
+        payload["inputs"] = [form_input.model_dump(mode="json") for form_input in inputs]
     payload["expiration_time"] = int(form.expiration_time.timestamp())
     return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
 
@@ -108,7 +113,7 @@ class ConsoleHumanInputFormApi(Resource):
 
         self._ensure_console_access(form, current_tenant_id)
 
-        return _jsonify_form_definition(form)
+        return _jsonify_form_definition(form, inputs=service.resolve_form_inputs(form))
 
     @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError)
     @account_initialization_required
@@ -214,17 +219,31 @@ class ConsoleWorkflowEventsApi(Resource):
 
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
+            generator: type[BaseAppGenerator]
             match app.mode:
                 case AppMode.ADVANCED_CHAT:
-                    generator = AdvancedChatAppGenerator()
+                    generator = AdvancedChatAppGenerator
                 case AppMode.WORKFLOW:
-                    generator = WorkflowAppGenerator()
+                    generator = WorkflowAppGenerator
                 case _:
                     raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
+            include_node_details = False
+            if include_state_snapshot:
+                # Owning a run permits replay; internal details require the same admission as run history.
+                try:
+                    enforce_rbac_checks(
+                        tenant_id=tenant_id,
+                        account_id=user.id,
+                        checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+                        path_args={"app_id": app.id},
+                    )
+                except (Forbidden, NotFound):
+                    pass
+                else:
+                    include_node_details = True
 
             def _generate_stream_events():
                 if include_state_snapshot:
@@ -236,6 +255,7 @@ class ConsoleWorkflowEventsApi(Resource):
                             app_id=workflow_run.app_id,
                             session_maker=session_maker,
                             human_input_surface=HumanInputSurface.CONSOLE,
+                            include_node_details=include_node_details,
                             close_on_pause=not continue_on_pause,
                         )
                     )
@@ -246,7 +266,7 @@ class ConsoleWorkflowEventsApi(Resource):
             event_generator = _generate_stream_events
 
         return Response(
-            event_generator(),
+            stream_with_context(event_generator()),  # pyrefly: ignore[no-matching-overload]
             mimetype="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",

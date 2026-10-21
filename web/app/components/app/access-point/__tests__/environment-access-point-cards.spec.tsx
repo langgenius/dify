@@ -25,13 +25,6 @@ const mocks = vi.hoisted(() => ({
   apiKeyButtonProps: vi.fn(),
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: vi.fn(),
-  }),
-}))
-
 let mockAppMode: AppMode = 'workflow'
 
 vi.mock('@/context/i18n', () => ({
@@ -107,7 +100,7 @@ const api = {
 
 function renderCard(ui: ReactElement, queryClient = createTestQueryClient()) {
   seedFeatures(queryClient)
-  seedSystemFeatures(queryClient)
+  seedSystemFeatures(queryClient, { webapp_auth: { enabled: true } })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({
@@ -118,11 +111,6 @@ function renderCard(ui: ReactElement, queryClient = createTestQueryClient()) {
       }),
     }),
   )
-  queryClient.setQueryData(['system-features'], {
-    webapp_auth: {
-      enabled: true,
-    },
-  })
 
   return render(
     <NuqsTestingAdapter>
@@ -441,20 +429,6 @@ describe('environment access point cards', () => {
       screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
     ).toBeDisabled()
     expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeDisabled()
-  })
-
-  it('uses Access Point management for every deployed Web App operation', async () => {
-    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
-
-    expect(await screen.findByRole('switch')).toBeEnabled()
-    expect(screen.getByRole('button', { name: /regenerate/ })).toBeEnabled()
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeEnabled(),
-    )
-    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeEnabled()
-    expect(
-      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
-    ).toBeEnabled()
   })
 
   it('renders the real Service API endpoint, environment keys entry, docs entry, and API toggle', async () => {

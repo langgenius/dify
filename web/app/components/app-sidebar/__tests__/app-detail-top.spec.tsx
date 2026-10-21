@@ -1,6 +1,8 @@
 import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppDetailTop } from '../app-detail-top'
 
 function TestGotoAnythingDialog() {
@@ -17,30 +19,25 @@ function TestGotoAnythingDialog() {
 
 describe('AppDetailTop', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     gotoAnythingDialogHandle.close()
   })
 
-  it('links the combined home control to home', () => {
+  it('links the breadcrumb to Home and Studio', () => {
     render(<AppDetailTop />)
 
     expect(screen.getByRole('link', { name: 'navigation.mainNav.home' })).toHaveAttribute(
       'href',
       '/',
     )
-    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
-  })
-
-  it('links the Studio breadcrumb to the Studio page', () => {
-    render(<AppDetailTop />)
-
     expect(screen.getByRole('link', { name: 'navigation.menus.apps' })).toHaveAttribute(
       'href',
       '/apps',
     )
+    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })
 
-  it('keeps the quick search action', () => {
+  it('opens quick search from the app sidebar', async () => {
+    const user = userEvent.setup()
     render(
       <>
         <AppDetailTop />
@@ -49,16 +46,17 @@ describe('AppDetailTop', () => {
     )
     expect(screen.queryByRole('dialog', { name: 'Goto Anything' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
+    await user.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(screen.getByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
   })
 
-  it('renders the sidebar toggle action in the top right', () => {
+  it('offers collapse from the expanded sidebar', async () => {
+    const user = userEvent.setup()
     const onToggle = vi.fn()
 
     render(<AppDetailTop onToggle={onToggle} />)
-    fireEvent.click(screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }))
+    await user.click(screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }))
 
     expect(onToggle).toHaveBeenCalledTimes(1)
   })

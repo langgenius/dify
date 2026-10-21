@@ -3,10 +3,10 @@ import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { QueryErrorResetBoundary } from '@tanstack/react-query'
@@ -35,7 +35,7 @@ export function ApiKeyDialogContent({
           {t(($) => $['apiKeyModal.apiSecretKeyTips'])}
           {limitDescription && <span className="block">{limitDescription}</span>}
         </DialogDescription>
-        <DialogCloseButton
+        <DialogHeaderCloseButton
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           disabled={closeDisabled}
         />

@@ -3,8 +3,7 @@ import type { ToolWithProvider } from '../../types'
 import type { VarInInspect } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
-import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '../../types'
 import { useSetWorkflowVarsWithValue } from '../use-fetch-workflow-inspect-vars'
 
@@ -23,16 +22,19 @@ const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   },
 ]
 
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
-)
-
-vi.mock('@tanstack/react-query', async (importOriginal) =>
-  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
-    await importOriginal(),
-    (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes(),
-  ),
-)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidateConversationVarValues: () => mockInvalidateConversationVarValues,
@@ -79,21 +81,21 @@ const createInspectVar = (overrides: Partial<VarInInspect> = {}): VarInInspect =
   ...overrides,
 })
 
+const nodes = [
+  createNode({
+    id: 'node-1',
+    data: {
+      type: BlockEnum.Code,
+      title: 'Code',
+      desc: '',
+      outputs: { answer: { type: VarType.string } },
+    },
+  }),
+]
+
 describe('use-fetch-workflow-inspect-vars', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    resetReactFlowMockState()
-    rfState.nodes = [
-      createNode({
-        id: 'node-1',
-        data: {
-          type: BlockEnum.Code,
-          title: 'Code',
-          desc: '',
-          outputs: { answer: { type: VarType.string } },
-        },
-      }),
-    ]
+    vi.resetAllMocks()
   })
 
   it('fetches inspect vars, invalidates cached values, and stores node vars with their real output metadata', async () => {
@@ -105,7 +107,8 @@ describe('use-fetch-workflow-inspect-vars', () => {
       }),
     ])
 
-    const { result, store } = renderWorkflowHook(() => useSetWorkflowVarsWithValue(), {
+    const { result, store } = renderWorkflowFlowHook(() => useSetWorkflowVarsWithValue(), {
+      nodes,
       initialStoreState: {
         dataSourceList: [],
       },
@@ -155,7 +158,8 @@ describe('use-fetch-workflow-inspect-vars', () => {
       dataSourceList: [],
     }
 
-    const { result, store } = renderWorkflowHook(() => useSetWorkflowVarsWithValue(), {
+    const { result, store } = renderWorkflowFlowHook(() => useSetWorkflowVarsWithValue(), {
+      nodes,
       initialStoreState: {
         dataSourceList: [],
       },
@@ -182,7 +186,7 @@ describe('use-fetch-workflow-inspect-vars', () => {
 })
 
 it('derives schema enrichment from the passed-in tool catalog and schema definition', async () => {
-  rfState.nodes = [
+  const toolNodes = [
     createNode({
       id: 'node-1',
       data: {
@@ -221,7 +225,9 @@ it('derives schema enrichment from the passed-in tool catalog and schema definit
       },
     ],
   }
-  const { result, store } = renderWorkflowHook(() => useSetWorkflowVarsWithValue())
+  const { result, store } = renderWorkflowFlowHook(() => useSetWorkflowVarsWithValue(), {
+    nodes: toolNodes,
+  })
   await act(async () =>
     result.current.fetchInspectVars({
       passInVars: true,

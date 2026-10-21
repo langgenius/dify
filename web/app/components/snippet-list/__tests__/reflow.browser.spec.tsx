@@ -3,43 +3,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createStore, Provider } from 'jotai'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import SnippetList from '..'
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.members.get': () => ({
-      data: {
-        accounts: [
-          {
-            avatar_url: null,
-            id: 'creator-1',
-            name: 'Alice',
-            status: 'active',
-          },
-        ],
-      },
-    }),
-  })
-})
 
 const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
 const mockQueryState = vi.hoisted(() => ({
   creatorIDs: [] as string[],
   keywords: '',
   tagIDs: [] as string[],
+  publishStatus: 'all' as const,
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useConfirmSnippetImportMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
-  useCreateSnippetMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
-  useDeleteSnippetMutation: () => ({ isPending: false, mutate: vi.fn() }),
-  useExportSnippetMutation: () => ({ mutateAsync: vi.fn() }),
-  useImportSnippetDSLMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
+vi.mock('@/service/use-snippets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-snippets')>()),
   useInfiniteSnippetList: (params: unknown, options: unknown) =>
     mockUseInfiniteSnippetList(params, options),
-  useUpdateSnippetMutation: () => ({ isPending: false, mutate: vi.fn() }),
 }))
 
 vi.mock('../hooks/use-snippets-query-state', () => ({
@@ -48,6 +27,8 @@ vi.mock('../hooks/use-snippets-query-state', () => ({
     setCreatorIDs: vi.fn(),
     setKeywords: vi.fn(),
     setTagIDs: vi.fn(),
+    setPublishStatus: vi.fn(),
+    flush: vi.fn().mockResolvedValue(new URLSearchParams()),
   }),
 }))
 
@@ -69,49 +50,23 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
     queryFn: async () => ({ profile: { id: 'creator-1' } }),
-    queryKey: ['account-profile'],
+    queryKey: consoleQueryKey('account.profile.get'),
   }),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            post: vi.fn(),
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    workspaces: {
-      current: {
-        members: {
-          get: {
-            queryOptions: (options: { input?: unknown }) => ({
-              ...options,
-              queryKey: [['console', 'workspaces', 'current', 'members', 'get'], options],
-            }),
-          },
-        },
-      },
-    },
-    tags: {
-      get: {
-        key: () => ['tags'],
-        queryOptions: ({ input }: { input: { query: { type: string } } }) => ({
-          queryFn: async () => [],
-          queryKey: ['tags', input.query.type],
-        }),
-      },
-      post: {
-        mutationOptions: () => ({ mutationFn: vi.fn() }),
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({
+        accounts: [{ avatar_url: null, id: 'creator-1', name: 'Alice', status: 'active' }],
+      }),
+      'tags.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -155,8 +110,7 @@ const renderSnippetList = async () => {
       queries: { retry: false },
     },
   })
-  queryClient.setQueryData(['account-profile'], { profile: { id: 'creator-1' } })
-  queryClient.setQueryData(['tags', 'snippet'], [])
+  queryClient.setQueryData(consoleQueryKey('account.profile.get'), { profile: { id: 'creator-1' } })
 
   const store = createStore()
   seedRegisteredConsoleStateFixture(store)
