@@ -124,18 +124,23 @@ async function assertNotFolder(path: string, field: string, deps: FileDeps): Pro
 
 type FieldTarget = {
   readonly form: FormData
+  // Top-level input key bound to `file`.
   readonly field: string
   readonly deps: FileDeps
 }
 
 type FolderParts = FieldTarget & {
   readonly folder: string
+  // File paths relative to `folder`, as returned by `listFolder`.
   readonly keys: readonly string[]
 }
 
 type FileParts = FieldTarget & {
+  // Multipart part name, e.g. `field`, `field[]`, `field[key]`, `field[key][]`.
   readonly name: string
+  // A path string or an array of path strings; validated per item.
   readonly value: unknown
+  // Input location for error messages, e.g. `field` or `field.key`.
   readonly label: string
 }
 
