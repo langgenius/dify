@@ -143,21 +143,23 @@ def _validate_remote_image_url(url: str) -> str:
 def _is_permanent_dns_failure(error: BaseException) -> bool:
     """Return whether an exception chain contains a non-recoverable DNS lookup result."""
 
-    current: BaseException | None = error
+    pending = [error]
     seen: set[int] = set()
-    while current is not None:
+    while pending:
+        current = pending.pop()
         identity = id(current)
         if identity in seen:
-            break
+            continue
         seen.add(identity)
         if isinstance(current, httpx.ProxyError):
-            return False
+            continue
         if isinstance(current, socket.gaierror) and current.errno in _PERMANENT_DNS_ERROR_CODES:
             return True
-        next_error = current.__cause__
-        if next_error is None and not current.__suppress_context__:
-            next_error = current.__context__
-        current = next_error
+        if current.__cause__ is not None:
+            pending.append(current.__cause__)
+        elif not current.__suppress_context__ and current.__context__ is not None:
+            pending.append(current.__context__)
+        pending.extend(arg for arg in current.args if isinstance(arg, BaseException))
     return False
 
 

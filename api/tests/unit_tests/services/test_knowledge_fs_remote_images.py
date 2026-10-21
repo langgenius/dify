@@ -3,6 +3,7 @@
 import socket
 from unittest.mock import MagicMock, patch
 
+import httpcore
 import httpx
 import pytest
 
@@ -185,11 +186,12 @@ def test_load_remote_image_maps_permanent_dns_failures_to_not_found(
     dns_error_code: int,
 ) -> None:
     dns_error = socket.gaierror(dns_error_code, "host not found")
+    httpcore_error = httpcore.ConnectError(dns_error)
     connect_error = httpx.ConnectError(
         "host lookup failed",
         request=httpx.Request("GET", "https://missing.example.test/image.png"),
     )
-    connect_error.__cause__ = dns_error
+    connect_error.__cause__ = httpcore_error
     retry_error = MaxRetriesExceededError("maximum retries reached")
     retry_error.__cause__ = connect_error
     make_request.side_effect = retry_error
@@ -204,11 +206,12 @@ def test_load_remote_image_maps_permanent_dns_failures_to_not_found(
 @patch("services.knowledge_fs.remote_images.remote_fetcher.make_request")
 def test_load_remote_image_keeps_temporary_dns_failures_retryable(make_request: MagicMock) -> None:
     dns_error = socket.gaierror(socket.EAI_AGAIN, "temporary lookup failure")
+    httpcore_error = httpcore.ConnectError(dns_error)
     connect_error = httpx.ConnectError(
         "host lookup failed",
         request=httpx.Request("GET", "https://flaky.example.test/image.png"),
     )
-    connect_error.__cause__ = dns_error
+    connect_error.__cause__ = httpcore_error
     retry_error = MaxRetriesExceededError("maximum retries reached")
     retry_error.__cause__ = connect_error
     make_request.side_effect = retry_error
@@ -225,11 +228,12 @@ def test_load_remote_image_does_not_treat_proxy_dns_failures_as_missing_remote_h
     make_request: MagicMock,
 ) -> None:
     dns_error = socket.gaierror(socket.EAI_NONAME, "proxy host not found")
+    httpcore_error = httpcore.ProxyError(dns_error)
     proxy_error = httpx.ProxyError(
         "proxy lookup failed",
         request=httpx.Request("GET", "https://cdn.example.test/image.png"),
     )
-    proxy_error.__cause__ = dns_error
+    proxy_error.__cause__ = httpcore_error
     retry_error = MaxRetriesExceededError("maximum retries reached")
     retry_error.__cause__ = proxy_error
     make_request.side_effect = retry_error
