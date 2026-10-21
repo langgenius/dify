@@ -1,7 +1,8 @@
+from collections.abc import Callable, Iterator
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from fields.agent_fields import AgentAppComposerResponse
@@ -16,11 +17,39 @@ from models.agent import (
     AgentSource,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.model import App, AppMode
+from models.model import App, AppMode, UploadFile
+from models.tools import ToolFile
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
+from repositories.knowledge import upload_file_repository as file_guards
 from services.agent.composer_service import AgentComposerService
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import AppPreviewQueryService, AppPreviewRef
+from tests.unit_tests.model_factories import make_upload_file
+
+
+@pytest.fixture(autouse=True)
+def _registered_upload_file_reference_guards(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    registered: list[tuple[type[object], str, Callable[..., object]]] = []
+    original_listen = event.listen
+
+    def record_listener(target: type[object], identifier: str, listener: Callable[..., object]) -> None:
+        original_listen(target, identifier, listener)
+        registered.append((target, identifier, listener))
+
+    with monkeypatch.context() as patcher:
+        patcher.setattr(event, "listen", record_listener)
+        file_guards.register_upload_file_reference_guards()
+    assert event.contains(
+        AgentConfigSnapshot,
+        "before_insert",
+        file_guards.guard_agent_config_upload_references,
+    )
+    try:
+        yield
+    finally:
+        for target, identifier, listener in reversed(registered):
+            if event.contains(target, identifier, listener):
+                event.remove(target, identifier, listener)
 
 
 def _preview(session: Session, app: AppPreviewRef) -> AgentAppComposerResponse:
@@ -39,9 +68,28 @@ def _published_app(session: Session) -> tuple[App, Agent, AgentConfigSnapshot]:
         name="Sample",
         scope=AgentScope.ROSTER,
         source=AgentSource.AGENT_APP,
-        active_config_snapshot_id=snapshot_id,
+        active_config_snapshot_id=None,
         active_config_is_published=False,
     )
+    upload: UploadFile = make_upload_file(
+        file_id="private-file",
+        tenant_id=tenant_id,
+        key="agent/guide.txt",
+        name="guide.txt",
+    )
+    skill_file = ToolFile(
+        tenant_id=tenant_id,
+        user_id="account-1",
+        conversation_id=None,
+        file_key="agent/research.zip",
+        mimetype="application/zip",
+        name="research.zip",
+        size=12,
+    )
+    skill_file.id = "private-skill"
+    session.add_all([app, agent, upload, skill_file])
+    session.flush()
+
     snapshot = AgentConfigSnapshot(
         id=snapshot_id,
         tenant_id=tenant_id,
@@ -79,19 +127,17 @@ def _published_app(session: Session) -> tuple[App, Agent, AgentConfigSnapshot]:
             }
         ),
     )
-    session.add_all(
-        [
-            app,
-            agent,
-            snapshot,
-            AgentConfigRevision(
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                current_snapshot_id=snapshot_id,
-                revision=1,
-                operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
-            ),
-        ]
+    session.add(snapshot)
+    session.flush()
+    agent.active_config_snapshot_id = snapshot_id
+    session.add(
+        AgentConfigRevision(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            current_snapshot_id=snapshot_id,
+            revision=1,
+            operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+        )
     )
     session.commit()
     return app, agent, snapshot
@@ -182,7 +228,10 @@ def test_preview_rejects_seeded_import_snapshot(sqlite_session: Session) -> None
 
 def test_preview_rejects_cross_tenant_snapshot(sqlite_session: Session) -> None:
     app, _, snapshot = _published_app(sqlite_session)
-    snapshot.tenant_id = str(uuid4())
+    # Seed the legacy inconsistent row directly; normal Agent config writers reject this tenant mismatch.
+    sqlite_session.execute(
+        update(AgentConfigSnapshot).where(AgentConfigSnapshot.id == snapshot.id).values(tenant_id=str(uuid4()))
+    )
     sqlite_session.commit()
 
     with pytest.raises(AppDefinitionUnavailableError, match="unavailable"):
