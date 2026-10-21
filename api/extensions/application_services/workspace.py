@@ -1,6 +1,7 @@
 """Compose workspace use cases with the shared account and workspace repositories."""
 
 from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -11,7 +12,9 @@ from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepositor
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
+from services.api_token_service import ApiTokenCache
 from services.file_service import FileService
+from services.knowledge.task_outbox.gateway import wake_knowledge_task_dispatcher_after_commit
 from services.workspace.gateways import (
     DeploymentWorkspaceCreationPolicy,
     DeploymentWorkspaceFeatureGateway,
@@ -116,7 +119,11 @@ def build_workspace_services(
         resource_cleanup=WorkspaceResourceCleanupService(
             session_factory=database_client,
             apps=ConsoleAppRepository(session_factory=database_client),
-            datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
+            datasets=SQLAlchemyDatasetRepository(
+                session_factory=database_client,
+                wake_after_commit=wake_knowledge_task_dispatcher_after_commit,
+                revoke_keys_after_commit=partial(ApiTokenCache.delete_after_commit, scope="dataset"),
+            ),
             agent_resources=WorkspaceResourceCleanupRepository(session_factory=database_client),
         ),
     )

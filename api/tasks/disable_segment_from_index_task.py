@@ -10,7 +10,7 @@ from core.rag.index_processor.index_processor import IndexProcessorFactory
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
 from models.enums import SegmentStatus
-from repositories.knowledge.dataset_read_repository import get_segment_dataset, get_segment_document
+from repositories.knowledge.segment_query_repository import get_segment_dataset, get_segment_document
 
 logger = logging.getLogger(__name__)
 

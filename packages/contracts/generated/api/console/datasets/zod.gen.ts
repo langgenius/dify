@@ -190,11 +190,35 @@ export const zProviderQuotaExceededError = zErrorResponse.and(
 )
 
 /**
+ * DocumentSourceConflictError
+ *
+ * The selected source file is being removed. Please upload it again.
+ */
+export const zDocumentSourceConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('document_source_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * RetrievalSettingResponse
  */
 export const zRetrievalSettingResponse = z.object({
   retrieval_method: z.array(z.string()),
 })
+
+/**
+ * DatasetConcurrentUpdateError
+ *
+ * The dataset changed while it was being updated. Please retry the request.
+ */
+export const zDatasetConcurrentUpdateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_concurrent_update'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * SimpleResultResponse
@@ -220,6 +244,18 @@ export const zDocumentAlreadyFinishedError = zErrorResponse.and(
   z.object({
     code: z.literal('document_already_finished'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ArchivedDocumentImmutableError
+ *
+ * The archived document is not editable.
+ */
+export const zArchivedDocumentImmutableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('archived_document_immutable'),
+    status: z.literal(403),
   }),
 )
 
@@ -281,6 +317,8 @@ export const zDocumentStatusResponse = z.object({
   error_code: z.literal('vector_space_estimate_exceeded').nullish(),
   estimated_vector_space_mb: z.int().nullish(),
   id: z.string(),
+  indexing_retry_action: z.enum(['archive', 'disable', 'enable', 'retry']).nullish(),
+  indexing_state: z.enum(['completed', 'failed', 'pending']).nullish(),
   indexing_status: z.enum([
     'cleaning',
     'completed',
@@ -332,18 +370,6 @@ export const zDocumentIndexingError = zErrorResponse.and(
   z.object({
     code: z.literal('document_indexing'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * ArchivedDocumentImmutableError
- *
- * The archived document is not editable.
- */
-export const zArchivedDocumentImmutableError = zErrorResponse.and(
-  z.object({
-    code: z.literal('archived_document_immutable'),
-    status: z.literal(403),
   }),
 )
 
@@ -412,18 +438,6 @@ export const zChildChunkCreatePayload = z.object({
 })
 
 /**
- * ChildChunkDeleteIndexError
- *
- * Delete child chunk index failed: {message}
- */
-export const zChildChunkDeleteIndexError = zErrorResponse.and(
-  z.object({
-    code: z.literal('child_chunk_delete_index_error'),
-    status: z.literal(500),
-  }),
-)
-
-/**
  * ChildChunkUpdatePayload
  */
 export const zChildChunkUpdatePayload = z.object({
@@ -455,18 +469,6 @@ export const zExternalHitTestingPayload = z.object({
 export const zCompletionRequestError = zErrorResponse.and(
   z.object({
     code: z.literal('completion_request_error'),
-    status: z.literal(400),
-  }),
-)
-
-/**
- * DatasetNotInitializedError
- *
- * The dataset is still being initialized or indexing. Please wait a moment.
- */
-export const zDatasetNotInitializedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('dataset_not_initialized'),
     status: z.literal(400),
   }),
 )
@@ -617,6 +619,11 @@ export const zDatasetTagResponse = z.object({
   name: z.string(),
   type: z.string(),
 })
+
+/**
+ * DatasetVectorIndexStatus
+ */
+export const zDatasetVectorIndexStatus = z.enum(['completed', 'error', 'indexing'])
 
 /**
  * ExternalKnowledgeApiBindingResponse
@@ -859,12 +866,14 @@ export const zExternalHitTestingQueryResponse = z.object({
 /**
  * ExternalHitTestingRecordResponse
  */
-export const zExternalHitTestingRecordResponse = z.object({
-  content: z.string().nullish(),
-  metadata: z.record(z.string(), z.unknown()).nullish(),
-  score: z.number().nullish(),
-  title: z.string().nullish(),
-})
+export const zExternalHitTestingRecordResponse = z
+  .object({
+    content: z.string().nullish(),
+    metadata: z.record(z.string(), z.unknown()).nullish(),
+    score: z.number().nullish(),
+    title: z.string().nullish(),
+  })
+  .strict()
 
 /**
  * ExternalHitTestingResponse
@@ -880,6 +889,26 @@ export const zExternalHitTestingResponse = z.object({
 export const zHitTestingQuery = z.object({
   content: z.string(),
 })
+
+/**
+ * KnowledgeIndexUnavailableDetails
+ */
+export const zKnowledgeIndexUnavailableDetails = z.object({
+  reason: z.enum(['failed', 'indexing']),
+})
+
+/**
+ * KnowledgeIndexUnavailableError
+ *
+ * The knowledge index is unavailable. Retry after indexing completes.
+ */
+export const zKnowledgeIndexUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_index_unavailable'),
+    details: zKnowledgeIndexUnavailableDetails.optional(),
+    status: z.literal(503),
+  }),
+)
 
 /**
  * DatasetMetadataListItemResponse
@@ -1004,6 +1033,8 @@ export const zDocumentResponse = z.object({
   error: z.string().nullish(),
   hit_count: z.int().nullish(),
   id: z.string(),
+  indexing_retry_action: z.enum(['archive', 'disable', 'enable', 'retry']).nullish(),
+  indexing_state: z.enum(['completed', 'failed', 'pending']).nullish(),
   indexing_status: z.string().nullish(),
   name: z.string(),
   need_summary: z.boolean().nullish(),
@@ -1251,6 +1282,8 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   total_documents: z.int(),
   updated_at: z.int(),
   updated_by: z.string().nullable(),
+  vector_indexing_error: z.string().nullish(),
+  vector_indexing_status: zDatasetVectorIndexStatus.nullish(),
   word_count: z.int(),
 })
 
@@ -1304,6 +1337,8 @@ export const zDatasetDetailResponse = z.object({
   total_documents: z.int(),
   updated_at: z.int(),
   updated_by: z.string().nullable(),
+  vector_indexing_error: z.string().nullish(),
+  vector_indexing_status: zDatasetVectorIndexStatus.nullish(),
   word_count: z.int(),
 })
 
@@ -1358,6 +1393,8 @@ export const zDatasetListItemResponse = z.object({
   total_documents: z.int(),
   updated_at: z.int(),
   updated_by: z.string().nullable(),
+  vector_indexing_error: z.string().nullish(),
+  vector_indexing_status: zDatasetVectorIndexStatus.nullish(),
   word_count: z.int(),
 })
 
@@ -1621,6 +1658,8 @@ export const zDocumentDetailResponse = z.object({
   hit_count: z.int().nullish(),
   id: z.string(),
   indexing_latency: z.number().nullish(),
+  indexing_retry_action: z.enum(['archive', 'disable', 'enable', 'retry']).nullish(),
+  indexing_state: z.enum(['completed', 'failed', 'pending']).nullish(),
   indexing_status: z.string().nullish(),
   name: z.string().nullish(),
   need_summary: z.boolean().nullish(),
@@ -1652,6 +1691,8 @@ export const zDocumentWithSegmentsResponse = z.object({
   error: z.string().nullish(),
   hit_count: z.int().nullish(),
   id: z.string(),
+  indexing_retry_action: z.enum(['archive', 'disable', 'enable', 'retry']).nullish(),
+  indexing_state: z.enum(['completed', 'failed', 'pending']).nullish(),
   indexing_status: z.string().nullish(),
   name: z.string(),
   need_summary: z.boolean().nullish(),
@@ -1731,7 +1772,7 @@ export const zHitTestingRecord = z.object({
  */
 export const zHitTestingResponse = z.object({
   query: zHitTestingQuery,
-  records: z.array(zHitTestingRecord),
+  records: z.array(z.union([zHitTestingRecord, zExternalHitTestingRecordResponse])),
 })
 
 /**

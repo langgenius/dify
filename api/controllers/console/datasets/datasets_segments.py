@@ -17,7 +17,6 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
-    ChildChunkDeleteIndexError,
     ChildChunkIndexingError,
     InvalidActionError,
 )
@@ -44,9 +43,7 @@ from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from services.knowledge.entities.segments import ChildChunkUpdateArgs
 from services.knowledge.segments.application import (
-    ChildChunkDeleteIndexApplicationError,
     ChildChunkIndexingApplicationError,
-    ChildChunkListFilter,
     ChildChunkNotFoundError,
     SegmentBatchImportDispatchError,
     SegmentBatchImportNotFoundError,
@@ -56,12 +53,12 @@ from services.knowledge.segments.application import (
     SegmentDocumentNotFoundError,
     SegmentEmbeddingModelUnavailableError,
     SegmentInvalidFileTypeError,
-    SegmentListFilter,
     SegmentNotFoundError,
     SegmentPermissionDeniedError,
     SegmentStatusUpdateError,
     SegmentUploadFileNotFoundError,
 )
+from services.knowledge.segments.contracts import ChildChunkListFilter, SegmentListFilter
 
 _DATASET_EDIT_ROLES = frozenset(
     {
@@ -186,6 +183,8 @@ def _raise_segment_error(error: Exception) -> Never:
         raise ValueError(str(error)) from error
     if isinstance(error, SegmentInvalidFileTypeError):
         raise ValueError(str(error)) from error
+    if isinstance(error, SegmentDocumentIndexingError):
+        raise InvalidActionError(str(error)) from error
     raise error
 
 
@@ -212,12 +211,6 @@ def _raise_child_chunk_create_error(error: Exception) -> Never:
     if isinstance(error, ChildChunkIndexingApplicationError):
         raise ChildChunkIndexingError(str(error)) from error
     _raise_segment_embedding_error(error)
-
-
-def _raise_child_chunk_delete_error(error: Exception) -> Never:
-    if isinstance(error, ChildChunkDeleteIndexApplicationError):
-        raise ChildChunkDeleteIndexError(str(error)) from error
-    _raise_segment_error(error)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
@@ -356,7 +349,7 @@ class DatasetDocumentSegmentAddApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
 class DatasetDocumentSegmentUpdateApi(Resource):
-    @error_responses(ProviderNotInitializeError)
+    @error_responses(InvalidActionError, ProviderNotInitializeError)
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_SEGMENT)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -422,6 +415,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @console_ns.response(200, "Batch import started", console_ns.models[SegmentBatchImportStatusResponse.__name__])
     @console_ns.response(500, "Batch import failed", console_ns.models[ErrorMessageResponse.__name__])
     @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @cloud_edition_billing_resource_check("vector_space")
@@ -506,7 +500,7 @@ class ChildChunkAddApi(Resource):
         args = query_params_from_request(ChildChunkListQuery, use_defaults_for_malformed_ints=True)
         try:
             result = application_services().knowledge.segments.list_child_chunks(
-                workspace_id=request_context.active_workspace_id,
+                request_context,
                 dataset_id=str(dataset_id),
                 document_id=str(document_id),
                 segment_id=str(segment_id),
@@ -563,7 +557,7 @@ class ChildChunkAddApi(Resource):
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
 )
 class ChildChunkUpdateApi(Resource):
-    @error_responses(ChildChunkDeleteIndexError)
+    @error_responses(ChildChunkIndexingError)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -588,7 +582,7 @@ class ChildChunkUpdateApi(Resource):
                 child_chunk_id=str(child_chunk_id),
             )
         except Exception as error:
-            _raise_child_chunk_delete_error(error)
+            _raise_child_chunk_write_error(error)
         return "", 204
 
     @error_responses(ChildChunkIndexingError)

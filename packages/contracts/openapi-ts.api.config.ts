@@ -61,6 +61,7 @@ const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
 const strictZodSchemaNames = new Set([
+  'ExternalHitTestingRecordResponse',
   'AccountProfilePatchPayload',
   'Parameters',
   'AppTextInputPayload',

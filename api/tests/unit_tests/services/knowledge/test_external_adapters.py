@@ -13,17 +13,18 @@ from machinery.context import RequestContext
 from models.dataset import Dataset, DatasetQuery, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
-from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
-from services.errors.knowledge_retrieval import (
-    ExternalHitTestingError,
-    ExternalTemplateNotFoundError,
-)
+from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgePersistence
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
+from services.errors.dataset import DatasetNameDuplicateError
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
-from services.knowledge.entities.external import ExternalDatasetCreatePayload
-from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.external.adapters import ExternalKnowledgeGateway, sync_external_dataset_creator_access
-from services.knowledge.external.application import ExternalKnowledgeApplicationService
+from services.knowledge.external.application import (
+    ExternalHitTestingError,
+    ExternalKnowledgeApplicationService,
+    ExternalTemplateNotFoundError,
+)
+from services.knowledge.resource_scope import DatasetRef
 from services.tag_application_service import TagApplicationService
 from tests.unit_tests.rbac_fakes import RBACDomain
 
@@ -32,7 +33,7 @@ REF = DatasetRef("tenant", "dataset")
 
 
 @pytest.fixture
-def operations(
+def application(
     sqlite_session_factory: sessionmaker[Session],
     rbac_domain: RBACDomain,
     application_tags: TagApplicationService,
@@ -55,7 +56,11 @@ def operations(
                 [
                     template,
                     Dataset(
-                        id=dataset_id, tenant_id=workspace, created_by="actor", name="Dataset", provider="external"
+                        id=dataset_id,
+                        tenant_id=workspace,
+                        created_by="actor",
+                        name="Dataset",
+                        provider="external",
                     ),
                     ExternalKnowledgeBindings(
                         tenant_id=workspace,
@@ -70,19 +75,24 @@ def operations(
     access.require_accessible.side_effect = lambda context, dataset_id: AccessibleDataset(
         dataset_id, context.active_workspace_id
     )
-    external_repository = SQLAlchemyExternalKnowledgeRepository(session_factory=sqlite_session_factory)
+    datasets = SQLAlchemyDatasetRepository(
+        session_factory=sqlite_session_factory,
+        wake_after_commit=lambda _session: None,
+        revoke_keys_after_commit=lambda _session, _key_ids: None,
+    )
+    dataset_details = SQLAlchemyDatasetOperations(
+        session_factory=sqlite_session_factory,
+        tags=application_tags,
+        app_queries=ConsoleAppRepository(session_factory=sqlite_session_factory),
+        members=rbac_domain.rbac.members,
+        datasets=datasets,
+    )
     return ExternalKnowledgeApplicationService(
         dataset_access=access,
-        repository=external_repository,
+        repository=SQLAlchemyExternalKnowledgePersistence(session_factory=sqlite_session_factory),
         retrieval=ExternalKnowledgeGateway(),
-        queries=SQLAlchemyDatasetRepository(session_factory=sqlite_session_factory),
-        dataset_details=SQLAlchemyDatasetOperations(
-            session_factory=sqlite_session_factory,
-            tags=application_tags,
-            app_queries=ConsoleAppRepository(session_factory=sqlite_session_factory),
-            external_templates=external_repository,
-            members=rbac_domain.rbac.members,
-        ),
+        queries=datasets,
+        dataset_details=dataset_details,
         sync_creator_access=sync_external_dataset_creator_access,
     )
 
@@ -107,10 +117,10 @@ def checked_out(sqlite_engine: Engine) -> Iterator[set[object]]:
 
 
 def test_template_list_materializes_bindings_and_settings(
-    operations: ExternalKnowledgeApplicationService,
+    application: ExternalKnowledgeApplicationService,
 ) -> None:
     result = ExternalKnowledgeApiListResponse.model_validate(
-        operations.list_templates(CONTEXT, page=0, limit=0, keyword=None)
+        application.list_templates(CONTEXT, page=0, limit=0, keyword=None)
     ).model_dump(mode="json")
     assert result["total"] == 1
     assert result["limit"] == 1
@@ -120,67 +130,86 @@ def test_template_list_materializes_bindings_and_settings(
 
 
 @pytest.mark.parametrize("method", ["get_template", "update_template", "delete_template"])
-def test_template_read_write_scope(operations: ExternalKnowledgeApplicationService, method: str) -> None:
+def test_template_read_write_scope(application: ExternalKnowledgeApplicationService, method: str) -> None:
     if method == "update_template":
         with pytest.raises(ExternalTemplateNotFoundError):
-            operations.update_template(
+            application.update_template(
                 CONTEXT,
                 template_id="foreign",
                 name="changed",
                 settings={"api_key": "key", "endpoint": "https://example"},
             )
     else:
-        operation = operations.get_template if method == "get_template" else operations.delete_template
+        operation = application.get_template if method == "get_template" else application.delete_template
         with pytest.raises(ExternalTemplateNotFoundError):
             operation(CONTEXT, template_id="foreign")
-    assert operations.template_usage(CONTEXT, template_id="foreign") == (False, 0)
+    assert application.template_usage(CONTEXT, template_id="foreign") == (False, 0)
 
 
 def test_masked_update_preserves_secret_without_mutating_request(
-    operations: ExternalKnowledgeApplicationService, sqlite_session_factory: sessionmaker[Session]
+    application: ExternalKnowledgeApplicationService,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     settings = {"endpoint": "https://changed", "api_key": HIDDEN_VALUE}
-    operations.update_template(CONTEXT, template_id="template", name="Renamed", settings=settings)
+    application.update_template(CONTEXT, template_id="template", name="Renamed", settings=settings)
     assert settings["api_key"] == HIDDEN_VALUE
     with sqlite_session_factory() as session:
         template = session.get(ExternalKnowledgeApis, "template")
         assert template is not None
         assert template.name == "Renamed"
-        settings = template.settings_dict
-        assert settings is not None
-        assert settings["api_key"] == "secret"
+        persisted_settings = template.settings_dict
+        assert persisted_settings is not None
+        assert persisted_settings["api_key"] == "secret"
 
 
 def test_creation_probes_outside_transaction_then_commits(
-    operations: ExternalKnowledgeApplicationService,
+    application: ExternalKnowledgeApplicationService,
     checked_out: set[object],
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     def probe(_settings: dict[str, object]) -> None:
         assert not checked_out
 
-    with patch(
-        "services.knowledge.external.adapters.ExternalKnowledgeGateway.check_endpoint_and_api_key", side_effect=probe
-    ):
-        result = operations.create_template(
-            CONTEXT, name="New", settings={"endpoint": "https://example", "api_key": "secret"}
+    with patch("services.knowledge.external.adapters.validate_external_knowledge_endpoint", side_effect=probe):
+        result = application.create_template(
+            CONTEXT,
+            name="New",
+            settings={"endpoint": "https://example", "api_key": "secret"},
         )
     with sqlite_session_factory() as session:
         assert session.get(ExternalKnowledgeApis, result["id"]) is not None
 
 
-def test_external_dataset_cannot_bind_foreign_template(operations: ExternalKnowledgeApplicationService) -> None:
+def test_external_dataset_cannot_bind_foreign_template(
+    application: ExternalKnowledgeApplicationService,
+) -> None:
     with pytest.raises(ExternalTemplateNotFoundError):
-        operations.create_dataset(
+        application.create_dataset(
             CONTEXT,
             payload=ExternalDatasetCreatePayload(
-                name="New", external_knowledge_api_id="foreign", external_knowledge_id="knowledge"
+                name="New",
+                external_knowledge_api_id="foreign",
+                external_knowledge_id="knowledge",
+            ),
+        )
+
+
+def test_external_dataset_duplicate_name_uses_application_error(
+    application: ExternalKnowledgeApplicationService,
+) -> None:
+    with pytest.raises(DatasetNameDuplicateError):
+        application.create_dataset(
+            CONTEXT,
+            payload=ExternalDatasetCreatePayload(
+                name="Dataset",
+                external_knowledge_api_id="template",
+                external_knowledge_id="knowledge",
             ),
         )
 
 
 def test_dataset_creation_commits_binding_before_creator_sync(
-    operations: ExternalKnowledgeApplicationService,
+    application: ExternalKnowledgeApplicationService,
     sqlite_session_factory: sessionmaker[Session],
     checked_out: set[object],
 ) -> None:
@@ -206,7 +235,7 @@ def test_dataset_creation_commits_binding_before_creator_sync(
         "services.knowledge.external.adapters.rbac_service.try_sync_creator_access_policy_member_bindings",
         side_effect=sync,
     ):
-        result = operations.create_dataset(
+        result = application.create_dataset(
             CONTEXT,
             payload=ExternalDatasetCreatePayload(
                 name="New",
@@ -220,56 +249,76 @@ def test_dataset_creation_commits_binding_before_creator_sync(
 
 
 def test_retrieval_releases_read_session_before_http_and_commits_query(
-    operations: ExternalKnowledgeApplicationService,
+    application: ExternalKnowledgeApplicationService,
     checked_out: set[object],
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    def send(_request: object, _files: object) -> httpx.Response:
+    outbound_body: dict[str, object] = {}
+
+    def send(_url: str, *, data: str, **_kwargs: object) -> httpx.Response:
         assert not checked_out
+        outbound_body.update(json.loads(data))
         return httpx.Response(
             200,
-            json={"records": [{"content": "answer", "title": "title", "score": 0.9, "metadata": {"source": "doc"}}]},
+            json={
+                "records": [
+                    {
+                        "content": "answer",
+                        "title": "title",
+                        "score": 0.9,
+                        "metadata": {"source": "doc"},
+                    }
+                ]
+            },
         )
 
-    with patch(
-        "services.knowledge.external.adapters.ExternalKnowledgeGateway.process_external_api", side_effect=send
-    ) as request:
-        result = operations.hit_testing(
-            CONTEXT, dataset_id=REF.dataset_id, query='"question"', retrieval_model={"top_k": 3}, metadata_filters=None
+    with patch("services.knowledge.external.service.ssrf_proxy.post", side_effect=send):
+        result = application.hit_testing(
+            CONTEXT,
+            dataset_id=REF.dataset_id,
+            query='say "hello"',
+            retrieval_model={"top_k": 3},
+            metadata_filters=None,
         )
-    assert result["query"] == {"content": '"question"'}
+    assert result["query"] == {"content": 'say "hello"'}
     assert result["records"][0]["content"] == "answer"
-    prepared = request.call_args.args[0]
-    assert prepared.params["query"] == '\\"question\\"'
-    assert prepared.params["knowledge_id"] == "knowledge"
-    assert prepared.params["retrieval_setting"] == {"top_k": 3, "score_threshold": 0.0}
+    assert outbound_body["query"] == 'say "hello"'
+    assert outbound_body["knowledge_id"] == "knowledge"
+    assert outbound_body["retrieval_setting"] == {"top_k": 3, "score_threshold": 0.0}
     with sqlite_session_factory() as session:
         saved = session.scalar(select(DatasetQuery))
         assert saved is not None
         assert saved.created_by == "actor"
-        assert saved.content == '"question"'
+        assert saved.content == 'say "hello"'
         assert saved.dataset_id == "dataset"
 
 
 def test_retrieval_failure_does_not_record_query(
-    operations: ExternalKnowledgeApplicationService, sqlite_session_factory: sessionmaker[Session]
+    application: ExternalKnowledgeApplicationService,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with patch(
-        "services.knowledge.external.adapters.ExternalKnowledgeGateway.process_external_api",
+        "services.knowledge.external.service._send_external_knowledge_request",
         return_value=httpx.Response(502, text="unavailable"),
     ):
         with pytest.raises(ExternalHitTestingError):
-            operations.hit_testing(
-                CONTEXT, dataset_id=REF.dataset_id, query="query", retrieval_model=None, metadata_filters=None
+            application.hit_testing(
+                CONTEXT,
+                dataset_id=REF.dataset_id,
+                query="query",
+                retrieval_model=None,
+                metadata_filters=None,
             )
     with sqlite_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(DatasetQuery)) == 0
 
 
-def test_retrieval_rejects_foreign_dataset_before_network(operations: ExternalKnowledgeApplicationService) -> None:
-    with patch("services.knowledge.external.adapters.ExternalKnowledgeGateway.process_external_api") as request:
+def test_retrieval_rejects_foreign_dataset_before_network(
+    application: ExternalKnowledgeApplicationService,
+) -> None:
+    with patch("services.knowledge.external.service._send_external_knowledge_request") as request:
         with pytest.raises(ExternalHitTestingError):
-            operations.hit_testing(
+            application.hit_testing(
                 CONTEXT,
                 dataset_id="foreign-dataset",
                 query="query",

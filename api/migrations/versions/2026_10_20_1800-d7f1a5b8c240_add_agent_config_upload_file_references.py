@@ -67,7 +67,9 @@ def _insert_references(rows: Iterable[dict[str, object]]) -> None:
         sa.column("id", StringUUID()),
         sa.column("tenant_id", StringUUID()),
     )
-    unique_rows = {(row["tenant_id"], row["owner_kind"], row["owner_id"], row["upload_file_id"]): row for row in rows}
+    unique_rows = {
+        (row["tenant_id"], row["owner_kind"], row["owner_id"], row["upload_file_id"]): row for row in rows
+    }
     if not unique_rows:
         return
     candidate_pairs = {(key[0], key[3]) for key in unique_rows}

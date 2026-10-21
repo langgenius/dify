@@ -225,17 +225,26 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources(sql
         inputs={"x": 1},
     )
 
+    def execute_external(_request: object) -> list[dict[str, object]]:
+        assert not sqlite_session.in_transaction()
+        return external_documents
+
     with patch.object(
         single_retriever_module.DatasetRetrieval,
         "get_metadata_filter_condition",
         return_value=metadata_filter_result,
     ):
         with patch.object(
-            single_retriever_module.RetrievalService,
-            "external_retrieve",
-            return_value=external_documents,
-        ) as fetch_mock:
-            result = tool.run(session=sqlite_session, query="hello")
+            single_retriever_module,
+            "prepare_external_knowledge_retrieval",
+            return_value=object(),
+        ):
+            with patch.object(
+                single_retriever_module,
+                "execute_external_knowledge_retrieval",
+                side_effect=execute_external,
+            ) as execute_mock:
+                result = tool.run(session=sqlite_session, query="hello")
 
     assert result == "first\nsecond"
     assert callback.queries == [("hello", dataset.id)]
@@ -243,8 +252,8 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources(sql
     resource_info = callback.resources
     assert [item.position for item in resource_info] == [1, 2]
     assert resource_info[0].dataset_id == dataset.id
-    fetch_mock.assert_called_once()
-    assert fetch_mock.call_args.args[:3] == (sqlite_session, dataset.id, "hello")
+    execute_mock.assert_called_once()
+    assert not sqlite_session.in_transaction()
 
 
 def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_documents(

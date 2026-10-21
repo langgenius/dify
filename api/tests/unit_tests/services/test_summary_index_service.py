@@ -8,14 +8,18 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.knowledge.summaries.adapters as summary_module
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
+from models.knowledge_task import KnowledgeTaskOutbox
+from repositories.knowledge.summary_repository import ensure_summary_records, mark_summary_error
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
+from services.knowledge.summaries.application import SummaryWriteFenceLostError
+from services.knowledge.task_outbox.contracts import KnowledgeTaskKind
 
 TENANT_ID = "tenant-1"
 OTHER_TENANT_ID = "tenant-2"
@@ -196,7 +200,8 @@ class TestGenerateAndCreate:
         usage = _usage()
         generate = _install_summary_generator(monkeypatch, usage=usage)
 
-        def call_model(**kwargs):
+        def call_model(**kwargs: object) -> tuple[str, MagicMock]:
+            del kwargs
             assert not sqlite_session.in_transaction()
             return "generated summary", usage
 
@@ -224,57 +229,6 @@ class TestGenerateAndCreate:
 
         with pytest.raises(ValueError, match="Generated summary is empty"):
             SummaryIndexAdapter.generate_summary_for_segment(segment, dataset, {"enable": True}, session=sqlite_session)
-
-    def test_create_updates_only_matching_dataset_and_reenables(self, sqlite_session: Session) -> None:
-        dataset, document, segment = _graph(sqlite_session)
-        existing = _persist_summary(
-            sqlite_session, dataset, document, segment, content="old", node_id="old-node", enabled=False
-        )
-        other_dataset = _persist_dataset(sqlite_session, dataset_id="dataset-2")
-        other_document = _persist_document(sqlite_session, other_dataset, document_id="doc-2")
-        decoy = _persist_summary(
-            sqlite_session,
-            other_dataset,
-            other_document,
-            segment,
-            summary_id="decoy",
-            content="decoy",
-        )
-        existing.disabled_at = datetime(2026, 1, 1)
-        existing.disabled_by = "account-2"
-        sqlite_session.commit()
-
-        result = SummaryIndexAdapter.create_summary_record(
-            segment, dataset, "new", status=SummaryStatus.GENERATING, session=sqlite_session
-        )
-
-        assert result.id == existing.id
-        assert (result.summary_content, result.status, result.enabled) == (
-            "new",
-            SummaryStatus.GENERATING,
-            True,
-        )
-        assert (result.disabled_at, result.disabled_by, result.error) == (None, None, None)
-        assert sqlite_session.scalar(select(func.count()).select_from(DocumentSegmentSummary)) == 2
-        sqlite_session.refresh(decoy)
-        assert decoy.summary_content == "decoy"
-
-    def test_create_persists_new_record_in_current_transaction(self, sqlite_session: Session) -> None:
-        dataset, document, segment = _graph(sqlite_session)
-
-        result = SummaryIndexAdapter.create_summary_record(
-            segment, dataset, "new", status=SummaryStatus.NOT_STARTED, session=sqlite_session
-        )
-
-        assert result.id is not None
-        stored = sqlite_session.get(DocumentSegmentSummary, result.id)
-        assert stored is result
-        assert (stored.dataset_id, stored.document_id, stored.chunk_id, stored.summary_content) == (
-            dataset.id,
-            document.id,
-            segment.id,
-            "new",
-        )
 
 
 class TestVectorizeSummary:
@@ -304,7 +258,8 @@ class TestVectorizeSummary:
         summary = _persist_summary(sqlite_session, dataset, document, segment)
         vector = _install_vector_dependencies(monkeypatch)
 
-        def write_vector(*args, **kwargs):
+        def write_vector(*args: object, **kwargs: object) -> None:
+            del args, kwargs
             assert not sqlite_session.in_transaction()
             if vector.add_texts.call_count == 1:
                 raise ConnectionError("connection timeout")
@@ -346,7 +301,7 @@ class TestVectorizeSummary:
                 5,
             )
 
-    def test_service_owned_session_falls_back_to_chunk_and_preserves_existing_id(
+    def test_service_owned_session_rejects_a_detached_replacement(
         self,
         sqlite_session: Session,
         sqlite_session_factory: sessionmaker[Session],
@@ -363,16 +318,16 @@ class TestVectorizeSummary:
         detached.id = "missing-id"
         _install_vector_dependencies(monkeypatch)
 
-        SummaryIndexAdapter.vectorize_summary(detached, segment, dataset)
+        with pytest.raises(SummaryWriteFenceLostError, match="materialization was replaced"):
+            SummaryIndexAdapter.vectorize_summary(detached, segment, dataset)
 
         with sqlite_session_factory() as observer:
             refreshed = observer.get(DocumentSegmentSummary, stored.id)
             assert refreshed is not None
-            assert refreshed.summary_content == "replacement"
-            assert refreshed.status == SummaryStatus.COMPLETED
+            assert refreshed.summary_content != "replacement"
             assert observer.get(DocumentSegmentSummary, detached.id) is None
 
-    def test_service_owned_session_creates_missing_record(
+    def test_service_owned_session_rejects_a_deleted_summary_row(
         self,
         sqlite_session: Session,
         sqlite_session_factory: sessionmaker[Session],
@@ -388,12 +343,11 @@ class TestVectorizeSummary:
         detached.id = "new-summary"
         _install_vector_dependencies(monkeypatch)
 
-        SummaryIndexAdapter.vectorize_summary(detached, segment, dataset)
+        with pytest.raises(SummaryWriteFenceLostError, match="materialization no longer exists"):
+            SummaryIndexAdapter.vectorize_summary(detached, segment, dataset)
 
         with sqlite_session_factory() as observer:
-            stored = observer.get(DocumentSegmentSummary, detached.id)
-            assert stored is not None
-            assert stored.status == SummaryStatus.COMPLETED
+            assert observer.get(DocumentSegmentSummary, detached.id) is None
 
     def test_provided_session_is_committed_before_independent_error_persistence(
         self,
@@ -410,7 +364,7 @@ class TestVectorizeSummary:
         with pytest.raises(RuntimeError, match="fatal vector failure"):
             SummaryIndexAdapter.vectorize_summary(summary, segment, dataset, session=sqlite_session)
 
-        assert create_session.call_count == 2
+        assert create_session.call_count == 3
         assert not sqlite_session.in_transaction()
         assert summary.status == SummaryStatus.ERROR
         assert summary.error == "Vectorization failed: fatal vector failure"
@@ -434,14 +388,15 @@ class TestBatchAndGeneration:
             other = _persist_dataset(sqlite_session, dataset_id="other", tenant_id=OTHER_TENANT_ID)
             document.dataset_id, document.tenant_id = other.id, other.tenant_id
         sqlite_session.commit()
-        sessions = []
+        sessions: list[Session] = []
 
-        def create_session():
+        def create_session() -> Session:
             session = sqlite_session_factory()
             sessions.append(session)
             return session
 
-        def generate(**kwargs):
+        def generate(**kwargs: object) -> list[DocumentSegmentSummary]:
+            del kwargs
             assert sessions
             assert all(not session.in_transaction() for session in sessions)
             return []
@@ -450,14 +405,37 @@ class TestBatchAndGeneration:
         monkeypatch.setattr(summary_module.session_factory, "create_session", create_session)
         monkeypatch.setattr(SummaryIndexAdapter, "generate_summaries_for_document", generate_mock)
 
-        generate_summary_index_task(dataset.id, document.id)
+        intent = KnowledgeTaskOutbox(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            resource_id=document.id,
+            task_kind=KnowledgeTaskKind.DOCUMENT_SUMMARY_INDEX,
+            payload={"expected_generation": document.indexing_generation},
+            status="dispatched",
+        )
+        sqlite_session.add(intent)
+        sqlite_session.commit()
+
+        generate_summary_index_task.run(
+            dataset.id,
+            document.id,
+            None,
+            intent.id,
+            document.indexing_generation,
+            False,
+            str(dataset.indexing_technique),
+            dataset.embedding_model_provider,
+            dataset.embedding_model,
+            dict(dataset.summary_index_setting),
+        )
 
         assert generate_mock.call_count == (0 if foreign_document else 1)
 
     def test_batch_create_no_segments_is_noop(self, sqlite_session: Session) -> None:
         dataset = _persist_dataset(sqlite_session)
 
-        SummaryIndexAdapter.batch_create_summary_records([], dataset)
+        ensure_summary_records(sqlite_session, dataset_id=dataset.id, segments=[], status=SummaryStatus.NOT_STARTED)
 
         assert sqlite_session.scalar(select(func.count()).select_from(DocumentSegmentSummary)) == 0
 
@@ -471,7 +449,13 @@ class TestBatchAndGeneration:
         existing.disabled_by = "account-2"
         sqlite_session.commit()
 
-        SummaryIndexAdapter.batch_create_summary_records([first, second], dataset, status=SummaryStatus.NOT_STARTED)
+        ensure_summary_records(
+            sqlite_session,
+            dataset_id=dataset.id,
+            segments=[first, second],
+            status=SummaryStatus.NOT_STARTED,
+        )
+        sqlite_session.commit()
 
         with sqlite_session_factory() as observer:
             rows = observer.scalars(
@@ -489,20 +473,33 @@ class TestBatchAndGeneration:
         dataset, document, segment = _graph(sqlite_session)
         summary = _persist_summary(sqlite_session, dataset, document, segment)
 
-        SummaryIndexAdapter.update_summary_record_error(segment, dataset, "generation failed")
+        assert mark_summary_error(
+            sqlite_session,
+            dataset_id=dataset.id,
+            segment_id=segment.id,
+            error="generation failed",
+        )
+        sqlite_session.commit()
 
         with sqlite_session_factory() as observer:
             stored = observer.get(DocumentSegmentSummary, summary.id)
             assert stored is not None
             assert (stored.status, stored.error) == (SummaryStatus.ERROR, "generation failed")
         other = _persist_segment(sqlite_session, dataset, document, segment_id="seg-2", position=2)
-        SummaryIndexAdapter.update_summary_record_error(other, dataset, "ignored")
+        assert not mark_summary_error(
+            sqlite_session,
+            dataset_id=dataset.id,
+            segment_id=other.id,
+            error="ignored",
+        )
         assert sqlite_session.scalar(select(func.count()).select_from(DocumentSegmentSummary)) == 1
 
     def test_generate_and_vectorize_creates_commits_and_returns_row(
         self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         dataset, _, segment = _graph(sqlite_session)
+        dataset.summary_index_setting = {"enable": True}
+        sqlite_session.commit()
         monkeypatch.setattr(
             SummaryIndexAdapter,
             "generate_summary_for_segment",
@@ -514,6 +511,7 @@ class TestBatchAndGeneration:
             _segment: DocumentSegment,
             _dataset: Dataset,
             session: Session | None = None,
+            **_kwargs: object,
         ) -> None:
             record.status = SummaryStatus.COMPLETED
             record.summary_index_node_id = "node-1"
@@ -535,6 +533,8 @@ class TestBatchAndGeneration:
         self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         dataset, document, segment = _graph(sqlite_session)
+        dataset.summary_index_setting = {"enable": True}
+        sqlite_session.commit()
         summary = _persist_summary(sqlite_session, dataset, document, segment, status=SummaryStatus.NOT_STARTED)
         monkeypatch.setattr(
             SummaryIndexAdapter,
@@ -584,9 +584,7 @@ class TestBatchAndGeneration:
             status=SummaryStatus.COMPLETED,
         )
         generate = MagicMock(side_effect=[generated, RuntimeError("boom")])
-        update_error = MagicMock()
         monkeypatch.setattr(SummaryIndexAdapter, "generate_and_vectorize_summary", generate)
-        monkeypatch.setattr(SummaryIndexAdapter, "update_summary_record_error", update_error)
 
         result = SummaryIndexAdapter.generate_summaries_for_document(
             dataset,
@@ -598,7 +596,12 @@ class TestBatchAndGeneration:
 
         assert result == [generated]
         assert [call.args[0].id for call in generate.call_args_list] == [first.id, second.id]
-        update_error.assert_called_once()
+        sqlite_session.expire_all()
+        failed = sqlite_session.scalar(
+            select(DocumentSegmentSummary).where(DocumentSegmentSummary.chunk_id == second.id)
+        )
+        assert failed is not None
+        assert (failed.status, failed.error) == (SummaryStatus.ERROR, "boom")
 
 
 class TestEnableDisableDelete:
@@ -667,6 +670,7 @@ class TestEnableDisableDelete:
             _segment: DocumentSegment,
             _dataset: Dataset,
             session: Session | None = None,
+            **_kwargs: object,
         ) -> None:
             record.status = SummaryStatus.COMPLETED
             sqlite_session.flush()
@@ -714,144 +718,7 @@ class TestEnableDisableDelete:
         vector.delete_by_ids.assert_called_once_with(["node-1"])
 
 
-class TestManualUpdate:
-    def test_skips_economy_and_qa_documents(self, sqlite_session: Session) -> None:
-        economy = _persist_dataset(sqlite_session, indexing_technique=IndexTechniqueType.ECONOMY)
-        document = _persist_document(sqlite_session, economy)
-        segment = _persist_segment(sqlite_session, economy, document)
-        assert SummaryIndexAdapter.update_summary_for_segment(segment, economy, "new", session=sqlite_session) is None
-
-        quality = _persist_dataset(sqlite_session, dataset_id="dataset-2")
-        qa_document = _persist_document(
-            sqlite_session, quality, document_id="doc-2", doc_form=IndexStructureType.QA_INDEX
-        )
-        qa_segment = _persist_segment(sqlite_session, quality, qa_document, segment_id="seg-2")
-        assert (
-            SummaryIndexAdapter.update_summary_for_segment(qa_segment, quality, "new", session=sqlite_session) is None
-        )
-
-    def test_empty_content_deletes_record_even_when_vector_delete_fails(
-        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        dataset, document, segment = _graph(sqlite_session)
-        summary = _persist_summary(sqlite_session, dataset, document, segment, node_id="node-1")
-        vector = MagicMock(name="vector")
-        vector.delete_by_ids.side_effect = RuntimeError("boom")
-        monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector))
-
-        result = SummaryIndexAdapter.update_summary_for_segment(segment, dataset, "   ", session=sqlite_session)
-
-        assert result is None
-        assert sqlite_session.get(DocumentSegmentSummary, summary.id) is None
-
-    def test_empty_content_without_record_is_noop(self, sqlite_session: Session) -> None:
-        dataset, _, segment = _graph(sqlite_session)
-        assert SummaryIndexAdapter.update_summary_for_segment(segment, dataset, "", session=sqlite_session) is None
-
-    def test_existing_record_updates_vectorizes_and_commits(
-        self,
-        sqlite_session: Session,
-        sqlite_session_factory: sessionmaker[Session],
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        dataset, document, segment = _graph(sqlite_session)
-        summary = _persist_summary(sqlite_session, dataset, document, segment, content="old", node_id="old-node")
-        vector = _install_vector_dependencies(monkeypatch)
-
-        result = SummaryIndexAdapter.update_summary_for_segment(segment, dataset, "new", session=sqlite_session)
-
-        assert result is not None
-        vector.delete_by_ids.assert_called_once_with(["old-node"])
-        with sqlite_session_factory() as observer:
-            stored = observer.get(DocumentSegmentSummary, summary.id)
-            assert stored is not None
-            assert (stored.summary_content, stored.status, stored.summary_index_node_hash) == (
-                "new",
-                SummaryStatus.COMPLETED,
-                "hash-1",
-            )
-
-    def test_new_record_is_persisted(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-        dataset, _, segment = _graph(sqlite_session)
-
-        def vectorize(
-            record: DocumentSegmentSummary,
-            _segment: DocumentSegment,
-            _dataset: Dataset,
-            session: Session | None = None,
-        ) -> None:
-            record.status = SummaryStatus.COMPLETED
-            sqlite_session.flush()
-
-        monkeypatch.setattr(SummaryIndexAdapter, "vectorize_summary", vectorize)
-
-        result = SummaryIndexAdapter.update_summary_for_segment(segment, dataset, "new", session=sqlite_session)
-
-        assert result is not None
-        assert sqlite_session.get(DocumentSegmentSummary, result.id) is result
-        assert result.status == SummaryStatus.COMPLETED
-
-    def test_vector_failure_returns_persisted_error_record(
-        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        dataset, document, segment = _graph(sqlite_session)
-        summary = _persist_summary(sqlite_session, dataset, document, segment, content="old")
-        monkeypatch.setattr(SummaryIndexAdapter, "vectorize_summary", MagicMock(side_effect=RuntimeError("boom")))
-
-        result = SummaryIndexAdapter.update_summary_for_segment(segment, dataset, "new", session=sqlite_session)
-
-        assert result is summary
-        assert (result.summary_content, result.status, result.error) == (
-            "new",
-            SummaryStatus.ERROR,
-            "Vectorization failed: boom",
-        )
-        sqlite_session.refresh(summary)
-        assert summary.status == SummaryStatus.ERROR
-
-    def test_flush_failure_rolls_back_then_records_error(self, sqlite_session: Session) -> None:
-        dataset, document, segment = _graph(sqlite_session)
-        summary = _persist_summary(sqlite_session, dataset, document, segment, content="old")
-        calls = 0
-
-        def fail_first_flush(_session: Session, _context: object, _instances: object) -> None:
-            nonlocal calls
-            calls += 1
-            if calls == 1:
-                raise RuntimeError("flush boom")
-
-        event.listen(sqlite_session, "before_flush", fail_first_flush)
-        try:
-            with pytest.raises(RuntimeError, match="flush boom"):
-                SummaryIndexAdapter.update_summary_for_segment(segment, dataset, "new", session=sqlite_session)
-        finally:
-            event.remove(sqlite_session, "before_flush", fail_first_flush)
-
-        sqlite_session.refresh(summary)
-        assert (summary.status, summary.error) == (SummaryStatus.ERROR, "flush boom")
-
-
 class TestReadModels:
-    def test_getters_filter_dataset_document_segments_and_enabled(self, sqlite_session: Session) -> None:
-        dataset, document, first = _graph(sqlite_session)
-        second = _persist_segment(sqlite_session, dataset, document, segment_id="seg-2", position=2)
-        first_summary = _persist_summary(sqlite_session, dataset, document, first, status=SummaryStatus.COMPLETED)
-        _persist_summary(sqlite_session, dataset, document, second, summary_id="sum-2", enabled=False)
-        other_dataset = _persist_dataset(sqlite_session, dataset_id="dataset-2")
-        other_document = _persist_document(sqlite_session, other_dataset, document_id="doc-2")
-        other_segment = _persist_segment(sqlite_session, other_dataset, other_document, segment_id="seg-3")
-        _persist_summary(sqlite_session, other_dataset, other_document, other_segment, summary_id="sum-3")
-
-        assert SummaryIndexAdapter.get_segment_summary(first.id, dataset.id, session=sqlite_session) is first_summary
-        assert SummaryIndexAdapter.get_segment_summary(second.id, dataset.id, session=sqlite_session) is None
-        assert SummaryIndexAdapter.get_segments_summaries(
-            [first.id, second.id, other_segment.id], dataset.id, session=sqlite_session
-        ) == {first.id: first_summary}
-        assert SummaryIndexAdapter.get_segments_summaries([], dataset.id, session=sqlite_session) == {}
-        assert SummaryIndexAdapter.get_document_summaries(
-            document.id, dataset.id, [first.id, second.id], session=sqlite_session
-        ) == [first_summary]
-
     def test_single_document_status_uses_real_pending_rows_and_tenant_scope(self, sqlite_session: Session) -> None:
         dataset, document, segment = _graph(sqlite_session)
         summary = _persist_summary(sqlite_session, dataset, document, segment, status=SummaryStatus.GENERATING)
@@ -903,9 +770,9 @@ class TestReadModels:
             == {}
         )
 
-    def test_status_detail_counts_and_previews(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_status_detail_counts_and_previews(self, sqlite_session: Session) -> None:
         dataset, document, first = _graph(sqlite_session)
-        second = _persist_segment(sqlite_session, dataset, document, segment_id="seg-2", position=2)
+        _persist_segment(sqlite_session, dataset, document, segment_id="seg-2", position=2)
         created_at = datetime(2026, 1, 1)
         _persist_summary(
             sqlite_session,
@@ -916,11 +783,6 @@ class TestReadModels:
             status=SummaryStatus.COMPLETED,
             created_at=created_at,
         )
-        segment_service = SimpleNamespace(get_segments_by_document_and_dataset=MagicMock(return_value=[first, second]))
-        monkeypatch.setitem(
-            sys.modules, "services.knowledge.dataset_service", SimpleNamespace(SegmentService=segment_service)
-        )
-
         detail = SummaryIndexAdapter.get_document_summary_status_detail(
             document.id, dataset.id, sqlite_session, tenant_id=dataset.tenant_id
         )

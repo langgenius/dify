@@ -208,7 +208,12 @@ class QAIndexProcessor(BaseIndexProcessor):
         if documents:
             token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
             # save node to document segment
-            doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
+            doc_store = DatasetDocumentStore(
+                dataset=dataset,
+                user_id=document.created_by,
+                document_id=document.id,
+                attachment_writer=self._attachment_writer,
+            )
             doc_store.add_documents(
                 session=session,
                 docs=documents,

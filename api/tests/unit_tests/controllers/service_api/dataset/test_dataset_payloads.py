@@ -4,7 +4,7 @@ from typing import Literal
 
 import pytest
 
-from controllers.service_api.dataset.dataset import (
+from fields.service_api.dataset import (
     DatasetCreatePayload,
     DatasetListQuery,
     DatasetUpdatePayload,

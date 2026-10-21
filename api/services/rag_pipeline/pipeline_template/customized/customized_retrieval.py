@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from libs.login import resolve_tenant_id_fallback
 from models.dataset import PipelineCustomizedTemplate
-from repositories.knowledge.dataset_read_repository import get_pipeline_template_creator_name
+from repositories.knowledge.pipeline_query_repository import get_pipeline_template_creator_name
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 

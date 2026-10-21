@@ -1,22 +1,18 @@
 import concurrent.futures
-import datetime
 import logging
-import time
-from collections.abc import Mapping
 from typing import Any
 
 from flask import current_app
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
+from core.rag.docstore.dataset_docstore import SegmentAttachmentWriter
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
-from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
-from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import SegmentStatus
-from services.vector_space_admission_service import VectorSpaceAdmissionService
+from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem, QaPreview
+from models.dataset import Dataset, Document
 
 from .processor.paragraph_index_processor import ParagraphIndexProcessor
 from .processor.parent_child_index_processor import ParentChildIndexProcessor
@@ -28,8 +24,9 @@ logger = logging.getLogger(__name__)
 class IndexProcessorFactory:
     """Select the processor for a document's index structure."""
 
-    def __init__(self, index_type: str | None):
+    def __init__(self, index_type: str | None, *, attachment_writer: SegmentAttachmentWriter | None = None):
         self._index_type = index_type
+        self._attachment_writer = attachment_writer
 
     def init_index_processor(self) -> BaseIndexProcessor:
         """Create a processor for a supported index type."""
@@ -37,18 +34,24 @@ class IndexProcessorFactory:
             raise ValueError("Index type must be specified.")
 
         if self._index_type == IndexStructureType.PARAGRAPH_INDEX:
-            return ParagraphIndexProcessor()
+            return ParagraphIndexProcessor(attachment_writer=self._attachment_writer)
         elif self._index_type == IndexStructureType.QA_INDEX:
-            return QAIndexProcessor()
+            return QAIndexProcessor(attachment_writer=self._attachment_writer)
         elif self._index_type == IndexStructureType.PARENT_CHILD_INDEX:
-            return ParentChildIndexProcessor()
+            return ParentChildIndexProcessor(attachment_writer=self._attachment_writer)
         else:
             raise ValueError(f"Index type {self._index_type} is not supported.")
 
 
 class IndexProcessor:
+    def __init__(self, *, attachment_writer: SegmentAttachmentWriter | None = None) -> None:
+        self._attachment_writer = attachment_writer
+
     def format_preview(self, chunk_structure: str, chunks: Any) -> Preview:
-        index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
+        index_processor = IndexProcessorFactory(
+            chunk_structure,
+            attachment_writer=self._attachment_writer,
+        ).init_index_processor()
         preview = index_processor.format_preview(chunks)
         data = Preview(
             chunk_structure=preview["chunk_structure"],
@@ -77,126 +80,6 @@ class IndexProcessor:
             if "question" in item and "answer" in item:
                 data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
         return data
-
-    def index_and_clean(
-        self,
-        dataset_id: str,
-        document_id: str,
-        original_document_id: str,
-        chunks: Mapping[str, Any],
-        batch: Any,
-        summary_index_setting: SummaryIndexSettingDict | None = None,
-        *,
-        session: Session,
-    ) -> IndexingResultDict:
-        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-        if not dataset:
-            raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
-
-        document = session.scalar(
-            select(Document)
-            .where(
-                Document.id == document_id,
-                Document.dataset_id == dataset.id,
-                Document.tenant_id == dataset.tenant_id,
-            )
-            .limit(1)
-        )
-        if not document:
-            raise KnowledgeIndexNodeError(f"Document {document_id} not found.")
-
-        dataset_name_value = dataset.name
-        document_name_value = document.name
-        created_at_value = document.created_at
-        if summary_index_setting is None:
-            summary_index_setting = dataset.summary_index_setting
-        index_node_ids = []
-
-        index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
-        if original_document_id:
-            segments = session.scalars(
-                select(DocumentSegment).where(
-                    DocumentSegment.document_id == original_document_id,
-                    DocumentSegment.dataset_id == dataset.id,
-                    DocumentSegment.tenant_id == dataset.tenant_id,
-                )
-            ).all()
-            if segments:
-                index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
-
-        indexing_start_at = time.perf_counter()
-        # The metadata reads above must not keep a transaction open across vector I/O.
-        session.commit()
-
-        # V1 guards only first-time indexing.
-        if not original_document_id:
-            VectorSpaceAdmissionService().ensure_pipeline_can_be_indexed(
-                dataset=dataset,
-                document_id=document.id,
-                chunk_structure=dataset.chunk_structure,
-                chunks=chunks,
-                include_summaries=bool(summary_index_setting and summary_index_setting.get("enable")),
-                session=session,
-            )
-
-        if index_node_ids:
-            index_processor.clean(
-                dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, session=session
-            )
-            session.commit()
-            segment_delete_stmt = delete(DocumentSegment).where(
-                DocumentSegment.document_id == original_document_id,
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.tenant_id == dataset.tenant_id,
-            )
-            session.execute(segment_delete_stmt)
-            session.commit()
-
-        index_processor.index(dataset, document, chunks, session)
-        session.commit()
-        indexing_end_at = time.perf_counter()
-
-        document.indexing_latency = indexing_end_at - indexing_start_at
-        document.indexing_status = "completed"
-        document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-        document.word_count = (
-            session.scalar(
-                select(func.sum(DocumentSegment.word_count)).where(
-                    DocumentSegment.document_id == document_id,
-                    DocumentSegment.dataset_id == dataset_id,
-                    DocumentSegment.tenant_id == dataset.tenant_id,
-                )
-            )
-        ) or 0
-        # Update need_summary based on dataset's summary_index_setting
-        document.need_summary = bool(summary_index_setting and summary_index_setting.get("enable") is True)
-        session.add(document)
-        # update document segment status
-        session.execute(
-            update(DocumentSegment)
-            .where(
-                DocumentSegment.document_id == document_id,
-                DocumentSegment.dataset_id == dataset_id,
-                DocumentSegment.tenant_id == dataset.tenant_id,
-            )
-            .values(
-                status=SegmentStatus.COMPLETED,
-                enabled=True,
-                completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-            )
-        )
-        session.flush()
-
-        result: IndexingResultDict = {
-            "dataset_id": dataset_id,
-            "dataset_name": dataset_name_value,
-            "batch": batch,
-            "document_id": document_id,
-            "document_name": document_name_value,
-            "created_at": created_at_value.timestamp(),
-            "display_status": "completed",
-        }
-        return result
 
     def get_preview_output(
         self,

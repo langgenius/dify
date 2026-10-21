@@ -8,6 +8,7 @@ from dataclasses import replace
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
+from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -54,7 +55,6 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.file.runtime import use_workflow_file_runtime
 from graphon.runtime.container_state import CustomContainerRunState
 from repositories.factory import DifyAPIRepositoryFactory
-from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowPauseStoppedError
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.conversation_variable_updater import ConversationVariableUpdater
@@ -210,14 +210,8 @@ class WorkflowRunAgg:
                 workflow_node_execution_repository=workflow_node_execution_repository,
             )
         except ValueError as error:
-            entity = prepared.generate_entity
-            if isinstance(entity, RagPipelineGenerateEntity) and entity.document_id is not None:
-                SQLAlchemyDocumentRepository(session_factory=session_factory.get_session_maker()).mark_failed(
-                    workspace_id=entity.app_config.tenant_id,
-                    dataset_id=entity.dataset_id,
-                    document_id=entity.document_id,
-                    error=str(error),
-                )
+            if isinstance(runner, PipelineRunner):
+                runner.report_preparation_failure(str(error))
             raise
         with closing(aggregate.iter_events()) as events:
             for event in events:

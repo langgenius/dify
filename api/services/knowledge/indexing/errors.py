@@ -25,3 +25,7 @@ class DocumentIsPausedError(Exception):
 
 class DocumentIsDeletedPausedError(Exception):
     """Indexing stopped because its document owner chain no longer exists."""
+
+
+class DocumentIndexingGenerationChangedError(Exception):
+    """The indexing delivery no longer owns the document generation it started with."""

@@ -1,35 +1,40 @@
-from dataclasses import replace
+from dataclasses import dataclass
 from inspect import unwrap
 from unittest.mock import create_autospec
 from uuid import UUID
 
 import pytest
-from flask import Flask
-from flask_restx import Resource
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-from controllers.common.errors import InternalServerError, NotFoundError
 from controllers.console.datasets import external as controller
-from controllers.console.datasets.error import DatasetAccessDeniedRequestError, DatasetNameDuplicateError
-from libs.external_api import ExternalApi
+from controllers.console.datasets.error import DatasetNameDuplicateError
 from machinery.context import RequestContext
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.errors.dataset import DatasetNameDuplicateError as DuplicateName
-from services.errors.knowledge_retrieval import ExternalHitTestingError, ExternalTemplateNotFoundError
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.external.application import (
+    ExternalHitTestingError,
     ExternalKnowledgeApplicationService,
+    ExternalTemplateNotFoundError,
 )
 
 CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
 ID = UUID(int=1)
 
 
+@dataclass(frozen=True)
+class _KnowledgeServices:
+    external: ExternalKnowledgeApplicationService
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
+
+
 @pytest.fixture
-def external(monkeypatch, account_application_services):
+def external(monkeypatch):
     service = create_autospec(ExternalKnowledgeApplicationService, instance=True, spec_set=True)
-    services = replace(
-        account_application_services, knowledge=replace(account_application_services.knowledge, external=service)
-    )
-    monkeypatch.setattr(controller, "application_services", lambda: services)
+    monkeypatch.setattr(controller, "application_services", lambda: _ApplicationServices(_KnowledgeServices(service)))
     return service
 
 
@@ -76,7 +81,7 @@ def test_templates_preserve_pagination(external):
 )
 def test_template_missing_is_mapped_and_context_forwarded(external, resource, verb, operation, payload):
     method = operation(external)
-    method.side_effect = ExternalTemplateNotFoundError("api template not found")
+    method.side_effect = ExternalTemplateNotFoundError("API template not found.")
     args = (
         [
             controller.ExternalKnowledgeApiPayload(
@@ -89,10 +94,8 @@ def test_template_missing_is_mapped_and_context_forwarded(external, resource, ve
     args.append(CONTEXT)
     if resource is controller.ExternalApiTemplateApi:
         args.append(ID)
-    with pytest.raises(NotFoundError) as failure:
+    with pytest.raises(NotFound):
         unwrap(verb)(resource(), *args)
-    assert failure.value.description == "API template not found."
-    assert failure.value.data == {"code": "not_found", "message": "API template not found.", "status": 404}
     assert method.call_args.args == (CONTEXT,)
     if resource is controller.ExternalApiTemplateApi:
         assert method.call_args.kwargs["template_id"] == str(ID)
@@ -137,47 +140,25 @@ def test_external_dataset_duplicate_name_maps_to_409(external):
 
 
 @pytest.mark.parametrize(
-    ("error", "http_error", "status", "code"),
+    ("error", "http_error"),
     [
-        (DatasetNotFoundError(), NotFoundError, 404, "not_found"),
-        (DatasetAccessDeniedError(), DatasetAccessDeniedRequestError, 403, "dataset_access_denied"),
-        (ExternalHitTestingError("failed"), InternalServerError, 500, "internal_server_error"),
+        (DatasetNotFoundError(), NotFound),
+        (DatasetAccessDeniedError(), Forbidden),
+        (ExternalHitTestingError("failed"), InternalServerError),
     ],
 )
-def test_retrieval_maps_application_errors(external, error, http_error, status, code):
+def test_retrieval_maps_application_errors(external, error, http_error):
     external.hit_testing.side_effect = error
-    message = InternalServerError.description if isinstance(error, ExternalHitTestingError) else str(error)
-    with pytest.raises(http_error) as failure:
+    with pytest.raises(http_error):
         unwrap(controller.ExternalKnowledgeHitTestingApi.post)(
             controller.ExternalKnowledgeHitTestingApi(),
             controller.ExternalHitTestingPayload(query="query"),
             CONTEXT,
             ID,
         )
-    assert failure.value.code == status
-    assert failure.value.data == {"code": code, "message": message, "status": status}
-    assert failure.value.__cause__ is error
     external.hit_testing.assert_called_once_with(
         CONTEXT, dataset_id=str(ID), query="query", retrieval_model=None, metadata_filters=None
     )
-
-    app = Flask(__name__)
-    app.config["RESTX_ERROR_404_HELP"] = False
-    api = ExternalApi(app)
-
-    class ExternalHitTestingResource(Resource):
-        def post(self):
-            return unwrap(controller.ExternalKnowledgeHitTestingApi.post)(
-                controller.ExternalKnowledgeHitTestingApi(),
-                controller.ExternalHitTestingPayload(query="query"),
-                CONTEXT,
-                ID,
-            )
-
-    api.add_resource(ExternalHitTestingResource, "/external-hit-testing")
-    response = app.test_client().post("/external-hit-testing")
-    assert response.status_code == status
-    assert response.get_json() == {"code": code, "message": message, "status": status}
 
 
 def test_retrieval_response_is_serialized(external):

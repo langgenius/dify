@@ -3,43 +3,41 @@
 import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
 from typing import Literal, Protocol
 
 from core.credit_usage import CreditUsageCreatedBy
 from core.model_context import with_credit_usage_created_by
 from core.rag.models.document import Document
-from services.knowledge.entities.resource_scope import DocumentRef
-from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
-from services.knowledge.indexing.estimate import StoredSource
+from services.knowledge.indexing.contracts import DocumentIndexingExecution, IndexingDocument
+from services.knowledge.indexing.errors import (
+    DocumentIndexingGenerationChangedError,
+    DocumentIsDeletedPausedError,
+    DocumentIsPausedError,
+)
+from services.knowledge.resource_scope import DocumentRef
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
-class IndexingDocument:
-    source: StoredSource
-    processing_rule: Mapping[str, object]
-    doc_language: str
-    need_summary: bool
-
-    @property
-    def ref(self) -> DocumentRef:
-        return self.source.document_ref
-
-    @property
-    def doc_form(self) -> str:
-        return self.source.document_model
-
-
 class IndexingDocumentStore(Protocol):
-    def get_indexing_document(self, ref: DocumentRef) -> IndexingDocument | None: ...
+    def get_indexing_document(
+        self, ref: DocumentRef, *, execution: DocumentIndexingExecution | None = None
+    ) -> IndexingDocument | None: ...
 
-    def mark_splitting(self, ref: DocumentRef) -> None: ...
+    def mark_splitting(self, ref: DocumentRef, *, execution: DocumentIndexingExecution | None = None) -> None: ...
 
-    def complete_indexing(self, ref: DocumentRef, *, tokens: int, latency: float) -> None: ...
+    def complete_indexing(
+        self,
+        ref: DocumentRef,
+        *,
+        tokens: int,
+        latency: float,
+        execution: DocumentIndexingExecution | None = None,
+    ) -> None: ...
 
-    def fail_indexing(self, ref: DocumentRef, error: str) -> None: ...
+    def fail_indexing(
+        self, ref: DocumentRef, error: str, *, execution: DocumentIndexingExecution | None = None
+    ) -> None: ...
 
 
 class IndexingSegmentStore(Protocol):
@@ -89,32 +87,55 @@ class DocumentIndexingService:
         self._clock = clock
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
-    def run(self, document_refs: Sequence[DocumentRef]) -> None:
+    def run(
+        self,
+        document_refs: Sequence[DocumentRef],
+        *,
+        executions: Mapping[str, DocumentIndexingExecution] | None = None,
+    ) -> None:
         for ref in document_refs:
-            self._run(ref, start="parsing")
+            self._run(ref, start="parsing", execution=executions.get(ref.document_id) if executions else None)
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
-    def run_in_splitting_status(self, ref: DocumentRef) -> None:
-        self._run(ref, start="splitting")
+    def run_in_splitting_status(self, ref: DocumentRef, *, execution: DocumentIndexingExecution | None = None) -> None:
+        self._run(ref, start="splitting", execution=execution)
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
-    def run_in_indexing_status(self, ref: DocumentRef) -> None:
-        self._run(ref, start="indexing")
+    def run_in_indexing_status(self, ref: DocumentRef, *, execution: DocumentIndexingExecution | None = None) -> None:
+        self._run(ref, start="indexing", execution=execution)
 
-    def _run(self, ref: DocumentRef, *, start: Literal["parsing", "splitting", "indexing"]) -> None:
+    def _run(
+        self,
+        ref: DocumentRef,
+        *,
+        start: Literal["parsing", "splitting", "indexing"],
+        execution: DocumentIndexingExecution | None,
+    ) -> None:
         try:
-            document = self._documents.get_indexing_document(ref)
+            self._assert_owned(execution)
+            document = (
+                self._documents.get_indexing_document(ref, execution=execution)
+                if execution is not None
+                else self._documents.get_indexing_document(ref)
+            )
             if document is None:
                 logger.info("Document not found, skipping indexing: %s", ref)
                 return
             self._backend.check_paused(ref)
+            self._assert_owned(execution)
             if start == "indexing":
                 chunks, total_tokens = self._segments.resume_indexing(document)
             else:
                 if start == "splitting":
+                    self._assert_owned(execution)
                     self._segments.clear_for_indexing(document)
+                    self._assert_owned(execution)
                 texts = self._backend.extract(document)
-                self._documents.mark_splitting(ref)
+                self._assert_owned(execution)
+                if execution is None:
+                    self._documents.mark_splitting(ref)
+                else:
+                    self._documents.mark_splitting(ref, execution=execution)
                 chunks = self._backend.transform(document, texts)
                 # Recovery retains its existing admission policy; only normal
                 # indexing callers that explicitly opt in reserve vector space.
@@ -122,17 +143,34 @@ class DocumentIndexingService:
                     self._backend.ensure_admission(document, chunks)
                 token_counts = self._backend.count_tokens(document, chunks)
                 total_tokens = sum(token_counts)
+                self._assert_owned(execution)
                 self._segments.save_for_indexing(document, chunks, token_counts)
+                self._assert_owned(execution)
 
             started = self._clock()
             self._backend.check_paused(ref)
+            self._assert_owned(execution)
             self._backend.load(document, chunks)
+            self._assert_owned(execution)
             self._backend.check_paused(ref)
-            self._documents.complete_indexing(ref, tokens=total_tokens, latency=self._clock() - started)
+            if execution is None:
+                self._documents.complete_indexing(ref, tokens=total_tokens, latency=self._clock() - started)
+            else:
+                self._documents.complete_indexing(
+                    ref, tokens=total_tokens, latency=self._clock() - started, execution=execution
+                )
         except DocumentIsPausedError:
             raise
-        except DocumentIsDeletedPausedError:
-            logger.info("Document deleted during indexing: %s", ref)
+        except (DocumentIsDeletedPausedError, DocumentIndexingGenerationChangedError):
+            logger.info("Document indexing ownership changed, skipping stale delivery: %s", ref)
         except Exception as error:
             logger.exception("Document indexing failed: %s", ref)
-            self._documents.fail_indexing(ref, self._backend.describe_error(error))
+            if execution is None:
+                self._documents.fail_indexing(ref, self._backend.describe_error(error))
+            else:
+                self._documents.fail_indexing(ref, self._backend.describe_error(error), execution=execution)
+
+    @staticmethod
+    def _assert_owned(execution: DocumentIndexingExecution | None) -> None:
+        if execution is not None:
+            execution.assert_owned()

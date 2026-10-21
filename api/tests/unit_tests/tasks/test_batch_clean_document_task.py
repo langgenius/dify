@@ -1,134 +1,136 @@
-import uuid
+"""Batch document cleanup delegates to the durable cleanup owner."""
+
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
 
-import tasks.batch_clean_document_task as task_module
+import tasks.clean_document_task as cleanup_module
 from extensions.storage.storage_type import StorageType
-from models.dataset import Dataset, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType
 from models.model import UploadFile
+from repositories.knowledge.upload_file_repository import build_document_cleanup_manifest
 from tasks.batch_clean_document_task import batch_clean_document_task
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_document
+
+SQLITE_MODELS = (Dataset, Document, DocumentSegment, SegmentAttachmentBinding, UploadFile)
+pytestmark = pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
 
 
-@pytest.fixture
-def cleanup_rows(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> tuple[str, str, str]:
-    tenant_id = str(uuid.uuid4())
-    dataset_id = str(uuid.uuid4())
-    document_id = str(uuid.uuid4())
-    created_by = str(uuid.uuid4())
+@pytest.fixture(autouse=True)
+def _enable_physical_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
+
+
+@dataclass
+class RecordingStorage:
+    deleted_keys: list[str] = field(default_factory=list)
+
+    def delete(self, key: str) -> None:
+        self.deleted_keys.append(key)
+
+
+def test_batch_cleanup_deletes_each_orphan_attachment_once(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    created_by = str(uuid4())
     dataset = Dataset(
         id=dataset_id,
         tenant_id=tenant_id,
-        name="Batch cleanup dataset",
+        name="Batch dataset",
         data_source_type=DataSourceType.UPLOAD_FILE,
         created_by=created_by,
     )
-    segment = DocumentSegment(
-        tenant_id=tenant_id,
-        dataset_id=dataset_id,
-        document_id=document_id,
-        position=1,
-        content="content",
-        word_count=1,
-        tokens=1,
-        created_by=created_by,
-        index_node_id="node-1",
-    )
-    sqlite_session.add_all([dataset, segment])
-    sqlite_session.commit()
-    engine = sqlite_session.get_bind()
-    monkeypatch.setattr(
-        task_module.session_factory,
-        "create_session",
-        lambda: Session(engine, expire_on_commit=False),
-    )
-    return dataset_id, document_id, tenant_id
-
-
-def test_successful_vector_cleanup_schedules_billing_refresh(cleanup_rows: tuple[str, str, str]):
-    dataset_id, document_id, tenant_id = cleanup_rows
-
-    with (
-        patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
-        patch("tasks.batch_clean_document_task.clean_document_indexes", return_value=tenant_id) as index_cleanup,
-        patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh,
-    ):
-        batch_clean_document_task(
-            document_ids=[document_id],
+    documents = [
+        make_document(
+            document_id=str(uuid4()),
+            tenant_id=tenant_id,
             dataset_id=dataset_id,
-            doc_form="paragraph",
-            file_ids=[],
+            name=f"document-{position}.txt",
+            created_by=created_by,
+            position=position,
         )
-
-    index_cleanup.assert_called_once()
-    schedule_refresh.assert_called_once_with(tenant_id)
-
-
-def test_failed_vector_cleanup_does_not_schedule_billing_refresh(cleanup_rows: tuple[str, str, str]):
-    dataset_id, document_id, _tenant_id = cleanup_rows
-
-    with (
-        patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
-        patch("tasks.batch_clean_document_task.clean_document_indexes") as index_cleanup,
-        patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh,
-    ):
-        index_cleanup.side_effect = RuntimeError("vector cleanup failed")
-        batch_clean_document_task(
-            document_ids=[document_id],
+        for position in (1, 2)
+    ]
+    segments = [
+        DocumentSegment(
+            tenant_id=tenant_id,
             dataset_id=dataset_id,
-            doc_form="paragraph",
-            file_ids=[],
+            document_id=document.id,
+            position=1,
+            content="content",
+            word_count=1,
+            tokens=1,
+            created_by=created_by,
+            index_node_id=f"node-{document.id}",
         )
-
-    schedule_refresh.assert_not_called()
-
-
-def test_cleans_segment_attachment_bindings_and_files(cleanup_rows: tuple[str, str, str], sqlite_session: Session):
-    dataset_id, document_id, tenant_id = cleanup_rows
-    segment = sqlite_session.query(DocumentSegment).filter_by(document_id=document_id).one()
+        for document in documents
+    ]
     attachment = UploadFile(
         tenant_id=tenant_id,
         storage_type=StorageType.LOCAL,
-        key="attachments/image.png",
-        name="image.png",
+        key="attachments/batch.png",
+        name="batch.png",
         size=10,
         extension="png",
         mime_type="image/png",
         created_by_role=CreatorUserRole.ACCOUNT,
-        created_by=segment.created_by,
+        created_by=created_by,
         created_at=datetime.now(UTC),
         used=True,
     )
-    binding = SegmentAttachmentBinding(
+    bindings = [
+        SegmentAttachmentBinding(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_id=document.id,
+            segment_id=segment.id,
+            attachment_id=attachment.id,
+        )
+        for document, segment in zip(documents, segments, strict=True)
+    ]
+    sqlite_session.add_all([dataset, *documents, *segments, attachment, *bindings])
+    sqlite_session.commit()
+    document_ids = [document.id for document in documents]
+    manifest = build_document_cleanup_manifest(
+        sqlite_session,
         tenant_id=tenant_id,
         dataset_id=dataset_id,
-        document_id=document_id,
-        segment_id=segment.id,
-        attachment_id=attachment.id,
+        document_ids=document_ids,
+        document_file_ids=(),
     )
-    sqlite_session.add_all([attachment, binding])
-    sqlite_session.commit()
     attachment_id = attachment.id
-    attachment_key = attachment.key
-    binding_id = binding.id
+    binding_ids = [binding.id for binding in bindings]
+    for document in documents:
+        sqlite_session.delete(document)
+    sqlite_session.commit()
 
-    with (
-        patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
-        patch("tasks.batch_clean_document_task.clean_document_indexes"),
-        patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh"),
-        patch("tasks.batch_clean_document_task.storage.delete") as storage_delete,
-    ):
-        batch_clean_document_task(
-            document_ids=[document_id],
-            dataset_id=dataset_id,
-            doc_form="paragraph",
-            file_ids=[],
-        )
+    engine = sqlite_session.get_bind()
+    monkeypatch.setattr(
+        cleanup_module.session_factory,
+        "create_session",
+        lambda: Session(engine, expire_on_commit=False),
+    )
+    recorder = RecordingStorage()
+    monkeypatch.setattr(cleanup_module, "storage", recorder)
+
+    batch_clean_document_task(
+        document_ids,
+        dataset_id,
+        "text_model",
+        [],
+        tenant_id,
+        manifest.to_payload(),
+    )
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert all(sqlite_session.get(SegmentAttachmentBinding, binding_id) is None for binding_id in binding_ids)
     assert sqlite_session.get(UploadFile, attachment_id) is None
-    storage_delete.assert_called_once_with(attachment_key)
+    assert recorder.deleted_keys == ["attachments/batch.png"]

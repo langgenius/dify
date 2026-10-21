@@ -90,6 +90,8 @@ export type DatasetDetailResponse = {
   total_documents: number
   updated_at: number
   updated_by: string | null
+  vector_indexing_error?: string | null
+  vector_indexing_status?: DatasetVectorIndexStatus | null
   word_count: number
 }
 
@@ -368,6 +370,11 @@ export type RagPipelineWorkflowPublishResponse = {
   result: string
 }
 
+export type DatasetConcurrentUpdateError = ErrorResponse & {
+  code: 'dataset_concurrent_update'
+  status: 409
+}
+
 export type DatasourceContentPreviewPayload = {
   credential_id?: string | null
   datasource_type: string
@@ -450,6 +457,8 @@ export type DatasetTagResponse = {
   name: string
   type: string
 }
+
+export type DatasetVectorIndexStatus = 'completed' | 'error' | 'indexing'
 
 export type PipelineTemplateItemResponse = {
   chunk_structure: string
@@ -1292,7 +1301,7 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishErrors = {
-  404: PipelineNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -2074,7 +2083,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishErrors = {
-  404: PipelineNotFoundError | ErrorResponse
+  409: DatasetConcurrentUpdateError | DraftWorkflowNotSyncError | ErrorResponse
   default: ErrorResponse
 }
 

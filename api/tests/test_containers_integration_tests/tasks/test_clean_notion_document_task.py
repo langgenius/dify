@@ -17,6 +17,8 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from models.knowledge_task import KnowledgeTaskOutbox
+from services.knowledge.task_outbox.contracts import KnowledgeTaskKind
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -38,6 +40,7 @@ class TestCleanNotionDocumentTask:
         """Mock setup for external service dependencies."""
         with (
             patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
+            patch("services.knowledge.task_outbox.gateway.wake_knowledge_task_dispatcher", return_value=True),
         ):
             # Setup default mock returns for account service
             mock_account_feature_service.is_registration_allowed.return_value = True
@@ -46,14 +49,8 @@ class TestCleanNotionDocumentTask:
                 "account_feature_service": mock_account_feature_service,
             }
 
-    @pytest.fixture
-    def mock_vector(self):
-        """Keep database cleanup real while isolating the external vector backend."""
-        with patch("services.knowledge.indexing.adapters.cleanup.Vector", autospec=True) as vector:
-            yield vector.return_value
-
     def test_clean_notion_document_task_success(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful cleanup of Notion documents with proper database operations.
@@ -148,8 +145,6 @@ class TestCleanNotionDocumentTask:
         assert _count_segments(db_session_with_containers, DocumentSegment.document_id.in_(document_ids)) == 0
 
         assert _count_documents(db_session_with_containers, Document.id.in_(document_ids)) == 0
-        mock_vector.delete_by_ids.assert_called_once()
-        assert set(mock_vector.delete_by_ids.call_args.args[0]) == set(index_node_ids)
 
         # This test successfully verifies:
         # 1. Document records are properly deleted from the database
@@ -159,7 +154,7 @@ class TestCleanNotionDocumentTask:
         # 5. The task completes without errors
 
     def test_clean_notion_document_task_dataset_not_found(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test cleanup task behavior when dataset is not found.
@@ -175,10 +170,8 @@ class TestCleanNotionDocumentTask:
         with pytest.raises(Exception, match="Document has no dataset"):
             clean_notion_document_task(document_ids, non_existent_dataset_id)
 
-        mock_vector.delete_by_ids.assert_not_called()
-
     def test_clean_notion_document_task_empty_document_list(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test cleanup task behavior with empty document list.
@@ -216,10 +209,9 @@ class TestCleanNotionDocumentTask:
         clean_notion_document_task([], dataset.id)
 
         # An empty document selection must never trigger a dataset-wide vector deletion.
-        mock_vector.delete_by_ids.assert_not_called()
 
     def test_clean_notion_document_task_with_different_index_types(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test cleanup task with different dataset index types.
@@ -299,13 +291,9 @@ class TestCleanNotionDocumentTask:
 
             # Verify segments are deleted
             assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 0
-            mock_vector.delete_by_ids.assert_called_once_with(["test_node"])
-
-            # Reset mock for next iteration
-            mock_vector.reset_mock()
 
     def test_clean_notion_document_task_with_segments_no_index_node_ids(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test cleanup task with segments that have no index_node_ids.
@@ -385,10 +373,8 @@ class TestCleanNotionDocumentTask:
         # Verify segments are deleted
         assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 0
 
-        mock_vector.delete_by_ids.assert_not_called()
-
     def test_clean_notion_document_task_partial_document_cleanup(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test cleanup task with partial document cleanup scenario.
@@ -491,7 +477,7 @@ class TestCleanNotionDocumentTask:
         # The database operations work correctly, isolating only the specified documents.
 
     def test_clean_notion_document_task_with_mixed_segment_statuses(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test cleanup task with segments in different statuses.
@@ -578,29 +564,10 @@ class TestCleanNotionDocumentTask:
         # Verify all segments are deleted regardless of status
         assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 0
 
-        mock_vector.delete_by_ids.assert_called_once()
-        assert set(mock_vector.delete_by_ids.call_args.args[0]) == set(index_node_ids)
-
-    def test_clean_notion_document_task_continues_when_vector_cleanup_fails(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+    def test_clean_notion_document_task_persists_vector_cleanup_before_deleting_rows(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """
-        Vector cleanup failure (e.g. transient billing API error propagated via
-        ``FeatureService`` when ``Vector(dataset)`` lazily resolves the embedding
-        model) must NOT abort the cleanup task. The Document rows have already
-        been hard-deleted in the first session block before vector cleanup runs,
-        so any uncaught exception escaping the task would strand
-        ``DocumentSegment`` rows in PG with no parent ``Document``.
-
-        Contract: the task swallows the vector cleanup exception, logs it, and
-        proceeds to delete the segments — leaving PG consistent. (Vector orphans,
-        if any, can be reaped later by an offline scanner.)
-
-        Regression guard for the production incident where ``clean_document_task``
-        / ``clean_notion_document_task`` failed with
-        ``ValueError("Unable to retrieve billing information...")`` and left
-        tens of thousands of orphan segments per affected tenant.
-        """
+        """Vector cleanup can retry after document and segment rows are gone."""
         fake = Faker()
 
         # Create test data
@@ -663,30 +630,21 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.add(segment)
         db_session_with_containers.commit()
 
-        # Simulate the production failure mode: vector deletion raises a
-        # ValueError mirroring ``BillingService._send_request`` returning non-200.
-        mock_vector.delete_by_ids.side_effect = ValueError(
-            "Unable to retrieve billing information. Please try again later or contact support."
-        )
-
-        # Execute cleanup task — must NOT raise even though vector deletion raises.
-        # Before the safety-net wrapper this would have re-raised the ValueError,
-        # aborting the task and leaving DocumentSegment stranded in PG.
         clean_notion_document_task([document.id], dataset.id)
 
-        # Vector cleanup was attempted exactly once.
-        mock_vector.delete_by_ids.assert_called_once_with(["test_node"])
-
-        # The crucial assertion: despite the vector cleanup failure, the
-        # final session block (``DELETE FROM document_segments``)
-        # still ran and committed. This is what the wrapper buys us — without
-        # it the production incident left tens of thousands of orphan segments
-        # per affected tenant. Aligns with the assertion shape used by the
-        # happy-path test (``test_clean_notion_document_task_success``).
         assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 0
+        assert _count_documents(db_session_with_containers, Document.id == document.id) == 0
+        intent = db_session_with_containers.scalar(
+            select(KnowledgeTaskOutbox).where(
+                KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DELETION_INDEX_CLEANUP,
+                KnowledgeTaskOutbox.dataset_id == dataset.id,
+            )
+        )
+        assert intent is not None
+        assert intent.payload["vector_node_ids"] == ["test_node"]
 
     def test_clean_notion_document_task_with_large_number_of_documents(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test cleanup task with a large number of documents and segments.
@@ -786,7 +744,7 @@ class TestCleanNotionDocumentTask:
         # The database efficiently handles large-scale deletions.
 
     def test_clean_notion_document_task_with_documents_from_different_tenants(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test cleanup task with documents from different tenants.
@@ -901,7 +859,7 @@ class TestCleanNotionDocumentTask:
         # Only documents from the target dataset are affected, maintaining tenant separation.
 
     def test_clean_notion_document_task_with_documents_in_different_states(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test cleanup task with documents in different indexing states.
@@ -1008,7 +966,7 @@ class TestCleanNotionDocumentTask:
         # All documents are deleted regardless of their indexing status.
 
     def test_clean_notion_document_task_with_documents_having_metadata(
-        self, db_session_with_containers: Session, mock_vector, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test cleanup task with documents that have rich metadata.

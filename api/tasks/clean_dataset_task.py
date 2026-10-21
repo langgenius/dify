@@ -1,267 +1,422 @@
+"""Reliably remove the persisted and external resources of a deleted dataset."""
+
 import logging
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from itertools import batched
 
 import click
 from celery import shared_task
+from celery.exceptions import Reject
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor import IndexProcessorFactory
-from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models import WorkflowType
 from models.dataset import (
     AppDatasetJoin,
+    ChildChunk,
     Dataset,
+    DatasetAutoDisableLog,
+    DatasetKeywordTable,
     DatasetMetadata,
     DatasetMetadataBinding,
     DatasetProcessRule,
     DatasetQuery,
     Document,
+    DocumentPipelineExecutionLog,
     DocumentSegment,
+    DocumentSegmentSummary,
+    ExternalKnowledgeBindings,
     Pipeline,
-    SegmentAttachmentBinding,
 )
-from models.model import UploadFile
+from models.enums import TagType
+from models.model import Tag, TagBinding
 from models.workflow import Workflow
+from repositories.knowledge.dataset_repository import build_dataset_cleanup_manifest
+from repositories.knowledge.upload_file_repository import (
+    claim_orphan_upload_files,
+    delete_orphan_upload_files,
+    detach_orphan_segment_attachments,
+    recheck_claimed_orphan_upload_files,
+    remove_document_upload_file_references,
+)
 from services.dataset_storage_cleanup_service import cleanup_dataset_crawl_cache
-from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
+from services.knowledge.indexing.adapters.cleanup import build_deletion_index_cleanup
+from services.knowledge.indexing.cleanup import (
+    DocumentCleanupManifest,
+    UploadFileCleanup,
+)
+from services.knowledge.task_outbox.contracts import KnowledgeTaskDeliveryHandledError
+from tasks.clean_upload_files_task import (
+    defer_started_upload_file_cleanup_if_disabled,
+    defer_upload_file_cleanup_if_disabled,
+)
+from tasks.cleanup_knowledge_index_task import enqueue_deletion_index_cleanup
+from tasks.knowledge_task_outbox_task import knowledge_task_execution
 
 logger = logging.getLogger(__name__)
-
-# Keep committed batches on failure, but preserve dependent rows until a retry
-# finishes their prerequisite cleanup.
 _DELETE_BATCH_SIZE = 1000
-_MAX_RETRIES = 3
-_RETRY_DELAY_SECONDS = 30
 
 
-@shared_task(queue="dataset", bind=True, max_retries=_MAX_RETRIES, default_retry_delay=_RETRY_DELAY_SECONDS)
-def clean_dataset_task(
-    self,
+@dataclass(frozen=True)
+class DatasetCleanupInputs:
+    document_ids: tuple[str, ...]
+    segment_ids: tuple[str, ...]
+    files: DocumentCleanupManifest
+
+
+def _string_tuple(payload: Mapping[str, object], key: str) -> tuple[str, ...]:
+    value = payload.get(key, [])
+    if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
+        raise ValueError(f"dataset cleanup manifest field {key} must be a string list")
+    return tuple(dict.fromkeys(value))
+
+
+def _parse_manifest(payload: Mapping[str, object]) -> DatasetCleanupInputs:
+    return DatasetCleanupInputs(
+        document_ids=_string_tuple(payload, "document_ids"),
+        segment_ids=_string_tuple(payload, "segment_ids"),
+        files=DocumentCleanupManifest.from_payload(payload),
+    )
+
+
+def _snapshot_remaining_dataset_files(*, tenant_id: str, dataset_id: str) -> dict[str, object]:
+    """Snapshot still-present rows for direct callers predating the durable payload."""
+
+    with session_factory.create_session() as session:
+        return build_dataset_cleanup_manifest(session, tenant_id=tenant_id, dataset_id=dataset_id)
+
+
+def _storage_delete(
+    files: Sequence[UploadFileCleanup],
+    *,
+    assert_cleanup_allowed: Callable[[], None] = lambda: None,
+) -> None:
+    """Delete storage objects idempotently while preserving other failures for retry."""
+
+    keys = dict.fromkeys(file.key for file in files if file.key)
+    for key in keys:
+        assert_cleanup_allowed()
+        try:
+            storage.delete(key)
+        except FileNotFoundError:
+            continue
+        except Exception:
+            logger.exception("Failed to delete dataset file from storage, key=%s", key)
+            raise
+
+
+def _prepare_relational_cleanup(
+    *,
+    tenant_id: str,
+    dataset_id: str,
+    inputs: DatasetCleanupInputs,
+    files: DocumentCleanupManifest,
+) -> tuple[UploadFileCleanup, ...]:
+    """Detach file edges and durably fence orphan files before storage I/O."""
+
+    with session_factory.create_session() as session, session.begin():
+        attachment_files = detach_orphan_segment_attachments(
+            session,
+            tenant_id=tenant_id,
+            attachments=files.segment_attachments,
+        )
+        remove_document_upload_file_references(
+            session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=inputs.document_ids,
+        )
+        session.flush()
+        claimed_files = claim_orphan_upload_files(
+            session,
+            tenant_id=tenant_id,
+            files=(
+                *files.document_files,
+                *files.image_files,
+                *attachment_files,
+            ),
+            excluding_dataset_ids=(dataset_id,),
+        )
+        return claimed_files
+
+
+def _clean_relational_rows(
+    *,
+    tenant_id: str,
+    dataset_id: str,
+    pipeline_id: str | None,
+    inputs: DatasetCleanupInputs,
+    files: Sequence[UploadFileCleanup],
+    assert_owned: Callable[[], None] = lambda: None,
+) -> None:
+    """Finish scoped SQL cleanup in replayable, bounded transactions."""
+
+    assert_owned()
+    with session_factory.create_session() as session, session.begin():
+        session.execute(
+            delete(DocumentSegmentSummary).where(
+                DocumentSegmentSummary.dataset_id == dataset_id,
+                DocumentSegmentSummary.document_id.in_(inputs.document_ids),
+            )
+        )
+        session.execute(
+            delete(ChildChunk).where(
+                ChildChunk.tenant_id == tenant_id,
+                ChildChunk.dataset_id == dataset_id,
+            )
+        )
+
+    _delete_segments(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        segment_ids=inputs.segment_ids,
+        assert_owned=assert_owned,
+    )
+    _delete_documents(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_ids=inputs.document_ids,
+        assert_owned=assert_owned,
+    )
+
+    assert_owned()
+    with session_factory.create_session() as session, session.begin():
+        delete_orphan_upload_files(session, tenant_id=tenant_id, files=files)
+        session.execute(delete(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id))
+        session.execute(delete(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id))
+        session.execute(delete(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == dataset_id))
+        session.execute(
+            delete(DatasetAutoDisableLog).where(
+                DatasetAutoDisableLog.tenant_id == tenant_id,
+                DatasetAutoDisableLog.dataset_id == dataset_id,
+            )
+        )
+        session.execute(
+            delete(ExternalKnowledgeBindings).where(
+                ExternalKnowledgeBindings.tenant_id == tenant_id,
+                ExternalKnowledgeBindings.dataset_id == dataset_id,
+            )
+        )
+        knowledge_tag_ids = select(Tag.id).where(
+            Tag.tenant_id == tenant_id,
+            Tag.type == TagType.KNOWLEDGE,
+        )
+        session.execute(
+            delete(TagBinding).where(
+                TagBinding.tenant_id == tenant_id,
+                TagBinding.target_id == dataset_id,
+                TagBinding.tag_id.in_(knowledge_tag_ids),
+            )
+        )
+        session.execute(delete(AppDatasetJoin).where(AppDatasetJoin.dataset_id == dataset_id))
+        session.execute(
+            delete(DatasetMetadata).where(
+                DatasetMetadata.tenant_id == tenant_id,
+                DatasetMetadata.dataset_id == dataset_id,
+            )
+        )
+        session.execute(
+            delete(DatasetMetadataBinding).where(
+                DatasetMetadataBinding.tenant_id == tenant_id,
+                DatasetMetadataBinding.dataset_id == dataset_id,
+            )
+        )
+        if pipeline_id:
+            session.execute(delete(Pipeline).where(Pipeline.tenant_id == tenant_id, Pipeline.id == pipeline_id))
+            session.execute(
+                delete(Workflow).where(
+                    Workflow.tenant_id == tenant_id,
+                    Workflow.app_id == pipeline_id,
+                    Workflow.type == WorkflowType.RAG_PIPELINE,
+                )
+            )
+
+
+def _delete_segments(
+    *,
+    tenant_id: str,
+    dataset_id: str,
+    segment_ids: Sequence[str],
+    assert_owned: Callable[[], None],
+) -> None:
+    """Delete manifest segments in bounded commits so retries resume remaining rows."""
+
+    for segment_batch in batched(segment_ids, _DELETE_BATCH_SIZE, strict=False):
+        assert_owned()
+        with session_factory.create_session() as session, session.begin():
+            session.execute(
+                delete(DocumentSegment).where(
+                    DocumentSegment.tenant_id == tenant_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                    DocumentSegment.id.in_(segment_batch),
+                )
+            )
+
+
+def _delete_documents(
+    *,
+    tenant_id: str,
+    dataset_id: str,
+    document_ids: Sequence[str],
+    assert_owned: Callable[[], None],
+) -> None:
+    """Delete manifest documents and their execution logs in bounded commits."""
+
+    for document_batch in batched(document_ids, _DELETE_BATCH_SIZE, strict=False):
+        assert_owned()
+        with session_factory.create_session() as session, session.begin():
+            session.execute(
+                delete(DocumentPipelineExecutionLog).where(
+                    DocumentPipelineExecutionLog.document_id.in_(document_batch),
+                )
+            )
+            session.execute(
+                delete(Document).where(
+                    Document.tenant_id == tenant_id,
+                    Document.dataset_id == dataset_id,
+                    Document.id.in_(document_batch),
+                )
+            )
+
+
+def _clean_dataset(
+    *,
     dataset_id: str,
     tenant_id: str,
     indexing_technique: str | None,
     index_struct: str | None,
     collection_binding_id: str | None,
-    doc_form: str,
+    doc_form: str | None,
     pipeline_id: str | None = None,
-    *,
-    index_cleanup_done: bool = False,
+    manifest: Mapping[str, object] | None = None,
+    embedding_model_provider: str | None = None,
+    embedding_model: str | None = None,
+    source_outbox_id: str | None = None,
+    assert_owned: Callable[[], None] = lambda: None,
+    assert_cleanup_allowed: Callable[[], None] = lambda: None,
 ) -> None:
-    """
-    Clean dataset when dataset deleted.
-    :param dataset_id: dataset id
-    :param tenant_id: tenant id
-    :param indexing_technique: indexing technique
-    :param index_struct: index struct dict
-    :param collection_binding_id: collection binding id
-    :param doc_form: dataset form
-    :param index_cleanup_done: preserve successful index cleanup across explicit retries
+    """Clean a deleted dataset from a durable, tenant-scoped snapshot."""
 
-    Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
-    """
-    logger.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
-    start_at = time.perf_counter()
-
-    # Enhanced validation: Check if doc_form is None, empty string, or contains only whitespace.
-    # Treating all invalid values as the default paragraph index type keeps the vector
-    # database cleanup reachable for empty/broken datasets.
-    if doc_form is None or (isinstance(doc_form, str) and not doc_form.strip()):
-        from core.rag.index_processor.constant.index_type import IndexStructureType
-
-        doc_form = IndexStructureType.PARAGRAPH_INDEX
-        logger.info(
-            click.style(f"Invalid doc_form detected, using default index type for cleanup: {doc_form}", fg="yellow")
-        )
-
-    dataset = Dataset(
-        id=dataset_id,
-        tenant_id=tenant_id,
-        indexing_technique=indexing_technique,
-        index_struct=index_struct,
-        collection_binding_id=collection_binding_id,
+    cleanup_inputs = _parse_manifest(
+        manifest
+        if manifest is not None
+        else _snapshot_remaining_dataset_files(tenant_id=tenant_id, dataset_id=dataset_id)
     )
 
-    try:
-        cleanup_dataset_crawl_cache(tenant_id, dataset_id)
+    cleanup_dataset_crawl_cache(
+        tenant_id,
+        dataset_id,
+        assert_cleanup_allowed=assert_cleanup_allowed,
+    )
 
-        with session_factory.create_session() as session:
-            if not index_cleanup_done:
-                # Index processors also delete relational child rows, so the whole step must succeed first.
-                _run_step(session, dataset_id, "dataset index", lambda: _clean_index(session, dataset, doc_form))
-                index_cleanup_done = True
-                schedule_billing_vector_space_refresh(dataset.tenant_id)
-
-            # Stop on failure so documents and their resources outlive any remaining segments.
-            _run_step(session, dataset_id, "segments", lambda: _delete_segments(session, dataset_id))
-            _run_step(session, dataset_id, "documents", lambda: _delete_documents(session, dataset_id))
-            _run_step(session, dataset_id, "attachments", lambda: _delete_attachments(session, tenant_id, dataset_id))
-            _run_step(
-                session,
-                dataset_id,
-                "dataset metadata",
-                lambda: _delete_dataset_scoped_rows(session, tenant_id, dataset_id, pipeline_id),
-            )
-
-    except Exception as exc:
-        if self.request.retries >= _MAX_RETRIES:
-            logger.exception("Dataset cleanup retry budget exhausted, dataset_id=%s", dataset_id)
-            raise
-
-        logger.warning(
-            "Dataset cleanup failed, scheduling retry %d/%d, dataset_id=%s",
-            self.request.retries + 1,
-            _MAX_RETRIES,
-            dataset_id,
-            exc_info=True,
+    with session_factory.create_session() as session, session.begin():
+        dataset = Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            name="deleted dataset",
+            provider="vendor",
+            created_by=tenant_id,
+            indexing_technique=indexing_technique,
+            index_struct=index_struct,
+            collection_binding_id=collection_binding_id,
+            embedding_model_provider=embedding_model_provider,
+            embedding_model=embedding_model,
         )
-        # The session is closed before retrying. Normalize arguments for positional callers too.
-        raise self.retry(
-            exc=exc,
-            args=(),
-            kwargs={
-                "dataset_id": dataset_id,
-                "tenant_id": tenant_id,
-                "indexing_technique": indexing_technique,
-                "index_struct": index_struct,
-                "collection_binding_id": collection_binding_id,
-                "doc_form": doc_form,
-                "pipeline_id": pipeline_id,
-                "index_cleanup_done": index_cleanup_done,
-            },
-            countdown=_RETRY_DELAY_SECONDS * (2**self.request.retries),
-        ) from exc
+        index_cleanup = build_deletion_index_cleanup(
+            session,
+            dataset=dataset,
+            delete_all=True,
+            refresh_billing=True,
+        )
+        enqueue_deletion_index_cleanup(
+            session,
+            cleanup=index_cleanup,
+            source_outbox_id=source_outbox_id,
+        )
 
-    end_at = time.perf_counter()
+    assert_owned()
+    claimed_files = _prepare_relational_cleanup(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        inputs=cleanup_inputs,
+        files=cleanup_inputs.files,
+    )
+    assert_owned()
+    with session_factory.create_session() as session, session.begin():
+        claimed_files = recheck_claimed_orphan_upload_files(
+            session,
+            tenant_id=tenant_id,
+            files=claimed_files,
+            excluding_dataset_ids=(dataset_id,),
+        )
+    assert_owned()
+    _storage_delete(claimed_files, assert_cleanup_allowed=assert_cleanup_allowed)
+    assert_owned()
+    _clean_relational_rows(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        pipeline_id=pipeline_id,
+        inputs=cleanup_inputs,
+        files=claimed_files,
+        assert_owned=assert_owned,
+    )
+
+
+@shared_task(
+    queue="dataset",
+    autoretry_for=(Exception,),
+    dont_autoretry_for=(KnowledgeTaskDeliveryHandledError, Reject),
+    retry_backoff=True,
+    max_retries=5,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def clean_dataset_task(
+    dataset_id: str,
+    tenant_id: str,
+    indexing_technique: str | None,
+    index_struct: str | None,
+    collection_binding_id: str | None,
+    doc_form: str | None,
+    pipeline_id: str | None = None,
+    manifest: Mapping[str, object] | None = None,
+    outbox_id: str | None = None,
+    embedding_model_provider: str | None = None,
+    embedding_model: str | None = None,
+) -> None:
+    """Run retryable cleanup for one deleted dataset."""
+
+    logger.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
+    start_at = time.perf_counter()
+    if defer_upload_file_cleanup_if_disabled(outbox_id):
+        return
+    with knowledge_task_execution(outbox_id) as execution:
+        if execution is None:
+            return
+        _clean_dataset(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            indexing_technique=indexing_technique,
+            index_struct=index_struct,
+            collection_binding_id=collection_binding_id,
+            doc_form=doc_form,
+            pipeline_id=pipeline_id,
+            manifest=manifest,
+            embedding_model_provider=embedding_model_provider,
+            embedding_model=embedding_model,
+            source_outbox_id=outbox_id,
+            assert_owned=execution.assert_owned,
+            assert_cleanup_allowed=lambda: defer_started_upload_file_cleanup_if_disabled(
+                execution,
+                outbox_id=outbox_id,
+            ),
+        )
     logger.info(
         click.style(
-            f"Cleaned dataset when dataset deleted: {dataset_id} latency: {end_at - start_at}",
+            f"Cleaned dataset when dataset deleted: {dataset_id} latency: {time.perf_counter() - start_at}",
             fg="green",
         )
     )
-
-
-def _run_step(session: Session, dataset_id: str, name: str, step: Callable[[], None]) -> None:
-    """Roll back uncommitted work on failure and stop dependent steps until retry."""
-    try:
-        step()
-    except Exception:
-        logger.exception(click.style(f"Failed to clean {name} for dataset {dataset_id}", fg="red"))
-        try:
-            session.rollback()
-        except Exception:
-            logger.exception("Failed to rollback database session")
-        raise
-
-
-def _clean_index(session: Session, dataset: Dataset, doc_form: str) -> None:
-    """Clean the dataset index and commit any relational rows removed by its processor."""
-    index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-    index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True, session=session)
-    session.commit()
-    logger.info(click.style(f"Successfully cleaned vector database for dataset: {dataset.id}", fg="green"))
-
-
-def _delete_segments(session: Session, dataset_id: str) -> None:
-    """Delete document segments in batches, removing their inline image files first."""
-    while True:
-        segments = session.scalars(
-            select(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id).limit(_DELETE_BATCH_SIZE)
-        ).all()
-        if not segments:
-            break
-        image_upload_file_ids: list[str] = []
-        for segment in segments:
-            image_upload_file_ids.extend(get_image_upload_file_ids(segment.content))
-        _delete_upload_files(session, image_upload_file_ids)
-        session.execute(delete(DocumentSegment).where(DocumentSegment.id.in_([segment.id for segment in segments])))
-        session.commit()
-
-
-def _delete_documents(session: Session, dataset_id: str) -> None:
-    """Delete documents in batches, removing their uploaded source files first."""
-    while True:
-        documents = session.scalars(
-            select(Document).where(Document.dataset_id == dataset_id).limit(_DELETE_BATCH_SIZE)
-        ).all()
-        if not documents:
-            break
-        file_ids: list[str] = []
-        for document in documents:
-            if document.data_source_type == "upload_file" and document.data_source_info:
-                data_source_info = document.data_source_info_dict
-                if data_source_info and "upload_file_id" in data_source_info:
-                    file_ids.append(data_source_info["upload_file_id"])
-        _delete_upload_files(session, file_ids)
-        session.execute(delete(Document).where(Document.id.in_([document.id for document in documents])))
-        session.commit()
-
-
-def _delete_upload_files(session: Session, file_ids: Sequence[str]) -> None:
-    """Delete blobs before their lookup rows so failures retain storage keys for retry."""
-    if not file_ids:
-        return
-    files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
-    for file in files:
-        try:
-            storage.delete(file.key)
-        except FileNotFoundError:
-            logger.debug("Upload file already absent from storage, upload_file_id: %s", file.id)
-    session.execute(delete(UploadFile).where(UploadFile.id.in_(file_ids)))
-
-
-def _delete_attachments(session: Session, tenant_id: str, dataset_id: str) -> None:
-    """Delete segment attachments (upload files + bindings) for the dataset."""
-    # Inline-image cleanup may already have deleted the file; its binding still needs cleanup.
-    attachments_with_bindings = session.execute(
-        select(SegmentAttachmentBinding, UploadFile)
-        .outerjoin(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
-        .where(
-            SegmentAttachmentBinding.tenant_id == tenant_id,
-            SegmentAttachmentBinding.dataset_id == dataset_id,
-        )
-    ).all()
-    if not attachments_with_bindings:
-        return
-    attachment_ids = [
-        attachment_file.id for _, attachment_file in attachments_with_bindings if attachment_file is not None
-    ]
-    binding_ids = [binding.id for binding, _ in attachments_with_bindings]
-    for binding, attachment_file in attachments_with_bindings:
-        if attachment_file is None:
-            continue
-        try:
-            storage.delete(attachment_file.key)
-        except Exception:
-            logger.exception(
-                "Delete attachment_file failed when storage deleted, attachment_file_id: %s",
-                binding.attachment_id,
-            )
-    if attachment_ids:
-        session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
-    session.execute(delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.id.in_(binding_ids)))
-    session.commit()
-
-
-def _delete_dataset_scoped_rows(session: Session, tenant_id: str, dataset_id: str, pipeline_id: str | None) -> None:
-    """Delete the remaining small dataset-scoped tables (and the pipeline/workflow)."""
-    session.execute(delete(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id))
-    session.execute(delete(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id))
-    session.execute(delete(AppDatasetJoin).where(AppDatasetJoin.dataset_id == dataset_id))
-    # delete dataset metadata
-    session.execute(delete(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset_id))
-    session.execute(delete(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset_id))
-    # delete pipeline and workflow
-    if pipeline_id:
-        session.execute(delete(Pipeline).where(Pipeline.id == pipeline_id))
-        session.execute(
-            delete(Workflow).where(
-                Workflow.tenant_id == tenant_id,
-                Workflow.app_id == pipeline_id,
-                Workflow.type == WorkflowType.RAG_PIPELINE,
-            )
-        )
-    session.commit()

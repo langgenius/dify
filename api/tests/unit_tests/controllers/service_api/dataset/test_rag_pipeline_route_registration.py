@@ -6,7 +6,7 @@ import ast
 from pathlib import Path
 
 
-def test_rag_pipeline_routes_registered():
+def test_rag_pipeline_routes_registered() -> None:
     api_dir = Path(__file__).resolve().parents[5]
 
     service_api_init = api_dir / "controllers" / "service_api" / "__init__.py"
@@ -52,3 +52,4 @@ def test_rag_pipeline_routes_registered():
     assert "/datasets/<uuid:dataset_id>/pipeline/datasource/nodes/<string:node_id>/run" in route_paths
     assert "/datasets/<uuid:dataset_id>/pipeline/run" in route_paths
     assert "/datasets/pipeline/file-upload" in route_paths
+    assert "/datasets/<uuid:dataset_id>/pipeline/file-upload" in route_paths

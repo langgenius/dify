@@ -4,7 +4,7 @@ import json
 
 import pytest
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
@@ -20,7 +20,10 @@ from models.human_input import HumanInputForm
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.agent.workspace_service import AgentWorkspaceService
+from services.knowledge.indexing.contracts import DocumentIndexingExecution
+from services.knowledge.resource_scope import DatasetRef
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
     _build_app_generate_entity,
@@ -35,7 +38,12 @@ from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _in
 
 def _pipeline_tool_runner(
     sqlite_engine: Engine, invoke_from: InvokeFrom, source_node_data: dict[str, object]
-) -> tuple[PipelineRunner, SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository]:
+) -> tuple[
+    PipelineRunner,
+    SQLAlchemyWorkflowExecutionRepository,
+    SQLAlchemyWorkflowNodeExecutionRepository,
+    list[str],
+]:
     source_graph = {
         "nodes": [
             {"id": "source-start", "data": {"type": "start", "title": "Start", "variables": list[object]()}},
@@ -102,11 +110,27 @@ def _pipeline_tool_runner(
             ],
             "edges": [{"source": "start", "target": "tool"}],
         }
-        _, _, workflow = _persist_scope(session, workflow=_workflow(graph=graph), documents=(_document(),))
+        document = _document()
+        document.indexing_generation = "generation-1"
+        document.indexing_execution_id = "execution-1"
+        _, _, workflow = _persist_scope(session, workflow=_workflow(graph=graph), documents=(document,))
     entity = _build_app_generate_entity().model_copy(
         update={"invoke_from": invoke_from, "document_id": None if invoke_from == InvokeFrom.DEBUGGER else "doc"}
     )
-    runner = _build_runner(entity, sqlite_engine, workflow)
+    failures: list[str] = []
+    documents = SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine))
+    document_ref = DatasetRef("tenant", "ds").document("doc")
+    execution = DocumentIndexingExecution(
+        expected_generation="generation-1",
+        assert_owned=lambda: None,
+        execution_id="execution-1",
+    )
+
+    def fail_document(error: str) -> None:
+        failures.append(error)
+        documents.fail_indexing(document_ref, error, execution=execution)
+
+    runner = _build_runner(entity, sqlite_engine, workflow, document_failure_handler=fail_document)
     user = Account(name="User", email="pipeline@example.com")
     user.id = entity.user_id
     runs = SQLAlchemyWorkflowExecutionRepository(
@@ -121,7 +145,7 @@ def _pipeline_tool_runner(
     nodes = SQLAlchemyWorkflowNodeExecutionRepository(
         sqlite_engine, "tenant", user, "pipe", WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN
     )
-    return runner, runs, nodes
+    return runner, runs, nodes, failures
 
 
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.PUBLISHED_PIPELINE])
@@ -129,7 +153,9 @@ def test_pipeline_rejects_human_input_tool_before_creating_run_or_form(
     sqlite_engine: Engine, invoke_from: InvokeFrom
 ) -> None:
     human_input = HumanInputNodeData(title="Approval", user_actions=[UserActionConfig(id="approve", title="Approve")])
-    runner, runs, nodes = _pipeline_tool_runner(sqlite_engine, invoke_from, human_input.model_dump(mode="json"))
+    runner, runs, nodes, failures = _pipeline_tool_runner(
+        sqlite_engine, invoke_from, human_input.model_dump(mode="json")
+    )
 
     with pytest.raises(ValueError, match="Human Input nodes are not supported"):
         WorkflowRunAgg.run(runner, None, runs, nodes)
@@ -143,9 +169,13 @@ def test_pipeline_rejects_human_input_tool_before_creating_run_or_form(
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE:
             assert document.indexing_status == "error"
             assert document.error == "Human Input nodes are not supported in this execution context."
+            assert document.indexing_execution_id is None
+            assert failures == ["Human Input nodes are not supported in this execution context."]
         else:
             assert document.indexing_status == "waiting"
             assert document.error is None
+            assert document.indexing_execution_id == "execution-1"
+            assert failures == []
 
 
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.PUBLISHED_PIPELINE])
@@ -160,7 +190,7 @@ def test_pipeline_retires_nested_agent_workspace_when_run_ends(
     scenario: FakeAgentBackendScenario,
     status: str,
 ) -> None:
-    runner, runs, nodes = _pipeline_tool_runner(
+    runner, runs, nodes, _failures = _pipeline_tool_runner(
         sqlite_engine, invoke_from, {"type": "agent", "version": "2", "agent_node_kind": "dify_agent", "title": "Agent"}
     )
     with Session(sqlite_engine) as session:

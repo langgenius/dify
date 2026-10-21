@@ -1,15 +1,18 @@
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any, cast, override
 
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.db.session_factory import session_factory
 from core.model_context import use_credit_usage_metadata
+from core.rag.docstore.dataset_docstore import (
+    SEGMENT_ATTACHMENT_WRITER_CONTEXT_KEY,
+    SegmentAttachmentWriter,
+)
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
-from core.rag.summary_index.summary_index import SummaryIndex
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.system_variables import SystemVariableKey, get_system_segment, get_system_text
 from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
@@ -20,6 +23,12 @@ from graphon.nodes.base.template import Template
 from .entities import KnowledgeIndexNodeData
 from .exc import (
     KnowledgeIndexNodeError,
+)
+from .protocols import (
+    KNOWLEDGE_INDEX_PROCESSOR_CONTEXT_KEY,
+    SUMMARY_INDEX_SERVICE_CONTEXT_KEY,
+    IndexProcessorProtocol,
+    SummaryIndexServiceProtocol,
 )
 
 if TYPE_CHECKING:
@@ -47,8 +56,20 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             init_params=init_params,
             runtime_state=runtime_state,
         )
-        self.index_processor = IndexProcessor()
-        self.summary_index_service = SummaryIndex()
+        attachment_writer = cast(
+            SegmentAttachmentWriter | None,
+            init_params.run_context.get(SEGMENT_ATTACHMENT_WRITER_CONTEXT_KEY),
+        )
+        runtime_processor = cast(
+            IndexProcessorProtocol | None,
+            init_params.run_context.get(KNOWLEDGE_INDEX_PROCESSOR_CONTEXT_KEY),
+        )
+        self.index_processor = runtime_processor
+        self.preview_processor = IndexProcessor(attachment_writer=attachment_writer)
+        self.summary_index_service = cast(
+            SummaryIndexServiceProtocol | None,
+            init_params.run_context.get(SUMMARY_INDEX_SERVICE_CONTEXT_KEY),
+        )
 
     @override
     def _run(self) -> NodeRunResult:
@@ -88,7 +109,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                 # or fallback to dataset if not available in node_data
 
                 with session_factory.create_session() as session:
-                    outputs = self.index_processor.get_preview_output(
+                    outputs = self.preview_processor.get_preview_output(
                         chunks,
                         dataset_id,
                         document_id,
@@ -154,13 +175,24 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         request_metadata = {"app_type": dify_ctx.app_type} if dify_ctx.app_type is not None else None
         with use_credit_usage_metadata(request_metadata):
-            rst = self.index_processor.index_and_clean(
+            index_processor = self.index_processor
+            if index_processor is None:
+                raise KnowledgeIndexNodeError("Pipeline index processor is required.")
+            rst = index_processor.index_and_clean(
                 dataset_id, document_id, original_document_id, chunks, batch, summary_index_setting, session=session
             )
-            # Summary generation opens independent sessions and must see the indexed rows.
+            # Completion and any required summary intent are staged atomically by
+            # the runtime processor; publish them before the compatibility callback.
             session.commit()
-            self.summary_index_service.generate_and_vectorize_summary(
-                dataset_id, document_id, is_preview, summary_index_setting
+            summary_index_service = self.summary_index_service
+            if summary_index_service is None:
+                raise KnowledgeIndexNodeError("Summary index service is required.")
+            summary_index_service.generate_and_vectorize_summary(
+                dataset_id,
+                document_id,
+                is_preview,
+                summary_index_setting,
+                expected_generation=index_processor.expected_generation,
             )
         return rst
 

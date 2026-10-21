@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.file_reference import build_file_reference
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from graphon.variables.segments import StringSegment
@@ -891,16 +892,11 @@ def test_delete_snippet_keeps_agent_with_persisted_external_owner(
     cleanup_delay.assert_not_called()
 
 
-def test_delete_draft_variable_files_removes_storage_objects(
-    monkeypatch: pytest.MonkeyPatch,
+def test_delete_draft_variable_files_marks_upload_for_recovery_after_commit(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    from extensions.ext_storage import storage
-
     snippet = _snippet()
-    storage_delete = Mock()
-    monkeypatch.setattr(storage, "delete", storage_delete)
     upload_file = UploadFile(
         tenant_id=snippet.tenant_id,
         storage_type=StorageType.LOCAL,
@@ -932,16 +928,54 @@ def test_delete_draft_variable_files_removes_storage_objects(
         node_execution_id="execution-1",
         file_id=variable_file.id,
     )
-    sqlite_session.add_all([snippet, upload_file, variable_file, variable])
+    ordinary_upload = UploadFile(
+        tenant_id=snippet.tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="ordinary-storage-key",
+        name="ordinary.txt",
+        size=10,
+        extension=".txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=datetime(2025, 1, 1),
+        used=True,
+    )
+    ordinary_variable = WorkflowDraftVariable.new_node_variable(
+        app_id=snippet.id,
+        user_id="account-1",
+        node_id="node-2",
+        name="ordinary-file",
+        value=StringSegment(value="placeholder"),
+        node_execution_id="execution-2",
+    )
+    ordinary_variable.value_type = SegmentType.FILE
+    ordinary_variable.value = json.dumps(
+        {
+            "dify_model_identity": "__dify__file__",
+            "type": "document",
+            "transfer_method": "local_file",
+            "reference": build_file_reference(
+                record_id=ordinary_upload.id,
+                storage_key=ordinary_upload.key,
+            ),
+        }
+    )
+    sqlite_session.add_all([snippet, upload_file, variable_file, variable, ordinary_upload, ordinary_variable])
     sqlite_session.flush()
 
     SnippetService._delete_draft_variable_files(session=sqlite_session, snippet=snippet)
 
-    storage_delete.assert_called_once_with("storage-key")
     sqlite_session.commit()
     with sqlite_session_factory() as observer:
-        assert observer.get(UploadFile, upload_file.id) is None
+        pending = observer.get(UploadFile, upload_file.id)
+        assert pending is not None
+        assert pending.knowledge_cleanup_started_at is not None
+        ordinary_pending = observer.get(UploadFile, ordinary_upload.id)
+        assert ordinary_pending is not None
+        assert ordinary_pending.knowledge_cleanup_started_at is not None
         assert observer.get(WorkflowDraftVariableFile, variable_file.id) is None
+        assert observer.get(WorkflowDraftVariable, ordinary_variable.id) is None
 
 
 def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch: pytest.MonkeyPatch) -> None:

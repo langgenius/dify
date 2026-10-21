@@ -1,13 +1,15 @@
-"""Dataset access use case, read model, and consumer-owned ports."""
+"""Dataset access use cases, policy functions, and consumer-owned ports."""
 
+from collections.abc import Sequence
 from typing import NamedTuple, Protocol
 
 from machinery.context import RequestContext
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 
 _OWNER_ROLE = "owner"
 _ALL_TEAM_MEMBERS = "all_team_members"
 _PARTIAL_MEMBERS = "partial_members"
+_DATASET_OPERATOR_ROLE = "dataset_operator"
+_DATASET_EDIT_ROLES = frozenset({_OWNER_ROLE, "admin", "editor", _DATASET_OPERATOR_ROLE})
 
 
 class DatasetAccessRecord(NamedTuple):
@@ -51,6 +53,24 @@ class WorkspaceRoleReader(Protocol):
     def get_legacy_role(self, *, workspace_id: str, account_id: str) -> str | None: ...
 
 
+class DatasetAccessError(Exception):
+    """Base class for framework-neutral dataset access failures."""
+
+
+class DatasetNotFoundError(DatasetAccessError):
+    def __init__(self) -> None:
+        super().__init__("Dataset not found")
+
+
+class DatasetAccessDeniedError(DatasetAccessError):
+    def __init__(self, message: str = "You do not have permission to access this dataset") -> None:
+        super().__init__(message)
+
+
+class DatasetPermissionValidationError(ValueError):
+    """A requested legacy permission change violates its input contract."""
+
+
 def can_access_dataset(snapshot: DatasetAccessSnapshot, *, actor_id: str, workspace_role: str | None) -> bool:
     """Evaluate legacy dataset visibility without database or framework access."""
 
@@ -64,6 +84,30 @@ def can_access_dataset(snapshot: DatasetAccessSnapshot, *, actor_id: str, worksp
     if dataset.permission == _PARTIAL_MEMBERS:
         return snapshot.actor_has_partial_access
     return False
+
+
+def validate_permission_change(
+    *,
+    actor_role: str | None,
+    current_permission: str,
+    current_member_ids: Sequence[str],
+    requested_permission: str | None,
+    requested_member_ids: Sequence[str] | None,
+) -> None:
+    """Authorize a legacy dataset permission update without persistence access."""
+
+    if actor_role not in _DATASET_EDIT_ROLES:
+        raise DatasetAccessDeniedError("User does not have permission to edit this dataset.")
+    if actor_role != _DATASET_OPERATOR_ROLE:
+        return
+    if current_permission != requested_permission:
+        raise DatasetAccessDeniedError("Dataset operators cannot change the dataset permissions.")
+    if requested_permission != _PARTIAL_MEMBERS:
+        return
+    if not requested_member_ids:
+        raise DatasetPermissionValidationError("Partial member list is required when setting to partial members.")
+    if set(current_member_ids) != set(requested_member_ids):
+        raise DatasetPermissionValidationError("Dataset operators cannot change the dataset permissions.")
 
 
 class DatasetAccessService:
@@ -93,6 +137,8 @@ class DatasetAccessService:
     def check_access(self, context: RequestContext, snapshot: DatasetAccessSnapshot) -> AccessibleDataset:
         """Authorize already-loaded state without querying the dataset again."""
         if snapshot.dataset.workspace_id != context.active_workspace_id:
+            raise DatasetAccessDeniedError()
+        if context.resource_dataset_ids is not None and snapshot.dataset.id not in context.resource_dataset_ids:
             raise DatasetAccessDeniedError()
         if self._legacy_permissions_enabled:
             workspace_role = self._workspace_roles.get_legacy_role(

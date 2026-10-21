@@ -152,11 +152,7 @@ class TestFirecrawlApp:
         mocker.patch("core.helper.ssrf_proxy.get", return_value=_response(200, payload))
 
         save_calls: list[tuple[str, bytes]] = []
-        delete_calls: list[str] = []
-
         mock_storage = MagicMock()
-        mock_storage.exists.return_value = True
-        mock_storage.delete.side_effect = lambda key: delete_calls.append(key)
         mock_storage.save.side_effect = lambda key, data: save_calls.append((key, data))
         mocker.patch.object(firecrawl_module, "storage", mock_storage)
 
@@ -166,7 +162,7 @@ class TestFirecrawlApp:
         assert result["total"] == 2
         assert result["current"] == 2
         assert len(result["data"]) == 2
-        assert delete_calls == ["website_files/job-42.txt"]
+        mock_storage.delete.assert_not_called()
         assert len(save_calls) == 1
         assert save_calls[0][0] == "website_files/job-42.txt"
 

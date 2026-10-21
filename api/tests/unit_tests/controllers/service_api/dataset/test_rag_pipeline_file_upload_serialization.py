@@ -2,36 +2,34 @@
 Unit tests for Service API knowledge pipeline file-upload serialization.
 """
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import PipelineUploadFileResponse
+from fields.service_api.rag_pipeline import PipelineUploadFileResponse
 from libs.helper import dump_response
-from models.model import UploadFile
-from tests.unit_tests.model_factories import make_upload_file
 
 
-def _upload_file(*, created_at: datetime) -> UploadFile:
-    return make_upload_file(
-        file_id="file-1",
-        name="test.pdf",
-        size=123,
-        extension="pdf",
-        mime_type="application/pdf",
-        created_at=created_at,
-    )
+@dataclass(frozen=True)
+class UploadFileResponseSource:
+    id: str = "file-1"
+    name: str = "test.pdf"
+    size: int = 123
+    extension: str = "pdf"
+    mime_type: str = "application/pdf"
+    created_by: str = "user-1"
+    created_at: datetime | None = None
 
 
-def test_file_upload_created_at_is_isoformat_string():
+def test_file_upload_created_at_is_isoformat_string() -> None:
     created_at = datetime(2026, 2, 8, 12, 0, 0, tzinfo=UTC)
-    upload_file = _upload_file(created_at=created_at)
+    upload_file = UploadFileResponseSource(created_at=created_at)
 
     result = dump_response(PipelineUploadFileResponse, upload_file)
     assert result["created_at"] == created_at.isoformat()
 
 
-def test_file_upload_created_at_none_serializes_to_null():
-    upload_file = _upload_file(created_at=datetime(2026, 2, 8, 12, 0, 0, tzinfo=UTC))
-    upload_file.created_at = None
+def test_file_upload_created_at_none_serializes_to_null() -> None:
+    upload_file = UploadFileResponseSource(created_at=None)
 
     result = dump_response(PipelineUploadFileResponse, upload_file)
     assert result["created_at"] is None

@@ -1,29 +1,23 @@
 import logging
 import tempfile
 import time
-import uuid
 from pathlib import Path
-from typing import Any
 
 import click
 import pandas as pd
 from celery import shared_task
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.model_context import with_credit_usage_created_by
-from core.model_manager import ModelManager
-from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from graphon.model_runtime.entities.model_entities import ModelType
-from libs import helper
-from libs.datetime_utils import naive_utc_now
-from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import SegmentStatus
+from machinery.context import RequestContext
+from models.dataset import Dataset, Document
 from models.model import UploadFile
-from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.segments.batch_status import transition_batch_to_terminal
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +31,31 @@ def batch_create_segment_to_index_task(
     document_id: str,
     tenant_id: str,
     user_id: str,
-):
+) -> None:
+    try:
+        _create_batch_segments(
+            job_id=job_id,
+            upload_file_id=upload_file_id,
+            dataset_id=dataset_id,
+            document_id=document_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
+        )
+    except Exception:
+        logger.exception("Segments batch created index failed")
+        transition_batch_to_terminal(redis_client, job_id, "error")
+        return
+
+
+def _create_batch_segments(
+    *,
+    job_id: str,
+    upload_file_id: str,
+    dataset_id: str,
+    document_id: str,
+    tenant_id: str,
+    user_id: str,
+) -> None:
     """
     Async batch create segment to index
     :param job_id:
@@ -52,66 +70,30 @@ def batch_create_segment_to_index_task(
     logger.info(click.style(f"Start batch create segment jobId: {job_id}", fg="green"))
     start_at = time.perf_counter()
 
-    indexing_cache_key = f"segment_batch_import_{job_id}"
-
-    # Initialize variables with default values
-    upload_file_key: str | None = None
-    dataset_config: dict[str, Any] | None = None
-    document_config: dict[str, Any] | None = None
-
     with session_factory.create_session() as session:
-        try:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id))
-            if not dataset:
-                raise ValueError("Dataset not exist.")
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id))
+        if not dataset:
+            raise ValueError("Dataset not exist.")
 
-            dataset_document = session.scalar(
-                select(Document).where(
-                    Document.id == document_id, Document.dataset_id == dataset_id, Document.tenant_id == tenant_id
-                )
+        dataset_document = session.scalar(
+            select(Document).where(
+                Document.id == document_id, Document.dataset_id == dataset_id, Document.tenant_id == tenant_id
             )
-            if not dataset_document:
-                raise ValueError("Document not exist.")
+        )
+        if not dataset_document:
+            raise ValueError("Document not exist.")
 
-            if (
-                not dataset_document.enabled
-                or dataset_document.archived
-                or dataset_document.indexing_status != "completed"
-            ):
-                raise ValueError("Document is not available.")
+        if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
+            raise ValueError("Document is not available.")
 
-            upload_file = session.scalar(
-                select(UploadFile).where(UploadFile.id == upload_file_id, UploadFile.tenant_id == tenant_id)
-            )
-            if not upload_file:
-                raise ValueError("UploadFile not found.")
+        upload_file = session.scalar(
+            select(UploadFile).where(UploadFile.id == upload_file_id, UploadFile.tenant_id == tenant_id)
+        )
+        if not upload_file:
+            raise ValueError("UploadFile not found.")
 
-            dataset_config = {
-                "id": dataset.id,
-                "indexing_technique": dataset.indexing_technique,
-                "tenant_id": dataset.tenant_id,
-                "embedding_model_provider": dataset.embedding_model_provider,
-                "embedding_model": dataset.embedding_model,
-            }
-
-            document_config = {
-                "id": dataset_document.id,
-                "doc_form": dataset_document.doc_form,
-                "word_count": dataset_document.word_count or 0,
-            }
-
-            upload_file_key = upload_file.key
-
-        except Exception:
-            logger.exception("Segments batch created index failed")
-            redis_client.setex(indexing_cache_key, 600, "error")
-            return
-
-    # Ensure required variables are set before proceeding
-    if upload_file_key is None or dataset_config is None or document_config is None:
-        logger.error("Required configuration not set due to session error")
-        redis_client.setex(indexing_cache_key, 600, "error")
-        return
+        doc_form = str(dataset_document.doc_form)
+        upload_file_key = upload_file.key
 
     with tempfile.TemporaryDirectory() as temp_dir:
         suffix = Path(upload_file_key).suffix
@@ -119,9 +101,9 @@ def batch_create_segment_to_index_task(
         storage.download(upload_file_key, file_path)
 
         df = pd.read_csv(file_path, dtype=str, keep_default_na=False)
-        content = []
+        content: list[dict[str, object]] = []
         for _, row in df.iterrows():
-            if document_config["doc_form"] == IndexStructureType.QA_INDEX:
+            if doc_form == IndexStructureType.QA_INDEX:
                 data = {"content": row.iloc[0], "answer": row.iloc[1]}
             else:
                 data = {"content": row.iloc[0]}
@@ -129,83 +111,21 @@ def batch_create_segment_to_index_task(
         if len(content) == 0:
             raise ValueError("The CSV file is empty.")
 
-    segment_ids: list[str] = []
-    embedding_model = None
-    if dataset_config["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
-        model_manager = ModelManager.for_tenant(tenant_id=dataset_config["tenant_id"])
-        embedding_model = model_manager.get_model_instance(
-            tenant_id=dataset_config["tenant_id"],
-            provider=dataset_config["embedding_model_provider"],
-            model_type=ModelType.TEXT_EMBEDDING,
-            model=dataset_config["embedding_model"],
-        )
-
-    word_count_change = 0
-    if embedding_model:
-        tokens_list = embedding_model.get_text_embedding_num_tokens(texts=[segment["content"] for segment in content])
-    else:
-        tokens_list = [0] * len(content)
-
-    with session_factory.create_session() as session, session.begin():
-        max_position = (
-            session.scalar(
-                select(func.max(DocumentSegment.position)).where(
-                    DocumentSegment.tenant_id == tenant_id,
-                    DocumentSegment.dataset_id == dataset_id,
-                    DocumentSegment.document_id == document_id,
-                )
-            )
-            or 0
-        )
-        for segment, tokens in zip(content, tokens_list, strict=False):
-            content = segment["content"]
-            doc_id = str(uuid.uuid4())
-            segment_hash = helper.generate_text_hash(content)
-            max_position += 1
-            segment_document = DocumentSegment(
-                tenant_id=tenant_id,
-                dataset_id=dataset_id,
-                document_id=document_id,
-                index_node_id=doc_id,
-                index_node_hash=segment_hash,
-                position=max_position,
-                content=content,
-                word_count=len(content),
-                tokens=tokens,
-                created_by=user_id,
-                indexing_at=naive_utc_now(),
-                status=SegmentStatus.COMPLETED,
-                completed_at=naive_utc_now(),
-            )
-            if document_config["doc_form"] == IndexStructureType.QA_INDEX:
-                segment_document.answer = segment["answer"]
-                segment_document.word_count += len(segment["answer"])
-            word_count_change += segment_document.word_count
-            session.add(segment_document)
-            segment_ids.append(segment_document.id)
-
-        dataset_document = session.scalar(
-            select(Document).where(
-                Document.id == document_id, Document.dataset_id == dataset_id, Document.tenant_id == tenant_id
-            )
-        )
-        if dataset_document is None:
-            raise ValueError("Document no longer exists.")
-        dataset_document.word_count = (dataset_document.word_count or 0) + word_count_change
-        session.add(dataset_document)
-
     # The registry imports this task while assembling the batch dispatcher.
     from extensions.ext_application_services import application_services
 
-    try:
-        application_services().knowledge.segments.mutations.index_segments(
-            DatasetRef(tenant_id, dataset_id).document(document_id), segment_ids=segment_ids
-        )
-    except Exception:
-        redis_client.setex(indexing_cache_key, 600, "error")
-        raise
-
-    redis_client.setex(indexing_cache_key, 600, "completed")
+    application_services().knowledge.segments.create_imported_segments(
+        RequestContext(
+            request_id=job_id,
+            trace_id=None,
+            account_id=user_id,
+            active_workspace_id=tenant_id,
+        ),
+        dataset_id=dataset_id,
+        document_id=document_id,
+        values=content,
+        job_id=job_id,
+    )
     end_at = time.perf_counter()
     logger.info(
         click.style(

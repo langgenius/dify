@@ -1,9 +1,5 @@
 """Detached knowledge segment values shared by application ports."""
 
-from __future__ import annotations
-
-from collections.abc import Mapping
-from dataclasses import dataclass
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -23,30 +19,6 @@ class SegmentAttachmentRecord(BaseModel):
     extension: str
     mime_type: str | None
     source_url: str
-
-
-@dataclass(frozen=True, slots=True)
-class SegmentAttachmentFile:
-    id: str
-    name: str
-    size: int
-    extension: str
-    mime_type: str
-
-
-@dataclass(frozen=True, slots=True)
-class SegmentFileAccess:
-    uploads: frozenset[str]
-    tools: frozenset[str]
-
-
-@dataclass(frozen=True, slots=True)
-class SegmentReadSnapshot:
-    values: Mapping[str, object]
-    child_chunks: tuple[ChildChunkRecord, ...]
-    attachments: tuple[SegmentAttachmentFile, ...]
-    summary: str | None
-    file_access: SegmentFileAccess
 
 
 class ChildChunkRecord(BaseModel):

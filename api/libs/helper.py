@@ -12,12 +12,11 @@ from contextlib import contextmanager
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
-from uuid import UUID
 from zoneinfo import available_timezones
 
 from flask import Request, Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel, ConfigDict, TypeAdapter, WithJsonSchema, with_config
+from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
 
@@ -26,6 +25,14 @@ from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from extensions.ext_redis import redis_client
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs import uuid_utils
+
+# Keep the established helper imports while the implementation lives in the
+# framework-neutral UUID library used by shared domain contracts.
+UUIDStr = uuid_utils.UUIDStr
+UUIDStrOrEmpty = uuid_utils.UUIDStrOrEmpty
+normalize_uuid = uuid_utils.normalize_uuid
+uuid_value = uuid_utils.uuid_value
 
 if TYPE_CHECKING:
     from models import Account
@@ -65,10 +72,6 @@ _token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
 def _stream_with_request_context(response: object) -> Any:
     """Bridge Flask's loosely-typed streaming helper without leaking casts into callers."""
     return cast(Any, stream_with_context)(response)
-
-
-def escape_query_for_search(query: str) -> str:
-    return query.replace('"', '\\"')
 
 
 def escape_like_pattern(pattern: str) -> str:
@@ -244,31 +247,6 @@ def email(email):
 EmailStr = Annotated[str, AfterValidator(email)]
 
 
-def uuid_value(value: str | UUID) -> str:
-    if isinstance(value, UUID):
-        return str(value)
-
-    if value == "":
-        return str(value)
-
-    try:
-        uuid_obj = uuid.UUID(value)
-        return str(uuid_obj)
-    except ValueError as caught_error:
-        error = f"{value} is not a valid uuid."
-        raise ValueError(error) from caught_error
-
-
-def normalize_uuid(value: str | UUID) -> str:
-    if not value:
-        return ""
-
-    try:
-        return uuid_value(value)
-    except ValueError as exc:
-        raise ValueError("must be a valid UUID") from exc
-
-
 def parse_uuid_str_or_none(value: str | None) -> str | None:
     """
     Return None for missing/empty UUID-like values.
@@ -279,25 +257,6 @@ def parse_uuid_str_or_none(value: str | None) -> str | None:
     if value is None or not str(value).strip():
         return None
     return str(value)
-
-
-UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
-
-
-def _strict_uuid(value: str | UUID) -> str:
-    if not value:
-        raise ValueError("must be a non-empty valid UUID")
-    try:
-        return uuid_value(value)
-    except ValueError as exc:
-        raise ValueError("must be a valid UUID") from exc
-
-
-UUIDStr = Annotated[
-    str,
-    AfterValidator(_strict_uuid),
-    WithJsonSchema({"format": "uuid", "type": "string"}),
-]
 
 
 def alphanumeric(value: str):

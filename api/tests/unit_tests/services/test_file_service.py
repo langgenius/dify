@@ -22,6 +22,7 @@ from services.errors.file import (
     UnsupportedFileTypeError,
 )
 from services.file_service import FileService
+from services.knowledge.indexing.cleanup import UploadFileCleanup
 from tests.unit_tests.model_factories import make_account
 
 
@@ -462,14 +463,161 @@ class TestFileService:
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_content("file_id")
 
-    def test_delete_file_success(self, file_service: FileService, db_session: Session):
+    def test_delete_file_success(
+        self,
+        file_service: FileService,
+        db_session: Session,
+        config_overrides: Callable[..., None],
+    ):
         self._persist_upload_file(db_session)
+        candidate = (UploadFileCleanup(id="file_id", key="key"),)
+        config_overrides(ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
 
-        with patch("services.file_service.storage") as mock_storage:
+        def finalize(session: Session, **_kwargs: object) -> None:
+            upload = session.get(UploadFile, "file_id")
+            assert upload is not None
+            session.delete(upload)
+
+        with (
+            patch("services.file_service.storage") as mock_storage,
+            patch("services.file_service.claim_orphan_upload_files", return_value=candidate),
+            patch("services.file_service.recheck_claimed_orphan_upload_files", return_value=candidate),
+            patch("services.file_service.delete_orphan_upload_files", side_effect=finalize),
+        ):
             file_service.delete_file("file_id")
             mock_storage.delete.assert_called_once_with("key")
             db_session.expire_all()
             assert db_session.get(UploadFile, "file_id") is None
+
+    def test_delete_file_gate_leaves_claimed_row_for_recovery(
+        self,
+        file_service: FileService,
+        db_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        upload = self._persist_upload_file(db_session)
+        upload_id = upload.id
+        config_overrides(ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=False)
+
+        def claim(session: Session, **_kwargs: object) -> tuple[UploadFileCleanup, ...]:
+            persisted = session.get(UploadFile, upload_id)
+            assert persisted is not None
+            persisted.knowledge_cleanup_started_at = datetime.now(UTC).replace(tzinfo=None)
+            return (UploadFileCleanup(id=persisted.id, key=persisted.key),)
+
+        with (
+            patch("services.file_service.storage") as mock_storage,
+            patch("services.file_service.claim_orphan_upload_files", side_effect=claim),
+        ):
+            file_service.delete_file(upload_id)
+
+        db_session.expire_all()
+        pending = db_session.get(UploadFile, upload_id)
+        assert pending is not None
+        assert pending.knowledge_cleanup_started_at is not None
+        mock_storage.delete.assert_not_called()
+
+    def test_delete_file_storage_failure_retains_claim_for_recovery(
+        self,
+        file_service: FileService,
+        db_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        upload = self._persist_upload_file(db_session)
+        upload_id = upload.id
+        config_overrides(ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
+        candidate = UploadFileCleanup(id=upload_id, key=upload.key)
+
+        def claim(session: Session, **_kwargs: object) -> tuple[UploadFileCleanup, ...]:
+            persisted = session.get(UploadFile, upload_id)
+            assert persisted is not None
+            persisted.knowledge_cleanup_started_at = datetime.now(UTC).replace(tzinfo=None)
+            return (candidate,)
+
+        with (
+            patch("services.file_service.claim_orphan_upload_files", side_effect=claim),
+            patch("services.file_service.recheck_claimed_orphan_upload_files", return_value=(candidate,)),
+            patch("services.file_service.delete_orphan_upload_files") as mock_finalize,
+            patch("services.file_service.storage.delete", side_effect=RuntimeError("storage unavailable")),
+            pytest.raises(RuntimeError, match="storage unavailable"),
+        ):
+            file_service.delete_file(upload_id)
+
+        db_session.expire_all()
+        pending = db_session.get(UploadFile, upload_id)
+        assert pending is not None
+        assert pending.key == "key"
+        assert pending.knowledge_cleanup_started_at is not None
+        mock_finalize.assert_not_called()
+
+    def test_delete_file_finalize_failure_is_recoverable_after_object_disappears(
+        self,
+        file_service: FileService,
+        db_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        upload = self._persist_upload_file(db_session)
+        upload_id = upload.id
+        config_overrides(ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
+        candidate = UploadFileCleanup(id=upload_id, key=upload.key)
+
+        def claim(session: Session, **_kwargs: object) -> tuple[UploadFileCleanup, ...]:
+            persisted = session.get(UploadFile, upload_id)
+            assert persisted is not None
+            persisted.knowledge_cleanup_started_at = datetime.now(UTC).replace(tzinfo=None)
+            return (candidate,)
+
+        finalize_attempts = 0
+
+        def finalize(session: Session, **_kwargs: object) -> None:
+            nonlocal finalize_attempts
+            finalize_attempts += 1
+            if finalize_attempts == 1:
+                raise RuntimeError("database unavailable")
+            persisted = session.get(UploadFile, upload_id)
+            assert persisted is not None
+            session.delete(persisted)
+
+        with (
+            patch("services.file_service.claim_orphan_upload_files", side_effect=claim),
+            patch("services.file_service.recheck_claimed_orphan_upload_files", return_value=(candidate,)),
+            patch("services.file_service.delete_orphan_upload_files", side_effect=finalize),
+            patch("services.file_service.storage.delete", side_effect=(None, FileNotFoundError())),
+        ):
+            with pytest.raises(RuntimeError, match="database unavailable"):
+                file_service.delete_file(upload_id)
+            db_session.expire_all()
+            pending = db_session.get(UploadFile, upload_id)
+            assert pending is not None
+            assert pending.knowledge_cleanup_started_at is not None
+
+            file_service.delete_file(upload_id)
+
+        db_session.expire_all()
+        assert db_session.get(UploadFile, upload_id) is None
+
+    def test_delete_file_keeps_candidate_with_a_durable_owner(
+        self,
+        file_service: FileService,
+        db_session: Session,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        upload = self._persist_upload_file(db_session)
+        config_overrides(ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
+
+        with (
+            patch("services.file_service.claim_orphan_upload_files", return_value=()),
+            patch("services.file_service.recheck_claimed_orphan_upload_files") as mock_recheck,
+            patch("services.file_service.delete_orphan_upload_files") as mock_finalize,
+            patch("services.file_service.storage.delete") as mock_delete,
+        ):
+            file_service.delete_file(upload.id)
+
+        db_session.expire_all()
+        assert db_session.get(UploadFile, upload.id) is not None
+        mock_recheck.assert_not_called()
+        mock_finalize.assert_not_called()
+        mock_delete.assert_not_called()
 
     def test_delete_file_not_found(self, file_service: FileService):
         file_service.delete_file("file_id")

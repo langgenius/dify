@@ -14,7 +14,10 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset
 from models.enums import CollectionBindingType
 from models.model import App, AppAnnotationSetting, MessageAnnotation
-from services.knowledge.dataset_service import DatasetCollectionBindingService
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_collection_binding,
+    get_or_create_dataset_collection_binding,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +53,21 @@ def enable_annotation_reply_task(
 
         try:
             documents = []
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name, embedding_model_name, session, CollectionBindingType.ANNOTATION
+            dataset_collection_binding = get_or_create_dataset_collection_binding(
+                session,
+                provider_name=embedding_provider_name,
+                model_name=embedding_model_name,
+                collection_type=CollectionBindingType.ANNOTATION,
             )
             annotation_setting = session.scalar(
                 select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
             )
             if annotation_setting:
                 if dataset_collection_binding.id != annotation_setting.collection_binding_id:
-                    old_dataset_collection_binding = (
-                        DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                            annotation_setting.collection_binding_id, session, CollectionBindingType.ANNOTATION
-                        )
+                    old_dataset_collection_binding = get_dataset_collection_binding(
+                        session,
+                        binding_id=annotation_setting.collection_binding_id,
+                        collection_type=CollectionBindingType.ANNOTATION,
                     )
                     if old_dataset_collection_binding and annotations:
                         old_dataset = Dataset(

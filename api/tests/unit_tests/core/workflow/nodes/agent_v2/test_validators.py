@@ -682,14 +682,14 @@ def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
 
     captured = {}
 
-    def fake_get_datasets_by_ids(ids, tenant_id, *, session):
-        captured["ids"] = ids
+    def fake_get_datasets_by_ids(_session, *, tenant_id, dataset_ids, **_kwargs):
+        captured["ids"] = dataset_ids
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.knowledge.dataset_service as dataset_service_module
+    import services.agent.knowledge_datasets as knowledge_datasets_module
 
-    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
+    monkeypatch.setattr(knowledge_datasets_module, "list_datasets_by_ids", fake_get_datasets_by_ids)
 
     with pytest.raises(WorkflowAgentNodeValidationError, match=dataset_id):
         WorkflowAgentNodeValidator.validate_published_workflow(

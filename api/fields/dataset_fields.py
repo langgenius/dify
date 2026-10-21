@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from enums.knowledge import DatasetVectorIndexStatus
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from services.data_source.entities.notion_import import NotionPageType
@@ -205,6 +206,8 @@ class DatasetDetailResponse(ResponseModel):
     is_multimodal: bool
     permission_keys: list[str] = Field(default_factory=list)
     maintainer: str | None = None
+    vector_indexing_status: DatasetVectorIndexStatus | None = None
+    vector_indexing_error: str | None = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod

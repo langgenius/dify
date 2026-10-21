@@ -176,8 +176,32 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.clean_document_task",  # durable document cleanup
+        "tasks.clean_upload_files_task",  # durable orphan upload cleanup
+        "tasks.remove_app_and_related_data_task",  # durable App related-data cleanup
+        "tasks.cleanup_knowledge_index_task",  # durable deletion index cleanup
+        "tasks.batch_clean_document_task",  # durable batch document cleanup
+        "tasks.retry_document_indexing_task",  # durable document indexing retry
+        "tasks.document_indexing_task",  # durable document creation indexing
+        "tasks.document_indexing_sync_task",  # durable Notion sync and deployed legacy sync consumer
+        "tasks.duplicate_document_indexing_task",  # durable duplicate indexing
+        "tasks.document_indexing_update_task",  # durable document reindexing
+        "tasks.add_document_to_index_task",  # durable document enable
+        "tasks.remove_document_from_index_task",  # durable document disable
+        "tasks.recover_document_indexing_task",  # durable document recovery
+        "tasks.sync_website_document_indexing_task",  # durable website synchronization
+        "tasks.index_created_segments_task",  # durable segment creation indexing
+        "tasks.delete_segment_from_index_task",  # durable segment deletion cleanup
+        "tasks.reconcile_segment_index_task",  # durable child index reconciliation
+        "tasks.clean_dataset_task",  # durable dataset cleanup
+        "tasks.deal_dataset_vector_index_task",  # durable dataset index updates
+        "tasks.deal_dataset_index_update_task",  # compatibility consumer for deployed legacy updates
+        "tasks.enable_segments_to_index_task",  # durable segment enable
+        "tasks.disable_segments_from_index_task",  # durable segment disable
+        "tasks.knowledge_task_outbox_task",  # durable knowledge-task dispatcher
         "tasks.rag_pipeline.rag_pipeline_run_task",  # regular RAG pipeline execution
         "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
+        "tasks.rag_pipeline.rag_pipeline_queue_recovery_task",  # durable tenant queue recovery
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
@@ -190,6 +214,17 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    from services.knowledge.task_outbox.tenant_queue import KNOWLEDGE_TASK_V2_QUEUE
+
+    beat_schedule["knowledge_tenant_task_queue_recovery"] = {
+        "task": "tasks.knowledge_task_outbox_task.recover_knowledge_tenant_task_queue",
+        "schedule": timedelta(minutes=1),
+        "options": {"queue": KNOWLEDGE_TASK_V2_QUEUE},
+    }
+    beat_schedule["rag_pipeline_tenant_queue_recovery"] = {
+        "task": "tasks.rag_pipeline.rag_pipeline_queue_recovery_task.recover_rag_pipeline_tenant_queue",
+        "schedule": timedelta(minutes=1),
+    }
     beat_schedule["workspace_provisioning_recovery"] = {
         "task": "tasks.workspace_provisioning_recovery_task.recover_workspace_provisioning_operations",
         "schedule": timedelta(minutes=1),
@@ -200,6 +235,30 @@ def init_app(app: DifyApp) -> Celery:
         "schedule": timedelta(minutes=1),
         "options": {"queue": "schedule_executor"},
     }
+    beat_schedule["app_cleanup_recovery"] = {
+        "task": "tasks.remove_app_and_related_data_task.recover_app_cleanup_operations",
+        "schedule": timedelta(seconds=dify_config.UPLOAD_FILE_CLEANUP_RECOVERY_INTERVAL_SECONDS),
+        "options": {"queue": "app_deletion"},
+    }
+    if dify_config.ENABLE_KNOWLEDGE_TASK_OUTBOX_DISPATCH:
+        beat_schedule["knowledge_task_outbox_dispatch"] = {
+            "task": "tasks.knowledge_task_outbox_task.dispatch_knowledge_task_outbox",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_TASK_OUTBOX_INTERVAL_SECONDS),
+            "options": {"queue": KNOWLEDGE_TASK_V2_QUEUE},
+        }
+    if dify_config.ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP:
+        if "tasks.delete_conversation_task" not in imports:
+            imports.append("tasks.delete_conversation_task")
+        beat_schedule["upload_file_cleanup_recovery"] = {
+            "task": "tasks.clean_upload_files_task.recover_claimed_upload_file_cleanup_task",
+            "schedule": timedelta(seconds=dify_config.UPLOAD_FILE_CLEANUP_RECOVERY_INTERVAL_SECONDS),
+            "options": {"queue": "dataset"},
+        }
+        beat_schedule["agent_config_tool_file_cleanup_recovery"] = {
+            "task": "tasks.delete_conversation_task.recover_agent_config_tool_file_cleanup",
+            "schedule": timedelta(seconds=dify_config.UPLOAD_FILE_CLEANUP_RECOVERY_INTERVAL_SECONDS),
+            "options": {"queue": "conversation"},
+        }
     if dify_config.AGENT_SANDBOX_METERING_ENABLED:
         try:
             interval = int(dify_config.AGENT_SANDBOX_METERING_INTERVAL_SECONDS)
@@ -215,7 +274,8 @@ def init_app(app: DifyApp) -> Celery:
                 "options": {"expires": interval},
             }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
-        imports.append("tasks.delete_conversation_task")
+        if "tasks.delete_conversation_task" not in imports:
+            imports.append("tasks.delete_conversation_task")
         beat_schedule["conversation_cleanup_sweeper"] = {
             "task": "tasks.delete_conversation_task.sweep_deleted_conversations",
             "schedule": timedelta(minutes=dify_config.CONVERSATION_CLEANUP_TASK_INTERVAL),

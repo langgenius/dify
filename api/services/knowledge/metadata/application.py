@@ -1,14 +1,17 @@
 """Metadata use cases with explicit ownership and persistence contracts."""
 
 from collections.abc import Sequence
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Protocol, TypedDict
+from typing import Protocol
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccess
-from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.metadata.contracts import MetadataList, MetadataOperation, MetadataRecord
+from services.knowledge.resource_scope import DatasetRef
+
+
+class MetadataInvalidActionError(ValueError):
+    """Raised when a built-in metadata action is outside the supported command set."""
 
 
 class MetadataInput(Protocol):
@@ -18,50 +21,9 @@ class MetadataInput(Protocol):
     def type(self) -> str: ...
 
 
-class MetadataValue(Protocol):
-    @property
-    def id(self) -> str: ...
-    @property
-    def value(self) -> str | int | float | None: ...
-
-
-class MetadataOperation(Protocol):
-    @property
-    def document_id(self) -> str: ...
-    @property
-    def metadata_list(self) -> Sequence[MetadataValue]: ...
-    @property
-    def partial_update(self) -> bool: ...
-
-
 class MetadataOperationsInput(Protocol):
     @property
     def operation_data(self) -> Sequence[MetadataOperation]: ...
-
-
-@dataclass(frozen=True)
-class MetadataRecord:
-    id: str
-    name: str
-    type: str
-    tenant_id: str
-    dataset_id: str
-    created_by: str
-    created_at: datetime
-    updated_by: str | None
-    updated_at: datetime | None
-
-
-class MetadataFieldSummary(TypedDict):
-    id: str
-    name: str
-    type: str
-    count: int
-
-
-class MetadataList(TypedDict):
-    doc_metadata: list[MetadataFieldSummary]
-    built_in_field_enabled: bool
 
 
 class MetadataStore(Protocol):
@@ -83,6 +45,60 @@ class MetadataService:
     def require_dataset(self, context: RequestContext, dataset_id: str) -> DatasetRef:
         dataset = self._access.require_accessible(context, dataset_id)
         return DatasetRef(dataset.workspace_id, dataset.id)
+
+    def create_dataset_metadata(self, context: RequestContext, dataset_id: str, args: MetadataInput) -> MetadataRecord:
+        """Create one field after resolving and authorizing its dataset."""
+        ref = self.require_dataset(context, dataset_id)
+        return self.create_metadata(ref, args, actor_id=context.account_id)
+
+    def list_dataset_metadata(self, context: RequestContext, dataset_id: str) -> MetadataList:
+        """List metadata fields for an accessible dataset."""
+        return self.get_dataset_metadatas(self.require_dataset(context, dataset_id))
+
+    def rename_dataset_metadata(
+        self,
+        context: RequestContext,
+        dataset_id: str,
+        metadata_id: str,
+        *,
+        name: str,
+    ) -> MetadataRecord:
+        """Rename one field after resolving and authorizing its dataset."""
+        ref = self.require_dataset(context, dataset_id)
+        return self.update_metadata_name(ref, metadata_id, name, actor_id=context.account_id)
+
+    def delete_dataset_metadata(self, context: RequestContext, dataset_id: str, metadata_id: str) -> None:
+        """Delete one field after resolving and authorizing its dataset."""
+        self.delete_metadata(self.require_dataset(context, dataset_id), metadata_id)
+
+    def list_dataset_built_in_fields(self, context: RequestContext, dataset_id: str) -> list[dict[str, str]]:
+        """List built-in fields only when the referenced dataset is accessible."""
+        self.require_dataset(context, dataset_id)
+        return self.get_built_in_fields()
+
+    def apply_dataset_built_in_field_action(
+        self,
+        context: RequestContext,
+        dataset_id: str,
+        *,
+        action: str,
+    ) -> None:
+        """Apply a built-in-field action after resolving and authorizing the dataset."""
+        ref = self.require_dataset(context, dataset_id)
+        enabled = {"enable": True, "disable": False}.get(action)
+        if enabled is None:
+            raise MetadataInvalidActionError(f"Unsupported metadata action: {action}")
+        self._store.set_built_in(ref, enabled=enabled)
+
+    def update_dataset_documents_metadata(
+        self,
+        context: RequestContext,
+        dataset_id: str,
+        args: MetadataOperationsInput,
+    ) -> None:
+        """Apply a document metadata batch after resolving its dataset."""
+        ref = self.require_dataset(context, dataset_id)
+        self.update_documents_metadata(ref, args, actor_id=context.account_id)
 
     @staticmethod
     def _validate_name(name: str) -> None:

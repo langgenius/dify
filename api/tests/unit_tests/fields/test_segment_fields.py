@@ -8,7 +8,7 @@ from fields.segment_fields import SegmentResponse
 from models.dataset import ChildChunk, DatasetProcessRule, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, ProcessRuleMode
 from models.model import UploadFile
-from services.knowledge.dataset_read_service import load_segment_details
+from services.knowledge.dataset_read_service import load_segment_detail
 
 
 def test_segment_detail_serializes_nested_relations_after_session_closes(sqlite_session: Session) -> None:
@@ -72,12 +72,12 @@ def test_segment_detail_serializes_nested_relations_after_session_closes(sqlite_
     )
     sqlite_session.add_all([rule, document, segment, chunk, attachment, binding])
     sqlite_session.flush()
-    details = load_segment_details([segment], {segment.id: "A summary"}, session=sqlite_session)
+    detail = load_segment_detail(segment, "A summary", session=sqlite_session)
 
     # Expire even nested ORM objects so a retained proxy cannot pass by using cached attributes.
     sqlite_session.expire_all()
     sqlite_session.close()
-    response = SegmentResponse.model_validate(details[0]).model_dump(mode="json")
+    response = SegmentResponse.model_validate(detail).model_dump(mode="json")
 
     assert response["summary"] == "A summary"
     assert response["sign_content"] == "hello world"

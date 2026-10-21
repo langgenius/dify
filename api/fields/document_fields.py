@@ -5,6 +5,7 @@ from typing import Any, Literal
 
 from pydantic import AliasChoices, ConfigDict, Field, JsonValue, field_validator
 
+from enums.knowledge import DocumentIndexRetryAction, DocumentIndexState
 from fields.base import ResponseModel
 from fields.dataset_fields import MetadataValueType
 from libs.helper import to_timestamp
@@ -84,6 +85,8 @@ class DocumentResponse(ResponseModel):
     indexing_status: str | None = None
     error: str | None = None
     enabled: bool | None = None
+    indexing_state: DocumentIndexState | None = None
+    indexing_retry_action: DocumentIndexRetryAction | None = None
     disabled_at: int | None = None
     disabled_by: str | None = None
     archived: bool | None = None
@@ -124,6 +127,8 @@ class DocumentListResponse(ResponseModel):
 class DocumentStatusResponse(ResponseModel):
     id: str
     indexing_status: IndexingStatus
+    indexing_state: DocumentIndexState | None = None
+    indexing_retry_action: DocumentIndexRetryAction | None = None
     processing_started_at: int | None
     parsing_completed_at: int | None
     cleaning_completed_at: int | None

@@ -12,7 +12,8 @@ Primary collaborators include ``PipelineRunner``,
 """
 
 import json
-from collections.abc import Generator
+from collections.abc import Callable, Generator, Mapping
+from dataclasses import dataclass
 
 import pytest
 from sqlalchemy import event
@@ -25,6 +26,14 @@ from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
+from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory
+from core.workflow.nodes.knowledge_index.protocols import (
+    KNOWLEDGE_INDEX_PROCESSOR_CONTEXT_KEY,
+    IndexingResultDict,
+    IndexProcessorProtocol,
+    Preview,
+)
 from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.graph import Graph
@@ -35,7 +44,52 @@ from models.enums import DocumentCreatedFrom
 from models.model import AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.knowledge.segment_repository import SQLAlchemySegmentAttachmentWriter
 from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
+
+
+@dataclass(frozen=True)
+class IndexProcessorProbe:
+    expected_generation: str | None = "generation-1"
+
+    def format_preview(self, chunk_structure: str, chunks: object) -> Preview:
+        del chunk_structure, chunks
+        return Preview(chunk_structure="general_structure", total_segments=0)
+
+    def index_and_clean(
+        self,
+        dataset_id: str,
+        document_id: str,
+        original_document_id: str,
+        chunks: Mapping[str, object],
+        batch: object,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
+        *,
+        session: Session,
+    ) -> IndexingResultDict:
+        del original_document_id, chunks, summary_index_setting, session
+        return {
+            "dataset_id": dataset_id,
+            "dataset_name": "Dataset",
+            "batch": batch,
+            "document_id": document_id,
+            "document_name": "Document",
+            "created_at": 0.0,
+            "display_status": "indexing",
+        }
+
+    def get_preview_output(
+        self,
+        chunks: object,
+        dataset_id: str,
+        document_id: str,
+        chunk_structure: str,
+        summary_index_setting: SummaryIndexSettingDict | None,
+        *,
+        session: Session,
+    ) -> Preview:
+        del chunks, dataset_id, document_id, summary_index_setting, session
+        return Preview(chunk_structure=chunk_structure, total_segments=0)
 
 
 def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:
@@ -131,7 +185,12 @@ def isolate_queue_redis(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _build_runner(
-    app_generate_entity: RagPipelineGenerateEntity, sqlite_engine: Engine, workflow: Workflow
+    app_generate_entity: RagPipelineGenerateEntity,
+    sqlite_engine: Engine,
+    workflow: Workflow,
+    *,
+    index_processor: IndexProcessorProtocol | None = None,
+    document_failure_handler: Callable[[str], None] | None = None,
 ) -> PipelineRunner:
     return PipelineRunner(
         application_generate_entity=app_generate_entity,
@@ -145,6 +204,9 @@ def _build_runner(
         workflow=workflow,
         system_user_id="sys",
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
+        attachment_writer=SQLAlchemySegmentAttachmentWriter(),
+        index_processor=index_processor,
+        document_failure_handler=document_failure_handler,
     )
 
 
@@ -155,14 +217,6 @@ def runner(sqlite_engine: Engine):
 
 def test_get_app_id(runner):
     assert runner._get_app_id() == "pipe"
-
-
-def test_get_workflow_returns_workflow(runner, sqlite_session: Session):
-    pipeline, _, workflow = _persist_scope(sqlite_session)
-
-    result = runner.get_workflow(session=sqlite_session, pipeline=pipeline, workflow_id="wf")
-
-    assert result == workflow
 
 
 def test_init_rag_pipeline_graph_invalid_config(mocker, runner):
@@ -200,6 +254,36 @@ def test_init_rag_pipeline_graph_not_found(mocker, runner):
         )
 
 
+def test_init_rag_pipeline_graph_injects_index_processor(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+) -> None:
+    processor = IndexProcessorProbe()
+    workflow = _start_workflow()
+    runner = _build_runner(
+        _build_app_generate_entity(),
+        sqlite_engine,
+        workflow,
+        index_processor=processor,
+    )
+    captured_contexts: list[DifyGraphInitContext] = []
+    build_factory = module.DifyNodeFactory.from_graph_init_context
+
+    def capture_context(*, graph_init_context: DifyGraphInitContext, runtime_state: RuntimeState) -> DifyNodeFactory:
+        captured_contexts.append(graph_init_context)
+        return build_factory(graph_init_context=graph_init_context, runtime_state=runtime_state)
+
+    monkeypatch.setattr(module.DifyNodeFactory, "from_graph_init_context", staticmethod(capture_context))
+
+    runner._init_rag_pipeline_graph(
+        workflow=workflow,
+        graph_runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
+    )
+
+    assert len(captured_contexts) == 1
+    assert captured_contexts[0].run_context[KNOWLEDGE_INDEX_PROCESSOR_CONTEXT_KEY] is processor
+
+
 def test_init_rag_pipeline_graph_honors_canonical_root_ownership(runner):
     workflow = _workflow(
         graph={
@@ -222,37 +306,52 @@ def test_init_rag_pipeline_graph_honors_canonical_root_ownership(runner):
     assert set(graph.nodes) == {"start", "end"}
 
 
-def test_update_document_status_on_failure(runner, sqlite_session: Session):
+def test_update_document_status_without_failure_handler_does_not_write(runner, sqlite_session: Session):
     document = _document()
-    _, dataset, _ = _persist_scope(sqlite_session, documents=(document,))
+    _persist_scope(sqlite_session, documents=(document,))
 
     event = GraphRunFailedEvent(error="boom")
 
     runner._update_document_status(
         event,
-        workspace_id=dataset.tenant_id,
-        dataset_id=dataset.id,
         document_id=document.id,
     )
 
     sqlite_session.expire_all()
     updated = sqlite_session.get(Document, document.id)
     assert updated is not None
-    assert updated.indexing_status == "error"
-    assert updated.error == "boom"
+    assert updated.indexing_status != "error"
+    assert updated.error is None
 
 
-def test_update_document_status_skips_when_document_not_found(runner, sqlite_session: Session):
-    _, dataset, _ = _persist_scope(sqlite_session)
-
-    runner._update_document_status(
-        GraphRunFailedEvent(error="boom"),
-        workspace_id=dataset.tenant_id,
-        dataset_id=dataset.id,
-        document_id="missing",
+def test_update_document_status_reports_once_through_failure_handler(
+    sqlite_session: Session, sqlite_engine: Engine
+) -> None:
+    document = _document()
+    _, _, workflow = _persist_scope(sqlite_session, documents=(document,))
+    failures: list[str] = []
+    runner = _build_runner(
+        _build_app_generate_entity(),
+        sqlite_engine,
+        workflow,
+        document_failure_handler=failures.append,
     )
 
-    assert sqlite_session.get(Document, "missing") is None
+    runner._update_document_status(
+        GraphRunFailedEvent(error="lease-owned failure"),
+        document_id=document.id,
+    )
+    runner._update_document_status(
+        GraphRunFailedEvent(error="duplicate terminal event"),
+        document_id=document.id,
+    )
+
+    assert failures == ["lease-owned failure"]
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Document, document.id)
+    assert persisted is not None
+    assert persisted.indexing_status != "error"
+    assert persisted.error is None
 
 
 def test_update_document_status_skips_without_document_ref(runner, sqlite_engine: Engine):
@@ -266,8 +365,6 @@ def test_update_document_status_skips_without_document_ref(runner, sqlite_engine
     try:
         runner._update_document_status(
             GraphRunFailedEvent(error="boom"),
-            workspace_id="workspace-1",
-            dataset_id="dataset-1",
             document_id=None,
         )
     finally:
@@ -297,10 +394,6 @@ def test_run_pipeline_from_other_tenant_is_not_found(runner: PipelineRunner, sql
         runner.prepare()
 
 
-def _unexpected_workflow_lookup(session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
-    pytest.fail("Workflow lookup must follow successful dataset and document ownership checks")
-
-
 @pytest.mark.parametrize(
     "dataset",
     [
@@ -320,8 +413,6 @@ def test_run_rejects_unowned_pipeline_dataset(
     if dataset is not None:
         sqlite_session.add(dataset)
     sqlite_session.commit()
-    monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
-
     with pytest.raises(ValueError, match="Pipeline dataset not found"):
         runner.prepare()
 
@@ -334,8 +425,6 @@ def test_run_rejects_document_outside_pipeline_dataset_after_async_boundary(
     runner.application_generate_entity.document_id = "foreign-doc"
     runner.application_generate_entity.original_document_id = "foreign-doc"
     _persist_scope(sqlite_session)
-    monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
-
     with pytest.raises(ValueError, match="Pipeline document not found"):
         runner.prepare()
 
@@ -348,13 +437,11 @@ def test_run_rejects_original_document_outside_pipeline_dataset_after_async_boun
     runner.application_generate_entity.document_id = "doc"
     runner.application_generate_entity.original_document_id = "foreign-doc"
     _persist_scope(sqlite_session, documents=(_document(),))
-    monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
-
     with pytest.raises(ValueError, match="Pipeline original document not found"):
         runner.prepare()
 
 
-def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: Engine):
+def test_run_rejects_workflow_snapshot_for_another_pipeline(sqlite_session: Session, sqlite_engine: Engine):
     app_generate_entity = _build_app_generate_entity()
 
     pipeline = _pipeline()
@@ -363,7 +450,7 @@ def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: En
     sqlite_session.add_all([pipeline, dataset, document])
     sqlite_session.commit()
 
-    runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
+    runner = _build_runner(app_generate_entity, sqlite_engine, _workflow(pipeline_id="another-pipeline"))
     with pytest.raises(ValueError, match="Workflow not initialized"):
         runner.prepare()
 
@@ -417,8 +504,8 @@ def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
     assert document is not None
     assert document.tenant_id == dataset.tenant_id
     assert document.dataset_id == dataset.id
-    assert document.indexing_status == "error"
-    assert document.error == failure.error
+    assert document.indexing_status != "error"
+    assert document.error is None
     assert len(published) == 1
     assert isinstance(published[0], QueueWorkflowFailedEvent)
     assert published[0].error == failure.error
@@ -461,3 +548,39 @@ def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_se
     input_variable = graph_engine.runtime_state.variable_pool.get(["start", "input1"])
     assert input_variable is not None
     assert input_variable.value == "v1"
+
+
+def test_run_uses_prepared_workflow_after_database_version_is_deleted(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+) -> None:
+    app_generate_entity = _build_app_generate_entity()
+    persisted_workflow = _workflow(
+        graph={"nodes": [{"id": "persisted", "data": {"type": "start", "title": "Old", "variables": []}}], "edges": []}
+    )
+    _, _, persisted_workflow = _persist_scope(
+        sqlite_session,
+        workflow=persisted_workflow,
+        documents=(_document(),),
+    )
+    snapshot = _workflow(
+        graph={
+            "nodes": [{"id": "start", "data": {"type": "start", "title": "Snapshotted", "variables": []}}],
+            "edges": [],
+        }
+    )
+    snapshot.id = "wf"
+    runner = _build_runner(app_generate_entity, sqlite_engine, snapshot)
+    executed_root_nodes: list[str] = []
+
+    def run_workflow(entry: WorkflowEntry) -> Generator[EngineEvent]:
+        executed_root_nodes.append(entry.graph_engine.graph.root_node.id)
+        yield from ()
+
+    monkeypatch.setattr(WorkflowEntry, "run", run_workflow)
+    prepared_run = runner.prepare()
+    sqlite_session.delete(persisted_workflow)
+    sqlite_session.commit()
+
+    list(prepared_run.entry.run())
+
+    assert executed_root_nodes == ["start"]

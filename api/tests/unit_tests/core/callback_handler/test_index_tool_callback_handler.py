@@ -14,7 +14,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
-from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource, DataSourceType, DocumentCreatedFrom
 
@@ -47,6 +47,7 @@ def handler(mock_queue_manager, sqlite_engine: Engine, monkeypatch: pytest.Monke
         message_id=str(uuid4()),
         user_id=str(uuid4()),
         invoke_from=InvokeFrom.DEBUGGER,
+        tenant_id="tenant",
     )
 
 
@@ -137,9 +138,14 @@ class TestOnQuery:
             message_id=str(uuid4()),
             user_id=str(uuid4()),
             invoke_from=invoke_from,
+            tenant_id="tenant",
         )
 
-        handler.on_query("test query", str(uuid4()), caller_session_boundary.session)
+        dataset = Dataset(tenant_id="tenant", name="Dataset", created_by="actor")
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        handler.on_query("test query", dataset.id, caller_session_boundary.session)
 
         dataset_query = sqlite_session.scalar(select(DatasetQuery))
         assert dataset_query is not None
@@ -160,10 +166,15 @@ class TestOnQuery:
             message_id=None,
             user_id=None,
             invoke_from=None,
+            tenant_id="tenant",
         )
 
+        dataset = Dataset(tenant_id="tenant", name="Dataset", created_by="actor")
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
         with pytest.raises(IntegrityError):
-            handler.on_query(None, None, caller_session_boundary.session)  # type: ignore[arg-type]
+            handler.on_query(None, dataset.id, caller_session_boundary.session)  # type: ignore[arg-type]
 
         assert sqlite_session.scalar(select(DatasetQuery)) is None
 

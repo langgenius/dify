@@ -34,13 +34,21 @@ from controllers.console.datasets.datasets import (
 )
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
+    DatasetConcurrentUpdateError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
 from machinery.context import RequestContext
 from services.data_source.entities.notion_import import NotionPageType
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.datasets.application import DatasetApplicationService, DatasetListFilter
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.datasets.application import DatasetApplicationService
+from services.knowledge.datasets.contracts import (
+    DatasetConcurrentUpdateError as DatasetConcurrentUpdateFailure,
+)
+from services.knowledge.datasets.contracts import (
+    DatasetDetailProjection,
+    DatasetListFilter,
+)
 from services.knowledge.entities.indexing_estimate import (
     NotionEstimateSource,
     UploadFileEstimateSource,
@@ -98,31 +106,50 @@ def test_scoped_reads_pass_context_and_map_access_errors(app, datasets, resource
         unwrap(resource.get)(resource(), CONTEXT, DATASET_ID)
     assert method.call_args.args == (CONTEXT,)
     assert method.call_args.kwargs["dataset_id"] == str(DATASET_ID)
+    if resource is DatasetApi:
+        assert method.call_args.kwargs["projection"] is DatasetDetailProjection.CONSOLE
 
 
 def test_list_parses_repeated_filters_and_serializes_page(app, datasets):
-    datasets.list_datasets.return_value = {"data": [], "page": 2, "limit": 3, "total": 4, "has_more": False}
+    datasets.list_accessible_datasets.return_value = {"data": [], "page": 2, "limit": 3, "total": 4, "has_more": False}
     with app.test_request_context("/?page=2&limit=3&ids=a&ids=b&tag_ids=x&tag_ids=y&include_all=true&keyword=term"):
         result, status = unwrap(DatasetListApi.get)(DatasetListApi(), CONTEXT)
-    datasets.list_datasets.assert_called_once_with(
+    datasets.list_accessible_datasets.assert_called_once_with(
         CONTEXT,
         DatasetListFilter(page=2, limit=3, ids=["a", "b"], tag_ids=["x", "y"], include_all=True, keyword="term"),
     )
     assert status == 200
-    assert result == datasets.list_datasets.return_value
+    assert result == datasets.list_accessible_datasets.return_value
 
 
 def test_patch_does_not_turn_omitted_fields_into_updates(datasets):
     datasets.update_dataset.side_effect = DatasetNotFoundError()
     with pytest.raises(NotFound):
         unwrap(DatasetApi.patch)(DatasetApi(), DatasetUpdatePayload(name="Changed"), CONTEXT, DATASET_ID)
-    datasets.update_dataset.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), values={"name": "Changed"})
+    datasets.update_dataset.assert_called_once_with(
+        CONTEXT,
+        dataset_id=str(DATASET_ID),
+        values={"name": "Changed"},
+        projection=DatasetDetailProjection.CONSOLE,
+    )
+
+
+def test_patch_maps_concurrent_change_to_retryable_conflict(datasets: DatasetApplicationService) -> None:
+    datasets.update_dataset.side_effect = DatasetConcurrentUpdateFailure("changed")
+
+    with pytest.raises(DatasetConcurrentUpdateError) as error:
+        unwrap(DatasetApi.patch)(DatasetApi(), DatasetUpdatePayload(name="Changed"), CONTEXT, DATASET_ID)
+
+    assert error.value.code == 409
+    assert error.value.error_code == "dataset_concurrent_update"
 
 
 def test_duplicate_name_is_mapped_at_transport_on_create(datasets):
     datasets.create_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
     with pytest.raises(DatasetNameDuplicateError):
         unwrap(DatasetListApi.post)(DatasetListApi(), DatasetCreatePayload(name="Duplicate"), CONTEXT)
+    datasets.create_dataset.assert_called_once()
+    assert datasets.create_dataset.call_args.kwargs["projection"] is DatasetDetailProjection.CONSOLE
 
 
 def test_delete_success_returns_empty_204(datasets):

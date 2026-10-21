@@ -8,45 +8,43 @@ from typing import Any, Protocol
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
-from repositories.knowledge.segment_read_adapter import (
-    format_segment_attachments,
-    sign_segment_text,
-)
-from services.knowledge.entities.segments import SegmentReadSnapshot, SegmentRecord
-from services.knowledge.segments.application import (
-    SegmentDatasetRecord,
-    SegmentModelProviderError,
-)
+from repositories.knowledge.segment_read_adapter import format_segment_attachments, sign_segment_text
+from services.knowledge.entities.segments import SegmentRecord
+from services.knowledge.indexing.locks import KnowledgeIndexingLock
+from services.knowledge.segments.application import SegmentModelProviderError
+from services.knowledge.segments.contracts import SegmentDatasetRecord, SegmentReadSnapshot
+
+_BATCH_WAITING_TTL_SECONDS = 86_400
 
 
 class RedisSegmentClient(Protocol):
     def get(self, name: str | bytes) -> Any: ...
 
-    def setnx(self, name: str | bytes, value: Any) -> Any: ...
+    def set(self, name: str | bytes, value: Any, *, nx: bool = False, ex: int | None = None) -> Any: ...
     def setex(self, name: str, time: int, value: Any) -> Any: ...
     def lock(self, name: str, timeout: int) -> Any: ...
 
 
 class SegmentPresentationAdapter:
+    """Turn detached owner-checked snapshots into signed response records."""
+
     def present(self, snapshots: Sequence[SegmentReadSnapshot]) -> tuple[SegmentRecord, ...]:
-        records = []
-        for snapshot in snapshots:
-            records.append(
-                SegmentRecord.model_validate(
-                    {
-                        **snapshot.values,
-                        "sign_content": sign_segment_text(
-                            str(snapshot.values["content"]),
-                            allowed_uploads=snapshot.file_access.uploads,
-                            allowed_tools=snapshot.file_access.tools,
-                        ),
-                        "child_chunks": snapshot.child_chunks,
-                        "attachments": format_segment_attachments(snapshot.attachments),
-                        "summary": snapshot.summary,
-                    }
-                )
+        return tuple(
+            SegmentRecord.model_validate(
+                {
+                    **snapshot.values,
+                    "sign_content": sign_segment_text(
+                        str(snapshot.values["content"]),
+                        allowed_uploads=snapshot.file_access.uploads,
+                        allowed_tools=snapshot.file_access.tools,
+                    ),
+                    "child_chunks": snapshot.child_chunks,
+                    "attachments": format_segment_attachments(snapshot.attachments),
+                    "summary": snapshot.summary,
+                }
             )
-        return tuple(records)
+            for snapshot in snapshots
+        )
 
 
 class ModelManagerSegmentGuard:
@@ -65,11 +63,12 @@ class ModelManagerSegmentGuard:
 
 
 class RedisSegmentIndexingState:
-    def __init__(self, redis: RedisSegmentClient) -> None:
+    def __init__(self, redis: RedisSegmentClient, *, locks: KnowledgeIndexingLock) -> None:
         self._redis = redis
+        self._locks = locks
 
     def lock(self, name: str, *, timeout: int):
-        return self._redis.lock(name, timeout=timeout)
+        return self._locks.hold(name, timeout=timeout, blocking_timeout=timeout)
 
     def is_segment_indexing(self, segment_id: str, *, deleting: bool = False) -> bool:
         suffix = "delete_indexing" if deleting else "indexing"
@@ -83,7 +82,12 @@ class RedisSegmentIndexingState:
         return self._redis.get(f"document_{document_id}_indexing") is not None
 
     def set_batch_waiting(self, job_id: str) -> None:
-        self._redis.setnx(f"segment_batch_import_{job_id}", "waiting")
+        self._redis.set(
+            f"segment_batch_import_{job_id}",
+            "waiting",
+            nx=True,
+            ex=_BATCH_WAITING_TTL_SECONDS,
+        )
 
     def get_batch_status(self, job_id: str) -> str | None:
         value = self._redis.get(f"segment_batch_import_{job_id}")

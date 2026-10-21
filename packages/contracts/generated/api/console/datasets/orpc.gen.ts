@@ -4,17 +4,18 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
   zArchivedDocumentImmutableError,
-  zChildChunkDeleteIndexError,
   zChildChunkIndexingError,
   zCompletionRequestError,
   zDatasetAccessDeniedError,
+  zDatasetConcurrentUpdateError,
   zDatasetNameDuplicateError,
-  zDatasetNotInitializedError,
   zDocumentAlreadyFinishedError,
   zDocumentIndexingError,
+  zDocumentSourceConflictError,
   zIndexingEstimateError,
   zInvalidActionError,
   zInvalidMetadataError,
+  zKnowledgeIndexUnavailableError,
   zMaxKeysExceededError,
   zModelCurrentlyNotSupportError,
   zProviderNotInitializeError,
@@ -468,6 +469,7 @@ export const post5 = oc
   .input(z.object({ body: zPostDatasetsInitBody }))
   .output(zPostDatasetsInitResponse)
   .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -859,7 +861,10 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse)
-  .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
+  .errors({
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+  })
 
 export const sync = {
   get: get17,
@@ -1063,7 +1068,7 @@ export const delete3 = oc
   .output(
     zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
-  .errors({ child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError } })
+  .errors({ child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError } })
 
 export const patch7 = oc
   .route({
@@ -1181,7 +1186,10 @@ export const patch9 = oc
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    invalid_action: { status: 400, data: zInvalidActionError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const bySegmentId = {
   delete: delete4,
@@ -1275,7 +1283,10 @@ export const get22 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse)
-  .errors({ archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError } })
+  .errors({
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+  })
 
 export const websiteSync = {
   get: get22,
@@ -1292,6 +1303,7 @@ export const delete6 = oc
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath }))
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+  .errors({ archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError } })
 
 /**
  * Get document details
@@ -1347,6 +1359,7 @@ export const delete7 = oc
     }),
   )
   .output(zDeleteDatasetsByDatasetIdDocumentsResponse)
+  .errors({ archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError } })
 
 /**
  * Get documents in a dataset
@@ -1384,6 +1397,7 @@ export const post15 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsResponse)
   .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1465,8 +1479,7 @@ export const post17 = oc
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
   .errors({
     completion_request_error: { status: 400, data: zCompletionRequestError },
-    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
-    dataset_not_initialized: { status: 400, data: zDatasetNotInitializedError },
+    knowledge_index_unavailable: { status: 503, data: zKnowledgeIndexUnavailableError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1593,7 +1606,10 @@ export const get28 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdNotionSyncPath }))
   .output(zGetDatasetsByDatasetIdNotionSyncResponse)
-  .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
+  .errors({
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+  })
 
 export const sync2 = {
   get: get28,
@@ -1685,6 +1701,7 @@ export const post20 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdRetryResponse)
+  .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
 export const retry = {
   post: post20,
@@ -1750,6 +1767,7 @@ export const patch11 = oc
   })
   .input(z.object({ body: zPatchDatasetsByDatasetIdBody, params: zPatchDatasetsByDatasetIdPath }))
   .output(zPatchDatasetsByDatasetIdResponse)
+  .errors({ dataset_concurrent_update: { status: 409, data: zDatasetConcurrentUpdateError } })
 
 export const byDatasetId = {
   delete: delete9,

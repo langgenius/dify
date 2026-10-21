@@ -104,7 +104,11 @@ def build_rbac_domain(sessions: sessionmaker[Session], monkeypatch: pytest.Monke
             workspaces=workspaces,
             workspace_members=members,
             apps=ConsoleAppRepository(session_factory=sessions),
-            datasets=SQLAlchemyDatasetRepository(session_factory=sessions),
+            datasets=SQLAlchemyDatasetRepository(
+                revoke_keys_after_commit=lambda _session, _tokens: None,
+                session_factory=sessions,
+                wake_after_commit=lambda _session: None,
+            ),
         ),
         transport=transport,
         tasks=tasks,

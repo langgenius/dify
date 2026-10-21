@@ -1,314 +1,710 @@
-"""SQLite-backed resilience tests for ``clean_document_task``.
+"""Durable cleanup tests for deleted knowledge documents."""
 
-The task must continue PostgreSQL cleanup when vector cleanup fails. Each test
-starts from the production incident shape: the caller has already deleted the
-``Document`` row while its segments and metadata bindings remain.
-"""
-
-import uuid
-from unittest.mock import patch
+import json
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Protocol, cast
+from uuid import uuid4
 
 import pytest
+from celery.exceptions import Reject
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-import tasks.clean_document_task as clean_document_task_module
+import tasks.clean_document_task as task_module
+import tasks.knowledge_task_outbox_task as outbox_task_module
+from extensions.storage.storage_type import StorageType
 from models.dataset import (
+    ChildChunk,
     Dataset,
     DatasetMetadataBinding,
     Document,
     DocumentSegment,
+    DocumentSegmentSummary,
     SegmentAttachmentBinding,
 )
-from models.enums import DataSourceType
-from models.model import UploadFile
+from models.enums import CreatorUserRole, DataSourceType, IndexingStatus, SegmentStatus
+from models.knowledge_task import KnowledgeTaskOutbox
+from models.model import KnowledgeUploadFileReference, UploadFile
+from repositories.knowledge.upload_file_repository import (
+    build_document_cleanup_manifest,
+    replace_document_upload_file_references,
+    replace_segment_image_upload_file_references,
+)
+from services.knowledge.task_outbox.contracts import (
+    KnowledgeTaskDeliveryHandledError,
+    KnowledgeTaskKind,
+    KnowledgeTaskRequeuedError,
+)
+from tasks.batch_clean_document_task import batch_clean_document_task
 from tasks.clean_document_task import clean_document_task
+from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_document
 
 SQLITE_MODELS = (
     Dataset,
     Document,
     DocumentSegment,
+    ChildChunk,
+    DocumentSegmentSummary,
     SegmentAttachmentBinding,
     UploadFile,
+    KnowledgeUploadFileReference,
     DatasetMetadataBinding,
+    KnowledgeTaskOutbox,
 )
 
 pytestmark = pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
 
 
-@pytest.fixture
-def document_id() -> str:
-    return str(uuid.uuid4())
+@pytest.fixture(autouse=True)
+def _enable_physical_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
 
 
-@pytest.fixture
-def dataset_id() -> str:
-    return str(uuid.uuid4())
+class CleanupTaskConfig(Protocol):
+    dont_autoretry_for: tuple[type[Exception], ...]
 
 
-@pytest.fixture
-def tenant_id() -> str:
-    return str(uuid.uuid4())
+@dataclass
+class RecordingStorage:
+    failures_remaining: int = 0
+    deleted_keys: list[str] = field(default_factory=list)
+
+    def delete(self, key: str) -> None:
+        self.deleted_keys.append(key)
+        if self.failures_remaining:
+            self.failures_remaining -= 1
+            raise RuntimeError("storage unavailable")
 
 
-@pytest.fixture
-def bind_task_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    """Bind every short-lived task transaction to the isolated SQLite engine."""
-    engine = sqlite_session.get_bind()
-    monkeypatch.setattr(
-        clean_document_task_module.session_factory,
-        "create_session",
-        lambda: Session(engine, expire_on_commit=False),
-    )
+@dataclass
+class PartialFailureStorage:
+    existing_keys: set[str]
+    transient_failure_key: str
+    attempts: list[str] = field(default_factory=list)
+    failed_once: bool = False
+
+    def delete(self, key: str) -> None:
+        self.attempts.append(key)
+        if key not in self.existing_keys:
+            raise FileNotFoundError(key)
+        if key == self.transient_failure_key and not self.failed_once:
+            self.failed_once = True
+            raise RuntimeError("storage unavailable")
+        self.existing_keys.remove(key)
 
 
-@pytest.fixture
-def mock_storage():
-    with patch("tasks.clean_document_task.storage", autospec=True) as mock:
-        mock.delete.return_value = None
-        yield mock
-
-
-@pytest.fixture
-def mock_index_cleanup(tenant_id: str):
-    """Keep task resilience tests independent of the external index backend."""
-    with patch("tasks.clean_document_task.clean_document_indexes", return_value=tenant_id) as cleanup:
-        yield cleanup
-
-
-def _document(*, document_id: str, dataset_id: str, tenant_id: str, created_by: str) -> Document:
-    return make_document(
-        document_id=document_id,
+def _upload_file(*, tenant_id: str, created_by: str, key: str) -> UploadFile:
+    return UploadFile(
         tenant_id=tenant_id,
-        dataset_id=dataset_id,
-        name=f"{document_id}.txt",
+        storage_type=StorageType.LOCAL,
+        key=key,
+        name=key.rsplit("/", 1)[-1],
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
         created_by=created_by,
+        created_at=datetime.now(UTC),
+        used=True,
     )
 
 
-def _segment(*, segment_id: str, document_id: str, dataset_id: str, tenant_id: str, created_by: str) -> DocumentSegment:
-    segment = DocumentSegment(
+def _document(*, tenant_id: str, dataset_id: str, created_by: str, position: int = 1) -> Document:
+    return make_document(
+        document_id=str(uuid4()),
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        name=f"document-{position}.txt",
+        created_by=created_by,
+        position=position,
+    )
+
+
+def _cleanup_intent(
+    session: Session,
+    *,
+    tenant_id: str,
+    dataset_id: str,
+    document_id: str,
+) -> KnowledgeTaskOutbox:
+    intent = KnowledgeTaskOutbox(
         tenant_id=tenant_id,
         dataset_id=dataset_id,
         document_id=document_id,
-        position=1,
+        task_kind=KnowledgeTaskKind.DOCUMENT_CLEANUP,
+        payload={},
+        status="dispatched",
+    )
+    session.add(intent)
+    session.commit()
+    return intent
+
+
+def _segment(*, document: Document, created_by: str, position: int = 1) -> DocumentSegment:
+    return DocumentSegment(
+        tenant_id=document.tenant_id,
+        dataset_id=document.dataset_id,
+        document_id=document.id,
+        position=position,
         content="segment content",
         word_count=2,
         tokens=2,
         created_by=created_by,
-        index_node_id=f"node-{segment_id}",
+        index_node_id=f"node-{document.id}-{position}",
     )
-    segment.id = segment_id
-    return segment
 
 
-def _persist_deleted_document_state(
-    session: Session,
-    *,
-    document_id: str,
-    dataset_id: str,
-    tenant_id: str,
-    target_segment_ids: list[str],
-) -> tuple[str, str]:
-    """Persist target children after deleting their document, plus scoped control rows."""
-    created_by = str(uuid.uuid4())
-    other_document_id = str(uuid.uuid4())
-    survivor_segment_id = str(uuid.uuid4())
+@pytest.fixture
+def _bound_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    engine = sqlite_session.get_bind()
+    monkeypatch.setattr(
+        task_module.session_factory,
+        "create_session",
+        lambda: Session(engine, expire_on_commit=False),
+    )
+    monkeypatch.setattr("services.knowledge.task_outbox.gateway.wake_knowledge_task_dispatcher", lambda: True)
+
+
+@pytest.mark.usefixtures("_bound_sessions")
+def test_uses_persisted_file_snapshot_after_dataset_was_deleted(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    created_by = str(uuid4())
     dataset = Dataset(
         id=dataset_id,
         tenant_id=tenant_id,
-        name="Cleanup dataset",
+        name="Deleted dataset",
         data_source_type=DataSourceType.UPLOAD_FILE,
         created_by=created_by,
     )
-    target_document = _document(
+    document = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by)
+    segment = _segment(document=document, created_by=created_by)
+    upload = _upload_file(tenant_id=tenant_id, created_by=created_by, key="documents/source.txt")
+    binding = DatasetMetadataBinding(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        metadata_id=str(uuid4()),
+        document_id=document.id,
+        created_by=created_by,
+    )
+    sqlite_session.add_all([dataset, document, segment, upload, binding])
+    sqlite_session.commit()
+    manifest = build_document_cleanup_manifest(
+        sqlite_session,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_ids=(document.id,),
+        document_file_ids=(upload.id,),
+    )
+    document_id = document.id
+    segment_id = segment.id
+    upload_id = upload.id
+    sqlite_session.delete(document)
+    sqlite_session.delete(dataset)
+    sqlite_session.commit()
+
+    recorder = RecordingStorage()
+    monkeypatch.setattr(task_module, "storage", recorder)
+
+    clean_document_task(
         document_id=document_id,
         dataset_id=dataset_id,
+        doc_form="text_model",
+        file_id=upload_id,
         tenant_id=tenant_id,
-        created_by=created_by,
+        cleanup_manifest=manifest.to_payload(),
     )
-    other_document = _document(
-        document_id=other_document_id,
-        dataset_id=dataset_id,
-        tenant_id=tenant_id,
-        created_by=created_by,
-    )
-    segments = [
-        _segment(
-            segment_id=segment_id,
-            document_id=document_id,
-            dataset_id=dataset_id,
-            tenant_id=tenant_id,
-            created_by=created_by,
-        )
-        for segment_id in target_segment_ids
-    ]
-    segments.append(
-        _segment(
-            segment_id=survivor_segment_id,
-            document_id=other_document_id,
-            dataset_id=dataset_id,
-            tenant_id=tenant_id,
-            created_by=created_by,
-        )
-    )
-    metadata_bindings = [
-        DatasetMetadataBinding(
-            tenant_id=tenant_id,
-            dataset_id=dataset_id,
-            metadata_id=str(uuid.uuid4()),
-            document_id=current_document_id,
-            created_by=created_by,
-        )
-        for current_document_id in (document_id, other_document_id)
-    ]
 
-    session.add_all([dataset, target_document, other_document, *segments, *metadata_bindings])
-    session.commit()
-    session.delete(target_document)
-    session.commit()
-    return other_document_id, survivor_segment_id
+    sqlite_session.expire_all()
+    assert sqlite_session.get(DocumentSegment, segment_id) is None
+    assert sqlite_session.get(UploadFile, upload_id) is None
+    assert sqlite_session.scalars(select(DatasetMetadataBinding)).all() == []
+    assert recorder.deleted_keys == ["documents/source.txt"]
 
 
-def _assert_relational_cleanup(
-    session: Session,
-    *,
-    document_id: str,
-    other_document_id: str,
-    survivor_segment_id: str,
+@pytest.mark.usefixtures("_bound_sessions")
+@pytest.mark.parametrize("batch", [False, True])
+def test_detaches_one_binding_without_deleting_a_shared_attachment(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    batch: bool,
 ) -> None:
-    session.expire_all()
-    assert session.get(Document, document_id) is None
-    remaining_segments = session.scalars(select(DocumentSegment)).all()
-    assert [(segment.id, segment.document_id) for segment in remaining_segments] == [
-        (survivor_segment_id, other_document_id)
-    ]
-    remaining_binding_document_ids = set(session.scalars(select(DatasetMetadataBinding.document_id)).all())
-    assert remaining_binding_document_ids == {other_document_id}
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    created_by = str(uuid4())
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Shared attachment dataset",
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        created_by=created_by,
+        indexing_technique="high_quality",
+        is_multimodal=True,
+    )
+    target = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by)
+    survivor = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by, position=2)
+    target_segment = _segment(document=target, created_by=created_by)
+    survivor_segment = _segment(document=survivor, created_by=created_by)
+    target.indexing_status = IndexingStatus.COMPLETED
+    survivor.indexing_status = IndexingStatus.COMPLETED
+    target_segment.status = SegmentStatus.COMPLETED
+    survivor_segment.status = SegmentStatus.COMPLETED
+    attachment = _upload_file(tenant_id=tenant_id, created_by=created_by, key="attachments/shared.png")
+    target_binding = SegmentAttachmentBinding(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=target.id,
+        segment_id=target_segment.id,
+        attachment_id=attachment.id,
+    )
+    survivor_binding = SegmentAttachmentBinding(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=survivor.id,
+        segment_id=survivor_segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add_all(
+        [dataset, target, survivor, target_segment, survivor_segment, attachment, target_binding, survivor_binding]
+    )
+    sqlite_session.commit()
+    manifest = build_document_cleanup_manifest(
+        sqlite_session,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_ids=(target.id,),
+        document_file_ids=(),
+    )
+    target_id = target.id
+    target_binding_id = target_binding.id
+    survivor_binding_id = survivor_binding.id
+    attachment_id = attachment.id
+    sqlite_session.delete(target)
+    sqlite_session.commit()
+
+    recorder = RecordingStorage()
+    monkeypatch.setattr(task_module, "storage", recorder)
+
+    if batch:
+        batch_clean_document_task([target_id], dataset_id, "text_model", [], tenant_id, manifest.to_payload())
+    else:
+        clean_document_task(target_id, dataset_id, "text_model", None, tenant_id, manifest.to_payload())
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, target_binding_id) is None
+    assert sqlite_session.get(SegmentAttachmentBinding, survivor_binding_id) is not None
+    assert sqlite_session.get(UploadFile, attachment_id) is not None
+    assert recorder.deleted_keys == []
+    index_cleanup = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DELETION_INDEX_CLEANUP)
+    )
+    assert index_cleanup is not None
+    vector_node_ids = index_cleanup.payload["vector_node_ids"]
+    assert isinstance(vector_node_ids, list)
+    assert attachment_id not in vector_node_ids
+    assert index_cleanup.payload["attachment_node_ids"] == []
 
 
-class TestVectorCleanupResilience:
-    """Vector/index failures must not abort relational cleanup."""
-
-    def test_billing_failure_during_vector_cleanup_does_not_skip_pg_cleanup(
-        self,
-        document_id: str,
-        dataset_id: str,
-        tenant_id: str,
-        sqlite_session: Session,
-        bind_task_sessions: None,
-        mock_storage,
-        mock_index_cleanup,
-    ) -> None:
-        """A transient billing failure leaves only the unrelated document's rows."""
-        other_document_id, survivor_segment_id = _persist_deleted_document_state(
+@pytest.mark.usefixtures("_bound_sessions")
+def test_preserves_upload_file_referenced_by_another_document(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    created_by = str(uuid4())
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Shared source dataset",
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        created_by=created_by,
+    )
+    target = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by)
+    survivor = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by, position=2)
+    segment = _segment(document=target, created_by=created_by)
+    upload = _upload_file(tenant_id=tenant_id, created_by=created_by, key="documents/shared.txt")
+    target.data_source_info = json.dumps({"upload_file_id": upload.id})
+    survivor.data_source_info = json.dumps({"upload_file_id": upload.id})
+    sqlite_session.add_all([dataset, target, survivor, segment, upload])
+    sqlite_session.flush()
+    for document in (target, survivor):
+        replace_document_upload_file_references(
             sqlite_session,
-            document_id=document_id,
-            dataset_id=dataset_id,
             tenant_id=tenant_id,
-            target_segment_ids=["seg-1", "seg-2"],
-        )
-        mock_index_cleanup.side_effect = ValueError(
-            "Unable to retrieve billing information. Please try again later or contact support."
-        )
-
-        # Act — must not raise out of the task even though clean() raises.
-        with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh:
-            clean_document_task(
-                document_id=document_id,
-                dataset_id=dataset_id,
-                doc_form="paragraph",
-                file_id=None,
-            )
-
-        mock_index_cleanup.assert_called_once()
-        _assert_relational_cleanup(
-            sqlite_session,
-            document_id=document_id,
-            other_document_id=other_document_id,
-            survivor_segment_id=survivor_segment_id,
-        )
-        schedule_refresh.assert_not_called()
-
-    def test_vector_cleanup_success_path_remains_unaffected(
-        self,
-        document_id: str,
-        dataset_id: str,
-        tenant_id: str,
-        sqlite_session: Session,
-        bind_task_sessions: None,
-        mock_storage,
-        mock_index_cleanup,
-    ) -> None:
-        """The happy path calls the index boundary and completes scoped cleanup."""
-        other_document_id, survivor_segment_id = _persist_deleted_document_state(
-            sqlite_session,
-            document_id=document_id,
             dataset_id=dataset_id,
+            document_id=document.id,
+            data_source_type=document.data_source_type,
+            data_source_info=document.data_source_info_dict,
+        )
+    sqlite_session.commit()
+    manifest = build_document_cleanup_manifest(
+        sqlite_session,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_ids=(target.id,),
+        document_file_ids=(upload.id,),
+    )
+    target_id = target.id
+    upload_id = upload.id
+    sqlite_session.delete(target)
+    sqlite_session.commit()
+
+    recorder = RecordingStorage()
+    monkeypatch.setattr(task_module, "storage", recorder)
+
+    clean_document_task(
+        target_id,
+        dataset_id,
+        "text_model",
+        upload_id,
+        tenant_id,
+        manifest.to_payload(),
+    )
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, upload_id) is not None
+    assert recorder.deleted_keys == []
+
+
+@pytest.mark.usefixtures("_bound_sessions")
+@pytest.mark.parametrize("batch", [False, True])
+def test_preserves_image_file_referenced_by_another_segment(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    batch: bool,
+) -> None:
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    created_by = str(uuid4())
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Shared image dataset",
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        created_by=created_by,
+        indexing_technique="high_quality",
+        index_struct='{"type":"pgvector"}',
+    )
+    target = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by)
+    survivor = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by, position=2)
+    image = _upload_file(tenant_id=tenant_id, created_by=created_by, key="images/shared.png")
+    image_markdown = f"![image](https://example.test/files/{image.id}/image-preview)"
+    target_segment = _segment(document=target, created_by=created_by)
+    target_segment.content = image_markdown
+    survivor_segment = _segment(document=survivor, created_by=created_by)
+    survivor_segment.content = image_markdown
+    target.indexing_status = IndexingStatus.COMPLETED
+    survivor.indexing_status = IndexingStatus.COMPLETED
+    target_segment.enabled = True
+    target_segment.status = SegmentStatus.COMPLETED
+    survivor_segment.enabled = True
+    survivor_segment.status = SegmentStatus.COMPLETED
+    sqlite_session.add_all([dataset, target, survivor, target_segment, survivor_segment, image])
+    sqlite_session.flush()
+    for document, segment in ((target, target_segment), (survivor, survivor_segment)):
+        replace_segment_image_upload_file_references(
+            sqlite_session,
             tenant_id=tenant_id,
-            target_segment_ids=["seg-1"],
-        )
-
-        with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh:
-            clean_document_task(
-                document_id=document_id,
-                dataset_id=dataset_id,
-                doc_form="paragraph",
-                file_id=None,
-            )
-
-        mock_index_cleanup.assert_called_once()
-        _, kwargs = mock_index_cleanup.call_args
-        new_session = kwargs.pop("new_session")
-        with new_session() as cleanup_session:
-            assert cleanup_session.get_bind() is sqlite_session.get_bind()
-        assert kwargs == {
-            "dataset_id": dataset_id,
-            "document_ids": [document_id],
-            "doc_form": "paragraph",
-        }
-        _assert_relational_cleanup(
-            sqlite_session,
-            document_id=document_id,
-            other_document_id=other_document_id,
-            survivor_segment_id=survivor_segment_id,
-        )
-        schedule_refresh.assert_called_once_with(tenant_id)
-
-    def test_no_index_state_does_not_refresh_billing(
-        self,
-        document_id: str,
-        dataset_id: str,
-        tenant_id: str,
-        sqlite_session: Session,
-        bind_task_sessions: None,
-        mock_storage,
-        mock_index_cleanup,
-    ) -> None:
-        """Cleanup checks for orphan summaries even when no segments remain."""
-        mock_index_cleanup.return_value = None
-        other_document_id, survivor_segment_id = _persist_deleted_document_state(
-            sqlite_session,
-            document_id=document_id,
             dataset_id=dataset_id,
-            tenant_id=tenant_id,
-            target_segment_ids=[],
+            document_id=document.id,
+            segment_id=segment.id,
+            content=segment.content,
+        )
+    sqlite_session.commit()
+    manifest = build_document_cleanup_manifest(
+        sqlite_session,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_ids=(target.id,),
+        document_file_ids=(),
+    )
+    target_id = target.id
+    survivor_segment_id = survivor_segment.id
+    image_id = image.id
+    sqlite_session.delete(target)
+    sqlite_session.commit()
+
+    recorder = RecordingStorage()
+    monkeypatch.setattr(task_module, "storage", recorder)
+
+    if batch:
+        batch_clean_document_task([target_id], dataset_id, "text_model", [], tenant_id, manifest.to_payload())
+    else:
+        clean_document_task(
+            target_id,
+            dataset_id,
+            "text_model",
+            None,
+            tenant_id,
+            manifest.to_payload(),
         )
 
-        with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh:
-            clean_document_task(
-                document_id=document_id,
-                dataset_id=dataset_id,
-                doc_form="paragraph",
-                file_id=None,
-            )
+    sqlite_session.expire_all()
+    assert sqlite_session.get(DocumentSegment, survivor_segment_id) is not None
+    assert sqlite_session.get(UploadFile, image_id) is not None
+    assert recorder.deleted_keys == []
+    index_cleanup = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DELETION_INDEX_CLEANUP)
+    )
+    assert index_cleanup is not None
+    vector_node_ids = index_cleanup.payload["vector_node_ids"]
+    assert isinstance(vector_node_ids, list)
+    assert image_id not in vector_node_ids
+    assert index_cleanup.payload["inline_image_node_ids"] == []
 
-        mock_index_cleanup.assert_called_once()
-        _assert_relational_cleanup(
-            sqlite_session,
-            document_id=document_id,
-            other_document_id=other_document_id,
-            survivor_segment_id=survivor_segment_id,
+
+@pytest.mark.usefixtures("_bound_sessions")
+def test_storage_failure_keeps_file_row_and_manifest_can_be_replayed(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    created_by = str(uuid4())
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Retry dataset",
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        created_by=created_by,
+    )
+    document = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by)
+    segment = _segment(document=document, created_by=created_by)
+    attachment = _upload_file(tenant_id=tenant_id, created_by=created_by, key="attachments/retry.png")
+    binding = SegmentAttachmentBinding(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document.id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add_all([dataset, document, segment, attachment, binding])
+    sqlite_session.commit()
+    manifest = build_document_cleanup_manifest(
+        sqlite_session,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_ids=(document.id,),
+        document_file_ids=(),
+    )
+    document_id = document.id
+    segment_id = segment.id
+    binding_id = binding.id
+    attachment_id = attachment.id
+    sqlite_session.delete(document)
+    sqlite_session.commit()
+
+    recorder = RecordingStorage(failures_remaining=1)
+    monkeypatch.setattr(task_module, "storage", recorder)
+
+    with pytest.raises(RuntimeError, match="storage unavailable"):
+        clean_document_task(
+            document_id,
+            dataset_id,
+            "text_model",
+            None,
+            tenant_id,
+            manifest.to_payload(),
         )
-        schedule_refresh.assert_not_called()
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(DocumentSegment, segment_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is not None
+
+    clean_document_task(
+        document_id,
+        dataset_id,
+        "text_model",
+        None,
+        tenant_id,
+        manifest.to_payload(),
+    )
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, attachment_id) is None
+    assert recorder.deleted_keys == ["attachments/retry.png", "attachments/retry.png"]
+
+
+@pytest.mark.usefixtures("_bound_sessions")
+def test_replay_treats_already_deleted_storage_key_as_success(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    created_by = str(uuid4())
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Partial storage cleanup dataset",
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        created_by=created_by,
+    )
+    document = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by)
+    source = _upload_file(tenant_id=tenant_id, created_by=created_by, key="documents/source.txt")
+    image = _upload_file(tenant_id=tenant_id, created_by=created_by, key="images/retry.png")
+    segment = _segment(document=document, created_by=created_by)
+    segment.content = f"![image](https://example.test/files/{image.id}/image-preview)"
+    sqlite_session.add_all([dataset, document, segment, source, image])
+    sqlite_session.commit()
+    manifest = build_document_cleanup_manifest(
+        sqlite_session,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_ids=(document.id,),
+        document_file_ids=(source.id,),
+    )
+    document_id = document.id
+    source_id = source.id
+    image_id = image.id
+    source_key = source.key
+    image_key = image.key
+    sqlite_session.delete(document)
+    sqlite_session.commit()
+
+    recorder = PartialFailureStorage(
+        existing_keys={source_key, image_key},
+        transient_failure_key=image_key,
+    )
+    monkeypatch.setattr(task_module, "storage", recorder)
+
+    with pytest.raises(RuntimeError, match="storage unavailable"):
+        clean_document_task(
+            document_id,
+            dataset_id,
+            "text_model",
+            source_id,
+            tenant_id,
+            manifest.to_payload(),
+        )
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, source_id) is not None
+    assert sqlite_session.get(UploadFile, image_id) is not None
+
+    clean_document_task(
+        document_id,
+        dataset_id,
+        "text_model",
+        source_id,
+        tenant_id,
+        manifest.to_payload(),
+    )
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, source_id) is None
+    assert sqlite_session.get(UploadFile, image_id) is None
+    assert recorder.existing_keys == set()
+    assert recorder.attempts == [source_key, image_key, source_key, image_key]
+
+
+@pytest.mark.usefixtures("_bound_sessions")
+def test_index_cleanup_is_persisted_without_blocking_relational_cleanup(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    created_by = str(uuid4())
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Index retry dataset",
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        created_by=created_by,
+    )
+    document = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by)
+    segment = _segment(document=document, created_by=created_by)
+    sqlite_session.add_all([dataset, document, segment])
+    sqlite_session.commit()
+    segment_id = segment.id
+    document_id = document.id
+    sqlite_session.delete(document)
+    sqlite_session.commit()
+
+    recorder = RecordingStorage()
+    monkeypatch.setattr(task_module, "storage", recorder)
+    clean_document_task(document_id, dataset_id, "text_model", None, tenant_id, {})
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(DocumentSegment, segment_id) is None
+    assert recorder.deleted_keys == []
+    index_cleanup = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DELETION_INDEX_CLEANUP)
+    )
+    assert index_cleanup is not None
+    assert index_cleanup.payload["vector_node_ids"] == [f"node-{document_id}-1"]
+
+
+@pytest.mark.usefixtures("_bound_sessions")
+def test_outbox_backed_document_cleanup_records_completion_and_failure(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    completed_document_id = str(uuid4())
+    failed_document_id = str(uuid4())
+    completed = _cleanup_intent(
+        sqlite_session,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=completed_document_id,
+    )
+    failed = _cleanup_intent(
+        sqlite_session,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=failed_document_id,
+    )
+    completed_intent_id = completed.id
+    failed_intent_id = failed.id
+
+    def clean_documents(*, document_ids: tuple[str, ...], **_: object) -> None:
+        if failed_document_id in document_ids:
+            raise RuntimeError("vector unavailable")
+
+    monkeypatch.setattr(task_module, "_clean_documents", clean_documents)
+    monkeypatch.setattr(outbox_task_module, "wake_knowledge_task_dispatcher", lambda: True)
+
+    clean_document_task(
+        completed_document_id,
+        dataset_id,
+        "text_model",
+        None,
+        tenant_id,
+        {},
+        completed_intent_id,
+    )
+    with pytest.raises(KnowledgeTaskRequeuedError, match=failed_intent_id):
+        clean_document_task(
+            failed_document_id,
+            dataset_id,
+            "text_model",
+            None,
+            tenant_id,
+            {},
+            failed_intent_id,
+        )
+
+    sqlite_session.expire_all()
+    completed = sqlite_session.get(KnowledgeTaskOutbox, completed_intent_id)
+    failed = sqlite_session.get(KnowledgeTaskOutbox, failed_intent_id)
+    assert completed is not None
+    assert completed.status == "completed"
+    assert completed.last_error is None
+    assert failed is not None
+    assert failed.status == "pending"
+    assert failed.last_error == "vector unavailable"
+    assert failed.dispatched_at is None
+    single = cast(CleanupTaskConfig, clean_document_task)
+    batch = cast(CleanupTaskConfig, batch_clean_document_task)
+    assert single.dont_autoretry_for == (KnowledgeTaskDeliveryHandledError, Reject)
+    assert batch.dont_autoretry_for == (KnowledgeTaskDeliveryHandledError, Reject)

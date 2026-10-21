@@ -9,15 +9,14 @@ from sqlalchemy import delete, select
 from core.db.session_factory import session_factory
 from models.agent import (
     Agent,
-    AgentConfigDraft,
     AgentConfigRevision,
-    AgentConfigSnapshot,
     AgentDebugConversation,
     AgentHomeSnapshot,
     AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspaceBinding,
 )
+from repositories.knowledge.upload_file_repository import detach_agent_config_versions_and_claim_uploads
 
 
 class AgentDeletionInvariantError(RuntimeError):
@@ -82,11 +81,14 @@ class AgentDeletionService:
             if active_home_id is not None:
                 raise AgentDeletionInvariantError(f"Agent aggregate still has ACTIVE Home Snapshot {active_home_id}")
 
+            detach_agent_config_versions_and_claim_uploads(
+                session,
+                tenant_id=tenant_id,
+                agent_ids=stored_ids,
+            )
             for model in (
                 AgentDebugConversation,
                 AgentConfigRevision,
-                AgentConfigDraft,
-                AgentConfigSnapshot,
                 AgentHomeSnapshot,
                 AgentWorkspaceBinding,
             ):
@@ -96,7 +98,8 @@ class AgentDeletionService:
                         model.agent_id.in_(stored_ids),
                     )
                 )
-            session.execute(delete(Agent).where(Agent.tenant_id == tenant_id, Agent.id.in_(stored_ids)))
+            for agent in sorted(agents, key=lambda item: (item.icon or "", item.id)):
+                session.delete(agent)
             session.commit()
 
 

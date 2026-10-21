@@ -6,8 +6,11 @@ from typing import Protocol
 from machinery.context import RequestContext
 from services.auth.api_key_contracts import ApiKeyCache, ApiKeyRecord, ApiKeyResourceNotFoundError
 from services.errors.base import NoPermissionError
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.dataset_access import DatasetAccess
+from services.knowledge.dataset_access import (
+    DatasetAccess,
+    DatasetAccessDeniedError,
+    DatasetNotFoundError,
+)
 
 
 class DatasetApiKeyStore(Protocol):

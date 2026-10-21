@@ -1,163 +1,288 @@
 import logging
 import time
+from collections.abc import Callable, Mapping, Sequence
 
 import click
 from celery import shared_task
+from celery.exceptions import Reject
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
-from models.model import UploadFile
-from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
-from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    DatasetAutoDisableLog,
+    DatasetMetadataBinding,
+    Document,
+    DocumentPipelineExecutionLog,
+    DocumentSegment,
+    DocumentSegmentSummary,
+)
+from repositories.knowledge.upload_file_repository import (
+    build_document_cleanup_manifest,
+    claim_orphan_upload_files,
+    delete_orphan_upload_files,
+    detach_orphan_segment_attachments,
+    recheck_claimed_orphan_upload_files,
+    remove_document_upload_file_references,
+)
+from services.knowledge.indexing.adapters.cleanup import (
+    build_deletion_index_cleanup,
+    filter_file_vector_ids_without_active_references,
+)
+from services.knowledge.indexing.cleanup import DocumentCleanupManifest, UploadFileCleanup
+from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.task_outbox.contracts import KnowledgeTaskDeliveryHandledError
+from tasks.clean_upload_files_task import (
+    defer_started_upload_file_cleanup_if_disabled,
+    defer_upload_file_cleanup_if_disabled,
+)
+from tasks.cleanup_knowledge_index_task import enqueue_deletion_index_cleanup
+from tasks.knowledge_task_outbox_task import knowledge_task_execution
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset")
+def _unique_files(files: Sequence[UploadFileCleanup]) -> tuple[UploadFileCleanup, ...]:
+    return tuple({file.id: file for file in files}.values())
+
+
+def _resolve_tenant_id(dataset_id: str, tenant_id: str | None) -> str:
+    if tenant_id:
+        return tenant_id
+    with session_factory.create_session() as session:
+        resolved = session.scalar(select(Dataset.tenant_id).where(Dataset.id == dataset_id).limit(1))
+    if not resolved:
+        raise ValueError("tenant_id is required after the dataset has been deleted")
+    return resolved
+
+
+def _resolve_manifest(
+    *,
+    tenant_id: str,
+    dataset_id: str,
+    document_ids: Sequence[str],
+    file_ids: Sequence[str],
+    cleanup_manifest: Mapping[str, object] | None,
+) -> DocumentCleanupManifest:
+    if cleanup_manifest is not None:
+        return DocumentCleanupManifest.from_payload(cleanup_manifest)
+    with session_factory.create_session() as session:
+        return build_document_cleanup_manifest(
+            session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=document_ids,
+            document_file_ids=file_ids,
+        )
+
+
+def _clean_documents(
+    *,
+    document_ids: Sequence[str],
+    dataset_id: str,
+    doc_form: str,
+    file_ids: Sequence[str],
+    tenant_id: str | None,
+    cleanup_manifest: Mapping[str, object] | None,
+    source_outbox_id: str | None = None,
+    assert_owned: Callable[[], None] = lambda: None,
+    assert_cleanup_allowed: Callable[[], None] = lambda: None,
+) -> None:
+    unique_document_ids = tuple(dict.fromkeys(document_ids))
+    if not unique_document_ids:
+        return
+    if not doc_form:
+        raise ValueError("doc_form is required")
+
+    resolved_tenant_id = _resolve_tenant_id(dataset_id, tenant_id)
+    manifest = _resolve_manifest(
+        tenant_id=resolved_tenant_id,
+        dataset_id=dataset_id,
+        document_ids=unique_document_ids,
+        file_ids=file_ids,
+        cleanup_manifest=cleanup_manifest,
+    )
+
+    # Persist external index cleanup first, then let relational and file cleanup
+    # finish independently of provider availability.
+    with session_factory.create_session() as session, session.begin():
+        dataset = session.scalar(
+            select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == resolved_tenant_id).limit(1)
+        )
+        if dataset is not None:
+            segment_ids = tuple(
+                session.scalars(
+                    select(DocumentSegment.id).where(
+                        DocumentSegment.tenant_id == resolved_tenant_id,
+                        DocumentSegment.dataset_id == dataset_id,
+                        DocumentSegment.document_id.in_(unique_document_ids),
+                    )
+                ).all()
+            )
+            inline_image_node_ids, attachment_node_ids = filter_file_vector_ids_without_active_references(
+                session,
+                DatasetRef(resolved_tenant_id, dataset_id),
+                inline_image_ids=tuple(file.id for file in manifest.image_files),
+                attachment_ids=tuple(attachment.attachment_id for attachment in manifest.segment_attachments),
+                excluding_segment_ids=segment_ids,
+            )
+            index_cleanup = build_deletion_index_cleanup(
+                session,
+                dataset=dataset,
+                delete_all=False,
+                segment_ids=segment_ids,
+                inline_image_node_ids=inline_image_node_ids,
+                attachment_node_ids=attachment_node_ids,
+                refresh_billing=True,
+            )
+            enqueue_deletion_index_cleanup(
+                session,
+                cleanup=index_cleanup,
+                source_outbox_id=source_outbox_id,
+            )
+
+    # Remove bindings before deciding whether an attachment is globally
+    # orphaned. These rows are independent of the Dataset row, so the persisted
+    # tenant snapshot remains sufficient after a concurrent dataset deletion.
+    assert_owned()
+    with session_factory.create_session() as session, session.begin():
+        orphan_attachments = detach_orphan_segment_attachments(
+            session,
+            tenant_id=resolved_tenant_id,
+            attachments=manifest.segment_attachments,
+        )
+        remove_document_upload_file_references(
+            session,
+            tenant_id=resolved_tenant_id,
+            dataset_id=dataset_id,
+            document_ids=unique_document_ids,
+        )
+        session.execute(
+            delete(DatasetMetadataBinding).where(
+                DatasetMetadataBinding.tenant_id == resolved_tenant_id,
+                DatasetMetadataBinding.dataset_id == dataset_id,
+                DatasetMetadataBinding.document_id.in_(unique_document_ids),
+            )
+        )
+        session.execute(
+            delete(DocumentSegmentSummary).where(
+                DocumentSegmentSummary.dataset_id == dataset_id,
+                DocumentSegmentSummary.document_id.in_(unique_document_ids),
+            )
+        )
+        session.execute(
+            delete(ChildChunk).where(
+                ChildChunk.tenant_id == resolved_tenant_id,
+                ChildChunk.dataset_id == dataset_id,
+                ChildChunk.document_id.in_(unique_document_ids),
+            )
+        )
+        session.execute(
+            delete(DocumentSegment).where(
+                DocumentSegment.tenant_id == resolved_tenant_id,
+                DocumentSegment.dataset_id == dataset_id,
+                DocumentSegment.document_id.in_(unique_document_ids),
+            )
+        )
+        session.execute(
+            delete(DocumentPipelineExecutionLog).where(
+                DocumentPipelineExecutionLog.document_id.in_(unique_document_ids),
+            )
+        )
+        session.execute(
+            delete(DatasetAutoDisableLog).where(
+                DatasetAutoDisableLog.tenant_id == resolved_tenant_id,
+                DatasetAutoDisableLog.dataset_id == dataset_id,
+                DatasetAutoDisableLog.document_id.in_(unique_document_ids),
+            )
+        )
+        session.execute(
+            delete(Document).where(
+                Document.tenant_id == resolved_tenant_id,
+                Document.dataset_id == dataset_id,
+                Document.id.in_(unique_document_ids),
+            )
+        )
+        session.flush()
+        files_to_delete = claim_orphan_upload_files(
+            session,
+            tenant_id=resolved_tenant_id,
+            files=_unique_files([*manifest.document_files, *manifest.image_files, *orphan_attachments]),
+        )
+
+    assert_owned()
+    with session_factory.create_session() as session, session.begin():
+        files_to_delete = recheck_claimed_orphan_upload_files(
+            session,
+            tenant_id=resolved_tenant_id,
+            files=files_to_delete,
+        )
+    assert_owned()
+    storage_keys = tuple(dict.fromkeys(file.key for file in files_to_delete if file.key))
+    for storage_key in storage_keys:
+        assert_cleanup_allowed()
+        try:
+            storage.delete(storage_key)
+        except FileNotFoundError:
+            continue
+
+    # Keep UploadFile rows until storage succeeds. If this transaction fails,
+    # retrying storage deletion is idempotent and the manifest still has keys.
+    assert_owned()
+    with session_factory.create_session() as session, session.begin():
+        delete_orphan_upload_files(
+            session,
+            tenant_id=resolved_tenant_id,
+            files=files_to_delete,
+        )
+
+
+@shared_task(
+    queue="dataset",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=5,
+    dont_autoretry_for=(KnowledgeTaskDeliveryHandledError, Reject),
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
 def clean_document_task(
     document_id: str,
     dataset_id: str,
     doc_form: str,
     file_id: str | None,
+    tenant_id: str | None = None,
+    cleanup_manifest: Mapping[str, object] | None = None,
+    outbox_id: str | None = None,
 ) -> None:
-    """
-    Clean document when document deleted.
-    :param document_id: document id
-    :param dataset_id: dataset id
-    :param doc_form: doc_form
-    :param file_id: file id
+    """Clean one deleted document from indexes, relational state, and storage."""
 
-    Usage: clean_document_task.delay(document_id, dataset_id)
-    """
     logger.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
-    total_attachment_files = []
-    vector_cleanup_succeeded = False
-
-    with session_factory.create_session() as session:
-        try:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-
-            if not dataset:
-                raise Exception("Document has no dataset")
-
-            dataset_tenant_id = dataset.tenant_id
-            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
-            # Use JOIN to fetch attachments with bindings in a single query
-            attachments_with_bindings = session.execute(
-                select(SegmentAttachmentBinding, UploadFile)
-                .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
-                .where(
-                    SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
-                    SegmentAttachmentBinding.dataset_id == dataset_id,
-                    SegmentAttachmentBinding.document_id == document_id,
-                )
-            ).all()
-
-            attachment_ids = [attachment_file.id for _, attachment_file in attachments_with_bindings]
-            binding_ids = [binding.id for binding, _ in attachments_with_bindings]
-            total_attachment_files.extend([attachment_file.key for _, attachment_file in attachments_with_bindings])
-
-            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
-            segment_contents = [segment.content for segment in segments]
-        except Exception:
-            logger.exception("Cleaned document when document deleted failed")
+    if defer_upload_file_cleanup_if_disabled(outbox_id):
+        return
+    with knowledge_task_execution(outbox_id) as execution:
+        if execution is None:
             return
-
-    # A retry must also find summaries whose segments were already removed.
-    # Preserve relational cleanup if the external index is temporarily unavailable.
-    try:
-        vector_cleanup_succeeded = (
-            clean_document_indexes(
-                dataset_id=dataset_id,
-                document_ids=[document_id],
-                doc_form=doc_form,
-                new_session=session_factory.create_session,
-            )
-            is not None
+        _clean_documents(
+            document_ids=(document_id,),
+            dataset_id=dataset_id,
+            doc_form=doc_form,
+            file_ids=(file_id,) if file_id else (),
+            tenant_id=tenant_id,
+            cleanup_manifest=cleanup_manifest,
+            source_outbox_id=outbox_id,
+            assert_owned=execution.assert_owned,
+            assert_cleanup_allowed=lambda: defer_started_upload_file_cleanup_if_disabled(
+                execution,
+                outbox_id=outbox_id,
+            ),
         )
-    except Exception:
-        logger.exception(
-            "Failed to clean vector / keyword index in clean_document_task, "
-            "document_id=%s, dataset_id=%s, index_node_ids_count=%d. "
-            "Continuing with PG / storage cleanup; vector orphans can be reaped later.",
-            document_id,
-            dataset_id,
-            len(index_node_ids),
-        )
-
-    total_image_files = []
-    with session_factory.create_session() as session, session.begin():
-        for segment_content in segment_contents:
-            image_upload_file_ids = get_image_upload_file_ids(segment_content)
-            image_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))).all()
-            total_image_files.extend([image_file.key for image_file in image_files])
-            image_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
-            session.execute(image_file_delete_stmt)
-
-    with session_factory.create_session() as session, session.begin():
-        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
-        session.execute(segment_delete_stmt)
-
-    for image_file_key in total_image_files:
-        try:
-            storage.delete(image_file_key)
-        except Exception:
-            logger.exception(
-                "Delete image_files failed when storage deleted, \
-                                          image_upload_file_is: %s",
-                image_file_key,
-            )
-
-    with session_factory.create_session() as session, session.begin():
-        if file_id:
-            file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
-            if file:
-                try:
-                    storage.delete(file.key)
-                except Exception:
-                    logger.exception("Delete file failed when document deleted, file_id: %s", file_id)
-                session.delete(file)
-
-    with session_factory.create_session() as session, session.begin():
-        # delete segment attachments
-        if attachment_ids:
-            attachment_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(attachment_ids))
-            session.execute(attachment_file_delete_stmt)
-
-        if binding_ids:
-            binding_delete_stmt = delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.id.in_(binding_ids))
-            session.execute(binding_delete_stmt)
-
-    for attachment_file_key in total_attachment_files:
-        try:
-            storage.delete(attachment_file_key)
-        except Exception:
-            logger.exception(
-                "Delete attachment_file failed when storage deleted, \
-                                    attachment_file_id: %s",
-                attachment_file_key,
-            )
-
-    with session_factory.create_session() as session, session.begin():
-        # delete dataset metadata binding
-        session.execute(
-            delete(DatasetMetadataBinding).where(
-                DatasetMetadataBinding.dataset_id == dataset_id,
-                DatasetMetadataBinding.document_id == document_id,
-            )
-        )
-
-    if vector_cleanup_succeeded:
-        schedule_billing_vector_space_refresh(dataset_tenant_id)
-
-    end_at = time.perf_counter()
     logger.info(
         click.style(
-            f"Cleaned document when document deleted: {document_id} latency: {end_at - start_at}",
+            f"Cleaned document when document deleted: {document_id} latency: {time.perf_counter() - start_at}",
             fg="green",
         )
     )

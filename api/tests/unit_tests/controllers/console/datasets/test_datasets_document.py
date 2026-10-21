@@ -47,17 +47,21 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
+from controllers.console.datasets.error import (
+    DocumentSourceConflictError as DocumentSourceConflictRequestError,
+)
 from machinery.context import RequestContext
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.documents.application import (
     DatasetDocumentApplicationService,
     DocumentArchivedError,
     DocumentIndexingStateError,
     DocumentInvalidActionError,
-    DocumentListFilter,
     DocumentNotFoundError,
     DocumentProviderError,
+    DocumentSourceConflictError,
 )
+from services.knowledge.documents.contracts import DocumentListFilter
 from services.knowledge.indexing.estimate import (
     EstimateDocumentAlreadyFinishedError,
     EstimateDocumentNotFoundError,
@@ -279,6 +283,9 @@ def test_document_detail_metadata_projection_and_raw_source(app, documents, meta
         "doc_type": "others",
         "doc_metadata": [],
         "name": "Name",
+        "enabled": True,
+        "indexing_state": "failed",
+        "error": "provider unavailable",
         "data_source_info": {"file_path": "/path/to/local/file"},
         "data_source_detail_dict": {},
     }
@@ -292,6 +299,9 @@ def test_document_detail_metadata_projection_and_raw_source(app, documents, meta
         assert response == {"id": str(DOC), "doc_type": "others", "doc_metadata": []}
     else:
         assert response["data_source_info"] == {"file_path": "/path/to/local/file"}
+        assert response["enabled"] is True
+        assert response["indexing_state"] == "failed"
+        assert response["error"] == "provider unavailable"
         assert ("doc_metadata" in response) is (metadata == "all")
 
 
@@ -380,6 +390,7 @@ def test_indexing_status_keeps_timestamps_counts_and_error_fields(app, documents
     value = {
         "id": str(DOC),
         "indexing_status": "paused",
+        "indexing_state": "failed",
         "completed_segments": 2,
         "total_segments": 3,
         **dict.fromkeys(
@@ -396,6 +407,7 @@ def test_indexing_status_keeps_timestamps_counts_and_error_fields(app, documents
         ),
     }
     value["processing_started_at"] = datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
+    value["error"] = "provider unavailable"
     batch = resource is DocumentBatchIndexingStatusApi
     operation = documents.get_batch_indexing_status if batch else documents.get_indexing_status
     operation.return_value = {"data": [value]} if batch else value
@@ -408,6 +420,8 @@ def test_indexing_status_keeps_timestamps_counts_and_error_fields(app, documents
         )
     row = response["data"][0] if batch else response
     assert row["indexing_status"] == "paused"
+    assert row["indexing_state"] == "failed"
+    assert row["error"] == "provider unavailable"
     assert row["processing_started_at"] == 1704067200
     assert row["completed_segments"] == 2
     assert row["total_segments"] == 3
@@ -424,6 +438,11 @@ def test_indexing_status_keeps_timestamps_counts_and_error_fields(app, documents
             controller._raise_document_indexing_error,
             DocumentProviderError("provider", kind="uninitialized"),
             ProviderNotInitializeError,
+        ),
+        (
+            controller._raise_document_indexing_error,
+            DocumentSourceConflictError("source is pending deletion"),
+            DocumentSourceConflictRequestError,
         ),
         (controller._raise_document_action_error, DocumentInvalidActionError("invalid"), InvalidActionError),
         (controller._raise_document_status_error, DocumentInvalidActionError("invalid"), InvalidActionError),

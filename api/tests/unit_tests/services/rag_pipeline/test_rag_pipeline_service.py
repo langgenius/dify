@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 from unittest import mock
-from unittest.mock import create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -30,16 +29,13 @@ from models import Account, Tenant
 from models.dataset import (
     Dataset,
     Document,
-    DocumentPipelineExecutionLog,
     Pipeline,
     PipelineCustomizedTemplate,
     PipelineRecommendedPlugin,
 )
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.workflow import Workflow, WorkflowRun
-from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
-from services.credentials.query import CredentialQuery
-from services.data_source.credential_gateway import DatasourceProviderCredentialStore
+from repositories.knowledge.pipeline_query_repository import get_pipeline_dataset
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline import rag_pipeline as rag_pipeline_module
@@ -611,7 +607,7 @@ def test_is_workflow_exist_returns_false_when_no_draft(
 # --- publish_workflow ---
 
 
-def test_publish_workflow_success(mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext) -> None:
+def test_publish_workflow_success(rag_pipeline_service: RagPipelineServiceTestContext) -> None:
     graph = {
         "nodes": [
             {
@@ -628,10 +624,7 @@ def test_publish_workflow_success(mocker: MockerFixture, rag_pipeline_service: R
     }
     draft_workflow = _make_workflow(workflow_id="wf-draft", graph=graph)
     pipeline = _make_pipeline(workflow_id="wf-old-published")
-    dataset = _make_dataset()
-    _persist(rag_pipeline_service.session, draft_workflow, pipeline, dataset)
-    mocker.patch("services.rag_pipeline.rag_pipeline.KnowledgeConfiguration.model_validate", return_value=mocker.Mock())
-    mock_dataset_service_class = mocker.patch("services.knowledge.dataset_service.DatasetService")
+    _persist(rag_pipeline_service.session, draft_workflow, pipeline)
 
     result = rag_pipeline_service.service.publish_workflow(
         session=rag_pipeline_service.session, pipeline=pipeline, account=_make_account()
@@ -639,7 +632,6 @@ def test_publish_workflow_success(mocker: MockerFixture, rag_pipeline_service: R
 
     assert result.app_id == pipeline.id
     assert result.graph_dict == graph
-    mock_dataset_service_class.update_rag_pipeline_dataset_settings.assert_called_once()
 
 
 def test_publish_workflow_rejects_missing_llm_environment_reference(
@@ -670,163 +662,6 @@ def test_publish_workflow_rejects_missing_llm_environment_reference(
             pipeline=_make_pipeline(pipeline_id="pipeline", tenant_id="tenant"),
             account=_make_account(account_id="account", tenant_id="tenant"),
         )
-
-
-# --- run_datasource_workflow_node ---
-
-
-def test_run_datasource_workflow_node_website_crawl(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    from core.datasource.entities.datasource_entities import DatasourceProviderType
-
-    # 1. Setup workflow and node
-    pipeline = _make_pipeline()
-
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "data": {
-                        "type": "datasource",
-                        "plugin_id": "p-1",
-                        "provider_name": "firecrawl",
-                        "datasource_name": "website_crawl",
-                        "datasource_parameters": {"url": {"value": "{{#start.url#}}"}},
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-
-    # 2. Mock DatasourceManager and Runtime
-    mock_runtime = mocker.Mock()
-    mock_runtime.datasource_provider_type.return_value = DatasourceProviderType.WEBSITE_CRAWL
-
-    # Mock the generator result for website crawl
-    def mock_crawl_gen(**kwargs):
-        yield mocker.Mock(result=mocker.Mock(status="processing", total=10, completed=2))
-        yield mocker.Mock(
-            result=mocker.Mock(status="completed", total=10, completed=10, web_info_list=[{"title": "test"}])
-        )
-
-    mock_runtime.get_website_crawl.side_effect = mock_crawl_gen
-
-    mocker.patch(
-        "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
-        return_value=mock_runtime,
-    )
-
-    # 3. Mock DatasourceProviderService
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value={"api_key": "sk-123"},
-    )
-
-    # 4. Mock Enums to avoid import issues or for consistency
-    mocker.patch("services.rag_pipeline.rag_pipeline.DatasourceProviderType", DatasourceProviderType)
-
-    # 5. Run test
-    gen = rag_pipeline_service.service.run_datasource_workflow_node(
-        pipeline=pipeline,
-        node_id="node-1",
-        user_inputs={"url": "https://example.com"},
-        account=_make_account(),
-        datasource_type="website_crawl",
-        is_published=True,
-        datasource_providers=rag_pipeline_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        ),
-    )
-
-    events = list(gen)
-
-    # 6. Assertions
-    assert len(events) == 2
-    assert events[0]["total"] == 10
-    assert events[0]["completed"] == 2
-    assert events[1]["data"] == [{"title": "test"}]
-    assert events[1]["total"] == 10
-    assert events[1]["completed"] == 10
-
-
-# --- run_datasource_node_preview ---
-
-
-def test_run_datasource_node_preview_online_document(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    from core.datasource.entities.datasource_entities import DatasourceMessage, DatasourceProviderType
-
-    # 1. Setup workflow and node
-    pipeline = _make_pipeline()
-
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "data": {
-                        "type": "datasource",
-                        "plugin_id": "p-1",
-                        "provider_name": "notion",
-                        "datasource_name": "online_document",
-                        "datasource_parameters": {
-                            "workspace_id": {"value": "ws-1"},
-                            "page_id": {"value": "pg-1"},
-                            "type": {"value": "page"},
-                        },
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-
-    # 2. Mock Runtime and results
-    mock_runtime = mocker.Mock()
-
-    def mock_doc_gen(**kwargs):
-        # Yield a variable message
-        msg1 = DatasourceMessage(
-            type=DatasourceMessage.MessageType.VARIABLE,
-            message=DatasourceMessage.VariableMessage(variable_name="content", variable_value="Hello ", stream=True),
-        )
-        yield msg1
-        msg2 = DatasourceMessage(
-            type=DatasourceMessage.MessageType.VARIABLE,
-            message=DatasourceMessage.VariableMessage(variable_name="content", variable_value="World", stream=True),
-        )
-        yield msg2
-
-    mock_runtime.get_online_document_page_content.side_effect = mock_doc_gen
-    mocker.patch(
-        "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
-        return_value=mock_runtime,
-    )
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value={"token": "abc"},
-    )
-    mocker.patch("services.rag_pipeline.rag_pipeline.DatasourceProviderType", DatasourceProviderType)
-
-    # 3. Run test
-    result = rag_pipeline_service.service.run_datasource_node_preview(
-        pipeline=pipeline,
-        node_id="node-1",
-        user_inputs={},
-        account=_make_account(),
-        datasource_type="online_document",
-        is_published=True,
-        datasource_providers=rag_pipeline_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        ),
-    )
-
-    # 4. Assertions
-    assert result == {"content": "Hello World"}
 
 
 # --- _handle_node_run_result ---
@@ -954,97 +789,6 @@ def test_publish_customized_pipeline_template_success(
     templates = session.query(PipelineCustomizedTemplate).all()
     assert len(templates) == 1
     assert templates[0].name == "New Template"
-
-
-# --- get_datasource_plugins ---
-
-
-def test_get_datasource_plugins_success(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    # 1. Setup mocks
-    dataset = _make_dataset()
-
-    pipeline = _make_pipeline(workflow_id="wf-1")
-
-    workflow = _make_workflow(
-        workflow_id="wf-1",
-        graph={
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "data": {
-                        "type": "datasource",
-                        "plugin_id": "p-1",
-                        "provider_name": "notion",
-                        "provider_type": "online_document",
-                        "title": "Notion",
-                    },
-                }
-            ]
-        },
-    )
-    _persist(rag_pipeline_service.session, dataset, pipeline, workflow)
-
-    # Mock DatasourceProviderService
-    mock_provider_service = mocker.Mock()
-    mock_provider_service.list_datasource_credentials.return_value = [
-        {"id": "c1", "name": "Cred 1", "type": "token", "is_default": True}
-    ]
-    mocker.patch("services.rag_pipeline.rag_pipeline.DatasourceProviderService", return_value=mock_provider_service)
-
-    # 2. Run test
-    result = rag_pipeline_service.service.get_datasource_plugins(
-        "t1",
-        "d1",
-        True,
-        credential_query=mock.create_autospec(CredentialQuery, instance=True),
-        datasource_providers=rag_pipeline_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        ),
-    )
-
-    # 3. Assertions
-    assert len(result) == 1
-    assert result[0]["node_id"] == "node-1"
-    assert result[0]["credentials"][0]["id"] == "c1"
-
-
-# --- retry_error_document ---
-
-
-def test_retry_error_document_success(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext, pipeline_generator
-) -> None:
-    dataset = _make_dataset()
-    document = _make_document()
-
-    log = DocumentPipelineExecutionLog(
-        pipeline_id="p-1",
-        document_id="doc-1",
-        datasource_type="upload_file",
-        datasource_info="{}",
-        datasource_node_id="node-id",
-        input_data={},
-        created_by="account-id",
-    )
-    # Ensure it's a string if it's used as JSON later
-
-    pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline", workflow_id="wf-1")
-    pipeline.id = "p-1"
-
-    workflow = _make_workflow(workflow_id="wf-1", tenant_id="tenant-id", app_id="p-1")
-    _persist(rag_pipeline_service.session, log, pipeline, workflow)
-
-    # Mock PipelineGenerator
-    mock_gen_instance = pipeline_generator
-
-    # 2. Run test
-    user = mocker.Mock()
-    rag_pipeline_service.service.retry_error_document(dataset, document, user, generator=pipeline_generator)
-
-    # 3. Assertions
-    mock_gen_instance.generate.assert_called_once()
 
 
 # --- set_datasource_variables ---
@@ -1297,136 +1041,6 @@ def test_run_draft_workflow_node_saves_execution_and_variables(
     saver.save.assert_called_once()
 
 
-def test_run_datasource_workflow_node_returns_error_when_workflow_missing(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    pipeline = _make_pipeline()
-    mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=None)
-
-    events = list(
-        rag_pipeline_service.service.run_datasource_workflow_node(
-            pipeline=pipeline,
-            node_id="node-1",
-            user_inputs={},
-            account=_make_account(),
-            datasource_type="online_document",
-            is_published=False,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-    )
-
-    assert events[0]["event"] == "datasource_error"
-
-
-def test_run_datasource_workflow_node_online_document_success(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    from core.datasource.entities.datasource_entities import DatasourceProviderType
-
-    pipeline = _make_pipeline()
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "data": {
-                        "type": "datasource",
-                        "plugin_id": "pid",
-                        "provider_name": "notion",
-                        "datasource_name": "online_document",
-                        "datasource_parameters": {"workspace_id": {"value": None}, "page_id": {"value": "fixed"}},
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-
-    runtime = mocker.Mock()
-    runtime.runtime = SimpleNamespace(credentials=None)
-    runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DOCUMENT
-    runtime.get_online_document_pages.return_value = [SimpleNamespace(result=[{"id": "pg-1"}])]
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value={"token": "x"},
-    )
-
-    events = list(
-        rag_pipeline_service.service.run_datasource_workflow_node(
-            pipeline=pipeline,
-            node_id="node-1",
-            user_inputs={},
-            account=_make_account(),
-            datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
-            is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-    )
-
-    assert events[0]["event"] == "datasource_processing"
-    assert events[1]["event"] == "datasource_completed"
-
-
-def test_run_datasource_workflow_node_online_drive_success(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    from core.datasource.entities.datasource_entities import DatasourceProviderType
-
-    pipeline = _make_pipeline()
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "data": {
-                        "type": "datasource",
-                        "plugin_id": "pid",
-                        "provider_name": "drive",
-                        "datasource_name": "online_drive",
-                        "datasource_parameters": {
-                            "bucket": {"value": "bucket-1"},
-                            "next_page_parameters": {"value": []},
-                        },
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-
-    runtime = mocker.Mock()
-    runtime.runtime = SimpleNamespace(credentials=None)
-    runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
-    runtime.online_drive_browse_files.return_value = [SimpleNamespace(result=[{"name": "f1"}])]
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value={},
-    )
-
-    events = list(
-        rag_pipeline_service.service.run_datasource_workflow_node(
-            pipeline=pipeline,
-            node_id="node-1",
-            user_inputs={"bucket": "bucket-1"},
-            account=_make_account(),
-            datasource_type=DatasourceProviderType.ONLINE_DRIVE,
-            is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-    )
-
-    assert events[0]["event"] == "datasource_processing"
-    assert events[1]["event"] == "datasource_completed"
-
-
 def test_handle_node_run_result_default_value_strategy(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
@@ -1636,143 +1250,6 @@ def test_get_default_block_configs_skips_empty_configs(
     empty_node.get_default_config.assert_called_once()
 
 
-def test_run_datasource_workflow_node_returns_error_when_node_missing(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    pipeline = _make_pipeline()
-    workflow = _make_workflow(graph={"nodes": []})
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-
-    events = list(
-        rag_pipeline_service.service.run_datasource_workflow_node(
-            pipeline=pipeline,
-            node_id="missing-node",
-            user_inputs={},
-            account=_make_account(),
-            datasource_type="online_document",
-            is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-    )
-
-    assert len(events) == 1
-    assert "Datasource node data not found" in events[0]["error"]
-
-
-def test_run_datasource_workflow_node_online_document_exception(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    pipeline = _make_pipeline()
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "data": {
-                        "plugin_id": "plugin-1",
-                        "provider_name": "provider-1",
-                        "datasource_name": "doc",
-                        "datasource_parameters": {},
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-
-    runtime = mocker.Mock()
-
-    class _FailingIterator:
-        def __iter__(self):
-            return self
-
-        def __next__(self):
-            raise RuntimeError("doc failed")
-
-    runtime.get_online_document_pages.return_value = _FailingIterator()
-    runtime.datasource_provider_type.return_value = "online_document"
-
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value=None,
-    )
-
-    events = list(
-        rag_pipeline_service.service.run_datasource_workflow_node(
-            pipeline=pipeline,
-            node_id="node-1",
-            user_inputs={},
-            account=_make_account(),
-            datasource_type="online_document",
-            is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-    )
-
-    assert len(events) == 2
-    assert events[0]["event"] == "datasource_processing"
-    assert "doc failed" in events[1]["error"]
-
-
-def test_run_datasource_node_preview_raises_for_stream_non_string(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    from core.datasource.entities.datasource_entities import DatasourceMessage
-
-    pipeline = _make_pipeline()
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "data": {
-                        "plugin_id": "plugin-1",
-                        "provider_name": "provider-1",
-                        "datasource_name": "doc",
-                        "datasource_parameters": {},
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-
-    runtime = mocker.Mock()
-
-    def _bad_stream_generator[**P](*args: P.args, **kwargs: P.kwargs):
-        yield DatasourceMessage(
-            type=DatasourceMessage.MessageType.VARIABLE,
-            message=DatasourceMessage.VariableMessage(variable_name="content", variable_value=1, stream=True),
-        )
-
-    runtime.get_online_document_page_content.side_effect = _bad_stream_generator
-    runtime.datasource_provider_type.return_value = "online_document"
-
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value=None,
-    )
-
-    with pytest.raises(RuntimeError, match="must be a string"):
-        rag_pipeline_service.service.run_datasource_node_preview(
-            pipeline=pipeline,
-            node_id="node-1",
-            user_inputs={},
-            account=_make_account(),
-            datasource_type="online_document",
-            is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-
-
 def test_get_first_step_parameters_returns_empty_when_no_rag_variables(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
@@ -1817,35 +1294,6 @@ def test_get_second_step_parameters_filters_first_step_variables(
 
     assert [item["variable"] for item in result] == ["keep"]
     assert result[0]["belong_to_node_id"] == "shared"
-
-
-def test_retry_error_document_raises_when_execution_log_not_found(
-    rag_pipeline_service: RagPipelineServiceTestContext,
-    pipeline_generator,
-) -> None:
-    with pytest.raises(ValueError, match="Document pipeline execution log not found"):
-        rag_pipeline_service.service.retry_error_document(
-            _make_dataset(), _make_document(), _make_account(), generator=pipeline_generator
-        )
-
-
-def test_get_datasource_plugins_raises_when_workflow_not_found(
-    rag_pipeline_service: RagPipelineServiceTestContext,
-) -> None:
-    dataset = _make_dataset()
-    pipeline = _make_pipeline(workflow_id="wf-1")
-    _persist(rag_pipeline_service.session, dataset, pipeline)
-
-    with pytest.raises(ValueError, match="Pipeline or workflow not found"):
-        rag_pipeline_service.service.get_datasource_plugins(
-            "t1",
-            "d1",
-            True,
-            credential_query=mock.create_autospec(CredentialQuery, instance=True),
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
 
 
 def test_handle_node_run_result_raises_when_no_terminal_event(
@@ -1906,48 +1354,6 @@ def test_handle_node_run_result_does_not_write_when_pipeline_dataset_is_missing(
 
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert rag_pipeline_service.session.query(Document).count() == 0
-
-
-def test_run_datasource_node_preview_raises_for_unsupported_provider(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    pipeline = _make_pipeline()
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "data": {
-                        "plugin_id": "plugin-1",
-                        "provider_name": "provider-1",
-                        "datasource_name": "doc",
-                        "datasource_parameters": {},
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-    runtime = mocker.Mock()
-    runtime.datasource_provider_type.return_value = "unsupported"
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value=None,
-    )
-
-    with pytest.raises(RuntimeError, match="Unsupported datasource provider"):
-        rag_pipeline_service.service.run_datasource_node_preview(
-            pipeline=pipeline,
-            node_id="node-1",
-            user_inputs={},
-            account=_make_account(),
-            datasource_type="website_crawl",
-            is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
 
 
 def test_publish_customized_pipeline_template_raises_for_missing_workflow_id(
@@ -2051,13 +1457,11 @@ def test_get_all_published_workflow_without_filters_has_no_more(
     assert has_more is False
 
 
-def test_publish_workflow_skips_dataset_update_for_non_knowledge_nodes(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+def test_publish_workflow_copies_non_knowledge_nodes(
+    rag_pipeline_service: RagPipelineServiceTestContext,
 ) -> None:
     draft = _make_workflow(graph={"nodes": [{"data": {"type": "start"}}]})
     _persist(rag_pipeline_service.session, draft)
-    dataset_service = mocker.patch("services.knowledge.dataset_service.DatasetService")
-
     result = rag_pipeline_service.service.publish_workflow(
         session=rag_pipeline_service.session,
         pipeline=_make_pipeline(),
@@ -2065,7 +1469,6 @@ def test_publish_workflow_skips_dataset_update_for_non_knowledge_nodes(
     )
 
     assert result.graph_dict == {"nodes": [{"data": {"type": "start"}}]}
-    dataset_service.update_rag_pipeline_dataset_settings.assert_not_called()
 
 
 def test_get_default_block_config_returns_none_when_default_empty(
@@ -2080,166 +1483,6 @@ def test_get_default_block_config_returns_none_when_default_empty(
     mocker.patch("services.rag_pipeline.rag_pipeline.LATEST_VERSION", "1")
 
     assert rag_pipeline_service.service.get_default_block_config("start") is None
-
-
-def test_run_datasource_workflow_node_handles_variable_parameter_types(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    from core.datasource.entities.datasource_entities import DatasourceProviderType
-
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "data": {
-                        "plugin_id": "p",
-                        "provider_name": "provider",
-                        "datasource_name": "crawl",
-                        "datasource_parameters": {
-                            "a": {"value": None},
-                            "b": {"value": "literal"},
-                            "c": {"value": ["input", "k"]},
-                        },
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-    runtime = mocker.Mock()
-
-    def crawl_gen(**kwargs):
-        yield SimpleNamespace(result=SimpleNamespace(status="completed", total=1, completed=1, web_info_list=[]))
-
-    runtime.get_website_crawl.side_effect = crawl_gen
-    runtime.datasource_provider_type.return_value = DatasourceProviderType.WEBSITE_CRAWL
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value=None,
-    )
-
-    events = list(
-        rag_pipeline_service.service.run_datasource_workflow_node(
-            pipeline=_make_pipeline(),
-            node_id="node-1",
-            user_inputs={"k": "mapped"},
-            account=_make_account(),
-            datasource_type="website_crawl",
-            is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-    )
-
-    assert events
-    assert events[0]["data"] == []
-
-
-def test_run_datasource_workflow_node_online_drive_branch(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    from core.datasource.entities.datasource_entities import DatasourceProviderType
-
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "node-1",
-                    "data": {
-                        "plugin_id": "p",
-                        "provider_name": "provider",
-                        "datasource_name": "drive",
-                        "datasource_parameters": {},
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-    runtime = mocker.Mock()
-
-    def drive_gen(**kwargs):
-        yield SimpleNamespace(result={"items": [1]})
-
-    runtime.online_drive_browse_files.side_effect = drive_gen
-    runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value=None,
-    )
-
-    events = list(
-        rag_pipeline_service.service.run_datasource_workflow_node(
-            pipeline=_make_pipeline(),
-            node_id="node-1",
-            user_inputs={},
-            account=_make_account(),
-            datasource_type="online_drive",
-            is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-    )
-
-    assert len(events) == 2
-    assert events[1]["data"] == {"items": [1]}
-
-
-def test_run_datasource_node_preview_not_published_uses_draft(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    from core.datasource.entities.datasource_entities import DatasourceMessage
-
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "n1",
-                    "data": {
-                        "plugin_id": "p",
-                        "provider_name": "provider",
-                        "datasource_name": "doc",
-                        "datasource_parameters": {"workspace_id": {"value": "w"}},
-                    },
-                }
-            ]
-        }
-    )
-    get_draft = mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=workflow)
-    runtime = mocker.Mock()
-
-    def doc_gen(**kwargs):
-        yield DatasourceMessage(
-            type=DatasourceMessage.MessageType.VARIABLE,
-            message=DatasourceMessage.VariableMessage(variable_name="x", variable_value="v", stream=False),
-        )
-
-    runtime.get_online_document_page_content.side_effect = doc_gen
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value=None,
-    )
-
-    result = rag_pipeline_service.service.run_datasource_node_preview(
-        pipeline=_make_pipeline(),
-        node_id="n1",
-        user_inputs={},
-        account=_make_account(),
-        datasource_type="online_document",
-        is_published=False,
-        datasource_providers=rag_pipeline_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        ),
-    )
-
-    assert result == {"x": "v"}
-    get_draft.assert_called_once()
 
 
 def test_run_free_workflow_node_delegates_to_handle_result(
@@ -2338,222 +1581,6 @@ def test_get_recommended_plugins_skips_manifest_when_missing(
     assert result["uninstalled_recommended_plugins"] == []
 
 
-def test_retry_error_document_raises_when_pipeline_missing(
-    rag_pipeline_service: RagPipelineServiceTestContext,
-    pipeline_generator,
-) -> None:
-    exec_log = DocumentPipelineExecutionLog(
-        pipeline_id="p1",
-        document_id="doc-1",
-        datasource_type="local_file",
-        datasource_info="{}",
-        datasource_node_id="node-1",
-        input_data={},
-        created_by="u1",
-    )
-    _persist(rag_pipeline_service.session, exec_log)
-
-    with pytest.raises(ValueError, match="Pipeline not found"):
-        rag_pipeline_service.service.retry_error_document(
-            _make_dataset(), _make_document(), _make_account(), generator=pipeline_generator
-        )
-
-
-def test_retry_error_document_raises_when_workflow_missing(
-    rag_pipeline_service: RagPipelineServiceTestContext,
-    pipeline_generator,
-) -> None:
-    exec_log = DocumentPipelineExecutionLog(
-        pipeline_id="p1",
-        document_id="doc-1",
-        datasource_type="local_file",
-        datasource_info="{}",
-        datasource_node_id="node-1",
-        input_data={},
-        created_by="u1",
-    )
-    pipeline = _make_pipeline(workflow_id="wf-1")
-    _persist(rag_pipeline_service.session, exec_log, pipeline)
-
-    with pytest.raises(ValueError, match="Workflow not found"):
-        rag_pipeline_service.service.retry_error_document(
-            _make_dataset(), _make_document(), _make_account(), generator=pipeline_generator
-        )
-
-
-def test_get_datasource_plugins_returns_empty_for_non_datasource_nodes(
-    rag_pipeline_service: RagPipelineServiceTestContext,
-) -> None:
-    dataset = _make_dataset()
-    pipeline = _make_pipeline(workflow_id="wf-1")
-    workflow = _make_workflow(graph={"nodes": [{"id": "n1", "data": {"type": "start"}}]})
-    _persist(rag_pipeline_service.session, dataset, pipeline, workflow)
-
-    assert (
-        rag_pipeline_service.service.get_datasource_plugins(
-            "t1",
-            "d1",
-            True,
-            credential_query=mock.create_autospec(CredentialQuery, instance=True),
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-        == []
-    )
-
-
-def test_publish_workflow_raises_when_knowledge_index_dataset_missing(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    draft = _make_workflow(graph={"nodes": [{"data": {"type": "knowledge-index"}}]})
-    _persist(rag_pipeline_service.session, draft)
-    mocker.patch("services.rag_pipeline.rag_pipeline.KnowledgeConfiguration.model_validate", return_value=mocker.Mock())
-    pipeline = _make_pipeline()
-
-    with pytest.raises(ValueError, match="Dataset not found"):
-        rag_pipeline_service.service.publish_workflow(
-            session=rag_pipeline_service.session, pipeline=pipeline, account=_make_account()
-        )
-
-
-def test_run_datasource_node_preview_raises_when_workflow_missing(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=None)
-
-    with pytest.raises(RuntimeError, match="Workflow not initialized"):
-        rag_pipeline_service.service.run_datasource_node_preview(
-            pipeline=_make_pipeline(),
-            node_id="n1",
-            user_inputs={},
-            account=_make_account(),
-            datasource_type="online_document",
-            is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-
-
-def test_run_datasource_node_preview_raises_when_node_missing(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    mocker.patch.object(
-        rag_pipeline_service.service, "get_published_workflow", return_value=_make_workflow(graph={"nodes": []})
-    )
-
-    with pytest.raises(RuntimeError, match="Datasource node data not found"):
-        rag_pipeline_service.service.run_datasource_node_preview(
-            pipeline=_make_pipeline(),
-            node_id="missing",
-            user_inputs={},
-            account=_make_account(),
-            datasource_type="online_document",
-            is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
-        )
-
-
-def test_run_datasource_node_preview_keeps_existing_user_input(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    from core.datasource.entities.datasource_entities import DatasourceMessage
-
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "n1",
-                    "data": {
-                        "plugin_id": "p",
-                        "provider_name": "provider",
-                        "datasource_name": "doc",
-                        "datasource_parameters": {"workspace_id": {"value": "default"}},
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-    runtime = mocker.Mock()
-
-    def gen(**kwargs):
-        request = kwargs["datasource_parameters"]
-        assert request.workspace_id == "existing"
-        yield DatasourceMessage(
-            type=DatasourceMessage.MessageType.VARIABLE,
-            message=DatasourceMessage.VariableMessage(variable_name="ok", variable_value="1", stream=False),
-        )
-
-    runtime.get_online_document_page_content.side_effect = gen
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value=None,
-    )
-
-    result = rag_pipeline_service.service.run_datasource_node_preview(
-        pipeline=_make_pipeline(),
-        node_id="n1",
-        user_inputs={"workspace_id": "existing"},
-        account=_make_account(),
-        datasource_type="online_document",
-        is_published=True,
-        datasource_providers=rag_pipeline_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        ),
-    )
-    assert result == {"ok": "1"}
-
-
-def test_run_datasource_node_preview_ignores_non_variable_messages(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
-) -> None:
-    workflow = _make_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "n1",
-                    "data": {
-                        "plugin_id": "p",
-                        "provider_name": "provider",
-                        "datasource_name": "doc",
-                        "datasource_parameters": {},
-                    },
-                }
-            ]
-        }
-    )
-    mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
-    runtime = mocker.Mock()
-
-    def gen(**kwargs):
-        yield SimpleNamespace(type="log", message=None)
-
-    runtime.get_online_document_page_content.side_effect = gen
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
-        return_value=None,
-    )
-
-    result = rag_pipeline_service.service.run_datasource_node_preview(
-        pipeline=_make_pipeline(),
-        node_id="n1",
-        user_inputs={},
-        account=_make_account(),
-        datasource_type="online_document",
-        is_published=True,
-        datasource_providers=rag_pipeline_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        ),
-    )
-    assert result == {}
-
-
 def test_set_datasource_variables_raises_when_workflow_missing(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
@@ -2567,46 +1594,29 @@ def test_set_datasource_variables_raises_when_workflow_missing(
         )
 
 
-def test_get_datasource_plugins_handles_empty_datasource_data_and_non_published(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+def test_get_datasource_plugin_specs_rejects_missing_workflow(
+    rag_pipeline_service: RagPipelineServiceTestContext,
 ) -> None:
     dataset = _make_dataset()
-    pipeline = _make_pipeline()
-    workflow = _make_workflow(
-        graph={"nodes": [{"id": "n1", "data": {"type": "datasource", "datasource_parameters": {}}}]},
-    )
-    workflow.rag_pipeline_variables = [
-        {"variable": "v1", "belong_to_node_id": "shared", "type": "text-input", "label": "V1"}
-    ]
-    _persist(rag_pipeline_service.session, dataset, pipeline, workflow)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.list_datasource_credentials",
-        return_value=[],
-    )
+    pipeline = _make_pipeline(workflow_id="wf-1")
+    _persist(rag_pipeline_service.session, dataset, pipeline)
 
-    result = rag_pipeline_service.service.get_datasource_plugins(
-        "t1",
-        "d1",
-        False,
-        credential_query=mock.create_autospec(CredentialQuery, instance=True),
-        datasource_providers=rag_pipeline_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        ),
-    )
-
-    assert len(result) == 1
+    with pytest.raises(ValueError, match="Pipeline or workflow not found"):
+        rag_pipeline_service.service.get_datasource_plugin_specs("t1", "d1", True)
 
 
-def test_get_datasource_plugins_extracts_user_inputs_and_credentials(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+def test_get_datasource_plugin_specs_returns_only_datasource_nodes(
+    rag_pipeline_service: RagPipelineServiceTestContext,
 ) -> None:
     dataset = _make_dataset()
     pipeline = _make_pipeline(workflow_id="wf-1")
     workflow = _make_workflow(
+        workflow_id="wf-1",
         graph={
             "nodes": [
+                {"id": "start", "data": {"type": "start"}},
                 {
-                    "id": "n1",
+                    "id": "source",
                     "data": {
                         "type": "datasource",
                         "plugin_id": "plugin-1",
@@ -2618,7 +1628,7 @@ def test_get_datasource_plugins_extracts_user_inputs_and_credentials(
                             "b": {"value": ["x", "v2"]},
                         },
                     },
-                }
+                },
             ]
         },
     )
@@ -2628,24 +1638,13 @@ def test_get_datasource_plugins_extracts_user_inputs_and_credentials(
         {"variable": "v3", "belong_to_node_id": "shared", "type": "text-input", "label": "V3"},
     ]
     _persist(rag_pipeline_service.session, dataset, pipeline, workflow)
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.list_datasource_credentials",
-        return_value=[{"id": "c1", "name": "Cred", "type": "api", "is_default": True}],
-    )
 
-    result = rag_pipeline_service.service.get_datasource_plugins(
-        "t1",
-        "d1",
-        True,
-        credential_query=mock.create_autospec(CredentialQuery, instance=True),
-        datasource_providers=rag_pipeline_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        ),
-    )
+    result = rag_pipeline_service.service.get_datasource_plugin_specs("t1", "d1", True)
 
     assert len(result) == 1
-    assert len(result[0]["user_input_variables"]) == 2
-    assert result[0]["credentials"][0]["id"] == "c1"
+    assert result[0]["node_id"] == "source"
+    assert [item["variable"] for item in result[0]["user_input_variables"]] == ["v1", "v2"]
+    assert "credentials" not in result[0]
 
 
 def test_get_pipeline_returns_pipeline_when_found(

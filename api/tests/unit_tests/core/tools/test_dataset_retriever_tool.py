@@ -32,7 +32,12 @@ def _hit_callback() -> DatasetIndexToolCallbackHandler:
             message_id="message",
         )
     return DatasetIndexToolCallbackHandler(
-        queue_manager=queue_manager, app_id="app", message_id="message", user_id="u", invoke_from=InvokeFrom.DEBUGGER
+        queue_manager=queue_manager,
+        app_id="app",
+        message_id="message",
+        user_id="u",
+        invoke_from=InvokeFrom.DEBUGGER,
+        tenant_id="tenant",
     )
 
 

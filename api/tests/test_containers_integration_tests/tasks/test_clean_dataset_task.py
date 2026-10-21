@@ -12,7 +12,7 @@ and realistic testing scenarios with actual PostgreSQL and Redis instances.
 
 import uuid
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
@@ -40,13 +40,20 @@ from models.enums import (
     IndexingStatus,
     SegmentStatus,
 )
+from models.knowledge_task import KnowledgeTaskOutbox
 from models.model import UploadFile
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
+from services.knowledge.task_outbox.contracts import KnowledgeTaskKind
 from tasks.clean_dataset_task import clean_dataset_task
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class TestCleanDatasetTask:
     """Integration tests for clean_dataset_task using testcontainers."""
+
+    @pytest.fixture(autouse=True)
+    def _enable_physical_file_cleanup(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        apply_config_overrides(monkeypatch, ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
 
     @pytest.fixture(autouse=True)
     def cleanup_database(self, db_session_with_containers: Session):
@@ -54,6 +61,7 @@ class TestCleanDatasetTask:
         from extensions.ext_redis import redis_client
 
         # Clear all test data using the provided session fixture
+        db_session_with_containers.execute(delete(KnowledgeTaskOutbox))
         db_session_with_containers.execute(delete(DatasetMetadataBinding))
         db_session_with_containers.execute(delete(DatasetMetadata))
         db_session_with_containers.execute(delete(AppDatasetJoin))
@@ -76,23 +84,10 @@ class TestCleanDatasetTask:
         """Mock setup for external service dependencies."""
         with (
             patch("tasks.clean_dataset_task.storage", autospec=True) as mock_storage,
-            patch("tasks.clean_dataset_task.IndexProcessorFactory", autospec=True) as mock_index_processor_factory,
+            patch("services.knowledge.task_outbox.gateway.wake_knowledge_task_dispatcher", return_value=True),
         ):
-            # Setup default mock returns
             mock_storage.delete.return_value = None
-
-            # Mock index processor
-            mock_index_processor = MagicMock()
-            mock_index_processor.clean.return_value = None
-            mock_index_processor_factory_instance = MagicMock()
-            mock_index_processor_factory_instance.init_index_processor.return_value = mock_index_processor
-            mock_index_processor_factory.return_value = mock_index_processor_factory_instance
-
-            yield {
-                "storage": mock_storage,
-                "index_processor_factory": mock_index_processor_factory,
-                "index_processor": mock_index_processor,
-            }
+            yield {"storage": mock_storage}
 
     def _create_test_account_and_tenant(self, db_session_with_containers: Session):
         """
@@ -337,10 +332,6 @@ class TestCleanDatasetTask:
         ).all()
         assert len(app_joins) == 0
 
-        # Verify index processor was called
-        mock_index_processor = mock_external_service_dependencies["index_processor"]
-        mock_index_processor.clean.assert_called_once()
-
         # Verify storage was not called (no files to delete)
         mock_storage = mock_external_service_dependencies["storage"]
         mock_storage.delete.assert_not_called()
@@ -453,10 +444,6 @@ class TestCleanDatasetTask:
         ).all()
         assert len(remaining_bindings) == 0
 
-        # Verify index processor was called
-        mock_index_processor = mock_external_service_dependencies["index_processor"]
-        mock_index_processor.clean.assert_called_once()
-
         # Verify storage delete was called for each file
         mock_storage = mock_external_service_dependencies["storage"]
         assert mock_storage.delete.call_count == 3
@@ -474,6 +461,7 @@ class TestCleanDatasetTask:
         4. Complete all cleanup operations successfully
         5. Log appropriate warnings for invalid doc_form values
         """
+        del mock_external_service_dependencies
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -486,10 +474,6 @@ class TestCleanDatasetTask:
         test_cases = [None, "", "   ", "\t\n"]
 
         for invalid_doc_form in test_cases:
-            # Reset mock to clear previous calls
-            mock_index_processor = mock_external_service_dependencies["index_processor"]
-            mock_index_processor.clean.reset_mock()
-
             clean_dataset_task(
                 dataset_id=dataset.id,
                 tenant_id=tenant.id,
@@ -498,9 +482,6 @@ class TestCleanDatasetTask:
                 collection_binding_id=dataset.collection_binding_id,
                 doc_form=invalid_doc_form,
             )
-
-            # Verify that index processor was called with default type
-            mock_index_processor.clean.assert_called_once()
 
             # Check that all data was cleaned up
 
@@ -518,48 +499,40 @@ class TestCleanDatasetTask:
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
             self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
 
-        # Verify that IndexProcessorFactory was called with default type
-        mock_factory = mock_external_service_dependencies["index_processor_factory"]
-        # Should be called 4 times (once for each test case)
-        assert mock_factory.call_count == 4
-
-    def test_index_cleanup_failure_preserves_documents_and_segments(
+    def test_clean_dataset_task_persists_index_cleanup_without_blocking_relations(
         self, db_session_with_containers: Session, mock_external_service_dependencies
-    ) -> None:
-        """An incomplete index cleanup must preserve its dependent records for retry."""
+    ):
+        """External index cleanup is durable and independent from SQL cleanup."""
+        del mock_external_service_dependencies
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
         document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
         self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
 
-        # Mock IndexProcessorFactory to raise an exception
-        mock_index_processor = mock_external_service_dependencies["index_processor"]
-        mock_index_processor.clean.side_effect = RuntimeError("Vector database cleanup failed")
-
-        # A direct call propagates the original exception instead of publishing a retry.
-        with pytest.raises(RuntimeError, match="Vector database cleanup failed"):
-            clean_dataset_task(
-                dataset_id=dataset.id,
-                tenant_id=tenant.id,
-                indexing_technique=dataset.indexing_technique,
-                index_struct=dataset.index_struct,
-                collection_binding_id=dataset.collection_binding_id,
-                doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
-            )
+        clean_dataset_task(
+            dataset_id=dataset.id,
+            tenant_id=tenant.id,
+            indexing_technique=dataset.indexing_technique,
+            index_struct=dataset.index_struct,
+            collection_binding_id=dataset.collection_binding_id,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+        )
 
         remaining_documents = db_session_with_containers.scalars(
             select(Document).where(Document.dataset_id == dataset.id)
         ).all()
-        assert len(remaining_documents) == 1
+        assert remaining_documents == []
 
         remaining_segments = db_session_with_containers.scalars(
             select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
         ).all()
-        assert len(remaining_segments) == 1
-
-        mock_index_processor.clean.assert_called_once()
-        mock_external_service_dependencies["storage"].delete.assert_not_called()
+        assert remaining_segments == []
+        index_cleanup = db_session_with_containers.scalar(
+            select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DELETION_INDEX_CLEANUP)
+        )
+        assert index_cleanup is not None
+        assert index_cleanup.payload["delete_all"] is True
 
     def test_clean_dataset_task_with_image_file_references(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -614,7 +587,9 @@ class TestCleanDatasetTask:
         db_session_with_containers.commit()
 
         # Mock the get_image_upload_file_ids function to return our image file IDs
-        with patch("tasks.clean_dataset_task.get_image_upload_file_ids", autospec=True) as mock_get_image_ids:
+        with patch(
+            "repositories.knowledge.upload_file_repository.get_image_upload_file_ids", autospec=True
+        ) as mock_get_image_ids:
             mock_get_image_ids.return_value = [f.id for f in image_files]
 
             # Execute the task
@@ -781,10 +756,6 @@ class TestCleanDatasetTask:
         mock_storage = mock_external_service_dependencies["storage"]
         assert mock_storage.delete.call_count == 50
 
-        # Verify that index processor was called
-        mock_index_processor = mock_external_service_dependencies["index_processor"]
-        mock_index_processor.clean.assert_called_once()
-
         # Log performance metrics
         print("\nPerformance Test Results:")
         print(f"Documents processed: {len(documents)}")
@@ -794,24 +765,21 @@ class TestCleanDatasetTask:
         print(f"Total cleanup time: {cleanup_duration:.3f} seconds")
         print(f"Average time per document: {cleanup_duration / len(documents):.3f} seconds")
 
-    def test_source_storage_failure_preserves_upload_file_and_document(
+    def test_clean_dataset_task_storage_exception_handling(
         self, db_session_with_containers: Session, mock_external_service_dependencies
-    ) -> None:
-        """Keep source storage keys and documents available for a cleanup retry."""
+    ):
+        """A storage failure preserves database rows for replay."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
         document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
         self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
         upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
-        upload_file_id = upload_file.id
-        upload_file_key = upload_file.key
-        document_id = document.id
 
         # Update document with file reference
         import json
 
-        document.data_source_info = json.dumps({"upload_file_id": upload_file_id})
+        document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
         db_session_with_containers.commit()
 
         # Mock storage to raise exceptions
@@ -828,19 +796,11 @@ class TestCleanDatasetTask:
                 doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
             )
 
-        db_session_with_containers.expire_all()
-        remaining_file = db_session_with_containers.get(UploadFile, upload_file_id)
-        assert remaining_file is not None
-        assert remaining_file.key == upload_file_key
-        remaining_document = db_session_with_containers.get(Document, document_id)
-        assert remaining_document is not None
-        assert remaining_document.data_source_info_dict == {"upload_file_id": upload_file_id}
+        assert db_session_with_containers.get(UploadFile, upload_file.id) is not None
+        assert db_session_with_containers.get(Document, document.id) is not None
 
-        mock_storage.delete.assert_called_once_with(upload_file_key)
-
-        # Verify that index processor was called successfully
-        mock_index_processor = mock_external_service_dependencies["index_processor"]
-        mock_index_processor.clean.assert_called_once()
+        # Verify that storage.delete was called
+        mock_storage.delete.assert_called_once()
 
     def test_clean_dataset_task_edge_cases_and_boundary_conditions(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -996,10 +956,6 @@ class TestCleanDatasetTask:
         # Verify that storage.delete was called
         mock_storage = mock_external_service_dependencies["storage"]
         mock_storage.delete.assert_called_once()
-
-        # Verify that index processor was called
-        mock_index_processor = mock_external_service_dependencies["index_processor"]
-        mock_index_processor.clean.assert_called_once()
 
         # This test demonstrates that the cleanup process can handle
         # extreme edge cases including very long content, special characters,

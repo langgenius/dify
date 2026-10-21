@@ -2,6 +2,7 @@ from collections.abc import Generator
 from datetime import timedelta
 from typing import override
 
+from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import ChainedTokenCredential, DefaultAzureCredential
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
 
@@ -88,8 +89,13 @@ class AzureBlobStorage(BaseStorage):
 
         client = self._sync_client()
 
-        blob_container = client.get_container_client(container=self.bucket_name)
-        blob_container.delete_blob(filename)
+        try:
+            blob_container = client.get_container_client(container=self.bucket_name)
+            blob_container.delete_blob(filename)
+        except ResourceNotFoundError:
+            # Storage deletion is idempotent. Callers use it for retryable
+            # compensation after an ambiguous provisioning response.
+            return
 
     @override
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:

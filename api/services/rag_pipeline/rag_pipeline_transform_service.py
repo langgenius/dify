@@ -110,7 +110,6 @@ class RagPipelineTransformService:
         # deal document data
         self._deal_document_data(dataset, session)
 
-        session.commit()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset.id,
@@ -381,6 +380,7 @@ class RagPipelineTransformService:
                         document_pipeline_execution_log = DocumentPipelineExecutionLog(
                             document_id=document.id,
                             pipeline_id=dataset.pipeline_id,
+                            indexing_generation=document.indexing_generation,
                             datasource_type=DataSourceType.LOCAL_FILE,
                             datasource_info=data_source_info,
                             input_data={},
@@ -409,6 +409,7 @@ class RagPipelineTransformService:
                 document_pipeline_execution_log = DocumentPipelineExecutionLog(
                     document_id=document.id,
                     pipeline_id=dataset.pipeline_id,
+                    indexing_generation=document.indexing_generation,
                     datasource_type=DataSourceType.ONLINE_DOCUMENT,
                     datasource_info=data_source_info,
                     input_data={},
@@ -437,6 +438,7 @@ class RagPipelineTransformService:
                 document_pipeline_execution_log = DocumentPipelineExecutionLog(
                     document_id=document.id,
                     pipeline_id=dataset.pipeline_id,
+                    indexing_generation=document.indexing_generation,
                     datasource_type=DataSourceType.WEBSITE_CRAWL,
                     datasource_info=data_source_info,
                     input_data={},

@@ -17,6 +17,7 @@ from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_create_erro
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
+    DatasetConcurrentUpdateError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
@@ -45,9 +46,15 @@ from models.account import TenantAccountRole
 from models.enums import CreatorUserRole, DatasetQuerySource
 from models.enums import PermissionEnum as DatasetPermissionEnum
 from models.model import AppMode, IconType
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
-from services.knowledge.datasets.application import DatasetListFilter
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.datasets.contracts import (
+    DatasetConcurrentUpdateError as DatasetConcurrentUpdateFailure,
+)
+from services.knowledge.datasets.contracts import (
+    DatasetDetailProjection,
+    DatasetListFilter,
+)
 from services.knowledge.entities.indexing_estimate import (
     NewEstimateSource,
     NewSourcesEstimateCommand,
@@ -75,6 +82,8 @@ def _raise_dataset_error(error: Exception) -> Never:
         raise NotFound("Dataset not found.") from error
     if isinstance(error, DatasetAccessDeniedError):
         raise Forbidden(str(error)) from error
+    if isinstance(error, DatasetConcurrentUpdateFailure):
+        raise DatasetConcurrentUpdateError() from error
     raise error
 
 
@@ -362,8 +371,9 @@ class DatasetListApi(Resource):
             if key in request.args:
                 query_params[key] = request.args.getlist(key)
         query = ConsoleDatasetListQuery.model_validate(query_params)
-        result = application_services().knowledge.datasets.list_datasets(
-            request_context, DatasetListFilter(**query.model_dump())
+        result = application_services().knowledge.datasets.list_accessible_datasets(
+            request_context,
+            DatasetListFilter(**query.model_dump()),
         )
         return dump_response(DatasetListResponse, result), HTTPStatus.OK
 
@@ -384,7 +394,9 @@ class DatasetListApi(Resource):
     def post(self, req_data: DatasetCreatePayload, request_context: RequestContext):
         try:
             result = application_services().knowledge.datasets.create_dataset(
-                request_context, values=req_data.model_dump()
+                request_context,
+                values=req_data.model_dump(),
+                projection=DatasetDetailProjection.CONSOLE,
             )
         except Exception as error:
             _raise_dataset_create_error(error)
@@ -406,7 +418,11 @@ class DatasetApi(Resource):
     @console_account_admission()
     def get(self, request_context: RequestContext, dataset_id: UUID):
         try:
-            result = application_services().knowledge.datasets.get_dataset(request_context, dataset_id=str(dataset_id))
+            result = application_services().knowledge.datasets.get_dataset(
+                request_context,
+                dataset_id=str(dataset_id),
+                projection=DatasetDetailProjection.CONSOLE,
+            )
         except Exception as error:
             _raise_dataset_error(error)
         return dump_response(DatasetDetailWithPartialMembersResponse, result), 200
@@ -421,6 +437,8 @@ class DatasetApi(Resource):
     )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
+    @console_ns.response(409, "Dataset changed during the update")
+    @error_responses(DatasetConcurrentUpdateError)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
     )
@@ -429,7 +447,10 @@ class DatasetApi(Resource):
     def patch(self, req_data: DatasetUpdatePayload, request_context: RequestContext, dataset_id: UUID):
         try:
             result = application_services().knowledge.datasets.update_dataset(
-                request_context, dataset_id=str(dataset_id), values=req_data.model_dump(exclude_unset=True)
+                request_context,
+                dataset_id=str(dataset_id),
+                values=req_data.model_dump(exclude_unset=True),
+                projection=DatasetDetailProjection.CONSOLE,
             )
         except Exception as error:
             _raise_dataset_error(error)

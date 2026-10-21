@@ -11,9 +11,10 @@ from core.rag.entities import RetrievalSourceMetadata
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
 from extensions.ext_database import db
-from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
+from models.dataset import ChildChunk, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource
+from repositories.knowledge.dataset_read_repository import stage_dataset_queries
 
 _logger = logging.getLogger(__name__)
 
@@ -22,35 +23,42 @@ class DatasetIndexToolCallbackHandler:
     """Callback handler for dataset tool."""
 
     def __init__(
-        self, queue_manager: AppQueueManager, app_id: str, message_id: str, user_id: str, invoke_from: InvokeFrom
+        self,
+        queue_manager: AppQueueManager,
+        app_id: str,
+        message_id: str,
+        user_id: str,
+        invoke_from: InvokeFrom,
+        tenant_id: str,
     ):
         self._queue_manager = queue_manager
         self._app_id = app_id
         self._message_id = message_id
         self._user_id = user_id
         self._invoke_from = invoke_from
+        self._tenant_id = tenant_id
 
     def on_query(self, query: str, dataset_id: str, session: Session):
         """
         Handle query.
         """
-        dataset_query = DatasetQuery(
-            dataset_id=dataset_id,
-            content=query,
-            source=DatasetQuerySource.APP,
-            source_app_id=self._app_id,
-            created_by_role=(
-                CreatorUserRole.ACCOUNT
-                if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-                else CreatorUserRole.END_USER
-            ),
-            created_by=self._user_id,
-        )
-
         # Use an independent session so this audit-log side effect does
         # not commit or close the caller's request-scoped session.
         with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as independent_session:
-            independent_session.add(dataset_query)
+            stage_dataset_queries(
+                independent_session,
+                tenant_id=self._tenant_id,
+                dataset_ids=[dataset_id],
+                content=query,
+                source=DatasetQuerySource.APP,
+                source_app_id=self._app_id,
+                created_by_role=(
+                    CreatorUserRole.ACCOUNT
+                    if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+                    else CreatorUserRole.END_USER
+                ),
+                created_by=self._user_id,
+            )
 
     def on_tool_end(self, documents: list[Document], session: Session):
         """Handle tool end."""

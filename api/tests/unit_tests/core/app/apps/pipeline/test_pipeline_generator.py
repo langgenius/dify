@@ -1,12 +1,12 @@
 import contextlib
 import json
+from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -15,11 +15,12 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
+from models.dataset import Dataset, Pipeline
 from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.knowledge.segment_repository import SQLAlchemySegmentAttachmentWriter
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.data_source.provider_service import DatasourceProviderService
 from services.workflow_run_agg import WorkflowRunAgg
@@ -50,11 +51,11 @@ def generator(mocker: MockerFixture, sqlite_engine: Engine):
         datasource_providers=DatasourceProviderService(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         ),
+        attachment_writer=SQLAlchemySegmentAttachmentWriter(),
     )
 
     _patch_sqlite_engine(mocker, sqlite_engine)
     mocker.patch.object(module, "RagPipelineGenerateEntity", FakeRagPipelineGenerateEntity)
-    mocker.patch.object(module, "RagPipelineInvokeEntity", side_effect=lambda **kwargs: kwargs)
     mocker.patch.object(module.contexts, "plugin_tool_providers", SimpleNamespace(set=MagicMock()))
     mocker.patch.object(module.contexts, "plugin_tool_providers_lock", SimpleNamespace(set=MagicMock()))
 
@@ -165,212 +166,6 @@ def _dummy_preserve[**P](*args: P.args, **kwargs: P.kwargs):
     return contextlib.nullcontext()
 
 
-def test_generate_dataset_missing(generator, sqlite_session: Session):
-    pipeline = _build_pipeline()
-
-    with pytest.raises(ValueError, match="Pipeline dataset is required"):
-        generator.generate(
-            session=sqlite_session,
-            pipeline=pipeline,
-            workflow=_build_workflow(),
-            user=_build_user(),
-            args=_build_args(),
-            invoke_from=InvokeFrom.WEB_APP,
-            streaming=False,
-        )
-
-
-def test_generate_debugger_calls_generate(generator, mocker: MockerFixture, sqlite_session: Session):
-    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
-
-    mocker.patch.object(
-        generator,
-        "_format_datasource_info_list",
-        return_value=[{"name": "file"}],
-    )
-    mocker.patch.object(
-        module.PipelineConfigManager,
-        "get_pipeline_config",
-        return_value=SimpleNamespace(app_id="pipe", rag_pipeline_variables=[]),
-    )
-    mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
-
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_execution_repository",
-        return_value=MagicMock(),
-    )
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
-        return_value=MagicMock(),
-    )
-
-    mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
-
-    result = generator.generate(
-        session=sqlite_session,
-        pipeline=pipeline,
-        workflow=workflow,
-        user=_build_user(),
-        args=_build_args(),
-        invoke_from=InvokeFrom.DEBUGGER,
-        streaming=True,
-    )
-
-    assert result == {"result": "ok"}
-
-
-def test_generate_published_pipeline_creates_documents_and_delay(
-    generator, mocker: MockerFixture, sqlite_session: Session
-):
-    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
-
-    datasource_info_list = [{"name": "file1"}, {"name": "file2"}]
-
-    mocker.patch.object(
-        generator,
-        "_format_datasource_info_list",
-        return_value=datasource_info_list,
-    )
-    mocker.patch.object(
-        module.PipelineConfigManager,
-        "get_pipeline_config",
-        return_value=SimpleNamespace(app_id="pipe", rag_pipeline_variables=[]),
-    )
-    mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
-
-    mocker.patch("services.knowledge.dataset_service.DocumentService.get_documents_position", return_value=1)
-    features = SimpleNamespace()
-    get_features = mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
-    check_limits = mocker.patch("services.knowledge.dataset_service.DocumentService.check_document_creation_limits")
-
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_execution_repository",
-        return_value=MagicMock(),
-    )
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
-        return_value=MagicMock(),
-    )
-
-    task_proxy = MagicMock()
-    mocker.patch.object(module, "RagPipelineTaskProxy", return_value=task_proxy)
-
-    result = generator.generate(
-        session=sqlite_session,
-        pipeline=pipeline,
-        workflow=workflow,
-        user=_build_user(),
-        args=_build_args(),
-        invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
-        streaming=False,
-    )
-
-    assert result["batch"]
-    assert len(result["documents"]) == 2
-    check_limits.assert_called_once_with(len(datasource_info_list), features)
-    persisted_documents = sqlite_session.scalars(
-        select(Document).where(Document.dataset_id == DATASET_ID).order_by(Document.position)
-    ).all()
-    assert [document.name for document in persisted_documents] == ["file1", "file2"]
-    persisted_logs = sqlite_session.scalars(
-        select(DocumentPipelineExecutionLog).where(DocumentPipelineExecutionLog.pipeline_id == PIPELINE_ID)
-    ).all()
-    assert {log.document_id for log in persisted_logs} == {document.id for document in persisted_documents}
-    task_proxy.delay.assert_called_once()
-    get_features.assert_called_once_with(TENANT_ID)
-
-
-def test_generate_published_pipeline_rejects_when_document_creation_limits_exceeded(
-    generator, mocker: MockerFixture, sqlite_session: Session
-):
-    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
-
-    datasource_info_list = [{"name": "file1"}, {"name": "file2"}]
-    mocker.patch.object(
-        generator,
-        "_format_datasource_info_list",
-        return_value=datasource_info_list,
-    )
-    mocker.patch.object(
-        module.PipelineConfigManager,
-        "get_pipeline_config",
-        return_value=SimpleNamespace(app_id="pipe", rag_pipeline_variables=[]),
-    )
-
-    features = SimpleNamespace()
-    mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
-    check_limits = mocker.patch(
-        "services.knowledge.dataset_service.DocumentService.check_document_creation_limits",
-        side_effect=ValueError("document limit exceeded"),
-    )
-
-    with pytest.raises(ValueError, match="document limit exceeded"):
-        generator.generate(
-            session=sqlite_session,
-            pipeline=pipeline,
-            workflow=workflow,
-            user=_build_user(),
-            args=_build_args(),
-            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
-            streaming=False,
-        )
-
-    check_limits.assert_called_once_with(len(datasource_info_list), features)
-    assert sqlite_session.scalars(select(Document)).all() == []
-
-
-def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture, sqlite_session: Session):
-    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
-
-    mocker.patch.object(
-        generator,
-        "_format_datasource_info_list",
-        return_value=[{"name": "file"}],
-    )
-    mocker.patch.object(
-        module.PipelineConfigManager,
-        "get_pipeline_config",
-        return_value=SimpleNamespace(app_id="pipe", rag_pipeline_variables=[]),
-    )
-    mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
-
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_execution_repository",
-        return_value=MagicMock(),
-    )
-    mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
-        return_value=MagicMock(),
-    )
-
-    generate = mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
-
-    args = _build_args()
-    args["original_document_id"] = "document-1"
-
-    result = generator.generate(
-        session=sqlite_session,
-        pipeline=pipeline,
-        workflow=workflow,
-        user=_build_user(),
-        args=args,
-        invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
-        streaming=True,
-        is_retry=True,
-    )
-
-    assert result == {"result": "ok"}
-    application_generate_entity = generate.call_args.kwargs["application_generate_entity"]
-    assert application_generate_entity.document_id == "document-1"
-    assert application_generate_entity.original_document_id is None
-
-
 def test_generate_worker_handles_errors(
     generator,
     mocker: MockerFixture,
@@ -397,6 +192,7 @@ def test_generate_worker_handles_errors(
     generator._generate_worker(
         flask_app=flask_app,
         application_generate_entity=application_generate_entity,
+        workflow=_build_workflow(),
         queue_manager=queue_manager,
         context=contextlib.nullcontext(),
         variable_loader=MagicMock(),
@@ -434,6 +230,7 @@ def test_generate_worker_sets_system_user_id_for_external_call(
     generator._generate_worker(
         flask_app=flask_app,
         application_generate_entity=application_generate_entity,
+        workflow=_build_workflow(),
         queue_manager=MagicMock(),
         context=contextlib.nullcontext(),
         variable_loader=MagicMock(),
@@ -452,33 +249,6 @@ def test_generate_worker_sets_system_user_id_for_external_call(
     )
 
 
-def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixture, sqlite_session: Session):
-    flask_app = MagicMock()
-    mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
-
-    session = sqlite_session
-
-    with pytest.raises(ValueError, match="Workflow not found: wf"):
-        generator._generate(
-            session=session,
-            flask_app=flask_app,
-            context=contextlib.nullcontext(),
-            pipeline=_build_pipeline(),
-            workflow_id="wf",
-            user=_build_user(),
-            application_generate_entity=FakeRagPipelineGenerateEntity(
-                task_id="t",
-                app_config=SimpleNamespace(app_id="pipe"),
-                user_id="user",
-                invoke_from=InvokeFrom.DEBUGGER,
-            ),
-            invoke_from=InvokeFrom.DEBUGGER,
-            workflow_execution_repository=MagicMock(),
-            workflow_node_execution_repository=MagicMock(),
-            streaming=True,
-        )
-
-
 def test_generate_success_returns_converted(generator, mocker: MockerFixture, sqlite_session: Session):
     flask_app = MagicMock()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
@@ -495,8 +265,6 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
     )
     sqlite_session.add(workflow)
     sqlite_session.commit()
-    session = sqlite_session
-
     queue_manager = MagicMock()
     mocker.patch.object(module, "PipelineQueueManager", return_value=queue_manager)
 
@@ -508,12 +276,11 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
     mocker.patch.object(generator, "_handle_response", return_value="response")
     mocker.patch.object(module.WorkflowAppGenerateResponseConverter, "convert", return_value="converted")
 
-    result = generator._generate(
-        session=session,
+    result = generator.run(
         flask_app=flask_app,
         context=contextlib.nullcontext(),
         pipeline=_build_pipeline(),
-        workflow_id=workflow.id,
+        workflow=workflow,
         user=_build_user(),
         application_generate_entity=FakeRagPipelineGenerateEntity(
             task_id="t",
@@ -587,7 +354,7 @@ def test_single_iteration_generate_success(
     mocker.patch.object(module, "WorkflowDraftVariableService", return_value=MagicMock())
     mocker.patch.object(module, "DraftVarLoader", return_value=MagicMock())
 
-    mocker.patch.object(generator, "_generate", return_value={"ok": True})
+    mocker.patch.object(generator, "run", return_value={"ok": True})
 
     result = generator.single_iteration_generate(
         pipeline,
@@ -627,7 +394,7 @@ def test_single_loop_generate_success(
     mocker.patch.object(module, "WorkflowDraftVariableService", return_value=MagicMock())
     mocker.patch.object(module, "DraftVarLoader", return_value=MagicMock())
 
-    mocker.patch.object(generator, "_generate", return_value={"ok": True})
+    mocker.patch.object(generator, "run", return_value={"ok": True})
 
     result = generator.single_loop_generate(
         pipeline,
@@ -666,7 +433,7 @@ def test_build_document_sets_metadata_for_builtin_fields(generator, monkeypatch)
     created_at = datetime(2026, 10, 16, 8, 0, 0)
     monkeypatch.setattr(module, "naive_utc_now", lambda: created_at)
 
-    document = generator._build_document(
+    document = generator.build_document(
         tenant_id="tenant",
         dataset_id="ds",
         built_in_field_enabled=True,
@@ -690,7 +457,7 @@ def test_build_document_sets_metadata_for_builtin_fields(generator, monkeypatch)
 
 
 def test_build_document_supports_online_drive_datasource_type(generator):
-    document = generator._build_document(
+    document = generator.build_document(
         tenant_id="tenant",
         dataset_id="ds",
         built_in_field_enabled=True,
@@ -709,7 +476,7 @@ def test_build_document_supports_online_drive_datasource_type(generator):
 
 def test_build_document_invalid_datasource_type(generator):
     with pytest.raises(ValueError, match="Unsupported datasource type: invalid"):
-        generator._build_document(
+        generator.build_document(
             tenant_id="tenant",
             dataset_id="ds",
             built_in_field_enabled=False,
@@ -724,7 +491,7 @@ def test_build_document_invalid_datasource_type(generator):
 
 
 def test_format_datasource_info_list_non_online_drive(generator):
-    result = generator._format_datasource_info_list(
+    result = generator.expand_datasource_info_list(
         DatasourceProviderType.LOCAL_FILE,
         [{"name": "file"}],
         _build_pipeline(),
@@ -740,7 +507,7 @@ def test_format_datasource_info_list_missing_node_data(generator):
     workflow = _build_workflow()
 
     with pytest.raises(ValueError, match="Datasource node data not found"):
-        generator._format_datasource_info_list(
+        generator.expand_datasource_info_list(
             DatasourceProviderType.ONLINE_DRIVE,
             [],
             _build_pipeline(),
@@ -775,24 +542,101 @@ def test_format_datasource_info_list_online_drive_folder(generator, mocker: Mock
         "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
         return_value=runtime,
     )
-    mocker.patch.object(module.DatasourceProviderService, "get_datasource_credentials", return_value={"k": "v"})
+    get_credentials = mocker.patch.object(
+        module.DatasourceProviderService, "get_datasource_credentials", return_value={"k": "v"}
+    )
 
     mocker.patch.object(
         generator,
         "_get_files_in_folder",
-        side_effect=lambda *args, **kwargs: args[4].append({"id": "f"}),
+        side_effect=lambda *args, **kwargs: args[4].append({"id": args[1], "credential_id": args[5]["credential_id"]}),
     )
 
-    result = generator._format_datasource_info_list(
+    result = generator.expand_datasource_info_list(
         DatasourceProviderType.ONLINE_DRIVE,
-        [{"id": "folder", "type": "folder", "name": "Folder", "bucket": "b"}],
+        [
+            {"id": "folder-a", "type": "folder", "name": "Folder A", "bucket": "b", "credential_id": "cred-a"},
+            {"id": "folder-b", "type": "folder", "name": "Folder B", "bucket": "b", "credential_id": "cred-b"},
+        ],
         _build_pipeline(),
         workflow,
         "start",
         _build_user(),
     )
 
-    assert result == [{"id": "f"}]
+    assert result == [
+        {"id": "folder-a", "credential_id": "cred-a"},
+        {"id": "folder-b", "credential_id": "cred-b"},
+    ]
+    assert [call.kwargs["credential_id"] for call in get_credentials.call_args_list] == ["cred-a", "cred-b"]
+
+
+def test_format_datasource_info_list_distinguishes_no_credentials_from_missing_id(
+    generator, monkeypatch: pytest.MonkeyPatch
+):
+    from core.datasource.datasource_manager import DatasourceManager
+
+    workflow = _build_workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "start",
+                    "data": {
+                        "plugin_id": "p",
+                        "provider_name": "provider",
+                        "datasource_name": "drive",
+                        "credential_id": "stored-private",
+                    },
+                }
+            ]
+        },
+    )
+
+    @dataclass
+    class RuntimeState:
+        credentials: dict[str, str]
+
+    @dataclass
+    class Runtime:
+        runtime: RuntimeState
+
+    no_credentials_runtime = Runtime(RuntimeState({"unexpected": "default"}))
+    stored_credentials_runtime = Runtime(RuntimeState({}))
+    runtimes = iter([no_credentials_runtime, stored_credentials_runtime])
+    credential_calls: list[dict[str, object]] = []
+
+    def get_runtime(**_kwargs):
+        return next(runtimes)
+
+    def get_credentials(**kwargs):
+        credential_calls.append(kwargs)
+        return {"token": "stored-secret"}
+
+    monkeypatch.setattr(DatasourceManager, "get_datasource_runtime", get_runtime)
+    monkeypatch.setattr(generator._datasource_providers, "get_datasource_credentials", get_credentials)
+
+    explicit_none = generator.expand_datasource_info_list(
+        DatasourceProviderType.ONLINE_DRIVE,
+        [{"id": "public-file", "type": "file", "name": "Public", "credential_id": None}],
+        _build_pipeline(),
+        workflow,
+        "start",
+        _build_user(),
+    )
+    missing_id = generator.expand_datasource_info_list(
+        DatasourceProviderType.ONLINE_DRIVE,
+        [{"id": "private-file", "type": "file", "name": "Private"}],
+        _build_pipeline(),
+        workflow,
+        "start",
+        _build_user(),
+    )
+
+    assert explicit_none == [{"id": "public-file", "name": "Public", "bucket": None, "credential_id": None}]
+    assert no_credentials_runtime.runtime.credentials == {}
+    assert missing_id == [{"id": "private-file", "name": "Private", "bucket": None, "credential_id": "stored-private"}]
+    assert stored_credentials_runtime.runtime.credentials == {"token": "stored-secret"}
+    assert [call["credential_id"] for call in credential_calls] == ["stored-private"]
 
 
 def test_get_files_in_folder_recurses_and_collects(generator):
@@ -820,7 +664,7 @@ def test_get_files_in_folder_recurses_and_collects(generator):
             return DatasourceProviderType.ONLINE_DRIVE
 
         def online_drive_browse_files(self, user_id, request, provider_type):
-            self.calls.append(request.next_page_parameters)
+            self.calls.append((request.prefix, request.next_page_parameters))
             if request.prefix == "fd":
                 return iter([Result([FilesPage([File("f2", "file2", "file")], False, None)])])
             if request.next_page_parameters is None:
@@ -831,7 +675,7 @@ def test_get_files_in_folder_recurses_and_collects(generator):
                         )
                     ]
                 )
-            return iter([Result([FilesPage([File("f2", "file2", "file")], False, None)])])
+            return iter([Result([FilesPage([File("f3", "file3", "file")], False, None)])])
 
     runtime = Runtime()
     all_files = []
@@ -842,10 +686,12 @@ def test_get_files_in_folder_recurses_and_collects(generator):
         bucket="b",
         user_id="user",
         all_files=all_files,
-        datasource_info={},
+        datasource_info={"credential_id": "actor-visible"},
     )
 
-    assert {f["id"] for f in all_files} == {"f1", "f2"}
+    assert {f["id"] for f in all_files} == {"f1", "f2", "f3"}
+    assert {f["credential_id"] for f in all_files} == {"actor-visible"}
+    assert runtime.calls == [("root", None), ("fd", None), ("root", {"page": 2})]
 
 
 def test_get_files_in_folder_handles_empty_folder(generator):

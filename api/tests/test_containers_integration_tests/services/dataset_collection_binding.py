@@ -1,19 +1,15 @@
-"""
-Comprehensive unit tests for DatasetCollectionBindingService.
+"""Integration tests for the canonical dataset collection binding repository."""
 
-This module contains extensive unit tests for the DatasetCollectionBindingService class,
-which handles dataset collection binding operations for vector database collections.
-"""
-
-from itertools import starmap
 from uuid import uuid4
 
-import pytest
 from sqlalchemy.orm import Session
 
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType
-from services.knowledge.dataset_service import DatasetCollectionBindingService
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_collection_binding,
+    get_or_create_dataset_collection_binding,
+)
 
 
 class DatasetCollectionBindingTestDataFactory:
@@ -58,13 +54,8 @@ class DatasetCollectionBindingTestDataFactory:
         return binding
 
 
-class TestDatasetCollectionBindingServiceGetBinding:
-    """
-    Comprehensive unit tests for DatasetCollectionBindingService.get_dataset_collection_binding method.
-
-    This test class covers the main collection binding retrieval/creation functionality,
-    including various provider/model combinations, collection types, and edge cases.
-    """
+class TestGetOrCreateDatasetCollectionBinding:
+    """Exercise repository retrieval and creation for collection bindings."""
 
     def test_get_dataset_collection_binding_existing_binding_success(self, db_session_with_containers: Session):
         """
@@ -87,8 +78,11 @@ class TestDatasetCollectionBindingServiceGetBinding:
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
+        result = get_or_create_dataset_collection_binding(
+            db_session_with_containers,
+            provider_name=provider_name,
+            model_name=model_name,
+            collection_type=collection_type,
         )
 
         # Assert
@@ -108,8 +102,11 @@ class TestDatasetCollectionBindingServiceGetBinding:
         collection_type = CollectionBindingType.DATASET
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
+        result = get_or_create_dataset_collection_binding(
+            db_session_with_containers,
+            provider_name=provider_name,
+            model_name=model_name,
+            collection_type=collection_type,
         )
 
         # Assert
@@ -127,8 +124,11 @@ class TestDatasetCollectionBindingServiceGetBinding:
         collection_type = "custom_type"
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
+        result = get_or_create_dataset_collection_binding(
+            db_session_with_containers,
+            provider_name=provider_name,
+            model_name=model_name,
+            collection_type=collection_type,
         )
 
         # Assert
@@ -143,8 +143,10 @@ class TestDatasetCollectionBindingServiceGetBinding:
         model_name = "text-embedding-ada-002"
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, session=db_session_with_containers
+        result = get_or_create_dataset_collection_binding(
+            db_session_with_containers,
+            provider_name=provider_name,
+            model_name=model_name,
         )
 
         # Assert
@@ -164,7 +166,14 @@ class TestDatasetCollectionBindingServiceGetBinding:
         ]
 
         # Act
-        results = list(starmap(DatasetCollectionBindingService.get_dataset_collection_binding, combinations))
+        results = [
+            get_or_create_dataset_collection_binding(
+                db_session_with_containers,
+                provider_name=provider,
+                model_name=model,
+            )
+            for provider, model in combinations
+        ]
 
         # Assert
         assert len(results) == 3
@@ -173,13 +182,8 @@ class TestDatasetCollectionBindingServiceGetBinding:
             assert result.model_name == model
 
 
-class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
-    """
-    Comprehensive unit tests for DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type method.
-
-    This test class covers retrieval of specific collection bindings by ID and type,
-    including successful retrieval and error handling for missing bindings.
-    """
+class TestGetDatasetCollectionBinding:
+    """Exercise repository lookup by binding ID and collection type."""
 
     def test_get_dataset_collection_binding_by_id_and_type_success(self, db_session_with_containers: Session):
         """Test successful retrieval of collection binding by ID and type."""
@@ -193,27 +197,34 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-            binding.id, session=db_session_with_containers, collection_type=CollectionBindingType.DATASET
+        result = get_dataset_collection_binding(
+            db_session_with_containers,
+            binding_id=binding.id,
+            collection_type=CollectionBindingType.DATASET,
         )
 
         # Assert
+        assert result is not None
         assert result.id == binding.id
         assert result.provider_name == "openai"
         assert result.model_name == "text-embedding-ada-002"
         assert result.collection_name == "test-collection"
         assert result.type == CollectionBindingType.DATASET
 
-    def test_get_dataset_collection_binding_by_id_and_type_not_found_error(self, db_session_with_containers: Session):
-        """Test error handling when collection binding is not found by ID and type."""
+    def test_get_dataset_collection_binding_by_id_and_type_not_found(self, db_session_with_containers: Session):
+        """Test lookup when a collection binding does not exist."""
         # Arrange
         non_existent_id = str(uuid4())
 
-        # Act & Assert
-        with pytest.raises(ValueError, match="Dataset collection binding not found"):
-            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                non_existent_id, session=db_session_with_containers, collection_type=CollectionBindingType.DATASET
-            )
+        # Act
+        result = get_dataset_collection_binding(
+            db_session_with_containers,
+            binding_id=non_existent_id,
+            collection_type=CollectionBindingType.DATASET,
+        )
+
+        # Assert
+        assert result is None
 
     def test_get_dataset_collection_binding_by_id_and_type_different_collection_type(
         self, db_session_with_containers: Session
@@ -229,11 +240,14 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-            binding.id, session=db_session_with_containers, collection_type="custom_type"
+        result = get_dataset_collection_binding(
+            db_session_with_containers,
+            binding_id=binding.id,
+            collection_type="custom_type",
         )
 
         # Assert
+        assert result is not None
         assert result.id == binding.id
         assert result.type == "custom_type"
 
@@ -251,16 +265,15 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-            binding.id, session=db_session_with_containers
-        )
+        result = get_dataset_collection_binding(db_session_with_containers, binding_id=binding.id)
 
         # Assert
+        assert result is not None
         assert result.id == binding.id
         assert result.type == CollectionBindingType.DATASET
 
-    def test_get_dataset_collection_binding_by_id_and_type_wrong_type_error(self, db_session_with_containers: Session):
-        """Test error when binding exists but with wrong collection type."""
+    def test_get_dataset_collection_binding_by_id_and_type_wrong_type(self, db_session_with_containers: Session):
+        """Test lookup when a binding exists under another collection type."""
         # Arrange
         binding = DatasetCollectionBindingTestDataFactory.create_collection_binding(
             db_session_with_containers,
@@ -270,8 +283,12 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
             collection_type=CollectionBindingType.DATASET,
         )
 
-        # Act & Assert
-        with pytest.raises(ValueError, match="Dataset collection binding not found"):
-            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                binding.id, session=db_session_with_containers, collection_type="wrong_type"
-            )
+        # Act
+        result = get_dataset_collection_binding(
+            db_session_with_containers,
+            binding_id=binding.id,
+            collection_type="wrong_type",
+        )
+
+        # Assert
+        assert result is None

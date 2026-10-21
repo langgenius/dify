@@ -8,7 +8,7 @@ from fields.document_fields import DocumentResponse
 from models.dataset import Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
-from services.knowledge.dataset_read_service import load_document_details
+from repositories.knowledge.document_query_repository import load_document_details
 
 
 def test_document_detail_serializes_after_session_closes(sqlite_session: Session) -> None:
@@ -52,6 +52,9 @@ def test_document_detail_serializes_after_session_closes(sqlite_session: Session
     sqlite_session.add_all([upload, document, segment])
     sqlite_session.flush()
     source = load_document_details([document], session=sqlite_session)[0]
+    source["indexing_state"] = "failed"
+    source["indexing_retry_action"] = "enable"
+    source["error"] = "provider unavailable"
     sqlite_session.expire_all()
     sqlite_session.close()
     response = DocumentResponse.model_validate(source).model_dump(mode="json")
@@ -59,3 +62,6 @@ def test_document_detail_serializes_after_session_closes(sqlite_session: Session
     assert response["data_source_detail_dict"]["upload_file"]["name"] == "source.txt"
     assert response["hit_count"] == 3
     assert response["doc_metadata"] == []
+    assert response["indexing_state"] == "failed"
+    assert response["indexing_retry_action"] == "enable"
+    assert response["error"] == "provider unavailable"

@@ -63,7 +63,13 @@ def reset_encrypt_key_pair():
             # tool-providers to 500 because decryption fails on stale ciphertext (#35396).
             session.execute(delete(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == tenant.id))
             session.execute(delete(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant.id))
-            session.execute(delete(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant.id))
+            mcp_providers = session.scalars(
+                select(MCPToolProvider)
+                .where(MCPToolProvider.tenant_id == tenant.id)
+                .order_by(MCPToolProvider.icon, MCPToolProvider.id)
+            ).all()
+            for mcp_provider in mcp_providers:
+                session.delete(mcp_provider)
 
             click.echo(
                 click.style(

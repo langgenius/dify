@@ -20,13 +20,23 @@ from fields.dataset_fields import (
 )
 from libs.helper import dump_response
 from machinery.context import RequestContext
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
+from models.account import TenantAccountRole
 from services.errors.metadata import MetadataResourceNotFoundError
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.entities.knowledge_entities import (
     DocumentMetadataOperation,
     MetadataArgs,
     MetadataDetail,
     MetadataOperationData,
+)
+
+_DATASET_EDIT_ROLES = frozenset(
+    {
+        TenantAccountRole.OWNER,
+        TenantAccountRole.ADMIN,
+        TenantAccountRole.EDITOR,
+        TenantAccountRole.DATASET_OPERATOR,
+    }
 )
 
 
@@ -59,6 +69,7 @@ class DatasetMetadataCreateApi(Resource):
     @console_ns.response(201, "Metadata created successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataArgs.__name__])
     @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @metadata_errors
@@ -87,6 +98,7 @@ class DatasetMetadataApi(Resource):
     @console_ns.response(200, "Metadata updated successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
     @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @metadata_errors
@@ -103,6 +115,7 @@ class DatasetMetadataApi(Resource):
 
     @console_ns.response(204, "Metadata deleted successfully")
     @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @metadata_errors
@@ -131,6 +144,7 @@ class DatasetMetadataBuiltInFieldApi(Resource):
 class DatasetMetadataBuiltInFieldActionApi(Resource):
     @console_ns.response(204, "Action completed successfully")
     @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @metadata_errors
@@ -155,6 +169,7 @@ class DocumentMetadataEditApi(Resource):
     )
     @console_ns.response(404, "Dataset, document, or metadata not found")
     @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
     @metadata_errors

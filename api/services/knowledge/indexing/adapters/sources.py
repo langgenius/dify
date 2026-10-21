@@ -19,12 +19,12 @@ from services.data_source.credential_gateway import (
     resolve_stored_notion_access_token,
 )
 from services.data_source.entities.notion_import import NotionPageType
+from services.knowledge.indexing.contracts import StoredSource
 from services.knowledge.indexing.errors import (
     IndexingInputSourceError,
     SourceCredentialUnavailableError,
     UnsupportedStoredSourceError,
 )
-from services.knowledge.indexing.estimate import StoredSource
 
 _NOTION_PROVIDER = "notion_datasource"
 _NOTION_PLUGIN = "langgenius/notion_datasource"

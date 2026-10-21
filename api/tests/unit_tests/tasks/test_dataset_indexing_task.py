@@ -6,27 +6,40 @@ ORM rows so each phase observes only committed database state.
 """
 
 import uuid
-from contextlib import nullcontext
+from collections.abc import Generator
+from contextlib import contextmanager, nullcontext
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, Document
+from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
-from services.knowledge.entities.resource_scope import DocumentRef
+from models.knowledge_task import KnowledgeTaskOutbox
+from services.knowledge.indexing.contracts import DocumentIndexingExecution
 from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DocumentRef
+from services.knowledge.task_outbox.contracts import (
+    KnowledgeTaskDeliveryHandledError,
+    KnowledgeTaskKind,
+    KnowledgeTaskRetriesExhaustedError,
+)
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,
+    _mark_documents_retry_exhausted,
     document_indexing_task,
     normal_document_indexing_task,
     priority_document_indexing_task,
+)
+from tasks.duplicate_document_indexing_task import (
+    _duplicate_document_indexing_task,
+    normal_duplicate_document_indexing_task,
 )
 from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tests.unit_tests.config_override import apply_config_overrides, config_overrides_context
@@ -49,9 +62,11 @@ def test_recovery_dispatches_detached_owner_reference(
     _persist_indexing_rows(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id, document_ids=document_ids[:1])
     row = sqlite_session.get(Document, document_ids[0])
     row.indexing_status = status
+    generation = str(uuid.uuid4())
+    row.indexing_generation = generation
     sqlite_session.commit()
     with patch("tasks.recover_document_indexing_task.build_document_indexing_service") as factory:
-        recover_document_indexing_task.run(dataset_id, document_ids[0])
+        recover_document_indexing_task.run(dataset_id, document_ids[0], generation)
     service = factory.return_value
     if entry is None:
         assert service.mock_calls == []
@@ -64,6 +79,13 @@ def test_recovery_dispatches_detached_owner_reference(
         method.assert_called_once()
         (argument,) = method.call_args.args
         ref = argument[0] if entry == "run" else argument
+        execution = (
+            method.call_args.kwargs["executions"][document_ids[0]]
+            if entry == "run"
+            else method.call_args.kwargs["execution"]
+        )
+        assert isinstance(execution, DocumentIndexingExecution)
+        assert execution.expected_generation == generation
         assert isinstance(ref, DocumentRef)
         assert (ref.dataset.tenant_id, ref.dataset.dataset_id, ref.document_id) == (
             tenant_id,
@@ -177,68 +199,342 @@ def _persisted_documents(session: Session, document_ids: list[str]) -> list[Docu
     return [document for document_id in document_ids if (document := session.get(Document, document_id)) is not None]
 
 
-class TestTaskEnqueuing:
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    def test_self_hosted_dispatches_directly_to_priority_task(
-        self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
-    ) -> None:
-        with (
-            patch.object(DocumentIndexingTaskProxy, "features"),
-            patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
-        ):
-            DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
-
-        task.delay.assert_called_once_with(
-            tenant_id=tenant_id,
-            dataset_id=dataset_id,
-            document_ids=document_ids,
-        )
-
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    @pytest.mark.parametrize(
-        ("plan", "task_attribute"),
-        [
-            (CloudPlan.SANDBOX, "NORMAL_TASK_FUNC"),
-            (CloudPlan.PROFESSIONAL, "PRIORITY_TASK_FUNC"),
-        ],
-    )
-    def test_cloud_dispatches_first_task_through_tenant_queue(
+class TestDocumentIndexing:
+    def test_duplicate_keeps_old_segments_until_replacement_is_ready(
         self,
+        sqlite_session: Session,
         tenant_id: str,
         dataset_id: str,
         document_ids: list[str],
-        mock_redis: MagicMock,
-        plan: CloudPlan,
-        task_attribute: str,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        with (
-            patch.object(DocumentIndexingTaskProxy, "features") as features,
-            patch.object(DocumentIndexingTaskProxy, task_attribute, Mock()) as task,
-        ):
-            features.billing.subscription.plan = plan
-            DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
+        document_id = document_ids[0]
+        _, documents = _persist_indexing_rows(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=[document_id],
+        )
+        document = documents[0]
+        document.indexing_generation = str(uuid.uuid4())
+        segment = DocumentSegment(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_id=document_id,
+            position=1,
+            content="![still referenced](/files/existing.png)",
+            word_count=2,
+            tokens=2,
+            created_by=document.created_by,
+            index_node_id="old-node",
+        )
+        sqlite_session.add(segment)
+        sqlite_session.commit()
+        observed_segment_ids: list[str] = []
 
-        mock_redis.setex.assert_called()
-        task.delay.assert_called_once()
+        class Recorder:
+            def run(self, refs: list[DocumentRef], **_kwargs: object) -> None:
+                with Session(sqlite_session.get_bind()) as observer:
+                    observed_document = observer.get(Document, refs[0].document_id)
+                    assert observed_document is not None
+                    assert observed_document.indexing_status == IndexingStatus.PARSING
+                    if observer.get(DocumentSegment, segment.id) is not None:
+                        observed_segment_ids.append(segment.id)
 
-    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    def test_running_tenant_task_queues_followup_work(
-        self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
+        monkeypatch.setattr("tasks.document_indexing_task.clean_deletion_index", lambda *_args, **_kwargs: None)
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.build_document_indexing_service",
+            lambda **_kwargs: Recorder(),
+        )
+
+        _duplicate_document_indexing_task(dataset_id, [document_id], {document_id: document.indexing_generation})
+
+        assert observed_segment_ids == [segment.id]
+
+    def test_retry_budget_exhausted_before_execution_fails_only_matching_generation(
+        self,
+        sqlite_session: Session,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
     ) -> None:
-        mock_redis.get.return_value = b"1"
-        with (
-            patch.object(DocumentIndexingTaskProxy, "features") as features,
-            patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
-        ):
-            features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-            DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
+        _, documents = _persist_indexing_rows(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=document_ids[:2],
+        )
+        matching_generation = str(uuid.uuid4())
+        stale_generation = str(uuid.uuid4())
+        successor_generation = str(uuid.uuid4())
+        documents[0].indexing_generation = matching_generation
+        documents[1].indexing_generation = successor_generation
+        intent = KnowledgeTaskOutbox(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            task_kind=KnowledgeTaskKind.DOCUMENT_INDEX_CREATE.value,
+            payload={},
+            status="dispatched",
+            execution_attempts=10,
+        )
+        sqlite_session.add(intent)
+        sqlite_session.commit()
 
-        mock_redis.lpush.assert_called_once()
-        task.delay.assert_not_called()
+        with pytest.raises(KnowledgeTaskRetriesExhaustedError):
+            normal_document_indexing_task.run(
+                tenant_id,
+                dataset_id,
+                document_ids[:2],
+                {
+                    document_ids[0]: matching_generation,
+                    document_ids[1]: stale_generation,
+                },
+                intent.id,
+            )
 
+        sqlite_session.expire_all()
+        matching = sqlite_session.get(Document, document_ids[0])
+        successor = sqlite_session.get(Document, document_ids[1])
+        persisted_intent = sqlite_session.get(KnowledgeTaskOutbox, intent.id)
+        assert matching is not None
+        assert matching.indexing_status == IndexingStatus.ERROR
+        assert successor is not None
+        assert successor.indexing_status == IndexingStatus.WAITING
+        assert successor.indexing_generation == successor_generation
+        assert persisted_intent is not None
+        assert persisted_intent.status == "failed"
 
-class TestDocumentIndexing:
-    def test_legacy_task_persists_parsing_before_running(
+    def test_terminal_update_failure_keeps_tenant_receipt_retryable(
+        self,
+        sqlite_session: Session,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        document_id = document_ids[0]
+        generation = str(uuid.uuid4())
+        _, documents = _persist_indexing_rows(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=[document_id],
+        )
+        documents[0].indexing_generation = generation
+        intent = KnowledgeTaskOutbox(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            task_kind=KnowledgeTaskKind.DOCUMENT_INDEX_CREATE.value,
+            payload={},
+            status="dispatched",
+            execution_attempts=10,
+        )
+        sqlite_session.add(intent)
+        sqlite_session.commit()
+        receipt = "tenant-receipt"
+        admission_events: list[tuple[str, str]] = []
+
+        class AdmissionLease:
+            def assert_owned(self) -> None:
+                return
+
+        @contextmanager
+        def admission(_tenant_id: str, observed_receipt: str | None) -> Generator[AdmissionLease]:
+            assert observed_receipt == receipt
+            admission_events.append(("start", receipt))
+            try:
+                yield AdmissionLease()
+            except KnowledgeTaskDeliveryHandledError:
+                admission_events.append(("complete", receipt))
+                raise
+            except Exception:
+                admission_events.append(("reset", receipt))
+                raise
+
+        terminal_update_attempts = 0
+
+        def update_terminal_state(
+            *,
+            tenant_id: str,
+            dataset_id: str,
+            generations: dict[str, str] | None,
+            error: KnowledgeTaskRetriesExhaustedError,
+        ) -> None:
+            nonlocal terminal_update_attempts
+            terminal_update_attempts += 1
+            if terminal_update_attempts == 1:
+                raise RuntimeError("database unavailable")
+            _mark_documents_retry_exhausted(
+                tenant_id=tenant_id,
+                dataset_id=dataset_id,
+                generations=generations,
+                error=error,
+            )
+
+        monkeypatch.setattr("tasks.document_indexing_task.knowledge_tenant_task_admission", admission)
+        monkeypatch.setattr("tasks.document_indexing_task._mark_documents_retry_exhausted", update_terminal_state)
+
+        with pytest.raises(RuntimeError, match="database unavailable"):
+            normal_document_indexing_task.run(
+                tenant_id,
+                dataset_id,
+                [document_id],
+                {document_id: generation},
+                intent.id,
+                receipt,
+            )
+
+        sqlite_session.expire_all()
+        after_failed_update = sqlite_session.get(Document, document_id)
+        assert after_failed_update is not None
+        assert after_failed_update.indexing_status == IndexingStatus.WAITING
+
+        with pytest.raises(KnowledgeTaskRetriesExhaustedError):
+            normal_document_indexing_task.run(
+                tenant_id,
+                dataset_id,
+                [document_id],
+                {document_id: generation},
+                intent.id,
+                receipt,
+            )
+
+        sqlite_session.expire_all()
+        recovered = sqlite_session.get(Document, document_id)
+        assert recovered is not None
+        assert recovered.indexing_status == IndexingStatus.ERROR
+        assert terminal_update_attempts == 2
+        assert admission_events == [
+            ("start", receipt),
+            ("reset", receipt),
+            ("start", receipt),
+            ("complete", receipt),
+        ]
+
+    def test_tenth_duplicate_failure_marks_matching_generation_error(
+        self,
+        sqlite_session: Session,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        document_id = document_ids[0]
+        generation = str(uuid.uuid4())
+        _, documents = _persist_indexing_rows(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=[document_id],
+        )
+        documents[0].indexing_generation = generation
+        intent = KnowledgeTaskOutbox(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            task_kind=KnowledgeTaskKind.DOCUMENT_INDEX_DUPLICATE.value,
+            payload={},
+            status="dispatched",
+            execution_attempts=9,
+        )
+        sqlite_session.add(intent)
+        sqlite_session.commit()
+
+        def fail_indexing(*_args, **_kwargs) -> None:
+            raise RuntimeError("provider unavailable")
+
+        monkeypatch.setattr(
+            "tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue",
+            fail_indexing,
+        )
+
+        with pytest.raises(KnowledgeTaskRetriesExhaustedError):
+            normal_duplicate_document_indexing_task.run(
+                tenant_id,
+                dataset_id,
+                [document_id],
+                {document_id: generation},
+                intent.id,
+            )
+
+        sqlite_session.expire_all()
+        document = sqlite_session.get(Document, document_id)
+        persisted_intent = sqlite_session.get(KnowledgeTaskOutbox, intent.id)
+        assert document is not None
+        assert document.indexing_status == IndexingStatus.ERROR
+        assert document.error == "provider unavailable"
+        assert persisted_intent is not None
+        assert persisted_intent.status == "failed"
+        assert persisted_intent.execution_attempts == 10
+
+    @pytest.mark.parametrize("terminal_status", [IndexingStatus.COMPLETED, IndexingStatus.PAUSED])
+    def test_same_generation_terminal_redelivery_preserves_segments(
+        self,
+        sqlite_session: Session,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+        monkeypatch: pytest.MonkeyPatch,
+        terminal_status: IndexingStatus,
+    ) -> None:
+        document_id = document_ids[0]
+        generation = str(uuid.uuid4())
+        _, documents = _persist_indexing_rows(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=[document_id],
+        )
+        document = documents[0]
+        document.indexing_generation = generation
+        document.indexing_status = terminal_status
+        segment = DocumentSegment(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_id=document_id,
+            position=1,
+            content="already indexed",
+            word_count=2,
+            tokens=2,
+            created_by=document.created_by,
+            index_node_id="stable-node",
+        )
+        sqlite_session.add(segment)
+        intent = KnowledgeTaskOutbox(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            task_kind=KnowledgeTaskKind.DOCUMENT_INDEX_CREATE.value,
+            payload={},
+            status="dispatched",
+        )
+        sqlite_session.add(intent)
+        sqlite_session.commit()
+        calls: list[list[DocumentRef]] = []
+
+        class Recorder:
+            def run(self, refs: list[DocumentRef]) -> None:
+                calls.append(refs)
+
+        monkeypatch.setattr("tasks.document_indexing_task.build_document_indexing_service", lambda **_: Recorder())
+
+        normal_document_indexing_task.run(
+            tenant_id,
+            dataset_id,
+            [document_id],
+            {document_id: generation},
+            intent.id,
+        )
+
+        sqlite_session.expire_all()
+        persisted = sqlite_session.get(Document, document_id)
+        assert persisted is not None
+        assert persisted.indexing_status == terminal_status
+        assert sqlite_session.get(DocumentSegment, segment.id) is not None
+        persisted_intent = sqlite_session.get(KnowledgeTaskOutbox, intent.id)
+        assert persisted_intent is not None
+        assert persisted_intent.status == "completed"
+        assert calls == []
+
+    def test_legacy_task_converts_to_durable_repair_without_running_provider(
         self,
         sqlite_session: Session,
         tenant_id: str,
@@ -255,22 +551,32 @@ class TestDocumentIndexing:
         )
         _patch_features(monkeypatch, _features())
 
-        def assert_committed_parsing(refs: list[DocumentRef]) -> None:
+        def assert_committed_parsing(refs: list[DocumentRef], **_kwargs: object) -> None:
             with Session(sqlite_session.get_bind()) as observer:
                 documents = [observer.get(Document, ref.document_id) for ref in refs]
                 assert all(document.indexing_status == IndexingStatus.PARSING for document in documents)
                 assert all(document.processing_started_at is not None for document in documents)
 
         indexing_runner.run.side_effect = assert_committed_parsing
+        monkeypatch.setattr(
+            "tasks.document_legacy_conversion.wake_knowledge_task_dispatcher_after_commit",
+            lambda _session: None,
+        )
+
         document_indexing_task.run(dataset_id, document_ids)
 
         persisted = _persisted_documents(sqlite_session, document_ids)
-        assert [document.indexing_status for document in persisted] == [IndexingStatus.PARSING] * 3
-        indexing_runner._constructor_mock.assert_called_once_with(
-            session_factory=ANY, enforce_vector_space_admission=True
+        assert [document.indexing_status for document in persisted] == [IndexingStatus.WAITING] * 3
+        assert all(document.indexing_generation is not None for document in persisted)
+        indexing_runner._constructor_mock.assert_not_called()
+        intent = sqlite_session.scalar(
+            select(KnowledgeTaskOutbox).where(
+                KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DOCUMENT_INDEX_RETRY.value
+            )
         )
-        indexing_runner.run.assert_called_once()
-        assert len(indexing_runner.run.call_args.args) == 1
+        assert intent is not None
+        assert intent.payload["document_ids"] == sorted(document_ids)
+        assert intent.payload["repair"] is True
 
     def test_only_existing_documents_are_processed(
         self,
@@ -292,11 +598,11 @@ class TestDocumentIndexing:
 
         _document_indexing(dataset_id, document_ids)
 
-        processed = indexing_runner.run.call_args.args[0]
+        processed = [call.args[0][0] for call in indexing_runner.run.call_args_list]
         assert {ref.document_id for ref in processed} == set(existing_ids)
         assert sqlite_session.get(Document, document_ids[1]) is None
 
-    def test_empty_batch_still_reaches_runner(
+    def test_empty_batch_skips_runner(
         self,
         sqlite_session: Session,
         tenant_id: str,
@@ -314,8 +620,7 @@ class TestDocumentIndexing:
 
         _document_indexing(dataset_id, [])
 
-        assert indexing_runner.run.call_args.args[0] == []
-        assert len(indexing_runner.run.call_args.args) == 1
+        indexing_runner.run.assert_not_called()
 
     def test_missing_dataset_returns_before_feature_lookup(
         self, dataset_id: str, document_ids: list[str], monkeypatch: pytest.MonkeyPatch
@@ -397,12 +702,15 @@ class TestDocumentIndexing:
         )
         _patch_features(monkeypatch, _features())
         indexing_runner.run.side_effect = error
-        summary_delay = MagicMock()
-        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", summary_delay)
 
         _document_indexing(dataset_id, document_ids)
 
-        summary_delay.assert_not_called()
+        assert (
+            sqlite_session.scalar(
+                select(KnowledgeTaskOutbox.id).where(KnowledgeTaskOutbox.task_kind == "document_summary_index")
+            )
+            is None
+        )
         persisted = _persisted_documents(sqlite_session, document_ids)
         assert all(document.indexing_status == IndexingStatus.PARSING for document in persisted)
 
@@ -432,53 +740,27 @@ class TestSummaryDispatch:
         )
         _patch_features(monkeypatch, _features())
 
-        def finish_documents(refs: list[DocumentRef]) -> None:
+        statuses = {
+            document_ids[0]: IndexingStatus.COMPLETED,
+            document_ids[1]: IndexingStatus.COMPLETED,
+            document_ids[2]: IndexingStatus.INDEXING,
+        }
+
+        def finish_documents(refs: list[DocumentRef], **_kwargs: object) -> None:
             with Session(sqlite_session.get_bind()) as writer, writer.begin():
-                for ref, status in zip(
-                    refs, [IndexingStatus.COMPLETED, IndexingStatus.COMPLETED, IndexingStatus.INDEXING], strict=True
-                ):
-                    writer.get(Document, ref.document_id).indexing_status = status
+                ref = refs[0]
+                writer.get(Document, ref.document_id).indexing_status = statuses[ref.document_id]
 
         indexing_runner.run.side_effect = finish_documents
-        summary_delay = MagicMock()
-        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", summary_delay)
 
         _document_indexing(dataset_id, document_ids)
 
-        summary_delay.assert_called_once_with(dataset_id, document_ids[0], None)
-
-    def test_summary_queue_failure_does_not_fail_indexing(
-        self,
-        sqlite_session: Session,
-        tenant_id: str,
-        dataset_id: str,
-        indexing_runner: MagicMock,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        document_id = str(uuid.uuid4())
-        _persist_indexing_rows(
-            sqlite_session,
-            tenant_id=tenant_id,
-            dataset_id=dataset_id,
-            document_ids=[document_id],
-            summary_index_setting={"enable": True},
-            need_summary=[True],
-        )
-        _patch_features(monkeypatch, _features())
-
-        def complete_documents(refs: list[DocumentRef]) -> None:
-            with Session(sqlite_session.get_bind()) as writer, writer.begin():
-                writer.get(Document, refs[0].document_id).indexing_status = IndexingStatus.COMPLETED
-
-        indexing_runner.run.side_effect = complete_documents
-        summary_delay = MagicMock(side_effect=RuntimeError("queue unavailable"))
-        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", summary_delay)
-
-        _document_indexing(dataset_id, [document_id])
-
-        summary_delay.assert_called_once_with(dataset_id, document_id, None)
-        persisted = _persisted_documents(sqlite_session, [document_id])[0]
-        assert persisted.indexing_status == IndexingStatus.COMPLETED
+        intents = sqlite_session.scalars(
+            select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == "document_summary_index")
+        ).all()
+        assert len(intents) == 1
+        assert intents[0].document_id == document_ids[0]
+        assert intents[0].payload["expected_generation"] is None
 
     def test_economy_indexing_skips_summary_generation(
         self,
@@ -505,12 +787,15 @@ class TestSummaryDispatch:
                 writer.get(Document, refs[0].document_id).indexing_status = IndexingStatus.COMPLETED
 
         indexing_runner.run.side_effect = complete_documents
-        summary_delay = MagicMock()
-        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", summary_delay)
 
         _document_indexing(dataset_id, [document_id])
 
-        summary_delay.assert_not_called()
+        assert (
+            sqlite_session.scalar(
+                select(KnowledgeTaskOutbox.id).where(KnowledgeTaskOutbox.task_kind == "document_summary_index")
+            )
+            is None
+        )
 
     def test_dataset_removed_by_runner_is_absent_from_summary_phase(
         self,
@@ -531,21 +816,24 @@ class TestSummaryDispatch:
         )
         _patch_features(monkeypatch, _features())
 
-        def remove_dataset(_refs: list[DocumentRef]) -> None:
+        def remove_dataset(_refs: list[DocumentRef], **_kwargs: object) -> None:
             with Session(sqlite_session.get_bind()) as writer, writer.begin():
                 dataset = writer.get(Dataset, dataset_id)
                 assert dataset is not None
                 writer.delete(dataset)
 
         indexing_runner.run.side_effect = remove_dataset
-        summary_delay = MagicMock()
-        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", summary_delay)
 
         _document_indexing(dataset_id, [document_id])
 
         sqlite_session.expire_all()
         assert sqlite_session.get(Dataset, dataset_id) is None
-        summary_delay.assert_not_called()
+        assert (
+            sqlite_session.scalar(
+                select(KnowledgeTaskOutbox.id).where(KnowledgeTaskOutbox.task_kind == "document_summary_index")
+            )
+            is None
+        )
 
 
 class TestTenantQueue:
@@ -575,18 +863,22 @@ class TestTenantQueue:
         queue.set_task_waiting_time.assert_called_once()
         queue.delete_task_key.assert_not_called()
 
-    def test_queue_cleanup_runs_when_indexing_fails(
+    def test_legacy_queue_is_not_advanced_when_conversion_fails(
         self, tenant_id: str, dataset_id: str, document_ids: list[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         queue = MagicMock()
         queue.pull_tasks.return_value = []
         monkeypatch.setattr("tasks.document_indexing_task.TenantIsolatedTaskQueue", MagicMock(return_value=queue))
-        indexing = MagicMock(side_effect=RuntimeError("indexing failed"))
-        monkeypatch.setattr("tasks.document_indexing_task._document_indexing", indexing)
 
-        _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, MagicMock())
+        def conversion(_dataset_id: str, _document_ids: list[str]) -> None:
+            raise RuntimeError("database unavailable")
 
-        queue.delete_task_key.assert_called_once()
+        monkeypatch.setattr("tasks.document_indexing_task.convert_legacy_document_indexing_delivery", conversion)
+
+        with pytest.raises(RuntimeError, match="database unavailable"):
+            _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, MagicMock())
+
+        queue.delete_task_key.assert_not_called()
 
     @pytest.mark.parametrize("task", [normal_document_indexing_task, priority_document_indexing_task])
     def test_celery_entrypoints_delegate_to_tenant_queue(
@@ -603,3 +895,53 @@ class TestTenantQueue:
         task.run(tenant_id, dataset_id, document_ids)  # type: ignore[attr-defined]
 
         delegate.assert_called_once()
+
+
+def test_generation_change_after_index_write_enqueues_current_repair(
+    sqlite_session: Session,
+    tenant_id: str,
+    dataset_id: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document_id = str(uuid.uuid4())
+    _, documents = _persist_indexing_rows(
+        sqlite_session,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_ids=[document_id],
+    )
+    documents[0].indexing_generation = str(uuid.uuid4())
+    sqlite_session.commit()
+    successor_generation = str(uuid.uuid4())
+
+    class GenerationChangingIndexer:
+        def run(self, refs: list[DocumentRef], **_kwargs: object) -> None:
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                document = writer.get(Document, refs[0].document_id)
+                assert document is not None
+                document.indexing_generation = successor_generation
+                document.indexing_status = IndexingStatus.COMPLETED
+
+    monkeypatch.setattr(
+        "tasks.document_indexing_task.build_document_indexing_service",
+        lambda **_kwargs: GenerationChangingIndexer(),
+    )
+
+    _document_indexing(dataset_id, [document_id])
+
+    sqlite_session.expire_all()
+    repair = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DOCUMENT_INDEX_STATE.value)
+    )
+    assert repair is not None
+    repair_generation = repair.payload.get("generation")
+    assert isinstance(repair_generation, str)
+    assert repair_generation != successor_generation
+    assert repair.payload == {
+        "document_id": document_id,
+        "generation": repair_generation,
+        "action": "add",
+    }
+    persisted = sqlite_session.get(Document, document_id)
+    assert persisted is not None
+    assert persisted.indexing_generation == repair_generation

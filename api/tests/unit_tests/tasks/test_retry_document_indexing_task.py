@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
@@ -47,34 +48,52 @@ def test_retry_uses_dataset_runtime(sqlite_session: Session, runtime_mode: Datas
         name="Retry document",
         created_from=DocumentCreatedFrom.WEB,
         created_by=user.id,
-        indexing_status=IndexingStatus.COMPLETED,
+        indexing_status=IndexingStatus.WAITING,
+        processing_started_at=datetime(2026, 10, 19, 12, 0),
+        indexing_generation="7c36309e-7ca9-46d1-ac11-799cb3d58603",
         enabled=True,
         archived=False,
         doc_form=IndexStructureType.PARAGRAPH_INDEX,
     )
     sqlite_session.add_all([tenant, user, membership, dataset, document])
     sqlite_session.commit()
+    assert document.indexing_generation is not None
     features = MagicMock()
 
     with (
         patch("tasks.retry_document_indexing_task.FeatureService.get_features", return_value=features),
         patch("tasks.retry_document_indexing_task.IndexProcessorFactory"),
         patch("tasks.retry_document_indexing_task.build_document_indexing_service") as indexing_runner,
-        patch("tasks.retry_document_indexing_task.RagPipelineService") as pipeline_service,
+        patch("tasks.retry_document_indexing_task.SQLAlchemyPipelineRunPreparer") as preparer_factory,
         patch("tasks.retry_document_indexing_task.redis_client"),
     ):
-        retry_document_indexing_task.run(dataset.id, [document.id], user.id)
+        retry_document_indexing_task.run(
+            dataset.id,
+            [document.id],
+            user.id,
+            {},
+            {document.id: document.indexing_generation},
+        )
 
     if runtime_mode == DatasetRuntimeMode.GENERAL:
-        pipeline_service.assert_not_called()
+        preparer_factory.assert_not_called()
         indexing_runner.assert_called_once_with(session_factory=ANY, enforce_vector_space_admission=True)
         (run_documents,) = indexing_runner.return_value.run.call_args.args
         assert [item.document_id for item in run_documents] == [document.id]
         assert run_documents[0].dataset.tenant_id == dataset.tenant_id
     else:
         indexing_runner.assert_not_called()
-        retry = pipeline_service.return_value.retry_error_document
+        preparer_factory.assert_called_once()
+        assert isinstance(preparer_factory.call_args.kwargs["generator"], PipelineGenerator)
+        preparer = preparer_factory.return_value
+        retry = preparer.prepare_retry
         retry.assert_called_once()
-        retry_dataset, retry_document, retry_user = retry.call_args.args
-        assert (retry_dataset.id, retry_document.id, retry_user.id) == (dataset.id, document.id, user.id)
-        assert isinstance(retry.call_args.kwargs["generator"], PipelineGenerator)
+        retry_document, retry_user = retry.call_args.args
+        assert (retry_document.id, retry_user.id) == (document.id, user.id)
+        execution = retry.call_args.kwargs["execution"]
+        assert execution.execution_id is not None
+        sqlite_session.expire_all()
+        persisted_document = sqlite_session.get(Document, document.id)
+        assert persisted_document is not None
+        assert persisted_document.indexing_execution_id == execution.execution_id
+        preparer.execute.assert_called_once_with(retry.return_value)

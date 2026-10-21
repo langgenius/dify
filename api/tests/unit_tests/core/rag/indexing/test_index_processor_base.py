@@ -167,7 +167,10 @@ class TestBaseIndexProcessor:
         assert "chunk_size" in mock_enhance.call_args.kwargs
 
     def test_extract_markdown_images(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        markdown = "text ![a](https://a/img.png) and ![b](/files/123/file-preview)"
+        markdown = """text ![a](https://a/img.png) and ![b][stored]
+
+[stored]: /files/123/file-preview
+"""
         images = processor._extract_markdown_images(markdown)
         assert images == ["https://a/img.png", "/files/123/file-preview"]
 

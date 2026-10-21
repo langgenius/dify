@@ -1456,6 +1456,36 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP: bool = Field(
+        description=(
+            "Enable storage-object deletion for upload-file cleanup after all deployed writers honor the cleanup fence"
+        ),
+        default=False,
+    )
+    UPLOAD_FILE_CLEANUP_RECOVERY_INTERVAL_SECONDS: PositiveInt = Field(
+        description="Interval for recovering upload files left with a durable cleanup marker",
+        default=60,
+    )
+    UPLOAD_FILE_CLEANUP_RECOVERY_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum marked upload files processed by one recovery sweep",
+        default=100,
+    )
+    UPLOAD_FILE_CLEANUP_DEFER_SECONDS: PositiveInt = Field(
+        description="Delay before retrying a cleanup delivery while physical upload cleanup is disabled",
+        default=300,
+    )
+    ENABLE_KNOWLEDGE_TASK_OUTBOX_DISPATCH: bool = Field(
+        description="Enable periodic delivery of durable knowledge background-task intents",
+        default=True,
+    )
+    KNOWLEDGE_TASK_OUTBOX_INTERVAL_SECONDS: PositiveInt = Field(
+        description="Knowledge task outbox recovery interval in seconds",
+        default=10,
+    )
+    KNOWLEDGE_TASK_OUTBOX_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum knowledge task intents claimed by one dispatcher run",
+        default=100,
+    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,

@@ -217,9 +217,9 @@ def knowledge_task_execution(
                 available_at=clock() + _EXECUTION_RETRY_DELAY,
                 error=str(execution_error)[:4000],
             )
-        except Exception as persistence_error:
+        except Exception as retry_error:
             logger.exception("Failed to persist execution retry for knowledge task intent %s", outbox_id)
-            raise execution_error from persistence_error
+            raise execution_error from retry_error
 
         if disposition == KnowledgeTaskFailureDisposition.MISSING:
             logger.exception("Knowledge task intent could not be requeued: %s", outbox_id)

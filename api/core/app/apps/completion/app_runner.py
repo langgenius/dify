@@ -125,6 +125,7 @@ class CompletionAppRunner(AppRunner):
                 message.id,
                 application_generate_entity.user_id,
                 application_generate_entity.invoke_from,
+                app_record.tenant_id,
             )
 
             dataset_config = app_config.dataset

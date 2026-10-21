@@ -16,7 +16,7 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document as RetrievalDocument
 from extensions.storage.storage_type import StorageType
-from fields.hit_testing_fields import HitTestingResponse
+from fields.hit_testing_fields import HitTestingRecord, HitTestingResponse
 from machinery.context import RequestContext
 from models.dataset import (
     ChildChunk,
@@ -40,13 +40,19 @@ from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepositor
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess
-from services.knowledge.entities.hit_testing import HitTestingRequest
-from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.hit_testing import adapters
 from services.knowledge.hit_testing.adapters import DatasetHitTestingGateway
 from services.knowledge.hit_testing.application import HitTestingApplicationService
+from services.knowledge.hit_testing.entities import HitTestingRequest
+from services.knowledge.resource_scope import DatasetRef
 
 REF = DatasetRef("tenant", "dataset")
+CONTEXT = RequestContext("request", None, "viewer", REF.tenant_id)
+
+
+class _UnexpectedExternalRetrieval:
+    def retrieve(self, *_args: object, **_kwargs: object) -> dict[str, object]:
+        raise AssertionError("internal dataset reached external retrieval")
 
 
 def _document(document_id: str, form: str = IndexStructureType.PARAGRAPH_INDEX) -> Document:
@@ -155,9 +161,17 @@ def gateway(sqlite_session_factory: sessionmaker[Session]) -> DatasetHitTestingG
     with sqlite_session_factory.begin() as session:
         session.add(Dataset(id=REF.dataset_id, tenant_id=REF.tenant_id, name="Dataset", created_by="admin"))
     return DatasetHitTestingGateway(
-        datasets=SQLAlchemyDatasetRepository(session_factory=sqlite_session_factory),
+        datasets=SQLAlchemyDatasetRepository(
+            session_factory=sqlite_session_factory,
+            wake_after_commit=lambda _session: None,
+            revoke_keys_after_commit=lambda _session, _keys: None,
+        ),
         documents=SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory),
-        segments=SQLAlchemySegmentRepository(session_factory=sqlite_session_factory),
+        segments=SQLAlchemySegmentRepository(
+            session_factory=sqlite_session_factory,
+            wake_after_commit=lambda _session: None,
+        ),
+        external_retrieval=_UnexpectedExternalRetrieval(),
     )
 
 
@@ -220,16 +234,17 @@ def test_invalid_segment_and_child_owners_never_reach_response_or_authorization(
     monkeypatch.setattr(adapters, "sign_upload_file_preview_url", sign)
     with bind_file_access_scope(_scope()):
         response = HitTestingResponse.model_validate(
-            gateway.retrieve(REF, HitTestingRequest("query", None, None)).response
+            gateway.retrieve(CONTEXT, REF, HitTestingRequest("query", None, None, None)).response
         )
         scope = get_current_file_access_scope()
         assert scope is not None
         assert scope.granted_upload_file_ids == frozenset({"safe-file"})
         assert scope.granted_retriever_segment_ids == frozenset({"safe-segment"})
     assert signed == ["safe-file"]
-    assert [record.segment.content for record in response.records] == ["safe-segment"]
-    assert response.records[0].score == 0.8
-    assert [child.content for child in response.records[0].child_chunks] == (["safe-child"] if parent_child else [])
+    records = [record for record in response.records if isinstance(record, HitTestingRecord)]
+    assert [record.segment.content for record in records] == ["safe-segment"]
+    assert records[0].score == 0.8
+    assert [child.content for child in records[0].child_chunks] == (["safe-child"] if parent_child else [])
 
 
 @pytest.mark.parametrize("broken", ["tenant_id", "dataset_id", "document_id", "segment_id", "file_tenant", "unbound"])
@@ -273,14 +288,15 @@ def test_attachment_binding_and_file_owners_are_checked_before_signing_and_grant
     monkeypatch.setattr(adapters, "sign_upload_file_preview_url", signer)
     with bind_file_access_scope(_scope()):
         response = HitTestingResponse.model_validate(
-            gateway.retrieve(REF, HitTestingRequest("query", None, None)).response
+            gateway.retrieve(CONTEXT, REF, HitTestingRequest("query", None, None, None)).response
         )
         scope = get_current_file_access_scope()
         assert scope is not None
         assert scope.granted_upload_file_ids == frozenset({"safe-file"})
     signer.assert_called_once_with("safe-file", "png")
-    assert [file.id for file in response.records[0].files] == ["safe-file"]
-    assert response.records[0].score == 0.8
+    record = next(record for record in response.records if isinstance(record, HitTestingRecord))
+    assert [file.id for file in record.files] == ["safe-file"]
+    assert record.score == 0.8
 
 
 @pytest.mark.parametrize("broken", ["dataset_id", "document_id", "disabled", "status"])
@@ -309,9 +325,12 @@ def test_summary_owner_and_state_never_leak_content(
         RetrievalService.retrieve, spec_set=True, return_value=[_hit("safe-segment", summary=True)]
     )
     monkeypatch.setattr(RetrievalService, "retrieve", retrieval)
-    response = HitTestingResponse.model_validate(gateway.retrieve(REF, HitTestingRequest("query", None, None)).response)
+    response = HitTestingResponse.model_validate(
+        gateway.retrieve(CONTEXT, REF, HitTestingRequest("query", None, None, None)).response
+    )
     assert len(response.records) == 1
-    assert response.records[0].summary is None
+    record = next(record for record in response.records if isinstance(record, HitTestingRecord))
+    assert record.summary is None
 
 
 @pytest.mark.parametrize("form", [IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.PARENT_CHILD_INDEX])
@@ -379,7 +398,7 @@ def test_valid_results_aggregate_scores_and_release_connections_before_signing_a
     try:
         with bind_file_access_scope(_scope()):
             response = HitTestingResponse.model_validate(
-                gateway.retrieve(REF, HitTestingRequest("query", None, None)).response
+                gateway.retrieve(CONTEXT, REF, HitTestingRequest("query", None, None, None)).response
             )
             scope = get_current_file_access_scope()
             assert scope is not None
@@ -388,7 +407,7 @@ def test_valid_results_aggregate_scores_and_release_connections_before_signing_a
     finally:
         event.remove(sqlite_engine, "checkout", checkout)
         event.remove(sqlite_engine, "checkin", checkin)
-    record = response.records[0]
+    record = next(record for record in response.records if isinstance(record, HitTestingRecord))
     assert record.summary == "valid summary"
     assert record.score == (0.9 if form == IndexStructureType.PARENT_CHILD_INDEX else 0.8)
     assert [child.content for child in record.child_chunks] == (
@@ -419,7 +438,7 @@ def test_index_form_only_includes_the_matching_kind_of_node(
     retrieval = create_autospec(RetrievalService.retrieve, spec_set=True, return_value=[_hit(node_id)])
     monkeypatch.setattr(RetrievalService, "retrieve", retrieval)
     with bind_file_access_scope(_scope()):
-        assert gateway.retrieve(REF, HitTestingRequest("query", None, None)).response["records"] == []
+        assert gateway.retrieve(CONTEXT, REF, HitTestingRequest("query", None, None, None)).response["records"] == []
         scope = get_current_file_access_scope()
         assert scope is not None
         assert not scope.granted_retriever_segment_ids
@@ -466,7 +485,7 @@ def test_response_batches_do_not_add_per_record_queries_or_keep_connections_open
     event.listen(sqlite_engine, "checkin", checkin)
     event.listen(sqlite_engine, "before_cursor_execute", capture)
     try:
-        result = gateway.retrieve(REF, HitTestingRequest("query", None, None))
+        result = gateway.retrieve(CONTEXT, REF, HitTestingRequest("query", None, None, None))
         assert maximum_connections == 1
         assert active_connections == 0
         assert len(queries) <= 4
@@ -503,7 +522,7 @@ def test_signing_failure_does_not_grant_file_or_segment_access(
     monkeypatch.setattr(adapters, "sign_upload_file_preview_url", fail_signing)
     with bind_file_access_scope(_scope()):
         with pytest.raises(RuntimeError, match="signing failed"):
-            gateway.retrieve(REF, HitTestingRequest("query", None, None))
+            gateway.retrieve(CONTEXT, REF, HitTestingRequest("query", None, None, None))
         scope = get_current_file_access_scope()
         assert scope is not None
         assert not scope.granted_upload_file_ids
@@ -525,7 +544,11 @@ def test_real_metadata_filter_preserves_retrieval_and_query_history_behavior(
     service = HitTestingApplicationService(
         dataset_access=access,
         retrieval=gateway,
-        queries=SQLAlchemyDatasetRepository(session_factory=sqlite_session_factory),
+        queries=SQLAlchemyDatasetRepository(
+            session_factory=sqlite_session_factory,
+            wake_after_commit=lambda _session: None,
+            revoke_keys_after_commit=lambda _session, _keys: None,
+        ),
     )
     model: dict[str, object] = {
         "search_method": "semantic_search",
@@ -543,10 +566,10 @@ def test_real_metadata_filter_preserves_retrieval_and_query_history_behavior(
     with sqlite_session.begin() as caller_transaction:
         pending_document = _document("pending-document")
         sqlite_session.add(pending_document)
-        assert service.hit_testing(
+        assert service.retrieve(
             RequestContext("request", None, "viewer", REF.tenant_id),
             dataset_id=REF.dataset_id,
-            request=HitTestingRequest("query", model, None),
+            request=HitTestingRequest("query", model, None, None),
         ) == {
             "query": {"content": "query"},
             "records": [],

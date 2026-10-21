@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from functools import partial
 from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import Session
 
 import tasks.document_indexing_update_task as task_module
@@ -17,8 +18,12 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.knowledge_task import KnowledgeTaskOutbox
 from models.model import UploadFile
+from services.knowledge.indexing.contracts import DocumentIndexingExecution
 from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.task_outbox.contracts import KnowledgeTaskExecutionLeaseLostError
 from tasks.document_indexing_update_task import document_indexing_update_task
 
 
@@ -49,10 +54,11 @@ def _persist_rows(
     session: Session,
     *,
     indexing_technique: IndexTechniqueType = IndexTechniqueType.HIGH_QUALITY,
-    summary_index_setting: dict | None = None,
+    summary_index_setting: dict[str, object] | None = None,
     doc_form: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
     need_summary: bool = True,
     with_segment: bool = False,
+    generation: str | None = None,
 ) -> tuple[Dataset, Document]:
     tenant_id = str(uuid.uuid4())
     dataset_id = str(uuid.uuid4())
@@ -80,6 +86,7 @@ def _persist_rows(
         indexing_status=IndexingStatus.WAITING,
         doc_form=doc_form,
         need_summary=need_summary,
+        indexing_generation=generation or str(uuid.uuid4()),
     )
     rows: list[object] = [dataset, document]
     if with_segment:
@@ -101,10 +108,17 @@ def _persist_rows(
     return dataset, document
 
 
-def _complete_indexing(refs, *, bind) -> None:
+def _complete_indexing(
+    refs: Sequence[DocumentRef],
+    *,
+    bind: Engine | Connection,
+    **_kwargs: object,
+) -> None:
     with Session(bind) as writer, writer.begin():
         for ref in refs:
-            writer.get(Document, ref.document_id).indexing_status = IndexingStatus.COMPLETED
+            document = writer.get(Document, ref.document_id)
+            assert document is not None
+            document.indexing_status = IndexingStatus.COMPLETED
 
 
 def _persist_attachment(
@@ -143,19 +157,25 @@ def _persist_attachment(
 def test_queues_summary_when_all_persisted_conditions_match(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     runner, _processor = task_harness
-    dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
+    generation = str(uuid.uuid4())
+    dataset, document = _persist_rows(
+        sqlite_session,
+        summary_index_setting={"enable": True},
+        generation=generation,
+    )
     runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
-    delay = MagicMock()
-    monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 
-    document_indexing_update_task(dataset.id, document.id)
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
 
-    delay.assert_called_once_with(dataset.id, document.id, None)
     sqlite_session.expire_all()
     assert sqlite_session.get(Document, document.id).indexing_status == IndexingStatus.COMPLETED  # type: ignore[union-attr]
+    intent = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == "document_summary_index")
+    )
+    assert intent is not None
+    assert intent.payload["expected_generation"] == generation
 
 
 @pytest.mark.parametrize(
@@ -165,6 +185,9 @@ def test_queues_summary_when_all_persisted_conditions_match(
         ({"summary_index_setting": None}, {}),
         ({"summary_index_setting": {"enable": False}}, {}),
         ({"summary_index_setting": {"enable": True}}, {"need_summary": False}),
+        ({"summary_index_setting": {"enable": True}}, {"enabled": False}),
+        ({"summary_index_setting": {"enable": True}}, {"archived": True}),
+        ({"summary_index_setting": {"enable": True}}, {"is_paused": True}),
         (
             {"summary_index_setting": {"enable": True}},
             {"doc_form": IndexStructureType.QA_INDEX},
@@ -174,9 +197,8 @@ def test_queues_summary_when_all_persisted_conditions_match(
 def test_skips_summary_when_persisted_eligibility_does_not_match(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
-    dataset_changes: dict,
-    document_changes: dict,
+    dataset_changes: dict[str, object],
+    document_changes: dict[str, object],
 ) -> None:
     runner, _processor = task_harness
     dataset, document = _persist_rows(
@@ -189,12 +211,15 @@ def test_skips_summary_when_persisted_eligibility_does_not_match(
         setattr(document, key, value)
     sqlite_session.commit()
     runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
-    delay = MagicMock()
-    monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 
-    document_indexing_update_task(dataset.id, document.id)
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
 
-    delay.assert_not_called()
+    assert (
+        sqlite_session.scalar(
+            select(KnowledgeTaskOutbox.id).where(KnowledgeTaskOutbox.task_kind == "document_summary_index")
+        )
+        is None
+    )
 
 
 @pytest.mark.parametrize(
@@ -207,18 +232,20 @@ def test_skips_summary_when_persisted_eligibility_does_not_match(
 def test_skips_summary_when_indexing_fails_or_is_paused(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
     error_factory: Callable[[str], Exception],
 ) -> None:
     runner, _processor = task_harness
     dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
     runner.run.side_effect = error_factory(document.id)
-    delay = MagicMock()
-    monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 
-    document_indexing_update_task(dataset.id, document.id)
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
 
-    delay.assert_not_called()
+    assert (
+        sqlite_session.scalar(
+            select(KnowledgeTaskOutbox.id).where(KnowledgeTaskOutbox.task_kind == "document_summary_index")
+        )
+        is None
+    )
 
 
 def test_returns_without_opening_external_boundaries_when_document_is_missing(
@@ -226,7 +253,7 @@ def test_returns_without_opening_external_boundaries_when_document_is_missing(
 ) -> None:
     runner, processor = task_harness
 
-    document_indexing_update_task(str(uuid.uuid4()), str(uuid.uuid4()))
+    document_indexing_update_task(str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()))
 
     runner.run.assert_not_called()
     processor.clean.assert_not_called()
@@ -235,66 +262,57 @@ def test_returns_without_opening_external_boundaries_when_document_is_missing(
 def test_skips_summary_when_dataset_is_removed_after_indexing(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     runner, _processor = task_harness
     dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
 
-    def complete_and_remove(documents: list[Document], session: Session) -> None:
-        _complete_indexing(documents, session)
-        persisted_dataset = session.get(Dataset, dataset.id)
-        assert persisted_dataset is not None
-        session.delete(persisted_dataset)
+    def complete_and_remove(
+        refs: Sequence[DocumentRef],
+        *,
+        executions: Mapping[str, DocumentIndexingExecution],
+    ) -> None:
+        assert document.id in executions
+        with Session(sqlite_session.get_bind()) as writer, writer.begin():
+            for ref in refs:
+                persisted_document = writer.get(Document, ref.document_id)
+                assert persisted_document is not None
+                persisted_document.indexing_status = IndexingStatus.COMPLETED
+            persisted_dataset = writer.get(Dataset, dataset.id)
+            assert persisted_dataset is not None
+            writer.delete(persisted_dataset)
 
     runner.run.side_effect = complete_and_remove
-    delay = MagicMock()
-    monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
 
-    document_indexing_update_task(dataset.id, document.id)
-
-    delay.assert_not_called()
+    assert (
+        sqlite_session.scalar(
+            select(KnowledgeTaskOutbox.id).where(KnowledgeTaskOutbox.task_kind == "document_summary_index")
+        )
+        is None
+    )
 
 
 def test_skips_summary_when_runner_leaves_document_incomplete(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     runner, _processor = task_harness
     dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
     runner.run.return_value = None
-    delay = MagicMock()
-    monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 
-    document_indexing_update_task(dataset.id, document.id)
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
 
-    delay.assert_not_called()
-
-
-def test_queue_failure_is_swallowed_after_successful_indexing(
-    sqlite_session: Session,
-    task_harness: tuple[MagicMock, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    runner, _processor = task_harness
-    dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
-    runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
-    monkeypatch.setattr(
-        task_module.generate_summary_index_task,
-        "delay",
-        MagicMock(side_effect=RuntimeError("queue unavailable")),
+    assert (
+        sqlite_session.scalar(
+            select(KnowledgeTaskOutbox.id).where(KnowledgeTaskOutbox.task_kind == "document_summary_index")
+        )
+        is None
     )
-
-    document_indexing_update_task(dataset.id, document.id)
-
-    sqlite_session.expire_all()
-    assert sqlite_session.get(Document, document.id).indexing_status == IndexingStatus.COMPLETED  # type: ignore[union-attr]
 
 
 def test_cleans_and_deletes_persisted_segments_with_real_session(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     runner, processor = task_harness
     dataset, document = _persist_rows(
@@ -303,21 +321,160 @@ def test_cleans_and_deletes_persisted_segments_with_real_session(
         with_segment=True,
     )
     runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
-    delay = MagicMock()
-    monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 
-    document_indexing_update_task(dataset.id, document.id)
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
 
     processor.clean.assert_called_once()
     assert isinstance(processor.clean.call_args.kwargs["session"], Session)
     assert sqlite_session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all() == []
-    delay.assert_called_once_with(dataset.id, document.id, None)
+    assert (
+        sqlite_session.scalar(
+            select(KnowledgeTaskOutbox.id).where(KnowledgeTaskOutbox.task_kind == "document_summary_index")
+        )
+        is not None
+    )
+
+
+def test_generation_change_after_external_cleanup_preserves_successor_segments(
+    sqlite_session: Session,
+    task_harness: tuple[MagicMock, MagicMock],
+) -> None:
+    runner, processor = task_harness
+    old_generation = str(uuid.uuid4())
+    successor_generation = str(uuid.uuid4())
+    dataset, document = _persist_rows(
+        sqlite_session,
+        with_segment=True,
+        generation=old_generation,
+    )
+
+    def advance_generation(*_args: object, **_kwargs: object) -> None:
+        with Session(sqlite_session.get_bind()) as writer, writer.begin():
+            persisted = writer.get(Document, document.id)
+            assert persisted is not None
+            persisted.indexing_generation = successor_generation
+            persisted.indexing_status = IndexingStatus.WAITING
+
+    processor.clean.side_effect = advance_generation
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Document, document.id)
+    assert persisted is not None
+    assert persisted.indexing_generation == successor_generation
+    assert persisted.indexing_status == IndexingStatus.WAITING
+    assert sqlite_session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all()
+    runner.run.assert_not_called()
+    repair = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == "document_index_retry")
+    )
+    assert repair is not None
+    assert repair.payload["document_ids"] == [document.id]
+    assert repair.payload["generations"] == {document.id: successor_generation}
+    assert repair.payload["repair"] is True
+
+
+def test_generation_change_before_initial_row_lock_does_not_overwrite_successor(
+    sqlite_session: Session,
+    task_harness: tuple[MagicMock, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner, processor = task_harness
+    old_generation = str(uuid.uuid4())
+    successor_generation = str(uuid.uuid4())
+    dataset, document = _persist_rows(sqlite_session, generation=old_generation)
+    lock_dataset = task_module.lock_dataset_for_child_write
+    advanced = False
+
+    def advance_generation_before_dataset_lock(session: Session, dataset_ref: DatasetRef) -> Dataset | None:
+        nonlocal advanced
+        if not advanced:
+            advanced = True
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                persisted = writer.get(Document, document.id)
+                assert persisted is not None
+                persisted.indexing_generation = successor_generation
+                persisted.indexing_status = IndexingStatus.WAITING
+        return lock_dataset(session, dataset_ref)
+
+    monkeypatch.setattr(task_module, "lock_dataset_for_child_write", advance_generation_before_dataset_lock)
+
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Document, document.id)
+    assert persisted is not None
+    assert persisted.indexing_generation == successor_generation
+    assert persisted.indexing_status == IndexingStatus.WAITING
+    processor.clean.assert_not_called()
+    runner.run.assert_not_called()
+    repair = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == "document_index_retry")
+    )
+    assert repair is not None
+    assert repair.payload["generations"] == {document.id: successor_generation}
+
+
+def test_lease_loss_during_external_cleanup_persists_current_generation_repair(
+    sqlite_session: Session,
+    task_harness: tuple[MagicMock, MagicMock],
+) -> None:
+    runner, processor = task_harness
+    generation = str(uuid.uuid4())
+    dataset, document = _persist_rows(sqlite_session, with_segment=True, generation=generation)
+
+    def lose_lease_after_external_side_effect(*_args: object, **_kwargs: object) -> None:
+        raise KnowledgeTaskExecutionLeaseLostError("execution lease lost after cleanup")
+
+    processor.clean.side_effect = lose_lease_after_external_side_effect
+
+    with pytest.raises(KnowledgeTaskExecutionLeaseLostError):
+        document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Document, document.id)
+    assert persisted is not None
+    assert persisted.indexing_generation == generation
+    assert sqlite_session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all()
+    runner.run.assert_not_called()
+    repair = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == "document_index_retry")
+    )
+    assert repair is not None
+    assert repair.payload["generations"] == {document.id: generation}
+
+
+def test_versioned_delivery_binds_runner_to_expected_generation(
+    sqlite_session: Session,
+    task_harness: tuple[MagicMock, MagicMock],
+) -> None:
+    runner, _processor = task_harness
+    generation = str(uuid.uuid4())
+    dataset, document = _persist_rows(sqlite_session, generation=generation)
+
+    def assert_generation_and_complete(
+        refs: Sequence[DocumentRef],
+        *,
+        executions: Mapping[str, DocumentIndexingExecution],
+    ) -> None:
+        execution = executions[document.id]
+        assert execution.expected_generation == generation
+        _complete_indexing(refs, bind=sqlite_session.get_bind())
+
+    runner.run.side_effect = assert_generation_and_complete
+
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
+
+    runner.run.assert_called_once()
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Document, document.id)
+    assert persisted is not None
+    assert persisted.indexing_status == IndexingStatus.COMPLETED
 
 
 def test_removes_orphaned_multimodal_attachments_during_reindex(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     runner, processor = task_harness
     dataset, document = _persist_rows(sqlite_session, with_segment=True)
@@ -333,19 +490,20 @@ def test_removes_orphaned_multimodal_attachments_during_reindex(
     )
     attachment_id = attachment.id
     binding_id = binding.id
-    storage_delete = MagicMock()
-    monkeypatch.setattr(task_module.storage, "delete", storage_delete)
-
-    document_indexing_update_task(dataset.id, document.id)
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
 
     assert processor.clean.call_count == 2
     assert processor.clean.call_args_list[0].args[1] == ["node-1"]
     assert processor.clean.call_args_list[1].kwargs["node_ids"] == [attachment_id]
     assert processor.clean.call_args_list[1].kwargs["with_keywords"] is False
-    storage_delete.assert_called_once_with("attachments/orphaned-image.png")
     sqlite_session.expire_all()
     assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
-    assert sqlite_session.get(UploadFile, attachment_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is not None
+    cleanup_intent = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == "file_cleanup")
+    )
+    assert cleanup_intent is not None
+    assert cleanup_intent.payload == {"file_ids": [attachment_id]}
     assert sqlite_session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all() == []
     runner.run.assert_called_once()
 
@@ -353,7 +511,6 @@ def test_removes_orphaned_multimodal_attachments_during_reindex(
 def test_preserves_multimodal_attachment_referenced_by_another_document_during_reindex(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     runner, processor = task_harness
     dataset, document = _persist_rows(sqlite_session, with_segment=True)
@@ -408,28 +565,27 @@ def test_preserves_multimodal_attachment_referenced_by_another_document_during_r
     attachment_id = attachment.id
     binding_id = binding.id
     shared_binding_id = shared_binding.id
-    storage_delete = MagicMock()
-    monkeypatch.setattr(task_module.storage, "delete", storage_delete)
-
-    document_indexing_update_task(dataset.id, document.id)
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
 
     processor.clean.assert_called_once()
     assert processor.clean.call_args.args[1] == ["node-1"]
-    storage_delete.assert_not_called()
     sqlite_session.expire_all()
     assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
     assert sqlite_session.get(SegmentAttachmentBinding, shared_binding_id) is not None
     assert sqlite_session.get(UploadFile, attachment_id) is not None
+    cleanup_intent = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == "file_cleanup")
+    )
+    assert cleanup_intent is not None
+    assert cleanup_intent.payload == {"file_ids": [attachment_id]}
     runner.run.assert_called_once()
 
 
-def test_keeps_database_cleanup_when_reindex_attachment_storage_delete_fails(
+def test_persists_file_cleanup_when_attachment_vector_cleanup_fails(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    runner, _processor = task_harness
+    runner, processor = task_harness
     dataset, document = _persist_rows(sqlite_session, with_segment=True)
     dataset.is_multimodal = True
     segment = sqlite_session.scalar(select(DocumentSegment).where(DocumentSegment.document_id == document.id))
@@ -443,16 +599,18 @@ def test_keeps_database_cleanup_when_reindex_attachment_storage_delete_fails(
     )
     attachment_id = attachment.id
     binding_id = binding.id
-    storage_delete = MagicMock(side_effect=RuntimeError("storage unavailable"))
-    monkeypatch.setattr(task_module.storage, "delete", storage_delete)
+    processor.clean.side_effect = [None, RuntimeError("vector unavailable")]
 
-    with caplog.at_level("ERROR", logger="tasks.document_indexing_update_task"):
-        document_indexing_update_task(dataset.id, document.id)
+    document_indexing_update_task(dataset.id, document.id, document.indexing_generation)
 
-    storage_delete.assert_called_once_with("attachments/failing-image.png")
-    assert "Failed to delete document attachment from storage during re-indexing" in caplog.text
     sqlite_session.expire_all()
     assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
-    assert sqlite_session.get(UploadFile, attachment_id) is None
+    pending_upload = sqlite_session.get(UploadFile, attachment_id)
+    assert pending_upload is not None
+    cleanup_intent = sqlite_session.scalar(
+        select(KnowledgeTaskOutbox).where(KnowledgeTaskOutbox.task_kind == "file_cleanup")
+    )
+    assert cleanup_intent is not None
+    assert cleanup_intent.payload == {"file_ids": [attachment_id]}
     assert sqlite_session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all() == []
-    runner.run.assert_called_once()
+    runner.run.assert_not_called()

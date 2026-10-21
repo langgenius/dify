@@ -8,10 +8,12 @@ import {
   zArchivedDocumentImmutableError,
   zAudioTooLargeError,
   zCompletionRequestError,
-  zDatasetAccessDeniedError,
+  zDatasetConcurrentUpdateError,
   zDatasetNameDuplicateError,
   zDatasetNotInitializedError,
+  zDocumentSourceConflictError,
   zEndUserNotFoundError,
+  zExternalKnowledgeFailedError,
   zFileAccessDeniedError,
   zFileExtensionBlockedError,
   zFileNotFoundError,
@@ -22,6 +24,7 @@ import {
   zInvalidActionError,
   zInvalidFormDataError,
   zInvalidMetadataError,
+  zKnowledgeIndexUnavailableError,
   zModelCurrentlyNotSupportError,
   zNoAudioUploadedError,
   zNoFileUploadedError,
@@ -214,6 +217,9 @@ import {
   zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody,
   zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath,
   zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse,
+  zPostDatasetsByDatasetIdPipelineFileUploadBody,
+  zPostDatasetsByDatasetIdPipelineFileUploadPath,
+  zPostDatasetsByDatasetIdPipelineFileUploadResponse,
   zPostDatasetsByDatasetIdPipelineRunBody,
   zPostDatasetsByDatasetIdPipelineRunPath,
   zPostDatasetsByDatasetIdPipelineRunResponse,
@@ -772,12 +778,12 @@ export const conversations = {
 /**
  * Upload Pipeline File
  *
- * Upload a file for use in a knowledge pipeline. Accepts a single file via `multipart/form-data`.
+ * Upload a file for use in a knowledge pipeline. Resource access tokens must use the dataset-scoped path; workspace API keys may also use the unscoped compatibility path. Accepts a single file via `multipart/form-data`.
  */
 export const post9 = oc
   .route({
     description:
-      'Upload a file for use in a knowledge pipeline. Accepts a single file via `multipart/form-data`.',
+      'Upload a file for use in a knowledge pipeline. Resource access tokens must use the dataset-scoped path; workspace API keys may also use the unscoped compatibility path. Accepts a single file via `multipart/form-data`.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsPipelineFileUpload',
@@ -957,10 +963,13 @@ export const post13 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
   .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_file_uploaded: { status: 400, data: zNoFileUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     too_many_files: { status: 400, data: zTooManyFilesError },
   })
 
@@ -991,10 +1000,13 @@ export const post14 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
   .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_file_uploaded: { status: 400, data: zNoFileUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     too_many_files: { status: 400, data: zTooManyFilesError },
   })
 
@@ -1025,7 +1037,12 @@ export const post15 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByTextResponse)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 /**
  * Create document by text through the deprecated underscore alias
@@ -1053,7 +1070,12 @@ export const post16 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByText2Response)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const createByText = {
   post: post16,
@@ -1377,7 +1399,10 @@ export const post20 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    invalid_action: { status: 400, data: zInvalidActionError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const bySegmentId = {
   delete: delete5,
@@ -1469,9 +1494,12 @@ export const post22 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse)
   .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     too_many_files: { status: 400, data: zTooManyFilesError },
     unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
   })
@@ -1503,9 +1531,12 @@ export const post23 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
   .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     too_many_files: { status: 400, data: zTooManyFilesError },
     unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
   })
@@ -1537,7 +1568,12 @@ export const post24 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 /**
  * Update document by text through the deprecated underscore alias
@@ -1565,7 +1601,12 @@ export const post25 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response)
-  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
+  .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const updateByText = {
   post: post25,
@@ -1640,9 +1681,12 @@ export const patch4 = oc
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse)
   .errors({
+    document_source_conflict: { status: 409, data: zDocumentSourceConflictError },
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     too_many_files: { status: 400, data: zTooManyFilesError },
     unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
   })
@@ -1718,8 +1762,9 @@ export const post26 = oc
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
   .errors({
     completion_request_error: { status: 400, data: zCompletionRequestError },
-    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
     dataset_not_initialized: { status: 400, data: zDatasetNotInitializedError },
+    external_knowledge_failed: { status: 502, data: zExternalKnowledgeFailedError },
+    knowledge_index_unavailable: { status: 503, data: zKnowledgeIndexUnavailableError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1943,11 +1988,47 @@ export const datasource = {
 }
 
 /**
+ * Upload Pipeline File
+ *
+ * Upload a file for use in a knowledge pipeline. Resource access tokens must use the dataset-scoped path; workspace API keys may also use the unscoped compatibility path. Accepts a single file via `multipart/form-data`.
+ */
+export const post30 = oc
+  .route({
+    description:
+      'Upload a file for use in a knowledge pipeline. Resource access tokens must use the dataset-scoped path; workspace API keys may also use the unscoped compatibility path. Accepts a single file via `multipart/form-data`.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdPipelineFileUpload',
+    path: '/datasets/{dataset_id}/pipeline/file-upload',
+    successStatus: 201,
+    summary: 'Upload Pipeline File',
+    tags: ['Knowledge Pipeline'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdPipelineFileUploadBody,
+      params: zPostDatasetsByDatasetIdPipelineFileUploadPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdPipelineFileUploadResponse)
+  .errors({
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
+
+export const fileUpload2 = {
+  post: post30,
+}
+
+/**
  * Run Pipeline
  *
  * Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.
  */
-export const post30 = oc
+export const post31 = oc
   .route({
     description:
       'Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.',
@@ -1968,12 +2049,13 @@ export const post30 = oc
   .errors({ pipeline_run_error: { status: 500, data: zPipelineRunError } })
 
 export const run2 = {
-  post: post30,
+  post: post31,
 }
 
 export const pipeline2 = {
   datasourcePlugins,
   datasource,
+  fileUpload: fileUpload2,
   run: run2,
 }
 
@@ -1982,7 +2064,7 @@ export const pipeline2 = {
  *
  * Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.
  */
-export const post31 = oc
+export const post32 = oc
   .route({
     description:
       'Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.',
@@ -2002,15 +2084,16 @@ export const post31 = oc
   .output(zPostDatasetsByDatasetIdRetrieveResponse)
   .errors({
     completion_request_error: { status: 400, data: zCompletionRequestError },
-    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
     dataset_not_initialized: { status: 400, data: zDatasetNotInitializedError },
+    external_knowledge_failed: { status: 502, data: zExternalKnowledgeFailedError },
+    knowledge_index_unavailable: { status: 503, data: zKnowledgeIndexUnavailableError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const retrieve = {
-  post: post31,
+  post: post32,
 }
 
 /**
@@ -2091,6 +2174,7 @@ export const patch6 = oc
   })
   .input(z.object({ body: zPatchDatasetsByDatasetIdBody, params: zPatchDatasetsByDatasetIdPath }))
   .output(zPatchDatasetsByDatasetIdResponse)
+  .errors({ dataset_concurrent_update: { status: 409, data: zDatasetConcurrentUpdateError } })
 
 export const byDatasetId = {
   delete: delete8,
@@ -2129,7 +2213,7 @@ export const get20 = oc
  *
  * Create a new empty knowledge base. After creation, use [Create Document by Text](/api-reference/documents/create-document-by-text) or [Create Document by File](/api-reference/documents/create-document-by-file) to add documents.
  */
-export const post32 = oc
+export const post33 = oc
   .route({
     description:
       'Create a new empty knowledge base. After creation, use [Create Document by Text](/api-reference/documents/create-document-by-text) or [Create Document by File](/api-reference/documents/create-document-by-file) to add documents.',
@@ -2146,7 +2230,7 @@ export const post32 = oc
 
 export const datasets = {
   get: get20,
-  post: post32,
+  post: post33,
   pipeline,
   tags,
   byDatasetId,
@@ -2185,7 +2269,7 @@ export const endUsers = {
  *
  * Upload a file for use when sending messages, enabling multimodal understanding of images, documents, audio, and video. Uploaded files are for use by the current end-user only.
  */
-export const post33 = oc
+export const post34 = oc
   .route({
     description:
       'Upload a file for use when sending messages, enabling multimodal understanding of images, documents, audio, and video. Uploaded files are for use by the current end-user only.',
@@ -2209,7 +2293,7 @@ export const post33 = oc
   })
 
 export const upload = {
-  post: post33,
+  post: post34,
 }
 
 /**
@@ -2281,7 +2365,7 @@ export const get23 = oc
  *
  * Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.
  */
-export const post34 = oc
+export const post35 = oc
   .route({
     description:
       "Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.",
@@ -2307,7 +2391,7 @@ export const post34 = oc
 
 export const byFormToken = {
   get: get23,
-  post: post34,
+  post: post35,
 }
 
 export const humanInput = {
@@ -2346,7 +2430,7 @@ export const info = {
  *
  * Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.
  */
-export const post35 = oc
+export const post36 = oc
   .route({
     description:
       'Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.',
@@ -2366,7 +2450,7 @@ export const post35 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks2 = {
-  post: post35,
+  post: post36,
 }
 
 /**
@@ -2503,7 +2587,7 @@ export const site = {
  *
  * Convert text to speech.
  */
-export const post36 = oc
+export const post37 = oc
   .route({
     description: 'Convert text to speech.',
     inputStructure: 'detailed',
@@ -2524,7 +2608,7 @@ export const post36 = oc
   })
 
 export const textToAudio = {
-  post: post36,
+  post: post37,
 }
 
 /**
@@ -2615,7 +2699,7 @@ export const byWorkflowRunId2 = {
  *
  * Execute a workflow. Cannot be executed without a published workflow.
  */
-export const post37 = oc
+export const post38 = oc
   .route({
     description: 'Execute a workflow. Cannot be executed without a published workflow.',
     inputStructure: 'detailed',
@@ -2641,7 +2725,7 @@ export const post37 = oc
   })
 
 export const run3 = {
-  post: post37,
+  post: post38,
   byWorkflowRunId: byWorkflowRunId2,
 }
 
@@ -2650,7 +2734,7 @@ export const run3 = {
  *
  * Stop a running workflow task. Only supported in `streaming` mode.
  */
-export const post38 = oc
+export const post39 = oc
   .route({
     description: 'Stop a running workflow task. Only supported in `streaming` mode.',
     inputStructure: 'detailed',
@@ -2670,7 +2754,7 @@ export const post38 = oc
   .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const stop3 = {
-  post: post38,
+  post: post39,
 }
 
 export const byTaskId3 = {
@@ -2686,7 +2770,7 @@ export const tasks = {
  *
  * Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.
  */
-export const post39 = oc
+export const post40 = oc
   .route({
     description:
       'Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.',
@@ -2722,7 +2806,7 @@ export const post39 = oc
   })
 
 export const run4 = {
-  post: post39,
+  post: post40,
 }
 
 export const byWorkflowId = {

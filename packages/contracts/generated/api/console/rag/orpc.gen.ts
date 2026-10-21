@@ -3,6 +3,7 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zDatasetConcurrentUpdateError,
   zDatasetNameDuplicateError,
   zDraftWorkflowNotExistError,
   zDraftWorkflowNotSyncError,
@@ -393,7 +394,6 @@ export const post7 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdCustomizedPublishResponse)
-  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const publish = {
   post: post7,
@@ -1112,7 +1112,10 @@ export const post16 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsPublishPath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishResponse)
-  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
+  .errors({
+    dataset_concurrent_update: { status: 409, data: zDatasetConcurrentUpdateError },
+    draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
+  })
 
 export const publish2 = {
   get: get21,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
@@ -19,8 +19,9 @@ from models.agent import (
     AgentWorkspaceBinding,
     WorkflowAgentNodeBinding,
 )
-from models.model import App, AppMode
+from models.model import App, AppMode, Site
 from models.workflow import Workflow
+from repositories.app_cleanup_repository import ensure_app_cleanup_operation
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
@@ -75,6 +76,7 @@ class WorkflowAgentRetirementService:
                 ).all()
                 backing_app_ids = sorted({agent.backing_app_id for agent in retired_agents if agent.backing_app_id})
                 for app_id in backing_app_ids:
+                    ensure_app_cleanup_operation(session, tenant_id=tenant_id, app_id=app_id)
                     AgentWorkspaceService.retire_all_for_app(
                         session=session,
                         tenant_id=tenant_id,
@@ -112,13 +114,24 @@ class WorkflowAgentRetirementService:
                         )
                     )
                 if backing_app_ids:
-                    session.execute(
-                        delete(App).where(
+                    backing_apps = session.scalars(
+                        select(App)
+                        .where(
                             App.tenant_id == tenant_id,
                             App.id.in_(backing_app_ids),
                             App.mode == AppMode.AGENT,
                         )
-                    )
+                        .order_by(App.icon, App.id)
+                    ).all()
+                    stored_app_ids = tuple(app.id for app in backing_apps)
+                    if stored_app_ids:
+                        sites = session.scalars(
+                            select(Site).where(Site.app_id.in_(stored_app_ids)).order_by(Site.icon, Site.id)
+                        ).all()
+                        for site in sites:
+                            session.delete(site)
+                        for app in backing_apps:
+                            session.delete(app)
                 session.commit()
         except Exception:
             logger.exception(

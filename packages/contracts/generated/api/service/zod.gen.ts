@@ -744,6 +744,11 @@ export const zDatasetTagResponse = z.object({
 })
 
 /**
+ * DatasetVectorIndexStatus
+ */
+export const zDatasetVectorIndexStatus = z.enum(['completed', 'error', 'indexing'])
+
+/**
  * DatasetVectorSettingResponse
  */
 export const zDatasetVectorSettingResponse = z.object({
@@ -772,16 +777,6 @@ export const zDatasourceCredentialInfoResponse = z.object({
 })
 
 /**
- * DatasourceNodeRunPayload
- */
-export const zDatasourceNodeRunPayload = z.object({
-  credential_id: z.string().nullish(),
-  datasource_type: z.enum(['local_file', 'online_document', 'online_drive', 'website_crawl']),
-  inputs: z.record(z.string(), z.unknown()),
-  is_published: z.boolean(),
-})
-
-/**
  * DatasourcePluginResponse
  */
 export const zDatasourcePluginResponse = z.object({
@@ -804,6 +799,26 @@ export const zDatasourcePluginListResponse = z.array(zDatasourcePluginResponse)
  */
 export const zDatasourcePluginsQuery = z.object({
   is_published: z.boolean().optional().default(true),
+})
+
+/**
+ * DatasourceType
+ */
+export const zDatasourceType = z.enum([
+  'local_file',
+  'online_document',
+  'online_drive',
+  'website_crawl',
+])
+
+/**
+ * DatasourceNodeRunPayload
+ */
+export const zDatasourceNodeRunPayload = z.object({
+  credential_id: z.string().nullish(),
+  datasource_type: zDatasourceType,
+  inputs: z.record(z.string(), z.unknown()),
+  is_published: z.boolean(),
 })
 
 /**
@@ -873,6 +888,8 @@ export const zDocumentDetailResponse = z.object({
   hit_count: z.int().optional(),
   id: z.string(),
   indexing_latency: z.number().nullish(),
+  indexing_retry_action: z.enum(['archive', 'disable', 'enable', 'retry']).nullish(),
+  indexing_state: z.enum(['completed', 'failed', 'pending']).nullish(),
   indexing_status: z.string().optional(),
   name: z.string().optional(),
   need_summary: z.boolean().optional(),
@@ -901,6 +918,8 @@ export const zDocumentStatusResponse = z.object({
   error_code: z.literal('vector_space_estimate_exceeded').nullish(),
   estimated_vector_space_mb: z.int().nullish(),
   id: z.string(),
+  indexing_retry_action: z.enum(['archive', 'disable', 'enable', 'retry']).nullish(),
+  indexing_state: z.enum(['completed', 'failed', 'pending']).nullish(),
   indexing_status: z.enum([
     'cleaning',
     'completed',
@@ -1053,14 +1072,14 @@ export const zCompletionRequestError = zErrorResponse.and(
 )
 
 /**
- * DatasetAccessDeniedError
+ * DatasetConcurrentUpdateError
  *
- * Dataset access denied.
+ * The dataset changed while it was being updated. Please retry the request.
  */
-export const zDatasetAccessDeniedError = zErrorResponse.and(
+export const zDatasetConcurrentUpdateError = zErrorResponse.and(
   z.object({
-    code: z.literal('dataset_access_denied'),
-    status: z.literal(403),
+    code: z.literal('dataset_concurrent_update'),
+    status: z.literal(409),
   }),
 )
 
@@ -1089,6 +1108,18 @@ export const zDatasetNotInitializedError = zErrorResponse.and(
 )
 
 /**
+ * DocumentSourceConflictError
+ *
+ * The selected source file is being removed. Please upload it again.
+ */
+export const zDocumentSourceConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('document_source_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * EndUserNotFoundError
  *
  * End user not found.
@@ -1109,6 +1140,30 @@ export const zEventStreamResponse = z.string()
  * ExecutionContentType
  */
 export const zExecutionContentType = z.enum(['human_input'])
+
+/**
+ * ExternalHitTestingRecordResponse
+ */
+export const zExternalHitTestingRecordResponse = z
+  .object({
+    content: z.string().nullish(),
+    metadata: z.record(z.string(), z.unknown()).nullish(),
+    score: z.number().nullish(),
+    title: z.string().nullish(),
+  })
+  .strict()
+
+/**
+ * ExternalKnowledgeFailedError
+ *
+ * External knowledge retrieval failed.
+ */
+export const zExternalKnowledgeFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('external_knowledge_failed'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * FeedbackListQuery
@@ -1337,7 +1392,7 @@ export const zHitTestingRecord = z.object({
  */
 export const zHitTestingResponse = z.object({
   query: zHitTestingQuery,
-  records: z.array(zHitTestingRecord),
+  records: z.array(z.union([zHitTestingRecord, zExternalHitTestingRecordResponse])),
 })
 
 /**
@@ -1510,6 +1565,8 @@ export const zDocumentResponse = z.object({
   error: z.string().nullish(),
   hit_count: z.int().nullish(),
   id: z.string(),
+  indexing_retry_action: z.enum(['archive', 'disable', 'enable', 'retry']).nullish(),
+  indexing_state: z.enum(['completed', 'failed', 'pending']).nullish(),
   indexing_status: z.string().nullish(),
   name: z.string(),
   need_summary: z.boolean().nullish(),
@@ -1566,6 +1623,26 @@ export const zHumanInputFormSubmitPayloadWithUser = z.object({
   inputs: z.record(z.string(), zJsonValue),
   user: z.string(),
 })
+
+/**
+ * KnowledgeIndexUnavailableDetails
+ */
+export const zKnowledgeIndexUnavailableDetails = z.object({
+  reason: z.enum(['failed', 'indexing']),
+})
+
+/**
+ * KnowledgeIndexUnavailableError
+ *
+ * The knowledge index is unavailable. Retry after indexing completes.
+ */
+export const zKnowledgeIndexUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_index_unavailable'),
+    details: zKnowledgeIndexUnavailableDetails.optional(),
+    status: z.literal(503),
+  }),
+)
 
 /**
  * KnowledgeTagResponse
@@ -1849,9 +1926,26 @@ export const zPipelineDocument = z.object({
 })
 
 /**
- * PipelineRunApiEntity
+ * PipelineResponseMode
  */
-export const zPipelineRunApiEntity = z.object({
+export const zPipelineResponseMode = z.enum(['blocking', 'streaming'])
+
+/**
+ * PipelineRunError
+ *
+ * An error occurred while running the pipeline.
+ */
+export const zPipelineRunError = zErrorResponse.and(
+  z.object({
+    code: z.literal('pipeline_run_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
+ * PipelineRunPayload
+ */
+export const zPipelineRunPayload = z.object({
   datasource_info_list: z.array(
     z.union([
       z.object({
@@ -1873,30 +1967,19 @@ export const zPipelineRunApiEntity = z.object({
       }),
       z.object({
         bucket: z.string().optional(),
+        credential_id: z.string().optional(),
         id: z.string(),
         name: z.string().optional(),
         type: z.enum(['file', 'folder']),
       }),
     ]),
   ),
-  datasource_type: z.enum(['local_file', 'online_document', 'online_drive', 'website_crawl']),
+  datasource_type: zDatasourceType,
   inputs: z.record(z.string(), z.unknown()),
   is_published: z.boolean(),
-  response_mode: z.enum(['blocking', 'streaming']),
+  response_mode: zPipelineResponseMode,
   start_node_id: z.string(),
 })
-
-/**
- * PipelineRunError
- *
- * An error occurred while running the pipeline.
- */
-export const zPipelineRunError = zErrorResponse.and(
-  z.object({
-    code: z.literal('pipeline_run_error'),
-    status: z.literal(500),
-  }),
-)
 
 /**
  * PipelineUploadFileResponse
@@ -2116,6 +2199,8 @@ export const zDatasetDetailResponse = z.object({
   total_documents: z.int(),
   updated_at: z.int(),
   updated_by: z.string().nullable(),
+  vector_indexing_error: z.string().nullish(),
+  vector_indexing_status: zDatasetVectorIndexStatus.nullish(),
   word_count: z.int(),
 })
 
@@ -2168,6 +2253,8 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   total_documents: z.int(),
   updated_at: z.int(),
   updated_by: z.string().nullable(),
+  vector_indexing_error: z.string().nullish(),
+  vector_indexing_status: zDatasetVectorIndexStatus.nullish(),
   word_count: z.int(),
 })
 
@@ -4372,7 +4459,20 @@ export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath = z.
  */
 export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse = z.string()
 
-export const zPostDatasetsByDatasetIdPipelineRunBody = zPipelineRunApiEntity
+export const zPostDatasetsByDatasetIdPipelineFileUploadBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
+export const zPostDatasetsByDatasetIdPipelineFileUploadPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * File uploaded successfully.
+ */
+export const zPostDatasetsByDatasetIdPipelineFileUploadResponse = zPipelineUploadFileResponse
+
+export const zPostDatasetsByDatasetIdPipelineRunBody = zPipelineRunPayload
 
 export const zPostDatasetsByDatasetIdPipelineRunPath = z.object({
   dataset_id: z.uuid(),

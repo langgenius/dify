@@ -7,22 +7,22 @@ returns the persisted Soul reference metadata used by ``AgentConfigService``.
 
 from __future__ import annotations
 
-from core.tools.tool_file_manager import ToolFileManager
+from datetime import UTC, datetime, timedelta
+
+from extensions.ext_storage import storage
 from models.agent_config_entities import AgentConfigSkillRefConfig, validate_config_skill_name
+from repositories.knowledge.upload_file_repository import (
+    AgentConfigToolFileCleanup,
+    create_pending_agent_config_skill_file,
+)
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 
 
 class ConfigSkillNormalizeService:
     """Validate, normalize, and persist one config skill archive."""
 
-    def __init__(
-        self,
-        *,
-        package_service: SkillPackageService | None = None,
-        tool_file_manager: ToolFileManager | None = None,
-    ) -> None:
+    def __init__(self, *, package_service: SkillPackageService | None = None) -> None:
         self._package = package_service or SkillPackageService()
-        self._tool_files = tool_file_manager or ToolFileManager()
 
     def normalize(
         self,
@@ -42,22 +42,41 @@ class ConfigSkillNormalizeService:
                 status_code=400,
             )
 
-        tool_file = self._tool_files.create_file_by_raw(
-            user_id=user_id,
+        pending = self._create_pending_tool_file(
+            archive=package.archive_bytes,
+            normalized_name=normalized_name,
             tenant_id=tenant_id,
-            conversation_id=None,
-            file_binary=package.archive_bytes,
-            mimetype="application/zip",
-            filename=f"{normalized_name}.zip",
+            user_id=user_id,
         )
         return AgentConfigSkillRefConfig(
             name=normalized_name,
             description=package.manifest.description,
-            file_id=tool_file.id,
-            size=tool_file.size,
+            file_id=pending.id,
+            size=len(package.archive_bytes),
             hash=package.manifest.hash,
-            mime_type=tool_file.mimetype,
+            mime_type="application/zip",
         )
+
+    @staticmethod
+    def _create_pending_tool_file(
+        *,
+        archive: bytes,
+        normalized_name: str,
+        tenant_id: str,
+        user_id: str,
+    ) -> AgentConfigToolFileCleanup:
+        pending = create_pending_agent_config_skill_file(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            normalized_name=normalized_name,
+            size=len(archive),
+            cleanup_started_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=10),
+        )
+
+        # The durable marker precedes storage I/O. A failed save or interrupted
+        # caller therefore leaves the exact key discoverable by recovery.
+        storage.save(pending.key, archive)
+        return pending
 
 
 __all__ = ["ConfigSkillNormalizeService"]

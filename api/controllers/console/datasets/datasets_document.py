@@ -29,6 +29,9 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
+from controllers.console.datasets.error import (
+    DocumentSourceConflictError as DocumentSourceConflictRequestError,
+)
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
@@ -39,6 +42,7 @@ from controllers.console.wraps import (
 )
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.entities import Rule
+from enums.knowledge import DocumentIndexRetryAction, DocumentIndexState
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.document_fields import (
@@ -55,15 +59,16 @@ from libs.helper import dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from models.enums import ProcessRuleMode
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.documents.application import (
     DocumentArchivedError,
     DocumentIndexingStateError,
     DocumentInvalidActionError,
-    DocumentListFilter,
     DocumentNotFoundError,
     DocumentProviderError,
+    DocumentSourceConflictError,
 )
+from services.knowledge.documents.contracts import DocumentListFilter
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.knowledge.indexing.estimate import (
     EstimateDocumentAlreadyFinishedError,
@@ -98,6 +103,8 @@ def _raise_document_error(error: Exception) -> Never:
 
 def _raise_document_indexing_error(error: Exception) -> Never:
     """Operations that (re)index documents also depend on the indexing state and the model provider."""
+    if isinstance(error, DocumentInvalidActionError):
+        raise InvalidActionError(str(error)) from error
     if isinstance(error, DocumentIndexingStateError):
         raise DocumentIndexingError(str(error)) from error
     if isinstance(error, DocumentProviderError):
@@ -106,6 +113,8 @@ def _raise_document_indexing_error(error: Exception) -> Never:
         if error.kind == "unsupported":
             raise ProviderModelCurrentlyNotSupportError() from error
         raise ProviderNotInitializeError(str(error)) from error
+    if isinstance(error, DocumentSourceConflictError):
+        raise DocumentSourceConflictRequestError() from error
     _raise_document_error(error)
 
 
@@ -228,6 +237,8 @@ class DocumentDetailResponse(ResponseModel):
     created_at: int | None = None
     tokens: int | None = None
     indexing_status: str | None = None
+    indexing_state: DocumentIndexState | None = None
+    indexing_retry_action: DocumentIndexRetryAction | None = None
     completed_at: int | None = None
     updated_at: int | None = None
     indexing_latency: float | None = None
@@ -383,7 +394,12 @@ class DatasetDocumentListApi(Resource):
             _raise_document_error(error)
         return dump_response(DocumentWithSegmentsListResponse, result)
 
-    @error_responses(ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError, ProviderQuotaExceededError)
+    @error_responses(
+        DocumentSourceConflictRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
     @console_account_admission(
@@ -403,6 +419,7 @@ class DatasetDocumentListApi(Resource):
 
     @console_ns.doc(params=query_params_from_model(DocumentIdListQuery))
     @console_ns.response(204, "Documents deleted successfully")
+    @error_responses(ArchivedDocumentImmutableError)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_DELETE_FILE, DatasetId()),),
@@ -414,13 +431,18 @@ class DatasetDocumentListApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_ids=request.args.getlist("document_id")
             )
         except Exception as error:
-            _raise_document_indexing_error(error)
+            _raise_document_archive_error(error)
         return "", 204
 
 
 @console_ns.route("/datasets/init")
 class DatasetInitApi(Resource):
-    @error_responses(ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError, ProviderQuotaExceededError)
+    @error_responses(
+        DocumentSourceConflictRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("init_dataset")
     @console_ns.doc(description="Initialize dataset with documents")
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
@@ -604,6 +626,7 @@ class DocumentApi(Resource):
         ), 200
 
     @console_ns.response(204, "Document deleted successfully")
+    @error_responses(ArchivedDocumentImmutableError)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_DELETE_FILE, DatasetId()),),
@@ -615,7 +638,7 @@ class DocumentApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_indexing_error(error)
+            _raise_document_archive_error(error)
         return "", 204
 
 
@@ -812,6 +835,7 @@ class DocumentRecoverApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/retry")
 class DocumentRetryApi(Resource):
+    @error_responses(InvalidActionError)
     @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
     @console_ns.response(204, "Documents retry started successfully")
     @console_account_admission(
@@ -852,7 +876,7 @@ class DocumentRenameApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
 class WebsiteDocumentSyncApi(Resource):
-    @error_responses(ArchivedDocumentImmutableError)
+    @error_responses(ArchivedDocumentImmutableError, InvalidActionError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)

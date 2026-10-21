@@ -46,6 +46,7 @@ from models.model import App, AppMode, AppModelConfig, IconType, Site, load_anno
 from models.provider_ids import ModelProviderID
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
+from repositories.app_cleanup_repository import ensure_app_cleanup_operation
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
@@ -872,6 +873,7 @@ class AppService:
         build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
             tenant_id=app.tenant_id, resource_type=ResourceAccessTokenResourceType.APP, resource_id=app.id
         )
+        ensure_app_cleanup_operation(session, tenant_id=app.tenant_id, app_id=app.id)
         session.delete(app)
         session.commit()
 

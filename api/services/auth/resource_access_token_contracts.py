@@ -57,6 +57,13 @@ class ResourceAccessTokenGrant:
     app_ids: frozenset[str]
 
 
+@dataclass(frozen=True, slots=True)
+class ResourceAccessTokenDatasetGrant:
+    token_id: str
+    tenant_id: str
+    dataset_ids: frozenset[str]
+
+
 class ResourceAccessTokenInputError(Exception):
     pass
 

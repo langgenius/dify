@@ -1,6 +1,7 @@
 """Remove crawl caches whose remaining document references belong to a deleted dataset."""
 
 import logging
+from collections.abc import Callable
 from typing import Literal
 
 from pydantic import BaseModel, ValidationError, field_validator
@@ -9,6 +10,7 @@ from sqlalchemy import select
 from core.db.session_factory import session_factory
 from extensions.ext_storage import storage
 from models.dataset import Document
+from services.knowledge.file_cleanup_gate import assert_physical_file_cleanup_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,12 @@ def _crawl_cache_key(data_source_info: str | None) -> str | None:
     return f"website_files/{info.job_id}.txt"
 
 
-def cleanup_dataset_crawl_cache(tenant_id: str, dataset_id: str) -> None:
+def cleanup_dataset_crawl_cache(
+    tenant_id: str,
+    dataset_id: str,
+    *,
+    assert_cleanup_allowed: Callable[[], None] = assert_physical_file_cleanup_enabled,
+) -> None:
     """Delete only unshared Firecrawl caches, before deleting their document references.
 
     Crawl keys have no tenant namespace, so references in other tenants also prevent deletion.
@@ -67,6 +74,7 @@ def cleanup_dataset_crawl_cache(tenant_id: str, dataset_id: str) -> None:
                     candidates.discard(key)
     # Finish the read transaction before accessing object storage.
     for key in sorted(candidates):
+        assert_cleanup_allowed()
         try:
             storage.delete(key)
         except FileNotFoundError:

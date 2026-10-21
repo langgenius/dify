@@ -115,6 +115,23 @@ else
   echo "Using specified queues: ${QUEUES}"
 fi
 
+# Consume both legacy and extended payload generations during rolling upgrades.
+if [[ ",${QUEUES}," == *",dataset,"* && ",${QUEUES}," != *",dataset_v2,"* ]]; then
+  QUEUES="${QUEUES},dataset_v2"
+fi
+if [[ ",${QUEUES}," == *",dataset_summary,"* && ",${QUEUES}," != *",dataset_summary_v2,"* ]]; then
+  QUEUES="${QUEUES},dataset_summary_v2"
+fi
+if [[ ",${QUEUES}," == *",priority_dataset,"* && ",${QUEUES}," != *",priority_dataset_v2,"* ]]; then
+  QUEUES="${QUEUES},priority_dataset_v2"
+fi
+if [[ ",${QUEUES}," == *",pipeline,"* && ",${QUEUES}," != *",pipeline_v2,"* ]]; then
+  QUEUES="${QUEUES},pipeline_v2"
+fi
+if [[ ",${QUEUES}," == *",priority_pipeline,"* && ",${QUEUES}," != *",priority_pipeline_v2,"* ]]; then
+  QUEUES="${QUEUES},priority_pipeline_v2"
+fi
+
 echo "Starting Celery worker with:"
 echo "  Queues: ${QUEUES}"
 echo "  Concurrency: ${CONCURRENCY}"

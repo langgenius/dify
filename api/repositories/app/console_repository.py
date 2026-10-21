@@ -41,7 +41,12 @@ from models.model import App, AppMode, AppModelConfig, AppStar, IconType
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from repositories.app.response import app_record, app_summary
+from repositories.app_cleanup_repository import ensure_app_cleanup_operation
 from repositories.app_definition_query_repository import load_app_parameter_config
+from repositories.knowledge.upload_file_repository import (
+    claim_orphan_upload_files,
+    snapshot_and_detach_app_upload_files,
+)
 from repositories.tag_repository import TagRepository
 from services.agent.errors import (
     AgentAccessNotReadyError,
@@ -975,6 +980,12 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def delete_app_record(cls, app: App, *, account_id: str | None, session: Session) -> AppDeletion:
         """Stage App deletion; the lifecycle adapter retires Agent resources in the same transaction."""
         app_event = AppEvent(app.id, app.tenant_id, str(app.mode))
+        ensure_app_cleanup_operation(session, tenant_id=app.tenant_id, app_id=app.id)
+        upload_file_candidates = snapshot_and_detach_app_upload_files(
+            session,
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+        )
         backing_agent = cls._get_backing_agent(app, session=session)
         workflow_agent_ids = set(
             session.scalars(
@@ -1035,6 +1046,12 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             retired_binding_ids = [binding.id for binding in bindings]
 
         session.delete(app)
+        session.flush()
+        claim_orphan_upload_files(
+            session,
+            tenant_id=app_event.tenant_id,
+            files=upload_file_candidates,
+        )
         result = AppDeletion(
             app_event,
             workflow_agent_ids,

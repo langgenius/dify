@@ -2,31 +2,144 @@
 
 import logging
 import time
-from collections import defaultdict
+from functools import partial
 
 import click
 from celery import shared_task
-from sqlalchemy import or_, select
 
 from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.model_context import with_credit_usage_created_by
-from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
-from models.dataset import Document as DatasetDocument
-from models.enums import SummaryStatus
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from models.dataset import Dataset
+from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
+from repositories.knowledge.summary_repository import SQLAlchemySummaryRepository, load_summary_regeneration_targets
+from services.api_token_service import ApiTokenCache
+from services.knowledge.resource_scope import DatasetRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
+from services.knowledge.summaries.application import SummaryVectorInput, SummaryWriteFence
+from services.knowledge.task_outbox.contracts import (
+    KnowledgeTaskDeliveryHandledError,
+    KnowledgeTaskExecutionLeaseLostError,
+)
+from services.knowledge.task_outbox.execution import KnowledgeTaskExecutionLease
+from services.knowledge.task_outbox.gateway import wake_knowledge_task_dispatcher_after_commit
+from tasks.knowledge_task_outbox_task import knowledge_task_execution
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset_summary")
+class SummaryIndexRegenerationError(RuntimeError):
+    """One or more summary records failed and the durable intent must be retried."""
+
+
+@shared_task(
+    queue="dataset_summary",
+    acks_late=True,
+    reject_on_worker_lost=True,
+    autoretry_for=(SummaryIndexRegenerationError,),
+    dont_autoretry_for=(KnowledgeTaskDeliveryHandledError,),
+    retry_backoff=True,
+    retry_kwargs={"max_retries": 10},
+)
 @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
 def regenerate_summary_index_task(
     dataset_id: str,
     regenerate_reason: str = "summary_model_changed",
     regenerate_vectors_only: bool = False,
-):
+    expected_indexing_technique: str | None = None,
+    expected_embedding_model_provider: str | None = None,
+    expected_embedding_model: str | None = None,
+    outbox_id: str | None = None,
+    expected_summary_index_setting: dict[str, object] | None = None,
+) -> None:
+    if (
+        outbox_id is None
+        and expected_indexing_technique is None
+        and expected_embedding_model_provider is None
+        and expected_embedding_model is None
+    ):
+        repaired = _dataset_repository().enqueue_current_summary_repair(
+            dataset_id,
+            regenerate_reason=regenerate_reason,
+            regenerate_vectors_only=regenerate_vectors_only,
+        )
+        logger.info(
+            "Legacy dataset summary delivery reconciled dataset_id=%s repaired=%s",
+            dataset_id,
+            repaired,
+        )
+        return
+
+    with knowledge_task_execution(outbox_id) as execution:
+        if execution is None:
+            return
+        execution.assert_owned()
+        if execution.recovered_execution:
+            _enqueue_current_summary_repair(
+                dataset_id=dataset_id,
+                regenerate_reason=regenerate_reason,
+                regenerate_vectors_only=regenerate_vectors_only,
+                checkpoint_source_intent_id=outbox_id,
+            )
+            logger.warning("Recovered dataset summary execution scheduled current repair dataset_id=%s", dataset_id)
+            return
+        _run_summary_index_task(
+            dataset_id=dataset_id,
+            regenerate_reason=regenerate_reason,
+            regenerate_vectors_only=regenerate_vectors_only,
+            expected_indexing_technique=expected_indexing_technique,
+            expected_embedding_model_provider=expected_embedding_model_provider,
+            expected_embedding_model=expected_embedding_model,
+            expected_summary_index_setting=expected_summary_index_setting,
+            execution=execution,
+        )
+
+
+def _run_summary_index_task(
+    *,
+    dataset_id: str,
+    regenerate_reason: str,
+    regenerate_vectors_only: bool,
+    expected_indexing_technique: str | None,
+    expected_embedding_model_provider: str | None,
+    expected_embedding_model: str | None,
+    expected_summary_index_setting: dict[str, object] | None,
+    execution: KnowledgeTaskExecutionLease,
+) -> None:
+    execution.assert_owned()
+    if execution.intent_id is not None and expected_indexing_technique is None:
+        raise ValueError("Durable dataset summary delivery is missing its model configuration")
+    state_matched = _regenerate_summary_index(
+        dataset_id=dataset_id,
+        regenerate_reason=regenerate_reason,
+        regenerate_vectors_only=regenerate_vectors_only,
+        expected_indexing_technique=expected_indexing_technique,
+        expected_embedding_model_provider=expected_embedding_model_provider,
+        expected_embedding_model=expected_embedding_model,
+        expected_summary_index_setting=expected_summary_index_setting,
+        execution=execution,
+    )
+    if not state_matched:
+        logger.warning("Stale summary delivery scheduled current-state repair: %s", dataset_id)
+        _enqueue_current_summary_repair(
+            dataset_id=dataset_id,
+            regenerate_reason=regenerate_reason,
+            regenerate_vectors_only=regenerate_vectors_only,
+        )
+
+
+def _regenerate_summary_index(
+    *,
+    dataset_id: str,
+    regenerate_reason: str,
+    regenerate_vectors_only: bool,
+    expected_indexing_technique: str | None,
+    expected_embedding_model_provider: str | None,
+    expected_embedding_model: str | None,
+    expected_summary_index_setting: dict[str, object] | None,
+    execution: KnowledgeTaskExecutionLease,
+) -> bool:
     """
     Regenerate summary indexes for all documents in a dataset.
 
@@ -49,255 +162,135 @@ def regenerate_summary_index_task(
     )
     start_at = time.perf_counter()
 
-    try:
-        with session_factory.create_session() as session:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if not dataset:
-                logger.error(click.style(f"Dataset not found: {dataset_id}", fg="red"))
-                return
+    with session_factory.create_session() as session:
+        loaded = load_summary_regeneration_targets(
+            session,
+            dataset_id=dataset_id,
+            regenerate_vectors_only=regenerate_vectors_only,
+        )
+        if loaded is None:
+            logger.info("Skipping summary regeneration for deleted dataset %s", dataset_id)
+            return True
+        dataset, targets = loaded
+        if not _matches_expected_state(
+            dataset,
+            expected_indexing_technique=expected_indexing_technique,
+            expected_embedding_model_provider=expected_embedding_model_provider,
+            expected_embedding_model=expected_embedding_model,
+            expected_summary_index_setting=expected_summary_index_setting,
+        ):
+            logger.info("Skipping stale summary index intent for %s", dataset_id)
+            return False
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
+            return True
+        summary_index_setting = dataset.summary_index_setting
+        if not regenerate_vectors_only and not (summary_index_setting and summary_index_setting.get("enable") is True):
+            return True
+        session.commit()
 
-            # Only regenerate summary index for high_quality indexing technique
-            if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
-                logger.info(
-                    click.style(
-                        f"Skipping summary regeneration for dataset {dataset_id}: "
-                        f"indexing_technique is {dataset.indexing_technique}, not 'high_quality'",
-                        fg="cyan",
-                    )
-                )
-                return
-
-            # Check if summary index is enabled (only for summary_model change)
-            # For embedding_model change, we still re-vectorize existing summaries even if setting is disabled
-            summary_index_setting = dataset.summary_index_setting
-            if not regenerate_vectors_only:
-                # For summary_model change, require summary_index_setting to be enabled
-                if not summary_index_setting or not summary_index_setting.get("enable"):
-                    logger.info(
-                        click.style(
-                            f"Summary index is disabled for dataset {dataset_id}",
-                            fg="cyan",
-                        )
-                    )
-                    return
-
-            total_segments_processed = 0
-            total_segments_failed = 0
-
+    store = SQLAlchemySummaryRepository(new_session=session_factory.create_session)
+    total_segments_processed = 0
+    total_segments_failed = 0
+    for target in targets:
+        segment, summary_record = target.segment, target.summary
+        fence = SummaryWriteFence(
+            expected_document_generation=target.document_generation,
+            enforce_document_generation=True,
+            expected_segment_generation=segment.indexing_generation,
+            enforce_segment_generation=True,
+            task_intent_id=execution.intent_id,
+            task_execution_id=execution.execution_id,
+            expected_indexing_technique=expected_indexing_technique,
+            expected_embedding_model_provider=expected_embedding_model_provider,
+            expected_embedding_model=expected_embedding_model,
+            expected_summary_index_setting=expected_summary_index_setting,
+            enforce_summary_index_setting=True,
+        )
+        command = SummaryVectorInput(
+            DatasetRef(dataset.tenant_id, dataset.id).document(segment.document_id).segment(segment.id),
+            summary_record.id,
+            summary_record.summary_content or "",
+            summary_record.summary_index_node_id,
+            fence,
+        )
+        try:
+            execution.assert_owned()
+            checkpoint = store.checkpoint(command)
+            if checkpoint.was_completed(command):
+                continue
             if regenerate_vectors_only:
-                # For embedding_model change: directly query all segments with existing summaries
-                # Don't require document indexing_status == "completed"
-                # Include summaries with status "completed" or "error" (if they have content)
-                segments_with_summaries = session.execute(
-                    select(DocumentSegment, DocumentSegmentSummary)
-                    .join(
-                        DocumentSegmentSummary,
-                        DocumentSegment.id == DocumentSegmentSummary.chunk_id,
-                    )
-                    .join(
-                        DatasetDocument,
-                        DocumentSegment.document_id == DatasetDocument.id,
-                    )
-                    .where(
-                        DocumentSegment.dataset_id == dataset_id,
-                        DocumentSegment.status == "completed",  # Segment must be completed
-                        DocumentSegment.enabled.is_(True),
-                        DocumentSegmentSummary.dataset_id == dataset_id,
-                        DocumentSegmentSummary.summary_content.isnot(None),  # Must have summary content
-                        # Include completed summaries or error summaries (with content)
-                        or_(
-                            DocumentSegmentSummary.status == SummaryStatus.COMPLETED,
-                            DocumentSegmentSummary.status == SummaryStatus.ERROR,
-                        ),
-                        DatasetDocument.enabled.is_(True),  # Document must be enabled
-                        DatasetDocument.archived.is_(False),  # Document must not be archived
-                        DatasetDocument.doc_form != IndexStructureType.QA_INDEX,  # Skip qa_model documents
-                    )
-                    .order_by(DocumentSegment.document_id.asc(), DocumentSegment.position.asc())
-                ).all()
-
-                if not segments_with_summaries:
-                    logger.info(
-                        click.style(
-                            f"No segments with summaries found for re-vectorization in dataset {dataset_id}",
-                            fg="cyan",
-                        )
-                    )
-                    return
-
-                logger.info(
-                    "Found %s segments with summaries for re-vectorization in dataset %s",
-                    len(segments_with_summaries),
-                    dataset_id,
-                )
-
-                # Group by document for logging
-                segments_by_document = defaultdict(list)
-                for segment, summary_record in segments_with_summaries:
-                    segments_by_document[segment.document_id].append((segment, summary_record))
-
-                logger.info(
-                    "Segments grouped into %s documents for re-vectorization",
-                    len(segments_by_document),
-                )
-
-                for document_id, segment_summary_pairs in segments_by_document.items():
-                    logger.info(
-                        "Re-vectorizing summaries for %s segments in document %s",
-                        len(segment_summary_pairs),
-                        document_id,
-                    )
-
-                    for segment, summary_record in segment_summary_pairs:
-                        try:
-                            # The summary use case replaces the old vector after releasing this transaction.
-                            SummaryIndexAdapter.vectorize_summary(summary_record, segment, dataset, session=session)
-                            session.commit()
-                            total_segments_processed += 1
-
-                        except Exception as e:
-                            logger.error(
-                                "Failed to re-vectorize summary for segment %s: %s",
-                                segment.id,
-                                str(e),
-                                exc_info=True,
-                            )
-                            total_segments_failed += 1
-                            # Update summary record with error status
-                            summary_record.status = SummaryStatus.ERROR
-                            summary_record.error = f"Re-vectorization failed: {str(e)}"
-                            session.add(summary_record)
-                            session.commit()
-                            continue
-
+                SummaryIndexAdapter.vectorize_summary(summary_record, segment, dataset, fence=fence)
             else:
-                # For summary_model change: require document indexing_status == "completed"
-                # Get all documents with completed indexing status
-                dataset_documents = session.scalars(
-                    select(DatasetDocument).where(
-                        DatasetDocument.dataset_id == dataset_id,
-                        DatasetDocument.indexing_status == "completed",
-                        DatasetDocument.enabled.is_(True),
-                        DatasetDocument.archived.is_(False),
+                assert summary_index_setting is not None
+                with session_factory.create_session() as segment_session:
+                    SummaryIndexAdapter.generate_and_vectorize_summary(
+                        segment,
+                        dataset,
+                        summary_index_setting,
+                        session=segment_session,
+                        fence=fence,
+                        reuse_generated_content=checkpoint.was_generated(command),
                     )
-                ).all()
+            execution.assert_owned()
+            total_segments_processed += 1
+        except KnowledgeTaskExecutionLeaseLostError:
+            raise
+        except Exception:
+            logger.exception("Failed to regenerate summary for segment %s", segment.id)
+            total_segments_failed += 1
 
-                if not dataset_documents:
-                    logger.info(
-                        click.style(
-                            f"No documents found for summary regeneration in dataset {dataset_id}",
-                            fg="cyan",
-                        )
-                    )
-                    return
+    logger.info(
+        click.style(
+            f"Summary regeneration completed for dataset {dataset_id}: "
+            f"{total_segments_processed} segments processed, {total_segments_failed} failed, "
+            f"latency: {time.perf_counter() - start_at:.2f}s",
+            fg="green",
+        )
+    )
+    if total_segments_failed:
+        raise SummaryIndexRegenerationError(
+            f"Failed to regenerate {total_segments_failed} summary indexes for dataset {dataset_id}"
+        )
+    return True
 
-                logger.info(
-                    "Found %s documents for summary regeneration in dataset %s",
-                    len(dataset_documents),
-                    dataset_id,
-                )
 
-                for dataset_document in dataset_documents:
-                    # Skip qa_model documents
-                    if dataset_document.doc_form == IndexStructureType.QA_INDEX:
-                        continue
+def _matches_expected_state(
+    dataset: Dataset,
+    *,
+    expected_indexing_technique: str | None,
+    expected_embedding_model_provider: str | None,
+    expected_embedding_model: str | None,
+    expected_summary_index_setting: dict[str, object] | None,
+) -> bool:
+    return (
+        expected_indexing_technique is None
+        or (
+            str(dataset.indexing_technique) == expected_indexing_technique
+            and dataset.embedding_model_provider == expected_embedding_model_provider
+            and dataset.embedding_model == expected_embedding_model
+        )
+    ) and dataset.summary_index_setting == expected_summary_index_setting
 
-                    try:
-                        # Get all segments with existing summaries
-                        segments = session.scalars(
-                            select(DocumentSegment)
-                            .join(
-                                DocumentSegmentSummary,
-                                DocumentSegment.id == DocumentSegmentSummary.chunk_id,
-                            )
-                            .where(
-                                DocumentSegment.document_id == dataset_document.id,
-                                DocumentSegment.dataset_id == dataset_id,
-                                DocumentSegment.status == "completed",
-                                DocumentSegment.enabled.is_(True),
-                                DocumentSegmentSummary.dataset_id == dataset_id,
-                            )
-                            .order_by(DocumentSegment.position.asc())
-                        ).all()
 
-                        if not segments:
-                            continue
+def _enqueue_current_summary_repair(
+    *,
+    dataset_id: str,
+    regenerate_reason: str,
+    regenerate_vectors_only: bool,
+    checkpoint_source_intent_id: str | None = None,
+) -> None:
+    _dataset_repository().enqueue_current_summary_repair(
+        dataset_id,
+        regenerate_reason=regenerate_reason,
+        regenerate_vectors_only=regenerate_vectors_only,
+        force_successor=True,
+        checkpoint_source_intent_id=checkpoint_source_intent_id,
+    )
 
-                        logger.info(
-                            "Regenerating summaries for %s segments in document %s",
-                            len(segments),
-                            dataset_document.id,
-                        )
 
-                        for segment in segments:
-                            existing_summary_record: DocumentSegmentSummary | None = None
-                            try:
-                                # Get existing summary record
-                                existing_summary_record = session.scalar(
-                                    select(DocumentSegmentSummary)
-                                    .where(
-                                        DocumentSegmentSummary.chunk_id == segment.id,
-                                        DocumentSegmentSummary.dataset_id == dataset_id,
-                                    )
-                                    .limit(1)
-                                )
-
-                                if not existing_summary_record:
-                                    logger.warning("Summary record not found for segment %s, skipping", segment.id)
-                                    continue
-
-                                # Regenerate both summary content and vectors (for summary_model change)
-                                SummaryIndexAdapter.generate_and_vectorize_summary(
-                                    segment, dataset, summary_index_setting, session=session
-                                )
-                                total_segments_processed += 1
-
-                            except Exception as e:
-                                logger.error(
-                                    "Failed to regenerate summary for segment %s: %s",
-                                    segment.id,
-                                    str(e),
-                                    exc_info=True,
-                                )
-                                total_segments_failed += 1
-                                # Update summary record with error status
-                                if existing_summary_record is not None:
-                                    existing_summary_record.status = SummaryStatus.ERROR
-                                    existing_summary_record.error = f"Regeneration failed: {str(e)}"
-                                    session.add(existing_summary_record)
-                                    session.commit()
-                                continue
-
-                    except Exception as e:
-                        logger.error(
-                            "Failed to process document %s for summary regeneration: %s",
-                            dataset_document.id,
-                            str(e),
-                            exc_info=True,
-                        )
-                        continue
-
-            end_at = time.perf_counter()
-            if regenerate_vectors_only:
-                logger.info(
-                    click.style(
-                        f"Summary re-vectorization completed for dataset {dataset_id}: "
-                        f"{total_segments_processed} segments processed successfully, "
-                        f"{total_segments_failed} segments failed, "
-                        f"latency: {end_at - start_at:.2f}s",
-                        fg="green",
-                    )
-                )
-            else:
-                logger.info(
-                    click.style(
-                        f"Summary index regeneration completed for dataset {dataset_id}: "
-                        f"{total_segments_processed} segments processed successfully, "
-                        f"{total_segments_failed} segments failed, "
-                        f"latency: {end_at - start_at:.2f}s",
-                        fg="green",
-                    )
-                )
-
-    except Exception:
-        logger.exception("Regenerate summary index failed for dataset %s", dataset_id)
+def _dataset_repository() -> SQLAlchemyDatasetRepository:
+    return SQLAlchemyDatasetRepository(
+        session_factory=session_factory.get_session_maker(),
+        wake_after_commit=wake_knowledge_task_dispatcher_after_commit,
+        revoke_keys_after_commit=partial(ApiTokenCache.delete_after_commit, scope="dataset"),
+    )
