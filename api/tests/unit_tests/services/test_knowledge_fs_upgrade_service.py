@@ -37,6 +37,8 @@ from models.model import UploadFile
 from models.oauth import DatasourceProvider
 from services import dataset_knowledge_fs_upgrade_service as upgrade_module
 from services.dataset_knowledge_fs_upgrade_service import (
+    UPGRADE_DELIVERY_TIMEOUT,
+    KnowledgeFSUpgradeBusyError,
     KnowledgeFSUpgradeConflictError,
     KnowledgeFSUpgradeDocumentReconciler,
     KnowledgeFSUpgradeError,
@@ -276,6 +278,7 @@ def test_retry_restores_failed_items_and_unreleased_file_lease(
 
     retried = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).retry(
         tenant_id=_TENANT_ID,
+        dataset_id=_DATASET_ID,
         job_id=job.id,
     )
 
@@ -311,7 +314,7 @@ def test_failed_next_checkpoint_dispatch_leaves_a_recoverable_job(
     ):
         enqueue_upgrade_job(snapshots, _TENANT_ID, job.id)
 
-    retried = snapshots.retry(tenant_id=_TENANT_ID, job_id=job.id)
+    retried = snapshots.retry(tenant_id=_TENANT_ID, dataset_id=_DATASET_ID, job_id=job.id)
     assert retried.status is KnowledgeFSUpgradeJobStatus.QUEUED
     assert retried.celery_task_id is None
     assert snapshots.claim_enqueue(tenant_id=_TENANT_ID, job_id=job.id, task_id="task-2") is True
@@ -328,6 +331,7 @@ def test_retry_rejects_when_another_dataset_job_is_active(
     with pytest.raises(KnowledgeFSUpgradeConflictError, match="already in progress"):
         KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).retry(
             tenant_id=_TENANT_ID,
+            dataset_id=_DATASET_ID,
             job_id=failed.id,
         )
 
@@ -1070,9 +1074,8 @@ def test_runner_dispatches_each_durable_stage(
 ) -> None:
     job = _job(status=KnowledgeFSUpgradeJobStatus.QUEUED, stage=stage)
     runner = _unused_runner()
-    mark_running = CallRecorder()
+    mark_running = CallRecorder(result=job)
     stage_method = CallRecorder(result=result)
-    monkeypatch.setattr(runner, "_load_job", CallRecorder(result=job))
     monkeypatch.setattr(runner, "_mark_running", mark_running)
     monkeypatch.setattr(runner, method_name, stage_method)
 
@@ -1086,31 +1089,19 @@ def test_runner_validation_creates_space_and_waits(monkeypatch: pytest.MonkeyPat
     job = _job(status=KnowledgeFSUpgradeJobStatus.QUEUED, stage=KnowledgeFSUpgradeStage.VALIDATING)
     runner = _unused_runner()
     create_space = CallRecorder()
-    monkeypatch.setattr(runner, "_load_job", CallRecorder(result=job))
-    monkeypatch.setattr(runner, "_mark_running", CallRecorder())
+    monkeypatch.setattr(runner, "_mark_running", CallRecorder(result=job))
     monkeypatch.setattr(runner, "_create_space", create_space)
 
     with pytest.raises(KnowledgeFSUpgradeNotReadyError, match="provisioning is pending"):
-        runner.run_next(job_id=job.id)
+        runner.run_next(job_id=job.id, celery_task_id="task-1")
 
     assert create_space.calls == [RecordedCall((job,), {})]
 
 
-def test_runner_terminal_and_unknown_stages_do_not_continue(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_runner_skips_superseded_deliveries(monkeypatch: pytest.MonkeyPatch) -> None:
     runner = _unused_runner()
-    mark_running = CallRecorder()
-    monkeypatch.setattr(runner, "_mark_running", mark_running)
-    monkeypatch.setattr(runner, "_load_job", CallRecorder(result=_job(status=KnowledgeFSUpgradeJobStatus.SUCCEEDED)))
-    assert runner.run_next(job_id="done") is False
-    assert mark_running.calls == []
-
-    monkeypatch.setattr(
-        runner,
-        "_load_job",
-        CallRecorder(result=_job(status=KnowledgeFSUpgradeJobStatus.QUEUED, stage=KnowledgeFSUpgradeStage.COMPLETED)),
-    )
-    assert runner.run_next(job_id="completed-stage") is False
-    assert len(mark_running.calls) == 1
+    monkeypatch.setattr(runner, "_mark_running", CallRecorder(result=None))
+    assert runner.run_next(job_id="obsolete", celery_task_id="old-task") is None
 
 
 def test_runner_failure_loading_and_running_state_are_persisted(
@@ -1128,10 +1119,11 @@ def test_runner_failure_loading_and_running_state_are_persisted(
         session.add(lease)
 
     runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
-    loaded = runner._load_job(job.id)
-    assert loaded.id == job.id
+    assert KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).claim_enqueue(
+        tenant_id=_TENANT_ID, job_id=job.id, task_id="task-2"
+    )
     runner._mark_running(job_id=job.id, celery_task_id="task-2")
-    runner.fail(job_id=job.id, error=ValueError("broken"))
+    runner.fail(job_id=job.id, celery_task_id="task-2", error=ValueError("broken"))
 
     with sqlite_session_factory() as session:
         persisted = session.get(KnowledgeFSUpgradeJob, job.id)
@@ -1147,11 +1139,11 @@ def test_runner_failure_loading_and_running_state_are_persisted(
         assert persisted_lease.expires_at > naive_utc_now() + timedelta(days=6)
 
     with pytest.raises(KnowledgeFSUpgradeNotFoundError):
-        runner._load_job("00000000-0000-0000-0000-000000000099")
-    with pytest.raises(KnowledgeFSUpgradeNotFoundError):
-        runner._mark_running(job_id="00000000-0000-0000-0000-000000000099", celery_task_id=None)
+        runner._mark_running(job_id="00000000-0000-0000-0000-000000000099", celery_task_id="missing-task")
 
-    runner.fail(job_id="00000000-0000-0000-0000-000000000099", error=RuntimeError("ignored"))
+    runner.fail(
+        job_id="00000000-0000-0000-0000-000000000099", celery_task_id="missing-task", error=RuntimeError("ignored")
+    )
 
 
 def _resolved_configuration() -> dict[str, object]:
@@ -1760,3 +1752,116 @@ def test_reconciler_records_missing_remote_document_and_remote_error(
         assert persisted_error is not None
         assert persisted_error.state_reconcile_attempt_count == 1
         assert persisted_error.state_reconcile_error == "remote metadata failed"
+
+
+@pytest.mark.parametrize("status", [KnowledgeFSUpgradeJobStatus.RUNNING, KnowledgeFSUpgradeJobStatus.QUEUED])
+@pytest.mark.parametrize("old_task_id", ["lost-task", None])
+def test_retry_reclaims_abandoned_worker_and_publication_claims(
+    sqlite_session_factory: sessionmaker[Session],
+    status: KnowledgeFSUpgradeJobStatus,
+    old_task_id: str | None,
+) -> None:
+    job = _job(status=status, celery_task_id=old_task_id, stage=KnowledgeFSUpgradeStage.FINALIZING)
+    job.updated_at = naive_utc_now() - UPGRADE_DELIVERY_TIMEOUT - timedelta(seconds=1)
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+    snapshots = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory)
+    retried = snapshots.retry(tenant_id=_TENANT_ID, dataset_id=_DATASET_ID, job_id=job.id)
+    assert retried.status is KnowledgeFSUpgradeJobStatus.QUEUED
+    assert retried.celery_task_id is None
+    with patch("tasks.knowledge_fs_upgrade_tasks.run_knowledge_fs_upgrade.apply_async") as publish:
+        enqueue_upgrade_job(snapshots, _TENANT_ID, job.id)
+    task_id = publish.call_args.kwargs["task_id"]
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    assert runner.run_next(job_id=job.id, celery_task_id="lost-task") is None
+    assert runner.run_next(job_id=job.id, celery_task_id=task_id) is False
+    # Redelivery after the final commit must still trigger document reconciliation.
+    assert runner.run_next(job_id=job.id, celery_task_id=task_id) is False
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted is not None
+        assert persisted.status is KnowledgeFSUpgradeJobStatus.SUCCEEDED
+        assert persisted.attempt_count == 1
+
+
+def test_live_checkpoint_cannot_be_stolen_by_retry_or_duplicate_delivery(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    job = _job(status=KnowledgeFSUpgradeJobStatus.RUNNING, celery_task_id="live-task")
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+    snapshots = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory)
+    retried = snapshots.retry(tenant_id=_TENANT_ID, dataset_id=_DATASET_ID, job_id=job.id)
+    assert retried.status is KnowledgeFSUpgradeJobStatus.RUNNING
+    assert not snapshots.claim_enqueue(tenant_id=_TENANT_ID, job_id=job.id, task_id="another-task")
+    assert snapshots.recover_stalled_jobs() == []
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    with pytest.raises(KnowledgeFSUpgradeBusyError):
+        runner.run_next(job_id=job.id, celery_task_id="live-task")
+    runner.fail(job_id=job.id, celery_task_id="obsolete-task", error=ValueError("obsolete"))
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted is not None
+        assert persisted.status is KnowledgeFSUpgradeJobStatus.RUNNING
+        assert persisted.attempt_count == 0
+
+
+def test_recovery_sweep_only_releases_stale_nonterminal_jobs(sqlite_session_factory: sessionmaker[Session]) -> None:
+    jobs = [
+        _job(
+            old_dataset_id=f"00000000-0000-0000-0000-{index:012d}",
+            idempotency_key=f"job-{index}",
+            status=status,
+            celery_task_id=f"task-{index}",
+        )
+        for index, status in enumerate(KnowledgeFSUpgradeJobStatus)
+    ]
+    for job in jobs:
+        job.updated_at = naive_utc_now() - UPGRADE_DELIVERY_TIMEOUT - timedelta(seconds=1)
+    with sqlite_session_factory.begin() as session:
+        session.add_all(jobs)
+    snapshots = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory)
+    recovered = snapshots.recover_stalled_jobs()
+    assert set(recovered) == {
+        (_TENANT_ID, job.id)
+        for job in jobs
+        if job.status
+        in {
+            KnowledgeFSUpgradeJobStatus.QUEUED,
+            KnowledgeFSUpgradeJobStatus.RUNNING,
+        }
+    }
+    assert snapshots.recover_stalled_jobs() == []
+    with sqlite_session_factory() as session:
+        for _, job_id in recovered:
+            persisted = session.get(KnowledgeFSUpgradeJob, job_id)
+            assert persisted is not None
+            assert persisted.status is KnowledgeFSUpgradeJobStatus.QUEUED
+            assert persisted.celery_task_id is None
+
+
+def test_broker_redelivery_resumes_the_expired_checkpoint(sqlite_session_factory: sessionmaker[Session]) -> None:
+    job = _job(
+        status=KnowledgeFSUpgradeJobStatus.RUNNING,
+        celery_task_id="redelivered-task",
+        stage=KnowledgeFSUpgradeStage.FINALIZING,
+    )
+    job.updated_at = naive_utc_now() - UPGRADE_DELIVERY_TIMEOUT - timedelta(seconds=1)
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    assert runner.run_next(job_id=job.id, celery_task_id="redelivered-task") is False
+
+
+def test_provisioning_retry_releases_execution_but_keeps_delivery_identity(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    job = _job(status=KnowledgeFSUpgradeJobStatus.RUNNING, celery_task_id="task-1")
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner.release_for_retry(job_id=job.id, celery_task_id="obsolete-task")
+    with pytest.raises(KnowledgeFSUpgradeBusyError):
+        runner._mark_running(job_id=job.id, celery_task_id="task-1")
+    runner.release_for_retry(job_id=job.id, celery_task_id="task-1")
+    assert runner._mark_running(job_id=job.id, celery_task_id="task-1") is not None

@@ -98,6 +98,23 @@ this is intentional fail-closed behavior. Do not add a proxy route, set
 `KNOWLEDGE_FS_ENABLED=true`, or send product traffic until readiness returns `200` and the migration
 and per-Workspace cutover gates are complete.
 
+### KnowledgeFS lifecycle and upgrade workers
+
+The standard Dify worker consumes `knowledge_fs_lifecycle` for provisioning, deletion, initial
+source imports, and staged-upload cleanup. Deployments overriding `CELERY_QUEUES` or
+`CELERY_WORKER_QUEUES` must include this queue in a worker pool. Enable the lifecycle rollout gates
+on the API, workers, and Beat before creating spaces.
+
+Classic Dataset upgrades use the separate `worker_knowledge_fs_upgrade` service. This worker must
+use `CELERY_WORKER_POOL=prefork`; local development uses
+`./dev/start-worker --queues knowledge_fs_upgrade --pool prefork`. Each checkpoint has a 570-second
+soft limit and a 600-second hard limit. Do not override these task limits: recovery relies on the
+child having stopped before reclaiming its execution window. Beat checks for abandoned running
+jobs and publication claims every minute after the lifecycle gates are ready. Claims without
+progress for 11 minutes can be recovered automatically or through the upgrade retry endpoint.
+Stop existing upgrade workers before deploying this recovery change, then recreate the API,
+worker, upgrade worker, and Beat with the new image and pool configuration.
+
 ## Client IP and trusted proxies
 
 Dify uses the request's resolved client IP for rate limits and audit records. The

@@ -68,6 +68,10 @@ from services.knowledge_fs.staged_upload_service import KnowledgeFSStagedUploadS
 _ACTIVE_JOB_STATUSES = (KnowledgeFSUpgradeJobStatus.QUEUED, KnowledgeFSUpgradeJobStatus.RUNNING)
 _SOURCE_SELECTION_LIMIT = 200
 _FILE_LEASE_TTL = timedelta(days=7)
+# A checkpoint runs in a prefork child with a hard limit. Only reclaim after that
+# child must have stopped, with headroom for termination and broker delivery.
+UPGRADE_CHECKPOINT_TIME_LIMIT_SECONDS = 600
+UPGRADE_DELIVERY_TIMEOUT = timedelta(seconds=UPGRADE_CHECKPOINT_TIME_LIMIT_SECONDS + 60)
 _INITIAL_SOURCE_ADAPTER: TypeAdapter[KnowledgeFSInitialSourcePayload] = TypeAdapter(KnowledgeFSInitialSourcePayload)
 
 
@@ -85,6 +89,10 @@ class KnowledgeFSUpgradeConflictError(KnowledgeFSUpgradeError):
 
 class KnowledgeFSUpgradeNotReadyError(KnowledgeFSUpgradeError):
     """Provisioning is progressing and the dedicated worker should retry."""
+
+
+class KnowledgeFSUpgradeBusyError(KnowledgeFSUpgradeError):
+    """Another delivery still owns this checkpoint's bounded execution window."""
 
 
 class KnowledgeFSUpgradeSnapshotService:
@@ -365,19 +373,23 @@ class KnowledgeFSUpgradeSnapshotService:
                 latest[job.old_dataset_id] = job
         return latest
 
-    def retry(self, *, tenant_id: str, job_id: str) -> KnowledgeFSUpgradeJob:
+    def retry(self, *, tenant_id: str, dataset_id: str, job_id: str) -> KnowledgeFSUpgradeJob:
         lease_expires_at = naive_utc_now() + _FILE_LEASE_TTL
         with self._session_maker(expire_on_commit=False) as session, session.begin():
             job = session.scalar(
                 sa.select(KnowledgeFSUpgradeJob)
-                .where(KnowledgeFSUpgradeJob.id == job_id, KnowledgeFSUpgradeJob.tenant_id == tenant_id)
+                .where(
+                    KnowledgeFSUpgradeJob.id == job_id,
+                    KnowledgeFSUpgradeJob.tenant_id == tenant_id,
+                    KnowledgeFSUpgradeJob.old_dataset_id == dataset_id,
+                )
                 .with_for_update()
             )
             if job is None:
                 raise KnowledgeFSUpgradeNotFoundError("Upgrade job was not found")
             if job.status is KnowledgeFSUpgradeJobStatus.SUCCEEDED:
                 raise KnowledgeFSUpgradeConflictError("Successful upgrades cannot be retried")
-            if job.status in _ACTIVE_JOB_STATUSES:
+            if job.status in _ACTIVE_JOB_STATUSES and job.updated_at > naive_utc_now() - UPGRADE_DELIVERY_TIMEOUT:
                 return job
             active_job = session.scalar(
                 sa.select(KnowledgeFSUpgradeJob)
@@ -396,6 +408,7 @@ class KnowledgeFSUpgradeSnapshotService:
             job.last_error_message = None
             job.completed_at = None
             job.celery_task_id = None
+            job.updated_at = naive_utc_now()
             session.execute(
                 sa.update(KnowledgeFSUpgradeDocument)
                 .where(
@@ -425,6 +438,33 @@ class KnowledgeFSUpgradeSnapshotService:
             )
             return job
 
+    def recover_stalled_jobs(self, *, limit: int = 100) -> list[tuple[str, str]]:
+        """Release abandoned execution and publication claims for bounded redispatch.
+
+        updated_at is refreshed on claim and checkpoint progress. Prefork's hard
+        task limit is shorter than this window, so a live child cannot overlap a
+        recovered delivery. This also covers a publisher dying before apply_async.
+        """
+        now = naive_utc_now()
+        with self._session_maker.begin() as session:
+            jobs = session.scalars(
+                sa.select(KnowledgeFSUpgradeJob)
+                .where(
+                    KnowledgeFSUpgradeJob.status.in_(_ACTIVE_JOB_STATUSES),
+                    KnowledgeFSUpgradeJob.updated_at <= now - UPGRADE_DELIVERY_TIMEOUT,
+                )
+                .order_by(KnowledgeFSUpgradeJob.updated_at, KnowledgeFSUpgradeJob.id)
+                .limit(limit)
+                .with_for_update(skip_locked=True)
+            ).all()
+            recovered = []
+            for job in jobs:
+                job.status = KnowledgeFSUpgradeJobStatus.QUEUED
+                job.celery_task_id = None
+                job.updated_at = now
+                recovered.append((job.tenant_id, job.id))
+            return recovered
+
     def claim_enqueue(self, *, tenant_id: str, job_id: str, task_id: str) -> bool:
         with self._session_maker.begin() as session:
             job = session.scalar(
@@ -437,6 +477,7 @@ class KnowledgeFSUpgradeSnapshotService:
             if job.status is not KnowledgeFSUpgradeJobStatus.QUEUED or job.celery_task_id is not None:
                 return False
             job.celery_task_id = task_id
+            job.updated_at = naive_utc_now()
             return True
 
     def release_enqueue_claim(self, *, tenant_id: str, job_id: str, task_id: str) -> None:
@@ -456,11 +497,14 @@ class KnowledgeFSUpgradeRunner:
     def __init__(self, session_maker: sessionmaker[Session]) -> None:
         self._session_maker = session_maker
 
-    def run_next(self, *, job_id: str, celery_task_id: str | None = None) -> bool:
-        job = self._load_job(job_id)
-        if job.status in {KnowledgeFSUpgradeJobStatus.SUCCEEDED, KnowledgeFSUpgradeJobStatus.FAILED}:
+    def run_next(self, *, job_id: str, celery_task_id: str) -> bool | None:
+        """Return True for another checkpoint, False for reconciliation, or None for an obsolete delivery."""
+        job = self._mark_running(job_id=job_id, celery_task_id=celery_task_id)
+        if job is None:
+            # Superseded/terminal delivery: do not dispatch follow-up work.
+            return None
+        if job.status is KnowledgeFSUpgradeJobStatus.SUCCEEDED:
             return False
-        self._mark_running(job_id=job_id, celery_task_id=celery_task_id)
         if job.stage is KnowledgeFSUpgradeStage.VALIDATING:
             self._create_space(job)
             raise KnowledgeFSUpgradeNotReadyError("KnowledgeFS Space provisioning is pending")
@@ -479,10 +523,14 @@ class KnowledgeFSUpgradeRunner:
             return False
         return False
 
-    def fail(self, *, job_id: str, error: Exception) -> None:
+    def fail(self, *, job_id: str, celery_task_id: str, error: Exception) -> None:
         with self._session_maker.begin() as session:
-            job = session.get(KnowledgeFSUpgradeJob, job_id)
-            if job is None or job.status is KnowledgeFSUpgradeJobStatus.SUCCEEDED:
+            job = session.get(KnowledgeFSUpgradeJob, job_id, with_for_update=True)
+            if (
+                job is None
+                or job.status is not KnowledgeFSUpgradeJobStatus.RUNNING
+                or job.celery_task_id != celery_task_id
+            ):
                 return
             job.status = KnowledgeFSUpgradeJobStatus.FAILED
             job.last_error_code = type(error).__name__[:128]
@@ -508,21 +556,34 @@ class KnowledgeFSUpgradeRunner:
             job.celery_task_id = None
             return job.tenant_id
 
-    def _load_job(self, job_id: str) -> KnowledgeFSUpgradeJob:
-        with self._session_maker() as session:
-            job = session.get(KnowledgeFSUpgradeJob, job_id)
-            if job is None:
-                raise KnowledgeFSUpgradeNotFoundError("Upgrade job was not found")
-            session.expunge(job)
-            return job
-
-    def _mark_running(self, *, job_id: str, celery_task_id: str | None) -> None:
-        lease_expires_at = naive_utc_now() + _FILE_LEASE_TTL
+    def release_for_retry(self, *, job_id: str, celery_task_id: str) -> None:
         with self._session_maker.begin() as session:
-            job = session.get(KnowledgeFSUpgradeJob, job_id)
+            job = session.get(KnowledgeFSUpgradeJob, job_id, with_for_update=True)
+            if (
+                job is not None
+                and job.status is KnowledgeFSUpgradeJobStatus.RUNNING
+                and job.celery_task_id == celery_task_id
+            ):
+                job.status = KnowledgeFSUpgradeJobStatus.QUEUED
+                job.updated_at = naive_utc_now()
+
+    def _mark_running(self, *, job_id: str, celery_task_id: str) -> KnowledgeFSUpgradeJob | None:
+        with self._session_maker(expire_on_commit=False) as session, session.begin():
+            job = session.get(KnowledgeFSUpgradeJob, job_id, with_for_update=True)
+            now = naive_utc_now()
+            lease_expires_at = now + _FILE_LEASE_TTL
             if job is None:
                 raise KnowledgeFSUpgradeNotFoundError("Upgrade job was not found")
+            if job.celery_task_id != celery_task_id:
+                return None
+            if job.status is KnowledgeFSUpgradeJobStatus.SUCCEEDED:
+                return job
+            if job.status not in _ACTIVE_JOB_STATUSES:
+                return None
+            if job.status is KnowledgeFSUpgradeJobStatus.RUNNING and job.updated_at > now - UPGRADE_DELIVERY_TIMEOUT:
+                raise KnowledgeFSUpgradeBusyError("Upgrade checkpoint is still owned by another delivery")
             job.status = KnowledgeFSUpgradeJobStatus.RUNNING
+            job.updated_at = now
             job.attempt_count += 1
             job.celery_task_id = celery_task_id
             session.execute(
@@ -533,6 +594,7 @@ class KnowledgeFSUpgradeRunner:
                 )
                 .values(expires_at=lease_expires_at)
             )
+            return job
 
     def _create_space(self, job: KnowledgeFSUpgradeJob) -> None:
         resolved = _resolve_configuration(job)

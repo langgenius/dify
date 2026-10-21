@@ -118,6 +118,15 @@ else
   echo "Using specified queues: ${QUEUES}"
 fi
 
+case ",${QUEUES}," in
+  *,knowledge_fs_upgrade,*)
+    if [[ "${POOL}" != "prefork" ]]; then
+      echo "KnowledgeFS upgrades require --pool prefork to enforce checkpoint time limits." >&2
+      exit 1
+    fi
+    ;;
+esac
+
 echo "Starting Celery worker with:"
 echo "  Queues: ${QUEUES}"
 echo "  Concurrency: ${CONCURRENCY}"

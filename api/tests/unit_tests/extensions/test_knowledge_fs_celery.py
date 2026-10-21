@@ -94,6 +94,11 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
         "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
         "schedule": timedelta(seconds=2),
     }
+    assert celery_app.conf["beat_schedule"]["knowledge_fs_upgrade_recovery"] == {
+        "task": "tasks.knowledge_fs_upgrade_tasks.recover_stalled_knowledge_fs_upgrades",
+        "schedule": timedelta(seconds=60),
+        "options": {"expires": 60},
+    }
     schedules = celery_app.conf["beat_schedule"]
     if background_enabled:
         assert celery_app.conf["broker_transport_options"]["visibility_timeout"] == 10800
@@ -120,6 +125,7 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     assert "tasks.knowledge_fs_initial_source_tasks" not in preview_only_app.conf["imports"]
     assert "tasks.knowledge_fs_lifecycle_tasks" not in preview_only_app.conf["imports"]
     assert "tasks.knowledge_fs_source_import_tasks" not in preview_only_app.conf["imports"]
+    assert "knowledge_fs_upgrade_recovery" not in preview_only_app.conf["beat_schedule"]
 
 
 @pytest.mark.parametrize("visibility", [None, 3600, 7200, 7230])

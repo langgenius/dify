@@ -112,9 +112,7 @@ class KnowledgeUpgradeApplicationService:
     def retry(self, context: RequestContext, *, dataset_id: str, job_id: str) -> KnowledgeFSUpgradeJob:
         dataset = self._dataset_access.require_accessible(context, dataset_id)
         snapshots = self._snapshots()
-        job = snapshots.retry(tenant_id=dataset.workspace_id, job_id=job_id)
-        if job.old_dataset_id != dataset.id:
-            raise KnowledgeFSUpgradeNotFoundError("Upgrade job was not found")
+        job = snapshots.retry(tenant_id=dataset.workspace_id, dataset_id=dataset.id, job_id=job_id)
         self._enqueue(snapshots, dataset.workspace_id, job.id)
         return job
 

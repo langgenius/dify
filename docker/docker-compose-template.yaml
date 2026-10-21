@@ -398,6 +398,7 @@ services:
     environment:
       MODE: worker
       CELERY_WORKER_QUEUES: knowledge_fs_upgrade
+      CELERY_WORKER_POOL: prefork
       CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_UPGRADE_WORKER_AMOUNT:-2}
       CELERY_PREFETCH_MULTIPLIER: 1
       SENTRY_DSN: ${API_SENTRY_DSN:-}

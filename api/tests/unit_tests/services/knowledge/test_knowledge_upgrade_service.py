@@ -11,7 +11,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from machinery.context import RequestContext
 from models import Dataset
 from models.knowledge_fs import KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJobStatus
-from services.dataset_knowledge_fs_upgrade_service import KnowledgeFSUpgradeNotFoundError
+from services.dataset_knowledge_fs_upgrade_service import (
+    KnowledgeFSUpgradeNotFoundError,
+    KnowledgeFSUpgradeSnapshotService,
+)
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess, DatasetAccessDeniedError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetVisibility
@@ -70,8 +73,8 @@ class FakeSnapshots:
         assert self.job is not None
         return self.job
 
-    def retry(self, *, tenant_id: str, job_id: str) -> KnowledgeFSUpgradeJob:
-        self.retry_calls.append({"tenant_id": tenant_id, "job_id": job_id})
+    def retry(self, *, tenant_id: str, dataset_id: str, job_id: str) -> KnowledgeFSUpgradeJob:
+        self.retry_calls.append({"tenant_id": tenant_id, "dataset_id": dataset_id, "job_id": job_id})
         assert self.job is not None
         return self.job
 
@@ -144,17 +147,31 @@ def test_start_rejects_an_inaccessible_dataset() -> None:
     snapshots.assert_not_called()
 
 
-def test_retry_rejects_a_job_from_another_dataset() -> None:
+def test_retry_rejects_a_job_from_another_dataset_without_committing_changes(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     enqueue = FakeEnqueue()
     service = _service(enqueue=enqueue)
-    snapshots = FakeSnapshots(job=upgrade_job(job_id="job-1", old_dataset_id="dataset-2"))
+    job = upgrade_job(job_id="job-1", old_dataset_id="dataset-2")
+    job.status = KnowledgeFSUpgradeJobStatus.FAILED
+    job.last_error_code = "original_failure"
+    job.celery_task_id = "original-task"
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+    snapshots = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory)
 
     with (
-        patch("services.knowledge.datasets.upgrades.KnowledgeFSUpgradeSnapshotService", return_value=snapshots),
+        patch.object(service, "_snapshots", return_value=snapshots),
         pytest.raises(KnowledgeFSUpgradeNotFoundError, match="Upgrade job was not found"),
     ):
         service.retry(CONTEXT, dataset_id="dataset-1", job_id="job-1")
-    assert snapshots.retry_calls == [{"tenant_id": "tenant-1", "job_id": "job-1"}]
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeJob, "job-1")
+        assert persisted is not None
+        assert persisted.status is KnowledgeFSUpgradeJobStatus.FAILED
+        assert persisted.last_error_code == "original_failure"
+        assert persisted.celery_task_id == "original-task"
     assert enqueue.calls == []
 
 

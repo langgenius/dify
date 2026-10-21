@@ -242,6 +242,11 @@ def init_app(app: DifyApp) -> Celery:
             "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
             "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
         }
+        beat_schedule["knowledge_fs_upgrade_recovery"] = {
+            "task": "tasks.knowledge_fs_upgrade_tasks.recover_stalled_knowledge_fs_upgrades",
+            "schedule": timedelta(seconds=60),
+            "options": {"expires": 60},
+        }
         beat_schedule["knowledge_fs_upgrade_file_cleanup"] = {
             "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
             "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
