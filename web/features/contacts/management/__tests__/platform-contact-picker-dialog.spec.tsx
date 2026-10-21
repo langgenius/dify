@@ -134,6 +134,7 @@ describe('Enterprise Platform contact import', () => {
     const context = {
       workspaceId: scenario.workspaceId,
       deployment: scenario.deployment,
+      imBindingCentrallyManaged: scenario.imBindingCentrallyManaged,
       permissions: scenario.permissions,
       ...overrides,
     }
@@ -177,6 +178,24 @@ describe('Enterprise Platform contact import', () => {
       renderPicker,
     }
   }
+
+  it.each(['ce', 'saas'] as const)(
+    'queries and imports Platform contacts on %s when centrally managed',
+    async (deployment) => {
+      const { addPlatformContacts, onOpenChange, renderPicker } = setup({ deployment })
+      renderPicker()
+      const user = userEvent.setup()
+      const picker = screen.getByRole('dialog', { name: 'contacts.platformPicker.title' })
+      await user.click(await within(picker).findByRole('checkbox', { name: /Platform Member/ }))
+      await user.click(within(picker).getByRole('button', { name: 'contacts.platformPicker.add' }))
+
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+      expect(addPlatformContacts).toHaveBeenCalledWith({
+        contactIds: [candidate.id],
+        upgradeExternalContacts: false,
+      })
+    },
+  )
 
   it('can move past a fully excluded page, retry the next page, and search the server without invented departments', async () => {
     const { listAvailablePlatformContacts, renderPicker } = setup()
@@ -260,12 +279,12 @@ describe('Enterprise Platform contact import', () => {
   )
 
   it.each<Partial<ContactsFeatureContextValue>>([
-    { deployment: 'ce' },
-    { deployment: 'saas' },
+    { imBindingCentrallyManaged: undefined },
+    { imBindingCentrallyManaged: false },
     { workspaceId: '' },
     { permissions: { canViewContacts: true, canManageContacts: false, canManageMembers: false } },
   ])(
-    'does not query or expose selectable candidates without authorized Enterprise context',
+    'does not query or expose selectable candidates without centrally managed import access',
     async (overrides) => {
       const { listAvailablePlatformContacts, addPlatformContacts, renderPicker } = setup(overrides)
       renderPicker()

@@ -258,6 +258,7 @@ describe('Enterprise Platform contact API repository', () => {
   const client = consoleClient.workspaces.current.humanInput
   const context: ContactsFeatureContextValue = {
     deployment: 'ee',
+    imBindingCentrallyManaged: true,
     workspaceId: 'workspace-ee',
     permissions: { canViewContacts: true, canManageContacts: true, canManageMembers: true },
   }
@@ -266,6 +267,35 @@ describe('Enterprise Platform contact API repository', () => {
   const command = { contactIds: [candidate.id], upgradeExternalContacts: false }
 
   beforeEach(() => vi.resetAllMocks())
+
+  it.each(['ce', 'saas'] as const)(
+    'queries and imports Platform contacts on %s when centrally managed',
+    async (deployment) => {
+      vi.mocked(client.organizationCandidates.get).mockResolvedValue({
+        data: [candidate],
+        page: 1,
+        limit: 20,
+        total: 1,
+      })
+      vi.mocked(client.contacts.batch.get).mockResolvedValue({ data: [] })
+      vi.mocked(client.contacts.platform.post).mockResolvedValue({
+        data: [{ ...candidate, type: 'platform', avatar_url: '', created_at: 1 }],
+      })
+      const repository = createContactsApiRepository(client, { ...context, deployment })
+
+      await expect(repository.listAvailablePlatformContacts(query)).resolves.toMatchObject({
+        data: [{ ...candidate, avatar_url: null }],
+      })
+      await expect(repository.addPlatformContacts(command)).resolves.toEqual({
+        kind: 'added',
+        contactIds: [candidate.id],
+      })
+      expect(client.contacts.platform.post).toHaveBeenCalledWith(
+        { body: { candidate_ids: [candidate.id] } },
+        { context: { silent: true } },
+      )
+    },
+  )
 
   it('excludes existing contacts per server page without losing the next page when all candidates already exist', async () => {
     vi.mocked(client.organizationCandidates.get).mockResolvedValue({
@@ -345,12 +375,12 @@ describe('Enterprise Platform contact API repository', () => {
 
   it.each<ContactsFeatureContextValue | undefined>([
     undefined,
-    { ...context, deployment: 'ce' },
-    { ...context, deployment: 'saas' },
+    { ...context, imBindingCentrallyManaged: undefined },
+    { ...context, imBindingCentrallyManaged: false },
     { ...context, workspaceId: '' },
     { ...context, permissions: { ...context.permissions, canManageContacts: false } },
   ])(
-    'never requests Enterprise APIs without an authorized Enterprise workspace',
+    'never requests Platform APIs without centrally managed import access',
     async (unavailableContext) => {
       const repository = createContactsApiRepository(client, unavailableContext)
       expect(repository.supportsPlatformImport).toBe(false)

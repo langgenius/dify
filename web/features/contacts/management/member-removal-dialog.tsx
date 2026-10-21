@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,7 +35,8 @@ export function MemberRemovalContactImpactDialog({
   const [keepAsPlatformContact, setKeepAsPlatformContact] = useState(true)
   const [failed, setFailed] = useState(false)
   const resetMutation = removal.reset
-  const isEnterprise = context.deployment === 'ee'
+  const { imBindingCentrallyManaged, imBindingCapabilityError, retryIMBindingCapability } = context
+  const capabilityReady = imBindingCentrallyManaged !== undefined
 
   function resetDialog() {
     setKeepAsPlatformContact(true)
@@ -49,10 +51,10 @@ export function MemberRemovalContactImpactDialog({
   }
 
   async function handleRemove() {
-    if (removal.isPending) return
+    if (removal.isPending || !capabilityReady) return
     setFailed(false)
     const result = await removal.mutateAsync({
-      keepAsPlatformContact: isEnterprise && keepAsPlatformContact,
+      keepAsPlatformContact: imBindingCentrallyManaged && keepAsPlatformContact,
       memberId: member.id,
     })
     if (result.kind === 'failed') {
@@ -76,7 +78,7 @@ export function MemberRemovalContactImpactDialog({
               {t(
                 ($) =>
                   $[
-                    isEnterprise
+                    imBindingCentrallyManaged
                       ? 'memberRemoval.eeDescription'
                       : 'memberRemoval.standardDescription'
                   ],
@@ -98,7 +100,7 @@ export function MemberRemovalContactImpactDialog({
               </span>
             </span>
           </div>
-          {isEnterprise && (
+          {imBindingCentrallyManaged && (
             <div className="flex items-start gap-2 rounded-lg p-1 focus-within:ring-2 focus-within:ring-state-accent-solid">
               <Checkbox
                 aria-labelledby="member-removal-keep-platform-label"
@@ -127,12 +129,28 @@ export function MemberRemovalContactImpactDialog({
               {t(($) => $['memberRemoval.failed'])}
             </p>
           )}
+          {imBindingCapabilityError && (
+            <div
+              role="alert"
+              className="rounded-lg bg-state-destructive-hover p-3 system-sm-regular text-text-destructive"
+            >
+              <p>{t(($) => $['directory.errorTitle'])}</p>
+              {retryIMBindingCapability && (
+                <Button variant="secondary" onClick={retryIMBindingCapability}>
+                  {t(($) => $['action.retry'])}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
         <AlertDialogFooter>
           <AlertDialogCancelButton disabled={removal.isPending}>
             {t(($) => $['action.cancel'])}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton disabled={removal.isPending} onClick={handleRemove}>
+          <AlertDialogConfirmButton
+            disabled={removal.isPending || !capabilityReady}
+            onClick={handleRemove}
+          >
             {removal.isPending
               ? t(($) => $['memberRemoval.removing'])
               : t(($) => $['memberRemoval.remove'])}

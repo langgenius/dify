@@ -47,7 +47,10 @@ export function useContactsDirectory(query: Omit<ContactsListQuery, 'deployment'
   const repository = useContactsManagementRepository()
   const result = useInfiniteQuery(
     infiniteQueryOptions({
-      enabled: Boolean(context.workspaceId) && context.permissions.canViewContacts,
+      enabled:
+        Boolean(context.workspaceId) &&
+        context.permissions.canViewContacts &&
+        context.imBindingCentrallyManaged !== undefined,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
         repository.listContacts({ ...query, deployment: context.deployment, page: pageParam }),
@@ -110,7 +113,7 @@ export function useContactCounts() {
         enabled:
           Boolean(context.workspaceId) &&
           context.permissions.canViewContacts &&
-          (kind !== 'platform' || context.deployment === 'ee'),
+          (kind !== 'platform' || context.imBindingCentrallyManaged === true),
         select: (page) => page.total,
       }),
     ),
@@ -130,7 +133,7 @@ export function useAvailablePlatformContacts(
         enabled &&
         Boolean(context.workspaceId) &&
         context.permissions.canManageContacts &&
-        context.deployment === 'ee' &&
+        context.imBindingCentrallyManaged === true &&
         repository.supportsPlatformImport !== false,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
@@ -207,7 +210,7 @@ export function useAddPlatformContacts() {
       mutationFn: (command: AddPlatformContactsCommand) => {
         if (
           !context.workspaceId ||
-          context.deployment !== 'ee' ||
+          !context.imBindingCentrallyManaged ||
           !context.permissions.canManageContacts ||
           repository.supportsPlatformImport === false
         )
@@ -266,15 +269,15 @@ export function useContactIMChannels(enabled = true) {
       queryKey: [
         ...contactsManagementQueryKeys.all(context.workspaceId),
         'im-channels',
-        context.deployment,
+        context.imBindingCentrallyManaged,
         repository,
       ],
       queryFn: listIMChannels ? () => listIMChannels() : skipToken,
       enabled:
         enabled &&
         Boolean(context.workspaceId) &&
-        context.permissions.canManageContacts &&
-        context.deployment !== 'ee',
+        context.imBindingCentrallyManaged !== undefined &&
+        context.permissions.canManageContacts,
       retry: false,
     }),
   )
@@ -300,9 +303,9 @@ export function useContactIMIdentities(search: string) {
       getNextPageParam: (page) => (page.has_more ? page.page + 1 : undefined),
       enabled:
         Boolean(context.workspaceId) &&
+        context.imBindingCentrallyManaged !== undefined &&
         context.permissions.canManageContacts &&
-        repository.supportsIMBindings === true &&
-        context.deployment !== 'ee',
+        repository.supportsIMBindings === true,
       retry: false,
     }),
   )

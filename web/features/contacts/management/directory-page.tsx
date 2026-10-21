@@ -174,6 +174,21 @@ function DirectoryState({
   )
 }
 
+function DirectoryLoading() {
+  const { t } = useTranslation(['contacts'])
+  return (
+    <div
+      role="status"
+      aria-label={t(($) => $['directory.loading'])}
+      className="space-y-2 rounded-xl border border-divider-subtle p-3"
+    >
+      {[0, 1, 2, 3, 4].map((key) => (
+        <div key={key} className="h-12 animate-pulse rounded-lg bg-background-default-subtle" />
+      ))}
+    </div>
+  )
+}
+
 export function ContactsDirectoryPage() {
   const { t } = useTranslation(['contacts'])
   const context = useContactsFeatureContext()
@@ -184,8 +199,10 @@ export function ContactsDirectoryPage() {
     contact_search: searchParser,
   })
   const search = browsing.contact_search
-  const kind = browsing.contact_kind
-  const loadedPages = browsing.contact_pages
+  const platformFilterUnavailable =
+    browsing.contact_kind === 'platform' && context.imBindingCentrallyManaged === false
+  const kind = platformFilterUnavailable ? 'all' : browsing.contact_kind
+  const loadedPages = platformFilterUnavailable ? 1 : browsing.contact_pages
   const [contactId, setContactId] = useQueryState('contact_id', contactIdParser)
   const [externalDialogOpen, setExternalDialogOpen] = useState(false)
   const [editingContact, setEditingContact] = useState<ContactView | null>(null)
@@ -201,7 +218,7 @@ export function ContactsDirectoryPage() {
   const removeContacts = useRemoveContacts()
   const fetchNextPage = directoryQuery.fetchNextPage
   const filters = contactKindFilters.filter(
-    (filter) => filter !== 'platform' || context.deployment === 'ee',
+    (filter) => filter !== 'platform' || context.imBindingCentrallyManaged,
   )
   const hasFilters = Boolean(search) || kind !== 'all'
   const currentPageCount = directoryQuery.data?.pages.length ?? 0
@@ -217,7 +234,15 @@ export function ContactsDirectoryPage() {
   const someRemovableSelected = selectedRemovableCount > 0 && !allRemovableSelected
 
   useEffect(() => {
+    if (platformFilterUnavailable) {
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- The resolved server capability removes unsupported filters from the external URL query state.
+      void setBrowsing({ contact_kind: null, contact_pages: null })
+    }
+  }, [platformFilterUnavailable, setBrowsing])
+
+  useEffect(() => {
     if (
+      context.imBindingCentrallyManaged !== undefined &&
       currentPageCount > 0 &&
       currentPageCount < loadedPages &&
       directoryQuery.hasNextPage &&
@@ -227,6 +252,7 @@ export function ContactsDirectoryPage() {
       void fetchNextPage()
     }
   }, [
+    context.imBindingCentrallyManaged,
     currentPageCount,
     directoryQuery.hasNextPage,
     directoryQuery.isFetchNextPageError,
@@ -326,6 +352,24 @@ export function ContactsDirectoryPage() {
     )
   }
 
+  if (context.imBindingCentrallyManaged === undefined) {
+    if (context.imBindingCapabilityError) {
+      return (
+        <DirectoryState
+          action={
+            <Button onClick={context.retryIMBindingCapability}>
+              {t(($) => $['action.retry'])}
+            </Button>
+          }
+          description={t(($) => $['directory.errorDescription'])}
+          icon="i-ri-error-warning-line"
+          title={t(($) => $['directory.errorTitle'])}
+        />
+      )
+    }
+    return <DirectoryLoading />
+  }
+
   return (
     <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
       <header className="shrink-0 px-4 pt-4 pb-2 sm:px-8">
@@ -379,7 +423,7 @@ export function ContactsDirectoryPage() {
           />
           {context.permissions.canManageContacts && (
             <div className="flex shrink-0 lg:ml-auto">
-              {context.deployment === 'ee' && repository.supportsPlatformImport !== false ? (
+              {context.imBindingCentrallyManaged && repository.supportsPlatformImport !== false ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="primary" />}>
                     <span aria-hidden className="mr-1 i-ri-add-line size-4" />
@@ -422,20 +466,7 @@ export function ContactsDirectoryPage() {
         <ScrollArea className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-components-panel-bg">
           <ScrollAreaViewport ref={scrollContainerRef} className="overscroll-contain">
             <ScrollAreaContent className="flex min-h-full flex-col">
-              {directoryQuery.isPending && (
-                <div
-                  role="status"
-                  aria-label={t(($) => $['directory.loading'])}
-                  className="space-y-2 rounded-xl border border-divider-subtle p-3"
-                >
-                  {[0, 1, 2, 3, 4].map((key) => (
-                    <div
-                      key={key}
-                      className="h-12 animate-pulse rounded-lg bg-background-default-subtle"
-                    />
-                  ))}
-                </div>
-              )}
+              {directoryQuery.isPending && <DirectoryLoading />}
               {directoryQuery.isError && !directoryQuery.contacts.length && (
                 <DirectoryState
                   action={
@@ -684,7 +715,7 @@ export function ContactsDirectoryPage() {
         }}
         onCreated={openDetails}
       />
-      {context.deployment === 'ee' && repository.supportsPlatformImport !== false && (
+      {context.imBindingCentrallyManaged && repository.supportsPlatformImport !== false && (
         <PlatformContactPickerDialog
           open={platformDialogOpen}
           onOpenChange={setPlatformDialogOpen}

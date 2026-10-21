@@ -1,16 +1,23 @@
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
 const mockConfig = vi.hoisted(() => ({
   ENABLE_FEATURE_PREVIEW: true,
+  getFeatures: vi.fn<() => Promise<GetFeaturesResponse>>(),
 }))
 let canReplaceLogo = true
 
@@ -102,6 +109,19 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: new Proxy(actual.consoleQuery, {
       get(target, prop, receiver) {
+        if (prop === 'features') {
+          return {
+            get: {
+              queryKey: actual.consoleQuery.features.get.queryKey,
+              queryOptions: (
+                ...args: Parameters<typeof actual.consoleQuery.features.get.queryOptions>
+              ) => ({
+                ...actual.consoleQuery.features.get.queryOptions(...args),
+                queryFn: mockConfig.getFeatures,
+              }),
+            },
+          }
+        }
         if (prop === 'apiBasedExtension') {
           return {
             get: {
@@ -182,6 +202,7 @@ describe('AccountSetting', () => {
     onTabChange?: (tab: AccountSettingTab) => void
     rbacEnabled?: boolean
     deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
+    imBindingCentrallyManaged?: boolean | 'missing' | 'pending'
   }) => {
     const {
       initialTab = ACCOUNT_SETTING_TAB.MEMBERS,
@@ -189,7 +210,22 @@ describe('AccountSetting', () => {
       onTabChange = mockOnTabChange,
       rbacEnabled = true,
       deploymentEdition = 'CLOUD',
+      imBindingCentrallyManaged = false,
     } = props ?? {}
+    const queryClient = createConsoleQueryClient()
+    if (imBindingCentrallyManaged !== 'pending') {
+      const features = seedFeatures(queryClient, {
+        billing: { subscription: { plan: 'sandbox' } },
+        can_replace_logo: canReplaceLogo,
+      })
+      if (imBindingCentrallyManaged !== 'missing') {
+        const featuresWithIMBinding = {
+          ...features,
+          im_binding_centrally_managed: imBindingCentrallyManaged,
+        }
+        queryClient.setQueryData(consoleQuery.features.get.queryKey(), featuresWithIMBinding)
+      }
+    }
 
     const StatefulAccountSetting = () => {
       const [activeTab, setActiveTab] = useState<AccountSettingTab>(initialTab)
@@ -211,10 +247,7 @@ describe('AccountSetting', () => {
         <StatefulAccountSetting />
       </NuqsTestingAdapter>,
       {
-        features: {
-          billing: { subscription: { plan: 'sandbox' } },
-          can_replace_logo: canReplaceLogo,
-        },
+        queryClient,
         accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
         systemFeatures: {
           deployment_edition: deploymentEdition,
@@ -231,6 +264,7 @@ describe('AccountSetting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockConfig.ENABLE_FEATURE_PREVIEW = true
+    mockConfig.getFeatures.mockImplementation(() => new Promise(() => {}))
     canReplaceLogo = true
     mockConsoleState.current = baseConsoleState
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
@@ -514,9 +548,55 @@ describe('AccountSetting', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should hide the IM platform entry for enterprise edition', () => {
-      renderAccountSetting({ deploymentEdition: 'ENTERPRISE' })
+    it('hides workspace channels when centrally managed even in Community edition', () => {
+      renderAccountSetting({ deploymentEdition: 'COMMUNITY', imBindingCentrallyManaged: true })
 
+      expect(
+        screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('allows workspace channels in Enterprise edition when not centrally managed', () => {
+      renderAccountSetting({
+        initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM,
+        deploymentEdition: 'ENTERPRISE',
+        imBindingCentrallyManaged: false,
+      })
+
+      expect(screen.getByRole('button', { name: 'contacts.imPlatform.title' })).toBeInTheDocument()
+      expect(screen.getByTestId('contacts-im-platform-page')).toBeInTheDocument()
+    })
+
+    it('keeps workspace channels available for older successful features responses', () => {
+      renderAccountSetting({ imBindingCentrallyManaged: 'missing' })
+
+      expect(screen.getByRole('button', { name: 'contacts.imPlatform.title' })).toBeInTheDocument()
+    })
+
+    it('does not open workspace channels before features have loaded', () => {
+      renderAccountSetting({
+        initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM,
+        imBindingCentrallyManaged: 'pending',
+      })
+
+      expect(
+        screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()
+    })
+
+    it('closes workspace channels if the features request becomes unavailable', async () => {
+      const { queryClient } = renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
+      expect(screen.getByTestId('contacts-im-platform-page')).toBeInTheDocument()
+
+      await act(async () => {
+        mockConfig.getFeatures.mockRejectedValue(new Error('features unavailable'))
+        await queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+      })
+
+      await waitFor(() =>
+        expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument(),
+      )
       expect(
         screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
       ).not.toBeInTheDocument()
@@ -532,10 +612,11 @@ describe('AccountSetting', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should reject an enterprise-edition IM platform deep link', () => {
+    it('rejects centrally managed workspace channels deep links', () => {
       renderAccountSetting({
         initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM,
-        deploymentEdition: 'ENTERPRISE',
+        deploymentEdition: 'COMMUNITY',
+        imBindingCentrallyManaged: true,
       })
 
       expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()

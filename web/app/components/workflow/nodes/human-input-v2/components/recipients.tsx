@@ -1,6 +1,5 @@
 'use client'
 
-import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2RecipientType } from '../recipient-utils'
 import type { HumanInputV2Recipient } from '../types'
@@ -21,6 +20,7 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import { VariableLabelInEditor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { selectIMBindingCentrallyManaged } from '@/features/contacts/im-binding-capability'
 import { consoleQuery } from '@/service/console'
 import { useContactRecipientOptionProvider } from '../contact-provider'
 import {
@@ -66,10 +66,6 @@ const recipientTypes: HumanInputV2RecipientType[] = [
 ]
 
 const contactSourceFilters: ContactSourceFilter[] = ['all', 'workspace', 'organization', 'external']
-
-const selectIMBindingCentrallyManaged = (features: GetFeaturesResponse) =>
-  // Older feature contracts omit this capability; only an explicit backend true enables it.
-  'im_binding_centrally_managed' in features && features.im_binding_centrally_managed === true
 
 const cloneRecipient = (recipient: HumanInputV2Recipient): HumanInputV2Recipient => {
   if (recipient.type === 'dynamic_email') return { ...recipient, selector: [...recipient.selector] }
