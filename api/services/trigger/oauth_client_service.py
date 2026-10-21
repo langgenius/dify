@@ -18,7 +18,7 @@ class TriggerOAuthClientConfigError(Exception):
 
 
 class TriggerOAuthClientChangedError(Exception):
-    """The OAuth client was created or removed while settings were being prepared."""
+    """The OAuth client changed while settings were being prepared."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,11 +52,11 @@ class TriggerOAuthClientStore(Protocol):
         *,
         tenant_id: str,
         provider_id: TriggerProviderID,
-        existing_client_id: str | None,
+        expected: TriggerOAuthTenantClientRecord | None,
         encrypted_oauth_params: str,
         enabled: bool | None,
     ) -> None:
-        """Create when existing_client_id is None; otherwise update that original client.
+        """Create when expected is None; otherwise update only an unchanged snapshot.
 
         None enabled leaves it unchanged or uses the new-row default.
         """
@@ -146,7 +146,7 @@ class TriggerOAuthClientService:
         self._clients.save(
             tenant_id=tenant_id,
             provider_id=provider_id,
-            existing_client_id=snapshot.custom.id if snapshot.custom is not None else None,
+            expected=snapshot.custom,
             encrypted_oauth_params=encrypted_params,
             enabled=enabled,
         )

@@ -1,13 +1,17 @@
+import sqlite3
 from uuid import uuid4
 
 import pytest
+from psycopg2.errors import UniqueViolation
+from pymysql.err import IntegrityError as MySQLIntegrityError
 from sqlalchemy import Engine, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient
-from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
+from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository, _is_custom_client_conflict
 from services.trigger.oauth_client_service import (
     TriggerOAuthClientChangedError,
     TriggerOAuthClientSnapshot,
@@ -50,7 +54,7 @@ def test_repository_returns_its_connection_after_every_operation(
         provider_id=provider_id,
         encrypted_oauth_params="{}",
         enabled=None,
-        existing_client_id=None,
+        expected=None,
     )
     assert pool.checkedout() == 0
     repository.get(tenant_id=tenant_id, provider_id=provider_id)
@@ -148,7 +152,7 @@ def test_save_creates_committed_client_with_default_or_explicit_enabled(
         provider_id=provider_id,
         encrypted_oauth_params='{"client_secret": "new-ciphertext"}',
         enabled=enabled,
-        existing_client_id=None,
+        expected=None,
     )
 
     with sqlite_session_factory() as session:
@@ -183,7 +187,9 @@ def test_save_updates_only_matching_client_and_preserves_enabled_when_omitted(
         provider_id=provider_id,
         encrypted_oauth_params="{}",
         enabled=enabled,
-        existing_client_id=target.id,
+        expected=TriggerOAuthTenantClientRecord(
+            id=target.id, encrypted_oauth_params=target.encrypted_oauth_params, enabled=target.enabled
+        ),
     )
 
     with sqlite_session_factory() as session:
@@ -216,7 +222,7 @@ def test_save_rejects_deleted_snapshot_without_resurrecting_or_overwriting_clien
             provider_id=provider_id,
             encrypted_oauth_params='{"client_secret": "replacement-ciphertext"}',
             enabled=False,
-            existing_client_id=None,
+            expected=None,
         )
 
     with pytest.raises(TriggerOAuthClientChangedError):
@@ -225,7 +231,7 @@ def test_save_rejects_deleted_snapshot_without_resurrecting_or_overwriting_clien
             provider_id=provider_id,
             encrypted_oauth_params='{"client_secret": "stale-ciphertext"}',
             enabled=None,
-            existing_client_id=snapshot.custom.id,
+            expected=snapshot.custom,
         )
 
     with sqlite_session_factory() as session:
@@ -262,7 +268,9 @@ def test_save_requires_owner_scope_even_with_existing_client_id(
             provider_id=provider_id,
             encrypted_oauth_params="{}",
             enabled=True,
-            existing_client_id=target.id,
+            expected=TriggerOAuthTenantClientRecord(
+                id=target.id, encrypted_oauth_params=target.encrypted_oauth_params, enabled=target.enabled
+            ),
         )
 
     with sqlite_session_factory() as session:
@@ -270,6 +278,143 @@ def test_save_requires_owner_scope_even_with_existing_client_id(
         assert stored is not None
         assert stored.encrypted_oauth_params == target.encrypted_oauth_params
         assert stored.enabled is False
+
+
+@pytest.mark.parametrize("changed_field", ["ciphertext", "enabled"])
+def test_save_rejects_changed_snapshot_without_overwriting_current_values(
+    repository: TriggerOAuthClientRepository,
+    sqlite_session_factory: sessionmaker[Session],
+    changed_field: str,
+) -> None:
+    tenant_id = str(uuid4())
+    provider_id = TriggerProviderID("langgenius/github/github")
+    repository.save(
+        tenant_id=tenant_id,
+        provider_id=provider_id,
+        encrypted_oauth_params='{"client_secret": "AbCd"}',
+        enabled=False,
+        expected=None,
+    )
+    stale = repository.get(tenant_id=tenant_id, provider_id=provider_id).custom
+    assert stale is not None
+
+    current_ciphertext = '{"client_secret": "aBcD"}' if changed_field == "ciphertext" else stale.encrypted_oauth_params
+    current_enabled = changed_field == "enabled"
+    repository.save(
+        tenant_id=tenant_id,
+        provider_id=provider_id,
+        encrypted_oauth_params=current_ciphertext,
+        enabled=current_enabled,
+        expected=stale,
+    )
+
+    with pytest.raises(TriggerOAuthClientChangedError):
+        repository.save(
+            tenant_id=tenant_id,
+            provider_id=provider_id,
+            encrypted_oauth_params=stale.encrypted_oauth_params,
+            enabled=False,
+            expected=stale,
+        )
+
+    with sqlite_session_factory() as session:
+        stored = session.get(TriggerOAuthTenantClient, stale.id)
+        assert stored is not None
+        assert stored.encrypted_oauth_params == current_ciphertext
+        assert stored.enabled is current_enabled
+
+
+def test_concurrent_first_create_returns_conflict_and_preserves_winner(
+    repository: TriggerOAuthClientRepository,
+) -> None:
+    tenant_id = str(uuid4())
+    provider_id = TriggerProviderID("langgenius/github/github")
+    first_snapshot = repository.get(tenant_id=tenant_id, provider_id=provider_id)
+    second_snapshot = repository.get(tenant_id=tenant_id, provider_id=provider_id)
+    assert first_snapshot.custom is None
+    assert second_snapshot.custom is None
+
+    repository.save(
+        tenant_id=tenant_id,
+        provider_id=provider_id,
+        encrypted_oauth_params='{"client_secret": "winner-ciphertext"}',
+        enabled=False,
+        expected=first_snapshot.custom,
+    )
+    with pytest.raises(TriggerOAuthClientChangedError):
+        repository.save(
+            tenant_id=tenant_id,
+            provider_id=provider_id,
+            encrypted_oauth_params='{"client_secret": "stale-ciphertext"}',
+            enabled=True,
+            expected=second_snapshot.custom,
+        )
+
+    stored = repository.get(tenant_id=tenant_id, provider_id=provider_id).custom
+    assert stored is not None
+    assert stored.encrypted_oauth_params == '{"client_secret": "winner-ciphertext"}'
+    assert stored.enabled is False
+
+
+def test_unrelated_insert_constraint_is_not_mapped_to_conflict_even_when_client_exists(
+    repository: TriggerOAuthClientRepository,
+    sqlite_engine: Engine,
+) -> None:
+    tenant_id = str(uuid4())
+    provider_id = TriggerProviderID("langgenius/github/github")
+    repository.save(
+        tenant_id=tenant_id,
+        provider_id=provider_id,
+        encrypted_oauth_params="{}",
+        enabled=False,
+        expected=None,
+    )
+    with sqlite_engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TRIGGER reject_oauth_client_insert BEFORE INSERT ON trigger_oauth_tenant_clients "
+            "BEGIN SELECT RAISE(ABORT, 'database_trigger_failed'); END"
+        )
+
+    with pytest.raises(IntegrityError) as raised:
+        repository.save(
+            tenant_id=tenant_id,
+            provider_id=provider_id,
+            encrypted_oauth_params="{}",
+            enabled=True,
+            expected=None,
+        )
+
+    assert isinstance(raised.value.orig, sqlite3.IntegrityError)
+    assert raised.value.orig.sqlite_errorcode == sqlite3.SQLITE_CONSTRAINT_TRIGGER
+    assert str(raised.value.orig) == "database_trigger_failed"
+
+
+@pytest.mark.parametrize(
+    ("code", "message", "expected"),
+    [
+        (1062, "Duplicate entry 'value' for key 'unique_trigger_oauth_tenant_client'", True),
+        (
+            1062,
+            "Duplicate entry 'value' for key 'trigger_oauth_tenant_clients.unique_trigger_oauth_tenant_client'",
+            True,
+        ),
+        (1062, "Duplicate entry 'value' for key `unique_trigger_oauth_tenant_client`", True),
+        (1062, "Duplicate entry 'value' for key 'PRIMARY'", False),
+        (1062, "Duplicate entry 'value' for key 'unique_trigger_oauth_tenant_client_extra'", False),
+        (1062, "Duplicate entry 'value' for key 'another_table.unique_trigger_oauth_tenant_client'", False),
+        (1048, "Column cannot be null for key 'unique_trigger_oauth_tenant_client'", False),
+    ],
+)
+def test_mysql_classifier_matches_only_expected_unique_constraint(code: int, message: str, expected: bool) -> None:
+    error = IntegrityError(statement=None, params=None, orig=MySQLIntegrityError(code, message))
+
+    assert _is_custom_client_conflict(error) is expected
+
+
+def test_postgres_unique_violation_without_expected_constraint_is_not_classified() -> None:
+    error = IntegrityError(statement=None, params=None, orig=UniqueViolation("Unspecified unique violation"))
+
+    assert _is_custom_client_conflict(error) is False
 
 
 def test_delete_is_idempotent_and_preserves_other_workspaces_providers_and_system_client(

@@ -25,7 +25,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.trigger.entities.entities import SubscriptionConstructor, TriggerProviderEntity, TriggerProviderIdentity
 from core.trigger.provider import PluginTriggerProviderController
 from enums import DeploymentEdition
-from extensions.ext_application_services import build_application_services
+from extensions.ext_application_services import application_services, build_application_services
 from extensions.ext_key_provider import key_provider_manager
 from extensions.ext_login import DifyLoginManager, bind_account_loader, load_user_from_request, unauthorized_handler
 from extensions.ext_redis import RedisClientWrapper
@@ -346,6 +346,41 @@ def test_concurrent_delete_does_not_resurrect_a_hidden_secret(harness: _Harness)
     assert secret not in response.get_data(as_text=True)
     with harness.session_factory() as session:
         assert session.scalar(select(TriggerOAuthTenantClient)) is None
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_concurrent_save_preserves_winning_secret(harness: _Harness, existing: bool) -> None:
+    old_secret = "old-oauth-secret"
+    winning_secret = "rotated-oauth-secret"
+    if existing:
+        response = harness.call("POST", payload={"client_params": {"client_secret": old_secret}})
+        assert response.status_code == HTTPStatus.OK
+
+    def save_during_provider_lookup() -> None:
+        application_services().workspaces.trigger_oauth_clients.save(
+            tenant_id=harness.tenant_id,
+            provider_id=TriggerProviderID(_PROVIDER),
+            client_params={"client_id": "winning-client", "client_secret": winning_secret},
+            enabled=False,
+        )
+
+    harness.metadata.before_provider = save_during_provider_lookup
+    response = harness.call(
+        "POST",
+        payload={"client_params": {"client_secret": HIDDEN_VALUE if existing else old_secret}, "enabled": True},
+    )
+
+    assert response.status_code == HTTPStatus.CONFLICT
+    assert response.get_json()["code"] == "trigger_oauth_client_changed"
+    assert old_secret not in response.get_data(as_text=True)
+    assert winning_secret not in response.get_data(as_text=True)
+    saved = harness.saved_params()
+    assert saved["client_id"] == "winning-client"
+    encrypted_secret = saved["client_secret"]
+    assert isinstance(encrypted_secret, str)
+    with harness.app.app_context():
+        assert decrypt_token(harness.tenant_id, encrypted_secret) == winning_secret
+    assert harness.call("GET").get_json()["custom_enabled"] is False
 
 
 @pytest.mark.parametrize("verified", [True, False])
