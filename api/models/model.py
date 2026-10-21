@@ -2239,7 +2239,7 @@ class ApiToken(Base):
       expressed with ``DatasetApiTokenBinding`` rows (a key with no binding rows can
       reach every dataset in the tenant — the default and the pre-scoping behavior; a
       key with binding rows is limited to exactly those datasets). Enforcement lives in
-      ``validate_dataset_token`` (controllers/service_api/wraps.py).
+      the dataset Service API admission service.
 
     """
 
@@ -2348,6 +2348,14 @@ class UploadFile(TypeBase):
     used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     source_url: Mapped[str] = mapped_column(LongText, default="")
+    # Knowledge cleanup marks a file before releasing its database transaction
+    # and deleting the storage object. Knowledge reference writers lock the
+    # UploadFile row and refuse to attach files carrying this marker.
+    knowledge_cleanup_started_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime,
+        nullable=True,
+        default=None,
+    )
 
     def __init__(
         self,
@@ -2384,6 +2392,56 @@ class UploadFile(TypeBase):
         self.used_at = used_at
         self.hash = hash
         self.source_url = source_url
+
+
+class KnowledgeUploadFileReference(TypeBase):
+    """Indexed ownership edge from a knowledge resource to an upload file."""
+
+    __tablename__ = "knowledge_upload_file_references"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="knowledge_upload_file_reference_pkey"),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "kind",
+            "resource_id",
+            "upload_file_id",
+            name="knowledge_upload_file_reference_unique",
+        ),
+        sa.Index(
+            "knowledge_upload_file_reference_file_idx",
+            "tenant_id",
+            "upload_file_id",
+        ),
+        sa.Index(
+            "knowledge_upload_file_reference_document_idx",
+            "tenant_id",
+            "dataset_id",
+            "document_id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    upload_file_id: Mapped[str] = mapped_column(
+        StringUUID,
+        sa.ForeignKey("upload_files.id"),
+        nullable=False,
+    )
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    resource_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        init=False,
+    )
 
 
 class ApiRequest(TypeBase):
@@ -2579,6 +2637,17 @@ class Tag(TypeBase):
     __tablename__ = "tags"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tag_pkey"),
+        sa.UniqueConstraint("tenant_id", "type", "name", name="tag_tenant_type_name_unique"),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "type",
+            "normalized_name",
+            name="tag_tenant_type_normalized_name_unique",
+        ),
+        sa.CheckConstraint(
+            "(type = 'skill' AND normalized_name IS NOT NULL) OR (type != 'skill' AND normalized_name IS NULL)",
+            name="tag_skill_normalized_name_check",
+        ),
         sa.Index("tag_type_idx", "type"),
         sa.Index("tag_name_idx", "name"),
     )
@@ -2590,8 +2659,16 @@ class Tag(TypeBase):
     )
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type: Mapped[TagType] = mapped_column(EnumText(TagType, length=16), nullable=False)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(
+        String(255).with_variant(String(255, collation="utf8mb4_0900_bin"), "mysql"),
+        nullable=False,
+    )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    normalized_name: Mapped[str | None] = mapped_column(
+        String(255).with_variant(String(255, collation="utf8mb4_0900_bin"), "mysql"),
+        nullable=True,
+        default=None,
+    )
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -2601,6 +2678,7 @@ class TagBinding(TypeBase):
     __tablename__ = "tag_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tag_binding_pkey"),
+        sa.UniqueConstraint("tenant_id", "tag_id", "target_id", name="tag_binding_tenant_tag_target_unique"),
         sa.Index("tag_bind_target_id_idx", "target_id"),
         sa.Index("tag_bind_tag_id_idx", "tag_id"),
     )

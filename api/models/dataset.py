@@ -18,6 +18,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from libs.datetime_utils import ensure_naive_utc
 from libs.uuid_utils import uuidv7
 from models.base import Base, TypeBase
+from models.document_indexing_state import resolve_document_indexing_state
 from models.enums import (
     CollectionBindingType,
     CreatorUserRole,
@@ -108,6 +109,7 @@ class DocumentDict(TypedDict):
     created_api_request_id: str | None
     created_at: datetime
     processing_started_at: datetime | None
+    indexing_generation: str | None
     file_id: str | None
     word_count: int | None
     parsing_completed_at: datetime | None
@@ -394,6 +396,8 @@ class Document(Base):
 
     # start processing
     processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    indexing_generation: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    indexing_execution_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
     # parsing
     file_id = mapped_column(LongText, nullable=True)
@@ -446,22 +450,14 @@ class Document(Base):
 
     @property
     def display_status(self):
-        status = None
-        if self.indexing_status not in {"completed", "error"} and self.is_paused:
-            status = "paused"
-        elif self.indexing_status == "waiting":
-            status = "queuing"
-        elif self.indexing_status in {"parsing", "cleaning", "splitting", "indexing"}:
-            status = "indexing"
-        elif self.indexing_status == "error":
-            status = "error"
-        elif self.indexing_status == "completed" and not self.archived and self.enabled:
-            status = "available"
-        elif self.indexing_status == "completed" and not self.archived and not self.enabled:
-            status = "disabled"
-        elif self.indexing_status == "completed" and self.archived:
-            status = "archived"
-        return status
+        return resolve_document_indexing_state(
+            raw_status=self.indexing_status,
+            is_paused=bool(self.is_paused),
+            enabled=self.enabled,
+            archived=self.archived,
+            task_status=None,
+            task_action=None,
+        ).display_status
 
     @property
     def data_source_info_dict(self) -> dict[str, Any]:
@@ -498,6 +494,7 @@ class Document(Base):
             "created_api_request_id": self.created_api_request_id,
             "created_at": self.created_at,
             "processing_started_at": self.processing_started_at,
+            "indexing_generation": self.indexing_generation,
             "file_id": self.file_id,
             "word_count": self.word_count,
             "parsing_completed_at": self.parsing_completed_at,
@@ -551,6 +548,7 @@ class Document(Base):
             created_api_request_id=data.get("created_api_request_id"),
             created_at=data.get("created_at"),
             processing_started_at=data.get("processing_started_at"),
+            indexing_generation=data.get("indexing_generation"),
             file_id=data.get("file_id"),
             word_count=data.get("word_count"),
             parsing_completed_at=data.get("parsing_completed_at"),
@@ -621,6 +619,7 @@ class DocumentSegment(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    indexing_generation: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
@@ -1151,6 +1150,7 @@ class DocumentPipelineExecutionLog(TypeBase):
     datasource_node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     input_data: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    indexing_generation: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

@@ -158,7 +158,7 @@ def test_create_skill_validates_payload_and_returns_detail(app: Flask, request_c
     with (
         app.test_request_context("/", method="POST"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={}),
-        patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
+        patch("controllers.console.workspace.skills.build_skill_management_service", return_value=service),
     ):
         payload, status = method(api, request_context)
 
@@ -183,7 +183,7 @@ def test_create_skill_maps_validation_and_service_errors(
     with (
         app.test_request_context("/", method="POST"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"name": "finance-sop"}),
-        patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
+        patch("controllers.console.workspace.skills.build_skill_management_service", return_value=service),
     ):
         payload, status = raised_error(lambda: method(api, request_context))
 
@@ -440,7 +440,7 @@ def test_update_skill_metadata_validates_payload(app: Flask, request_context: Re
             new_callable=PropertyMock,
             return_value={"display_name": "Finance SOP", "icon": "📘", "tags": ["finance"]},
         ),
-        patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
+        patch("controllers.console.workspace.skills.build_skill_management_service", return_value=service),
     ):
         payload = method(api, request_context, "skill-1")
 
@@ -470,7 +470,7 @@ def test_update_skill_metadata_maps_service_errors(
     with (
         app.test_request_context("/", method="PATCH"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"display_name": "Finance"}),
-        patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
+        patch("controllers.console.workspace.skills.build_skill_management_service", return_value=service),
     ):
         payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
@@ -534,7 +534,7 @@ def test_duplicate_skill_returns_new_detail(app: Flask, request_context: Request
 
     with (
         app.test_request_context("/", method="POST"),
-        patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
+        patch("controllers.console.workspace.skills.build_skill_management_service", return_value=service),
     ):
         payload, status = method(api, request_context, "skill-1")
 
@@ -559,7 +559,7 @@ def test_duplicate_skill_maps_service_error(app: Flask, request_context: Request
 
     with (
         app.test_request_context("/", method="POST"),
-        patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
+        patch("controllers.console.workspace.skills.build_skill_management_service", return_value=service),
     ):
         payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 

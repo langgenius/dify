@@ -477,6 +477,7 @@ class ToolFile(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tool_file_pkey"),
         sa.Index("tool_file_conversation_id_idx", "conversation_id"),
+        sa.Index("tool_file_cleanup_started_at_idx", "cleanup_started_at"),
     )
 
     id: Mapped[str] = mapped_column(
@@ -498,6 +499,7 @@ class ToolFile(TypeBase):
     name: Mapped[str] = mapped_column(String(255), default="")
     # size
     size: Mapped[int] = mapped_column(sa.Integer, default=-1)
+    cleanup_started_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
 
 
 @deprecated

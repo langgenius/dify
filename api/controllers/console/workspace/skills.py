@@ -21,6 +21,7 @@ from controllers.console.wraps import (
     RBACPermission,
     edit_permission_required,
 )
+from extensions.application_services.skills import build_skill_management_service
 from fields.base import ResponseModel
 from libs import helper
 from libs.exception import RelayedHTTPError
@@ -332,7 +333,7 @@ class WorkspaceSkillsApi(Resource):
     def post(self, session: Session, request_context: RequestContext):
         try:
             payload = SkillCreatePayload.model_validate(console_ns.payload or {})
-            result = SkillManagementService(session=session).create_skill(
+            result = build_skill_management_service(session=session).create_skill(
                 tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 payload=payload,
@@ -441,7 +442,7 @@ class WorkspaceSkillApi(Resource):
     def patch(self, session: Session, request_context: RequestContext, skill_id: str):
         try:
             payload = SkillMetadataPayload.model_validate(console_ns.payload or {})
-            result = SkillManagementService(session=session).update_metadata(
+            result = build_skill_management_service(session=session).update_metadata(
                 tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 skill_id=skill_id,
@@ -489,7 +490,7 @@ class WorkspaceSkillDuplicateApi(Resource):
     @with_session
     def post(self, session: Session, request_context: RequestContext, skill_id: str):
         try:
-            result = SkillManagementService(session=session).duplicate_skill(
+            result = build_skill_management_service(session=session).duplicate_skill(
                 tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 skill_id=skill_id,

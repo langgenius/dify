@@ -25253,11 +25253,11 @@ Serialized pricing info with codegen-safe decimal string patterns.
 
 #### ProcessRuleMode
 
-Dataset Process Rule Mode
+Dataset process-rule mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ProcessRuleMode | string | Dataset Process Rule Mode |  |
+| ProcessRuleMode | string | Dataset process-rule mode. |  |
 
 #### ProcessRuleResponse
 

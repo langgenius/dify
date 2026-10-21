@@ -1928,7 +1928,7 @@ export const zPreProcessingRule = z.object({
 /**
  * ProcessRuleMode
  *
- * Dataset Process Rule Mode
+ * Dataset process-rule mode.
  */
 export const zProcessRuleMode = z.enum(['automatic', 'custom', 'hierarchical'])
 

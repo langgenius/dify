@@ -42,6 +42,7 @@ from models.enums import TagType
 from models.model import App, AppMode, IconType, Tag, TagBinding
 from models.skill import AgentSkillBinding, Skill, SkillDraftFile, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
+from repositories.tag_repository import TagRepository
 from services.skill_management_service import (
     SkillAssistAttachmentPayload,
     SkillAssistDraftOperationPayload,
@@ -312,7 +313,10 @@ def test_create_skill_without_name_initializes_untitled_draft() -> None:
 
 
 def test_list_tags_returns_distinct_tags_with_counts() -> None:
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    service = SkillManagementService(
+        tool_file_manager=_FakeToolFileManager(),
+        skill_tags=TagRepository(session_factory.get_session_maker()),
+    )
     service.create_skill(
         tenant_id=TENANT,
         user_id=USER,
@@ -329,7 +333,15 @@ def test_list_tags_returns_distinct_tags_with_counts() -> None:
         payload=SkillCreatePayload(name="empty-tags"),
     )
     with session_factory.create_session() as session:
-        session.add(Tag(tenant_id=TENANT, type=TagType.SKILL, name="unbound", created_by=USER))
+        session.add(
+            Tag(
+                tenant_id=TENANT,
+                type=TagType.SKILL,
+                name="unbound",
+                normalized_name="unbound",
+                created_by=USER,
+            )
+        )
         session.commit()
 
     result = service.list_tags(tenant_id=TENANT)
@@ -2526,7 +2538,10 @@ def test_duplicate_skill_copies_current_draft_without_history() -> None:
                 filename=filename,
             )
 
-    service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
+    service = SkillManagementService(
+        tool_file_manager=CapturingToolFileManager(),
+        skill_tags=TagRepository(session_factory.get_session_maker()),
+    )
     created = service.create_skill(
         tenant_id=TENANT,
         user_id=USER,

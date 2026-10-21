@@ -6,6 +6,10 @@ from core.trigger.constants import (
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
+from enums import knowledge
+
+ProcessRuleMode = knowledge.ProcessRuleMode
+DocumentCreatedFrom = knowledge.DocumentCreatedFrom
 
 
 class CreatorUserRole(StrEnum):
@@ -110,14 +114,6 @@ class DataSourceType(StrEnum):
     ONLINE_DRIVE = "online_drive"
 
 
-class ProcessRuleMode(StrEnum):
-    """Dataset Process Rule Mode"""
-
-    AUTOMATIC = "automatic"
-    CUSTOM = "custom"
-    HIERARCHICAL = "hierarchical"
-
-
 class IndexingStatus(StrEnum):
     """Document Indexing Status"""
 
@@ -129,14 +125,6 @@ class IndexingStatus(StrEnum):
     PAUSED = "paused"
     COMPLETED = "completed"
     ERROR = "error"
-
-
-class DocumentCreatedFrom(StrEnum):
-    """Document Created From"""
-
-    WEB = "web"
-    API = "api"
-    RAG_PIPELINE = "rag-pipeline"
 
 
 class ConversationFromSource(StrEnum):
