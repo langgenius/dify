@@ -360,7 +360,7 @@ invitation before the token is consumed or tenant membership is changed.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Account activated successfully | **application/json**: [ActivationResponse](#activationresponse)<br> |
-| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[LimitExceededError](#limitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AlreadyActivateError](#alreadyactivateerror)<br>[InvitationAccountMismatchError](#invitationaccountmismatcherror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -11662,6 +11662,7 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request | **application/json**: [CannotTransferOwnerToSelfError](#cannottransferownertoselferror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[MemberNotInTenantError](#membernotintenanterror)<br>[NotOwnerError](#notownererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [OwnerTransferInProgressError](#ownertransferinprogresserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/members/{member_id}/update-role
@@ -11685,6 +11686,7 @@ Update a plugin endpoint
 | 400 | Bad Request | **application/json**: [CannotOperateSelfError](#cannotoperateselferror)<br>[InvalidRoleError](#invalidroleerror)<br>[RoleAlreadyAssignedError](#rolealreadyassignederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [MemberNotFoundError](#membernotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [OwnerTransferInProgressError](#ownertransferinprogresserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers
@@ -22934,11 +22936,11 @@ Enum class for large language model mode.
 
 #### LimitExceededError
 
-Unable to create account because the licensed seats limit was exceeded
+Unable to add member because the maximum workspace's member limit was exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| LimitExceededError |  | Unable to create account because the licensed seats limit was exceeded |  |
+| LimitExceededError |  | Unable to add member because the maximum workspace's member limit was exceeded |  |
 
 #### LimitationModel
 
@@ -24115,6 +24117,14 @@ output check fails and any configured retry attempts have been exhausted.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | language | string |  | No |
+
+#### OwnerTransferInProgressError
+
+Workspace ownership transfer is already in progress.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OwnerTransferInProgressError |  | Workspace ownership transfer is already in progress. |  |
 
 #### OwnerTransferLimitError
 
