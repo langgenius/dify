@@ -5,17 +5,17 @@ import pytest
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.workflow.system_variables import build_system_variables
 from core.workflow.variable_pool_initializer import add_variables_to_pool
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 
 
-def _make_state(workflow_run_id: str | None) -> GraphRuntimeState:
+def _make_state(workflow_run_id: str | None) -> RuntimeState:
     variable_pool = VariablePool()
     add_variables_to_pool(variable_pool, build_system_variables(workflow_execution_id=workflow_run_id))
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=0.0)
 
 
 class _StubPipeline(GraphRuntimeStateSupport):
-    def __init__(self, *, cached_state: GraphRuntimeState | None, queue_state: GraphRuntimeState | None):
+    def __init__(self, *, cached_state: RuntimeState | None, queue_state: RuntimeState | None):
         self._graph_runtime_state = cached_state
         self._base_task_pipeline = SimpleNamespace(queue_manager=SimpleNamespace(graph_runtime_state=queue_state))
 
@@ -43,7 +43,7 @@ def test_resolve_graph_runtime_state_reads_from_queue_when_cache_empty():
 def test_resolve_graph_runtime_state_raises_when_no_state_available():
     pipeline = _StubPipeline(cached_state=None, queue_state=None)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="graph runtime state not initialized\\."):
         pipeline._resolve_graph_runtime_state()
 
 
@@ -60,5 +60,5 @@ def test_extract_workflow_run_id_raises_when_missing():
     state = _make_state(None)
     pipeline = _StubPipeline(cached_state=state, queue_state=None)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="workflow_execution_id missing from runtime state"):
         pipeline._extract_workflow_run_id(state)

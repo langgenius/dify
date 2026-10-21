@@ -2,6 +2,7 @@ import type { ChatConfig, ChatItem } from '../../types'
 import type { ChatProps } from '../index'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import Chat from '../index'
 
 // Keep answer rendering at the component boundary; exercise real questions,
@@ -33,7 +34,8 @@ const makeChatItem = (overrides: Partial<ChatItem> = {}): ChatItem => ({
   isAnswer: false,
   ...overrides,
 })
-const renderChat = (props: Partial<ChatProps> = {}) => render(<Chat chatList={[]} {...props} />)
+const renderChat = (props: Partial<ChatProps> = {}) =>
+  render(<Chat chatList={[]} {...props} />, { wrapper: createConsoleQueryWrapper().wrapper })
 
 const suggestionsConfig = { suggested_questions_after_answer: { enabled: true } } as ChatConfig
 

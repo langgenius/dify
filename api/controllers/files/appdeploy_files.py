@@ -183,8 +183,8 @@ class GrantedRemoteFileUploadApi(Resource):
             raise FileTooLargeError(exc.description) from exc
         except services.errors.file.BlockedFileExtensionError as exc:
             raise BlockedFileExtensionError(exc.description) from exc
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
+        except services.errors.file.UnsupportedFileTypeError as caught_error:
+            raise UnsupportedFileTypeError() from caught_error
         return _remote_granted_file_response(upload_file), 201
 
 
@@ -214,7 +214,7 @@ class ProducedFileApi(Resource):
                 mimetype=upload.mimetype,
             )
         except services.errors.file.FileTooLargeError as exc:
-            raise FileTooLargeError(exc.description)
+            raise FileTooLargeError(exc.description) from exc
         except EndUserNotFoundError as exc:
             raise GrantedFileNotFoundError() from exc
 
@@ -354,11 +354,11 @@ def _store_upload(
     except EndUserNotFoundError as exc:
         raise GrantedFileNotFoundError() from exc
     except services.errors.file.FileTooLargeError as exc:
-        raise FileTooLargeError(exc.description)
+        raise FileTooLargeError(exc.description) from exc
     except services.errors.file.BlockedFileExtensionError as exc:
         raise BlockedFileExtensionError(exc.description) from exc
-    except services.errors.file.UnsupportedFileTypeError:
-        raise UnsupportedFileTypeError()
+    except services.errors.file.UnsupportedFileTypeError as caught_error:
+        raise UnsupportedFileTypeError() from caught_error
 
 
 def _grant_context(grant: FileGrantClaims) -> FileGrantContext:

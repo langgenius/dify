@@ -19,7 +19,7 @@ def test_common_parameter_type_values_are_stable() -> None:
     assert CommonParameterType.OBJECT.value == "object"
     assert CommonParameterType.DATE.value == "date"
     assert CommonParameterType.DATE_RANGE.value == "date-range"
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="'date\\-picker' is not a valid PluginParameterType"):
         PluginParameterType("date-picker")
 
 
@@ -29,7 +29,14 @@ def test_cast_date_accepts_only_canonical_calendar_dates() -> None:
     assert cast_parameter_value(PluginParameterType.DATE, "2024-02-29") == "2024-02-29"
 
     for value in ("a", "2024-02-30", "20240229", 20240229):
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "(?:The date parameter must be a string in YYYY\\-MM\\-DD format\\.|"
+                "The date parameter must be a valid date in YYYY\\-MM\\-DD format\\.|"
+                "The date parameter must use YYYY\\-MM\\-DD format\\.)"
+            ),
+        ):
             cast_parameter_value(PluginParameterType.DATE, value)
 
 
@@ -51,7 +58,15 @@ def test_cast_date_range_validates_optional_range() -> None:
         {"start": "2024-01-02", "end": "2024-01-01"},
         '{"start":"2024-01-02","end":"2024-01-01"}',
     ):
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "(?:The date\\-range start date must not be after the end date\\.|The "
+                "date\\-range start parameter must be a string in YYYY\\-MM\\-DD "
+                "format\\.|The date\\-range start parameter must be a valid date in "
+                "YYYY\\-MM\\-DD format\\.)"
+            ),
+        ):
             cast_parameter_value(PluginParameterType.DATE_RANGE, value)
 
 

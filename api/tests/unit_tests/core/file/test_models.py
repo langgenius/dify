@@ -1,7 +1,7 @@
 from graphon.file import File, FileTransferMethod, FileType
 
 
-def test_file():
+def test_file() -> None:
     file = File(
         file_id="test-file",
         tenant_id="test-tenant-id",
@@ -25,7 +25,7 @@ def test_file():
     assert file.size == 67
 
 
-def test_file_constructor_accepts_legacy_tenant_id():
+def test_file_constructor_accepts_legacy_tenant_id() -> None:
     file = File(
         file_id="test-file",
         tenant_id="test-tenant-id",

@@ -1,4 +1,4 @@
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from '../index'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -79,7 +79,7 @@ const InsertTextPlugin = () => {
 
 type MinimalEditorProps = {
   withContainer?: boolean
-  hotkey?: Hotkey
+  hotkey?: HotkeyChord
   displayMode?: ShortcutPopupDisplayMode
   children?:
     | React.ReactNode

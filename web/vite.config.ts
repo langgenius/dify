@@ -106,13 +106,11 @@ export default defineConfig(({ command, mode, isPreview }) => {
           '**/*.{spec,test,stories}.*',
           'test/**',
           'vitest*.setup.ts',
-          'plugins/tsslint/test-utils.ts',
           // Declarations, generated sources, tool configuration, and build output.
           '**/*.d.{ts,mts,cts}',
           '**/*.{generated,gen}.*',
           'types/doc-paths.ts',
           '*.config.*',
-          'scripts/a11y/oxlint.config.ts',
           '.*/**',
           '**/dist/**',
           '{coverage,build,out,storybook-static}/**',

@@ -5,13 +5,19 @@ import { ORPCError } from '@orpc/client'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { toast } from '@/app/notifications'
-import { uploadRemoteFileInfo } from '@/service/common'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
+import { uploadPublicRemoteFileInfo } from '@/service/common'
 import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { getFileSizeLimit, useFile } from '../hooks'
 import { createFileStore, FileContext, useStore } from '../store'
 import { FileUploadContext } from '../upload-context'
 import { fileUpload } from '../utils'
+
+const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
+vi.mock('@/service/base', () => ({ request }))
 
 const navigation = vi.hoisted(() => ({ params: {} as { token?: string }, pathname: '/chat' }))
 vi.mock('@/next/navigation', () => ({
@@ -22,7 +28,7 @@ vi.mock('../utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../utils')>()),
   fileUpload: vi.fn(),
 }))
-vi.mock('@/service/common', () => ({ uploadRemoteFileInfo: vi.fn() }))
+vi.mock('@/service/common', () => ({ uploadPublicRemoteFileInfo: vi.fn() }))
 vi.mock('@/service/share', () => ({
   uploadHumanInputFormLocalFile: vi.fn(),
   uploadHumanInputFormRemoteFileInfo: vi.fn(),
@@ -65,16 +71,21 @@ function setup({
 }: {
   files?: FileEntity[]
   fileConfig?: FileUpload
-  uploadUrls?: { localUploadUrl?: string; remoteUploadUrl?: string }
+  uploadUrls?: { localUploadUrl?: string; trialAppId?: string }
   checkEnabled?: boolean
 } = {}) {
   const onChange = vi.fn()
   const store = createFileStore(files, onChange)
+  const { wrapper: ConsoleWrapper } = createConsoleQueryWrapper()
   const wrapper = ({ children }: { children: ReactNode }) =>
     createElement(
-      FileContext,
-      { value: store },
-      createElement(FileUploadContext, { value: uploadUrls }, children),
+      ConsoleWrapper,
+      null,
+      createElement(
+        FileContext,
+        { value: store },
+        createElement(FileUploadContext, { value: uploadUrls }, children),
+      ),
     )
   return {
     ...renderHook(
@@ -88,10 +99,13 @@ function setup({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  request.mockReset().mockImplementation(async () => Response.json(uploadResponse))
+  window.history.replaceState({}, '', '/')
+  captureAppAccessScope()
   navigation.params = {}
   navigation.pathname = '/chat'
   vi.spyOn(toast, 'error').mockReturnValue('toast-id')
-  vi.mocked(uploadRemoteFileInfo).mockResolvedValue(uploadResponse)
+  vi.mocked(uploadPublicRemoteFileInfo).mockResolvedValue(uploadResponse)
   vi.mocked(uploadHumanInputFormRemoteFileInfo).mockResolvedValue(uploadResponse)
 })
 afterEach(() => {
@@ -255,20 +269,28 @@ it('respects disabled uploads when the caller enables the check', () => {
 
 it('uses resource-specific local and remote upload endpoints', async () => {
   const { result } = setup({
-    uploadUrls: { localUploadUrl: '/resources/files', remoteUploadUrl: '/resources/remote-files' },
+    uploadUrls: { localUploadUrl: '/trial-apps/trial-1/files/upload', trialAppId: 'trial-1' },
   })
   act(() =>
     result.current.handleLocalFileUpload(new File(['data'], 'a.txt', { type: 'text/plain' })),
   )
   await waitFor(() =>
-    expect(fileUpload).toHaveBeenCalledWith(expect.any(Object), false, '/resources/files'),
+    expect(fileUpload).toHaveBeenCalledWith(
+      expect.any(Object),
+      false,
+      '/trial-apps/trial-1/files/upload',
+    ),
   )
   await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
-  expect(uploadRemoteFileInfo).toHaveBeenCalledWith(
-    'https://example.com/report.pdf',
-    false,
-    undefined,
-    '/resources/remote-files',
+  await waitFor(() => expect(request).toHaveBeenCalled())
+  expect(new URL(request.mock.calls[0]![0]).pathname).toBe(
+    '/console/api/trial-apps/trial-1/remote-files/upload',
+  )
+  expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({
+    url: 'https://example.com/report.pdf',
+  })
+  await waitFor(() =>
+    expect(result.current.files.find((file) => file.isRemote)?.uploadedId).toBe('uploaded-file'),
   )
   expect(result.current.files.find((file) => file.isRemote)?.uploadedId).toBe('uploaded-file')
 })
@@ -291,7 +313,7 @@ it('routes human-input form uploads and retries through the form token', async (
     'https://example.com/report.pdf',
   )
   expect(fileUpload).not.toHaveBeenCalled()
-  expect(uploadRemoteFileInfo).not.toHaveBeenCalled()
+  expect(uploadPublicRemoteFileInfo).not.toHaveBeenCalled()
 })
 
 it('keeps public chat tokens on the normal upload transport', async () => {
@@ -303,42 +325,39 @@ it('keeps public chat tokens on the normal upload transport', async () => {
   )
   await waitFor(() => expect(fileUpload).toHaveBeenCalledWith(expect.any(Object), true, undefined))
   await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
-  expect(uploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf', true)
+  expect(uploadPublicRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf')
   expect(uploadHumanInputFormLocalFile).not.toHaveBeenCalled()
 })
 
 it.each(['unsupported', 'oversized', 'failed'] as const)(
   'removes a remote file when it is %s',
   async (condition) => {
-    if (condition === 'failed')
-      vi.mocked(uploadRemoteFileInfo).mockRejectedValueOnce(new Error('offline'))
+    if (condition === 'failed') request.mockRejectedValueOnce(new Error('offline'))
     else
-      vi.mocked(uploadRemoteFileInfo).mockResolvedValueOnce({
-        ...uploadResponse,
-        ...(condition === 'unsupported'
-          ? { name: 'file.xyz', mime_type: 'application/octet-stream' }
-          : { size: 100 * 1024 * 1024 }),
-      })
+      request.mockResolvedValueOnce(
+        Response.json({
+          ...uploadResponse,
+          ...(condition === 'unsupported'
+            ? { name: 'file.xyz', mime_type: 'application/octet-stream' }
+            : { size: 100 * 1024 * 1024 }),
+        }),
+      )
     const { result } = setup()
     await act(async () => result.current.handleLoadFileFromLink('https://example.com/file'))
-    expect(result.current.files).toEqual([])
+    await waitFor(() => expect(result.current.files).toEqual([]))
     expect(toast.error).toHaveBeenCalled()
   },
 )
 
 it('advances pending remote progress only to 80 percent and completes from the response', async () => {
   vi.useFakeTimers()
-  let resolve!: (value: typeof uploadResponse) => void
-  vi.mocked(uploadRemoteFileInfo).mockReturnValueOnce(
-    new Promise((done) => {
-      resolve = done
-    }),
-  )
+  const pending = createDeferred<Response>()
+  request.mockReturnValueOnce(pending.promise)
   const { result } = setup()
   act(() => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
   act(() => vi.advanceTimersByTime(2000))
   expect(result.current.files[0]?.progress).toBe(80)
-  await act(async () => resolve(uploadResponse))
+  await act(async () => pending.resolve(Response.json(uploadResponse)))
   expect(result.current.files[0]).toEqual(
     expect.objectContaining({
       progress: 100,
@@ -346,4 +365,55 @@ it('advances pending remote progress only to 80 percent and completes from the r
       supportFileType: 'document',
     }),
   )
+})
+
+it.each(['local', 'retry', 'remote'] as const)(
+  'settles a denied or cancelled %s upload without duplicate error feedback',
+  async (uploadKind) => {
+    for (const cancelled of [false, true]) {
+      const error = cancelled
+        ? new DOMException('Upload cancelled', 'AbortError')
+        : new ORPCError('ip_access_denied', { status: 403 })
+      if (!cancelled) {
+        window.history.replaceState({}, '', '/chat/restricted-app')
+        handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope(), error)
+      }
+      const { result, unmount } = setup({ files: uploadKind === 'retry' ? [entity('retry')] : [] })
+      if (uploadKind === 'remote') {
+        request.mockRejectedValueOnce(error)
+        await act(async () => result.current.handleLoadFileFromLink('https://example.com/file'))
+        await waitFor(() => expect(result.current.files).toEqual([]))
+      } else {
+        if (uploadKind === 'retry') act(() => result.current.handleReUploadFile('retry'))
+        else {
+          act(() =>
+            result.current.handleLocalFileUpload(
+              new File(['a'], 'one.txt', { type: 'text/plain' }),
+            ),
+          )
+          await waitFor(() => expect(fileUpload).toHaveBeenCalled())
+        }
+        act(() => vi.mocked(fileUpload).mock.calls.at(-1)![0].onErrorCallback(error))
+        expect(result.current.files[0]?.progress).toBe(-1)
+      }
+      expect(toast.error).not.toHaveBeenCalled()
+      unmount()
+      vi.mocked(fileUpload).mockClear()
+    }
+  },
+)
+
+it('keeps the original URL and infers the file type when remote metadata is nullable', async () => {
+  request.mockResolvedValueOnce(Response.json({ ...uploadResponse, mime_type: null, url: null }))
+  const { result } = setup()
+  await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
+  await waitFor(() => expect(result.current.files[0]?.progress).toBe(100))
+  expect(result.current.files[0]).toMatchObject({
+    type: '',
+    supportFileType: 'document',
+    url: 'https://example.com/report.pdf',
+    uploadedId: 'uploaded-file',
+  })
+  expect(new URL(request.mock.calls[0]![0]).pathname).toBe('/console/api/remote-files/upload')
+  expect(uploadPublicRemoteFileInfo).not.toHaveBeenCalled()
 })

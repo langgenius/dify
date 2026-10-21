@@ -528,7 +528,7 @@ class TestMessageCycleManagerOptimization:
         message_cycle_manager._application_generate_entity.app_config = SimpleNamespace(additional_features=None)
         message_cycle_manager._task_state = SimpleNamespace(metadata=TaskStateMetadata())
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Additional features not found"):
             message_cycle_manager.handle_retriever_resources(QueueRetrieverResourcesEvent(retriever_resources=[]))
 
     def test_handle_retriever_resources_skips_none_entries(self, message_cycle_manager):

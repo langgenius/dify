@@ -121,7 +121,7 @@ class AliyunDataTrace(BaseTraceInstance):
             return self.trace_client.get_project_url()
         except Exception as e:
             logger.info("Aliyun get project url failed: %s", str(e), exc_info=True)
-            raise ValueError(f"Aliyun get project url failed: {str(e)}")
+            raise ValueError(f"Aliyun get project url failed: {str(e)}") from e
 
     def _extract_app_id(self, trace_info: BaseTraceInfo) -> str:
         """Extract app_id from trace_info, trying metadata first then message_data."""

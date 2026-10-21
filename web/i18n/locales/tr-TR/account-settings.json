@@ -63,7 +63,6 @@
   "account.workspaceNamePlaceholder": "Çalışma alanı adını girin",
   "resourceAccessToken.accessibleResources": "Erişilebilir kaynaklar",
   "resourceAccessToken.actions": "İşlemler",
-  "resourceAccessToken.app": "Uygulama",
   "resourceAccessToken.appCount": "{{count}} Uygulama",
   "resourceAccessToken.appsCount": "{{count}} Uygulamalar",
   "resourceAccessToken.appsSection": "Uygulamalar",
@@ -80,7 +79,6 @@
   "resourceAccessToken.editTitle": "Erişim belirtecini düzenle",
   "resourceAccessToken.empty": "Henüz erişim belirteci yok",
   "resourceAccessToken.emptyDescription": "Otomatik görevlerin ve harici sistemlerin Difyctl aracılığıyla seçilen kaynakları bulup bunlara erişebilmesi için bir erişim belirteci oluşturun.",
-  "resourceAccessToken.knowledge": "Bilgi tabanı",
   "resourceAccessToken.knowledgeBasesSection": "Bilgi tabanları",
   "resourceAccessToken.knowledgeCount": "{{count}} Bilgi tabanı",
   "resourceAccessToken.knowledgesCount": "{{count}} Bilgi tabanları",
@@ -100,6 +98,5 @@
   "resourceAccessToken.tabApps": "Uygulamalar",
   "resourceAccessToken.tabKnowledgeBases": "Bilgi tabanları",
   "resourceAccessToken.token": "Belirteç",
-  "resourceAccessToken.total": "Toplam {{total}}",
-  "resourceAccessToken.trackingId": "İzleme kimliği"
+  "resourceAccessToken.total": "Toplam {{total}}"
 }

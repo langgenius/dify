@@ -113,8 +113,8 @@ class RagPipelineDslService:
         # Validate import mode
         try:
             mode = ImportMode(import_mode)
-        except ValueError:
-            raise ValueError(f"Invalid import_mode: {import_mode}")
+        except ValueError as caught_error:
+            raise ValueError(f"Invalid import_mode: {import_mode}") from caught_error
 
         # Get YAML content
         content: str = ""
@@ -295,7 +295,7 @@ class RagPipelineDslService:
                         names = [dataset.name for dataset in datasets]
                         generate_name = generate_incremental_name(names, name)
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=generate_name,
                             description=description,
                             icon_info={
@@ -440,7 +440,7 @@ class RagPipelineDslService:
                     if not dataset:
                         dataset_created = True
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=name,
                             description=description,
                             icon_info={
