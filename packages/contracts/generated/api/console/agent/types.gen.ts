@@ -602,6 +602,9 @@ export type AgentAppPartial = {
   active_config_is_published?: boolean
   app_id?: string | null
   author_name?: string | null
+  availability?: AppAvailabilityStatus | null
+  availability_reasons?: Array<AppAvailabilityIssueResponse>
+  availability_source?: 'configuration' | 'draft' | null
   backing_app_id?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
@@ -1156,6 +1159,16 @@ export type AgentConfigRevisionResponse = {
   version_note?: string | null
 }
 
+export type AppAvailabilityStatus = 'available' | 'unavailable'
+
+export type AppAvailabilityIssueResponse = {
+  model?: string | null
+  provider?: string | null
+  reason: string
+  resource_id?: string | null
+  type: AppAvailabilityIssueType
+}
+
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -1676,6 +1689,14 @@ export type AgentConfigRevisionOperation =
   | 'save_new_agent'
   | 'save_new_version'
   | 'save_to_roster'
+
+export type AppAvailabilityIssueType =
+  | 'agent'
+  | 'configuration'
+  | 'knowledge'
+  | 'model'
+  | 'tool'
+  | 'workflow'
 
 export type AppAgentPromptResponse = {
   first_prompt?: string
@@ -2352,6 +2373,9 @@ export type AgentAppPartialWritable = {
   active_config_is_published?: boolean
   app_id?: string | null
   author_name?: string | null
+  availability?: AppAvailabilityStatus | null
+  availability_reasons?: Array<AppAvailabilityIssueResponse>
+  availability_source?: 'configuration' | 'draft' | null
   backing_app_id?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
@@ -2414,6 +2438,7 @@ export type GetAgentData = {
   body?: never
   path?: never
   query?: {
+    availability?: 'all' | 'available' | 'unavailable'
     creator_ids?: Array<string>
     is_created_by_me?: boolean
     limit?: number

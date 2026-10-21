@@ -23,6 +23,7 @@ import {
   hasPermission,
 } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
+import { AppAvailabilityBadge, AppAvailabilityDetails } from '../app-availability'
 import { AppCardInteractions } from './interactions'
 
 const EMPTY_ONLINE_USERS: WorkflowOnlineUser[] = []
@@ -137,7 +138,7 @@ export const AppCard = memo(
           </div>
           <div className="flex w-0 grow flex-col gap-1 py-px">
             <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-              <div id={appNameId} className="truncate">
+              <div id={appNameId} className="min-w-0 truncate">
                 {app.name}
               </div>
             </div>
@@ -161,7 +162,12 @@ export const AppCard = memo(
             {app.description}
           </div>
         </div>
-        <div className="mt-6.5 flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
+        <div
+          className={cn(
+            'mt-6.5 flex min-w-0 shrink-0 items-center gap-2 overflow-hidden pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary',
+            app.availability === 'unavailable' && 'pr-10',
+          )}
+        >
           <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
             {app.author_name && (
               <>
@@ -171,6 +177,7 @@ export const AppCard = memo(
             )}
             <div className="min-w-0 truncate">{editTimeText}</div>
           </div>
+          <AppAvailabilityBadge app={app} />
         </div>
       </>
     )
@@ -222,6 +229,11 @@ export const AppCard = memo(
             onOpenTagManagement={onOpenTagManagement}
           />
         </div>
+        {app.availability === 'unavailable' && (
+          <div className="absolute right-3 bottom-2">
+            <AppAvailabilityDetails app={app} />
+          </div>
+        )}
       </li>
     )
   },

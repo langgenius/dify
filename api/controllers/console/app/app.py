@@ -68,6 +68,7 @@ from services.app_tracing_config_service import (
     AppTracingConfigProviderUnavailableError,
 )
 from services.entities.app_entities import (
+    AppAvailabilityFilter,
     AppExportOptions,
     AppListParams,
     AppListSortBy,
@@ -107,6 +108,10 @@ class AppListBaseQuery(BaseModel):
     sort_by: AppListSortBy = Field(
         default="last_modified",
         description="Sort apps by last modified, recently created, or earliest created",
+    )
+    availability: AppAvailabilityFilter = Field(
+        default="all",
+        description="Filter dependency configuration availability before pagination (all, available, unavailable)",
     )
     name: str | None = Field(default=None, description="Filter by app name")
     openapi_visible: bool = Field(default=False, description="Only return apps with API access enabled")

@@ -7,12 +7,15 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from io import BytesIO
 from typing import BinaryIO, Literal, cast, override
+from unittest.mock import create_autospec, patch
 from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
+from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.tool_manager import ToolManager
@@ -40,9 +43,13 @@ from services.app.console_service import (
     InvalidAppExportError,
 )
 from services.entities.app_entities import (
+    AppAvailabilityIssue,
+    AppAvailabilityIssueType,
+    AppAvailabilityPlan,
     AppCreationSettings,
     AppDeletion,
     AppExportOptions,
+    AppListBaseParams,
     AppListParams,
     AppPage,
     AppRecord,
@@ -105,7 +112,7 @@ class Apps:
 
 @dataclass
 class Permissions:
-    def filter_list(self, params: AppListParams) -> AppListParams:
+    def filter_list[Params: AppListBaseParams](self, params: Params) -> Params:
         return params.model_copy(update={"accessible_app_ids": ["app"], "include_own_apps": True})
 
     def keys_for(self, app_ids: list[str]) -> dict[str, list[str]]:
@@ -303,15 +310,159 @@ def test_empty_list_skips_external_enrichment(ports: Ports) -> None:
     assert access.calls == [("permissions", CONTEXT, None)]
 
 
-def test_starred_list_preserves_existing_visibility_contract(ports: Ports) -> None:
+@pytest.mark.parametrize("starred", [False, True])
+@pytest.mark.parametrize(
+    ("status", "expected_total", "expected_ids"),
+    [
+        ("unavailable", 103, ["4", "6"]),
+        ("available", 102, ["5", "7"]),
+    ],
+)
+def test_availability_filters_all_candidate_pages_before_pagination(
+    starred: bool, status: str, expected_total: int, expected_ids: list[str]
+) -> None:
+    class CandidateApps(Apps):
+        @override
+        def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
+            self.calls.append(("list", context, params))
+            offset = (params.page - 1) * params.limit
+            return AppPage(
+                params.page,
+                params.limit,
+                len(self.records),
+                offset + params.limit < len(self.records),
+                self.records[offset : offset + params.limit],
+            )
+
+    candidates = CandidateApps(
+        records=[
+            replace(
+                RECORD,
+                id=str(i),
+                availability_plan=AppAvailabilityPlan(
+                    "draft",
+                    (AppAvailabilityIssue(AppAvailabilityIssueType.MODEL, "disabled"),) if i % 2 == 0 else (),
+                    (),
+                ),
+            )
+            for i in range(205)
+        ]
+    )
+    service = ConsoleAppService(
+        apps=cast(ConsoleApps, candidates),
+        access=Access(),
+        transfers=Transfers(),
+        creators=Creators(),
+        tracing=Tracing(),
+        lifecycle=Lifecycle(),
+    )
+    params = (StarredAppListParams if starred else AppListParams).model_validate(
+        {
+            "page": 2,
+            "limit": 2,
+            "availability": status,
+            "name": "sales",
+            "sort_by": "earliest_created",
+            "tag_ids": ["tag"],
+            "creator_ids": ["creator"],
+        }
+    )
+    result = service.list_apps(CONTEXT, params)
+    assert result.total == expected_total
+    assert result.page == 2
+    assert result.limit == 2
+    assert result.has_more is True
+    assert [item.id for item in result.data] == expected_ids
+    batches = [call[2] for call in candidates.calls]
+    assert len(batches) == 3
+    pages = []
+    for batch in batches:
+        assert isinstance(batch, AppListParams | StarredAppListParams)
+        pages.append(batch.page)
+        assert batch.limit == 100
+        assert batch.availability == "all"
+        assert batch.name == "sales"
+        assert batch.sort_by == "earliest_created"
+        assert batch.tag_ids == ["tag"]
+        assert batch.creator_ids == ["creator"]
+        assert batch.accessible_app_ids == ["app"]
+    assert pages == [1, 2, 3]
+    assert params.page == 2
+    assert params.availability == status
+
+
+def test_availability_remote_resolution_runs_after_repository_connection_is_released(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+) -> None:
+    tenant_id, actor_id = str(uuid4()), str(uuid4())
+    context = CONTEXT._replace(active_workspace_id=tenant_id, account_id=actor_id)
+    with sqlite_session_factory() as session:
+        owner = App(
+            tenant_id=tenant_id,
+            name="Example",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=True,
+            created_by=actor_id,
+            maintainer=actor_id,
+        )
+        session.add(owner)
+        session.flush()
+        config = AppModelConfig(app_id=owner.id, model='{"provider":"example/provider","name":"example"}')
+        session.add(config)
+        session.flush()
+        owner.app_model_config_id = config.id
+        session.commit()
+    checked_out: set[object] = set()
+
+    def checkout(connection: object, *_args: object) -> None:
+        checked_out.add(connection)
+
+    def checkin(connection: object, *_args: object) -> None:
+        checked_out.remove(connection)
+
+    configurations = create_autospec(ProviderConfigurations, instance=True)
+    provider = create_autospec(ProviderConfiguration, instance=True)
+    model = create_autospec(ModelWithProviderEntity, instance=True)
+    model.status = ModelStatus.ACTIVE
+    configurations.get.return_value = provider
+    provider.get_provider_model.return_value = model
+    event.listen(sqlite_engine, "checkout", checkout)
+    event.listen(sqlite_engine, "checkin", checkin)
+    try:
+        with patch("services.app.availability_service.create_plugin_provider_manager", autospec=True) as factory:
+            factory.return_value.get_configurations.side_effect = lambda _tenant: (
+                pytest.fail("Repository retained a database connection") if checked_out else configurations
+            )
+            service = ConsoleAppService(
+                apps=ConsoleAppRepository(session_factory=sqlite_session_factory),
+                access=Access(),
+                transfers=Transfers(),
+                creators=Creators(),
+                tracing=Tracing(),
+                lifecycle=Lifecycle(),
+            )
+            result = service.list_apps(context, AppListParams())
+            assert len(result.data) == 1
+            assert result.data[0].availability == "available"
+            factory.assert_called_once_with(tenant_id=tenant_id)
+            assert not checked_out
+    finally:
+        event.remove(sqlite_engine, "checkout", checkout)
+        event.remove(sqlite_engine, "checkin", checkin)
+
+
+def test_starred_list_applies_read_permissions_before_dependency_collection(ports: Ports) -> None:
     service, apps, access, _, _ = ports
     params = StarredAppListParams()
     page = service.list_apps(CONTEXT, params)
     assert page.data[0].permission_keys == ["app.preview"]
     assert access.calls == [("permissions", CONTEXT, None), ("modes", ["app"])]
-    # visibility filtering is still skipped for starred lists
     _, _, listed_params = apps.calls[0]
-    assert listed_params is params
+    assert isinstance(listed_params, StarredAppListParams)
+    assert listed_params.accessible_app_ids == ["app"]
+    assert params.accessible_app_ids is None
 
 
 def test_recent_uses_list_visibility_and_permission_keys(ports: Ports) -> None:

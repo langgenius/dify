@@ -18,6 +18,7 @@ import {
 import { useStudioListHref } from '@/features/studio-list-navigation'
 import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { AppAvailabilityFilter } from './app-availability-filter'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'
@@ -34,11 +35,13 @@ type AppListHeaderProps = {
   keywords: string
   creatorIDs: string[]
   sortBy: AppListSortBy
+  availability: AppListUrlQuery['availability']
   onCategoryChange: (category: AppListCategory) => void
   onTagIDsChange: (tagIDs: string[]) => void
   onKeywordsChange: (keywords: string) => void
   onCreatorIDsChange: (creatorIDs: string[]) => void
   onSortByChange: (sortBy: AppListSortBy) => void
+  onAvailabilityChange: (availability: AppListUrlQuery['availability']) => void
   onCreateBlank: () => void
   onCreateTemplate: () => void
   onImportDSL: () => void
@@ -53,11 +56,13 @@ export function AppListHeader({
   keywords,
   creatorIDs,
   sortBy,
+  availability,
   onCategoryChange,
   onTagIDsChange,
   onKeywordsChange,
   onCreatorIDsChange,
   onSortByChange,
+  onAvailabilityChange,
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
@@ -99,6 +104,7 @@ export function AppListHeader({
             triggerClassName="min-w-0"
           />
           <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
+          <AppAvailabilityFilter value={availability} onChange={onAvailabilityChange} />
           <AppSortFilter value={sortBy} onChange={onSortByChange} />
           <SearchInput
             className="w-50 max-w-full"

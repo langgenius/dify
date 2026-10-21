@@ -36,6 +36,65 @@ class SupportedAppType(StrEnum):
 SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
 AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
+AppAvailabilityFilter = Literal["all", "available", "unavailable"]
+AppAvailabilitySource = Literal["draft", "configuration"]
+
+
+class AppAvailabilityStatus(StrEnum):
+    AVAILABLE = "available"
+    UNAVAILABLE = "unavailable"
+
+
+class AppAvailabilityIssueType(StrEnum):
+    MODEL = "model"
+    TOOL = "tool"
+    KNOWLEDGE = "knowledge"
+    AGENT = "agent"
+    WORKFLOW = "workflow"
+    CONFIGURATION = "configuration"
+
+
+@dataclass(frozen=True, slots=True)
+class AppAvailabilityIssue:
+    type: AppAvailabilityIssueType
+    reason: str
+    resource_id: str | None = None
+    provider: str | None = None
+    model: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AppModelDependency:
+    provider: str
+    model: str
+    model_type: str
+    resource_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class AppToolDependency:
+    provider_type: str
+    provider_id: str
+    tool_name: str | None
+    credential_exists: bool
+    resource_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class AppPluginDependency:
+    plugin_id: str
+    resource_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class AppAvailabilityPlan:
+    """Detached dependency metadata; never credentials or live ORM objects."""
+
+    source: AppAvailabilitySource
+    reasons: tuple[AppAvailabilityIssue, ...]
+    dependencies: tuple[AppModelDependency | AppToolDependency | AppPluginDependency, ...]
+
+
 RecentAppMode = Literal[
     AppMode.COMPLETION,
     AppMode.WORKFLOW,
@@ -57,6 +116,7 @@ class AppListBaseParams(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
     mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = "all"
     sort_by: AppListSortBy = "last_modified"
+    availability: AppAvailabilityFilter = "all"
     name: str | None = None
     tag_ids: list[str] | None = None
     creator_ids: list[str] | None = None
@@ -170,6 +230,11 @@ class AppRecord:
     permission_keys: list[str] = field(default_factory=list)
     has_draft_trigger: bool | None = None
     is_starred: bool = False
+    # None means this projection has not evaluated dependencies (e.g. detail).
+    availability: AppAvailabilityStatus | None = None
+    availability_source: AppAvailabilitySource | None = None
+    availability_reasons: tuple[AppAvailabilityIssue, ...] = ()
+    availability_plan: AppAvailabilityPlan | None = None
 
 
 @dataclass(frozen=True, slots=True)

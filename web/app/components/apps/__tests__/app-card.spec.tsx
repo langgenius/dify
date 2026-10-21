@@ -191,6 +191,47 @@ describe('AppCard', () => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
+  it.each([AppCard, StarredAppCard])(
+    'keeps an unavailable app editable and opens dependency details outside the navigation link',
+    async (Card) => {
+      const user = userEvent.setup()
+      const unavailable = createMockApp({
+        id: 'unavailable-app',
+        name: 'Repairable App',
+        mode: 'workflow',
+        permission_keys: [AppACLPermission.Edit],
+        availability: 'unavailable',
+        availability_source: 'draft',
+        availability_reasons: [
+          {
+            type: 'model',
+            reason: 'disabled',
+            provider: 'example/provider',
+            model: 'example-model',
+            resource_id: 'llm-node',
+          },
+        ],
+      })
+      render(<Card app={unavailable} />)
+      const link = screen.getByRole('link', { name: 'Repairable App' })
+      expect(link).not.toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByText('app.studio.availability.unavailable')).toBeInTheDocument()
+      const details = screen.getByRole('button', { name: /^app.studio.availability.details/ })
+      expect(link).not.toContainElement(details)
+      await user.click(details)
+      const dialog = await screen.findByRole('dialog', { name: 'Repairable App' })
+      expect(within(dialog).getByText('app.studio.availability.draft')).toBeInTheDocument()
+      expect(
+        within(dialog).getByText(/example\/provider.*example-model.*llm-node/),
+      ).toBeInTheDocument()
+      expect(
+        within(dialog).getByText('app.studio.availability.reason.disabled'),
+      ).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    },
+  )
+
   it('should render preview-only app card as an information-only card that explains the permission restriction', async () => {
     const user = userEvent.setup()
     const previewOnlyApp = createMockApp({

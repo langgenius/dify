@@ -16,6 +16,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { hasOnlyAppPreviewPermission } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
+import { AppAvailabilityBadge, AppAvailabilityDetails } from './app-availability'
 import { AppCardInteractions } from './app-card/interactions'
 
 type StarredAppCardProps = {
@@ -71,11 +72,19 @@ export const StarredAppCard = memo(
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-          <div id={appNameId} className="truncate system-md-semibold text-text-secondary">
-            {app.name}
+          <div className="flex min-w-0 items-center system-md-semibold text-text-secondary">
+            <div id={appNameId} className="min-w-0 truncate">
+              {app.name}
+            </div>
           </div>
-          <div className="flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary">
-            {app.author_name && <span className="shrink-0 truncate">{app.author_name}</span>}
+          <div
+            className={cn(
+              'flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary',
+              app.availability === 'unavailable' && 'pr-5',
+            )}
+          >
+            <AppAvailabilityBadge app={app} />
+            {app.author_name && <span className="min-w-0 truncate">{app.author_name}</span>}
             {app.author_name && editTimeText && <span className="shrink-0">·</span>}
             {editTimeText && <span className="min-w-0 truncate">{editTimeText}</span>}
           </div>
@@ -114,6 +123,11 @@ export const StarredAppCard = memo(
               {cardContent}
             </StudioListLink>
           </AppCardInteractions>
+        )}
+        {app.availability === 'unavailable' && (
+          <div className="absolute right-1 bottom-1">
+            <AppAvailabilityDetails app={app} />
+          </div>
         )}
       </li>
     )

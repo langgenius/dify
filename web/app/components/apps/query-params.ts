@@ -36,6 +36,9 @@ const parseAsAppListCategory = createParser({
 
 export const appListQueryParsers = {
   category: parseAsAppListCategory,
+  availability: parseAsStringLiteral(
+    zGetAppsQuery.shape.availability.unwrap().unwrap().options,
+  ).withDefault('all'),
   creatorIDs: parseAsArrayOf(parseAsString, ';').withDefault([]),
   tagIDs: parseAsArrayOf(parseAsString, ';').withDefault([]),
   sort_by: parseAsStringLiteral(zGetAppsQuery.shape.sort_by.unwrap().unwrap().options).withDefault(
