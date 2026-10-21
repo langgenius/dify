@@ -14,7 +14,9 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import InvitationLink from './invitation-link'
@@ -25,6 +27,7 @@ type IInvitedModalProps = {
 }
 const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
+  const failureReasonId = useId()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -114,14 +117,36 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
                     <div className="py-2 text-sm font-medium text-text-primary">
                       {t(($) => $['members.failedInvitationEmails'], { ns: 'workspaceMembers' })}
                     </div>
-                    <ul className="flex flex-col gap-2">
-                      {failedInvitationResults.map((item) => (
+                    <ul className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                      {failedInvitationResults.map((item, index) => (
                         <li
                           key={item.email}
-                          className="flex min-w-0 flex-col rounded-md border border-red-300 bg-orange-50 px-2 py-1 text-sm"
+                          className="flex max-w-full min-w-0 rounded-md border border-red-300 bg-orange-50 px-1"
                         >
-                          <span className="wrap-anywhere">{item.email}</span>
-                          <span className="wrap-anywhere">{item.message}</span>
+                          <Tooltip>
+                            <TooltipTrigger
+                              type="button"
+                              closeOnClick={false}
+                              render={(props, state) => (
+                                <button
+                                  {...props}
+                                  aria-describedby={
+                                    state.open ? `${failureReasonId}-${index}` : undefined
+                                  }
+                                />
+                              )}
+                              className="flex min-h-6 min-w-0 cursor-help items-center justify-center gap-1 rounded-sm text-start text-sm focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                            >
+                              <span className="min-w-0 wrap-anywhere">{item.email}</span>
+                              <span
+                                aria-hidden="true"
+                                className="i-ri-question-line size-4 shrink-0 text-red-300"
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent id={`${failureReasonId}-${index}`} role="tooltip">
+                              {item.message}
+                            </TooltipContent>
+                          </Tooltip>
                         </li>
                       ))}
                     </ul>
