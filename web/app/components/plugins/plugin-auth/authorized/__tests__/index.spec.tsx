@@ -12,7 +12,17 @@ import Authorized from '../index'
 const requests = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }))
 vi.mock('@/service/base', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/base')>()
-  return { ...actual, get: requests.get, post: requests.post }
+  return {
+    ...actual,
+    request: async (url: string, _init: RequestInit, options: { request: Request }) => {
+      const path = new URL(url).pathname.replace('/console/api', '')
+      return Response.json(
+        options.request.method === 'GET'
+          ? await requests.get(path)
+          : await requests.post(path, { body: await options.request.json() }),
+      )
+    },
+  }
 })
 const permissions = vi.hoisted(() => ({
   keys: ['credential.use', 'credential.create', 'credential.manage'],
@@ -48,7 +58,12 @@ beforeEach(() => {
   requests.get.mockImplementation((url: string) => {
     if (url.endsWith('/credential/schema/api-key'))
       return Promise.resolve([
-        { name: 'api_key', label: 'API Key', type: FormTypeEnum.secretInput, required: true },
+        {
+          name: 'api_key',
+          label: { en_US: 'API Key' },
+          type: FormTypeEnum.secretInput,
+          required: true,
+        },
       ])
     if (url.endsWith('/oauth/client-schema'))
       return Promise.resolve({
@@ -141,9 +156,11 @@ describe('Authorized credential management', () => {
     await user.click(confirm)
     expect(confirm).toBeDisabled()
     await user.click(confirm)
-    expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/delete`, {
-      body: { credential_id: 'credential-b' },
-    })
+    await waitFor(() =>
+      expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/delete`, {
+        body: { credential_id: 'credential-b' },
+      }),
+    )
     expect(onUpdate).not.toHaveBeenCalled()
     await act(async () => {
       pending.resolve({})
@@ -162,9 +179,11 @@ describe('Authorized credential management', () => {
     const setDefault = await screen.findByRole('button', { name: 'plugin.auth.setDefault' })
     await user.click(setDefault)
     await user.click(setDefault)
-    expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/default-credential`, {
-      body: { id: 'credential-a' },
-    })
+    await waitFor(() =>
+      expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/default-credential`, {
+        body: { id: 'credential-a' },
+      }),
+    )
     expect(onUpdate).not.toHaveBeenCalled()
     await act(async () => {
       pending.resolve({})
@@ -192,9 +211,11 @@ describe('Authorized credential management', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.rename' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/update`, {
-      body: { credential_id: 'credential-a', name: 'Renamed account' },
-    })
+    await waitFor(() =>
+      expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/update`, {
+        body: { credential_id: 'credential-a', name: 'Renamed account' },
+      }),
+    )
     expect(onUpdate).not.toHaveBeenCalled()
     await act(async () => {
       pending.resolve({})

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { OpenDeploymentDialog } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useAtomValue } from 'jotai'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
@@ -23,12 +24,12 @@ import {
 
 type EnvironmentDeployMenuProps = {
   appearance?: 'empty' | 'header'
-  onSelectEnvironment: (environment: AppEnvironment) => void
+  onOpenDeployment: OpenDeploymentDialog
 }
 
 export function EnvironmentDeployMenu({
   appearance = 'header',
-  onSelectEnvironment,
+  onOpenDeployment,
 }: EnvironmentDeployMenuProps) {
   const { t } = useTranslation(['deployments'])
   const { t: tCommon } = useTranslation(['common'])
@@ -39,12 +40,17 @@ export function EnvironmentDeployMenu({
   const refetchEnvironments = useAtomValue(appEnvironmentsRefetchAtom)
   const isEmptyState = appearance === 'empty'
   const label = tCommon(($) => $['appMenus.deploy'])
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         render={
-          <Button variant={isEmptyState ? 'secondary' : 'primary'} className="gap-0 px-2">
+          <Button
+            ref={triggerRef}
+            variant={isEmptyState ? 'secondary' : 'primary'}
+            className="gap-0 px-2"
+          >
             <span aria-hidden className="i-ri-add-line size-4" />
             <span className="pl-1.5">{label}</span>
             <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
@@ -95,7 +101,16 @@ export function EnvironmentDeployMenu({
               <DropdownMenuItem
                 key={environment.id}
                 className="mx-0 gap-2 py-1.5"
-                onClick={() => onSelectEnvironment(environment)}
+                onClick={() => {
+                  onOpenDeployment(
+                    {
+                      environment: environment.display_name,
+                      environmentId: environment.id,
+                      kind: 'deploy',
+                    },
+                    triggerRef.current,
+                  )
+                }}
               >
                 <span
                   aria-hidden

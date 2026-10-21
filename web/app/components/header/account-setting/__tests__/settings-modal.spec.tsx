@@ -117,7 +117,11 @@ function renderSettings(
   return { ...rendered, onUrlUpdate }
 }
 
-const findSettings = () => screen.findByRole('dialog', { name: 'navigation.settings.settings' })
+const findSettings = async () => {
+  // The settings surface is lazy; finish loading it before starting the DOM query timeout.
+  await act(async () => vi.dynamicImportSettled())
+  return screen.findByRole('dialog', { name: 'navigation.settings.settings' })
+}
 const expectMembers = () =>
   screen.findByRole('columnheader', { name: 'workspaceMembers.members.name' })
 

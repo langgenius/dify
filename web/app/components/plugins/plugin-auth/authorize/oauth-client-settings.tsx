@@ -11,7 +11,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { useForm, useStore } from '@tanstack/react-form'
+import { useForm, useSelector } from '@tanstack/react-form'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
@@ -149,7 +149,7 @@ const OAuthClientSettings = ({
   const form = useForm({
     defaultValues: editValues || defaultValues,
   })
-  const __oauth_client__ = useStore(form.store, (s) => s.values.__oauth_client__)
+  const __oauth_client__ = useSelector(form.store, (s) => s.values.__oauth_client__)
   const isDisabled = disabled || doingAction
   const hasSystemClient = schemas.some(
     (schema) =>

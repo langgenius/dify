@@ -7,14 +7,21 @@ import Authorize from '../index'
 const requests = vi.hoisted(() => ({ authorize: vi.fn(), popup: vi.fn() }))
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: (url: string, options: unknown) => {
-    if (url.endsWith('/oauth/client-schema'))
-      return Promise.resolve({
+  request: async (url: string) => {
+    const target = new URL(url)
+    const path = target.pathname.replace('/console/api', '')
+    if (path.endsWith('/oauth/client-schema'))
+      return Response.json({
         schema: [],
         is_system_oauth_params_exists: true,
         is_oauth_custom_client_enabled: false,
+        redirect_uri: '',
       })
-    return requests.authorize(url, options)
+    return Response.json(
+      await requests.authorize(path, {
+        params: { visibility: target.searchParams.get('visibility') ?? undefined },
+      }),
+    )
   },
 }))
 vi.mock('@/hooks/use-oauth', () => ({ openOAuthPopup: requests.popup }))
