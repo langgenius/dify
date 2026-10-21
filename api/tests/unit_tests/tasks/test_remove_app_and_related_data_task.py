@@ -241,7 +241,7 @@ def test_independent_binding_cleanup_task_succeeds(
     network_access_groups = _NetworkAccessGroups()
     application_services = _ApplicationServices(network_access_groups=network_access_groups)
     application_services_module = ModuleType("extensions.ext_application_services")
-    setattr(application_services_module, "application_services", lambda: application_services)
+    application_services_module.application_services = lambda: application_services
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     with patch.dict(
@@ -265,7 +265,7 @@ def test_independent_binding_cleanup_task_retries_with_exponential_backoff(
     network_access_groups = _NetworkAccessGroups(failure=upstream_error)
     application_services = _ApplicationServices(network_access_groups=network_access_groups)
     application_services_module = ModuleType("extensions.ext_application_services")
-    setattr(application_services_module, "application_services", lambda: application_services)
+    application_services_module.application_services = lambda: application_services
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     retry_calls: list[tuple[Exception, int]] = []
 
