@@ -39,7 +39,7 @@ import ResourceAccessTokenPage from './resource-access-token-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
 
 const iconClassName = `
-  w-4 h-4 mr-2
+  size-4 shrink-0 sm:mr-2
 `
 
 type IAccountSettingProps = {
@@ -218,8 +218,8 @@ export default function AccountSetting({
       onClose={onCancelAction}
     >
       <div className="mx-auto flex h-screen w-full max-w-270 px-4">
-        <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
-          <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
+        <div className="flex w-11 shrink-0 flex-col pr-2 sm:w-56 sm:pr-6 sm:pl-4">
+          <div className="invisible mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary sm:visible">
             {t(($) => $['settings.settings'], { ns: 'navigation' })}
           </div>
           <div className="w-full">
@@ -243,7 +243,7 @@ export default function AccountSetting({
                       type="button"
                       key={item.key}
                       className={cn(
-                        'mb-0.5 flex h-8 w-full items-center rounded-lg px-3 text-left text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                        'mb-0.5 flex h-8 w-full items-center justify-center rounded-lg px-2 text-left text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:justify-start sm:px-3',
                         activeMenu === item.key
                           ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active'
                           : 'system-sm-medium text-components-menu-item-text',
