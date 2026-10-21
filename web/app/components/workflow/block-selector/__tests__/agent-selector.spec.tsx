@@ -18,10 +18,6 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: () => undefined,
-}))
-
 vi.mock('@/app/notifications', () => ({
   toast: { error: mocks.toastError },
 }))

@@ -97,6 +97,9 @@ class RBACPermission(StrEnum):
     TOOL_MANAGE = "tool_manage"
     MCP_MANAGE = "mcp_manage"
 
+    IP_POLICY_VIEW = "ip_policy_view"
+    IP_POLICY_MANAGE = "ip_policy_manage"
+
     @property
     def scope(self) -> RBACResourceScope:
         if self in _FUNCTION_SCOPED_RESOURCE_SCENES:

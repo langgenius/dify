@@ -727,29 +727,29 @@ describe('AppCard', () => {
     expect(api.delete).toHaveBeenCalledWith({ params: { app_id: mockApp.id } })
   })
 
-  it('reports an edit failure and allows saving again from the card', async () => {
+  it('keeps the failed edit draft and retries without reopening the card dialog', async () => {
     const user = userEvent.setup()
     api.update.mockRejectedValueOnce(new Error('Edit failed'))
     render(<AppCard app={mockApp} />)
-    for (const attempt of [1, 2]) {
-      await chooseAction(user, 'app.editApp')
-      const dialog = await screen.findByRole('dialog', { name: 'app.editAppTitle' })
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-      const name = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
-      const description = within(dialog).getByRole('textbox', {
-        name: 'app.newApp.captionDescription',
-      })
-      expect(name).toHaveValue('Test App')
-      await user.clear(name)
-      await user.type(name, 'Updated App')
-      await user.clear(description)
-      await user.type(description, 'Updated description')
-      await user.click(within(dialog).getByRole('button', { name: /common.operation.save/ }))
-      await waitFor(() => expect(dialog).not.toBeInTheDocument())
-      await waitFor(() => expect(api.update).toHaveBeenCalledTimes(attempt))
-      if (attempt === 1)
-        await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Edit failed'))
-    }
+    await chooseAction(user, 'app.editApp')
+    const dialog = await screen.findByRole('dialog', { name: 'app.editAppTitle' })
+    const name = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
+    const description = within(dialog).getByRole('textbox', {
+      name: 'app.newApp.captionDescription',
+    })
+    await waitFor(() => expect(name).toHaveFocus())
+    await user.clear(name)
+    await user.type(name, 'Updated App')
+    await user.clear(description)
+    await user.type(description, 'Updated description')
+    await user.click(within(dialog).getByRole('button', { name: /common.operation.save/ }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Edit failed')
+    expect(name).toHaveValue('Updated App')
+    expect(description).toHaveValue('Updated description')
+    expect(toast.error).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: /common.operation.save/ }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(api.update).toHaveBeenCalledTimes(2)
     expect(api.update).toHaveBeenLastCalledWith({
       params: { app_id: mockApp.id },
       body: {
@@ -759,7 +759,6 @@ describe('AppCard', () => {
         icon: '🤖',
         icon_background: '#FFEAD5',
         use_icon_as_answer_icon: false,
-        max_active_requests: undefined,
       },
     })
   })

@@ -384,7 +384,7 @@ class TestPipelineRunApiEntity:
 
     def test_entity_missing_required_field(self):
         """Test entity raises on missing required field."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="4 validation errors for PipelineRunApiEntity\\\ndatasource_info_list"):
             PipelineRunApiEntity.model_validate(
                 {
                     "inputs": {},

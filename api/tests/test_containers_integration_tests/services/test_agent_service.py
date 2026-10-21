@@ -224,7 +224,6 @@ class TestAgentService:
         Returns:
             list: Created agent thoughts
         """
-        fake = Faker()
 
         agent_thoughts = []
 
@@ -288,12 +287,11 @@ class TestAgentService:
         """
         Test successful retrieval of agent logs with complete data.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
-        agent_thoughts = self._create_test_agent_thoughts(db_session_with_containers, message)
+        self._create_test_agent_thoughts(db_session_with_containers, message)
 
         # Execute the method under test
         result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
@@ -537,7 +535,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with tool errors.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -587,7 +584,6 @@ class TestAgentService:
         """
         Test agent logs retrieval when message has no agent thoughts.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -664,7 +660,6 @@ class TestAgentService:
         """
         Test error handling when agent config is not found.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -683,7 +678,6 @@ class TestAgentService:
         """
         Test successful listing of agent providers.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -704,7 +698,6 @@ class TestAgentService:
         """
         Test successful retrieval of specific agent provider.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -728,7 +721,6 @@ class TestAgentService:
         """
         Test error handling when plugin daemon client raises an error.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -750,7 +742,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with complex tool data and multiple tools.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -837,7 +828,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with message files and agent thought files.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -917,7 +907,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with different timezone settings.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -944,7 +933,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with empty tool data.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -985,7 +973,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with malformed JSON data in tool fields.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)

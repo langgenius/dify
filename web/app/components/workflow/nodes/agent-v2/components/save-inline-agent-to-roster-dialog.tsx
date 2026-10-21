@@ -13,11 +13,11 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
@@ -73,7 +73,10 @@ function SaveInlineAgentToRosterFormSession({
         <DialogDescription className="sr-only">
           {t(($) => $['roster.saveToRosterDialog.description'], { ns: 'agentRoster' })}
         </DialogDescription>
-        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={pending} />
+        <DialogHeaderCloseButton
+          aria-label={tCommon(($) => $['operation.close'])}
+          disabled={pending}
+        />
       </DialogHeader>
       <Form<AgentFormValues>
         className="contents"

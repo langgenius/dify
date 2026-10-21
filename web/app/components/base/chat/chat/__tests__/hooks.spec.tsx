@@ -2,6 +2,8 @@ import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
@@ -45,6 +47,15 @@ const createAbortControllerMock = () => {
   const controller = new AbortController()
   vi.spyOn(controller, 'abort')
   return controller
+}
+const createDeferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
 }
 const createPausedChatTree = (): ChatItemInTree[] => [
   {
@@ -96,6 +107,8 @@ type HookCallbacks = {
 describe('useChat', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
+    captureAppAccessScope()
     vi.mocked(ssePost).mockReset().mockResolvedValue(undefined)
     vi.mocked(sseGet).mockReset().mockResolvedValue(undefined)
     audio.getAudioPlayer
@@ -107,13 +120,6 @@ describe('useChat', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
-  })
-
-  it('should initialize correctly with empty config', () => {
-    const { result } = renderHookWithConsoleQuery(() => useChat())
-    expect(result.current.chatList).toEqual([])
-    expect(result.current.isResponding).toBe(false)
-    expect(result.current.suggestedQuestions).toEqual([])
   })
 
   it('should initialize with opening statement and suggested questions', () => {
@@ -538,6 +544,83 @@ describe('useChat', () => {
       expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3) // node, iteration, loop
     })
 
+    it('should merge each parallel tool result into the thought that called the tool', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { renderHookWithConsoleQuery } = await import('@/test/console/query-data')
+      const { result } = renderHookWithConsoleQuery(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'parallel tools' }, {})
+      })
+
+      act(() => {
+        callbacks.onThought({ id: 'th-a', message_id: 'm-p', tool: 'tool_a', observation: '' })
+        callbacks.onThought({ id: 'th-b', message_id: 'm-p', tool: 'tool_b', observation: '' })
+        callbacks.onThought({
+          id: 'th-a',
+          message_id: 'm-p',
+          tool: 'tool_a',
+          observation: 'result a',
+        })
+        callbacks.onThought({
+          id: 'th-b',
+          message_id: 'm-p',
+          tool: 'tool_b',
+          observation: 'result b',
+        })
+      })
+
+      expect(
+        result.current.chatList[1]!.agent_thoughts!.map((thought) => [
+          thought.id,
+          thought.observation,
+        ]),
+      ).toEqual([
+        ['th-a', 'result a'],
+        ['th-b', 'result b'],
+      ])
+    })
+
+    it('should merge each parallel tool result into its thought after a resumed stream', async () => {
+      let initialCallbacks: HookCallbacks
+      let resumedCallbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        initialCallbacks = options as HookCallbacks
+      })
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        resumedCallbacks = options as HookCallbacks
+      })
+
+      const { renderHookWithConsoleQuery } = await import('@/test/console/query-data')
+      const { result } = renderHookWithConsoleQuery(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'parallel tools after pause' }, {})
+      })
+      act(() => {
+        initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-p', task_id: 't-p' })
+        initialCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-p' } })
+      })
+      act(() => {
+        resumedCallbacks.onThought({ id: 'th-a', tool: 'tool_a', observation: '' })
+        resumedCallbacks.onThought({ id: 'th-b', tool: 'tool_b', observation: '' })
+        resumedCallbacks.onThought({ id: 'th-a', tool: 'tool_a', observation: 'result a' })
+        resumedCallbacks.onThought({ id: 'th-b', tool: 'tool_b', observation: 'result b' })
+      })
+
+      const response = result.current.chatList[result.current.chatList.length - 1]
+      expect(response!.agent_thoughts!.map((thought) => [thought.id, thought.observation])).toEqual(
+        [
+          ['th-a', 'result a'],
+          ['th-b', 'result b'],
+        ],
+      )
+    })
+
     it('should handle human input forms, pauses, TTS, and message ends', async () => {
       let callbacks: HookCallbacks
 
@@ -555,9 +638,10 @@ describe('useChat', () => {
         callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1', message_id: 'm-3' })
 
         // Human input required
-        callbacks.onHumanInputRequired({ data: { node_id: 'n-human' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-n-human', node_id: 'n-human' } })
         callbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-n-human',
             node_id: 'n-human',
             updated: true,
             form_content: '{{#$output.answer#}}',
@@ -566,11 +650,15 @@ describe('useChat', () => {
         }) // update existing
 
         // setTimeout for timeout form
-        callbacks.onHumanInputFormTimeout({ data: { node_id: 'n-human', expiration_time: 123456 } })
+        callbacks.onHumanInputFormTimeout({
+          data: { form_id: 'form-n-human', node_id: 'n-human', expiration_time: 123456 },
+        })
 
         // Form filled
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'n-human' } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'n-human2' } }) // new one
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-n-human', node_id: 'n-human' } })
+        callbacks.onHumanInputFormFilled({
+          data: { form_id: 'form-n-human2', node_id: 'n-human2' },
+        }) // new one
 
         // onWorkflowPaused
         callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } }) // should call sseGet
@@ -655,7 +743,7 @@ describe('useChat', () => {
         postCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         postCallbacks.onHumanInputRequired({
           workflow_run_id: 'wr-1',
-          data: { node_id: 'human-1' },
+          data: { form_id: 'form-human-1', node_id: 'human-1' },
         })
       })
       expect(sseGet).not.toHaveBeenCalled()
@@ -729,7 +817,7 @@ describe('useChat', () => {
         })
         postCallbacks.onHumanInputRequired({
           workflow_run_id: 'wr-1',
-          data: { node_id: 'human-1' },
+          data: { form_id: 'form-human-1', node_id: 'human-1' },
         })
         postCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
       })
@@ -767,7 +855,7 @@ describe('useChat', () => {
         postCallbacks.onNodeStarted({ data: { node_id: 'human-1', id: 'human-1' } })
         postCallbacks.onHumanInputRequired({
           workflow_run_id: 'wr-1',
-          data: { node_id: 'human-1' },
+          data: { form_id: 'form-human-1', node_id: 'human-1' },
         })
       })
 
@@ -819,6 +907,215 @@ describe('useChat', () => {
         expect.objectContaining({ id: 'f-2', url: 'doc.pdf' }),
       ])
     })
+
+    it('should retain the streamed answer and original settlement when history fails', async () => {
+      const historyError = new Response(null, { status: 503 })
+      const onGetConversationMessages = vi.fn().mockRejectedValue(historyError)
+      const onGetSuggestedQuestions = vi.fn()
+      const onConversationComplete = vi.fn()
+      const onSendSettled = vi.fn()
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat({
+          suggested_questions_after_answer: { enabled: true },
+        } as ChatConfig),
+      )
+
+      act(() => {
+        result.current.handleSend(
+          'chat-messages',
+          { query: 'test' },
+          {
+            onGetConversationMessages,
+            onGetSuggestedQuestions,
+            onConversationComplete,
+            onSendSettled,
+          },
+        )
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      await act(async () => {
+        callbacks.onData('Streamed answer', true, {
+          messageId: 'answer-1',
+          conversationId: 'conversation-1',
+        })
+        await expect(callbacks.onCompleted()).resolves.toBeUndefined()
+      })
+
+      expect(result.current.chatList.at(-1)?.content).toBe('Streamed answer')
+      expect(result.current.isResponding).toBe(false)
+      expect(onGetSuggestedQuestions).not.toHaveBeenCalled()
+      expect(onConversationComplete).not.toHaveBeenCalled()
+      expect(onSendSettled).toHaveBeenCalledExactlyOnceWith(undefined)
+      expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it.each(['denied', 'navigation', 'new request', 'stop', 'unmount'] as const)(
+      'should ignore history results after %s',
+      async (transition) => {
+        window.history.replaceState({}, '', '/agent/history-test')
+        const scope = captureAppAccessScope()
+        const history = createDeferred<unknown>()
+        const onGetConversationMessages = vi.fn(() => history.promise)
+        const onGetSuggestedQuestions = vi.fn()
+        const onConversationComplete = vi.fn()
+        const onSendSettled = vi.fn()
+        const { result, unmount } = renderHookWithConsoleQuery(() =>
+          useChat(
+            { suggested_questions_after_answer: { enabled: true } } as ChatConfig,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            { isNewAgent: true },
+          ),
+        )
+
+        act(() => {
+          result.current.handleSend(
+            'chat-messages',
+            { query: 'test' },
+            {
+              isPublicAPI: true,
+              onGetConversationMessages,
+              onGetSuggestedQuestions,
+              onConversationComplete,
+              onSendSettled,
+            },
+          )
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        let completion: ReturnType<HookCallbacks['onCompleted']>
+        act(() => {
+          callbacks.onData('Streamed answer', true, {
+            messageId: 'answer-1',
+            conversationId: 'conversation-1',
+          })
+          completion = callbacks.onCompleted()
+        })
+        expect(onGetConversationMessages).toHaveBeenCalledOnce()
+
+        act(() => {
+          if (transition === 'navigation') window.history.replaceState({}, '', '/agent/another-app')
+          if (transition === 'new request')
+            result.current.handleSend(
+              'chat-messages',
+              { query: 'next question' },
+              { isPublicAPI: true },
+            )
+          if (transition === 'stop') result.current.handleStop()
+          if (transition === 'unmount') unmount()
+          if (transition === 'denied')
+            handleAppAccessError(403, { code: 'ip_access_denied' }, scope)
+        })
+        const chatListBeforeHistory = result.current.chatList
+        await act(async () => {
+          history.resolve({ data: [{ id: 'answer-1', answer: 'Late history answer' }] })
+          await completion
+        })
+
+        expect(result.current.chatList).toEqual(chatListBeforeHistory)
+        expect(onGetSuggestedQuestions).not.toHaveBeenCalled()
+        expect(onConversationComplete).not.toHaveBeenCalled()
+        expect(onSendSettled).not.toHaveBeenCalled()
+        expect(toast.error).not.toHaveBeenCalled()
+      },
+    )
+
+    it.each(['denied', 'navigation', 'unmount'] as const)(
+      'should consume history rejection after %s without completion callbacks',
+      async (transition) => {
+        window.history.replaceState({}, '', '/agent/history-rejection')
+        const scope = captureAppAccessScope()
+        const history = createDeferred<unknown>()
+        const onGetSuggestedQuestions = vi.fn()
+        const onConversationComplete = vi.fn()
+        const onSendSettled = vi.fn()
+        const { result, unmount } = renderHookWithConsoleQuery(() => useChat())
+        act(() => {
+          result.current.handleSend(
+            'chat-messages',
+            { query: 'test' },
+            {
+              isPublicAPI: true,
+              onGetConversationMessages: () => history.promise,
+              onGetSuggestedQuestions,
+              onConversationComplete,
+              onSendSettled,
+            },
+          )
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        let completion: ReturnType<HookCallbacks['onCompleted']>
+        act(() => {
+          callbacks.onData('Streamed answer', true, {
+            messageId: 'answer-1',
+            conversationId: 'conversation-1',
+          })
+          completion = callbacks.onCompleted()
+        })
+
+        await act(async () => {
+          const error = new Response(null, { status: transition === 'denied' ? 403 : 503 })
+          if (transition === 'denied')
+            handleAppAccessError(403, { code: 'ip_access_denied' }, scope, error)
+          if (transition === 'navigation') window.history.replaceState({}, '', '/chat/another-app')
+          if (transition === 'unmount') unmount()
+          history.reject(error)
+          await expect(completion).resolves.toBeUndefined()
+        })
+
+        expect(result.current.chatList.at(-1)?.content).toBe('Streamed answer')
+        expect(onGetSuggestedQuestions).not.toHaveBeenCalled()
+        expect(onConversationComplete).not.toHaveBeenCalled()
+        expect(onSendSettled).not.toHaveBeenCalled()
+        expect(toast.error).not.toHaveBeenCalled()
+      },
+    )
+
+    it.each(['resolve', 'reject'] as const)(
+      'should ignore a suggested question %s after navigation',
+      async (outcome) => {
+        window.history.replaceState({}, '', '/agent/suggestions-test')
+        const suggestions = createDeferred<unknown>()
+        const onSendSettled = vi.fn()
+        const { result } = renderHookWithConsoleQuery(() =>
+          useChat({
+            suggested_questions_after_answer: { enabled: true },
+          } as ChatConfig),
+        )
+        act(() => {
+          result.current.handleSend(
+            'chat-messages',
+            { query: 'test' },
+            {
+              isPublicAPI: true,
+              onGetSuggestedQuestions: () => suggestions.promise,
+              onSendSettled,
+            },
+          )
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        let completion: ReturnType<HookCallbacks['onCompleted']>
+        act(() => {
+          callbacks.onData('Streamed answer', true, {
+            messageId: 'answer-1',
+            conversationId: 'conversation-1',
+          })
+          completion = callbacks.onCompleted()
+        })
+        await act(async () => {
+          window.history.replaceState({}, '', '/agent/another-app')
+          if (outcome === 'resolve') suggestions.resolve({ data: ['Late suggestion'] })
+          else suggestions.reject(new Error('Late failure'))
+          await completion
+        })
+
+        expect(result.current.suggestedQuestions).toEqual([])
+        expect(onSendSettled).not.toHaveBeenCalled()
+      },
+    )
 
     it.each([
       ['UTC', '10:00 AM'],
@@ -1286,6 +1583,65 @@ describe('useChat', () => {
   })
 
   describe('handleResume', () => {
+    it('merges parallel tool results into their thoughts when resuming directly', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-1',
+              content: '',
+              isAnswer: true,
+              workflow_run_id: 'wr-1',
+              agent_thoughts: [],
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+      const { renderHookWithConsoleQuery } = await import('@/test/console/query-data')
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
+      )
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+      })
+
+      const toolThought = (id: string, tool: string, position: number, observation: string) => ({
+        id,
+        message_id: 'm-1',
+        conversation_id: 'c-1',
+        position,
+        thought: '',
+        tool,
+        tool_input: '{}',
+        observation,
+        message_files: [],
+      })
+
+      act(() => {
+        callbacks.onThought(toolThought('th-a', 'tool_a', 1, ''))
+        callbacks.onThought(toolThought('th-b', 'tool_b', 2, ''))
+        callbacks.onThought(toolThought('th-a', 'tool_a', 1, 'result a'))
+        callbacks.onThought(toolThought('th-b', 'tool_b', 2, 'result b'))
+      })
+
+      const thoughts = result.current.chatList[1]!.agent_thoughts!
+      expect(thoughts).toHaveLength(2)
+      expect(thoughts.map(({ id, observation }) => [id, observation])).toEqual([
+        ['th-a', 'result a'],
+        ['th-b', 'result b'],
+      ])
+    })
+
     it('should call sseGet to resume a node and handle complex tracing', async () => {
       let callbacks: HookCallbacks
       const onNotifyError = vi.fn()
@@ -1372,10 +1728,14 @@ describe('useChat', () => {
         callbacks.onNodeFinished({ data: { node_id: 'n-1', id: 'n-1', status: 'succeeded' } })
 
         // human input
-        callbacks.onHumanInputRequired({ data: { node_id: 'h-1' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'h-1', updated: true } })
-        callbacks.onHumanInputFormTimeout({ data: { node_id: 'h-1', expiration_time: 123 } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'h-1' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-h-1', node_id: 'h-1' } })
+        callbacks.onHumanInputRequired({
+          data: { form_id: 'form-h-1', node_id: 'h-1', updated: true },
+        })
+        callbacks.onHumanInputFormTimeout({
+          data: { form_id: 'form-h-1', node_id: 'h-1', expiration_time: 123 },
+        })
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-h-1', node_id: 'h-1' } })
 
         callbacks.onTTSChunk('m-1', 'audio1')
         callbacks.onTTSEnd('m-1', 'audio1')
@@ -1770,10 +2130,10 @@ describe('useChat', () => {
       act(() => {
         callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         callbacks.onNodeStarted({ data: { node_id: 'node-1', id: 'node-1' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'node-1' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'node-2' } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'node-1' } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'node-3' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-node-1', node_id: 'node-1' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-node-2', node_id: 'node-2' } })
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-node-1', node_id: 'node-1' } })
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-node-3', node_id: 'node-3' } })
       })
 
       const lastResponse = result.current.chatList[1]
@@ -1926,6 +2286,71 @@ describe('useChat', () => {
   })
 
   describe('handleStop and handleRestart', () => {
+    it.each(['rejection', 'throw'] as const)(
+      'should finish stopping locally after a service %s',
+      async (failure) => {
+        const error = new Error('Stop request failed')
+        const stopChat = vi.fn(() => {
+          if (failure === 'throw') throw error
+          return Promise.reject(error)
+        })
+        const { result, unmount } = renderHookWithConsoleQuery(() =>
+          useChat(undefined, undefined, undefined, stopChat),
+        )
+        act(() => {
+          result.current.handleSend('chat-messages', { query: 'test' }, {})
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        const controller = createAbortControllerMock()
+        await act(async () => {
+          callbacks.onWorkflowStarted({ task_id: 'task-123' })
+          callbacks.getAbortController(controller)
+          result.current.handleStop()
+        })
+
+        expect(result.current.isResponding).toBe(false)
+        expect(controller.abort).toHaveBeenCalledOnce()
+        expect(toast.error).not.toHaveBeenCalled()
+        unmount()
+      },
+    )
+
+    it.each([false, true])(
+      'should consume a rejected stop request when unmounted is %s',
+      async (shouldUnmount) => {
+        window.history.replaceState({}, '', '/agent/stop-test')
+        const scope = captureAppAccessScope()
+        const error = new Response(null, { status: 403 })
+        const stopRequest = createDeferred<void>()
+        const stopChat = vi.fn(() => stopRequest.promise)
+        const { result, unmount } = renderHookWithConsoleQuery(() =>
+          useChat(undefined, undefined, undefined, stopChat),
+        )
+
+        act(() => {
+          result.current.handleSend('chat-messages', { query: 'test' }, { isPublicAPI: true })
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        const controller = createAbortControllerMock()
+        act(() => {
+          callbacks.onWorkflowStarted({ task_id: 'task-123' })
+          callbacks.getAbortController(controller)
+          result.current.handleStop()
+        })
+
+        expect(stopChat).toHaveBeenCalledWith('task-123')
+        expect(result.current.isResponding).toBe(false)
+        expect(controller.abort).toHaveBeenCalledOnce()
+
+        await act(async () => {
+          if (shouldUnmount) unmount()
+          handleAppAccessError(403, { code: 'ip_access_denied' }, scope, error)
+          stopRequest.reject(error)
+        })
+        expect(toast.error).not.toHaveBeenCalled()
+      },
+    )
+
     it('clears messages and suggested questions when restarting', async () => {
       const cb = vi.fn()
       const { result } = renderHookWithConsoleQuery(() =>
@@ -2116,7 +2541,7 @@ describe('useChat', () => {
             content: 'answer 1',
             isAnswer: true,
             workflow_run_id: 'wr-1',
-            humanInputFormDataList: [{ node_id: 'n-1' }],
+            humanInputFormDataList: [{ form_id: 'form-n-1', node_id: 'n-1' }],
             siblingIndex: 0,
             annotation: { id: 'anno-old', authorName: 'user' },
           },
@@ -2929,52 +3354,6 @@ describe('useChat', () => {
       await resumeCallbacks.onCompleted()
     })
     expect(result.current.suggestedQuestions).toHaveLength(0)
-  })
-
-  it('should cover handleResume onHumanInputFormFilled splicing and onHumanInputFormTimeout updating', () => {
-    let resumeCallbacks: HookCallbacks
-    vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
-      resumeCallbacks = options as HookCallbacks
-    })
-
-    const prevChatTree = [
-      {
-        id: 'q',
-        content: 'query',
-        isAnswer: false,
-        children: [
-          {
-            id: 'm-1',
-            content: 'initial',
-            isAnswer: true,
-            siblingIndex: 0,
-            humanInputFormDataList: [{ node_id: 'n-1', expiration_time: 100 }],
-          },
-        ],
-      },
-    ]
-
-    const { result } = renderHookWithConsoleQuery(() =>
-      useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-    )
-    act(() => {
-      result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
-    })
-
-    act(() => {
-      // Hit L535-537: onHumanInputFormTimeout (update)
-      resumeCallbacks.onHumanInputFormTimeout({ data: { node_id: 'n-1', expiration_time: 200 } })
-    })
-    expect(result.current.chatList[1]!.humanInputFormDataList).toEqual([
-      expect.objectContaining({ node_id: 'n-1', expiration_time: 200 }),
-    ])
-    act(() => {
-      resumeCallbacks.onHumanInputFormFilled({ data: { node_id: 'n-1' } })
-    })
-
-    const lastResponse = result.current.chatList[1]
-    expect(lastResponse!.humanInputFormDataList).toHaveLength(0)
-    expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(1)
   })
 
   it('should cover handleAnnotationAdded updating node', async () => {

@@ -858,7 +858,7 @@ class TestWorkflowPauseIntegration:
         assert deleted_pause is None
 
         try:
-            content = storage.load(file_key).decode()
+            storage.load(file_key).decode()
             pytest.fail("File should be deleted from storage after pause deletion")
         except FileNotFoundError:
             # This is expected - file should be deleted from storage

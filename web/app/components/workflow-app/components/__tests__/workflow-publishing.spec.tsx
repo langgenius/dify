@@ -1,7 +1,4 @@
-import type {
-  WorkflowAgentComposerResponse,
-  WorkflowPublishResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
@@ -47,12 +44,7 @@ import WorkflowMain from '../workflow-main'
 const api = vi.hoisted(() => ({
   save: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
   publish:
-    vi.fn<
-      (
-        url: string,
-        options: { body: { marked_name: string; marked_comment: string } },
-      ) => Promise<WorkflowPublishResponse>
-    >(),
+    vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.publish.post>(),
   createTool:
     vi.fn<
       typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.create.post
@@ -72,10 +64,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   usePathname: () => '/app/app-1/workflow',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  post: api.publish,
-}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =
@@ -83,6 +71,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.publish.post': api.publish,
       'apps.byAppId.get': api.app,
       'workspaces.current.toolProvider.workflow.get.get': api.toolDetail,
       'workspaces.current.tools.workflow.get': async () => [],
@@ -332,7 +321,8 @@ it('waits for the current graph to save before publishing and updates the public
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'workflow.common.published' })).toBeDisabled(),
   )
-  expect(api.publish).toHaveBeenCalledExactlyOnceWith('/apps/app-1/workflows/publish', {
+  expect(api.publish).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-1' },
     body: { marked_name: '', marked_comment: '' },
   })
   expect(store.getState()).toMatchObject({

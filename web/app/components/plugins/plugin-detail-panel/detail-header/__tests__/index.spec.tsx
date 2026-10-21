@@ -1,5 +1,5 @@
+import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { ComponentProps, ReactElement } from 'react'
-import type { VersionListResponse } from '@/app/components/plugins/types'
 import type { consoleClient } from '@/service/console'
 import {
   zPluginDecodeResponse,
@@ -9,7 +9,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginSource } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -21,7 +21,8 @@ import DetailHeader from '../index'
 
 const api = vi.hoisted(() => ({
   releases: vi.fn<typeof fetch>(),
-  versions: vi.fn<() => Promise<{ data: VersionListResponse }>>(),
+  uninstall: vi.fn<typeof consoleClient.workspaces.current.plugin.uninstall.post>(),
+  versions: vi.fn<() => Promise<PluginVersionsResponse>>(),
   autoUpgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.autoUpgrade.fetch.get>(),
   upload: vi.fn<typeof consoleClient.workspaces.current.plugin.upload.github.post>(),
   upgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.upgrade.github.post>(),
@@ -36,6 +37,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
+      'workspaces.current.plugin.upgrade.marketplace.post': api.marketplaceUpgrade,
       'workspaces.current.models.modelTypes.byModelType.get': api.models,
       'workspaces.current.modelProviders.summary.get': async () => ({ data: [], plugins: {} }),
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
@@ -54,10 +57,20 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  getMarketplace: api.versions,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+  return {
+    ...actual,
+    marketplaceQuery: createTanstackQueryUtils(
+      {
+        ...actual.marketplaceClient,
+        pluginVersions: api.versions,
+      },
+      { path: ['marketplace'] },
+    ),
+  }
+})
 
 const autoUpgrade = {
   strategy_setting: 'disabled',
@@ -107,7 +120,7 @@ function setup(props: Partial<ComponentProps<typeof DetailHeader>> = {}, enableM
   render(
     <ModalContextProvider>
       <DetailHeader detail={detail} onUpdate={onUpdate} {...props} />
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
     </ModalContextProvider>,
     enableMarketplace,
   )
@@ -120,6 +133,7 @@ beforeEach(() => {
     return Response.json({ releases })
   })
   vi.stubGlobal('fetch', api.releases)
+  api.uninstall.mockReset().mockResolvedValue({ success: true })
   api.upload.mockReset().mockResolvedValue(uploadedPackage)
   api.upgrade.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
   api.marketplaceUpgrade.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
@@ -259,8 +273,8 @@ it.each([
       'marketplace' in options ? options.marketplace : true,
     )
     await user.click(screen.getByRole('button', { name: '1.0.0' }))
-    await user.click(await screen.findByRole('button', { name: /^0\.5\.0/ }))
-    const dialog = await screen.findByRole('dialog', {
+    await user.click(await screen.findByRole('menuitem', { name: /^0\.5\.0/ }))
+    const dialog = await screen.findByRole(warning ? 'alertdialog' : 'dialog', {
       name: warning ? 'plugin.autoUpdate.pluginDowngradeWarning.title' : 'plugin.upgrade.title',
     })
     if (warning)
@@ -295,14 +309,14 @@ it('uses the newly selected target after cancelling a downgrade', async () => {
   })
   const { user } = setup({ detail: { ...detail, source: PluginSource.marketplace } })
   await user.click(screen.getByRole('button', { name: '1.0.0' }))
-  await user.click(await screen.findByRole('button', { name: /^0\.5\.0/ }))
-  const downgrade = await screen.findByRole('dialog', {
+  await user.click(await screen.findByRole('menuitem', { name: /^0\.5\.0/ }))
+  const downgrade = await screen.findByRole('alertdialog', {
     name: 'plugin.autoUpdate.pluginDowngradeWarning.title',
   })
   await user.click(within(downgrade).getByRole('button', { name: 'app.newApp.Cancel' }))
   await waitFor(() => expect(downgrade).not.toBeInTheDocument())
   await user.click(screen.getByRole('button', { name: '1.0.0' }))
-  await user.click(await screen.findByRole('button', { name: /^2\.0\.0/ }))
+  await user.click(await screen.findByRole('menuitem', { name: /^2\.0\.0/ }))
   const upgrade = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
   expect(
     within(upgrade).queryByRole('button', {
@@ -349,4 +363,53 @@ it('opens GitHub repository and package information from the real action menu', 
   expect(
     screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
   ).toBeEnabled()
+})
+
+it('waits for the automatic update policy before exposing version actions', async () => {
+  const policy = createDeferred<Awaited<ReturnType<typeof api.autoUpgrade>>>()
+  api.autoUpgrade.mockReturnValueOnce(policy.promise)
+  const { user } = setup({ detail: { ...detail, source: PluginSource.marketplace } })
+  const trigger = await screen.findByRole('button', { name: '1.0.0' })
+  await user.click(trigger)
+  await waitFor(() => expect(api.versions).toHaveBeenCalledOnce())
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  await act(async () =>
+    policy.resolve({
+      category: 'model',
+      auto_upgrade: {
+        ...autoUpgrade,
+        include_plugins: [],
+        exclude_plugins: [],
+        strategy_setting: 'latest',
+      },
+    }),
+  )
+  await user.click(await screen.findByRole('menuitem', { name: /^0\.5\.0/ }))
+  expect(
+    await screen.findByRole('alertdialog', {
+      name: 'plugin.autoUpdate.pluginDowngradeWarning.title',
+    }),
+  ).toHaveAccessibleDescription('plugin.autoUpdate.pluginDowngradeWarning.description')
+})
+
+it('restores the removal confirmation after a failed request and permits retry', async () => {
+  const removal = createDeferred<Awaited<ReturnType<typeof api.uninstall>>>()
+  api.uninstall.mockReturnValueOnce(removal.promise)
+  const { user, onUpdate } = setup()
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }),
+  )
+  const dialog = await screen.findByRole('alertdialog', { name: 'plugin.action.delete' })
+  const confirm = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
+  await user.click(confirm)
+  await user.keyboard('{Escape}')
+  expect(dialog).toBeInTheDocument()
+  await act(async () => removal.reject(new Error('Removal failed')))
+  await waitFor(() => expect(confirm).not.toHaveAttribute('aria-disabled'))
+  expect(onUpdate).not.toHaveBeenCalled()
+  await user.click(confirm)
+  await waitFor(() => expect(onUpdate).toHaveBeenCalledExactlyOnceWith(true))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(api.uninstall).toHaveBeenCalledTimes(2)
 })

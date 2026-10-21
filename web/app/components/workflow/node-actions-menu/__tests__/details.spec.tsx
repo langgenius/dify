@@ -22,6 +22,8 @@ vi.mock('../../hooks/use-available-blocks', async (importOriginal) => {
   }
 })
 
+// Node replacement is owned by use-nodes-interactions (own suite); this file covers menu and
+// change-block popup focus. Copy/duplicate/delete/run against the real canvas live in index.spec.
 vi.mock('../../hooks/use-nodes-interactions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/use-nodes-interactions')>()
 
@@ -243,25 +245,10 @@ describe('node actions menu details', () => {
     })
   })
 
-  it('should run, copy, duplicate, delete, and expose the help link', async () => {
+  it('links the help menu item to the node documentation', async () => {
     const user = userEvent.setup()
-    const { store } = await renderDropdownContent(user)
+    await renderDropdownContent(user)
 
-    await user.click(screen.getByText('workflow.panel.runThisStep'))
-    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByText('workflow.common.copy'))
-    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByText('workflow.common.duplicate'))
-    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByText('common.operation.delete'))
-
-    expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
-    expect(store.getState().initShowLastRunTab).toBe(true)
-    expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
-    expect(handleNodesCopy).toHaveBeenCalledWith('node-1')
-    expect(handleNodesDuplicate).toHaveBeenCalledWith('node-1')
-    expect(handleNodeDelete).toHaveBeenCalledWith('node-1')
-    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(screen.getByRole('menuitem', { name: 'workflow.panel.helpLink' })).toHaveAttribute(
       'href',
       'https://docs.example.com/node',

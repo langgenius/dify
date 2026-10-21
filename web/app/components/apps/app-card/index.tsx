@@ -13,9 +13,9 @@ import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
-import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import {
   getAppACLCapabilities,
@@ -208,7 +208,7 @@ export const AppCard = memo(
             stepByStepTourActionMenuOpen={stepByStepTourActionMenuOpen}
             stepByStepTourActionMenuHighlightPart={stepByStepTourActionMenuHighlightPart}
           >
-            <Link
+            <StudioListLink
               href={appHref}
               aria-labelledby={appNameId}
               aria-describedby={app.description ? appDescriptionId : undefined}
@@ -217,7 +217,7 @@ export const AppCard = memo(
               className={appCardClassName}
             >
               {appCardContent}
-            </Link>
+            </StudioListLink>
           </AppCardInteractions>
         )}
         <div className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">

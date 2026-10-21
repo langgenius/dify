@@ -35,9 +35,9 @@ const CustomPage = () => {
       {showBillingTip && (
         <div className="mb-1 flex justify-between rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs">
           <div className="space-y-1 text-text-primary-on-surface">
-            <div className="title-xl-semi-bold">
+            <h4 className="title-xl-semi-bold">
               {t(($) => $['upgradeTip.title'], { ns: 'custom' })}
-            </div>
+            </h4>
             <div className="system-sm-regular">
               {t(($) => $['upgradeTip.des'], { ns: 'custom' })}
             </div>
@@ -53,7 +53,7 @@ const CustomPage = () => {
       )}
       <CustomWebAppBrand />
       {showContact && (
-        <div className="absolute bottom-0 h-12.5 text-xs leading-12.5 text-text-quaternary">
+        <div className="mt-6 pb-4 text-xs leading-5 wrap-anywhere text-text-quaternary">
           {t(($) => $['customize.prefix'], { ns: 'custom' })}
           <a
             className="text-text-accent"

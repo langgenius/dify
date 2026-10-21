@@ -10,7 +10,7 @@ import {
 import { FeaturesProvider } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
@@ -133,8 +133,8 @@ function setup({
               onOpenLog={onOpenLog}
               checkCanSend={checkCanSend}
             />
-            <AppToastHost />
-            <AppToastHost manager={appConfigurationToastManager} />
+            <AppToaster />
+            <AppToaster manager={appConfigurationToastManager} />
           </EventEmitterContextProvider>
         </FeaturesProvider>
       </ConfigContext.Provider>

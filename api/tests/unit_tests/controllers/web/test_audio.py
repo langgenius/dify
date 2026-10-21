@@ -8,6 +8,7 @@ from io import BytesIO
 import pytest
 from flask import Flask, Response
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import InternalServerError
 
 from controllers.web.audio import AudioApi, TextApi, TextToAudioPayload
 from controllers.web.error import (
@@ -132,6 +133,7 @@ class TestAudioApi:
             (ProviderTokenNotInitError(description="no token"), ProviderNotInitializeError),
             (QuotaExceededError(), ProviderQuotaExceededError),
             (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),
+            (RuntimeError("internal provider failure"), InternalServerError),
         ],
     )
     def test_provider_failure_mapping(
@@ -241,8 +243,22 @@ class TestTextApi:
         if owner != "current":
             assert audio_runtime.resolutions == []
 
-    def test_invoke_error_mapped(self, app: Flask, web_app: App, audio_runtime: AudioRuntimeObservations) -> None:
-        audio_runtime.lookup_error = InvokeError(description="invoke failed")
+    @pytest.mark.parametrize(
+        ("provider_error", "expected_error"),
+        [
+            (InvokeError(description="invoke failed"), CompletionRequestError),
+            (RuntimeError("internal provider failure"), InternalServerError),
+        ],
+    )
+    def test_provider_failure_mapping(
+        self,
+        provider_error: Exception,
+        expected_error: type[Exception],
+        app: Flask,
+        web_app: App,
+        audio_runtime: AudioRuntimeObservations,
+    ) -> None:
+        audio_runtime.lookup_error = provider_error
         with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
-            with pytest.raises(CompletionRequestError):
+            with pytest.raises(expected_error):
                 TextApi().post(web_app, _end_user())

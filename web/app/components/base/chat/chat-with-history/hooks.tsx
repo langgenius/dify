@@ -78,7 +78,7 @@ function getFormattedChatList(messages: any[]) {
     const humanInputFormDataList: HumanInputFormData[] = []
     const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
     let workflowRunId = ''
-    item.extra_contents?.forEach((content: ExtraContent) => {
+    item.extra_contents?.forEach((content: ExtraContent, contentIndex: number) => {
       if (content.type !== 'human_input') return
 
       const formDefinition = 'form_definition' in content ? content.form_definition : undefined
@@ -90,16 +90,17 @@ function getFormattedChatList(messages: any[]) {
       }
 
       if (!('form_submission_data' in content) || !content.form_submission_data) return
-      const currentFormIndex = humanInputFormDataList.findIndex(
-        (item) => item.node_id === content.form_submission_data.node_id,
-      )
-      const requiredFormData =
-        formDefinition ||
-        (currentFormIndex > -1 ? humanInputFormDataList[currentFormIndex] : undefined)
-      if (currentFormIndex > -1) humanInputFormDataList.splice(currentFormIndex, 1)
+      // Legacy submissions without a definition expose no form ID, so give their
+      // cards a history-only identity.
+      const formId =
+        formDefinition?.form_id ??
+        `${content.workflow_run_id ?? item.id}:${content.form_submission_data.node_id}:${contentIndex}`
       workflowRunId = content.workflow_run_id || workflowRunId
       humanInputFilledFormDataList.push(
-        enrichSubmittedHumanInputFormData(content.form_submission_data, requiredFormData),
+        enrichSubmittedHumanInputFormData(
+          { ...content.form_submission_data, form_id: formId },
+          formDefinition,
+        ),
       )
     })
     newChatList.push({
@@ -600,7 +601,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     async (messageId, feedback) => {
       await updateFeedback(
         {
-          url: `/messages/${messageId}/feedbacks`,
+          messageId,
           body: { rating: feedback.rating, content: feedback.content },
         },
         appSourceType,

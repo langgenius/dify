@@ -1,36 +1,25 @@
-import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { UserProfileWithMeta } from './client'
 import { queryOptions } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/console'
-import {
-  getServerConsoleRequestHeaders,
-  resolveServerConsoleApiUrl,
-} from '@/service/console/server'
-import { httpErrorFromResponse } from '@/service/http-error'
-
-const ACCOUNT_PROFILE_PATH = '/account/profile'
+import { consoleClient, consoleQuery } from '@/service/console'
+import '@/service/console/server'
 
 export const serverUserProfileQueryOptions = () =>
   queryOptions<UserProfileWithMeta>({
     queryKey: consoleQuery.account.profile.get.queryKey(),
     queryFn: async () => {
-      const profileUrl = resolveServerConsoleApiUrl(ACCOUNT_PROFILE_PATH)
-      if (!profileUrl) throw new Error('Server account profile URL is not configured')
-
-      const response = await fetch(profileUrl, {
-        method: 'GET',
-        headers: await getServerConsoleRequestHeaders(),
-        cache: 'no-store',
+      let responseHeaders: Headers | undefined
+      const profile = await consoleClient.account.profile.get(undefined, {
+        context: {
+          onResponseHeaders: (headers) => {
+            responseHeaders = headers
+          },
+        },
       })
-
-      if (!response.ok) throw await httpErrorFromResponse(response)
-
-      const profile: GetAccountProfileResponse = await response.clone().json()
       return {
         profile,
         meta: {
-          currentVersion: response.headers.get('x-version'),
-          currentEnv: response.headers.get('x-env'),
+          currentVersion: responseHeaders?.get('x-version') ?? null,
+          currentEnv: responseHeaders?.get('x-env') ?? null,
         },
       }
     },

@@ -10,7 +10,6 @@ Covers:
   - generate_single_loop                (ADVANCED_CHAT / WORKFLOW / invalid mode)
   - generate_more_like_this
   - _get_workflow                       (debugger / non-debugger / specific id / invalid format / not found)
-  - get_response_generator              (ended / non-ended workflow run)
 """
 
 import json
@@ -27,11 +26,10 @@ from sqlalchemy.orm import Session
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import DeploymentEdition, QuotaType
-from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
-from models.enums import AppStatus, CreatorUserRole
+from models.enums import AppStatus
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models.workflow import Workflow, WorkflowType
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError,
@@ -128,22 +126,6 @@ def _make_workflow(
         environment_variables=[],
         conversation_variables=[],
     )
-
-
-def _make_workflow_run(*, run_id: str, ended: bool) -> WorkflowRun:
-    run = WorkflowRun(
-        tenant_id="tenant-id",
-        app_id="app-id",
-        workflow_id="workflow-id",
-        type=WorkflowType.WORKFLOW,
-        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
-        version="published",
-        status=WorkflowExecutionStatus.SUCCEEDED if ended else WorkflowExecutionStatus.RUNNING,
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="user-id",
-    )
-    run.id = run_id
-    return run
 
 
 @contextmanager
@@ -477,15 +459,12 @@ class TestGenerate(_RealSessionTest):
             return_value=MagicMock(workflow_run_id="wfr-1", model_dump_json=MagicMock(return_value="{}")),
         )
         delay_spy = mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
-        gen_instance = MagicMock()
-        gen_instance.retrieve_events.return_value = iter([])
-        gen_instance.convert_to_event_stream.side_effect = lambda x: x
-        mocker.patch(
-            "services.app_generate_service.AdvancedChatAppGenerator",
-            return_value=gen_instance,
+        retrieve_spy = mocker.patch(
+            "services.app_generate_service.AdvancedChatAppGenerator.retrieve_events",
+            return_value=iter([]),
         )
 
-        result = AppGenerateService.generate(
+        AppGenerateService.generate(
             app_model=_make_app(AppMode.ADVANCED_CHAT),
             user=_make_user(),
             args={"workflow_id": None, "query": "hi", "inputs": {}},
@@ -494,10 +473,10 @@ class TestGenerate(_RealSessionTest):
             session=self.session,
         )
         # In streaming mode it should go through retrieve_events, not generate
-        gen_instance.retrieve_events.assert_called_once()
+        retrieve_spy.assert_called_once()
         # Dispatch is gated on subscribe; simulate the SSE layer entering the
         # subscription, which is what actually invokes on_subscribe.
-        on_subscribe = gen_instance.retrieve_events.call_args.kwargs["on_subscribe"]
+        on_subscribe = retrieve_spy.call_args.kwargs["on_subscribe"]
         on_subscribe()
         delay_spy.assert_called_once()
 
@@ -625,7 +604,7 @@ class TestGenerate(_RealSessionTest):
             side_effect=lambda x: x,
         )
 
-        result = AppGenerateService.generate(
+        AppGenerateService.generate(
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
@@ -938,7 +917,7 @@ class TestGenerateSingleIteration(_RealSessionTest):
     def test_advanced_chat_mode(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
-        gen_spy = mocker.patch(
+        mocker.patch(
             "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
         )
@@ -1073,40 +1052,3 @@ class TestGenerateMoreLikeThis(_RealSessionTest):
         gen_spy.assert_called_once()
         assert gen_spy.call_args.kwargs["session"] is session
         assert gen_spy.call_args.kwargs["stream"] is True
-
-
-# ---------------------------------------------------------------------------
-# get_response_generator
-# ---------------------------------------------------------------------------
-class TestGetResponseGenerator:
-    def test_non_ended_workflow_run(self, mocker: MockerFixture):
-        app = _make_app(AppMode.ADVANCED_CHAT)
-        workflow_run = _make_workflow_run(run_id="run-1", ended=False)
-
-        gen_instance = MagicMock()
-        gen_instance.retrieve_events.return_value = iter([{"event": "started"}])
-        gen_instance.convert_to_event_stream.side_effect = lambda x: x
-        mocker.patch(
-            "services.app_generate_service.AdvancedChatAppGenerator",
-            return_value=gen_instance,
-        )
-
-        result = AppGenerateService.get_response_generator(app_model=app, workflow_run=workflow_run)
-        gen_instance.retrieve_events.assert_called_once()
-
-    def test_ended_workflow_run_still_returns_generator(self, mocker: MockerFixture):
-        """Even when the run is ended, the current code still returns a generator (TODO branch)."""
-        app = _make_app(AppMode.WORKFLOW)
-        workflow_run = _make_workflow_run(run_id="run-2", ended=True)
-
-        gen_instance = MagicMock()
-        gen_instance.retrieve_events.return_value = iter([])
-        gen_instance.convert_to_event_stream.side_effect = lambda x: x
-        mocker.patch(
-            "services.app_generate_service.AdvancedChatAppGenerator",
-            return_value=gen_instance,
-        )
-
-        result = AppGenerateService.get_response_generator(app_model=app, workflow_run=workflow_run)
-        # current impl falls through the TODO and still creates a generator
-        gen_instance.retrieve_events.assert_called_once()

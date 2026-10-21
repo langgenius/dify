@@ -17,7 +17,7 @@ const navigationMocks = vi.hoisted(() => ({
 }))
 
 const serviceBaseMocks = vi.hoisted(() => ({
-  get: vi.fn(),
+  request: vi.fn(),
 }))
 
 type ScriptProps = {
@@ -69,17 +69,21 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/base', () => serviceBaseMocks)
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    emailCodeLogin: {
-      validity: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...original,
+    consoleClient: {
+      account: original.consoleClient.account,
+      emailCodeLogin: {
+        validity: {
+          post: vi.fn(),
+        },
         post: vi.fn(),
       },
-      post: vi.fn(),
     },
-  },
-}))
+  }
+})
 
 vi.mock('@/utils/timezone', () => ({
   getBrowserTimezone: () => 'Asia/Singapore',
@@ -136,7 +140,7 @@ describe('CheckCode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.setItem(COUNT_DOWN_KEY, '0')
-    serviceBaseMocks.get.mockReset()
+    serviceBaseMocks.request.mockReset()
     vi.mocked(consoleClient.emailCodeLogin.validity.post)
       .mockReset()
       .mockResolvedValue({ result: 'success' })
@@ -513,7 +517,7 @@ describe('CheckCode', () => {
       const profileResponse = new Promise<Response>((resolve) => {
         resolveProfileResponse = resolve
       })
-      serviceBaseMocks.get
+      serviceBaseMocks.request
         .mockRejectedValueOnce(createHttpError(new Response(null, { status: 401 })))
         .mockReturnValueOnce(profileResponse)
       await queryClient.query(profileQueryOptions).catch(noop)
@@ -529,7 +533,7 @@ describe('CheckCode', () => {
       await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
 
       await waitFor(() => {
-        expect(serviceBaseMocks.get).toHaveBeenCalledTimes(2)
+        expect(serviceBaseMocks.request).toHaveBeenCalledTimes(2)
       })
       expect(queryClient.getQueryState(profileQueryKey)).toMatchObject({
         fetchStatus: 'fetching',
@@ -562,7 +566,7 @@ describe('CheckCode', () => {
         email: 'hanxujiang%2B4%40dify.ai',
         token: 'email-login-token',
       })
-      serviceBaseMocks.get.mockResolvedValue(
+      serviceBaseMocks.request.mockResolvedValue(
         new Response(JSON.stringify(accountProfile), {
           headers: {
             'content-type': 'application/json',

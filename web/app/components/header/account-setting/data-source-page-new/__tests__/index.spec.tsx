@@ -12,7 +12,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -53,6 +53,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
       'auth.plugin.datasource.list.get': api.sources,
       'workspaces.current.plugin.readme.get': api.readme,
       'workspaces.current.plugin.byCategory.list.get': api.installed,
@@ -60,7 +61,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',
@@ -132,7 +132,7 @@ function setup(
       <NuqsTestingAdapter>
         <DataSourcePage {...props} />
         <ReadmePanel />
-        <AppToastHost />
+        <AppToaster />
       </NuqsTestingAdapter>
     </ThemeProvider>,
     {

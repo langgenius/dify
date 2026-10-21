@@ -9,7 +9,7 @@ import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import DatasetsDetailProvider from '@/app/components/workflow/datasets-detail-store/provider'
 import { useStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
@@ -25,12 +25,12 @@ const api = vi.hoisted(() => ({
   history: vi.fn<(url: string, options?: unknown) => Promise<FetchWorkflowDraftPageResponse>>(),
   update:
     vi.fn<
-      (
-        url: string,
-        options: { body: { marked_name: string; marked_comment: string } },
-      ) => Promise<ReturnType<typeof createWorkflowResponseFixture>>
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.byWorkflowId.patch
     >(),
-  remove: vi.fn<(url: string) => Promise<void>>(),
+  remove:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.byWorkflowId.delete
+    >(),
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -40,8 +40,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   get: api.history,
-  patch: api.update,
-  del: api.remove,
 }))
 vi.mock('@/service/log', () => ({
   fetchRunDetail: api.run,
@@ -54,6 +52,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.byWorkflowId.patch': api.update,
+      'apps.byAppId.workflows.byWorkflowId.delete': api.remove,
       'workspaces.current.agentProviders.get': async () => [],
       'apps.byAppId.workflows.draft.environmentVariables.get': async () => ({ items: [] }),
     }),
@@ -126,7 +126,7 @@ function setup(
           <DatasetsDetailProvider nodes={nodes}>
             <OpenPanels />
             <WorkflowPanel />
-            <AppToastHost timeout={0} />
+            <AppToaster timeout={0} />
           </DatasetsDetailProvider>
         </EventEmitterContextProvider>
       </FeaturesProvider>
@@ -168,10 +168,17 @@ beforeEach(() => {
     if (url !== '/apps/app-123/workflows') throw new Error(`Unexpected GET: ${url}`)
     return { items: versions, page: 1, limit: 10, total: versions.length, has_more: false }
   })
-  api.update.mockReset().mockImplementation(async (_url, { body }) => {
-    const updated = version(body)
+  api.update.mockReset().mockImplementation(async ({ body }) => {
+    const updated = version({
+      marked_name: body.marked_name ?? '',
+      marked_comment: body.marked_comment ?? '',
+    })
     versions = [updated]
-    return createWorkflowResponseFixture({ ...body, id: updated.id })
+    return createWorkflowResponseFixture({
+      marked_name: body.marked_name ?? '',
+      marked_comment: body.marked_comment ?? '',
+      id: updated.id,
+    })
   })
   api.remove.mockReset().mockImplementation(async () => {
     versions = []
@@ -197,9 +204,19 @@ it('loads this app’s version history and protects the published version from d
 
 it('edits and deletes an older version through this app’s real history actions', async () => {
   versions = [version({ id: 'old-release' })]
-  api.update.mockImplementation(async (_url, { body }) => {
-    versions = [version({ ...body, id: 'old-release' })]
-    return createWorkflowResponseFixture({ ...body, id: 'old-release' })
+  api.update.mockImplementation(async ({ body }) => {
+    versions = [
+      version({
+        marked_name: body.marked_name ?? '',
+        marked_comment: body.marked_comment ?? '',
+        id: 'old-release',
+      }),
+    ]
+    return createWorkflowResponseFixture({
+      marked_name: body.marked_name ?? '',
+      marked_comment: body.marked_comment ?? '',
+      id: 'old-release',
+    })
   })
   const { user } = setup({ showWorkflowVersionHistoryPanel: true })
   await screen.findByText('First release')
@@ -223,7 +240,8 @@ it('edits and deletes an older version through this app’s real history actions
   )
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
   expect(await screen.findByText('Renamed release')).toBeInTheDocument()
-  expect(api.update).toHaveBeenCalledExactlyOnceWith('/apps/app-123/workflows/old-release', {
+  expect(api.update).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-123', workflow_id: 'old-release' },
     body: { marked_name: 'Renamed release', marked_comment: 'Updated notes' },
   })
   await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
@@ -231,7 +249,9 @@ it('edits and deletes an older version through this app’s real history actions
   const confirm = await screen.findByRole('alertdialog')
   await user.click(within(confirm).getByRole('button', { name: 'common.operation.delete' }))
   await waitFor(() =>
-    expect(api.remove).toHaveBeenCalledExactlyOnceWith('/apps/app-123/workflows/old-release'),
+    expect(api.remove).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-123', workflow_id: 'old-release' },
+    }),
   )
   await waitFor(() => expect(screen.queryByText('Renamed release')).not.toBeInTheDocument())
 })

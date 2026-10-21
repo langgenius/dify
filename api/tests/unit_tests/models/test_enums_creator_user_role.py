@@ -15,5 +15,5 @@ def test_creator_user_role_missing_maps_hyphen_to_enum() -> None:
 
 
 def test_creator_user_role_missing_raises_for_unknown() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="'unknown' is not a valid CreatorUserRole"):
         CreatorUserRole("unknown")

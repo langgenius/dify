@@ -66,7 +66,7 @@ export function AppAvailabilityDetails({ app }: Props) {
           <ScrollAreaViewport
             role="region"
             aria-label={t(($) => $['studio.availability.details'], { name: app.name })}
-            className="max-h-60 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="max-h-60"
           >
             <ScrollAreaContent>
               <ul className="space-y-2">
