@@ -500,7 +500,8 @@ class ProviderConfiguration(BaseModel):
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
-            provider_names.append(model_provider_id.provider_name)
+            alias = model_provider_id.provider_name if "/" in self.provider.provider else str(model_provider_id)
+            provider_names.append(alias)
         return provider_names
 
     def _invalidate_provider_configuration_cache(
@@ -866,19 +867,18 @@ class ProviderConfiguration(BaseModel):
         """
         # get provider model
 
-        model_provider_id = ModelProviderID(self.provider.provider)
-        provider_names = [self.provider.provider]
-        if model_provider_id.is_langgenius():
-            provider_names.append(model_provider_id.provider_name)
-
         stmt = select(ProviderModel).where(
             ProviderModel.tenant_id == self.tenant_id,
-            ProviderModel.provider_name.in_(provider_names),
+            ProviderModel.provider_name.in_(self._get_provider_names()),
             ProviderModel.model_name == model,
             ProviderModel.model_type.in_(_model_type_db_literals(model_type)),
         )
 
-        return session.execute(stmt).scalar_one_or_none()
+        provider_model_records = session.execute(stmt).scalars().all()
+        return next(
+            (record for record in provider_model_records if record.provider_name == self.provider.provider),
+            provider_model_records[0] if provider_model_records else None,
+        )
 
     def _get_specific_custom_model_credential(
         self, model_type: ModelType, model: str, credential_id: str
@@ -1372,7 +1372,14 @@ class ProviderConfiguration(BaseModel):
 
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
             if not provider_model_record:
-                raise ValueError("The custom model record not found.")
+                provider_model_record = ProviderModel(
+                    tenant_id=self.tenant_id,
+                    provider_name=self.provider.provider,
+                    model_name=model,
+                    model_type=model_type,
+                    is_valid=True,
+                    credential_id=credential_record.id,
+                )
 
             provider_model_record.credential_id = credential_record.id
             provider_model_record.updated_at = naive_utc_now()
@@ -1396,25 +1403,80 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         provider_models_changed = False
+        provider_model_credentials_changed = False
+        provider_load_balancing_configs_changed = False
+        model_cache_identity_ids: list[str] = []
+        load_balancing_cache_identity_ids: list[str] = []
         with Session(db.engine) as session:
-            # get provider model
-            provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
-
-            # delete provider model
-            if provider_model_record:
-                session.delete(provider_model_record)
-                session.commit()
-                provider_models_changed = True
-
-                provider_model_credentials_cache = ProviderCredentialsCache(
-                    tenant_id=self.tenant_id,
-                    identity_id=provider_model_record.id,
-                    cache_type=ProviderCredentialsCacheType.MODEL,
+            provider_models = (
+                session.execute(
+                    select(ProviderModel).where(
+                        ProviderModel.tenant_id == self.tenant_id,
+                        ProviderModel.provider_name.in_(self._get_provider_names()),
+                        ProviderModel.model_name == model,
+                        ProviderModel.model_type.in_(_model_type_db_literals(model_type)),
+                    )
                 )
+                .scalars()
+                .all()
+            )
+            provider_model_credentials = (
+                session.execute(
+                    select(ProviderModelCredential).where(
+                        ProviderModelCredential.tenant_id == self.tenant_id,
+                        ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                        ProviderModelCredential.model_name == model,
+                        ProviderModelCredential.model_type.in_(_model_type_db_literals(model_type)),
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            load_balancing_configs = (
+                session.execute(
+                    select(LoadBalancingModelConfig).where(
+                        LoadBalancingModelConfig.tenant_id == self.tenant_id,
+                        LoadBalancingModelConfig.provider_name.in_(self._get_provider_names()),
+                        LoadBalancingModelConfig.model_name == model,
+                        LoadBalancingModelConfig.model_type.in_(_model_type_db_literals(model_type)),
+                        LoadBalancingModelConfig.credential_source_type == CredentialSourceType.CUSTOM_MODEL,
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
-                provider_model_credentials_cache.delete()
-        if provider_models_changed:
-            self._invalidate_provider_configuration_cache(provider_models=True)
+            provider_models_changed = bool(provider_models)
+            provider_model_credentials_changed = bool(provider_model_credentials)
+            provider_load_balancing_configs_changed = bool(load_balancing_configs)
+            model_cache_identity_ids = [provider_model.id for provider_model in provider_models]
+            load_balancing_cache_identity_ids = [config.id for config in load_balancing_configs]
+
+            for record in [*provider_models, *provider_model_credentials, *load_balancing_configs]:
+                session.delete(record)
+
+            if provider_models_changed or provider_model_credentials_changed or provider_load_balancing_configs_changed:
+                session.commit()
+
+        for model_id in model_cache_identity_ids:
+            ProviderCredentialsCache(
+                tenant_id=self.tenant_id,
+                identity_id=model_id,
+                cache_type=ProviderCredentialsCacheType.MODEL,
+            ).delete()
+        for config_id in load_balancing_cache_identity_ids:
+            ProviderCredentialsCache(
+                tenant_id=self.tenant_id,
+                identity_id=config_id,
+                cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
+            ).delete()
+
+        if provider_models_changed or provider_model_credentials_changed or provider_load_balancing_configs_changed:
+            self._invalidate_provider_configuration_cache(
+                provider_models=provider_models_changed,
+                provider_model_credentials=provider_model_credentials_changed,
+                provider_load_balancing_configs=provider_load_balancing_configs_changed,
+            )
 
     def _get_provider_model_setting(
         self, model_type: ModelType, model: str, session: Session

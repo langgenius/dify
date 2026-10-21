@@ -267,10 +267,18 @@ def test_get_system_configuration_status_returns_none_when_current_quota_missing
 
 def test_get_provider_names_supports_legacy_and_full_plugin_id() -> None:
     configuration = _build_provider_configuration()
+    assert configuration._get_provider_names() == ["openai", "langgenius/openai/openai"]
+
     configuration.provider.provider = "langgenius/openai/openai"
 
     provider_names = configuration._get_provider_names()
     assert provider_names == ["langgenius/openai/openai", "openai"]
+
+
+def test_get_provider_names_does_not_add_alias_for_other_plugin_organizations() -> None:
+    configuration = _build_provider_configuration(provider_name="example/openai/openai")
+
+    assert configuration._get_provider_names() == ["example/openai/openai"]
 
 
 def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
@@ -808,10 +816,12 @@ def _load_balancing_config(
     credential_id: str,
     source: CredentialSourceType,
     name: str = "Old",
+    tenant_id: str = "tenant-1",
+    provider_name: str = "openai",
 ) -> LoadBalancingModelConfig:
     record = LoadBalancingModelConfig(
-        tenant_id="tenant-1",
-        provider_name="openai",
+        tenant_id=tenant_id,
+        provider_name=provider_name,
         model_name="gpt-4o",
         model_type=ModelType.LLM,
         name=name,
@@ -1209,6 +1219,79 @@ def test_create_update_and_delete_custom_model_credential(sqlite_provider_sessio
     )
 
 
+def test_delete_custom_model_removes_credentials_and_load_balancing_configs(
+    sqlite_provider_session: Session,
+) -> None:
+    configuration = _build_provider_configuration()
+    credential = _model_credential(sqlite_provider_session)
+    aliased_credential = _model_credential(
+        sqlite_provider_session,
+        provider_name="langgenius/openai/openai",
+    )
+    other_tenant_credential = _model_credential(sqlite_provider_session, tenant_id="other-tenant")
+    model = _provider_model_record(sqlite_provider_session, credential_id=credential.id)
+    aliased_model = _provider_model_record(
+        sqlite_provider_session,
+        credential_id=aliased_credential.id,
+        provider_name="langgenius/openai/openai",
+    )
+    lb_config = _load_balancing_config(
+        sqlite_provider_session,
+        credential_id=credential.id,
+        source=CredentialSourceType.CUSTOM_MODEL,
+    )
+    aliased_lb_config = _load_balancing_config(
+        sqlite_provider_session,
+        credential_id=aliased_credential.id,
+        source=CredentialSourceType.CUSTOM_MODEL,
+        provider_name="langgenius/openai/openai",
+    )
+    model_id = model.id
+    aliased_model_id = aliased_model.id
+    credential_id = credential.id
+    aliased_credential_id = aliased_credential.id
+    lb_config_id = lb_config.id
+    aliased_lb_config_id = aliased_lb_config.id
+
+    with _mock_cache_boundaries() as (credentials_cache, configuration_cache):
+        configuration.delete_custom_model(ModelType.LLM, "gpt-4o")
+
+    sqlite_provider_session.expire_all()
+    assert sqlite_provider_session.get(ProviderModel, model_id) is None
+    assert sqlite_provider_session.get(ProviderModel, aliased_model_id) is None
+    assert sqlite_provider_session.get(ProviderModelCredential, credential_id) is None
+    assert sqlite_provider_session.get(ProviderModelCredential, aliased_credential_id) is None
+    assert sqlite_provider_session.get(ProviderModelCredential, other_tenant_credential.id) is not None
+    assert sqlite_provider_session.get(LoadBalancingModelConfig, lb_config_id) is None
+    assert sqlite_provider_session.get(LoadBalancingModelConfig, aliased_lb_config_id) is None
+    assert {call.kwargs["identity_id"] for call in credentials_cache.call_args_list} == {
+        model_id,
+        aliased_model_id,
+        lb_config_id,
+        aliased_lb_config_id,
+    }
+    assert {call.kwargs["cache_type"] for call in credentials_cache.call_args_list} == {
+        ProviderCredentialsCacheType.MODEL,
+        ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
+    }
+    assert credentials_cache.return_value.delete.call_count == 4
+    configuration_cache.assert_called_once_with(
+        provider_models=True,
+        provider_model_credentials=True,
+        provider_load_balancing_configs=True,
+    )
+
+
+def test_delete_missing_custom_model_does_not_invalidate_caches(sqlite_provider_session: Session) -> None:
+    configuration = _build_provider_configuration()
+
+    with _mock_cache_boundaries() as (credentials_cache, configuration_cache):
+        configuration.delete_custom_model(ModelType.LLM, "missing-model")
+
+    credentials_cache.assert_not_called()
+    configuration_cache.assert_not_called()
+
+
 def test_add_and_switch_custom_model_credential(sqlite_provider_session: Session) -> None:
     configuration = _build_provider_configuration()
     first = _model_credential(sqlite_provider_session, name="First")
@@ -1230,6 +1313,58 @@ def test_add_and_switch_custom_model_credential(sqlite_provider_session: Session
         assert cache_call.kwargs == {"provider_models": True}
     with pytest.raises(ValueError, match="Can't add same credential"):
         configuration.add_model_credential_to_model(ModelType.LLM, "gpt-4o", second.id)
+
+
+def test_switch_custom_model_credential_restores_missing_model(sqlite_provider_session: Session) -> None:
+    configuration = _build_provider_configuration()
+    credential = _model_credential(sqlite_provider_session)
+
+    with _mock_cache_boundaries() as (credentials_cache, configuration_cache):
+        configuration.switch_custom_model_credential(ModelType.LLM, "gpt-4o", credential.id)
+
+    sqlite_provider_session.expire_all()
+    model = sqlite_provider_session.scalar(select(ProviderModel))
+    assert model is not None
+    assert model.model_name == "gpt-4o"
+    assert model.credential_id == credential.id
+    credentials_cache.assert_called_once_with(
+        tenant_id="tenant-1",
+        identity_id=model.id,
+        cache_type=ProviderCredentialsCacheType.MODEL,
+    )
+    credentials_cache.return_value.delete.assert_called_once_with()
+    configuration_cache.assert_called_once_with(provider_models=True)
+
+
+def test_switch_custom_model_credential_handles_legacy_and_full_provider_rows(
+    sqlite_provider_session: Session,
+) -> None:
+    configuration = _build_provider_configuration()
+    credential = _model_credential(sqlite_provider_session)
+    legacy_model = _provider_model_record(sqlite_provider_session)
+    full_id_model = _provider_model_record(
+        sqlite_provider_session,
+        provider_name="langgenius/openai/openai",
+    )
+    legacy_model_id = legacy_model.id
+    full_id_model_id = full_id_model.id
+
+    with _mock_cache_boundaries() as (credentials_cache, configuration_cache):
+        configuration.switch_custom_model_credential(ModelType.LLM, "gpt-4o", credential.id)
+
+    sqlite_provider_session.expire_all()
+    refreshed_legacy_model = sqlite_provider_session.get(ProviderModel, legacy_model_id)
+    refreshed_full_id_model = sqlite_provider_session.get(ProviderModel, full_id_model_id)
+    assert refreshed_legacy_model is not None
+    assert refreshed_legacy_model.credential_id == credential.id
+    assert refreshed_full_id_model is not None
+    assert refreshed_full_id_model.credential_id is None
+    credentials_cache.assert_called_once_with(
+        tenant_id="tenant-1",
+        identity_id=legacy_model_id,
+        cache_type=ProviderCredentialsCacheType.MODEL,
+    )
+    configuration_cache.assert_called_once_with(provider_models=True)
 
 
 def test_model_settings_and_load_balancing_persist(sqlite_provider_session: Session) -> None:

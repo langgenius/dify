@@ -76,6 +76,16 @@ _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY = "provider_configurations:tenant:{ten
 _PROVIDER_CONFIGURATION_CACHE_SOURCE_KEY = "provider_configurations:v2:tenant:{tenant_id}:source:{source}:v:{version}"
 
 
+def _append_unique_records[T](records: list[T], extra_records: Sequence[T]) -> None:
+    """Append alias records without duplicating objects already in the list."""
+    seen_record_ids = {id(record) for record in records}
+    for record in extra_records:
+        record_id = id(record)
+        if record_id not in seen_record_ids:
+            records.append(record)
+            seen_record_ids.add(record_id)
+
+
 class ProviderConfigurationCacheSource(StrEnum):
     PROVIDER_MODELS = "provider_models"
     PREFERRED_MODEL_PROVIDERS = "preferred_model_providers"
@@ -141,6 +151,18 @@ class _ProviderModelCacheEntry:
         row = asdict(self)
         row["model_type"] = self.model_type.value
         return row
+
+
+def _append_unique_provider_models(
+    records: list[_ProviderModelCacheEntry], extra_records: Sequence[_ProviderModelCacheEntry]
+) -> None:
+    """Merge provider aliases without exposing the same model more than once."""
+    seen_models = {(record.model_name, record.model_type) for record in records}
+    for record in extra_records:
+        model_key = (record.model_name, record.model_type)
+        if model_key not in seen_models:
+            records.append(record)
+            seen_models.add(model_key)
 
 
 @dataclass(frozen=True, slots=True)
@@ -721,16 +743,18 @@ class ProviderManager:
             provider_model_records = provider_name_to_provider_model_records_dict.get(provider_entity.provider, [])
             provider_id_entity = ModelProviderID(provider_name)
             if provider_id_entity.is_langgenius():
-                provider_model_records.extend(
-                    provider_name_to_provider_model_records_dict.get(provider_id_entity.provider_name, [])
+                _append_unique_provider_models(
+                    provider_model_records,
+                    provider_name_to_provider_model_records_dict.get(provider_id_entity.provider_name, []),
                 )
             provider_model_credentials = provider_name_to_provider_model_credentials_dict.get(
                 provider_entity.provider, []
             )
             provider_id_entity = ModelProviderID(provider_name)
             if provider_id_entity.is_langgenius():
-                provider_model_credentials.extend(
-                    provider_name_to_provider_model_credentials_dict.get(provider_id_entity.provider_name, [])
+                _append_unique_records(
+                    provider_model_credentials,
+                    provider_name_to_provider_model_credentials_dict.get(provider_id_entity.provider_name, []),
                 )
 
             # Convert to custom configuration
@@ -788,14 +812,16 @@ class ProviderManager:
 
             if provider_id_entity.is_langgenius():
                 if provider_model_settings is not None:
-                    provider_model_settings.extend(
-                        provider_name_to_provider_model_settings_dict.get(provider_id_entity.provider_name, [])
+                    _append_unique_records(
+                        provider_model_settings,
+                        provider_name_to_provider_model_settings_dict.get(provider_id_entity.provider_name, []),
                     )
                 if provider_load_balancing_configs is not None:
-                    provider_load_balancing_configs.extend(
+                    _append_unique_records(
+                        provider_load_balancing_configs,
                         provider_name_to_provider_load_balancing_model_configs_dict.get(
                             provider_id_entity.provider_name, []
-                        )
+                        ),
                     )
 
             # Convert to model settings
