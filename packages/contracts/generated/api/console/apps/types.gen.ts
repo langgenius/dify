@@ -938,6 +938,11 @@ export type WorkflowTriggerResponse = {
   updated_at?: string | null
 }
 
+export type AppTriggerNotFoundError = ErrorResponse & {
+  code: 'app_trigger_not_found'
+  status: 404
+}
+
 export type WorkflowTriggerListResponse = {
   data: Array<WorkflowTriggerResponse>
 }
@@ -1446,6 +1451,11 @@ export type WebhookTriggerResponse = {
   webhook_debug_url: string
   webhook_id: string
   webhook_url: string
+}
+
+export type WebhookTriggerNotFoundError = ErrorResponse & {
+  code: 'webhook_trigger_not_found'
+  status: 404
 }
 
 export type WorkflowUpdatePayload = {
@@ -7150,7 +7160,7 @@ export type PostAppsByAppIdTriggerEnableData = {
 }
 
 export type PostAppsByAppIdTriggerEnableErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: AppNotFoundError | AppTriggerNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -9063,7 +9073,7 @@ export type GetAppsByAppIdWorkflowsTriggersWebhookData = {
 }
 
 export type GetAppsByAppIdWorkflowsTriggersWebhookErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: AppNotFoundError | WebhookTriggerNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -3735,7 +3735,7 @@ Create a new tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowTriggerResponse](#workflowtriggerresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[AppTriggerNotFoundError](#apptriggernotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/triggers
@@ -5257,7 +5257,7 @@ Full value for one declared output of a published run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WebhookTriggerResponse](#webhooktriggerresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WebhookTriggerNotFoundError](#webhooktriggernotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/{workflow_id}
@@ -18896,6 +18896,14 @@ Function Suggested questions after answer disabled.
 | enabled | boolean |  | No |
 | tracing_provider | string |  | No |
 
+#### AppTriggerNotFoundError
+
+Trigger not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppTriggerNotFoundError |  | Trigger not found. |  |
+
 #### AppUnavailableError
 
 App unavailable, please check your app configurations.
@@ -28484,6 +28492,14 @@ The app access service is unavailable. Try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+
+#### WebhookTriggerNotFoundError
+
+Webhook trigger not found for this node.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebhookTriggerNotFoundError |  | Webhook trigger not found for this node. |  |
 
 #### WebhookTriggerQuery
 
