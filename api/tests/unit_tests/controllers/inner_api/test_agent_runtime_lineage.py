@@ -2,7 +2,6 @@
 
 import base64
 import json
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -10,6 +9,10 @@ from flask import Flask
 
 from controllers.inner_api import bp
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.services.dify_builder import native_owner_fixtures as operation_fixtures
+from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import resolved_context
+
+operations_service = operation_fixtures.operations_service
 
 ROUTES = [
     ("POST", "llm/invoke"),
@@ -205,9 +208,8 @@ def test_private_read_failure_never_reaches_model_service(app, native_markers):
 @pytest.mark.parametrize("legacy", [False, True])
 @pytest.mark.parametrize(("owned_tenant", "status"), [("tenant-1", 200), ("foreign", 403)])
 def test_genuine_plugin_and_verified_ordinary_retain_real_knowledge_resource_authorization(
-    app, legacy, owned_tenant, status, nullable_envelope
+    app, legacy, owned_tenant, status, nullable_envelope, sqlite_session, monkeypatch
 ):
-    from contextlib import contextmanager
 
     from tests.unit_tests.controllers.inner_api.test_knowledge_retrieval import _payload
     from tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage import owner
@@ -216,39 +218,34 @@ def test_genuine_plugin_and_verified_ordinary_retain_real_knowledge_resource_aut
     app.extensions["native_agent_endpoint_lineage"] = lineage
     accesses = []
 
-    class SQL:
-        def scalar(self, _query):
-            accesses.append("app")
-            return SimpleNamespace(id="app-1", tenant_id=owned_tenant)
+    from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+    from models.dataset import Dataset
+    from models.model import App
 
-        def scalars(self, _query):
-            accesses.append("datasets")
-            return SimpleNamespace(all=lambda: [SimpleNamespace(id="dataset-1", tenant_id=owned_tenant)])
+    sqlite_session.add_all(
+        [
+            App(
+                id="app-1", tenant_id=owned_tenant, name="Caller", mode="workflow", enable_site=False, enable_api=False
+            ),
+            Dataset(id="dataset-1", tenant_id=owned_tenant, name="Knowledge", created_by="actor"),
+        ]
+    )
+    sqlite_session.commit()
+    scalar = sqlite_session.scalar
+    scalars = sqlite_session.scalars
 
-        def commit(self):
-            pass
+    def read_app(query):
+        accesses.append("app")
+        return scalar(query)
 
-        def rollback(self):
-            pass
+    def read_datasets(query):
+        accesses.append("datasets")
+        return scalars(query)
 
-    @contextmanager
-    def sql():
-        yield SQL()
+    monkeypatch.setattr(sqlite_session, "scalar", read_app)
+    monkeypatch.setattr(sqlite_session, "scalars", read_datasets)
+    monkeypatch.setattr(DatasetRetrieval, "knowledge_retrieval", lambda _self, **_kwargs: [])
 
-    usage = {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0,
-        "prompt_unit_price": "0",
-        "completion_unit_price": "0",
-        "prompt_price_unit": "0",
-        "completion_price_unit": "0",
-        "prompt_price": "0",
-        "completion_price": "0",
-        "total_price": "0",
-        "latency": 0,
-    }
-    rag = SimpleNamespace(knowledge_retrieval=lambda **_kwargs: [], llm_usage=usage)
     route = "/inner/api/knowledge/retrieve" if legacy else "/inner/api/agent/runtime/knowledge/retrieve"
     headers = (
         {"X-Inner-Api-Key": "plugin-key"}
@@ -258,13 +255,7 @@ def test_genuine_plugin_and_verified_ordinary_retain_real_knowledge_resource_aut
             "X-Dify-Agent-Run": encoded(transport),
         }
     )
-    with (
-        patch("core.db.session_factory.session_factory.create_session", sql),
-        patch(
-            "services.knowledge_retrieval_inner_service.DatasetRetrieval",
-            return_value=rag,
-        ),
-    ):
+    with patch("core.db.session_factory.session_factory.create_session", lambda: sqlite_session):
         payload = _payload()
         if nullable_envelope:
             payload["native_dispatch"] = None
@@ -295,7 +286,9 @@ def test_ordinary_private_identity_rejects_native_envelope_before_service(app, p
 
 
 @pytest.mark.parametrize("mode", ["prepare-run", "prepared-config"])
-def test_strict_initial_control_reaches_exact_s1_owner_without_effect_envelope(app, mode):
+def test_strict_initial_control_reaches_exact_s1_owner_without_effect_envelope(
+    app, mode, operations_service, monkeypatch
+):
     from services.dify_builder.native_testing.agent_preparation import (
         AgentPreparationService,
     )
@@ -308,21 +301,17 @@ def test_strict_initial_control_reaches_exact_s1_owner_without_effect_envelope(a
     app.extensions["native_agent_endpoint_lineage"] = lineage
     calls = []
 
-    class Store:
-        def load_prepared_config(self, **_kwargs):
-            calls.append("read-config")
-            return lineage.resolve(
-                principal=principal,
-                selection=transport,
-                boundary="prepared-config",
-                caller={},
-            ).config
+    def load_prepared_config(**_kwargs):
+        calls.append("read-config")
+        return lineage.resolve(principal=principal, selection=transport, boundary="prepared-config", caller={}).config
 
+    store = operations_service.state_store
+    monkeypatch.setattr(store, "load_prepared_config", load_prepared_config)
     # Prepared-config uses the actual S1 read service. Bind uses the covered S1
     # service separately below, rather than manufacturing another create owner.
     if mode == "prepared-config":
         service = AgentPreparationService(
-            state_store=Store(),
+            state_store=store,
             backend=lineage.backend,
             workspace=None,
             config_builder=None,
@@ -331,25 +320,16 @@ def test_strict_initial_control_reaches_exact_s1_owner_without_effect_envelope(a
     else:
         config = lineage.resolve(principal=principal, selection=transport, boundary="prepare-run", caller={}).config
 
-        class BindStore:
-            def load_context(self, **_kwargs):
-                return SimpleNamespace(generation=4)
+        def bind_agent_run(**kwargs):
+            calls.append(("bind", kwargs["association"].agent_run_id, kwargs["expected_invocation_generation"]))
+            return "association"
 
-            def load_prepared_config(self, **_kwargs):
-                return config
-
-            def bind_agent_run(self, **kwargs):
-                calls.append(
-                    (
-                        "bind",
-                        kwargs["association"].agent_run_id,
-                        kwargs["expected_invocation_generation"],
-                    )
-                )
-                return "association"
+        monkeypatch.setattr(store, "load_context", lambda **_kwargs: resolved_context())
+        monkeypatch.setattr(store, "load_prepared_config", lambda **_kwargs: config)
+        monkeypatch.setattr(store, "bind_agent_run", bind_agent_run)
 
         service = AgentPreparationService(
-            state_store=BindStore(),
+            state_store=store,
             backend=lineage.backend,
             workspace=None,
             config_builder=None,
@@ -518,7 +498,7 @@ def test_control_handler_itself_cannot_consume_a_physical_permit(app):
     bridge.assert_not_called()
 
 
-def test_run_bound_claim_route_reaches_shell_owner_only_after_exact_lineage(app):
+def test_run_bound_claim_route_reaches_shell_owner_only_after_exact_lineage(app, operations_service, monkeypatch):
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage import owner
     from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
@@ -531,9 +511,10 @@ def test_run_bound_claim_route_reaches_shell_owner_only_after_exact_lineage(app)
         if envelope.intent.kind != "shell":
             raise BuilderExecutionPolicyError("native_agent_boundary_unavailable")
 
+    monkeypatch.setattr(operations_service, "claim_shell_dispatch", claim)
     with patch(
         "controllers.inner_api.agent.native_testing.agent_operations_for_ref",
-        return_value=SimpleNamespace(claim_shell_dispatch=claim),
+        return_value=operations_service,
     ):
         headers = {"Authorization": "Bearer agent-token", "X-Dify-Agent-Run": encoded(transport)}
         payload = wire.model_dump(mode="json")
@@ -617,7 +598,7 @@ def test_registered_resumed_config_read_requires_current_bound_exact_owner(app, 
 
 
 @pytest.mark.parametrize("reason", ["native_agent_risk_assessment_unavailable", "private-token-and-call-arguments"])
-def test_prepare_intent_refusal_logs_only_bounded_policy_category(app, caplog, reason):
+def test_prepare_intent_refusal_logs_only_bounded_policy_category(app, caplog, reason, operations_service, monkeypatch):
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage import owner
     from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
@@ -636,10 +617,11 @@ def test_prepare_intent_refusal_logs_only_bounded_policy_category(app, caplog, r
     def refused(**_kwargs):
         raise BuilderExecutionPolicyError(reason)
 
+    monkeypatch.setattr(operations_service, "prepare_intent", refused)
     with (
         patch(
             "controllers.inner_api.agent.native_testing.agent_operations_for_ref",
-            return_value=SimpleNamespace(prepare_intent=refused),
+            return_value=operations_service,
         ),
         caplog.at_level("WARNING"),
     ):

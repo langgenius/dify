@@ -54,9 +54,18 @@ from services.dify_builder.native_testing.transitions import dispatch_readiness,
 
 
 def validate_binding(intent: EffectIntent, binding: NativeBinding) -> None:
-    if canonical_digest(intent.model_dump(mode="json")) != binding.intent_digest or any(
-        getattr(intent, field) != getattr(binding, field)
-        for field in ("kind", "resource_ref", "implementation_revision", "account_ref", "capability_digest")
+    if canonical_digest(intent.model_dump(mode="json")) != binding.intent_digest or (
+        intent.kind,
+        intent.resource_ref,
+        intent.implementation_revision,
+        intent.account_ref,
+        intent.capability_digest,
+    ) != (
+        binding.kind,
+        binding.resource_ref,
+        binding.implementation_revision,
+        binding.account_ref,
+        binding.capability_digest,
     ):
         raise BuilderExecutionPolicyError("native_binding_mismatch")
     if binding.destructive:
@@ -416,7 +425,13 @@ class EffectAuthorizationService:
                 "expires_at": expires_at,
             }
             if grant is not None:
-                if any(getattr(grant, name) != value for name, value in fields.items()):
+                if (grant.decision, grant.max_calls, grant.max_dispatches, grant.max_cost_units, grant.expires_at) != (
+                    decision,
+                    max_calls,
+                    max_dispatches,
+                    max_cost_units,
+                    expires_at,
+                ):
                     raise BuilderExecutionPolicyError("native_grant_conflict")
                 if pending_guard is not None:
                     return pending_guard.save(session=session, request_id=ref.request_id)
@@ -529,7 +544,7 @@ class EffectAuthorizationService:
             workflow = validate_invocation_workflow(
                 session, tenant_id=owned.tenant_id, app_id=authority.app_id, workflow_id=authority.workflow_id
             )
-            revision_context = getattr(authority, "revision_context", None)
+            revision_context = authority.revision_context
             revision = (
                 admitted_workflow_revision(workflow, revision_context)
                 if revision_context

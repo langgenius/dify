@@ -7,6 +7,8 @@ import pytest
 
 from models.agent import Agent, AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 
 
 def test_projection_is_published_and_output_contract_is_honest():
@@ -76,9 +78,7 @@ def test_public_roster_description_is_an_honest_capability_fallback(summary):
 def test_agent_contract_reaches_planning_without_private_soul_values(sqlite_session, monkeypatch, phase):
     """An eligible real SQL projection must survive both planning consumers intact."""
     import json
-    from types import SimpleNamespace
 
-    from configs import dify_config
     from core.app.app_config.entities import ModelConfig
     from models.agent_config_entities import WorkflowNodeJobConfig
     from services.dify_builder.agent import build, resources
@@ -86,7 +86,7 @@ def test_agent_contract_reaches_planning_without_private_soul_values(sqlite_sess
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
     from tests.builder_agent_fixtures import make_case
 
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     case = make_case(sqlite_session)
     case.agent.description = "Public review capability " * 40
     case.snapshot.summary = None
@@ -96,7 +96,7 @@ def test_agent_contract_reaches_planning_without_private_soul_values(sqlite_sess
     case.snapshot.config_snapshot = AgentSoulConfig.model_validate(soul)
     sqlite_session.commit()
     candidate = project_published_agent(agent=case.agent, snapshot=case.snapshot)
-    monkeypatch.setattr(resources, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
     monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
@@ -244,14 +244,13 @@ def test_changed_agent_selection_cannot_silently_rebind(monkeypatch):
 
 
 def test_native_catalog_filters_before_pagination(sqlite_session, monkeypatch):
-    from configs import dify_config
     from models.account import Tenant
     from models.agent import AgentStatus
     from services.agent import access_service
     from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
     from tests.builder_agent_fixtures import add_agent, make_case
 
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     case = make_case(sqlite_session)
     hidden, _ = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name="Hidden")
     unpublished, _ = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name="Unpublished", published=False)
@@ -280,11 +279,10 @@ def test_native_catalog_filters_before_pagination(sqlite_session, monkeypatch):
 
 
 def test_missing_tool_credentials_remain_discoverable_with_setup_status(sqlite_session, monkeypatch):
-    from configs import dify_config
     from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
     from tests.builder_agent_fixtures import make_case
 
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     case = make_case(sqlite_session)
     candidates = AgentCatalogService(sqlite_session).list_candidates(
         tenant_id=case.actor.tenant_id, actor_id=case.actor.account_id, app_id=case.workflow.app_id, query=None
@@ -297,9 +295,7 @@ def test_missing_tool_credentials_remain_discoverable_with_setup_status(sqlite_s
 @pytest.mark.parametrize("state", ["unchanged", "drifted", "revoked"])
 def test_confirmed_agent_is_revalidated_directly_after_catalog_page_movement(sqlite_session, monkeypatch, state):
     from datetime import datetime
-    from types import SimpleNamespace
 
-    from configs import dify_config
     from models.agent import AgentConfigRevision, AgentConfigRevisionOperation
     from services.agent import access_service
     from services.dify_builder.agent import build, resources
@@ -307,7 +303,7 @@ def test_confirmed_agent_is_revalidated_directly_after_catalog_page_movement(sql
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
     from tests.builder_agent_fixtures import add_agent, make_case
 
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     case = make_case(sqlite_session)
     candidate = project_published_agent(agent=case.agent, snapshot=case.snapshot)
     for index in range(101):
@@ -315,7 +311,7 @@ def test_confirmed_agent_is_revalidated_directly_after_catalog_page_movement(sql
         newer.updated_at = datetime(2026, 10, 14)
     case.agent.updated_at = datetime(2000, 1, 1)
     sqlite_session.commit()
-    monkeypatch.setattr(resources, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
     monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])

@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy.orm import sessionmaker
 
+from core.dify_builder.models import Actor
 from graphon.engine import Engine
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.http import HttpResponse
 from graphon.nodes.base.node import Node
 from graphon.runtime import InitParams, RuntimeState
 from runtime_contracts.builder.native.contracts import NativeTestContextRef, OperationKey
+from services.dify_builder.native_testing.api_service import NativeTestApiService
 from services.dify_builder.native_testing.control import (
     BoundaryOwnerState,
     NativeControlAccepted,
@@ -35,20 +37,44 @@ from services.dify_builder.native_testing.context_binding import NativeContextUn
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
 
 
-def bridge_fixture() -> tuple[
-    ResolvedNativeTestContext, NativeRuntimeBridge, NativeCollaborators, Mock, BoundaryOwnerState, Mock
-]:
-    from services.dify_builder.native_testing.runtime_bridge import NativeCollaborators, NativeRuntimeBridge
+def _api():
+    return NativeTestApiService(
+        session_factory=sessionmaker(),
+        actor=Actor(account_id="actor-1", tenant_id="tenant-1"),
+        resolver=None,
+        admission=None,
+        resolution=None,
+        runtime=None,
+        disclosure=None,
+    )
 
+
+class _BridgeCollaborators:
+    """Explicit collaborator composition port for constructor-only bridge tests."""
+
+    def __init__(self, bundle: NativeCollaborators):
+        self.bundle = bundle
+
+    def provide(self, *, association: NativeNodePreparation) -> NativeCollaborators:
+        assert isinstance(association, NativeNodePreparation)
+        return self.bundle
+
+    def node_arguments(self, **_kwargs) -> Mapping[str, object]:
+        return {"http_client": self.bundle.http}
+
+
+def bridge_fixture(
+    mocker,
+) -> tuple[ResolvedNativeTestContext, NativeRuntimeBridge, NativeCollaborators, Mock, BoundaryOwnerState, Mock]:
     context = ResolvedNativeTestContext.model_validate(CONTEXT)
-    state = Mock(load_context=Mock(return_value=context))
+    state = _api().store
+    mocker.patch.object(state, "load_context", return_value=context)
     bundle = NativeCollaborators(**{name: object() for name in NativeCollaborators.__dataclass_fields__})
-    provider = Mock(return_value=bundle)
-    from services.dify_builder.native_testing.control import BoundaryOwnerState
-
+    composition = _BridgeCollaborators(bundle)
+    provider = mocker.patch.object(composition, "provide", return_value=bundle)
     owner = BoundaryOwnerState(ref=context.ref)
     sink = SyntheticSink()
-    arguments = Mock(return_value={"http_client": bundle.http})
+    arguments = mocker.patch.object(composition, "node_arguments", return_value={"http_client": bundle.http})
     bridge = NativeRuntimeBridge(
         state=state,
         collaborators=provider,
@@ -59,12 +85,11 @@ def bridge_fixture() -> tuple[
     return context, bridge, bundle, provider, owner, arguments
 
 
-def test_marked_factory_requires_bridge_before_eager_model_setup(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_marked_factory_requires_bridge_before_eager_model_setup(mocker) -> None:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from services.workflow_runtime import node_factory
 
-    eager = Mock(side_effect=AssertionError("ordinary setup"))
-    monkeypatch.setattr(node_factory, "build_dify_model_access", eager)
+    eager = mocker.patch.object(node_factory, "build_dify_model_access", side_effect=AssertionError("ordinary setup"))
     context = DifyRunContext(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -75,19 +100,20 @@ def test_marked_factory_requires_bridge_before_eager_model_setup(monkeypatch: py
     )
     with pytest.raises(NativeContextUnavailable, match="native_context_missing"):
         node_factory.DifyNodeFactory(
-            init_params=cast(InitParams, SimpleNamespace(run_context={"_dify": context})),
+            init_params=InitParams(
+                run_context={"_dify": context}, workflow_id="workflow", graph_config={}, call_depth=0
+            ),
             runtime_state=cast(RuntimeState, object()),
         )
     eager.assert_not_called()
 
 
-def test_factory_preserves_bridge_on_runtime_clone_and_checks_owners(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_factory_preserves_bridge_on_runtime_clone_and_checks_owners(mocker) -> None:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from services.workflow_runtime import node_factory
 
-    context, bridge, _, provider, _, _ = bridge_fixture()
-    eager = Mock(side_effect=AssertionError("ordinary setup"))
-    monkeypatch.setattr(node_factory, "build_dify_model_access", eager)
+    context, bridge, _, provider, _, _ = bridge_fixture(mocker)
+    eager = mocker.patch.object(node_factory, "build_dify_model_access", side_effect=AssertionError("ordinary setup"))
     run = DifyRunContext(
         tenant_id=context.tenant_id,
         app_id=context.app_id,
@@ -118,35 +144,34 @@ def test_factory_preserves_bridge_on_runtime_clone_and_checks_owners(monkeypatch
         )
 
 
-def test_unmarked_factory_cannot_accept_native_bridge(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_unmarked_factory_cannot_accept_native_bridge(mocker) -> None:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from services.workflow_runtime import node_factory
 
-    _, bridge, _, _, _, _ = bridge_fixture()
-    eager = Mock(side_effect=AssertionError("ordinary setup"))
-    monkeypatch.setattr(node_factory, "build_dify_model_access", eager)
+    _, bridge, _, _, _, _ = bridge_fixture(mocker)
+    eager = mocker.patch.object(node_factory, "build_dify_model_access", side_effect=AssertionError("ordinary setup"))
     run = DifyRunContext(
         tenant_id="t", app_id="a", user_id="u", user_from=UserFrom.ACCOUNT, invoke_from=InvokeFrom.DEBUGGER
     )
     with pytest.raises(NativeContextUnavailable, match="native_context_missing"):
         node_factory.DifyNodeFactory(
-            init_params=cast(InitParams, SimpleNamespace(run_context={"_dify": run}, workflow_id="w")),
+            init_params=InitParams(run_context={"_dify": run}, workflow_id="w", graph_config={}, call_depth=0),
             runtime_state=cast(RuntimeState, object()),
             native_runtime=bridge,
         )
     eager.assert_not_called()
 
 
-def test_native_factory_constructs_real_registered_start_without_resolving_occurrence() -> None:
+def test_native_factory_constructs_real_registered_start_without_resolving_occurrence(mocker) -> None:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from graphon.nodes.start.start_node import StartNode
     from graphon.runtime import RuntimeState, VariablePool
     from services.workflow_runtime.node_factory import DifyGraphInitContext, DifyNodeFactory
 
-    context, bridge, bundle, provider, _, arguments = bridge_fixture()
+    context, bridge, bundle, provider, _, arguments = bridge_fixture(mocker)
     node: dict[str, object] = {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}
     context = context.model_copy(update={"graph": {"nodes": [node], "edges": []}})
-    cast(Mock, bridge.state).load_context.return_value = context
+    bridge.state.load_context.return_value = context
     arguments.return_value = dict[str, object]()
 
     run = DifyRunContext(
@@ -191,13 +216,13 @@ class SyntheticSink:
         return NativeControlAccepted(record=record)
 
 
-def preparation_fixture() -> tuple[
-    ResolvedNativeTestContext, NativeRuntimeBridge, NativeNodePreparation, Node[BaseNodeData], Mock
-]:
+def preparation_fixture(
+    mocker,
+) -> tuple[ResolvedNativeTestContext, NativeRuntimeBridge, NativeNodePreparation, Node[BaseNodeData], Mock]:
     from graphon.nodes.start.start_node import StartNode
     from graphon.runtime import InitParams, RuntimeState, VariablePool
 
-    context, bridge, _, provider, _, arguments = bridge_fixture()
+    context, bridge, _, provider, _, arguments = bridge_fixture(mocker)
     runtime = RuntimeState(workflow_id="unit", variable_pool=VariablePool(), start_at=0)
     arguments.return_value = dict[str, object]()
     prepared = bridge.prepare_node(
@@ -217,9 +242,9 @@ def preparation_fixture() -> tuple[
     return context, bridge, prepared, node, provider
 
 
-def test_preparation_and_constructor_cannot_open_context_or_bound_occurrence() -> None:
-    context, bridge, prepared, node, _ = preparation_fixture()
-    cast(Mock, bridge.state).load_context.assert_not_called()
+def test_preparation_and_constructor_cannot_open_context_or_bound_occurrence(mocker) -> None:
+    context, bridge, prepared, node, _ = preparation_fixture(mocker)
+    bridge.state.load_context.assert_not_called()
     for read in (
         lambda: prepared.execution_id,
         lambda: prepared.occurrence_path,
@@ -232,16 +257,16 @@ def test_preparation_and_constructor_cannot_open_context_or_bound_occurrence() -
     for read in (lambda: prepared.execution_id, prepared.resolve, lambda: prepared.runtime_state):
         with pytest.raises(NativeContextUnavailable, match="native_execution_id_missing"):
             read()
-    cast(Mock, bridge.state).load_context.assert_not_called()
+    bridge.state.load_context.assert_not_called()
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
     assert prepared.resolve().ref == context.ref
     assert prepared.runtime_state is node.runtime_state
 
 
-def test_constructor_effect_attempt_is_refused_before_any_context_read() -> None:
+def test_constructor_effect_attempt_is_refused_before_any_context_read(mocker) -> None:
     from graphon.nodes.start.start_node import StartNode
 
-    context, bridge, _, provider, _, _ = bridge_fixture()
+    context, bridge, _, provider, _, _ = bridge_fixture(mocker)
 
     def eager(*, association: NativeNodePreparation) -> NativeCollaborators:
         association.resolve()
@@ -252,14 +277,14 @@ def test_constructor_effect_attempt_is_refused_before_any_context_read() -> None
         bridge.prepare_node(
             ref=context.ref, node_id="start", node_data={}, node_class=StartNode, runtime_state=object()
         )
-    cast(Mock, bridge.state).load_context.assert_not_called()
+    bridge.state.load_context.assert_not_called()
 
 
 @pytest.mark.parametrize("mutation", ["class", "node_id", "runtime", "double", "ref", "binding", "rebind"])
-def test_association_rejects_foreign_or_changed_identity_without_context_read(mutation: str) -> None:
+def test_association_rejects_foreign_or_changed_identity_without_context_read(mocker, mutation: str) -> None:
     from graphon.nodes.start.start_node import StartNode
 
-    context, bridge, prepared, node, _ = preparation_fixture()
+    context, bridge, prepared, node, _ = preparation_fixture(mocker)
     if mutation == "class":
         foreign = StartNode(
             node_id="start",
@@ -293,14 +318,14 @@ def test_association_rejects_foreign_or_changed_identity_without_context_read(mu
             with pytest.raises(NativeContextUnavailable) as caught:
                 prepared.resolve()
     assert "private-canary" not in str(caught.value)
-    cast(Mock, bridge.state).load_context.assert_not_called()
+    bridge.state.load_context.assert_not_called()
 
 
-def test_preparation_requires_exact_owner_ref_and_explicit_control_dependencies() -> None:
+def test_preparation_requires_exact_owner_ref_and_explicit_control_dependencies(mocker) -> None:
     from graphon.nodes.start.start_node import StartNode
     from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 
-    context, bridge, _, provider, _, _ = bridge_fixture()
+    context, bridge, _, provider, _, _ = bridge_fixture(mocker)
     with pytest.raises(NativeContextUnavailable, match="native_context_mismatch"):
         bridge.prepare_node(
             ref=context.ref.model_copy(update={"invocation_id": "foreign"}),
@@ -320,12 +345,12 @@ def test_preparation_requires_exact_owner_ref_and_explicit_control_dependencies(
         )
 
 
-def test_effect_revalidates_full_private_context_each_time() -> None:
-    context, bridge, prepared, node, _ = preparation_fixture()
+def test_effect_revalidates_full_private_context_each_time(mocker) -> None:
+    context, bridge, prepared, node, _ = preparation_fixture(mocker)
     prepared.attach(node)
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
     assert prepared.resolve().ref == context.ref
-    cast(Mock, bridge.state).load_context.return_value = context.model_copy(
+    bridge.state.load_context.return_value = context.model_copy(
         update={"ref": context.ref.model_copy(update={"invocation_id": "foreign"})}
     )
     with pytest.raises(NativeContextUnavailable, match="native_context_mismatch"):
@@ -414,7 +439,7 @@ class DeniedFiles:
 
 
 def native_factory(
-    config: Mapping[str, object], runtime: RuntimeState, witness: EffectsWitness
+    mocker, config: Mapping[str, object], runtime: RuntimeState, witness: EffectsWitness
 ) -> tuple[DifyNodeFactory, BoundaryOwnerState, SyntheticSink, list[NativeNodePreparation]]:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from graphon.nodes.code.limits import CodeNodeLimits
@@ -424,7 +449,8 @@ def native_factory(
     from services.workflow_runtime.node_factory import DifyGraphInitContext, DifyNodeFactory
 
     context = ResolvedNativeTestContext.model_validate({**CONTEXT, "graph": config})
-    state = Mock(load_context=Mock(return_value=context))
+    state = _api().store
+    mocker.patch.object(state, "load_context", return_value=context)
     owner, sink = BoundaryOwnerState(ref=context.ref), SyntheticSink()
     witness.owner = owner
     associations: list[NativeNodePreparation] = []
@@ -502,12 +528,12 @@ def native_factory(
 
 
 def native_engine(
-    config: Mapping[str, object], runtime: RuntimeState, witness: EffectsWitness
+    mocker, config: Mapping[str, object], runtime: RuntimeState, witness: EffectsWitness
 ) -> tuple[Engine, BoundaryOwnerState, SyntheticSink, list[NativeNodePreparation]]:
     from graphon.engine.command import InMemoryChannel
     from graphon.graph.graph import Graph
 
-    factory, owner, sink, associations = native_factory(config, runtime, witness)
+    factory, owner, sink, associations = native_factory(mocker, config, runtime, witness)
     graph = Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
     engine = Engine(
         graph=graph,
@@ -523,7 +549,7 @@ def raw_node(node_id: str, kind: str, **data: object) -> dict[str, object]:
 
 
 @pytest.mark.parametrize("mode", ["allow", "wait"])
-def test_real_factory_http_effect_uses_public_binding_and_marked_control(mode: str) -> None:
+def test_real_factory_http_effect_uses_public_binding_and_marked_control(mocker, mode: str) -> None:
     from graphon.engine_events.graph import GraphRunPausedEvent, GraphRunSucceededEvent
     from graphon.engine_events.node import NodeRunPauseRequestedEvent, NodeRunStartedEvent
     from graphon.runtime import RuntimeState, VariablePool
@@ -546,7 +572,10 @@ def test_real_factory_http_effect_uses_public_binding_and_marked_control(mode: s
     }
     witness = EffectsWitness(mode)
     engine, owner, sink, associations = native_engine(
-        config, RuntimeState(workflow_id=CONTEXT["workflow_id"], variable_pool=VariablePool(), start_at=0), witness
+        mocker,
+        config,
+        RuntimeState(workflow_id=CONTEXT["workflow_id"], variable_pool=VariablePool(), start_at=0),
+        witness,
     )
     assert witness.entries == []
     events = list(engine.run())
@@ -567,7 +596,7 @@ def test_real_factory_http_effect_uses_public_binding_and_marked_control(mode: s
 
 
 @pytest.mark.parametrize("kind", ["loop", "iteration"])
-def test_actual_engine_equal_inputs_distinct_occurrences_restore_retry_and_fresh_clone(kind: str) -> None:
+def test_actual_engine_equal_inputs_distinct_occurrences_restore_retry_and_fresh_clone(mocker, kind: str) -> None:
     from graphon.engine_events.graph import GraphRunPartialSucceededEvent, GraphRunPausedEvent
     from graphon.runtime import RuntimeState, VariablePool
 
@@ -627,7 +656,7 @@ def test_actual_engine_equal_inputs_distinct_occurrences_restore_retry_and_fresh
     pool.add(("start", "items"), ["same", "same"])
     runtime = RuntimeState(workflow_id=CONTEXT["workflow_id"], variable_pool=pool, start_at=0)
     before = EffectsWitness("wait")
-    first, owner, sink, preparations = native_engine(config, runtime, before)
+    first, owner, sink, preparations = native_engine(mocker, config, runtime, before)
     assert isinstance(list(first.run())[-1], GraphRunPausedEvent)
     assert before.dispatches == []
     assert owner.status == "WAIT_RECORDED"
@@ -639,7 +668,7 @@ def test_actual_engine_equal_inputs_distinct_occurrences_restore_retry_and_fresh
     assert {record.native_execution_id for record in sink.records} == {key.occurrence_path[0] for key in waited_keys}
     restored = RuntimeState.from_snapshot(runtime.dumps())
     after = EffectsWitness("retry")
-    second, new_owner, _, new_preparations = native_engine(config, restored, after)
+    second, new_owner, _, new_preparations = native_engine(mocker, config, restored, after)
     terminal = list(second.run())[-1]
     assert isinstance(terminal, GraphRunPartialSucceededEvent)
     assert terminal.exceptions_count == 2
@@ -671,50 +700,50 @@ def test_actual_engine_equal_inputs_distinct_occurrences_restore_retry_and_fresh
     "reserved",
     ["node_id", "data", "graph_init_params", "graph_runtime_state", "native_control_owner", "native_control_sink"],
 )
-def test_constructor_adapter_cannot_replace_attached_identity_or_control_owner(reserved: str) -> None:
+def test_constructor_adapter_cannot_replace_attached_identity_or_control_owner(mocker, reserved: str) -> None:
     from graphon.nodes.start.start_node import StartNode
 
-    context, bridge, _, _, _, arguments = bridge_fixture()
+    context, bridge, _, _, _, arguments = bridge_fixture(mocker)
     arguments.return_value = {reserved: "private-canary"}
     with pytest.raises(NativeContextUnavailable, match="native_node_arguments_invalid") as caught:
         bridge.prepare_node(
             ref=context.ref, node_id="start", node_data={}, node_class=StartNode, runtime_state=object()
         )
     assert "private-canary" not in str(caught.value)
-    cast(Mock, bridge.state).load_context.assert_not_called()
+    bridge.state.load_context.assert_not_called()
 
 
 @pytest.mark.parametrize("invalid", [None, "missing-slot"])
-def test_missing_deferred_collaborator_never_uses_ordinary_fallback(invalid: str | None) -> None:
+def test_missing_deferred_collaborator_never_uses_ordinary_fallback(mocker, invalid: str | None) -> None:
     from dataclasses import replace
 
     from graphon.nodes.start.start_node import StartNode
 
-    context, bridge, bundle, provider, _, _ = bridge_fixture()
+    context, bridge, bundle, provider, _, _ = bridge_fixture(mocker)
     provider.return_value = None if invalid is None else replace(bundle, http=None)
     with pytest.raises(NativeContextUnavailable, match="native_collaborator_unavailable"):
         bridge.prepare_node(
             ref=context.ref, node_id="start", node_data={}, node_class=StartNode, runtime_state=object()
         )
-    cast(Mock, bridge.state).load_context.assert_not_called()
+    bridge.state.load_context.assert_not_called()
 
 
 @pytest.mark.parametrize("field", ["ref", "node_id", "node_class", "arguments"])
-def test_preparation_public_expected_identity_cannot_be_replaced(field: str) -> None:
-    _, _, prepared, _, _ = preparation_fixture()
+def test_preparation_public_expected_identity_cannot_be_replaced(mocker, field: str) -> None:
+    _, _, prepared, _, _ = preparation_fixture(mocker)
     with pytest.raises(AttributeError):
         setattr(prepared, field, "private-canary")
 
 
-def test_constructor_argument_mapping_cannot_replace_control_dependencies() -> None:
-    _, _, prepared, _, _ = preparation_fixture()
+def test_constructor_argument_mapping_cannot_replace_control_dependencies(mocker) -> None:
+    _, _, prepared, _, _ = preparation_fixture(mocker)
     with pytest.raises(TypeError):
         cast(dict[str, object], prepared.arguments)["native_control_owner"] = "private-canary"
 
 
 @pytest.mark.parametrize("mutation", ["id", "runtime", "ref", "execution_id"])
-def test_effect_rechecks_attached_identity_after_private_context_read(mutation: str) -> None:
-    context, bridge, prepared, node, _ = preparation_fixture()
+def test_effect_rechecks_attached_identity_after_private_context_read(mocker, mutation: str) -> None:
+    context, bridge, prepared, node, _ = preparation_fixture(mocker)
     prepared.attach(node)
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
 
@@ -730,14 +759,14 @@ def test_effect_rechecks_attached_identity_after_private_context_read(mutation: 
             node.bind_execution_id("00000000-0000-4000-8000-000000000002")
         return context
 
-    cast(Mock, bridge.state).load_context.side_effect = load
+    bridge.state.load_context.side_effect = load
     with pytest.raises(NativeContextUnavailable) as caught:
         prepared.resolve()
     assert "private-canary" not in str(caught.value)
 
 
-def test_bound_node_getter_requires_attachment_and_public_binding_without_context_read() -> None:
-    _, bridge, prepared, node, _ = preparation_fixture()
+def test_bound_node_getter_requires_attachment_and_public_binding_without_context_read(mocker) -> None:
+    _, bridge, prepared, node, _ = preparation_fixture(mocker)
     with pytest.raises(NativeContextUnavailable, match="native_node_unattached"):
         _ = prepared.bound_node
     prepared.attach(node)
@@ -745,15 +774,15 @@ def test_bound_node_getter_requires_attachment_and_public_binding_without_contex
         _ = prepared.bound_node
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
     assert prepared.bound_node is node
-    cast(Mock, bridge.state).load_context.assert_not_called()
+    bridge.state.load_context.assert_not_called()
     property_name = "bound_node"
     with pytest.raises(AttributeError):
         setattr(prepared, property_name, object())
 
 
 @pytest.mark.parametrize("mutation", ["node_id", "runtime", "class", "ref", "execution_id"])
-def test_bound_node_getter_rejects_attached_identity_drift_without_context_read(mutation: str) -> None:
-    context, bridge, prepared, node, _ = preparation_fixture()
+def test_bound_node_getter_rejects_attached_identity_drift_without_context_read(mocker, mutation: str) -> None:
+    context, bridge, prepared, node, _ = preparation_fixture(mocker)
     prepared.attach(node)
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
     assert prepared.bound_node is node
@@ -772,12 +801,12 @@ def test_bound_node_getter_rejects_attached_identity_drift_without_context_read(
     with pytest.raises(NativeContextUnavailable) as caught:
         _ = prepared.bound_node
     assert "private-canary" not in str(caught.value)
-    cast(Mock, bridge.state).load_context.assert_not_called()
+    bridge.state.load_context.assert_not_called()
 
 
 @pytest.mark.parametrize("foreign", ["owner", "sink"])
-def test_attach_rejects_foreign_control_composition_with_same_native_class_and_runtime(foreign: str) -> None:
-    context, bridge, prepared, node, _ = preparation_fixture()
+def test_attach_rejects_foreign_control_composition_with_same_native_class_and_runtime(mocker, foreign: str) -> None:
+    context, bridge, prepared, node, _ = preparation_fixture(mocker)
     arguments = dict(prepared.arguments)
     if foreign == "owner":
         arguments["native_control_owner"] = BoundaryOwnerState(ref=context.ref)
@@ -792,11 +821,38 @@ def test_attach_rejects_foreign_control_composition_with_same_native_class_and_r
     )
     with pytest.raises(NativeContextUnavailable, match="native_node_mismatch"):
         prepared.attach(other)
-    cast(Mock, bridge.state).load_context.assert_not_called()
+    bridge.state.load_context.assert_not_called()
+
+
+def _delivery_runtime(mocker, case):
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from services.dify_builder.native_testing.runtime import DifyNativeResumeSettlement, DifyNativeRuntime
+    from services.dify_builder.native_testing.sandbox.host import NativeCodeHostOwner
+
+    api = _api()
+    load = mocker.patch.object(api.store, "load_context", return_value=case.state.context)
+    api.lifecycle.resume_settlement = DifyNativeResumeSettlement()
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+
+    # This constructor-only bridge contract does not acquire the telemetry owner.
+    with patch.object(NativeHostLaunch, "bind_observation"):
+        runtime = DifyNativeRuntime(
+            delivery=NativeDispatchRef(
+                ref=case.state.context.ref, generation=case.state.context.generation, dispatch_id="dispatch"
+            ),
+            lifecycle=api.lifecycle,
+            registry=case.registry,
+        )
+    runtime.host = case.host
+    runtime._journal = case.journal
+    runtime.authorization = case.authorization
+    runtime.code_owner = NativeCodeHostOwner(host=case.host, loader=api.loader)
+    load.reset_mock()
+    return runtime
 
 
 @pytest.mark.parametrize("kind", ["code", "template-transform"])
-def test_code_delivery_composes_actual_native_protocol_without_eager_payload(kind):
+def test_code_delivery_composes_actual_native_protocol_without_eager_payload(mocker, kind):
     from graphon.nodes.code.code_node import CodeNode
     from graphon.nodes.code.entities import CodeNodeData
     from graphon.nodes.template_transform.entities import TemplateTransformNodeData
@@ -816,16 +872,10 @@ def test_code_delivery_composes_actual_native_protocol_without_eager_payload(kin
 
     case = code_case()
     q, _ = qualification()
-    store = Mock()
+    runtime = _delivery_runtime(mocker, case)
+    runtime.code_qualification = q
+    store = runtime.lifecycle.store
     store.load_context.side_effect = AssertionError("eager protected input")
-    runtime = SimpleNamespace(
-        host=case.host,
-        lifecycle=SimpleNamespace(loader=object(), store=store),
-        code_qualification=q,
-        _journal=case.journal,
-        authorization=case.authorization,
-        code_owner=object(),
-    )
     bridge = build_delivery_bridge(runtime=cast(DifyNativeRuntime, runtime))
     state = RuntimeState(workflow_id=CONTEXT["workflow_id"], variable_pool=VariablePool(), start_at=0)
     cls = CodeNode if kind == "code" else TemplateTransformNode
@@ -858,7 +908,7 @@ def test_code_delivery_composes_actual_native_protocol_without_eager_payload(kin
     store.load_context.assert_not_called()
 
 
-def test_default_delivery_refuses_code_before_protected_payload():
+def test_default_delivery_refuses_code_before_protected_payload(mocker):
     from graphon.nodes.code.code_node import CodeNode
     from graphon.nodes.code.entities import CodeNodeData
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
@@ -871,13 +921,9 @@ def test_default_delivery_refuses_code_before_protected_payload():
     )
 
     case = code_case()
-    store = Mock()
+    runtime = _delivery_runtime(mocker, case)
+    store = runtime.lifecycle.store
     store.load_context.side_effect = AssertionError("unqualified payload read")
-    runtime = SimpleNamespace(
-        host=case.host,
-        lifecycle=SimpleNamespace(loader=object(), store=store),
-        code_qualification=None,
-    )
     bridge = build_delivery_bridge(runtime=cast(DifyNativeRuntime, runtime))
     with pytest.raises(BuilderExecutionPolicyError, match="native_capability_unavailable"):
         bridge.prepare_node(

@@ -1,19 +1,76 @@
 """Actual lifecycle routing; SQL boundary doubles do not establish durability."""
 
+from __future__ import annotations
+
 import json
+from collections import UserList
 from contextlib import contextmanager
-from types import SimpleNamespace
-from typing import cast, override
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from threading import local
+from typing import TYPE_CHECKING, cast, override
 
 import pytest
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.sql.elements import BinaryExpression, ColumnClause
 
+from core.dify_builder.models import Actor
+from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
 from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
+from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.lifecycle import NativeRuntimePort, NativeTestLifecycleService
-from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_owner import case
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context as sample_context
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from contextlib import AbstractContextManager
+
+    from services.dify_builder.native_testing.api_service import NativeTestApiService
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+    from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
+
+
+@dataclass
+class RestoredHostCase:
+    host: NativeHostLaunch
+
+
+class ImpostorResumeHost:
+    def require_resume_bindings(self, **_kwargs):
+        return True
+
+
+class HistoryQueryRows(UserList):
+    def scalars(self):
+        return self
+
+    def first(self):
+        return self[0] if self else None
+
+
+@dataclass
+class CancellationCase:
+    api: NativeTestApiService
+    owner: DifyNativeRuntimeOwner
+    published: list
+    sql: SQL
+    sessions: Callable[[], AbstractContextManager[SQL]]
+    actor: Actor
+    started: NativeTestPublicReceipt
+    rows: dict
+
+
+class _SqlDepth(local):
+    def __init__(self) -> None:
+        self.value = 0
+        self.writers = 0
+
 
 __all__ = ["case"]
 
@@ -56,11 +113,14 @@ def test_initial_dispatch_uses_no_checkpoint_and_duplicate_delivery_never_runs_a
         del kwargs
         yield None, None, None
 
+    loader = OwnedNativeTestLoader(
+        lambda: pytest.fail("initial checkpoint SQL"),
+        actor=Actor(tenant_id=context.tenant_id, account_id=context.actor_id),
+        resolver=NativeHttpBindingResolver(),
+    )
+    monkeypatch.setattr(loader, "locked", locked)
     lifecycle = NativeTestLifecycleService(
-        cast(
-            OwnedNativeTestLoader,
-            SimpleNamespace(locked=locked, session_factory=lambda: pytest.fail("initial checkpoint SQL")),
-        ),
+        loader,
         state_store=cast(NativeExecutionStateStore, Store()),
         runtime=cast(NativeRuntimePort, Runtime()),
     )
@@ -85,7 +145,6 @@ def test_initial_dispatch_uses_no_checkpoint_and_duplicate_delivery_never_runs_a
 @pytest.mark.parametrize(("dispatch_state", "cleaned"), [("claimed", True), ("completed", False), ("unknown", True)])
 def test_resume_settlement_refuses_committed_wait_before_actual_finalization(dispatch_state, cleaned):
     from models.dify_builder import DifyBuilderExecutionRequest
-    from models.dify_builder_native_tests import NativeDispatch
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from runtime_contracts.builder.native.contracts import CheckpointRef
     from services.dify_builder.native_testing.http_binding import build_native_http_profile
@@ -93,17 +152,40 @@ def test_resume_settlement_refuses_committed_wait_before_actual_finalization(dis
     from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
 
     context = sample_context()
-    owned = SimpleNamespace(
+    owned = OwnedNativeTest(
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=0,
+        task_approved=False,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="running",
         ref=context.ref,
         tenant_id=context.tenant_id,
         actor_id=context.actor_id,
         app_id=context.app_id,
         workflow_id=context.workflow_id,
     )
-    state = SimpleNamespace(generation=0, cleanup_complete=cleaned, checkpoint_id="checkpoint")
+    state = NativeInvocationState(
+        generation=0,
+        cleanup_complete=cleaned,
+        checkpoint_id="checkpoint",
+        tenant_id=context.tenant_id,
+        request_id=context.ref.request_id,
+        invocation_id=context.ref.invocation_id,
+        context_object_id="context",
+        state="waiting",
+        pending_ids=[],
+        resolution=[],
+    )
     rows = {
         DifyBuilderExecutionRequest: [
-            SimpleNamespace(
+            DifyBuilderExecutionRequest(
+                app_id=context.app_id,
+                workflow_id=context.workflow_id,
+                session_id="session",
+                test_input_id="input",
+                context_digest=context.ref.context_digest,
                 id=context.ref.request_id,
                 tenant_id=context.tenant_id,
                 actor_id=context.actor_id,
@@ -111,7 +193,8 @@ def test_resume_settlement_refuses_committed_wait_before_actual_finalization(dis
             )
         ],
         NativeDispatch: [
-            SimpleNamespace(
+            NativeDispatch(
+                idempotency_digest="a" * 64,
                 tenant_id=context.tenant_id,
                 request_id=context.ref.request_id,
                 invocation_id=context.ref.invocation_id,
@@ -195,8 +278,13 @@ def test_actual_wait_snapshot_restores_exact_objects_journal_and_generation_gap(
     assert payload is not None
     state, auth = initial.case.state, initial.case.authorization
     state.context = state.context.model_copy(update={"generation": generation})
+    loader = OwnedNativeTestLoader(
+        initial.sessions,
+        actor=Actor(tenant_id=state.context.tenant_id, account_id=state.context.actor_id),
+        resolver=NativeHttpBindingResolver(),
+    )
     lifecycle = NativeTestLifecycleService(
-        cast(OwnedNativeTestLoader, SimpleNamespace(session_factory=initial.sessions)),
+        loader,
         state_store=cast(NativeExecutionStateStore, state),
         resume_settlement=DifyNativeResumeSettlement(),
     )
@@ -227,7 +315,7 @@ def test_actual_wait_snapshot_restores_exact_objects_journal_and_generation_gap(
         authorization=auth,
         http_baseline=(1, 1, 1),
     )
-    bind_component_observation(SimpleNamespace(host=host), monkeypatch)
+    bind_component_observation(RestoredHostCase(host=host), monkeypatch)
     restored = host.restore_claimed_resume(lifecycle=lifecycle, expected_payload=payload)
     assert restored.entity.workflow_execution_id == payload.native_run_id
     assert restored.entity.native_test_ref == state.context.ref
@@ -337,20 +425,23 @@ def test_cleanup_only_log_release_refuses_live_dispatcher_and_keeps_original_lea
 
 
 def test_resume_history_refuses_fake_host_before_any_repository_cache_or_io():
-    from unittest.mock import Mock
-
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from services.dify_builder.native_testing.runtime import read_claimed_history
 
-    repository = Mock(side_effect=AssertionError("history IO before actual host"))
+    touched = []
+
+    def repository(*args, **kwargs):
+        touched.append((args, kwargs))
+        raise AssertionError("history IO before actual host")
+
     with pytest.raises(BuilderExecutionPolicyError, match="native_resume_owner_mismatch"):
         read_claimed_history(
-            host=SimpleNamespace(require_resume_bindings=lambda **_kw: True),
+            host=ImpostorResumeHost(),
             entity=object(),
             workflow_repository=repository,
             node_repository=repository,
         )
-    assert repository.mock_calls == []
+    assert touched == []
 
 
 @pytest.mark.parametrize(
@@ -390,10 +481,10 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
     The separate CI witness runs the actual SQL owners and operation approval.
     """
     from copy import deepcopy
-    from unittest.mock import Mock
 
     import httpx
     from flask import Flask
+    from flask_sqlalchemy import SQLAlchemy
     from sqlalchemy.orm import sessionmaker
 
     from core.app.features.rate_limiting import RateLimit
@@ -428,7 +519,7 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
     original_diagnostic = NativeHostLaunch.diagnostic_event
 
     def diagnostic(host, *, event):
-        maps = [(name, getattr(event, name, None)) for name in ("metadata", "execution_metadata")]
+        maps = [(name, dict(event).get(name)) for name in ("metadata", "execution_metadata")]
         for name, values in maps:
             if type(values) is dict and type(values.get("total_price")) is Decimal:
                 before = event.model_copy(deep=True)
@@ -450,9 +541,9 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
                 observed = original_diagnostic(host, event=event)
                 assert event == before
                 assert type(values["total_price"]) is Decimal
-                assert type(getattr(observed, name)["total_price"]) is int
-                assert getattr(observed, name)["total_price"] == 0
-                assert {k: v for k, v in getattr(observed, name).items() if k != "total_price"} == {
+                assert type(dict(observed)[name]["total_price"]) is int
+                assert dict(observed)[name]["total_price"] == 0
+                assert {k: v for k, v in dict(observed)[name].items() if k != "total_price"} == {
                     k: v for k, v in values.items() if k != "total_price"
                 }
                 normalized.append(kind)
@@ -610,21 +701,18 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
         @override
         def execute(self, _query) -> Rows:
             values = self.scalars(_query)
-            return cast(
-                Rows, SimpleNamespace(scalars=lambda: SimpleNamespace(first=lambda: values[0] if values else None))
-            )
+            return HistoryQueryRows(values)
 
     history = HistorySQL(case.rows, [])
     # The reused single-reader fixture's global SQL depth is unsuitable for
     # actual concurrent workers. This boundary retains per-thread no-IO-in-SQL
     # assertions; it does not replace the production ownership reads.
-    from threading import local
 
-    sql_depth = local()
+    sql_depth = _SqlDepth()
 
     @contextmanager
     def concurrent_sessions():
-        sql_depth.value = getattr(sql_depth, "value", 0) + 1
+        sql_depth.value = sql_depth.value + 1
         try:
             yield SQL(case.rows, case.events)
         finally:
@@ -648,7 +736,7 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
         case.local.cleanup_complete = False
 
     def permission(actor, app_id, sessions):
-        assert getattr(sql_depth, "value", 0) == 0
+        assert sql_depth.value == 0
         assert actor == case.loader.actor
         assert app_id == context.app_id
         assert sessions is concurrent_sessions
@@ -661,7 +749,7 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
         monkeypatch.setattr(permission_path, permission)
 
     def protected_context(row):
-        assert getattr(sql_depth, "value", 0) == 0
+        assert sql_depth.value == 0
         assert row.id == "context"
         return deepcopy(case.context.model_dump(mode="json"))
 
@@ -695,13 +783,13 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
         lambda **kw: repositories(node=True, **kw),
     )
     monkeypatch.setattr(generator_module.session_factory, "create_session", lambda: history)
-    monkeypatch.setattr(
-        generator_module, "db", SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None))
-    )
+    database = SQLAlchemy()
+    monkeypatch.setattr(generator_module, "db", database)
     monkeypatch.setattr(generator_module, "sessionmaker", lambda **_kw: sessionmaker())
     from core.app.apps import base_app_queue_manager
+    from tests.unit_tests.services.dify_builder.native_testing.test_observation_stream import bind_queue_cache
 
-    monkeypatch.setattr(base_app_queue_manager, "redis_client", Mock())
+    bind_queue_cache(monkeypatch)
     monkeypatch.setattr(base_app_queue_manager.AppQueueManager, "_is_stopped", lambda _self: False)
     monkeypatch.setattr(RateLimit, "flush_cache", lambda *_args, **_kw: None)
     for name in ("enter", "exit"):
@@ -812,7 +900,7 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
     registry = NativeHostLifetimeRegistry()
 
     def prepare(generation):
-        from models.dify_builder_native_tests import NativeContinuation, NativeDispatch
+        from models.dify_builder_native_tests import NativeContinuation
 
         lifecycle = NativeTestLifecycleService(
             case.loader, state_store=case.store, resume_settlement=DifyNativeResumeSettlement()
@@ -907,7 +995,8 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
             registry=registry,
         )
         case.rows[NativeDispatch] = [
-            SimpleNamespace(
+            NativeDispatch(
+                idempotency_digest="a" * 64,
                 id=f"delivery-{generation}",
                 request_id=context.ref.request_id,
                 invocation_id=context.ref.invocation_id,
@@ -923,7 +1012,7 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
             case.local.checkpoint_id = checkpoint_ref.checkpoint_id if generation else None
             if generation:
                 case.rows[NativeContinuation] = [
-                    SimpleNamespace(
+                    NativeContinuation(
                         request_id=context.ref.request_id,
                         invocation_id=context.ref.invocation_id,
                         tenant_id=context.tenant_id,
@@ -934,7 +1023,8 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
                     )
                 ]
                 case.rows[NativePayloadObject].append(
-                    SimpleNamespace(
+                    NativePayloadObject(
+                        value_digest="b" * 64,
                         id=checkpoint_ref.checkpoint_id,
                         request_id=context.ref.request_id,
                         invocation_id=context.ref.invocation_id,
@@ -956,6 +1046,8 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
         return runtime
 
     application = Flask(__name__)
+    application.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+    database.init_app(application)
     with application.app_context():
         initial = prepare(0)
         waiting = initial.run_initial(context=context)
@@ -1096,7 +1188,6 @@ def install_owner_join_boundary(case, monkeypatch):
 
 
 def test_actual_inactive_retained_delivery_and_missing_cancel_handles_grant_no_cleanup(case, monkeypatch):
-    from models.dify_builder_native_tests import NativeDispatch
     from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
     from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
     from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
@@ -1104,7 +1195,8 @@ def test_actual_inactive_retained_delivery_and_missing_cancel_handles_grant_no_c
     protect_logs(monkeypatch)
     context = case.context
     case.rows[NativeDispatch] = [
-        SimpleNamespace(
+        NativeDispatch(
+            idempotency_digest="a" * 64,
             id="inactive",
             tenant_id=context.tenant_id,
             request_id=context.ref.request_id,
@@ -1134,7 +1226,6 @@ def test_actual_inactive_retained_delivery_and_missing_cancel_handles_grant_no_c
 
 
 def test_actual_activated_startup_failure_consumes_only_original_zero_activity_verifier(case, monkeypatch):
-    from models.dify_builder_native_tests import NativeDispatch
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from services.dify_builder.native_testing.host_lifetime import NativeHostLifetimeRegistry
     from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
@@ -1152,7 +1243,8 @@ def test_actual_activated_startup_failure_consumes_only_original_zero_activity_v
         registry=NativeHostLifetimeRegistry(),
     )
     case.rows[NativeDispatch] = [
-        SimpleNamespace(
+        NativeDispatch(
+            idempotency_digest="a" * 64,
             id="start-failed",
             tenant_id=context.tenant_id,
             request_id=context.ref.request_id,
@@ -1189,7 +1281,6 @@ def test_same_worker_reclaims_over_128_closed_consumed_requests_but_keeps_unknow
 
     from models.dify_builder import DifyBuilderExecutionRequest
     from models.dify_builder_native_tests import (
-        NativeDispatch,
         NativeInvocationState,
         NativePayloadObject,
         NativeTestInvocation,
@@ -1248,7 +1339,8 @@ def test_same_worker_reclaims_over_128_closed_consumed_requests_but_keeps_unknow
                 row.id = "context-" + identity
                 objects[row.id] = context.model_dump(mode="json")
             case.rows[model].append(row)
-        dispatch = SimpleNamespace(
+        dispatch = NativeDispatch(
+            idempotency_digest="a" * 64,
             id="delivery-" + identity,
             request_id=identity,
             invocation_id=ref.invocation_id,
@@ -1334,7 +1426,6 @@ def test_same_worker_reclaims_over_128_closed_consumed_requests_but_keeps_unknow
 def cancel_composition(case, monkeypatch):
     """Real API/compiler/C03/runtime owners; mutable SQL and protected bytes are boundaries."""
     from copy import deepcopy
-    from threading import local
     from uuid import uuid4
 
     from core.dify_builder.input_schema import schema_hash, start_schema
@@ -1381,18 +1472,22 @@ def cancel_composition(case, monkeypatch):
     for model in tuple(case.rows):
         if model.__module__ == "models.dify_builder_native_tests" or model.__name__ == "DifyBuilderExecutionRequest":
             case.rows[model] = []
-    depth = local()
+    depth = _SqlDepth()
 
     class MutableSQL(SQL):
         @override
         def get(self, model, identity):
             key = next(iter(model.__table__.primary_key.columns)).key
-            return next((row for row in self.rows.get(model, []) if getattr(row, key) == identity), None)
+            if key == "id":
+                return next((row for row in self.rows.get(model, []) if row.id == identity), None)
+            if key == "request_id":
+                return next((row for row in self.rows.get(model, []) if row.request_id == identity), None)
+            raise AssertionError("unsupported SQL primary key")
 
         @override
         def add(self, row):
             for column in row.__table__.columns:
-                if getattr(row, column.key) is None and column.default is not None:
+                if inspect(row).attrs[column.key].value is None and column.default is not None:
                     value = column.default.arg
                     setattr(row, column.key, value(None) if callable(value) else deepcopy(value))
             self.rows.setdefault(type(row), []).append(row)
@@ -1412,9 +1507,11 @@ def cancel_composition(case, monkeypatch):
 
                 dispatches = list(self.scalars(query))
                 expiring = any(
-                    getattr(clause.left, "key", None) == "claim_expires_at"
+                    isinstance(clause, BinaryExpression)
+                    and isinstance(clause.left, ColumnClause)
+                    and clause.left.key == "claim_expires_at"
                     for clause in query._where_criteria
-                    if hasattr(clause, "left")
+                    if isinstance(clause, BinaryExpression)
                 )
                 if expiring:
                     dispatches = [
@@ -1439,7 +1536,7 @@ def cancel_composition(case, monkeypatch):
 
         @contextmanager
         def begin(self):
-            depth.writers = getattr(depth, "writers", 0) + 1
+            depth.writers = depth.writers + 1
             try:
                 yield sql
             finally:
@@ -1449,7 +1546,7 @@ def cancel_composition(case, monkeypatch):
     actor = Actor(account_id=original.actor_id, tenant_id=original.tenant_id)
 
     def permission(actual, app_id, source):
-        assert not getattr(depth, "writers", 0)
+        assert not depth.writers
         assert (actual, app_id, source) == (actor, original.app_id, sessions)
 
     for path in (
@@ -1464,7 +1561,7 @@ def cancel_composition(case, monkeypatch):
 
     def prepare(store, *, ref, tenant_id, kind, logical_key, payload):
         del store
-        assert not getattr(depth, "writers", 0)
+        assert not depth.writers
         raw, digest = state_module.encode_payload(
             tenant_id=tenant_id, request_id=ref.request_id, invocation_id=ref.invocation_id, kind=kind, payload=payload
         )
@@ -1483,7 +1580,7 @@ def cancel_composition(case, monkeypatch):
         )
 
     def read(row):
-        assert not getattr(depth, "writers", 0)
+        assert not depth.writers
         return state_module.decode_payload(
             objects[row.id],
             tenant_id=row.tenant_id,
@@ -1522,7 +1619,7 @@ def cancel_composition(case, monkeypatch):
         mode="native",
         idempotency_key="cancel-composed-start",
     )
-    return SimpleNamespace(
+    return CancellationCase(
         api=api,
         owner=owner,
         published=published,
@@ -1535,7 +1632,7 @@ def cancel_composition(case, monkeypatch):
 
 
 def test_composed_start_cancel_before_delivery_reconciles_without_physical_acquisition(cancel_composition):
-    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+    from models.dify_builder_native_tests import NativeInvocationState
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from runtime_contracts.builder.native.contracts import decode_native_ref
     from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
@@ -1567,7 +1664,7 @@ def test_consumed_generation_zero_in_other_owner_cannot_ack_live_generation_one(
     """Real two retained owners and worker; SQL claim/resume publication are explicit boundaries."""
     from threading import Event, Thread, current_thread
 
-    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestScope
+    from models.dify_builder_native_tests import NativeInvocationState, NativeTestScope
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from runtime_contracts.builder.native.contracts import decode_native_ref
     from services.dify_builder.native_testing import runtime as module
@@ -1648,7 +1745,7 @@ def test_cancel_original_joined_owner_rechecks_retained_snapshot(
 ):
     from threading import Thread, current_thread
 
-    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+    from models.dify_builder_native_tests import NativeInvocationState
     from runtime_contracts.builder.native.contracts import decode_native_ref
     from services.dify_builder.native_testing import runtime as module
     from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
@@ -1697,7 +1794,6 @@ def test_cancel_original_joined_owner_rechecks_retained_snapshot(
 @pytest.mark.parametrize("history", ["missing-outbox", "prior-lease", "foreign-outbox", "missing-context", "resumed"])
 def test_composed_cancel_does_not_upgrade_incomplete_or_noninitial_history(cancel_composition, history):
     from models.dify_builder_native_tests import (
-        NativeDispatch,
         NativeInvocationState,
         NativePayloadObject,
         NativeTestScope,
@@ -1811,7 +1907,7 @@ def test_over_128_delivered_unclaimed_logical_cancellations_reclaim_same_worker_
 def test_logical_preclaim_retirement_rechecks_proof_and_exact_retained_owners(cancel_composition, monkeypatch, race):
     from threading import Event, Thread, current_thread
 
-    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestScope
+    from models.dify_builder_native_tests import NativeInvocationState, NativeTestScope
     from runtime_contracts.builder.native.contracts import decode_native_ref
     from services.dify_builder.native_testing import host_capacity
     from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
@@ -1888,7 +1984,7 @@ def _cancel_projection_post_wait(c, dispatch_state):
     from uuid import uuid4
 
     from models.dify_builder import DifyBuilderExecutionRequest
-    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+    from models.dify_builder_native_tests import NativeInvocationState
     from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
     from models.workflow import WorkflowRun, WorkflowType
     from runtime_contracts.builder.native.contracts import decode_native_ref
@@ -1943,7 +2039,6 @@ def test_cancel_projection_includes_owned_sources(cancel_composition, source_own
     from uuid import uuid4
 
     from models.dify_builder_native_tests import (
-        NativeDispatch,
         NativeEffectOperation,
         NativeInvocationState,
         NativePayloadObject,
@@ -1956,12 +2051,12 @@ def test_cancel_projection_includes_owned_sources(cancel_composition, source_own
     if source_owner == "child":
         child_id = str(uuid4())
         selected = NativeInvocationState(
-            **{column.key: getattr(root, column.key) for column in NativeInvocationState.__table__.columns}
+            **{column.key: inspect(root).attrs[column.key].value for column in NativeInvocationState.__table__.columns}
         )
         selected.invocation_id, selected.parent_invocation_id = child_id, root.invocation_id
         payload = c.rows[NativePayloadObject][0]
         child_payload = NativePayloadObject(
-            **{column.key: getattr(payload, column.key) for column in NativePayloadObject.__table__.columns}
+            **{column.key: inspect(payload).attrs[column.key].value for column in NativePayloadObject.__table__.columns}
         )
         child_payload.id, child_payload.invocation_id = str(uuid4()), child_id
         selected.context_object_id = child_payload.id
@@ -1977,7 +2072,7 @@ def test_cancel_projection_includes_owned_sources(cancel_composition, source_own
             )
         )
         source = NativeDispatch(
-            **{column.key: getattr(source, column.key) for column in NativeDispatch.__table__.columns}
+            **{column.key: inspect(source).attrs[column.key].value for column in NativeDispatch.__table__.columns}
         )
         source.id, source.invocation_id, source.idempotency_digest = str(uuid4()), child_id, "b" * 64
         c.sql.add(source)
@@ -2049,11 +2144,13 @@ def test_cancel_projection_retains_older_unresolved_source(cancel_composition):
     """A newer completed acquisition cannot erase an older unresolved source."""
     from uuid import uuid4
 
-    from models.dify_builder_native_tests import NativeDispatch, NativeTestScope
+    from models.dify_builder_native_tests import NativeTestScope
 
     c = cancel_composition
     ref, _, state, old, _ = _cancel_projection_post_wait(c, "unknown")
-    current = NativeDispatch(**{column.key: getattr(old, column.key) for column in NativeDispatch.__table__.columns})
+    current = NativeDispatch(
+        **{column.key: inspect(old).attrs[column.key].value for column in NativeDispatch.__table__.columns}
+    )
     current.id, current.generation, current.state, current.idempotency_digest = str(uuid4()), 1, "completed", "f" * 64
     c.sql.add(current)
     state.generation = c.rows[NativeTestScope][0].generation = 1
@@ -2069,7 +2166,7 @@ def test_cancel_projection_retains_older_unresolved_source(cancel_composition):
     "fault", ["missing-source", "foreign-tenant", "foreign-invocation", "future-generation", "missing-context"]
 )
 def test_cancel_projection_never_infers_clean_from_incomplete_source_history(cancel_composition, fault):
-    from models.dify_builder_native_tests import NativeDispatch, NativePayloadObject
+    from models.dify_builder_native_tests import NativePayloadObject
 
     c = cancel_composition
     ref, _, state, source, _ = _cancel_projection_post_wait(c, "completed")
@@ -2176,7 +2273,10 @@ def test_get_cancel_interleaving_refreshes_orm_state_and_projects_one_cancellati
     with sqlite_session_factory.begin() as writer:
         writer.add(
             NativeInvocationState(
-                **{column.key: getattr(durable, column.key) for column in NativeInvocationState.__table__.columns}
+                **{
+                    column.key: inspect(durable).attrs[column.key].value
+                    for column in NativeInvocationState.__table__.columns
+                }
             )
         )
 

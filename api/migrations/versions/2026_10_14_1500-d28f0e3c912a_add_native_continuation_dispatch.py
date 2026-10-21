@@ -7,6 +7,7 @@ Revises: c67e12a904bf
 import sqlalchemy as sa
 from alembic import op
 
+from migrations.native_testing import function_schema_prefix, is_mysql, mysql_immutable_triggers, require_empty_table
 from models.types import AdjustedJSON, StringUUID
 
 revision = "d28f0e3c912a"
@@ -82,22 +83,28 @@ def upgrade():
             "state IN ('queued','published','claimed','completed','unknown','cancelled')", name="native_dispatch_state"
         ),
     )
-    connection = op.get_bind()
-    schema = connection.execute(sa.text("SELECT current_schema()")).scalar_one()
-    quoted = connection.dialect.identifier_preparer.quote(schema)
+    if is_mysql():
+        for suffix in ("payload_objects", "continuations"):
+            mysql_immutable_triggers(
+                "dify_builder_native_" + suffix, "native_" + suffix + "_immutable", "native ledger is append-only"
+            )
+        return
+    quoted = function_schema_prefix()
     for table in ("payload_objects", "continuations"):
         op.execute(
             sa.text(
                 f"CREATE TRIGGER native_immutable BEFORE UPDATE OR DELETE ON dify_builder_native_{table} "
-                f"FOR EACH ROW EXECUTE FUNCTION {quoted}.builder_native_immutable_ledger()"
+                f"FOR EACH ROW EXECUTE FUNCTION {quoted}builder_native_immutable_ledger()"
             )
         )
 
 
 def downgrade():
-    connection = op.get_bind()
-    if connection.execute(sa.text("SELECT 1 FROM dify_builder_native_invocation_states LIMIT 1")).first():
-        raise RuntimeError("native continuation recovery data must be retained")
-    op.execute("DROP TRIGGER native_immutable ON dify_builder_native_continuations")
+    require_empty_table("dify_builder_native_invocation_states", "native continuation recovery data must be retained")
+    if is_mysql():
+        for event in ("update", "delete"):
+            op.execute(f"DROP TRIGGER native_continuations_immutable_{event}")
+    else:
+        op.execute("DROP TRIGGER native_immutable ON dify_builder_native_continuations")
     for table in ("dispatches", "invocation_states", "payload_objects"):
         op.drop_table("dify_builder_native_" + table)

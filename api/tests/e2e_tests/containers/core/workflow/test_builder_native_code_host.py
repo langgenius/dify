@@ -26,13 +26,20 @@ def test_real_gevent_cancelled_scope_call_keeps_cleanup_owned(
 
 def _launch(session, mode):
     import json
+    import os
     import subprocess
     import sys
     from pathlib import Path
 
+    # Executing this file directly gives Python its fixture directory rather
+    # than the API import root. Preserve any caller paths after the API root.
+    api_root = str(Path(__file__).resolve().parents[4])
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(filter(None, (api_root, env.get("PYTHONPATH"))))
     url = session.get_bind().url.render_as_string(hide_password=False)
     result = subprocess.run(
         [sys.executable, str(Path(__file__).resolve()), mode],
+        env=env,
         input=json.dumps({"database_url": url}),
         text=True,
         capture_output=True,

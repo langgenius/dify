@@ -7,11 +7,11 @@ No local import/collection/run, provider I/O, sleep or fake checkpoint authority
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from threading import Barrier
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import inspect, select
+from sqlalchemy import inspect as inspect_orm
 
 from core.dify_builder.models import Actor
 from models.account import Account, Tenant, TenantAccountJoin
@@ -30,7 +30,9 @@ from services.dify_builder.native_testing.host_capacity import NativeHostCapacit
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 from services.dify_builder.native_testing.pending_actions import NativePendingActionService
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import CapacityOwnerCase
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,  # noqa: PLC0414
 )
@@ -80,10 +82,16 @@ def _peer(c, *, another_app=False, another_actor=False, another_tenant=False):
             )
             actor = Actor(tenant_id=tenant.id, account_id=actor.account_id)
         if another_app or another_tenant:
-            app = App(**{a.key: getattr(app, a.key) for a in inspect(App).column_attrs if a.key != "id"})
+            app = App(
+                **{a.key: inspect_orm(app).attrs[a.key].value for a in inspect(App).column_attrs if a.key != "id"}
+            )
             app.id, app.tenant_id = str(uuid4()), actor.tenant_id
             workflow = Workflow(
-                **{a.key: getattr(workflow, a.key) for a in inspect(Workflow).column_attrs if a.key != "id"}
+                **{
+                    a.key: inspect_orm(workflow).attrs[a.key].value
+                    for a in inspect(Workflow).column_attrs
+                    if a.key != "id"
+                }
             )
             workflow.id, workflow.app_id, workflow.tenant_id = str(uuid4()), app.id, actor.tenant_id
             app.workflow_id = workflow.id
@@ -130,7 +138,7 @@ def _peer(c, *, another_app=False, another_actor=False, another_tenant=False):
     )
     store.initialize_context(context=context)
     assert store.load_context(ref=ledger.ref) == context
-    return SimpleNamespace(
+    return CapacityOwnerCase(
         factory=factory,
         ledger=ledger,
         ref=ledger.ref,
@@ -233,7 +241,9 @@ def test_real_native_capacity_is_not_global_across_apps(capacity_case):
 
 
 @pytest.mark.parametrize("status", ["claimed", "unknown", "completed", "cancelled"])
-def test_real_acquired_unclean_root_retains_slot_even_after_expiry_or_terminal_projection(capacity_case, status):
+def test_real_acquired_unclean_root_retains_slot_even_after_expiry_or_terminal_projection(
+    mocker, capacity_case, status
+):
     c = capacity_case
     peer = _peer(c)
     dispatch = c.lifecycle.enqueue_initial_dispatch(ref=c.ref)
@@ -267,7 +277,9 @@ def test_real_acquired_unclean_root_retains_slot_even_after_expiry_or_terminal_p
                 outcome=outcome,
             )
     elif status == "cancelled":
-        owner.lifecycle.runtime = SimpleNamespace(cancel=lambda **_: (c.ref.invocation_id,))
+        runtime = DifyNativeRuntimeOwner()
+        mocker.patch.object(runtime, "cancel", return_value=(c.ref.invocation_id,))
+        owner.lifecycle.runtime = runtime
         assert (
             owner.lifecycle.cancel(actor=c.ledger.actor, request_id=c.ref.request_id, idempotency_key="cancel").status
             == "cancelling"
@@ -299,7 +311,7 @@ def test_real_exact_cleanup_releases_once_and_missing_physical_port_proof_does_n
     assert contender.claim_dispatch(ref=peer.ref, generation=0, dispatch_id=other.dispatch_id)
 
 
-def test_real_resume_recovery_requires_cleanup_ack_and_new_exact_lifetime_for_same_sql_ids(capacity_case):
+def test_real_resume_recovery_requires_cleanup_ack_and_new_exact_lifetime_for_same_sql_ids(mocker, capacity_case):
     c = capacity_case
     c.pause()
     c.ledger.confirm()
@@ -310,7 +322,9 @@ def test_real_resume_recovery_requires_cleanup_ack_and_new_exact_lifetime_for_sa
         session.get(NativeDispatch, dispatch.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
     owner.lifecycle.reconcile()
     calls = []
-    owner.lifecycle.runtime = SimpleNamespace(recovery_evidence=lambda **_: calls.append("proof") or "stopped")
+    runtime = DifyNativeRuntimeOwner()
+    mocker.patch.object(runtime, "recovery_evidence", side_effect=lambda **_: calls.append("proof") or "stopped")
+    owner.lifecycle.runtime = runtime
     with pytest.raises(BuilderExecutionPolicyError, match="native_cleanup_unproven"):
         owner.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=dispatch.dispatch_id)
     assert calls == []

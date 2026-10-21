@@ -7,12 +7,13 @@ without requiring a logged-in Flask request context.
 
 import json
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from pathlib import Path
-from types import FunctionType, SimpleNamespace
-from typing import Annotated, NamedTuple, TypedDict, cast, get_args, override
-from unittest.mock import MagicMock, call
+from types import FunctionType
+from typing import Annotated, NamedTuple, NoReturn, TypedDict, cast, get_args, override
+from unittest.mock import Mock, call
 
 import pytest
 from flask import Flask, Response, current_app, g, has_request_context
@@ -26,8 +27,8 @@ from werkzeug.exceptions import Forbidden
 
 import controllers.console.dify_builder as mod
 import core.db.session_factory as session_factory_module
+from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
 from controllers.common.rbac import RBACPermission
-from controllers.common.rbac import locators as rbac_locators
 from controllers.console import bp as console_bp
 from controllers.console import wraps as wraps_mod
 from controllers.console.dify_builder_fields import (
@@ -54,17 +55,47 @@ from core.dify_builder.models import (
 from core.dify_builder.models import Session as DomainSession
 from core.dify_builder.real_call_consent import ConsentReceipt, gmail_message_url
 from core.dify_builder.state import PcState
-from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
+from enums import DeploymentEdition
+from extensions.ext_application_services import init_app as init_application_services
+from extensions.ext_login import login_manager
+from libs.passport import PassportService
+from libs.token import _real_cookie_name, generate_csrf_token
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base, TypeBase
 from models.model import App, DifySetup
 from services.dify_builder import wiring
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.dify_builder.application.ports import Repository
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
+from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService, SessionView
 from services.enterprise.rbac_service import RBACService
+from services.entities.feature_entities import FeatureModel
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_tenant
+
+
+@dataclass
+class _RouteDatabase:
+    session: scoped_session[OrmSession]
+    engine: Engine
+
+
+def _consent_calls(owner: BuilderRealCallConsentService) -> list:
+    """Inspect only the five explicit public boundary methods patched in these route tests."""
+    boundaries = (
+        (owner.prepare, call.prepare),
+        (owner.confirm, call.confirm),
+        (owner.get, call.get),
+        (owner.reserve_execution, call.reserve_execution),
+        (owner.replay_execution, call.replay_execution),
+    )
+    return [
+        recorded(*entry.args, **entry.kwargs)
+        for method, recorded in boundaries
+        if isinstance(method, Mock)
+        for entry in method.call_args_list
+    ]
 
 
 def _session_view(session_id: str = "s1", *, run_status: RunStatus = RunStatus.PROCESSING) -> SessionView:
@@ -80,8 +111,8 @@ def _session_view(session_id: str = "s1", *, run_status: RunStatus = RunStatus.P
     )
 
 
-def _account(account_id: str = "acc-1") -> MagicMock:
-    account = MagicMock()
+def _account(account_id: str = "acc-1") -> Account:
+    account = Account(name="Actor", email=f"{account_id}@example.test")
     account.id = account_id
     return account
 
@@ -90,11 +121,42 @@ def _actor() -> Actor:
     return mod._actor(_account(), "ten-1")
 
 
-def _frames():
+def _route_service() -> DifyBuilderService:
+    return DifyBuilderService(
+        repo=SqlDifyBuilderRepository(session_factory_module.get_session_maker()),
+        session_lock=_HeldLease(),
+        enqueue_fn=lambda _session_id, _action, _actor, _token: None,
+    )
+
+
+class _ProgressSubscription:
+    """An idle, closeable progress subscription for reconnect transport tests."""
+
+    def __init__(self) -> None:
+        self.closed = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_error):
+        self.close()
+
+    def __iter__(self) -> Iterator[bytes]:
+        return iter(())
+
+    def receive(self, timeout: float | None = 0.1) -> bytes | None:
+        del timeout
+        return None
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def _frames() -> Iterator[str]:
     yield f"event: message\ndata: {json.dumps({'event': 'command_started', 'data': {'session_id': 's1'}})}\n\n"
 
 
-def _assert_event_stream(result) -> Response:
+def _assert_event_stream(result: object) -> Response:
     assert isinstance(result, Response)
     assert result.mimetype == "text/event-stream"
     assert result.headers["Cache-Control"] == "no-cache"
@@ -102,13 +164,14 @@ def _assert_event_stream(result) -> Response:
     return result
 
 
-def test_actor_builds_from_current_user_and_tenant():
+def test_actor_builds_from_current_user_and_tenant() -> None:
     actor = mod._actor(_account("acc-1"), "ten-1")
     assert actor == Actor(account_id="acc-1", tenant_id="ten-1")
 
 
-def test_session_get_returns_json_state(monkeypatch):
-    service = MagicMock()
+def test_session_get_returns_json_state(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "get_session_view")
     view = _session_view()
     view.reply_language = "ja"
     service.get_session_view.return_value = view
@@ -123,7 +186,7 @@ def test_session_get_returns_json_state(monkeypatch):
     service.get_session_view.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
 
 
-def test_session_get_and_command_finished_schema_keep_reply_language():
+def test_session_get_and_command_finished_schema_keep_reply_language() -> None:
     view = wiring.session_view_to_dict(_session_view())
     view["reply_language"] = "zh-Hans"
 
@@ -136,9 +199,10 @@ def test_session_get_and_command_finished_schema_keep_reply_language():
     assert finished_payload["reply_language"] == "zh-Hans"
 
 
-def test_session_stream_delegates_to_reconnect_stream(monkeypatch):
-    stream = MagicMock(return_value=Response(_frames(), mimetype="text/event-stream", headers=mod._SSE_HEADERS))
-    monkeypatch.setattr(mod, "_stream", stream)
+def test_session_stream_delegates_to_reconnect_stream(mocker) -> None:
+    stream = mocker.patch.object(
+        mod, "_stream", return_value=Response(_frames(), mimetype="text/event-stream", headers=mod._SSE_HEADERS)
+    )
 
     with Flask(__name__).test_request_context():
         response = unwrap(mod.DifyBuilderSessionStreamApi.get)(object(), "ten-1", _account(), "s1")
@@ -149,8 +213,9 @@ def test_session_stream_delegates_to_reconnect_stream(monkeypatch):
     )
 
 
-def test_conversation_get_validates_query_and_returns_json_page(monkeypatch):
-    service = MagicMock()
+def test_conversation_get_validates_query_and_returns_json_page(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "get_conversation_page")
     service.get_conversation_page.return_value = ConversationPage(
         data=[ConversationItem(seq=2, kind="notice", payload={"text": "hi"}, at_version=2)],
         has_more=True,
@@ -183,8 +248,9 @@ def test_conversation_get_validates_query_and_returns_json_page(monkeypatch):
     )
 
 
-def test_conversation_get_rejects_competing_cursors(monkeypatch):
-    service = MagicMock()
+def test_conversation_get_rejects_competing_cursors(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "get_conversation_page")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     assert mod._conversation("s1", {"before_seq": "3", "after_seq": "1"}, _actor()) == (
@@ -250,24 +316,30 @@ def test_conversation_get_rejects_competing_cursors(monkeypatch):
         ),
     ],
 )
-def test_create_always_calls_streaming_service(monkeypatch, payload, method_name, expected_kwargs):
-    service = MagicMock()
-    getattr(service, method_name).return_value = _frames()
+def test_create_always_calls_streaming_service(
+    mocker, monkeypatch: pytest.MonkeyPatch, payload: object, method_name: str, expected_kwargs: dict[str, object]
+) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "create_build_session")
+    mocker.patch.object(service, "create_edit_session")
+    mocker.patch.object(service, "create_fix_session")
+    streaming_method = mocker.patch.object(service, method_name, return_value=_frames())
     monkeypatch.setattr(mod, "build_service", lambda: service)
     actor = _actor()
 
     response = _assert_event_stream(mod._create(payload, actor))
 
     assert b'"event": "command_started"' in response.get_data()
-    called = getattr(service, method_name).call_args
+    called = streaming_method.call_args
     assert called.kwargs == {**expected_kwargs, "actor": actor}
     service.create_build_session.assert_not_called()
     service.create_edit_session.assert_not_called()
     service.create_fix_session.assert_not_called()
 
 
-def test_create_serializes_model_config_for_service(monkeypatch):
-    service = MagicMock()
+def test_create_serializes_model_config_for_service(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "create_build_session_stream")
     service.create_build_session_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -314,16 +386,33 @@ def test_create_serializes_model_config_for_service(monkeypatch):
         },
     ],
 )
-def test_create_rejects_malformed_or_legacy_payload_before_service(monkeypatch, payload):
-    service = MagicMock()
+def test_create_rejects_malformed_or_legacy_payload_before_service(
+    mocker, monkeypatch: pytest.MonkeyPatch, payload: object
+) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "create_build_session_stream")
+    mocker.patch.object(service, "create_edit_session_stream")
+    mocker.patch.object(service, "create_fix_session_stream")
+    mocker.patch.object(service, "submit_message_stream")
+    mocker.patch.object(service, "submit_action_stream")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     assert mod._create(payload, _actor()) == ({"code": "bad_request"}, 400)
-    assert not service.mock_calls
+    assert not any(
+        method.called
+        for method in (
+            service.create_build_session_stream,
+            service.create_edit_session_stream,
+            service.create_fix_session_stream,
+            service.submit_message_stream,
+            service.submit_action_stream,
+        )
+    )
 
 
-def test_create_maps_pre_stream_error(monkeypatch):
-    service = MagicMock()
+def test_create_maps_pre_stream_error(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "create_fix_session_stream")
     service.create_fix_session_stream.side_effect = ConflictError("stale")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -332,8 +421,9 @@ def test_create_maps_pre_stream_error(monkeypatch):
     assert result == ({"code": "conflict"}, 409)
 
 
-def test_create_returns_recoverable_model_error_before_starting_stream(monkeypatch):
-    service = MagicMock()
+def test_create_returns_recoverable_model_error_before_starting_stream(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "create_build_session_stream")
     service.create_build_session_stream.side_effect = ModelUnavailableError("provider credential detail")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -345,8 +435,10 @@ def test_create_returns_recoverable_model_error_before_starting_stream(monkeypat
     )
 
 
-def test_action_always_returns_event_stream_and_resolves_action_id(monkeypatch):
-    service = MagicMock()
+def test_action_always_returns_event_stream_and_resolves_action_id(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "submit_action")
+    mocker.patch.object(service, "submit_action_stream")
     service.submit_action_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
     actor = _actor()
@@ -372,8 +464,9 @@ def test_action_always_returns_event_stream_and_resolves_action_id(monkeypatch):
     service.submit_action.assert_not_called()
 
 
-def test_action_keeps_receipt_snapshot_separate_from_raw_submission(monkeypatch: pytest.MonkeyPatch) -> None:
-    service = MagicMock()
+def test_action_keeps_receipt_snapshot_separate_from_raw_submission(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "submit_action_stream")
     service.submit_action_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
     raw = {"goal": "Goal {{name}} <tag>", "enabled": True}
@@ -431,16 +524,33 @@ def test_action_keeps_receipt_snapshot_separate_from_raw_submission(monkeypatch:
         },
     ],
 )
-def test_action_rejects_malformed_or_legacy_payload_before_service(monkeypatch, payload):
-    service = MagicMock()
+def test_action_rejects_malformed_or_legacy_payload_before_service(
+    mocker, monkeypatch: pytest.MonkeyPatch, payload: object
+) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "create_build_session_stream")
+    mocker.patch.object(service, "create_edit_session_stream")
+    mocker.patch.object(service, "create_fix_session_stream")
+    mocker.patch.object(service, "submit_message_stream")
+    mocker.patch.object(service, "submit_action_stream")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     assert mod._action("s1", payload, _actor()) == ({"code": "bad_request"}, 400)
-    assert not service.mock_calls
+    assert not any(
+        method.called
+        for method in (
+            service.create_build_session_stream,
+            service.create_edit_session_stream,
+            service.create_fix_session_stream,
+            service.submit_message_stream,
+            service.submit_action_stream,
+        )
+    )
 
 
-def test_action_maps_pre_stream_conflict(monkeypatch):
-    service = MagicMock()
+def test_action_maps_pre_stream_conflict(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "submit_action_stream")
     service.submit_action_stream.side_effect = ConflictError("stale")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -458,8 +568,10 @@ def test_action_maps_pre_stream_conflict(monkeypatch):
     assert result == ({"code": "conflict"}, 409)
 
 
-def test_message_always_returns_event_stream(monkeypatch):
-    service = MagicMock()
+def test_message_always_returns_event_stream(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "submit_message")
+    mocker.patch.object(service, "submit_message_stream")
     service.submit_message_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
     actor = _actor()
@@ -491,35 +603,53 @@ def test_message_always_returns_event_stream(monkeypatch):
         },
     ],
 )
-def test_message_rejects_malformed_or_legacy_payload_before_service(monkeypatch, payload):
-    service = MagicMock()
+def test_message_rejects_malformed_or_legacy_payload_before_service(
+    mocker, monkeypatch: pytest.MonkeyPatch, payload: object
+) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "create_build_session_stream")
+    mocker.patch.object(service, "create_edit_session_stream")
+    mocker.patch.object(service, "create_fix_session_stream")
+    mocker.patch.object(service, "submit_message_stream")
+    mocker.patch.object(service, "submit_action_stream")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     assert mod._message("s1", payload, _actor()) == ({"code": "bad_request"}, 400)
-    assert not service.mock_calls
+    assert not any(
+        method.called
+        for method in (
+            service.create_build_session_stream,
+            service.create_edit_session_stream,
+            service.create_fix_session_stream,
+            service.submit_message_stream,
+            service.submit_action_stream,
+        )
+    )
 
 
-def test_stream_authorizes_then_subscribes_before_reading_state(monkeypatch):
+def test_stream_authorizes_then_subscribes_before_reading_state(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
-    subscription = MagicMock()
-    service = MagicMock()
+    subscription = _ProgressSubscription()
+    mocker.spy(subscription, "close")
+    service = _route_service()
+    mocker.patch.object(service, "authorize_session")
+    mocker.patch.object(service, "get_session_view")
 
     service.authorize_session.side_effect = lambda *_args: calls.append("authorize")
     service.get_session_view.side_effect = lambda *_args: (calls.append("view"), _session_view())[1]
 
-    def read_snapshot(*, tenant_id: str, session_id: str):
+    def read_snapshot(*, tenant_id: str, session_id: str) -> None:
         assert (tenant_id, session_id) == ("ten-1", "s1")
         calls.append("snapshot")
 
-    def subscribe(_session_id: str):
+    def subscribe(_session_id: str) -> _ProgressSubscription:
         calls.append("subscribe")
         return subscription
 
-    stream = MagicMock(return_value=iter(["data: {}\n\n"]))
+    stream = mocker.patch.object(mod, "stream_advance_frames", return_value=iter(["data: {}\n\n"]))
     monkeypatch.setattr(mod, "build_service", lambda: service)
     monkeypatch.setattr(mod.progress_bus, "subscribe", subscribe)
     monkeypatch.setattr(mod.progress_snapshot, "read", read_snapshot)
-    monkeypatch.setattr(mod, "stream_advance_frames", stream)
 
     with Flask(__name__).app_context():
         response = mod._stream("s1", _actor())
@@ -532,14 +662,16 @@ def test_stream_authorizes_then_subscribes_before_reading_state(monkeypatch):
     assert stream.call_args.kwargs["command_id"] == ""
 
 
-def test_stream_settled_state_does_not_watch_for_progress(monkeypatch):
-    service = MagicMock()
+def test_stream_settled_state_does_not_watch_for_progress(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "authorize_session", return_value=None)
+    mocker.patch.object(service, "get_session_view")
     service.get_session_view.return_value = _session_view(run_status=RunStatus.COMPLETE)
-    subscription = MagicMock()
-    stream = MagicMock(return_value=iter(["data: {}\n\n"]))
+    subscription = _ProgressSubscription()
+    mocker.spy(subscription, "close")
+    stream = mocker.patch.object(mod, "stream_advance_frames", return_value=iter(["data: {}\n\n"]))
     monkeypatch.setattr(mod, "build_service", lambda: service)
     monkeypatch.setattr(mod.progress_bus, "subscribe", lambda _session_id: subscription)
-    monkeypatch.setattr(mod, "stream_advance_frames", stream)
 
     with Flask(__name__).app_context():
         response = mod._stream("s1", _actor())
@@ -550,14 +682,18 @@ def test_stream_settled_state_does_not_watch_for_progress(monkeypatch):
     assert stream.call_args.kwargs["emit_command_finished_when_settled"] is True
 
 
-def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(monkeypatch):
+def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(
+    mocker, monkeypatch: pytest.MonkeyPatch
+) -> None:
     app = Flask(__name__)
     processing = _session_view()
     settled = _session_view(run_status=RunStatus.WAITING_INPUT)
     settled.last_command_id = "command-1"
-    service = MagicMock()
-    subscription = MagicMock()
-    subscription.receive.return_value = None
+    service = _route_service()
+    mocker.patch.object(service, "authorize_session", return_value=None)
+    mocker.patch.object(service, "get_session_view")
+    subscription = _ProgressSubscription()
+    mocker.spy(subscription, "close")
 
     def read_view(_session_id: str, actor: Actor) -> SessionView:
         assert current_app == app
@@ -584,9 +720,12 @@ def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(monk
     subscription.close.assert_called_once_with()
 
 
-def test_stream_closes_subscription_when_state_is_unavailable(monkeypatch):
-    subscription = MagicMock()
-    service = MagicMock()
+def test_stream_closes_subscription_when_state_is_unavailable(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    subscription = _ProgressSubscription()
+    mocker.spy(subscription, "close")
+    service = _route_service()
+    mocker.patch.object(service, "authorize_session", return_value=None)
+    mocker.patch.object(service, "get_session_view")
     service.get_session_view.side_effect = NotFoundError("missing")
     monkeypatch.setattr(mod.progress_bus, "subscribe", lambda _session_id: subscription)
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -597,66 +736,68 @@ def test_stream_closes_subscription_when_state_is_unavailable(monkeypatch):
     subscription.close.assert_called_once_with()
 
 
-def test_stream_authorizes_before_opening_subscription(monkeypatch):
-    service = MagicMock()
+def test_stream_authorizes_before_opening_subscription(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "authorize_session")
     service.authorize_session.side_effect = NotFoundError("missing")
-    subscribe = MagicMock()
-    monkeypatch.setattr(mod.progress_bus, "subscribe", subscribe)
+    subscribe = mocker.patch.object(mod.progress_bus, "subscribe")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     assert mod._stream("s1", _actor()) == ({"code": "not_found"}, 404)
     subscribe.assert_not_called()
 
 
-def test_stream_response_returns_event_stream_on_success():
+def test_stream_response_returns_event_stream_on_success() -> None:
     response = _assert_event_stream(mod._stream_response(_frames))
     assert b'"event": "command_started"' in response.get_data()
 
 
-def test_stream_response_maps_known_error_to_http_tuple():
-    def make_generator():
+def test_stream_response_maps_known_error_to_http_tuple() -> None:
+    def make_generator() -> NoReturn:
         raise ConflictError("stale")
 
     assert mod._stream_response(make_generator) == ({"code": "conflict"}, 409)
 
 
-def test_stream_response_reraises_unmapped_exception():
-    def make_generator():
+def test_stream_response_reraises_unmapped_exception() -> None:
+    def make_generator() -> NoReturn:
         raise RuntimeError("boom")
 
     with pytest.raises(RuntimeError):
         mod._stream_response(make_generator)
 
 
-def test_dify_builder_required_blocks_when_feature_disabled(monkeypatch):
+def test_dify_builder_required_blocks_when_feature_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     wrapped = mod.dify_builder_required(lambda *_args, **_kwargs: ({"ok": True}, 200))
-    features = MagicMock(dify_builder_enabled=False)
+    features = FeatureModel(dify_builder_enabled=False)
     monkeypatch.setattr(mod.FeatureService, "get_features", lambda _tenant_id: features)
 
     assert wrapped(object(), "t") == ({"code": "feature_unavailable"}, 403)
 
 
-def test_dify_builder_required_passes_through_when_enabled(monkeypatch):
-    def view(_self, current_tenant_id, *_args, **_kwargs):
+def test_dify_builder_required_passes_through_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    def view(_self: object, current_tenant_id: str, *_args: object, **_kwargs: object) -> tuple[dict[str, object], int]:
         return {"current_tenant_id": current_tenant_id}, 200
 
-    features = MagicMock(dify_builder_enabled=True)
+    features = FeatureModel(dify_builder_enabled=True)
     monkeypatch.setattr(mod.FeatureService, "get_features", lambda _tenant_id: features)
 
     assert mod.dify_builder_required(view)(object(), "t") == ({"current_tenant_id": "t"}, 200)
 
 
-def test_decorator_stack_injects_positionally_in_method_order(monkeypatch):
+def test_decorator_stack_injects_positionally_in_method_order(monkeypatch: pytest.MonkeyPatch) -> None:
     account = _account()
     monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (account, "ten-9"))
     monkeypatch.setattr(
         mod.FeatureService,
         "get_features",
-        lambda _tenant_id: MagicMock(dify_builder_enabled=True),
+        lambda _tenant_id: FeatureModel(dify_builder_enabled=True),
     )
     captured = {}
 
-    def view(self, current_tenant_id, current_user, **kwargs):
+    def view(
+        self: object, current_tenant_id: str, current_user: Account, **kwargs: object
+    ) -> tuple[dict[str, bool], int]:
         captured.update(self=self, tenant=current_tenant_id, user=current_user, kwargs=kwargs)
         return {"ok": True}, 200
 
@@ -667,15 +808,15 @@ def test_decorator_stack_injects_positionally_in_method_order(monkeypatch):
     assert captured == {"self": sentinel, "tenant": "ten-9", "user": account, "kwargs": {"session_id": "s1"}}
 
 
-def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch):
+def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (_account(), "ten-9"))
     monkeypatch.setattr(
         mod.FeatureService,
         "get_features",
-        lambda _tenant_id: MagicMock(dify_builder_enabled=False),
+        lambda _tenant_id: FeatureModel(dify_builder_enabled=False),
     )
 
-    def view(*_args, **_kwargs):
+    def view(*_args: object, **_kwargs: object) -> NoReturn:
         raise AssertionError("view must not run when the feature is off")
 
     composed = wraps_mod.with_current_user(wraps_mod.with_current_tenant_id(mod.dify_builder_required(view)))
@@ -697,13 +838,14 @@ def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch):
         mod.DifyBuilderRealCallConsentExecuteApi.post,
     ],
 )
-def test_session_routes_require_legacy_edit_permission(method):
+def test_session_routes_require_legacy_edit_permission(method: Callable[..., object]) -> None:
     gate = unwrap(method, stop=lambda wrapper: "edit_permission_required" in wrapper.__code__.co_qualname)
     assert "edit_permission_required" in gate.__code__.co_qualname
 
 
-def test_create_build_defaults_to_not_renaming_the_app(monkeypatch):
-    service = MagicMock()
+def test_create_build_defaults_to_not_renaming_the_app(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "create_build_session_stream")
     service.create_build_session_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -712,8 +854,9 @@ def test_create_build_defaults_to_not_renaming_the_app(monkeypatch):
     assert service.create_build_session_stream.call_args.kwargs["derive_app_name"] is False
 
 
-def test_create_build_forwards_the_rename_opt_in(monkeypatch):
-    service = MagicMock()
+def test_create_build_forwards_the_rename_opt_in(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "create_build_session_stream")
     service.create_build_session_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -725,8 +868,9 @@ def test_create_build_forwards_the_rename_opt_in(monkeypatch):
     assert service.create_build_session_stream.call_args.kwargs["derive_app_name"] is True
 
 
-def test_action_resolves_confirm_through_the_option_the_client_chose(monkeypatch):
-    service = MagicMock()
+def test_action_resolves_confirm_through_the_option_the_client_chose(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "submit_action_stream")
     service.submit_action_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -749,8 +893,9 @@ def test_action_resolves_confirm_through_the_option_the_client_chose(monkeypatch
     assert action.payload == {"option_id": "run_validation", "free_text": ""}
 
 
-def test_action_still_accepts_a_client_posting_the_bare_action_id(monkeypatch):
-    service = MagicMock()
+def test_action_still_accepts_a_client_posting_the_bare_action_id(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "submit_action_stream")
     service.submit_action_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -766,8 +911,11 @@ def test_action_still_accepts_a_client_posting_the_bare_action_id(monkeypatch):
 @pytest.mark.parametrize(
     "evidence", [None, {}, {"null": None, "false": False, "zero": 0, "empty": "", "list": [], "map": {}}]
 )
-def test_conversation_result_preserves_terminal_evidence_through_derived_json(monkeypatch, evidence):
-    service = MagicMock()
+def test_conversation_result_preserves_terminal_evidence_through_derived_json(
+    mocker, monkeypatch: pytest.MonkeyPatch, evidence: dict[str, object] | None
+) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "get_conversation_page")
     service.get_conversation_page.return_value = ConversationPage(
         data=[
             ConversationItem(
@@ -798,8 +946,11 @@ def test_conversation_result_preserves_terminal_evidence_through_derived_json(mo
     assert payload["review_note"] == "Review outputs"
 
 
-def test_conversation_historical_result_keeps_missing_evidence_unavailable(monkeypatch):
-    service = MagicMock()
+def test_conversation_historical_result_keeps_missing_evidence_unavailable(
+    mocker, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "get_conversation_page")
     service.get_conversation_page.return_value = ConversationPage(
         data=[ConversationItem(seq=0, kind="test_result", at_version=1, payload={"status": "succeeded"})],
         has_more=False,
@@ -807,12 +958,14 @@ def test_conversation_historical_result_keeps_missing_evidence_unavailable(monke
         last_seq=0,
     )
     monkeypatch.setattr(mod, "build_service", lambda: service)
-    payload = mod._conversation("s1", {}, _actor())["data"][0]["payload"]
+    response = mod._conversation("s1", {}, _actor())
+    assert isinstance(response, dict)
+    payload = response["data"][0]["payload"]
     assert payload["terminal_outputs"] is None
     assert payload["outcome"] is None
 
 
-def test_conversation_schema_derives_optional_nullable_terminal_evidence():
+def test_conversation_schema_derives_optional_nullable_terminal_evidence() -> None:
     from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse
 
     schema = DifyBuilderConversationPageResponse.model_json_schema(mode="serialization")
@@ -956,8 +1109,10 @@ def _no_consent_factory() -> BuilderRealCallConsentService:
     raise AssertionError("execute must go through the DifyBuilderService confirmed coordinator")
 
 
-def _consent_service(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    consent = MagicMock(spec=BuilderRealCallConsentService)
+def _consent_service(monkeypatch: pytest.MonkeyPatch, mocker) -> BuilderRealCallConsentService:
+    consent = BuilderRealCallConsentService(session_factory_module.get_session_maker())
+    for method in ("prepare", "confirm", "get"):
+        mocker.patch.object(consent, method)
     monkeypatch.setattr(mod, "build_real_call_consent_service", lambda: consent)
     monkeypatch.setattr(mod, "build_service", _no_dispatch)
     return consent
@@ -1086,8 +1241,10 @@ def test_confirm_payload_is_strict(injected: dict[str, object]) -> None:
         DifyBuilderConfirmRealCallPayload.model_validate(_CONFIRM_BODY | injected)
 
 
-def test_prepare_route_passes_trusted_actor_and_returns_created_receipt(monkeypatch: pytest.MonkeyPatch) -> None:
-    consent = _consent_service(monkeypatch)
+def test_prepare_route_passes_trusted_actor_and_returns_created_receipt(
+    mocker, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    consent = _consent_service(monkeypatch, mocker)
     consent.prepare.return_value = _receipt()
 
     body, status = mod._prepare_real_call(_SESSION_ID, dict(_PREPARE_BODY), _ACTOR)
@@ -1099,7 +1256,7 @@ def test_prepare_route_passes_trusted_actor_and_returns_created_receipt(monkeypa
     assert body["disclosure"]["identity_basis"] == "workspace_credential"
     assert body["disclosure"]["remote_account_status"] == "unknown"
     # Prepare only freezes metadata: the single consent call, nothing runtime/dispatch.
-    assert consent.mock_calls == [
+    assert _consent_calls(consent) == [
         call.prepare(
             actor=_ACTOR,
             session_id=_SESSION_ID,
@@ -1123,12 +1280,12 @@ def test_prepare_route_passes_trusted_actor_and_returns_created_receipt(monkeypa
 )
 @pytest.mark.parametrize("body", [{}, [], "text", {"at_version": True}])
 def test_consent_routes_reject_invalid_bodies_before_any_service(
-    monkeypatch: pytest.MonkeyPatch, route: Callable[[object], object], body: object
+    mocker, monkeypatch: pytest.MonkeyPatch, route: Callable[[object], object], body: object
 ) -> None:
-    consent = _consent_service(monkeypatch)
+    consent = _consent_service(monkeypatch, mocker)
 
     assert route(body) == ({"code": "bad_request"}, 400)
-    assert not consent.mock_calls
+    assert not _consent_calls(consent)
 
 
 @pytest.mark.parametrize(
@@ -1193,9 +1350,9 @@ def test_consent_routes_reject_invalid_bodies_before_any_service(
     ],
 )
 def test_prepare_maps_domain_refusals_to_fixed_public_codes(
-    monkeypatch: pytest.MonkeyPatch, reason: str, status: int, expected: dict[str, str]
+    mocker, monkeypatch: pytest.MonkeyPatch, reason: str, status: int, expected: dict[str, str]
 ) -> None:
-    consent = _consent_service(monkeypatch)
+    consent = _consent_service(monkeypatch, mocker)
     consent.prepare.side_effect = BuilderExecutionPolicyError(reason)
 
     result = mod._prepare_real_call(_SESSION_ID, dict(_PREPARE_BODY), _ACTOR)
@@ -1208,8 +1365,8 @@ def test_prepare_maps_domain_refusals_to_fixed_public_codes(
         assert DifyBuilderRealCallRefusalResponse.model_validate(expected).reason_code == expected["reason_code"]
 
 
-def test_refusal_never_echoes_exception_text(monkeypatch: pytest.MonkeyPatch) -> None:
-    consent = _consent_service(monkeypatch)
+def test_refusal_never_echoes_exception_text(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    consent = _consent_service(monkeypatch, mocker)
     leaked = "provider said token=ya29.secret for alice@example.com"
     consent.prepare.side_effect = BuilderExecutionPolicyError(leaked)
 
@@ -1223,8 +1380,8 @@ def test_refusal_never_echoes_exception_text(monkeypatch: pytest.MonkeyPatch) ->
     )
 
 
-def test_unexpected_consent_failure_is_not_serialized(monkeypatch: pytest.MonkeyPatch) -> None:
-    consent = _consent_service(monkeypatch)
+def test_unexpected_consent_failure_is_not_serialized(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    consent = _consent_service(monkeypatch, mocker)
     consent.get.side_effect = RuntimeError("ciphertext=abc")
 
     with pytest.raises(RuntimeError):
@@ -1241,8 +1398,10 @@ def test_every_mapped_refusal_reason_is_a_declared_public_reason() -> None:
 
 
 @pytest.mark.parametrize("decision", ["confirm", "decline"])
-def test_confirm_route_records_decision_without_dispatch(monkeypatch: pytest.MonkeyPatch, decision: str) -> None:
-    consent = _consent_service(monkeypatch)
+def test_confirm_route_records_decision_without_dispatch(
+    mocker, monkeypatch: pytest.MonkeyPatch, decision: str
+) -> None:
+    consent = _consent_service(monkeypatch, mocker)
     state = "confirmed" if decision == "confirm" else "declined"
     consent.confirm.return_value = _receipt(state=state, can_retry=decision == "decline")
 
@@ -1251,7 +1410,7 @@ def test_confirm_route_records_decision_without_dispatch(monkeypatch: pytest.Mon
     assert status == 200
     assert body["state"] == state
     # A decision (including decline) never reaches the dispatch owner or enqueues.
-    assert consent.mock_calls == [
+    assert _consent_calls(consent) == [
         call.confirm(
             actor=_ACTOR,
             session_id=_SESSION_ID,
@@ -1264,8 +1423,8 @@ def test_confirm_route_records_decision_without_dispatch(monkeypatch: pytest.Mon
     ]
 
 
-def test_confirm_replay_returns_the_saved_decision_receipt(monkeypatch: pytest.MonkeyPatch) -> None:
-    consent = _consent_service(monkeypatch)
+def test_confirm_replay_returns_the_saved_decision_receipt(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    consent = _consent_service(monkeypatch, mocker)
     saved = _receipt(state="confirmed")
     # The owner answers an identical replay from the saved decision even after later advancement.
     consent.confirm.side_effect = [saved, saved]
@@ -1290,8 +1449,8 @@ def test_confirm_replay_returns_the_saved_decision_receipt(monkeypatch: pytest.M
         "consent_expired",
     ],
 )
-def test_confirm_scope_version_and_body_conflicts_are_409(monkeypatch: pytest.MonkeyPatch, reason: str) -> None:
-    consent = _consent_service(monkeypatch)
+def test_confirm_scope_version_and_body_conflicts_are_409(mocker, monkeypatch: pytest.MonkeyPatch, reason: str) -> None:
+    consent = _consent_service(monkeypatch, mocker)
     consent.confirm.side_effect = BuilderExecutionPolicyError(reason)
 
     assert mod._confirm_real_call(_SESSION_ID, _CONSENT_ID, dict(_CONFIRM_BODY), _ACTOR) == (
@@ -1300,8 +1459,8 @@ def test_confirm_scope_version_and_body_conflicts_are_409(monkeypatch: pytest.Mo
     )
 
 
-def test_cross_owner_consent_is_indistinguishable_from_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    consent = _consent_service(monkeypatch)
+def test_cross_owner_consent_is_indistinguishable_from_missing(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    consent = _consent_service(monkeypatch, mocker)
     consent.confirm.side_effect = BuilderExecutionPolicyError("consent_not_found")
     consent.get.side_effect = BuilderExecutionPolicyError("consent_not_found")
 
@@ -1312,8 +1471,8 @@ def test_cross_owner_consent_is_indistinguishable_from_missing(monkeypatch: pyte
     assert mod._get_real_call(_SESSION_ID, _CONSENT_ID, _ACTOR) == ({"code": "not_found"}, 404)
 
 
-def test_status_route_returns_current_receipt_without_execution(monkeypatch: pytest.MonkeyPatch) -> None:
-    consent = _consent_service(monkeypatch)
+def test_status_route_returns_current_receipt_without_execution(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    consent = _consent_service(monkeypatch, mocker)
     consent.get.return_value = _claimed_receipt()
 
     body, status = mod._get_real_call(_SESSION_ID, _CONSENT_ID, _ACTOR)
@@ -1321,11 +1480,12 @@ def test_status_route_returns_current_receipt_without_execution(monkeypatch: pyt
     assert status == 200
     assert body["state"] == "claimed"
     assert body["can_retry"] is False
-    assert consent.mock_calls == [call.get(actor=_ACTOR, session_id=_SESSION_ID, consent_id=_CONSENT_ID)]
+    assert _consent_calls(consent) == [call.get(actor=_ACTOR, session_id=_SESSION_ID, consent_id=_CONSENT_ID)]
 
 
-def test_execute_route_uses_only_the_confirmed_dispatch_coordinator(monkeypatch: pytest.MonkeyPatch) -> None:
-    service = MagicMock(spec=DifyBuilderService)
+def test_execute_route_uses_only_the_confirmed_dispatch_coordinator(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    mocker.patch.object(service, "execute_confirmed_tool")
     service.execute_confirmed_tool.return_value = _reserved_receipt()
     monkeypatch.setattr(mod, "build_service", lambda: service)
     monkeypatch.setattr(mod, "build_real_call_consent_service", _no_consent_factory)
@@ -1335,8 +1495,8 @@ def test_execute_route_uses_only_the_confirmed_dispatch_coordinator(monkeypatch:
     assert status == 202
     assert body["command_id"] == _COMMAND_ID
     assert body["can_retry"] is False
-    assert service.mock_calls == [
-        call.execute_confirmed_tool(
+    assert service.execute_confirmed_tool.call_args_list == [
+        call(
             _SESSION_ID,
             _ACTOR,
             consent_id=_CONSENT_ID,
@@ -1367,9 +1527,10 @@ def test_execute_route_uses_only_the_confirmed_dispatch_coordinator(monkeypatch:
     ],
 )
 def test_execute_route_maps_coordinator_failures(
-    monkeypatch: pytest.MonkeyPatch, error: Exception, expected: tuple[dict[str, str], int]
+    mocker, monkeypatch: pytest.MonkeyPatch, error: Exception, expected: tuple[dict[str, str], int]
 ) -> None:
-    service = MagicMock(spec=DifyBuilderService)
+    service = _route_service()
+    mocker.patch.object(service, "execute_confirmed_tool")
     service.execute_confirmed_tool.side_effect = error
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -1401,23 +1562,25 @@ class _HeldLease:
 
 
 def _coordinator(
-    monkeypatch: pytest.MonkeyPatch, *, owner_account_id: str = "acc-1"
-) -> tuple[MagicMock, _HeldLease, list[tuple[str, Action, Actor, str]], list[str]]:
+    monkeypatch: pytest.MonkeyPatch, mocker, *, owner_account_id: str = "acc-1"
+) -> tuple[BuilderRealCallConsentService, _HeldLease, list[tuple[str, Action, Actor, str]], list[str]]:
     """Wire the real DifyBuilderService confirmed coordinator behind the execute route."""
-    repo = MagicMock(spec=Repository)
-    repo.get_session.return_value = (
-        DomainSession(
-            id=_SESSION_ID,
-            app_id="app-1",
-            tenant_id="ten-1",
-            owner_account_id=owner_account_id,
-            entry_mode=EntryMode.BUILD,
-            current_state=PcState.BUILD_REVIEW,
-            version=3,
-        ),
-        DifyBuilderContext(),
+    repo = SqlDifyBuilderRepository(session_factory_module.get_session_maker())
+    stored_session = DomainSession(
+        id=_SESSION_ID,
+        app_id="app-1",
+        tenant_id="ten-1",
+        owner_account_id=owner_account_id,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_REVIEW,
+        version=3,
     )
-    consent = MagicMock(spec=BuilderRealCallConsentService)
+    repo.create_session(stored_session, DifyBuilderContext(), [])
+    for version in (1, 2):
+        repo.compare_and_advance(stored_session.id, version, PcState.BUILD_REVIEW, DifyBuilderContext(), [])
+    consent = BuilderRealCallConsentService(session_factory_module.get_session_maker())
+    for method in ("reserve_execution", "replay_execution"):
+        mocker.patch.object(consent, method)
     lease = _HeldLease()
     enqueued: list[tuple[str, Action, Actor, str]] = []
     authorized: list[str] = []
@@ -1441,9 +1604,10 @@ def _coordinator(
 
 
 def test_matching_execute_replay_returns_current_receipt_without_extra_enqueue(
+    mocker,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    consent, lease, enqueued, authorized = _coordinator(monkeypatch)
+    consent, lease, enqueued, authorized = _coordinator(monkeypatch, mocker)
     consent.reserve_execution.return_value = (_reserved_receipt(), True)
     consent.replay_execution.return_value = _claimed_receipt()
 
@@ -1478,8 +1642,8 @@ def test_matching_execute_replay_returns_current_receipt_without_extra_enqueue(
     assert authorized == ["acc-1:app-1:test_and_run", "acc-1:app-1:test_and_run"]
 
 
-def test_held_lease_without_saved_execute_is_busy(monkeypatch: pytest.MonkeyPatch) -> None:
-    consent, lease, enqueued, _authorized = _coordinator(monkeypatch)
+def test_held_lease_without_saved_execute_is_busy(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    consent, lease, enqueued, _authorized = _coordinator(monkeypatch, mocker)
     lease.tokens[_SESSION_ID] = "other-command"
     consent.replay_execution.return_value = None
 
@@ -1491,8 +1655,10 @@ def test_held_lease_without_saved_execute_is_busy(monkeypatch: pytest.MonkeyPatc
     assert enqueued == []
 
 
-def test_execute_refusal_releases_only_its_own_lease_and_never_enqueues(monkeypatch: pytest.MonkeyPatch) -> None:
-    consent, lease, enqueued, _authorized = _coordinator(monkeypatch)
+def test_execute_refusal_releases_only_its_own_lease_and_never_enqueues(
+    mocker, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    consent, lease, enqueued, _authorized = _coordinator(monkeypatch, mocker)
     consent.reserve_execution.side_effect = BuilderExecutionPolicyError("consent_scope_mismatch")
 
     assert mod._execute_real_call(_SESSION_ID, _CONSENT_ID, dict(_EXECUTE_BODY), _ACTOR) == (
@@ -1503,14 +1669,14 @@ def test_execute_refusal_releases_only_its_own_lease_and_never_enqueues(monkeypa
     assert enqueued == []
 
 
-def test_execute_on_another_owners_session_is_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    consent, lease, enqueued, authorized = _coordinator(monkeypatch, owner_account_id="someone-else")
+def test_execute_on_another_owners_session_is_not_found(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    consent, lease, enqueued, authorized = _coordinator(monkeypatch, mocker, owner_account_id="someone-else")
 
     assert mod._execute_real_call(_SESSION_ID, _CONSENT_ID, dict(_EXECUTE_BODY), _ACTOR) == (
         {"code": "not_found"},
         404,
     )
-    assert not consent.mock_calls
+    assert not _consent_calls(consent)
     assert (lease.acquired, enqueued, authorized) == (0, [], [])
 
 
@@ -1651,6 +1817,7 @@ def test_consent_route_docs_declare_bodies_only_for_posts() -> None:
     ],
 )
 def test_consent_routes_propagate_current_tenant_and_user_through_decorators(
+    mocker,
     monkeypatch: pytest.MonkeyPatch,
     method: Callable[..., object],
     path_kwargs: dict[str, str],
@@ -1660,45 +1827,48 @@ def test_consent_routes_propagate_current_tenant_and_user_through_decorators(
 ) -> None:
     account = _account("acc-9")
     monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (account, "ten-9"))
-    monkeypatch.setattr(mod.FeatureService, "get_features", lambda _tenant_id: MagicMock(dify_builder_enabled=True))
-    consent = _consent_service(monkeypatch)
-    getattr(consent, service_method).return_value = _receipt()
+    monkeypatch.setattr(mod.FeatureService, "get_features", lambda _tenant_id: FeatureModel(dify_builder_enabled=True))
+    consent = _consent_service(monkeypatch, mocker)
+    consent_method = {"prepare": consent.prepare, "confirm": consent.confirm, "get": consent.get}[service_method]
+    consent_method.return_value = _receipt()
     view = unwrap(method, stop=lambda wrapper: "with_current_user" in wrapper.__code__.co_qualname)
 
     with Flask(__name__).test_request_context(method="GET" if body is None else "POST", json=body):
         result = view(object(), session_id=_SESSION_ID, **path_kwargs)
 
     assert cast(tuple[dict[str, object], int], result)[1] == status
-    called = getattr(consent, service_method).call_args
+    called = consent_method.call_args
     assert called.kwargs["actor"] == Actor(account_id="acc-9", tenant_id="ten-9")
     assert called.kwargs["session_id"] == _SESSION_ID
 
 
-def test_build_service_wires_the_confirmed_consent_owner(monkeypatch: pytest.MonkeyPatch) -> None:
-    consent = MagicMock(spec=BuilderRealCallConsentService)
+def test_build_service_wires_the_confirmed_consent_owner(monkeypatch, sqlite_session_factory, sqlite_engine) -> None:
+    consent = BuilderRealCallConsentService(sqlite_session_factory)
+    database = _RouteDatabase(scoped_session(sqlite_session_factory), sqlite_engine)
     monkeypatch.setattr(wiring, "build_real_call_consent_service", lambda: consent)
-    monkeypatch.setattr(wiring, "sessionmaker", MagicMock())
-    monkeypatch.setattr(wiring, "SqlDifyBuilderRepository", MagicMock())
-    monkeypatch.setattr(wiring, "WorkflowServiceDifyPort", MagicMock())
-    monkeypatch.setattr(wiring, "db", MagicMock())
+    monkeypatch.setattr(wiring, "db", database)
 
     service = wiring.build_service()
 
     assert service._real_call_consent is consent
+    assert isinstance(service._repo, SqlDifyBuilderRepository)
 
 
-def test_build_real_call_consent_service_uses_the_shared_engine(monkeypatch: pytest.MonkeyPatch) -> None:
-    factory = MagicMock()
-    sessionmaker = MagicMock(return_value=factory)
-    database = MagicMock()
-    monkeypatch.setattr(wiring, "sessionmaker", sessionmaker)
+def test_build_real_call_consent_service_uses_the_shared_engine(
+    monkeypatch, mocker, sqlite_session_factory, sqlite_engine
+) -> None:
+    database = _RouteDatabase(scoped_session(sqlite_session_factory), sqlite_engine)
     monkeypatch.setattr(wiring, "db", database)
+    maker = mocker.spy(wiring, "sessionmaker")
 
     consent = wiring.build_real_call_consent_service()
 
     assert isinstance(consent, BuilderRealCallConsentService)
-    assert consent._session_factory is factory
-    sessionmaker.assert_called_once_with(bind=database.engine, expire_on_commit=False)
+    assert consent._session_factory is maker.spy_return
+    maker.assert_called_once_with(bind=database.engine, expire_on_commit=False)
+    with consent._session_factory() as session:
+        assert session.get_bind() is sqlite_engine
+        assert session.scalar(select(1)) == 1
 
 
 # -- real Flask/RESTX requests through the console blueprint and its error handlers --
@@ -1714,20 +1884,25 @@ _CONSENT_POSTS: list[tuple[str, dict[str, object]]] = [
 
 class _ConsentHttp(NamedTuple):
     client: FlaskClient
-    consent: MagicMock
-    dispatch: MagicMock
+    consent: BuilderRealCallConsentService
+    dispatch: DifyBuilderService
 
 
 def _consent_http(
-    monkeypatch: pytest.MonkeyPatch, *, role: TenantAccountRole = TenantAccountRole.EDITOR, enabled: bool = True
+    monkeypatch: pytest.MonkeyPatch, mocker, *, role: TenantAccountRole = TenantAccountRole.EDITOR, enabled: bool = True
 ) -> _ConsentHttp:
     """Serve the real console blueprint with the real decorator stack; only identity and owners are faked."""
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False, LOGIN_DISABLED=False)
     monkeypatch.setattr(wraps_mod, "_is_setup_completed", lambda: True)
     monkeypatch.setattr("libs.login.check_csrf_token", lambda _request, _user_id: None)
-    monkeypatch.setattr(mod.FeatureService, "get_features", lambda _tenant_id: MagicMock(dify_builder_enabled=enabled))
-    consent = MagicMock(spec=BuilderRealCallConsentService)
-    dispatch = MagicMock(spec=DifyBuilderService)
+    monkeypatch.setattr(
+        mod.FeatureService, "get_features", lambda _tenant_id: FeatureModel(dify_builder_enabled=enabled)
+    )
+    consent = BuilderRealCallConsentService(session_factory_module.get_session_maker())
+    for method in ("prepare", "confirm", "get"):
+        mocker.patch.object(consent, method)
+    dispatch = _route_service()
+    mocker.patch.object(dispatch, "execute_confirmed_tool")
     monkeypatch.setattr(mod, "build_real_call_consent_service", lambda: consent)
     monkeypatch.setattr(mod, "build_service", lambda: dispatch)
     account = Account(name="tester", email="tester@example.com")
@@ -1757,38 +1932,39 @@ def _consent_http(
     ],
 )
 def test_consent_posts_reject_non_json_and_malformed_bodies_with_fixed_400(
+    mocker,
     monkeypatch: pytest.MonkeyPatch,
     url: str,
     data: str,
     content_type: str | None,
 ) -> None:
-    http = _consent_http(monkeypatch)
+    http = _consent_http(monkeypatch, mocker)
 
     response = http.client.post(url, data=data, content_type=content_type)
 
     assert response.status_code == 400
     assert response.get_json() == {"code": "bad_request"}
-    assert not http.consent.mock_calls
-    assert not http.dispatch.mock_calls
+    assert not _consent_calls(http.consent)
+    assert not http.dispatch.execute_confirmed_tool.call_args_list
 
 
 @pytest.mark.parametrize(("url", "valid_body"), _CONSENT_POSTS)
 def test_consent_posts_reject_json_that_is_not_the_declared_object(
-    monkeypatch: pytest.MonkeyPatch, url: str, valid_body: dict[str, object]
+    mocker, monkeypatch: pytest.MonkeyPatch, url: str, valid_body: dict[str, object]
 ) -> None:
-    http = _consent_http(monkeypatch)
+    http = _consent_http(monkeypatch, mocker)
 
     bodies: list[object] = [[], [valid_body], "text", 7, valid_body | {"guard": {}}]
     for body in bodies:
         response = http.client.post(url, json=body)
         assert response.status_code == 400
         assert response.get_json() == {"code": "bad_request"}
-    assert not http.consent.mock_calls
-    assert not http.dispatch.mock_calls
+    assert not _consent_calls(http.consent)
+    assert not http.dispatch.execute_confirmed_tool.call_args_list
 
 
-def test_consent_prepare_json_request_reaches_only_the_consent_owner(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = _consent_http(monkeypatch)
+def test_consent_prepare_json_request_reaches_only_the_consent_owner(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    http = _consent_http(monkeypatch, mocker)
     http.consent.prepare.return_value = _receipt()
 
     response = http.client.post(_CONSENTS_URL, json=_PREPARE_BODY)
@@ -1796,7 +1972,7 @@ def test_consent_prepare_json_request_reaches_only_the_consent_owner(monkeypatch
     assert response.status_code == 201
     assert response.get_json()["consent_id"] == _CONSENT_ID
     assert http.consent.prepare.call_args.kwargs["actor"].tenant_id == "ten-1"
-    assert not http.dispatch.mock_calls
+    assert not http.dispatch.execute_confirmed_tool.call_args_list
 
 
 _ALL_CONSENT_REQUESTS: list[tuple[str, str, dict[str, object] | None]] = [
@@ -1809,36 +1985,36 @@ _ALL_CONSENT_REQUESTS: list[tuple[str, str, dict[str, object] | None]] = [
 
 @pytest.mark.parametrize(("method", "url", "body"), _ALL_CONSENT_REQUESTS)
 def test_inherited_edit_permission_guard_403_shape(
-    monkeypatch: pytest.MonkeyPatch, method: str, url: str, body: dict[str, object] | None
+    mocker, monkeypatch: pytest.MonkeyPatch, method: str, url: str, body: dict[str, object] | None
 ) -> None:
-    http = _consent_http(monkeypatch, role=TenantAccountRole.NORMAL)
+    http = _consent_http(monkeypatch, mocker, role=TenantAccountRole.NORMAL)
 
     response = http.client.open(url, method=method, json=body)
 
     assert response.status_code == 403
     assert response.get_json() == {"code": "forbidden", "message": Forbidden.description, "status": 403}
     DifyBuilderRealCallForbiddenResponse.model_validate(response.get_json())
-    assert not http.consent.mock_calls
-    assert not http.dispatch.mock_calls
+    assert not _consent_calls(http.consent)
+    assert not http.dispatch.execute_confirmed_tool.call_args_list
 
 
 @pytest.mark.parametrize(("method", "url", "body"), _ALL_CONSENT_REQUESTS)
 def test_inherited_feature_gate_403_shape(
-    monkeypatch: pytest.MonkeyPatch, method: str, url: str, body: dict[str, object] | None
+    mocker, monkeypatch: pytest.MonkeyPatch, method: str, url: str, body: dict[str, object] | None
 ) -> None:
-    http = _consent_http(monkeypatch, enabled=False)
+    http = _consent_http(monkeypatch, mocker, enabled=False)
 
     response = http.client.open(url, method=method, json=body)
 
     assert response.status_code == 403
     assert response.get_json() == {"code": "feature_unavailable"}
     DifyBuilderRealCallForbiddenResponse.model_validate(response.get_json())
-    assert not http.consent.mock_calls
-    assert not http.dispatch.mock_calls
+    assert not _consent_calls(http.consent)
+    assert not http.dispatch.execute_confirmed_tool.call_args_list
 
 
-def test_domain_permission_refusal_403_shape(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = _consent_http(monkeypatch)
+def test_domain_permission_refusal_403_shape(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
+    http = _consent_http(monkeypatch, mocker)
     http.consent.get.side_effect = BuilderExecutionPolicyError("execution_permission_denied")
     http.dispatch.execute_confirmed_tool.side_effect = Forbidden()
 
@@ -1901,7 +2077,7 @@ class _RequestSqlWorld(NamedTuple):
     client: FlaskClient
     registry: scoped_session[OrmSession]
     witness: _OpenTransactions
-    consent: MagicMock
+    consent: BuilderRealCallConsentService
     boundaries: list[tuple[str, bool, int]]
     enqueued: list[tuple[str, Action, Actor, str]]
     # Per request, just before teardown removes the session: (scoped transaction open,
@@ -1913,13 +2089,14 @@ _STAGED = select(DifySetup.version).where(DifySetup.version == "staged-by-anothe
 
 
 @pytest.fixture
-def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[_RequestSqlWorld]:
+def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mocker) -> Iterator[_RequestSqlWorld]:
     """The real consent routes, decorator stack, uncached setup read and production authorizer on real SQL.
 
     ``db`` of the console wraps, the controller and the wiring is one real ``scoped_session`` over
     SQLite (the unit app does not initialize Flask-SQLAlchemy); request teardown removes it, as the
-    extension does. Identity is injected the same way as ``_consent_http``. The Redis advance lease
-    and the consent owner are boundary spies that record, at each external call, whether the
+    extension does. Real incoming application services bind the account identity and RBAC query
+    owners; signed Passport/CSRF tokens enter through the actual request loader and wrappers.
+    The Redis advance lease and the consent owner remain unit boundary spies that record whether the
     request-scoped session is in a transaction and how many connection transactions are open.
     """
     engine = create_engine(f"sqlite:///{tmp_path / 'request-sql.sqlite3'}")
@@ -1927,19 +2104,26 @@ def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterat
     TypeBase.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     registry = scoped_session(factory)
-    database = SimpleNamespace(session=registry, engine=engine)
+    database = _RouteDatabase(session=registry, engine=engine)
     monkeypatch.setattr(session_factory_module, "_session_maker", factory)
     monkeypatch.setattr(wraps_mod, "db", database)
     monkeypatch.setattr(wiring, "db", database)
-    monkeypatch.setattr(rbac_locators, "db", database)
     monkeypatch.setattr(mod, "db", database, raising=False)
-    apply_config_overrides(monkeypatch, RBAC_ENABLED=False, LOGIN_DISABLED=False)
-    monkeypatch.setattr("libs.login.check_csrf_token", lambda _request, _user_id: None)
+    apply_config_overrides(
+        monkeypatch,
+        RBAC_ENABLED=False,
+        LOGIN_DISABLED=False,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        SECRET_KEY="unit-builder-request-sql-passport-key",
+    )
     with factory.begin() as session:
         account = Account(name="tester", email="tester@example.com")
         session.add(account)
         session.flush()
         session.add(DifySetup(version="unit"))
+        tenant = Tenant(name="Request SQL workspace")
+        tenant.id = "ten-1"
+        session.add(tenant)
         session.add(
             App(
                 id="app-1",
@@ -1951,20 +2135,19 @@ def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterat
                 enable_api=False,
             )
         )
-        session.add(TenantAccountJoin(tenant_id="ten-1", account_id=account.id, role=TenantAccountRole.EDITOR))
-    account.role = TenantAccountRole.EDITOR
-    account.status = AccountStatus.ACTIVE
-    account._current_tenant = make_tenant(tenant_id="ten-1")
+        session.add(
+            TenantAccountJoin(tenant_id="ten-1", account_id=account.id, role=TenantAccountRole.EDITOR, current=True)
+        )
     witness = _OpenTransactions(engine)
     boundaries: list[tuple[str, bool, int]] = []
 
     def observe(name: str) -> None:
         boundaries.append((name, registry().in_transaction(), witness.count))
 
-    def features(_tenant_id: str) -> MagicMock:
+    def features(_tenant_id: str) -> FeatureModel:
         # The feature gate's billing/enterprise read: the first external boundary after the auth wrappers.
         observe("feature")
-        return MagicMock(dify_builder_enabled=True)
+        return FeatureModel(dify_builder_enabled=True)
 
     monkeypatch.setattr(mod.FeatureService, "get_features", features)
 
@@ -1979,20 +2162,22 @@ def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterat
             observe("lease_release")
             super().release(session_id, token)
 
-    consent = MagicMock(spec=BuilderRealCallConsentService)
-    repo = MagicMock(spec=Repository)
-    repo.get_session.return_value = (
-        DomainSession(
-            id=_SESSION_ID,
-            app_id="app-1",
-            tenant_id="ten-1",
-            owner_account_id=account.id,
-            entry_mode=EntryMode.BUILD,
-            current_state=PcState.BUILD_REVIEW,
-            version=3,
-        ),
-        DifyBuilderContext(),
+    consent = BuilderRealCallConsentService(session_factory_module.get_session_maker())
+    for method in ("prepare", "confirm", "get", "reserve_execution", "replay_execution"):
+        mocker.patch.object(consent, method)
+    repo = SqlDifyBuilderRepository(session_factory_module.get_session_maker())
+    stored_session = DomainSession(
+        id=_SESSION_ID,
+        app_id="app-1",
+        tenant_id="ten-1",
+        owner_account_id=account.id,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_REVIEW,
+        version=3,
     )
+    repo.create_session(stored_session, DifyBuilderContext(), [])
+    for version in (1, 2):
+        repo.compare_and_advance(stored_session.id, version, PcState.BUILD_REVIEW, DifyBuilderContext(), [])
     enqueued: list[tuple[str, Action, Actor, str]] = []
 
     def enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
@@ -2011,11 +2196,10 @@ def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterat
     app = Flask("dify-builder-request-sql")
     app.config["TESTING"] = True
     app.register_blueprint(console_bp)
-
-    def login() -> None:
-        g._login_user = account
-
-    app.before_request(login)
+    # Use the incoming production composition: repositories own their short Sessions, and the
+    # actual login request loader resolves the app-bound account identity before the guard.
+    init_application_services(app)
+    login_manager.init_app(app)
     teardown: list[tuple[bool, bool, bool]] = []
 
     def capture(_error: BaseException | None) -> None:
@@ -2033,8 +2217,14 @@ def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterat
     # Uncached: the real first ``_is_setup_completed`` must close its owned DifySetup read.
     setup_check = wraps_mod._is_setup_completed
     setup_check.reset_success()
+    client = app.test_client()
+    access = PassportService().issue({"user_id": account.id, "exp": int(datetime.now(UTC).timestamp()) + 600})
+    csrf = generate_csrf_token(account.id)
+    client.set_cookie(_real_cookie_name(COOKIE_NAME_CSRF_TOKEN), csrf)
+    client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {access}"
+    client.environ_base[f"HTTP_{HEADER_NAME_CSRF_TOKEN.upper().replace('-', '_')}"] = csrf
     try:
-        yield _RequestSqlWorld(app.test_client(), registry, witness, consent, boundaries, enqueued, teardown)
+        yield _RequestSqlWorld(client, registry, witness, consent, boundaries, enqueued, teardown)
     finally:
         setup_check.reset_success()
         witness.close()
@@ -2058,7 +2248,7 @@ def enabled_rbac(
 ) -> dict[RBACPermission, bool]:
     """Keep the real locator/evaluator; replace only the external access RPC with a witness."""
     world = request_sql_world
-    enabled = getattr(request, "param", True)
+    enabled = request.param if hasattr(request, "param") else True
     apply_config_overrides(monkeypatch, RBAC_ENABLED=enabled)
     permissions = {RBACPermission.APP_EDIT: True, RBACPermission.APP_TEST_AND_RUN: True} if enabled else {}
 
@@ -2177,7 +2367,10 @@ def test_consent_owner_calls_start_without_request_sql(
 ) -> None:
     """The consent owner reads external metadata first; the wrappers' request reads must be over."""
     world = request_sql_world
-    getattr(world.consent, owner_call).side_effect = _observed_consent(world, owner_call, _receipt())
+    consent_method = {"prepare": world.consent.prepare, "confirm": world.consent.confirm, "get": world.consent.get}[
+        owner_call
+    ]
+    consent_method.side_effect = _observed_consent(world, owner_call, _receipt())
 
     response = world.client.open(url, method=method, json=body)
 

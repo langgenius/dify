@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass
 from importlib.metadata import version
 from inspect import getsource
 from types import MappingProxyType
-from typing import Annotated, NoReturn, Protocol, cast
+from typing import Annotated, NoReturn, Protocol, cast, runtime_checkable
 from urllib.parse import urlsplit
 from uuid import NAMESPACE_URL, uuid5
 
@@ -126,6 +126,7 @@ class NativeCodeCapability(FrozenDTO):
     node_executable: Annotated[str, Field(strict=True, pattern=r"^/[A-Za-z0-9_./-]+$")]
 
 
+@runtime_checkable
 class NativeCodeQualificationOwner(Protocol):
     def validate(self, *, capability: NativeCodeCapability) -> None:
         """Revalidate actual complete qualification; local only, no IO/RPC.
@@ -143,8 +144,8 @@ class NativeCodeQualification:
         try:
             if (
                 type(capability) is not NativeCodeCapability
-                or owner is None
-                or not callable(getattr(owner, "validate", None))
+                or not isinstance(owner, NativeCodeQualificationOwner)
+                or not callable(owner.validate)
             ):
                 refuse()
             cap = NativeCodeCapability.model_validate(capability.model_dump(mode="python"), strict=True)

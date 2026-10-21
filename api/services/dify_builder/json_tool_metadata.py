@@ -70,9 +70,43 @@ class InstalledJsonParse:
     runtime_type: str
     qualification_digest: str
 
+    def binding_fields(self) -> dict[str, str]:
+        """Project only the reviewed installation identity, without reflective access."""
+        return {
+            "tenant_id": self.tenant_id,
+            "installation_id": self.installation_id,
+            "plugin_id": self.plugin_id,
+            "provider_id": self.provider_id,
+            "tool_name": self.tool_name,
+            "unique_identifier": self.unique_identifier,
+            "version": self.version,
+            "checksum": self.checksum,
+            "provider_schema_digest": self.provider_schema_digest,
+            "tool_schema_digest": self.tool_schema_digest,
+            "runtime_type": self.runtime_type,
+            "qualification_digest": self.qualification_digest,
+        }
+
+    @classmethod
+    def from_binding(cls, binding: QualifiedJsonToolBinding) -> InstalledJsonParse:
+        return cls(
+            tenant_id=binding.tenant_id,
+            installation_id=binding.installation_id,
+            plugin_id=binding.plugin_id,
+            provider_id=binding.provider_id,
+            tool_name=binding.tool_name,
+            unique_identifier=binding.unique_identifier,
+            version=binding.version,
+            checksum=binding.checksum,
+            provider_schema_digest=binding.provider_schema_digest,
+            tool_schema_digest=binding.tool_schema_digest,
+            runtime_type=binding.runtime_type,
+            qualification_digest=binding.qualification_digest,
+        )
+
     @property
     def binding_digest(self) -> str:
-        return canonical_digest({field: getattr(self, field) for field in self.__dataclass_fields__})
+        return canonical_digest(self.binding_fields())
 
 
 def _validate_declaration(declaration: ToolProviderEntityWithPlugin) -> ToolEntity:
@@ -178,19 +212,5 @@ def resolve_installed_json_parse(*, tenant_id: str) -> InstalledJsonParse:
 
 def require_same_json_installation(expected: QualifiedJsonToolBinding, actual: InstalledJsonParse) -> None:
     """Require the persisted expected identity to match this exact metadata read."""
-    for field in (
-        "tenant_id",
-        "installation_id",
-        "plugin_id",
-        "provider_id",
-        "tool_name",
-        "unique_identifier",
-        "version",
-        "checksum",
-        "provider_schema_digest",
-        "tool_schema_digest",
-        "runtime_type",
-        "qualification_digest",
-    ):
-        if getattr(expected, field) != getattr(actual, field):
-            raise BuilderExecutionPolicyError("json_tool_installation_changed")
+    if InstalledJsonParse.from_binding(expected) != actual:
+        raise BuilderExecutionPolicyError("json_tool_installation_changed")

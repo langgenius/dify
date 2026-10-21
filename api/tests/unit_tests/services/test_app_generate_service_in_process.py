@@ -2,7 +2,6 @@
 
 import json
 from collections.abc import Callable, Generator
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -12,31 +11,48 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimit
 from enums import DeploymentEdition
 from models.model import Account, App, AppMode
+from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
+
+
+def _account() -> Account:
+    account = Account(name="Owner", email="owner@example.invalid")
+    account.id = "account-1"
+    return account
+
+
+class _RefusalAdmission:
+    """Record the refusal-only admission boundary used before dispatch."""
+
+    def __init__(self) -> None:
+        self.refusals: list[tuple[Exception, bool]] = []
+
+    def on_refusal(self, error: Exception, *, preworker: bool = False) -> None:
+        self.refusals.append((error, preworker))
 
 
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
 @pytest.mark.parametrize("ending", ["complete", "close", "error"])
 def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_limit(
-    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], mode: AppMode, ending: str
+    mocker, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], mode: AppMode, ending: str
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    app = MagicMock(spec=App)
-    app.id = "app-1"
-    app.mode = mode
-    app.is_agent_with_session.return_value = False
-    user = MagicMock(spec=Account)
-    workflow = MagicMock(created_by="account-1")
-    monkeypatch.setattr(AppGenerateService, "_get_workflow", MagicMock(return_value=workflow))
+    app = App(id="app-1", tenant_id="tenant", mode=mode)
+    mocker.patch.object(app, "is_agent_with_session", return_value=False)
+    user = _account()
+    workflow = Workflow(created_by="account-1")
+    mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
     monkeypatch.setattr(AppGenerateService, "_get_max_active_requests", lambda _: 0)
     monkeypatch.setattr(module.session_factory, "get_session_maker", sessionmaker)
 
-    limiter = RateLimit("in-process-stream-test", 0)
-    limiter.enter = MagicMock(return_value="request-1")
-    limiter.exit = MagicMock()
-    monkeypatch.setattr(module, "RateLimit", MagicMock(return_value=limiter))
-    enqueue = MagicMock(side_effect=AssertionError("the parent task owns the only worker slot"))
-    monkeypatch.setattr(module.workflow_based_app_execution_task, "delay", enqueue)
+    limiter = RateLimit(app.id, 0)
+    mocker.patch.object(limiter, "enter", return_value="request-1")
+    mocker.patch.object(limiter, "exit")
+    enqueue = mocker.patch.object(
+        module.workflow_based_app_execution_task,
+        "delay",
+        side_effect=AssertionError("the parent task owns the only worker slot"),
+    )
     closed: list[bool] = []
 
     def stream() -> Generator[dict[str, object]]:
@@ -48,9 +64,8 @@ def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_l
         finally:
             closed.append(True)
 
-    generate = MagicMock(side_effect=lambda **_: stream())
     generator_type = module.WorkflowAppGenerator if mode == AppMode.WORKFLOW else module.AdvancedChatAppGenerator
-    monkeypatch.setattr(generator_type, "generate", generate)
+    generate = mocker.patch.object(generator_type, "generate", side_effect=lambda **_: stream())
 
     with Session() as session:
         response = AppGenerateService.generate(
@@ -87,7 +102,7 @@ def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_l
 
 
 def test_posted_live_mode_cannot_select_builder_policy(
-    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    mocker, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
@@ -95,20 +110,20 @@ def test_posted_live_mode_cannot_select_builder_policy(
     app = App(id="app", tenant_id="tenant", mode="workflow")
     user = Account(name="Owner", email="owner@example.invalid")
     user.id = "account"
-    workflow = MagicMock(created_by="account")
+    workflow = Workflow(created_by="account")
     marker = context()
-    monkeypatch.setattr(AppGenerateService, "_get_workflow", MagicMock(return_value=workflow))
-    monkeypatch.setattr(module, "restricted_admission_snapshot", MagicMock())
+    mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+    mocker.patch.object(module, "restricted_admission_snapshot")
     monkeypatch.setattr(app, "is_agent_with_session", lambda **_: False)
     monkeypatch.setattr(AppGenerateService, "_ensure_workflow_service_mode_available", lambda **_: None)
     monkeypatch.setattr(AppGenerateService, "_get_max_active_requests", lambda _: 0)
     monkeypatch.setattr(module.session_factory, "get_session_maker", sessionmaker)
-    limiter = RateLimit("posted-live-mode-test", 0)
-    limiter.enter = MagicMock(return_value="request")
-    limiter.exit = MagicMock()
-    monkeypatch.setattr(module, "RateLimit", MagicMock(return_value=limiter))
-    generate = MagicMock(side_effect=lambda **_: (event for event in ()))
-    monkeypatch.setattr(module.WorkflowAppGenerator, "generate", generate)
+    limiter = RateLimit(app.id, 0)
+    mocker.patch.object(limiter, "enter", return_value="request")
+    mocker.patch.object(limiter, "exit")
+    generate = mocker.patch.object(
+        module.WorkflowAppGenerator, "generate", side_effect=lambda **_: (event for event in ())
+    )
     for policy in (None, marker):
         with Session() as session:
             response = AppGenerateService.generate(
@@ -119,7 +134,7 @@ def test_posted_live_mode_cannot_select_builder_policy(
                 session=session,
                 workflow_execution_mode="in_process",
                 builder_execution=policy,
-                builder_execution_admit=MagicMock() if policy else None,
+                builder_execution_admit=_RefusalAdmission() if policy else None,
             )
             list(response)
         assert generate.call_args.kwargs["builder_execution"] is policy
@@ -128,79 +143,80 @@ def test_posted_live_mode_cannot_select_builder_policy(
 
 
 @pytest.mark.parametrize("mode", ["advanced-chat", "agent", "agent-chat"])
-def test_restricted_dispatch_rejects_other_modes_before_guardrails(
-    monkeypatch: pytest.MonkeyPatch, mode: AppMode
-) -> None:
+def test_restricted_dispatch_rejects_other_modes_before_guardrails(mocker, mode: AppMode) -> None:
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
-    guardrails = MagicMock(side_effect=AssertionError("must refuse before native dispatch"))
-    monkeypatch.setattr(AppGenerateService, "_run_with_guardrails", guardrails)
+    guardrails = mocker.patch.object(
+        AppGenerateService,
+        "_run_with_guardrails",
+        side_effect=AssertionError("must refuse before native dispatch"),
+    )
     with Session() as session, pytest.raises(BuilderExecutionPolicyError):
         AppGenerateService.generate(
             App(id="app", tenant_id="tenant", mode=mode),
-            MagicMock(spec=Account),
+            _account(),
             {"inputs": {}},
             InvokeFrom.DEBUGGER,
             session=session,
             workflow_execution_mode="in_process",
             builder_execution=context(),
-            builder_execution_admit=MagicMock(),
+            builder_execution_admit=_RefusalAdmission(),
         )
     guardrails.assert_not_called()
 
 
-def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(mocker) -> None:
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
-    app = MagicMock(spec=App)
-    app.mode = "workflow"
-    app.is_agent_with_session.return_value = True
-    agent = MagicMock()
-    monkeypatch.setattr(module.AgentChatAppGenerator, "generate", agent)
+    app = App(id="app", tenant_id="tenant", mode="workflow")
+    mocker.patch.object(app, "is_agent_with_session", return_value=True)
+    agent = mocker.patch.object(module.AgentChatAppGenerator, "generate")
     with pytest.raises(BuilderExecutionPolicyError):
         AppGenerateService._dispatch_generate(
             app_model=app,
-            user=MagicMock(spec=Account),
+            user=_account(),
             args={"inputs": {}},
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=True,
             root_node_id=None,
-            session=MagicMock(),
-            rate_limit=MagicMock(),
+            session=Session(),
+            rate_limit=RateLimit(app.id, 0),
             request_id="request",
             workflow_execution_mode="in_process",
             builder_execution=context(),
-            builder_execution_admit=MagicMock(),
+            builder_execution_admit=_RefusalAdmission(),
         )
     agent.assert_not_called()
 
 
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
 @pytest.mark.parametrize("transport", ["in_process", "celery"])
-def test_pre_generator_tool_admission_failure_has_qualified_preparation_boundary(monkeypatch, mode, transport):
+def test_pre_generator_tool_admission_failure_has_qualified_preparation_boundary(mocker, monkeypatch, mode, transport):
     from core.tools.errors import ToolProviderCredentialValidationError
     from services.dify_builder.native_launch_observation import NativeLaunchObservation
 
-    app = MagicMock(spec=App)
-    app.mode = mode
-    app.is_agent_with_session.return_value = False
-    user = MagicMock(spec=Account)
-    monkeypatch.setattr(AppGenerateService, "_get_workflow", MagicMock(return_value=MagicMock()))
+    app = App(id="app-1", tenant_id="tenant", mode=mode)
+    mocker.patch.object(app, "is_agent_with_session", return_value=False)
+    user = _account()
+    mocker.patch.object(AppGenerateService, "_get_workflow", return_value=Workflow(created_by=user.id))
     monkeypatch.setattr(
         AppGenerateService,
         "_run_with_guardrails",
-        staticmethod(lambda **kwargs: kwargs["action"](MagicMock(), "request")),
+        staticmethod(lambda **kwargs: kwargs["action"](RateLimit(app.id, 0), "request")),
     )
-    monkeypatch.setattr(
+    mocker.patch.object(
         AppGenerateService,
         "_admit_normal_draft_tools",
-        MagicMock(side_effect=ToolProviderCredentialValidationError("metadata service unavailable")),
+        side_effect=ToolProviderCredentialValidationError("metadata service unavailable"),
     )
-    generator = MagicMock(side_effect=AssertionError("no worker dispatch"))
-    monkeypatch.setattr(module.WorkflowAppGenerator, "generate", generator)
-    monkeypatch.setattr(module.AdvancedChatAppGenerator, "generate", generator)
+    generator = mocker.patch.object(
+        module.WorkflowAppGenerator, "generate", side_effect=AssertionError("no worker dispatch")
+    )
+    chat_generator = mocker.patch.object(
+        module.AdvancedChatAppGenerator, "generate", side_effect=AssertionError("no worker dispatch")
+    )
     observation = NativeLaunchObservation()
     with (
         observation.track(),
@@ -212,3 +228,4 @@ def test_pre_generator_tool_admission_failure_has_qualified_preparation_boundary
         )
     assert observation.failed_before_dispatch is (transport == "in_process")
     generator.assert_not_called()
+    chat_generator.assert_not_called()

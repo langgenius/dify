@@ -854,8 +854,8 @@ def validate_projection_host(*, host, guard, entity=None, queue=None, task_id=No
         if (
             entity is not generation.entity
             or queue is not generation.queue
-            or getattr(queue, "native_host", None) is not host
-            or getattr(queue, "native_observation", None) is not guard
+            or queue.native_host is not host
+            or queue.native_observation is not guard
         ):
             raise BuilderExecutionPolicyError("native_resume_identity_mismatch")
     if context.generation > 0:

@@ -3,7 +3,7 @@
 import importlib
 import importlib.util
 from copy import deepcopy
-from types import SimpleNamespace
+from dataclasses import dataclass
 
 import pytest
 
@@ -18,10 +18,18 @@ from runtime_contracts.builder.native.contracts import (
     PolicyStop,
     RecordedResult,
 )
-from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, NodeJournalState
+from runtime_contracts.builder.native.runtime_contracts import (
+    NativeCheckpointPayload,
+    NodeJournalState,
+    ResolvedNativeTestContext,
+)
+from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
+from tests.unit_tests.services.dify_builder.native_testing.test_claimed_resume_checkpoint import ClaimedCheckpointCase
 from tests.unit_tests.services.dify_builder.native_testing.test_claimed_resume_checkpoint import (
     metadata_case as metadata_case,  # noqa: PLC0414
 )
+from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
 
 REF = NativeTestContextRef(request_id="request", invocation_id="invocation", context_digest="a" * 64)
 PATH = ("root", "iteration:items:2", "tool:send")
@@ -50,7 +58,9 @@ class State:
             raise self.failure
         if ref != REF:
             raise BuilderExecutionPolicyError("native_owner_mismatch")
-        return SimpleNamespace(ref=ref, generation=self.generation, native_run_id="run")
+        return ResolvedNativeTestContext.model_validate(
+            {**CONTEXT, "ref": ref, "generation": self.generation, "native_run_id": "run"}
+        )
 
     def read_checkpoint(self, *, ref, checkpoint):
         self.load_context(ref=ref)
@@ -73,6 +83,40 @@ class Authorization:
     def before_call(self, *, ref, intent):
         self.calls.append((ref, deepcopy(intent)))
         return self.decision
+
+
+@dataclass
+class ClaimedJournalCase:
+    owner: ClaimedCheckpointCase
+    state: State
+    lifecycle: NativeTestLifecycleService
+    target: NodeOperationJournal
+    authorization: Authorization
+    expected: NativeCheckpointPayload
+    original: EffectIntent
+
+
+@dataclass
+class ImpostorCheckpointLifecycle:
+    store: State
+
+    def claimed_resume_checkpoint(self, **_kwargs):
+        return CP
+
+
+@dataclass
+class ImpostorCheckpointPayload:
+    payload: NativeCheckpointPayload
+
+    def model_dump(self, **_kwargs):
+        return self.payload.model_dump()
+
+
+@dataclass
+class ImpostorRunContext:
+    ref: NativeTestContextRef
+    generation: int
+    native_run_id: str
 
 
 def make_journal(state=None, authorization=None):
@@ -533,7 +577,7 @@ def claimed_case(metadata_case, monkeypatch):
     cursor.before_call(intent=original)
     state.payload = payload(source.snapshot(ref=c.ref))
     target, _, _ = make_journal(state, authorization)
-    return SimpleNamespace(
+    return ClaimedJournalCase(
         owner=c,
         state=state,
         lifecycle=c.service,
@@ -592,7 +636,7 @@ def test_claimed_restore_requires_actual_lifecycle_and_same_state(claimed_case, 
     c = claimed_case
     cursor, saved = _retained_cursor(c)
     if owner == "namespace":
-        lifecycle = SimpleNamespace(store=c.state, claimed_resume_checkpoint=lambda **_: CP)
+        lifecycle = ImpostorCheckpointLifecycle(store=c.state)
     elif owner == "second_state":
         lifecycle = NativeTestLifecycleService(c.owner.loader, state_store=State())
     else:
@@ -641,7 +685,7 @@ def test_claimed_restore_revalidates_runtime_arguments_and_actual_context(claime
     elif fault == "foreign_ref":
         ref = ref.model_copy(update={"context_digest": "f" * 64})
     elif fault == "expected_namespace":
-        expected = SimpleNamespace(model_dump=lambda **_: c.expected.model_dump())
+        expected = ImpostorCheckpointPayload(c.expected)
     elif fault == "expected_generation_bool":
         expected = expected.model_copy(update={"generation": False})
     elif fault == "expected_payload":
@@ -653,7 +697,7 @@ def test_claimed_restore_revalidates_runtime_arguments_and_actual_context(claime
     elif fault == "context_mode":
         c.state.context = c.state.context.model_copy(update={"execution_mode": "mock"})
     else:
-        c.state.context = SimpleNamespace(ref=ref, generation=2, native_run_id="run")
+        c.state.context = ImpostorRunContext(ref=ref, generation=2, native_run_id="run")
     with pytest.raises(BuilderExecutionPolicyError):
         c.target.restore_claimed(
             ref=ref, generation=generation, dispatch_id="dispatch", lifecycle=c.lifecycle, expected_payload=expected

@@ -49,7 +49,13 @@ from core.dify_builder.state import PcState, is_terminal, is_waiting, is_working
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import BuilderText, copy_text
 from services.dify_builder import recovery, trace_diagnostics
-from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort, ReasoningStreamingAgent, Repository
+from services.dify_builder.application.ports import (
+    DiagnosticReportingAgent,
+    DifyBuilderAgent,
+    DifyPort,
+    ReasoningStreamingAgent,
+    Repository,
+)
 
 __all__ = ["Env", "Handler", "Runner", "StepResult"]
 
@@ -139,15 +145,14 @@ class Env:
         self.reasoning_text = ""
         self.assistant_streams.clear()
         self.diagnostics.clear()
-        diagnostic_setter = getattr(self.agent, "set_diagnostic_callback", None)
-        if callable(diagnostic_setter):
+        if isinstance(self.agent, DiagnosticReportingAgent):
             operation_id = self.operation_id
 
             def record_current(record: dict) -> None:
                 if self.operation_id == operation_id:
                     self.record_diagnostic(record)
 
-            diagnostic_setter(record_current)
+            self.agent.set_diagnostic_callback(record_current)
         if isinstance(self.agent, ReasoningStreamingAgent):
             self.agent.set_reasoning_callback(self.record_reasoning)
 

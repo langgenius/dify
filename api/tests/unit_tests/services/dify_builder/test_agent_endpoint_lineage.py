@@ -1,7 +1,5 @@
 """Actual lineage policy; backend and protected state I/O are explicit doubles."""
 
-from types import SimpleNamespace
-
 import pytest
 from dify_agent.protocol.native_testing import AgentRuntimeIdentity
 
@@ -10,11 +8,16 @@ from runtime_contracts.builder.native.agent_contracts import (
     AgentNodeAssociation,
     AgentPreparedConfig,
 )
+from tests.unit_tests.services.dify_builder import native_owner_fixtures
 from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import (
     CONFIG,
     PARENT,
     WORKSPACE,
+    resolved_context,
 )
+
+operations_service = native_owner_fixtures.operations_service
+preparation_sql = native_owner_fixtures.preparation_sql
 
 
 def owner(parent=True, mutation=None, unbound=False):
@@ -52,61 +55,72 @@ def owner(parent=True, mutation=None, unbound=False):
     )
     phase = []
 
-    class Store:
-        def load_context(self, **kwargs):
-            del kwargs
-            return SimpleNamespace(
-                tenant_id="foreign" if phase and mutation == "tenant-owner" else "tenant",
-                actor_id="foreign" if phase and mutation == "actor-owner" else "actor",
-                app_id="app",
-                native_run_id="workflow",
-                generation=5 if phase and mutation == "owner" else 4,
-            )
+    def load_context(**kwargs):
+        del kwargs
+        return resolved_context(
+            tenant_id="foreign" if phase and mutation == "tenant-owner" else "tenant",
+            actor_id="foreign" if phase and mutation == "actor-owner" else "actor",
+            app_id="app",
+            native_run_id="workflow",
+            generation=5 if phase and mutation == "owner" else 4,
+        )
 
-        def load_prepared_config(self, **kwargs):
-            del kwargs
-            return config.model_copy(update={"config_digest": "f" * 64}) if phase and mutation == "config" else config
+    def load_prepared_config(**kwargs):
+        del kwargs
+        return config.model_copy(update={"config_digest": "f" * 64}) if phase and mutation == "config" else config
 
-        def discover_agent_run(self, **kwargs):
-            del kwargs
-            if unbound:
-                return None
-            return (
-                association.model_copy(update={"agent_run_id": "foreign"}) if mutation == "association" else association
-            )
+    def discover_agent_run(**kwargs):
+        del kwargs
+        if unbound:
+            return None
+        return association.model_copy(update={"agent_run_id": "foreign"}) if mutation == "association" else association
 
-    class Backend:
-        def read_run_identity_sync(self, run_id, query):
-            assert run_id == "run"
-            assert query.request_digest == "a" * 64
-            assert query.parent_node == selection.parent_node
-            phase.append("backend")
-            if mutation == "unavailable":
-                raise TimeoutError("private read unavailable")
-            if mutation == "missing":
-                return None
-            raw = {
-                "run_id": "run",
-                "parent_node": wire_parent,
-                "execution_mode": "builder_test" if parent else "ordinary",
-                "request_digest": "a" * 64,
-                "agent_generation": 0,
-            }
-            if mutation == "run":
-                raw["run_id"] = "foreign"
-            if mutation == "digest":
-                raw["request_digest"] = "b" * 64
-            if mutation == "generation":
-                raw["agent_generation"] = 1
-            if mutation == "parent":
-                raw["parent_node"] = PARENT.model_dump(mode="json") | {"input_result_ref": "other"}
-            return AgentRuntimeIdentity.model_validate(raw)
+    def read_run_identity_sync(run_id, query):
+        assert run_id == "run"
+        assert query.request_digest == "a" * 64
+        assert query.parent_node == selection.parent_node
+        phase.append("backend")
+        if mutation == "unavailable":
+            raise TimeoutError("private read unavailable")
+        if mutation == "missing":
+            return None
+        raw = {
+            "run_id": "run",
+            "parent_node": wire_parent,
+            "execution_mode": "builder_test" if parent else "ordinary",
+            "request_digest": "a" * 64,
+            "agent_generation": 0,
+        }
+        if mutation == "run":
+            raw["run_id"] = "foreign"
+        if mutation == "digest":
+            raw["request_digest"] = "b" * 64
+        if mutation == "generation":
+            raw["agent_generation"] = 1
+        if mutation == "parent":
+            raw["parent_node"] = PARENT.model_dump(mode="json") | {"input_result_ref": "other"}
+        return AgentRuntimeIdentity.model_validate(raw)
 
-    store = Store()
-    lineage = NativeAgentEndpointLineage(
-        backend=Backend(),
-        preparation_for_ref=lambda _ref: SimpleNamespace(state_store=store),
+    from dify_agent.client import Client
+    from sqlalchemy.orm import sessionmaker
+
+    from core.dify_builder.models import Actor
+    from services.dify_builder.native_testing.agent_operations import AgentOperationBindingResolver
+    from services.dify_builder.native_testing.agent_preparation import AgentPreparationService
+    from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+    from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+
+    loader = OwnedNativeTestLoader(
+        sessionmaker(), actor=Actor(account_id="actor", tenant_id="tenant"), resolver=AgentOperationBindingResolver()
     )
+    store = NativeExecutionStateStore(loader)
+    store.load_context = load_context
+    store.load_prepared_config = load_prepared_config
+    store.discover_agent_run = discover_agent_run
+    backend = Client(base_url="http://agent.invalid")
+    backend.read_run_identity_sync = read_run_identity_sync
+    preparation = AgentPreparationService(state_store=store, backend=backend, workspace=None, config_builder=None)
+    lineage = NativeAgentEndpointLineage(backend=backend, preparation_for_ref=lambda _ref: preparation)
     return lineage, AgentServicePrincipal(), selection, phase
 
 
@@ -246,44 +260,27 @@ def test_validated_native_context_checks_exact_effect_but_never_spends_permit(ch
 
 
 @pytest.mark.parametrize("mutation", ["none", "identity-io", "object-io"])
-def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(monkeypatch, mutation):
+def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
+    monkeypatch, mutation, operations_service, preparation_sql
+):
     """Real protected read/recheck; SQL/access/storage/backend are explicit doubles."""
-    from contextlib import contextmanager
-
     from dify_agent.protocol.native_testing import AgentRunTransportSelection
 
     from runtime_contracts.builder.execution import canonical_digest
     from services.dify_builder.native_testing import state_store as state
-    from services.dify_builder.native_testing.agent_lineage import (
-        AgentServicePrincipal,
-        NativeAgentEndpointLineage,
-    )
+    from services.dify_builder.native_testing.agent_lineage import AgentServicePrincipal, NativeAgentEndpointLineage
+    from services.dify_builder.native_testing.agent_preparation import AgentPreparationService
     from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import (
-        SQLDouble,
+        preparation_session,
+        prepared_state,
     )
 
-    sql = SQLDouble()
-
-    @contextmanager
-    def sessions():
-        yield sql
-
-    store = state.NativeExecutionStateStore(SimpleNamespace(locked=sql.locked_root, session_factory=sessions))
-    context = SimpleNamespace(
-        tenant_id="tenant",
-        actor_id="actor",
-        app_id="app",
-        native_run_id="workflow",
-        generation=4,
-    )
-    prepared = SimpleNamespace(
-        parent=PARENT,
-        context=context,
-        workspace=WORKSPACE,
-        resource_digest="e" * 64,
-        authority=SimpleNamespace(),
-        objects=[],
-    )
+    sql, owned, scope = preparation_session(monkeypatch, operations_service, preparation_sql)
+    store = operations_service.state_store
+    monkeypatch.setattr(store.loader, "session_factory", lambda: sql)
+    monkeypatch.setattr(store.loader, "_load", lambda *_args, **_kwargs: (owned, scope))
+    prepared = prepared_state()
+    context = prepared.context
     value = {
         "schema": "agent-config-v2",
         "parent_node": PARENT.model_dump(mode="json"),
@@ -303,7 +300,8 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(monkeyp
         "a" * 64,
         canonical_digest(value),
     )
-    sql.rows = [SimpleNamespace(**vars(receipt))]
+    sql.add(state.NativePayloadObject(**vars(receipt)))
+    sql.commit()
     resource = {"stamp": "e" * 64}
     monkeypatch.setattr(store, "_agent_prepare", lambda **_kwargs: prepared)
     monkeypatch.setattr(store, "load_context", lambda **_kwargs: context)
@@ -319,7 +317,7 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(monkeyp
 
     def read(*args, **kwargs):
         del args, kwargs
-        assert not sql.locked
+        assert not sql.info["locked"]
         reads.append("object")
         if mutation == "object-io" and len(reads) > 1:
             resource["stamp"] = "f" * 64
@@ -338,24 +336,25 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(monkeyp
     )
     monkeypatch.setattr(store, "discover_agent_run", lambda **_kwargs: association)
 
-    class Backend:
-        def read_run_identity_sync(self, run_id, selection):
-            del run_id, selection
-            assert not sql.locked
-            if mutation == "identity-io":
-                resource["stamp"] = "f" * 64
-            return AgentRuntimeIdentity(
-                run_id="run",
-                parent_node=PARENT.model_dump(mode="json"),
-                request_digest=canonical_digest(CONFIG),
-                execution_mode="builder_test",
-                agent_generation=0,
-            )
+    def read_run_identity_sync(run_id, selection):
+        del run_id, selection
+        assert not sql.info["locked"]
+        if mutation == "identity-io":
+            resource["stamp"] = "f" * 64
+        return AgentRuntimeIdentity(
+            run_id="run",
+            parent_node=PARENT.model_dump(mode="json"),
+            request_digest=canonical_digest(CONFIG),
+            execution_mode="builder_test",
+            agent_generation=0,
+        )
 
-    lineage = NativeAgentEndpointLineage(
-        backend=Backend(),
-        preparation_for_ref=lambda _ref: SimpleNamespace(state_store=store),
-    )
+    from dify_agent.client import Client
+
+    backend = Client(base_url="http://agent.invalid")
+    monkeypatch.setattr(backend, "read_run_identity_sync", read_run_identity_sync)
+    preparation = AgentPreparationService(state_store=store, backend=backend, workspace=None, config_builder=None)
+    lineage = NativeAgentEndpointLineage(backend=backend, preparation_for_ref=lambda _ref: preparation)
     selection = AgentRunTransportSelection(
         agent_run_id="run",
         parent_node=PARENT.model_dump(mode="json"),
@@ -380,7 +379,7 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(monkeyp
                 boundary="model",
                 caller={},
             )
-    assert not sql.locked
+    assert not sql.info["locked"]
 
 
 def test_expired_request_native_context_cannot_taint_later_ordinary_preflight():

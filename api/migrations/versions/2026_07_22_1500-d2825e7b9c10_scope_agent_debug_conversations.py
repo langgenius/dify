@@ -51,19 +51,32 @@ def downgrade():
         sa.column("draft_type", sa.String(length=32)),
     )
     build_conversations = debug_conversations.alias("build_conversations")
-    op.get_bind().execute(
-        sa.delete(debug_conversations).where(
-            debug_conversations.c.draft_type == "draft",
-            sa.exists(
-                sa.select(sa.literal(1)).where(
-                    build_conversations.c.tenant_id == debug_conversations.c.tenant_id,
-                    build_conversations.c.agent_id == debug_conversations.c.agent_id,
-                    build_conversations.c.account_id == debug_conversations.c.account_id,
-                    build_conversations.c.draft_type == "debug_build",
-                )
-            ),
+    if op.get_bind().dialect.name == "mysql":
+        # MySQL rejects a correlated self-read inside DELETE's WHERE clause.
+        op.execute(
+            sa.text("""
+            DELETE drafts FROM agent_debug_conversations AS drafts
+            JOIN agent_debug_conversations AS builds
+              ON builds.tenant_id = drafts.tenant_id
+             AND builds.agent_id = drafts.agent_id
+             AND builds.account_id = drafts.account_id
+            WHERE drafts.draft_type = 'draft' AND builds.draft_type = 'debug_build'
+        """)
         )
-    )
+    else:
+        op.get_bind().execute(
+            sa.delete(debug_conversations).where(
+                debug_conversations.c.draft_type == "draft",
+                sa.exists(
+                    sa.select(sa.literal(1)).where(
+                        build_conversations.c.tenant_id == debug_conversations.c.tenant_id,
+                        build_conversations.c.agent_id == debug_conversations.c.agent_id,
+                        build_conversations.c.account_id == debug_conversations.c.account_id,
+                        build_conversations.c.draft_type == "debug_build",
+                    )
+                ),
+            )
+        )
     op.drop_constraint(
         "agent_debug_conversation_agent_account_draft_type_unique",
         "agent_debug_conversations",

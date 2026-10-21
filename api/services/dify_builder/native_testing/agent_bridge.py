@@ -146,12 +146,16 @@ class NativeAgentCredentialMaterializer:
         from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
         from core.plugin.entities.plugin_daemon import CredentialType
         from core.plugin.impl.oauth import OAuthHandler
+        from core.tools.plugin_tool.provider import PluginToolProviderController
         from core.tools.tool_manager import ToolManager
         from core.tools.utils.encryption import create_provider_encrypter
         from models.provider_ids import ToolProviderID
 
         controller = ToolManager.get_builtin_provider(binding.provider_id, binding.actor.tenant_id)
-        if getattr(controller, "plugin_unique_identifier", None) != binding.implementation_revision:
+        if (
+            not isinstance(controller, PluginToolProviderController)
+            or controller.plugin_unique_identifier != binding.implementation_revision
+        ):
             raise BuilderExecutionPolicyError("installed_tool_unavailable")
         credential_type = CredentialType.of(selection.snapshot.reference.credential_type)
         # Refresh is the sole physical owner of this permit; the claim commits
@@ -532,8 +536,8 @@ def claim_agent_endpoint(
     from flask import g, request
 
     context = (
-        getattr(g, "agent_runtime_context", None)
-        if getattr(g, "agent_runtime_request", None) is cast(LocalProxy, request)._get_current_object()
+        g.get("agent_runtime_context")
+        if g.get("agent_runtime_request") is cast(LocalProxy, request)._get_current_object()
         else None
     )
     if context is None:
@@ -566,8 +570,8 @@ def require_agent_service_envelope(envelope: AgentPhysicalDispatchPayload | None
 
     if (
         has_request_context()
-        and getattr(g, "agent_runtime_request", None) is cast(LocalProxy, request)._get_current_object()
-        and isinstance(getattr(g, "agent_runtime_context", None), NativeAgentEndpointContext)
+        and g.get("agent_runtime_request") is cast(LocalProxy, request)._get_current_object()
+        and isinstance(g.get("agent_runtime_context"), NativeAgentEndpointContext)
         and envelope is None
     ):
         raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")

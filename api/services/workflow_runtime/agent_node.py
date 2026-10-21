@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast, override
 
 from dify_agent.protocol import CancelRunRequest
@@ -63,7 +62,6 @@ if TYPE_CHECKING:
     from services.agent.workflow_run_recovery import AgentCreateRecoveryClient, WorkflowAgentRunRecovery
     from services.dify_builder.native_testing.agent_preparation import AgentPreparationService
     from services.dify_builder.native_testing.confirmed_agent_commands import ConfirmedAgentCommands
-    from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation
 
 logger = logging.getLogger(__name__)
 
@@ -630,7 +628,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             raise BuilderExecutionPolicyError("native_agent_preparation_unavailable")
         definition = builder.load_definition(context=context, node_id=self._node_id)
         typed_inputs = builder.typed_inputs(
-            association=cast("NativeNodePreparation", SimpleNamespace(runtime_state=self.runtime_state)),
+            runtime_state=self.runtime_state,
             definition=definition,
         )
         input_ref = self._agent_preparation.state_store.store_node_inputs(

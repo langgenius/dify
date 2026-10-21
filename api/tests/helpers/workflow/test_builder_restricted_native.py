@@ -10,14 +10,12 @@ from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import NoReturn, override
-from unittest.mock import Mock
 
 import pytest
 import yaml
 from sqlalchemy import event, select
 from sqlalchemy.exc import OperationalError
 
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.dify_builder.models import Graph as BuilderGraph
 from core.dify_builder.models import Inputs
@@ -56,6 +54,7 @@ from services.dify_builder.revision import execution_revision
 from services.workflow_runtime.base_runner import WorkflowBasedAppRunner
 from services.workflow_runtime.entry import iter_dify_graph_engine_events
 from services.workflow_runtime.node_factory import DifyNodeFactory
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
@@ -150,7 +149,12 @@ def init_runner_graph(
     owned: Owned, factory: DifyNodeFactory, context: BuilderExecutionContext, recorder: BuilderExecutionRecorder
 ) -> Graph:
     _, actor, app, workflow, _, _ = owned
-    runner = WorkflowBasedAppRunner(queue_manager=Mock(spec=AppQueueManager), app_id=app.id)
+    runner = WorkflowBasedAppRunner(
+        queue_manager=WorkflowAppQueueManager(
+            task_id="task", user_id=actor.account_id, invoke_from=InvokeFrom.DEBUGGER, app_mode="workflow"
+        ),
+        app_id=app.id,
+    )
     return runner._init_graph(
         graph_config=factory.init_params.graph_config,
         graph_runtime_state=factory.runtime_state,

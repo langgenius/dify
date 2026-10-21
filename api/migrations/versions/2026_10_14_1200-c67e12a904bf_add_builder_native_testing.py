@@ -7,6 +7,7 @@ Revises: a61e9b2c7d40
 import sqlalchemy as sa
 from alembic import op
 
+from migrations.native_testing import function_schema_prefix, is_mysql, mysql_immutable_triggers, require_empty_table
 from models.types import AdjustedJSON, StringUUID
 
 revision = "c67e12a904bf"
@@ -61,19 +62,20 @@ def _json(name):
 
 
 def _ledger_function():
-    connection = op.get_bind()
-    schema = connection.execute(sa.text("SELECT current_schema()")).scalar_one()
-    quoted = connection.dialect.identifier_preparer.quote(schema)
-    return f"{quoted}.builder_native_immutable_ledger"
+    quoted = function_schema_prefix()
+    return f"{quoted}builder_native_immutable_ledger"
 
 
 def upgrade():
     op.drop_constraint("builder_execution_request_state", "dify_builder_execution_requests", type_="check")
+    policy_version = (
+        "JSON_UNQUOTE(JSON_EXTRACT(context, '$.policy_version'))" if is_mysql() else "context->>'policy_version'"
+    )
     op.create_check_constraint(
         "builder_execution_request_state",
         "dify_builder_execution_requests",
         "state IN ('prepared','running','sealed') OR "
-        "(state = 'waiting' AND COALESCE(context->>'policy_version', '') = 'builder-native-test-v1')",
+        f"(state = 'waiting' AND COALESCE({policy_version}, '') = 'builder-native-test-v1')",
     )
     op.create_index(
         "builder_native_waiting_idx",
@@ -203,6 +205,12 @@ def upgrade():
         sa.CheckConstraint("generation >= 0", name="native_pending_generation"),
     )
     # Keep immutable evidence immutable even when another worker bypasses ORM.
+    if is_mysql():
+        for suffix in ("attempts", "outcomes"):
+            mysql_immutable_triggers(
+                "dify_builder_native_" + suffix, "native_" + suffix + "_immutable", "native ledger is append-only"
+            )
+        return
     op.execute(f"""CREATE FUNCTION {_ledger_function()}() RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN RAISE EXCEPTION 'native ledger is append-only'; END; $$""")
     for table in ("dify_builder_native_attempts", "dify_builder_native_outcomes"):
@@ -215,8 +223,13 @@ def upgrade():
 def downgrade():
     # Refuse to erase a resumable wait; operators must terminate through the
     # native lifecycle before downgrading this feature.
-    op.execute("""DO $$ BEGIN IF EXISTS (SELECT 1 FROM dify_builder_execution_requests WHERE state='waiting')
-        THEN RAISE EXCEPTION 'terminate native waits before downgrade'; END IF; END $$""")
+    if is_mysql():
+        require_empty_table(
+            "dify_builder_execution_requests", "terminate native waits before downgrade", predicate="state='waiting'"
+        )
+    else:
+        op.execute("""DO $$ BEGIN IF EXISTS (SELECT 1 FROM dify_builder_execution_requests WHERE state='waiting')
+            THEN RAISE EXCEPTION 'terminate native waits before downgrade'; END IF; END $$""")
     for table in (
         "pending_actions",
         "continuations",
@@ -228,7 +241,8 @@ def downgrade():
         "scopes",
     ):
         op.drop_table("dify_builder_native_" + table)
-    op.execute(f"DROP FUNCTION {_ledger_function()}()")
+    if not is_mysql():
+        op.execute(f"DROP FUNCTION {_ledger_function()}()")
     op.drop_index("builder_native_waiting_idx", table_name="dify_builder_execution_requests")
     op.drop_constraint("builder_execution_request_state", "dify_builder_execution_requests", type_="check")
     op.create_check_constraint(

@@ -9,7 +9,6 @@ from collections.abc import Iterator
 from dataclasses import replace
 from pathlib import Path
 from typing import NoReturn
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -134,6 +133,9 @@ def native_owner(flask_req_ctx_with_containers: None, db_session_with_containers
 
 @pytest.fixture
 def no_live(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    from contextlib import ExitStack
+    from unittest.mock import patch
+
     from core.helper import ssrf_proxy
     from core.helper.code_executor.code_executor import CodeExecutor
     from core.model_manager import ModelManager
@@ -141,25 +143,30 @@ def no_live(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     from core.tools.tool_manager import ToolManager
     from factories import file_factory
 
+    # The spawned SQL-race owner enters this fixture with its own MonkeyPatch.
+    # Keep that explicit invocation contract while method patches own their cleanup.
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
     spies = []
-    for owner, name in [
-        *((ssrf_proxy, n) for n in ("get", "post", "put", "patch", "delete", "head")),
-        (CodeExecutor, "execute_code"),
-        (ModelManager, "get_model_instance"),
-        (OAuthHandler, "refresh_credentials"),
-        (ToolManager, "get_workflow_tool_runtime"),
-        (file_factory, "build_from_mapping"),
-    ]:
-        spy = Mock(side_effect=AssertionError(f"live capability reached: {name}"))
-        monkeypatch.setattr(owner, name, spy)
-        spies.append(spy)
-    yield
-    for spy in spies:
-        spy.assert_not_called()
+    with ExitStack() as methods:
+        for owner, name in [
+            *((ssrf_proxy, n) for n in ("get", "post", "put", "patch", "delete", "head")),
+            (CodeExecutor, "execute_code"),
+            (ModelManager, "get_model_instance"),
+            (OAuthHandler, "refresh_credentials"),
+            (ToolManager, "get_workflow_tool_runtime"),
+            (file_factory, "build_from_mapping"),
+        ]:
+            spy = methods.enter_context(
+                patch.object(owner, name, side_effect=AssertionError(f"live capability reached: {name}"))
+            )
+            spies.append(spy)
+        yield
+        for spy in spies:
+            spy.assert_not_called()
 
 
 @pytest.fixture
-def no_jinja_compilation(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+def no_jinja_compilation(mocker) -> Iterator[None]:
     """Guard restricted Template execution without replacing Jinja lex/parse."""
     from jinja2 import Environment, Template, debug
 
@@ -170,8 +177,9 @@ def no_jinja_compilation(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         (debug, ("rewrite_traceback_stack", "fake_traceback")),
     ):
         for name in names:
-            spy = Mock(side_effect=AssertionError(f"Jinja compilation/rendering reached: {name}"))
-            monkeypatch.setattr(owner, name, spy)
+            spy = mocker.patch.object(
+                owner, name, side_effect=AssertionError(f"Jinja compilation/rendering reached: {name}")
+            )
             spies.append(spy)
     yield
     # A swallowed compiler/renderer error cannot satisfy the overflow control.
@@ -505,7 +513,7 @@ def test_composed_effective_default_binding(native_owner: NativeOwner) -> None:
 
 
 @pytest.mark.usefixtures("no_live")
-def test_async_native_repositories_without_delivered_saves_stay_unknown(
+def test_async_node_saves_without_delivery_stay_unknown(
     native_owner: NativeOwner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from core.repositories import celery_workflow_execution_repository as runs
@@ -513,7 +521,8 @@ def test_async_native_repositories_without_delivered_saves_stay_unknown(
 
     pending_runs: list[dict[str, object]] = []
     pending_nodes: list[dict[str, object]] = []
-    # Exercise the actual configurable async repositories; hold only broker delivery.
+    # Run control records now commit synchronously even for Celery repositories.
+    # Node evidence still uses broker delivery; a successful Run alone is not proof.
     monkeypatch.setattr(runs.save_workflow_execution_task, "delay", lambda **kw: pending_runs.append(kw))
     monkeypatch.setattr(nodes.save_workflow_node_execution_task, "delay", lambda **kw: pending_nodes.append(kw))
     monkeypatch.setattr(
@@ -527,12 +536,41 @@ def test_async_native_repositories_without_delivered_saves_stay_unknown(
         "core.repositories.celery_workflow_node_execution_repository.CeleryWorkflowNodeExecutionRepository",
     )
     result = run_port(native_owner, configure(native_owner, "scalar.yml"))
-    assert pending_runs
+    assert pending_runs == []
     assert pending_nodes
-    assert result.dify_run_id == ""
+    assert result.dify_run_id
     assert result.verification is not None
     assert result.verification.execution_evidence is not None
     assert result.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
+    factory, _, app, _, _, _ = native_owner
+    with factory() as session:
+        request = session.scalar(
+            select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.app_id == app.id)
+        )
+        assert request is not None
+        native = session.get(WorkflowRun, request.native_run_id)
+        assert native is not None
+        assert native.id == result.dify_run_id
+        assert native.status == "succeeded"
+        assert native.outputs_dict == {"out": "native scalar"}
+        assert (
+            list(
+                session.scalars(
+                    select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id == native.id)
+                )
+            )
+            == []
+        )
+    assert is_execution_policy_blocker(result)
+    assert (
+        publication_decision(
+            replace(result, kind="verify", immutable=True, session_id=native_owner[4]),
+            session_id=native_owner[4],
+            current_revision=result.verification.execution_revision,
+            current_graph_revision=result.verification.executed_graph_revision,
+        ).allowed
+        is False
+    )
 
 
 @pytest.mark.usefixtures("no_live")
@@ -1092,13 +1130,12 @@ def test_composed_template_seal_replay_rejects_changed_output(
 
 
 @pytest.mark.usefixtures("no_live", "no_jinja_compilation")
-def test_composed_template_normal_workflow_citation_defaults_are_preserved(
-    native_owner: NativeOwner, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_composed_template_normal_workflow_citation_defaults_are_preserved(mocker, native_owner: NativeOwner) -> None:
     from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 
-    retrieval = Mock(side_effect=AssertionError("citation display metadata initiated retrieval"))
-    monkeypatch.setattr(DatasetRetrieval, "retrieve", retrieval)
+    retrieval = mocker.patch.object(
+        DatasetRetrieval, "retrieve", side_effect=AssertionError("citation display metadata initiated retrieval")
+    )
     inputs = configure_template(native_owner)
     features: dict[str, object] = {
         "retriever_resource": {"enabled": True},

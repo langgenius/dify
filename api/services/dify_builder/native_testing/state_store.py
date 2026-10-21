@@ -156,6 +156,21 @@ class ObjectReceipt:
     payload_digest: str
     value_digest: str
 
+    @classmethod
+    def from_payload_object(cls, row: NativePayloadObject) -> "ObjectReceipt":
+        """Detach the persisted payload identity from its SQLAlchemy session."""
+        return cls(
+            id=row.id,
+            tenant_id=row.tenant_id,
+            request_id=row.request_id,
+            invocation_id=row.invocation_id,
+            kind=row.kind,
+            logical_key=row.logical_key,
+            storage_key=row.storage_key,
+            payload_digest=row.payload_digest,
+            value_digest=row.value_digest,
+        )
+
 
 @dataclass
 class _AgentPreparation:
@@ -305,7 +320,7 @@ class NativeExecutionStateStore:
         with self.loader.session_factory() as session:
             workflow = session.get(Workflow, owned.workflow_id)
             test_input = session.get(DifyBuilderTestInput, owned.test_input_id)
-            revision_context = getattr(owned, "revision_context", None)
+            revision_context = owned.revision_context
             if (
                 workflow is None
                 or test_input is None
@@ -498,7 +513,7 @@ class NativeExecutionStateStore:
                 if payload.generation != continuation.generation:
                     raise BuilderExecutionPolicyError("native_generation_conflict")
                 prepared = self._agent_checkpoint_preparations(ref, payload)
-                outer = ObjectReceipt(**{name: getattr(row, name) for name in ObjectReceipt.__dataclass_fields__})
+                outer = ObjectReceipt.from_payload_object(row)
                 with self.loader.locked(ref=ref) as (session, current, scope):
                     selected_continuation = session.scalar(
                         owner_query(NativeContinuation, ref, current.tenant_id).where(
@@ -516,10 +531,7 @@ class NativeExecutionStateStore:
                     if (
                         selected_object is None
                         or selected_continuation.payload_ref != outer.storage_key
-                        or any(
-                            getattr(selected_object, name) != getattr(outer, name)
-                            for name in ObjectReceipt.__dataclass_fields__
-                        )
+                        or ObjectReceipt.from_payload_object(selected_object) != outer
                     ):
                         raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
                     for selected in prepared:
@@ -644,7 +656,7 @@ class NativeExecutionStateStore:
         workflow = validate_invocation_workflow(
             session, tenant_id=owned.tenant_id, app_id=context.app_id, workflow_id=context.workflow_id
         )
-        revision_context = getattr(owned, "revision_context", None)
+        revision_context = owned.revision_context
         revision = (
             admitted_workflow_revision(workflow, revision_context)
             if revision_context
@@ -916,7 +928,7 @@ class NativeExecutionStateStore:
                 if required:
                     raise BuilderExecutionPolicyError("native_agent_object_unavailable")
                 return None
-            receipt = ObjectReceipt(**{name: getattr(row, name) for name in ObjectReceipt.__dataclass_fields__})
+            receipt = ObjectReceipt.from_payload_object(row)
         if (
             receipt.tenant_id,
             receipt.request_id,
@@ -1011,9 +1023,7 @@ class NativeExecutionStateStore:
                     NativePayloadObject.kind == "result",
                 )
             )
-            if row is None or any(
-                getattr(row, name) != getattr(receipt, name) for name in ObjectReceipt.__dataclass_fields__
-            ):
+            if row is None or ObjectReceipt.from_payload_object(row) != receipt:
                 raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
 
     def _agent_ack(self, prepared: _AgentPreparation, *, logical_key: str, value: JsonValue) -> str:

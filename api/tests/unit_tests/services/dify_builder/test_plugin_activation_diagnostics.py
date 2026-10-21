@@ -2,7 +2,6 @@
 
 import json
 from contextvars import copy_context
-from types import SimpleNamespace
 
 import pytest
 
@@ -71,7 +70,7 @@ def _runtime_failure(monkeypatch):
     envelope = {"code": -500, "message": json.dumps({"error_type": "PluginDaemonInnerError", "message": MESSAGE})}
     monkeypatch.setattr(client, "_stream_request", lambda *_a, **_k: iter([json.dumps(envelope)]))
     # Only this test-local object misses the schema cache; shared Redis is untouched.
-    monkeypatch.setattr("core.plugin.impl.model_runtime.redis_client", SimpleNamespace(get=lambda _: None))
+    monkeypatch.setattr("core.plugin.impl.model_runtime.redis_client.get", lambda _: None)
     runtime = PluginModelRuntime("tenant", "account", client, PluginService)
     return lambda: runtime.get_model_schema(
         provider="langgenius/synthetic/synthetic", model_type=ModelType.LLM, model="synthetic", credentials={}

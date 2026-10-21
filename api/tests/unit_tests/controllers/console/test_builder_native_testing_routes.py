@@ -126,20 +126,25 @@ def test_native_input_binding_requires_signed_login(request_sql_world):
     assert response.status_code == 401
 
 
-def test_native_input_binding_has_only_public_identity(request_sql_world, monkeypatch):
-    from types import SimpleNamespace
+def test_native_input_binding_has_only_public_identity(request_sql_world, monkeypatch, mocker):
+    from sqlalchemy.orm import sessionmaker
 
     from controllers.console import dify_builder as controller
+    from services.dify_builder.native_testing.input_binding import NativeTestInputBindingService
     from services.dify_builder.native_testing.public_contracts import NativeTestInputBinding
 
     binding = NativeTestInputBinding(
         test_input_id="input-1", expected_version=3, workflow_id="workflow-1", graph_revision="a" * 64
     )
-    monkeypatch.setattr(
-        controller,
-        "build_native_test_input_binding_service",
-        lambda **_kwargs: SimpleNamespace(get=lambda **_kwargs: binding),
-    )
+
+    def binding_service(*, actor):
+        service = NativeTestInputBindingService(
+            session_factory=sessionmaker(bind=request_sql_world.registry.get_bind()), actor=actor
+        )
+        mocker.patch.object(service, "get", return_value=binding)
+        return service
+
+    monkeypatch.setattr(controller, "build_native_test_input_binding_service", binding_service)
     response = request_sql_world.client.get(BASE.removesuffix("/native-tests") + "/native-test-input")
     assert response.status_code == 200
     assert response.get_json() == {"data": binding.model_dump(mode="json")}

@@ -13,7 +13,9 @@ from uuid import uuid4
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from psycopg2 import Error as PostgresError
 from sqlalchemy import create_engine, event, func, select, text
+from sqlalchemy import inspect as inspect_orm
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -56,7 +58,7 @@ MIGRATION = "2026_10_15_1200-e59b7d32a6c1_add_native_effect_dispatch_claims.py"
 @pytest.fixture(scope="module", autouse=True)
 def migrated_dispatch_claims(migrated_native_tables, flask_app_with_containers):
     assert migrated_native_tables is None
-    assert callable(getattr(EffectAuthorizationService, "claim_dispatch", None)), (
+    assert callable(EffectAuthorizationService.claim_dispatch), (
         "durable physical dispatch claim protocol is unavailable"
     )
     from extensions.ext_database import db
@@ -399,7 +401,10 @@ def test_claim_rows_are_unique_append_only_and_block_destructive_downgrade(claim
         claim = session.scalar(
             select(NativeEffectDispatchClaim).where(NativeEffectDispatchClaim.attempt_id == permit.attempt_id)
         )
-        values = {column.name: getattr(claim, column.name) for column in NativeEffectDispatchClaim.__table__.columns}
+        values = {
+            column.name: inspect_orm(claim).attrs[column.name].value
+            for column in NativeEffectDispatchClaim.__table__.columns
+        }
     for changed in ({"id": str(uuid4())}, {"id": str(uuid4()), "attempt_id": str(uuid4())}):
         with pytest.raises(IntegrityError), case.factory.begin() as session:
             session.execute(NativeEffectDispatchClaim.__table__.insert().values({**values, **changed}))
@@ -475,7 +480,7 @@ def test_concurrent_downgrade_cannot_erase_a_successfully_committed_claim(claim_
             _claim(child, permit, io=io)
             sender.send(("claimed", None))
         except DBAPIError as error:
-            sender.send(("blocked", getattr(error.orig, "pgcode", None)))
+            sender.send(("blocked", error.orig.pgcode if isinstance(error.orig, PostgresError) else None))
         finally:
             engine.dispose()
             sender.close()

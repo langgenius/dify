@@ -1,6 +1,6 @@
 """Actual registered config routes preserve strict versus legacy admission."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -83,7 +83,7 @@ def test_config_mutation_stays_closed_for_confirmed_runtime(app):
         ),
         patch(
             "controllers.inner_api.plugin.agent_config.AgentConfigService",
-            new=Mock(side_effect=AssertionError("write must not start")),
+            side_effect=AssertionError("write must not start"),
         ),
     ):
         response = app.test_client().post("/inner/api/agent/runtime/config/a/push", headers=headers, json={})

@@ -4,12 +4,14 @@ import importlib
 import importlib.util
 import json
 import traceback
+from collections.abc import Callable
 from contextlib import contextmanager
 from copy import deepcopy
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
+from sqlalchemy import inspect
 
 from core.dify_builder.models import Actor
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantStatus
@@ -24,6 +26,7 @@ from models.model import App
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import canonical_digest
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.http_binding import (
     NativeHttpBindingResolver,
     build_native_http_profile,
@@ -37,6 +40,50 @@ from tests.unit_tests.services.dify_builder.native_testing.test_observation_priv
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context as sample_context
 
 
+@dataclass
+class ObservationOwnerCase:
+    store: NativeExecutionStateStore
+    shape: str
+    loader: OwnedNativeTestLoader
+    context: ResolvedNativeTestContext
+    request: DifyBuilderExecutionRequest
+    local: NativeInvocationState
+    workflow: Workflow
+    rows: dict[type, list]
+    events: list[str]
+    reads: int = 0
+    on_read: Callable[[int], None] | None = None
+    notices: list[str] = field(default_factory=list)
+
+    def rebind(self):
+        ref = self.context.ref.model_copy(update={"context_digest": canonical_digest(self.request.context)})
+        self.request.context_digest = ref.context_digest
+        self.context = self.context.model_copy(update={"ref": ref}, deep=True)
+
+
+@dataclass
+class PretendExecutionState:
+    """Deliberately wrong state class with plausible methods, rejected before IO."""
+
+    loader: OwnedNativeTestLoader
+    context: ResolvedNativeTestContext
+
+    def load_context(self, **_kwargs):
+        return self.context
+
+
+def owner_rows_snapshot(rows):
+    """Compare all actual mapped owner values before and after the observation read."""
+    return deepcopy(
+        {
+            model: [
+                tuple(inspect(row).attrs[column.key].value for column in inspect(model).column_attrs) for row in values
+            ]
+            for model, values in rows.items()
+        }
+    )
+
+
 def owner():
     name = "services.dify_builder.native_testing.observation_owner"
     assert importlib.util.find_spec(name) is not None, "trusted observation owner is missing"
@@ -48,21 +95,25 @@ def case(monkeypatch, request):
     """No database/crypto/RPC claim: real methods read explicitly modeled owner rows."""
     source = sample_context()
     graph, inputs = deepcopy(source.graph), deepcopy(source.inputs)
-    shape = getattr(request, "param", "literal_http")
+    try:
+        shape = request.param
+    except AttributeError:
+        shape = "literal_http"
     if shape == "start_end":
         graph.pop("viewport")
         graph["nodes"] = [n for n in graph["nodes"] if n["data"]["type"] != "http-request"]
         graph["nodes"][-1]["data"]["outputs"] = []
         graph["nodes"][-1]["data"]["title"] = SENTINEL
         graph["edges"] = [{"id": "e1", "source": "start", "target": "end", "sourceHandle": "source"}]
-    workflow = SimpleNamespace(
+    workflow = Workflow(
+        created_by="actor",
         id="workflow",
         app_id="app",
         tenant_id="tenant",
         version="draft",
         type="workflow",
         graph=json.dumps(graph),
-        serialized_features="{}",
+        _features="{}",
         _environment_variables="{}",
         _conversation_variables="{}",
     )
@@ -99,7 +150,7 @@ def case(monkeypatch, request):
     context = source.model_copy(
         update={"ref": ref, "graph": graph, "graph_revision": revision, "resource_manifest": manifest}, deep=True
     )
-    request = SimpleNamespace(
+    request = DifyBuilderExecutionRequest(
         id="request",
         tenant_id="tenant",
         actor_id="actor",
@@ -111,7 +162,9 @@ def case(monkeypatch, request):
         context_digest=ref.context_digest,
         state="running",
     )
-    state = SimpleNamespace(
+    state = NativeInvocationState(
+        pending_ids=[],
+        resolution=[],
         id="state",
         request_id="request",
         tenant_id="tenant",
@@ -123,20 +176,41 @@ def case(monkeypatch, request):
         generation=0,
         state="queued",
     )
+    account = Account(name="Test", email="test@example.invalid", status=AccountStatus.ACTIVE)
+    account.id = "actor"
+    tenant = Tenant(name="Test", status=TenantStatus.NORMAL)
+    tenant.id = "tenant"
     rows = {
-        Account: [SimpleNamespace(id="actor", status=AccountStatus.ACTIVE)],
-        Tenant: [SimpleNamespace(id="tenant", status=TenantStatus.NORMAL)],
-        TenantAccountJoin: [SimpleNamespace(tenant_id="tenant", account_id="actor", role="owner")],
-        App: [SimpleNamespace(id="app", tenant_id="tenant", status="normal")],
+        Account: [account],
+        Tenant: [tenant],
+        TenantAccountJoin: [TenantAccountJoin(tenant_id="tenant", account_id="actor", role="owner")],
+        App: [App(id="app", tenant_id="tenant", status="normal")],
         Workflow: [workflow],
-        DifyBuilderSession: [SimpleNamespace(id="session", tenant_id="tenant", app_id="app", owner_account_id="actor")],
+        DifyBuilderSession: [
+            DifyBuilderSession(
+                id="session",
+                tenant_id="tenant",
+                app_id="app",
+                owner_account_id="actor",
+                entry_mode="new",
+                current_state="build.review",
+            )
+        ],
         DifyBuilderTestInput: [
-            SimpleNamespace(id="input", session_id="session", inputs=inputs, start_schema_hash="schema")
+            DifyBuilderTestInput(
+                id="input", session_id="session", inputs=inputs, start_schema_hash="schema", source="mock"
+            )
         ],
         DifyBuilderExecutionRequest: [request],
         NativeInvocationState: [state],
         NativeTestScope: [
-            SimpleNamespace(
+            NativeTestScope(
+                max_calls=16,
+                max_dispatches=16,
+                max_cost_units=16,
+                budget_limits={},
+                budget_spent={},
+                profile={},
                 request_id="request",
                 tenant_id="tenant",
                 generation=0,
@@ -146,13 +220,21 @@ def case(monkeypatch, request):
             )
         ],
         NativeTestInvocation: [
-            SimpleNamespace(
+            NativeTestInvocation(
                 request_id="request", tenant_id="tenant", invocation_id="invocation", active=True, bindings={}
             )
         ],
         NativePayloadObject: [
-            SimpleNamespace(
-                id="context", request_id="request", tenant_id="tenant", invocation_id="invocation", kind="context"
+            NativePayloadObject(
+                logical_key="context",
+                storage_key="private-context",
+                payload_digest="a" * 64,
+                value_digest="b" * 64,
+                id="context",
+                request_id="request",
+                tenant_id="tenant",
+                invocation_id="invocation",
+                kind="context",
             )
         ],
     }
@@ -200,7 +282,7 @@ def case(monkeypatch, request):
         factory, actor=Actor(tenant_id="tenant", account_id="actor"), resolver=NativeHttpBindingResolver()
     )
     store = NativeExecutionStateStore(loader)
-    c = SimpleNamespace(
+    c = ObservationOwnerCase(
         store=store,
         shape=shape,
         loader=loader,
@@ -226,23 +308,17 @@ def case(monkeypatch, request):
 
     monkeypatch.setattr(NativeExecutionStateStore, "_read_object", staticmethod(protected_object))
 
-    def rebind():
-        ref = c.context.ref.model_copy(update={"context_digest": canonical_digest(request.context)})
-        request.context_digest = ref.context_digest
-        c.context = c.context.model_copy(update={"ref": ref}, deep=True)
-
-    c.rebind = rebind
     return c
 
 
 def test_actual_stored_profile_builds_existing_guard_without_writes_or_effects(case):
     c = case
-    before = deepcopy(c.rows)
+    before = owner_rows_snapshot(c.rows)
     guard = owner()(state=c.store, context=c.context, on_failure=lambda: c.notices.append("unknown"))
     assert type(guard) is NativeObservationGuard
     assert not guard.failed
     assert SENTINEL not in json.dumps(guard.graph(c.context.graph))
-    assert c.rows == before
+    assert owner_rows_snapshot(c.rows) == before
     assert c.reads == 2
     assert c.events
     with pytest.raises(NativeObservationError):
@@ -293,10 +369,10 @@ def test_caller_context_cannot_replace_actual_protected_snapshot(case, field, va
 def test_actual_c03_full_current_owner_chain_is_required(case, fault):
     c = case
     if fault == "fake_state":
-        _refuses(c, state=SimpleNamespace(loader=c.loader, load_context=lambda **_: c.context))
+        _refuses(c, state=PretendExecutionState(c.loader, c.context))
         return
     if fault == "fake_loader":
-        c.store.loader = SimpleNamespace()
+        c.store.loader = object()
     elif fault == "missing_context":
         c.rows[NativePayloadObject] = []
     elif fault == "membership":
@@ -304,7 +380,7 @@ def test_actual_c03_full_current_owner_chain_is_required(case, fault):
     elif fault == "input_owner":
         c.rows[DifyBuilderTestInput][0].session_id = "foreign"
     elif fault == "revision":
-        c.workflow.serialized_features = '{"changed":true}'
+        c.workflow._features = '{"changed":true}'
     else:
         c.local.generation = 1
     _refuses(c)
@@ -322,7 +398,7 @@ def test_private_read_boundaries_recheck_current_server_metadata_before_return(c
         elif count == 1 and fault == "generation_first_read":
             c.local.generation += 1
         elif count == 1 and fault == "revision_first_read":
-            c.workflow.serialized_features = '{"changed":true}'
+            c.workflow._features = '{"changed":true}'
         elif count == 2 and fault == "input_final_read":
             c.rows[DifyBuilderTestInput][0].inputs = {"changed": True}
 
@@ -368,12 +444,12 @@ def test_initial_current_profile_observation_preserves_private_snapshot(case):
             {"title", "type", "variables"},
             {"title", "type", "outputs"},
         ]
-    before = deepcopy(c.rows)
+    before = owner_rows_snapshot(c.rows)
     guard = owner()(state=c.store, context=context, on_failure=lambda: c.notices.append("unknown"))
     assert type(guard) is NativeObservationGuard
     assert not guard.failed
     assert c.reads == 2
-    assert c.rows == before
+    assert owner_rows_snapshot(c.rows) == before
     assert c.notices == []
     projected = json.dumps(guard.graph(context.graph))
     assert SENTINEL not in projected

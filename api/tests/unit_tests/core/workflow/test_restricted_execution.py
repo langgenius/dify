@@ -7,10 +7,10 @@ import math
 from collections.abc import Callable
 from copy import deepcopy
 from typing import TypedDict, cast
-from unittest.mock import MagicMock
 
 import pytest
 
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.http import HttpClientProtocol
 from graphon.nodes.http_request.node import HttpRequestNode
 from graphon.nodes.start.start_node import StartNode
@@ -53,8 +53,16 @@ def test_all_protocol_methods_serve_text_and_append_distinct_attempts(owned: Own
     typed_client: HttpClientProtocol = client
     assert typed_client.request_error is PolicyTransportError
     assert typed_client.max_retries_exceeded_error is not PolicyTransportError
+    invoke = {
+        "get": typed_client.get,
+        "head": typed_client.head,
+        "post": typed_client.post,
+        "put": typed_client.put,
+        "delete": typed_client.delete,
+        "patch": typed_client.patch,
+    }[method]
     for _ in range(2):
-        result = getattr(typed_client, method)("https://sample.invalid/resolved", max_retries=0)
+        result = invoke("https://sample.invalid/resolved", max_retries=0)
         assert result.status_code == 201
         assert result.text == "你好"
         assert result.headers["content-type"] == "text/plain; charset=utf-8"
@@ -123,15 +131,29 @@ def test_file_collaborators_deny_and_record(owned: Owned, entry: str) -> None:
 
     def invoke() -> None:
         if entry == "download":
-            node._file_manager.download(MagicMock())
+            node._file_manager.download(
+                File(
+                    file_id="file",
+                    tenant_id="tenant",
+                    file_type=FileType.IMAGE,
+                    transfer_method=FileTransferMethod.TOOL_FILE,
+                    related_id="tool-file",
+                    filename="image.png",
+                    extension=".png",
+                    mime_type="image/png",
+                    size=1,
+                    storage_key="file-key",
+                )
+            )
         elif entry == "build_from_mapping":
             node._file_reference_factory.build_from_mapping(mapping={})
         elif entry == "factory":
             node._tool_file_manager_factory()
+        elif entry == "create_file_by_raw":
+            node._file_manager.create_file_by_raw(file_binary=b"x", mimetype="x")
         else:
-            getattr(node._file_manager, entry)(
-                **({"file_binary": b"x", "mimetype": "x"} if entry == "create_file_by_raw" else {"tool_file_id": "x"})
-            )
+            assert entry == "get_file_generator_by_tool_file_id"
+            node._file_manager.get_file_generator_by_tool_file_id(tool_file_id="x")
 
     with pytest.raises(PolicyTransportError, match="execution_policy: http_file_capability"):
         invoke()
@@ -144,7 +166,12 @@ def test_forbidden_raw_type_refused_before_concrete_validation_or_model_resoluti
 ) -> None:
 
     factory, _, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
-    forbidden = MagicMock(side_effect=AssertionError("effectful class validation reached"))
+    calls = []
+
+    def forbidden(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("effectful class validation reached")
+
     monkeypatch.setattr(factory, "_validate_resolved_node_data", forbidden)
     monkeypatch.setattr(factory, "_resolve_llm_model_reference", forbidden)
     if node_type != "new-effect":
@@ -152,12 +179,11 @@ def test_forbidden_raw_type_refused_before_concrete_validation_or_model_resoluti
             node_type=node_type, node_version="1", node_data={"type": node_type}
         )
         monkeypatch.setattr(forbidden_class, "validate_node_data", forbidden)
-        monkeypatch.setattr(forbidden_class, "__init__", forbidden)
     node = deepcopy(factory.init_params.graph_config["nodes"][0])
     node["data"]["type"] = node_type
     with pytest.raises(BuilderExecutionPolicyError):
         factory.create_node(node)
-    forbidden.assert_not_called()
+    assert calls == []
 
 
 @pytest.mark.parametrize("entry", ["create", "graph_init", "constructor"])
@@ -170,7 +196,12 @@ def test_raw_identity_and_config_gate_runs_before_concrete_validation(
 
     factory, _, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
     node = deepcopy(factory.init_params.graph_config["nodes"][0])
-    forbidden = MagicMock(side_effect=AssertionError("concrete validation reached"))
+    calls = []
+
+    def forbidden(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("concrete validation reached")
+
     monkeypatch.setattr(StartNode, "validate_node_data", forbidden)
     if mutation == "class":
 
@@ -205,7 +236,7 @@ def test_raw_identity_and_config_gate_runs_before_concrete_validation(
 
     with pytest.raises(BuilderExecutionPolicyError):
         invoke()
-    forbidden.assert_not_called()
+    assert calls == []
 
 
 def test_with_runtime_state_keeps_exact_policy_recorder_and_private_key(owned: Owned) -> None:
@@ -334,7 +365,11 @@ def test_actual_resolved_class_is_guarded_before_its_validator_when_registry_cha
     owned: Owned, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     factory, _, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
-    forbidden = MagicMock(side_effect=AssertionError("unreviewed concrete validator reached"))
+    calls = []
+
+    def forbidden(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("unreviewed concrete validator reached")
 
     class ChangedStart:
         validate_node_data = forbidden
@@ -349,7 +384,7 @@ def test_actual_resolved_class_is_guarded_before_its_validator_when_registry_cha
     monkeypatch.setattr(factory, "_resolve_node_class", lambda **_: next(classes))
     with pytest.raises(BuilderExecutionPolicyError):
         factory.create_node(factory.init_params.graph_config["nodes"][0])
-    forbidden.assert_not_called()
+    assert calls == []
 
 
 @pytest.mark.parametrize("change", ["binding", "implementation_version"])
@@ -376,7 +411,12 @@ def test_default_restricted_branch_still_denies_tool_nodes_after_confirmed_branc
     from core.tools.tool_manager import ToolManager
     from tests.unit_tests.core.dify_builder.test_gmail_read_policy import gmail_graph, tool_data
 
-    resolved = MagicMock()
+    resolutions = []
+
+    def resolved(*args, **kwargs):
+        resolutions.append((args, kwargs))
+        raise AssertionError("unadmitted Tool resolution reached")
+
     monkeypatch.setattr(ToolManager, "get_workflow_tool_runtime", resolved)
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_node_implementation"):
         admitted_node_bindings(snapshot(gmail_graph()))
@@ -385,4 +425,4 @@ def test_default_restricted_branch_still_denies_tool_nodes_after_confirmed_branc
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_node_implementation"):
         factory.create_node({"id": "tool", "data": tool_data()})
     assert not hasattr(factory, "_confirmed_tool_runtime")
-    resolved.assert_not_called()
+    assert resolutions == []

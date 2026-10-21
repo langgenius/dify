@@ -8,7 +8,6 @@ exact matching; they are not evidence about any installed or deployed artifact.
 
 from collections.abc import Iterator
 from datetime import UTC, datetime
-from unittest.mock import Mock
 
 import pytest
 
@@ -132,7 +131,7 @@ class FakeMetadata:
 
 
 @pytest.fixture(autouse=True)
-def forbidden_effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+def forbidden_effects(mocker) -> Iterator[None]:
     """Metadata reads only: invoke/validate/runtime/OAuth/decrypt/DB sessions fail the test."""
     from sqlalchemy.orm import Session
 
@@ -159,8 +158,7 @@ def forbidden_effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     ]
     spies = []
     for owner, name in targets:
-        spy = Mock(side_effect=AssertionError("unexpected effect"))
-        monkeypatch.setattr(owner, name, spy)
+        spy = mocker.patch.object(owner, name, side_effect=AssertionError("unexpected effect"))
         spies.append(spy)
     yield
     for spy in spies:

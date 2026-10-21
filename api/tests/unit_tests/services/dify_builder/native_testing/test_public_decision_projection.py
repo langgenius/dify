@@ -1,10 +1,10 @@
 """Saved decisions survive refresh without creating fresh execution authority."""
 
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
 
+from models.dify_builder_native_tests import NativeEffectGrant
 from runtime_contracts.builder.native.approval_contracts import NativeApprovalTerms
 from services.dify_builder.native_testing.public_contracts import PendingActionDisclosure
 
@@ -33,7 +33,12 @@ def test_saved_decision_projects_independently_of_current_grant_validity(decisio
             max_calls=1, max_dispatches=1, max_cost_units=1, expires_at=(now + timedelta(minutes=1)).isoformat()
         ),
     )
-    grant = SimpleNamespace(
+    grant = NativeEffectGrant(
+        tenant_id="tenant",
+        request_id="request",
+        actor_id="actor",
+        scope_digest="a" * 64,
+        max_cost_units=1,
         decision=decision,
         expires_at=now + timedelta(seconds=-1 if expired else 60),
         spent_calls=0,

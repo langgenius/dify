@@ -7,6 +7,13 @@ Revises: f47a1c90d2e8
 import sqlalchemy as sa
 from alembic import op
 
+from migrations.native_testing import (
+    function_schema_prefix,
+    is_mysql,
+    mysql_immutable_triggers,
+    require_empty_table,
+    unlock_tables,
+)
 from models.types import StringUUID
 
 revision = "e59b7d32a6c1"
@@ -29,22 +36,23 @@ def upgrade():
         sa.UniqueConstraint("attempt_id", name="native_effect_dispatch_claim_attempt"),
         sa.UniqueConstraint("operation_id", name="native_effect_dispatch_claim_operation"),
     )
-    connection = op.get_bind()
-    schema = connection.execute(sa.text("SELECT current_schema()")).scalar_one()
-    quoted = connection.dialect.identifier_preparer.quote(schema)
+    if is_mysql():
+        mysql_immutable_triggers(table, "native_effect_dispatch_claims_immutable", "native ledger is append-only")
+        return
+    quoted = function_schema_prefix()
     op.execute(
         sa.text(
             f"CREATE TRIGGER native_ledger_immutable BEFORE UPDATE OR DELETE ON {table} "
-            f"FOR EACH ROW EXECUTE FUNCTION {quoted}.builder_native_immutable_ledger()"
+            f"FOR EACH ROW EXECUTE FUNCTION {quoted}builder_native_immutable_ledger()"
         )
     )
 
 
 def downgrade():
     # Deleting evidence could let a lost response or restarted owner replay IO.
-    connection = op.get_bind()
     # Serialize the empty check and DROP with every concurrent claim transaction.
-    connection.execute(sa.text("LOCK TABLE dify_builder_native_effect_dispatch_claims IN ACCESS EXCLUSIVE MODE"))
-    if connection.execute(sa.text("SELECT 1 FROM dify_builder_native_effect_dispatch_claims LIMIT 1")).first():
-        raise RuntimeError("native dispatch claim evidence must be retained")
+    require_empty_table(
+        "dify_builder_native_effect_dispatch_claims", "native dispatch claim evidence must be retained", lock=True
+    )
     op.drop_table("dify_builder_native_effect_dispatch_claims")
+    unlock_tables()

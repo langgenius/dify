@@ -4,7 +4,6 @@ from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 from typing import NoReturn, Unpack, override
-from unittest.mock import Mock
 
 import pytest
 
@@ -1786,7 +1785,9 @@ _WOULD_RUN_EMPTY = (
 )
 
 
-def test_a_proposal_the_agent_judged_wrong_ends_at_the_gate_and_writes_nothing() -> None:
+def test_a_proposal_the_agent_judged_wrong_ends_at_the_gate_and_writes_nothing(
+    mocker,
+) -> None:
     """The last hole the two semantic guards had. Their defects are ones the
     ENGINE ACCEPTS, so ``apply_repair`` has nothing to veto: if the agent
     handed the condemned batch over anyway it would simply be written. The
@@ -1795,7 +1796,7 @@ def test_a_proposal_the_agent_judged_wrong_ends_at_the_gate_and_writes_nothing()
     agent = _JudgesItsOwnProposalWrongAgent(_WOULD_RUN_EMPTY)
     dify = FakeEditDifyPort()
     written: list[object] = []
-    dify.apply_repair = Mock(side_effect=lambda *a, **k: written.append((a, k)))
+    mocker.patch.object(dify, "apply_repair", side_effect=lambda *a, **k: written.append((a, k)))
     env, repo = _new_env(dify=dify, agent=agent)
     s = _seed_edit_session(
         repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]

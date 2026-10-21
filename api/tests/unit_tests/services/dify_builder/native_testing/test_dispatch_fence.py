@@ -1,13 +1,20 @@
 """Deterministic SQL-boundary doubles; real locking/storage evidence is normal CI only."""
 
 from collections import UserList
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
+from sqlalchemy.orm import sessionmaker
 
+from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import (
+    NativeContinuation,
+    NativeDispatch,
+    NativeEffectAttempt,
+    NativeEffectGrant,
+    NativeEffectOperation,
     NativeInvocationState,
     NativePendingAction,
     NativeTestInvocation,
@@ -15,9 +22,55 @@ from models.dify_builder_native_tests import (
 )
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
+from services.dify_builder.native_testing.lifecycle import NativePendingResolution
+from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context as sample_context
 
 NOW = datetime(2026, 10, 15, tzinfo=UTC)
 REF = NativeTestContextRef(request_id="request", invocation_id="root", context_digest="a" * 64)
+
+
+def fence_owner(
+    *,
+    ref: NativeTestContextRef = REF,
+    tenant_id: str = "tenant",
+    actor_id: str = "actor",
+    app_id: str = "app",
+    generation: int = 3,
+    task_approved: bool = False,
+    expires_at: datetime = NOW + timedelta(days=1),
+) -> OwnedNativeTest:
+    """Owned invocation DTO for the isolated dispatch fence boundary."""
+    return OwnedNativeTest(
+        ref=ref,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        app_id=app_id,
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=generation,
+        task_approved=task_approved,
+        expires_at=expires_at,
+        state="running",
+    )
+
+
+@dataclass
+class SavedPendingResolution:
+    resolution: NativePendingResolution
+
+    def resolve(self, **_kwargs):
+        return self.resolution
+
+
+class ForbiddenChildResolution:
+    def resolve_child(self, **_kwargs):
+        pytest.fail("existing child must not resolve/create new work")
 
 
 class Rows(UserList):
@@ -32,12 +85,18 @@ class SQLDouble:
         self.rows = {
             NativeInvocationState: list(states),
             NativeTestInvocation: [
-                SimpleNamespace(tenant_id="tenant", request_id="request", invocation_id=s.invocation_id, active=True)
+                NativeTestInvocation(
+                    tenant_id="tenant", request_id="request", invocation_id=s.invocation_id, active=True, bindings={}
+                )
                 for s in states
             ],
             NativePendingAction: list(pending),
             DifyBuilderExecutionRequest: [
-                SimpleNamespace(
+                DifyBuilderExecutionRequest(
+                    actor_id="actor",
+                    session_id="session",
+                    test_input_id="input",
+                    context={},
                     id="request",
                     tenant_id="tenant",
                     context_digest=REF.context_digest,
@@ -46,8 +105,19 @@ class SQLDouble:
                 )
             ],
             NativeTestScope: [
-                SimpleNamespace(
-                    tenant_id="tenant", request_id="request", cancelled=False, expires_at=NOW + timedelta(days=1)
+                NativeTestScope(
+                    tenant_id="tenant",
+                    request_id="request",
+                    cancelled=False,
+                    expires_at=NOW + timedelta(days=1),
+                    generation=3,
+                    task_approved=False,
+                    max_calls=16,
+                    max_dispatches=16,
+                    max_cost_units=16,
+                    budget_limits={},
+                    budget_spent={},
+                    profile={},
                 )
             ],
         }
@@ -67,8 +137,10 @@ class SQLDouble:
 
 
 def state(identity="root", parent=None, **changes):
-    return SimpleNamespace(
+    return NativeInvocationState(
         **{
+            "context_object_id": "context",
+            "resolution": {},
             "tenant_id": "tenant",
             "request_id": "request",
             "invocation_id": identity,
@@ -86,8 +158,12 @@ def state(identity="root", parent=None, **changes):
 
 
 def pending(identity="pending", **changes):
-    return SimpleNamespace(
+    return NativePendingAction(
         **{
+            "reference_digest": "c" * 64,
+            "reference": "reference",
+            "owner_ref": "app",
+            "owner_version": "1",
             "id": identity,
             "tenant_id": "tenant",
             "request_id": "request",
@@ -95,7 +171,7 @@ def pending(identity="pending", **changes):
             "generation": 3,
             "category": "approval",
             **changes,
-        }
+        },
     )
 
 
@@ -183,7 +259,7 @@ def test_incomplete_or_revoked_lineage_never_authorizes_dispatch(fault):
 
 
 def test_existing_c02_coalesces_fenced_sibling_before_any_operation_write(monkeypatch):
-    from models.dify_builder_native_tests import NativeEffectGrant, NativeEffectOperation
+    from models.dify_builder_native_tests import NativeEffectOperation
     from runtime_contracts.builder.native.contracts import ApprovalWait
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
     from tests.unit_tests.services.dify_builder.native_testing.test_authorization import binding, intent
@@ -195,9 +271,7 @@ def test_existing_c02_coalesces_fenced_sibling_before_any_operation_write(monkey
     session.add = writes.append
     session.flush = lambda: None
     effect = intent().model_copy(update={"key": intent().key.model_copy(update={"invocation_id": "root"})})
-    owned = SimpleNamespace(
-        ref=REF, tenant_id="tenant", actor_id="actor", app_id="app", generation=3, task_approved=False
-    )
+    owned = fence_owner(ref=REF, tenant_id="tenant", actor_id="actor", app_id="app", generation=3, task_approved=False)
     service = EffectAuthorizationService(None, clock=lambda: NOW)
     # This test isolates the ordered admission guard after current binding validation.
     monkeypatch.setattr(service, "_binding", lambda *_args: binding(effect))
@@ -206,27 +280,51 @@ def test_existing_c02_coalesces_fenced_sibling_before_any_operation_write(monkey
     assert writes == []
 
 
-def test_pause_cannot_discard_a_late_running_fence():
+def test_pause_cannot_discard_a_late_running_fence(monkeypatch):
     from contextlib import contextmanager
 
-    from models.dify_builder_native_tests import NativeContinuation
     from runtime_contracts.builder.native.contracts import CheckpointRef
     from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 
     selected = state(pending_ids=["late"], checkpoint_id=None, wait_reason="approval")
     session = SQLDouble([selected], [pending()])
-    session.rows[NativeContinuation] = [SimpleNamespace(checkpoint_id="checkpoint", generation=3)]
-    owned = SimpleNamespace(tenant_id="tenant", ref=REF, expires_at=NOW + timedelta(days=1))
+    session.rows[NativeContinuation] = [
+        NativeContinuation(
+            checkpoint_id="checkpoint",
+            generation=3,
+            tenant_id="tenant",
+            request_id="request",
+            invocation_id="root",
+            payload_digest="b" * 64,
+            payload_ref="private-checkpoint",
+        )
+    ]
+    owned = fence_owner(tenant_id="tenant", ref=REF, expires_at=NOW + timedelta(days=1))
 
     @contextmanager
     def locked(**_kwargs):
         yield session, owned, session.rows[NativeTestScope][0]
 
-    service = NativeTestLifecycleService(
-        SimpleNamespace(locked=locked),
-        state_store=SimpleNamespace(read_checkpoint=lambda **_kwargs: SimpleNamespace(generation=3, child_refs=())),
-        clock=lambda: NOW,
+    from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
+
+    loader = OwnedNativeTestLoader(
+        sessionmaker(), actor=Actor(tenant_id="tenant", account_id="actor"), resolver=object()
     )
+    monkeypatch.setattr(loader, "locked", locked)
+    store = NativeExecutionStateStore(loader)
+    payload = NativeCheckpointPayload(
+        schema_version="1",
+        native_run_id="run",
+        generation=3,
+        generate_entity_json="{}",
+        graph_runtime_state_json="{}",
+        response_stream_filter_json="{}",
+        node_journals=(),
+        child_refs=(),
+        input_result_refs=(),
+    )
+    monkeypatch.setattr(store, "read_checkpoint", lambda **_kwargs: payload)
+    service = NativeTestLifecycleService(loader, state_store=store, clock=lambda: NOW)
     with pytest.raises(BuilderExecutionPolicyError, match="native_pending_mismatch"):
         service.pause(
             ref=REF,
@@ -246,8 +344,21 @@ def test_approval_pending_uses_actual_local_generation_after_shared_scope_advanc
     writes = []
     session.add = writes.append
     session.flush = lambda: setattr(writes[-1], "id", "pending")
-    owned = SimpleNamespace(ref=REF, tenant_id="tenant", generation=9, app_id="app")
-    EffectAuthorizationService._pending(session, owned, SimpleNamespace(id="operation", scope_digest="b" * 64))
+    owned = fence_owner(ref=REF, tenant_id="tenant", generation=9, app_id="app")
+    EffectAuthorizationService._pending(
+        session,
+        owned,
+        NativeEffectOperation(
+            id="operation",
+            scope_digest="b" * 64,
+            tenant_id="tenant",
+            request_id="request",
+            invocation_id="root",
+            operation_digest="c" * 64,
+            intent_digest="d" * 64,
+            state="pending",
+        ),
+    )
     assert writes[0].generation == 3
 
 
@@ -260,18 +371,23 @@ def test_native_pending_owner_uses_local_generation_after_shared_scope_advance(m
 
     row = pending(category=category)
     session = SQLDouble([state()], [row])
-    owned = SimpleNamespace(ref=REF, tenant_id="tenant", generation=9)
+    owned = fence_owner(ref=REF, tenant_id="tenant", generation=9)
 
     @contextmanager
     def locked(**_kwargs):
         yield session, owned, session.rows[NativeTestScope][0]
 
-    resolver = SimpleNamespace(
-        resolve_pending=lambda **_kw: PendingOwner(
-            category=category, owner_ref="app", version="1", reference="reference"
-        )
+    resolver = NativeHttpBindingResolver()
+    monkeypatch.setattr(
+        resolver,
+        "resolve_pending",
+        lambda **_kw: PendingOwner(category=category, owner_ref="app", version="1", reference="reference"),
     )
-    loader = SimpleNamespace(load=lambda **_kw: owned, locked=locked, resolver=resolver)
+    loader = OwnedNativeTestLoader(
+        sessionmaker(), actor=Actor(tenant_id=owned.tenant_id, account_id=owned.actor_id), resolver=resolver
+    )
+    monkeypatch.setattr(loader, "load", lambda **_kw: owned)
+    monkeypatch.setattr(loader, "locked", locked)
     monkeypatch.setattr(pending_actions, "utc_now", lambda: NOW, raising=False)
     service = pending_actions.NativePendingActionService(loader)
     result = service._wait(REF, category, "reference", 3)
@@ -289,7 +405,7 @@ def test_fence_pending_acknowledges_after_commit_without_changing_running_state(
     selected = state(context_object_id="context", checkpoint_id=None, wait_reason=None)
     row = pending(category=category)
     session = SQLDouble([selected], [row])
-    owned = SimpleNamespace(ref=REF, tenant_id="tenant", expires_at=NOW + timedelta(days=1))
+    owned = fence_owner(ref=REF, tenant_id="tenant", expires_at=NOW + timedelta(days=1))
     committed = []
 
     @contextmanager
@@ -297,15 +413,31 @@ def test_fence_pending_acknowledges_after_commit_without_changing_running_state(
         yield session, owned, session.rows[NativeTestScope][0]
         committed.append(True)
 
-    authority = SimpleNamespace(
-        app_id="app", workflow_id="workflow", generation=3, context_object_id="context", graph_revision="revision"
+    authority = PrivateReadOwner(
+        tenant_id="tenant",
+        actor_id="actor",
+        parent_invocation_id=None,
+        root_revision_matches=True,
+        input_revision=None,
+        expires_at=NOW + timedelta(days=1),
+        cancelled=False,
+        active=True,
+        request_state="running",
+        revision_context=None,
+        app_id="app",
+        workflow_id="workflow",
+        generation=3,
+        context_object_id="context",
+        graph_revision="revision",
     )
     monkeypatch.setattr(lifecycle, "validate_private_read", lambda *_args: authority, raising=False)
     monkeypatch.setattr(lifecycle, "validate_invocation_workflow", lambda *_args, **_kw: object(), raising=False)
     monkeypatch.setattr(lifecycle, "native_workflow_revision", lambda _workflow: "revision", raising=False)
-    service = lifecycle.NativeTestLifecycleService(
-        SimpleNamespace(locked=locked), state_store=object(), clock=lambda: NOW
+    loader = OwnedNativeTestLoader(
+        sessionmaker(), actor=Actor(tenant_id="tenant", account_id="actor"), resolver=object()
     )
+    monkeypatch.setattr(loader, "locked", locked)
+    service = lifecycle.NativeTestLifecycleService(loader, state_store=object(), clock=lambda: NOW)
     assert service.fence_pending(ref=REF, pending_operation_ids=(row.id,), expected_generation=3) is None
     assert committed == [True]
     assert (selected.state, selected.checkpoint_id, selected.wait_reason, selected.pending_ids) == (
@@ -339,19 +471,24 @@ def test_child_creation_checks_fence_before_protected_input_or_resolver_work(mon
         yield session
 
     touched = []
-    parent = SimpleNamespace(tenant_id="tenant", ref=REF)
-    loader = SimpleNamespace(load=lambda **_kw: parent, session_factory=factory)
-    store = SimpleNamespace(
-        loader=loader,
-        load_context=lambda **_kw: touched.append("context") or parent,
-        load_result=lambda **_kw: touched.append("input") or {},
+    parent = fence_owner(tenant_id="tenant", ref=REF)
+    loader = OwnedNativeTestLoader(
+        factory,
+        actor=Actor(tenant_id=parent.tenant_id, account_id=parent.actor_id),
+        resolver=NativeHttpBindingResolver(),
     )
+    monkeypatch.setattr(loader, "load", lambda **_kw: parent)
+    store = NativeExecutionStateStore(loader)
+    monkeypatch.setattr(store, "load_context", lambda **_kw: touched.append("context") or parent)
+    monkeypatch.setattr(store, "load_result", lambda **_kw: touched.append("input") or {})
 
     def resolve_child(**_kwargs):
         touched.append("resolver")
         raise BuilderExecutionPolicyError("test_resolver_reached")
 
-    service = NativeChildInvocationService(store, resolver=SimpleNamespace(resolve_child=resolve_child))
+    resolver = ForbiddenChildResolution()
+    monkeypatch.setattr(resolver, "resolve_child", resolve_child)
+    service = NativeChildInvocationService(store, resolver=resolver)
     monkeypatch.setattr(child_invocations, "utc_now", lambda: NOW)
     with pytest.raises(BuilderExecutionPolicyError, match="native_dispatch_fenced"):
         service.get_or_create(
@@ -366,17 +503,23 @@ def test_child_creation_checks_fence_before_protected_input_or_resolver_work(mon
 
 
 def test_retained_acknowledged_historical_ids_do_not_coalesce_or_close_admission():
-    from models.dify_builder_native_tests import NativeContinuation, NativeDispatch
 
     selected = state(pending_ids=["pending"], wait_reason=None, checkpoint_id="checkpoint")
     session = SQLDouble([selected], [pending(generation=2)])
     session.rows[NativeContinuation] = [
-        SimpleNamespace(
-            tenant_id="tenant", request_id="request", invocation_id="root", generation=2, checkpoint_id="checkpoint"
+        NativeContinuation(
+            payload_digest="b" * 64,
+            payload_ref="private-checkpoint",
+            tenant_id="tenant",
+            request_id="request",
+            invocation_id="root",
+            generation=2,
+            checkpoint_id="checkpoint",
         )
     ]
     session.rows[NativeDispatch] = [
-        SimpleNamespace(
+        NativeDispatch(
+            idempotency_digest="a" * 64,
             tenant_id="tenant",
             request_id="request",
             invocation_id="root",
@@ -390,10 +533,9 @@ def test_retained_acknowledged_historical_ids_do_not_coalesce_or_close_admission
 
 
 @pytest.mark.parametrize("saved", [False, True])
-def test_generation_claim_requires_actual_saved_configuration_resolution(saved):
+def test_generation_claim_requires_actual_saved_configuration_resolution(saved, monkeypatch):
     from contextlib import contextmanager
 
-    from models.dify_builder_native_tests import NativeContinuation, NativeDispatch
     from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
     from services.dify_builder.native_testing.lifecycle import NativePendingResolution, NativeTestLifecycleService
 
@@ -407,7 +549,8 @@ def test_generation_claim_requires_actual_saved_configuration_resolution(saved):
     )
     row = pending(generation=3, category="configuration", owner_ref="app", reference="config")
     session = SQLDouble([selected], [row])
-    dispatch = SimpleNamespace(
+    dispatch = NativeDispatch(
+        idempotency_digest="a" * 64,
         id="dispatch",
         tenant_id="tenant",
         request_id="request",
@@ -419,7 +562,8 @@ def test_generation_claim_requires_actual_saved_configuration_resolution(saved):
     )
     session.rows[NativeDispatch] = [dispatch]
     session.rows[NativeContinuation] = [
-        SimpleNamespace(
+        NativeContinuation(
+            payload_ref="private-checkpoint",
             tenant_id="tenant",
             request_id="request",
             invocation_id="root",
@@ -428,7 +572,7 @@ def test_generation_claim_requires_actual_saved_configuration_resolution(saved):
             payload_digest="b" * 64,
         )
     ]
-    owned = SimpleNamespace(ref=REF, tenant_id="tenant", expires_at=NOW + timedelta(days=1))
+    owned = fence_owner(ref=REF, tenant_id="tenant", expires_at=NOW + timedelta(days=1))
 
     @contextmanager
     def factory():
@@ -438,12 +582,12 @@ def test_generation_claim_requires_actual_saved_configuration_resolution(saved):
     def locked(**_kwargs):
         yield session, owned, session.rows[NativeTestScope][0]
 
-    loader = SimpleNamespace(
-        session_factory=factory,
-        _load=lambda *_args, **_kw: (owned, session.rows[NativeTestScope][0]),
-        load=lambda **_kw: owned,
-        locked=locked,
+    loader = OwnedNativeTestLoader(
+        factory, actor=Actor(tenant_id=owned.tenant_id, account_id=owned.actor_id), resolver=NativeHttpBindingResolver()
     )
+    monkeypatch.setattr(loader, "_load", lambda *_args, **_kw: (owned, session.rows[NativeTestScope][0]))
+    monkeypatch.setattr(loader, "load", lambda **_kw: owned)
+    monkeypatch.setattr(loader, "locked", locked)
     payload = NativeCheckpointPayload(
         schema_version="1",
         native_run_id="native-run",
@@ -455,10 +599,10 @@ def test_generation_claim_requires_actual_saved_configuration_resolution(saved):
         child_refs=(),
         input_result_refs=(),
     )
-    store = SimpleNamespace(
-        load_context=lambda **_kw: SimpleNamespace(native_run_id="native-run", tenant_id="tenant"),
-        read_checkpoint=lambda **_kw: payload,
-    )
+    store = NativeExecutionStateStore(loader)
+    context = sample_context().model_copy(update={"ref": REF, "native_run_id": "native-run", "tenant_id": "tenant"})
+    monkeypatch.setattr(store, "load_context", lambda **_kw: context)
+    monkeypatch.setattr(store, "read_checkpoint", lambda **_kw: payload)
     resolution = NativePendingResolution(
         category="configuration",
         invocation_id="root",
@@ -470,7 +614,7 @@ def test_generation_claim_requires_actual_saved_configuration_resolution(saved):
         answer_result_ref=None,
     )
     service = NativeTestLifecycleService(
-        loader, state_store=store, resolution=SimpleNamespace(resolve=lambda **_kw: resolution), clock=lambda: NOW
+        loader, state_store=store, resolution=SavedPendingResolution(resolution), clock=lambda: NOW
     )
     if saved:
         selected.resolution = [resolution.model_dump(mode="json")]
@@ -492,18 +636,25 @@ def test_coalesced_native_wait_still_validates_requested_pending_owner(monkeypat
 
     row = pending(category="configuration")
     session = SQLDouble([state(pending_ids=[row.id], wait_reason="configuration")], [row])
-    owned = SimpleNamespace(ref=REF, tenant_id="tenant", generation=9)
+    owned = fence_owner(ref=REF, tenant_id="tenant", generation=9)
 
     @contextmanager
     def locked(**_kwargs):
         yield session, owned, session.rows[NativeTestScope][0]
 
-    resolver = SimpleNamespace(
-        resolve_pending=lambda **_kw: PendingOwner(
+    resolver = NativeHttpBindingResolver()
+    monkeypatch.setattr(
+        resolver,
+        "resolve_pending",
+        lambda **_kw: PendingOwner(
             category="configuration", owner_ref="app", version="1", reference="changed-reference"
-        )
+        ),
     )
-    loader = SimpleNamespace(load=lambda **_kw: owned, locked=locked, resolver=resolver)
+    loader = OwnedNativeTestLoader(
+        sessionmaker(), actor=Actor(tenant_id=owned.tenant_id, account_id=owned.actor_id), resolver=resolver
+    )
+    monkeypatch.setattr(loader, "load", lambda **_kw: owned)
+    monkeypatch.setattr(loader, "locked", locked)
     monkeypatch.setattr(pending_actions, "utc_now", lambda: NOW)
     with pytest.raises(BuilderExecutionPolicyError, match="pending_owner_mismatch"):
         pending_actions.NativePendingActionService(loader)._wait(REF, "configuration", "reference", 3)
@@ -570,8 +721,11 @@ def test_existing_nested_child_lookup_requires_actual_parent_private_authority(m
         yield session
 
     # Root request loader remains authorized in every case, including local B revocation.
-    owned = SimpleNamespace(tenant_id="tenant", app_id="app", ref=parent_ref)
-    loader = SimpleNamespace(load=lambda **_kw: owned, session_factory=factory)
+    owned = fence_owner(tenant_id="tenant", app_id="app", ref=parent_ref)
+    loader = OwnedNativeTestLoader(
+        factory, actor=Actor(tenant_id=owned.tenant_id, account_id=owned.actor_id), resolver=NativeHttpBindingResolver()
+    )
+    monkeypatch.setattr(loader, "load", lambda **_kw: owned)
 
     def load_context(*, ref):
         assert ref == parent_ref
@@ -579,16 +733,16 @@ def test_existing_nested_child_lookup_requires_actual_parent_private_authority(m
             raise BuilderExecutionPolicyError(
                 "execution_permission_denied" if fault == "permission" else "native_revision_drift"
             )
-        return SimpleNamespace(ref=ref, app_id="app-B")
+        return fence_owner(ref=ref, app_id="app-B")
 
     def load_result(*, ref, result_ref):
         assert (ref, result_ref) == (parent_ref, "protected-input-B")
         return {"nested": "corrupt"} if fault == "input" else inputs
 
-    store = SimpleNamespace(loader=loader, load_context=load_context, load_result=load_result)
-    resolver = SimpleNamespace(
-        resolve_child=lambda **_kw: pytest.fail("existing child must not resolve/create new work")
-    )
+    store = NativeExecutionStateStore(loader)
+    monkeypatch.setattr(store, "load_context", load_context)
+    monkeypatch.setattr(store, "load_result", load_result)
+    resolver = ForbiddenChildResolution()
     service = NativeChildInvocationService(store, resolver=resolver)
     monkeypatch.setattr(child_invocations, "utc_now", lambda: NOW)
     args = {
@@ -614,18 +768,38 @@ def test_existing_nested_child_lookup_requires_actual_parent_private_authority(m
 @pytest.mark.parametrize("has_operation", [False, True])
 @pytest.mark.parametrize("decision", ["denied", "approved"])
 def test_waiting_immutable_denial_is_negative_evidence_without_fresh_admission(monkeypatch, has_operation, decision):
-    from models.dify_builder_native_tests import NativeEffectGrant, NativeEffectOperation
+    from models.dify_builder_native_tests import NativeEffectOperation
     from runtime_contracts.builder.execution import canonical_digest
     from runtime_contracts.builder.native.contracts import PolicyStop
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
     from tests.unit_tests.services.dify_builder.native_testing.test_authorization import binding, intent
 
     effect = intent().model_copy(update={"key": intent().key.model_copy(update={"invocation_id": "root"})})
-    operation = SimpleNamespace(intent_digest=canonical_digest(effect.model_dump(mode="json")), state="pending")
+    operation = NativeEffectOperation(
+        intent_digest=canonical_digest(effect.model_dump(mode="json")),
+        state="pending",
+        tenant_id="tenant",
+        request_id="request",
+        invocation_id="root",
+        operation_digest="a" * 64,
+        scope_digest="b" * 64,
+    )
     session = SQLDouble([state(state="waiting", pending_ids=["pending"], checkpoint_id="checkpoint")], [pending()])
     session.rows.update(
         {
-            NativeEffectGrant: [SimpleNamespace(decision=decision)],
+            NativeEffectGrant: [
+                NativeEffectGrant(
+                    decision=decision,
+                    tenant_id="tenant",
+                    request_id="request",
+                    actor_id="actor",
+                    scope_digest="b" * 64,
+                    expires_at=NOW + timedelta(hours=1),
+                    max_calls=16,
+                    max_dispatches=16,
+                    max_cost_units=16,
+                )
+            ],
             NativeEffectOperation: [operation] if has_operation else [],
         }
     )
@@ -634,7 +808,7 @@ def test_waiting_immutable_denial_is_negative_evidence_without_fresh_admission(m
     session.flush = lambda: None
     scope = session.rows[NativeTestScope][0]
     scope.spent_calls = scope.spent_dispatches = scope.spent_cost_units = 0
-    owned = SimpleNamespace(ref=REF, tenant_id="tenant", actor_id="actor", app_id="app", task_approved=False)
+    owned = fence_owner(ref=REF, tenant_id="tenant", actor_id="actor", app_id="app", task_approved=False)
     service = EffectAuthorizationService(None, clock=lambda: NOW)
     monkeypatch.setattr(service, "_binding", lambda *_: binding(effect))
     if decision == "denied":
@@ -659,7 +833,10 @@ def test_physical_claim_validates_permit_then_preserves_ancestor_refusal(monkeyp
     child_ref = REF.model_copy(update={"invocation_id": "child"})
     effect = intent().model_copy(update={"key": intent().key.model_copy(update={"invocation_id": "child"})})
     trusted = binding(effect)
-    operation = SimpleNamespace(
+    operation = NativeEffectOperation(
+        tenant_id="tenant",
+        request_id="request",
+        invocation_id="child",
         operation_digest=operation_digest(effect.key),
         intent_digest="wrong" if fault == "intent" else canonical_digest(effect.model_dump(mode="json")),
         scope_digest=_scope_digest(effect, trusted),
@@ -668,7 +845,22 @@ def test_physical_claim_validates_permit_then_preserves_ancestor_refusal(monkeyp
     session = SQLDouble([state(state=ancestor_state), state("child", "root")])
     session.rows[NativeEffectOperation] = [operation]
     scope = session.rows[NativeTestScope][0]
-    attempt = SimpleNamespace(expires_at=NOW + timedelta(hours=1))
+    attempt = NativeEffectAttempt(
+        expires_at=NOW + timedelta(hours=1),
+        tenant_id="tenant",
+        request_id="request",
+        invocation_id="child",
+        operation_id="operation",
+        grant_id="grant",
+        dispatch_index=0,
+        permit_digest="a" * 64,
+        cost_units=1,
+        budget_reservation_ref="budget",
+        execution_id="execution",
+        invocation_digest="b" * 64,
+        budget={},
+        profile={},
+    )
     permit = DispatchPermit(
         permit_id="permit", attempt_id="attempt", operation_id="operation", expires_at=attempt.expires_at.isoformat()
     )
@@ -685,7 +877,7 @@ def test_physical_claim_validates_permit_then_preserves_ancestor_refusal(monkeyp
     with pytest.raises(BuilderExecutionPolicyError, match=expected):
         service._validate_dispatch_locked(
             session=session,
-            owned=SimpleNamespace(ref=child_ref, tenant_id="tenant"),
+            owned=fence_owner(ref=child_ref, tenant_id="tenant"),
             scope=scope,
             intent=effect,
             permit=permit,
@@ -693,7 +885,7 @@ def test_physical_claim_validates_permit_then_preserves_ancestor_refusal(monkeyp
 
 
 @pytest.mark.parametrize("category", ["configuration", "interaction"])
-def test_terminal_child_settlement_without_resolution_owner_commits_and_keeps_parent_waiting(category):
+def test_terminal_child_settlement_without_resolution_owner_commits_and_keeps_parent_waiting(category, monkeypatch):
     from contextlib import contextmanager
 
     from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
@@ -729,7 +921,7 @@ def test_terminal_child_settlement_without_resolution_owner_commits_and_keeps_pa
     session = SettlementSQL([root, child], [pending(invocation_id="child", category=category)])
     writes, committed = [], []
     session.add = writes.append
-    owned = SimpleNamespace(ref=child_ref, tenant_id="tenant")
+    owned = fence_owner(ref=child_ref, tenant_id="tenant")
     scope = session.rows[NativeTestScope][0]
     scope.generation = 3
 
@@ -742,13 +934,19 @@ def test_terminal_child_settlement_without_resolution_owner_commits_and_keeps_pa
         current = next(row for row in session.rows[NativeTestInvocation] if row.invocation_id == ref.invocation_id)
         if not current.active:
             raise BuilderExecutionPolicyError("native_invocation_mismatch")
-        return SimpleNamespace(ref=ref, tenant_id="tenant"), scope
+        return fence_owner(ref=ref, tenant_id="tenant"), scope
 
-    store = SimpleNamespace(
-        loader=SimpleNamespace(locked=locked, _load=load),
-        load_recovery_context=lambda **_: SimpleNamespace(native_run_id="child-run"),
+    loader = OwnedNativeTestLoader(
+        sessionmaker(),
+        actor=Actor(tenant_id=owned.tenant_id, account_id=owned.actor_id),
+        resolver=NativeHttpBindingResolver(),
     )
-    service = NativeChildInvocationService(store, resolver=SimpleNamespace())
+    monkeypatch.setattr(loader, "locked", locked)
+    monkeypatch.setattr(loader, "_load", load)
+    store = NativeExecutionStateStore(loader)
+    context = sample_context().model_copy(update={"ref": child_ref, "native_run_id": "child-run"})
+    monkeypatch.setattr(store, "load_recovery_context", lambda **_: context)
+    service = NativeChildInvocationService(store, resolver=ForbiddenChildResolution())
     outcome = NativeWorkflowOutcome(
         status="completed",
         ref=child_ref,

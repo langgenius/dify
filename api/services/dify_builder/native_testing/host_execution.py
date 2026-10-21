@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from services.dify_builder.native_testing.sandbox.qualification import (
         NativeCodeBindingProducer,
     )
+    from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 
 from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager, suppress
@@ -22,9 +23,8 @@ from dataclasses import dataclass
 from math import isfinite
 from threading import Lock, RLock, Thread, current_thread
 from time import monotonic
-from typing import Literal, Protocol, cast, override
+from typing import Literal, Protocol, cast, override, runtime_checkable
 
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.repositories.sqlalchemy_workflow_execution_repository import (
     SQLAlchemyWorkflowExecutionRepository,
@@ -78,6 +78,7 @@ from services.dify_builder.native_testing.control import (
     NativeControlRecord,
     NativeControlRefused,
     NativePolicyStop,
+    _NativeControlBoundary,
 )
 from services.dify_builder.native_testing.host_lifetime import (
     CloseReason,
@@ -116,6 +117,7 @@ class NativePendingFence(Protocol):
     ) -> None: ...
 
 
+@runtime_checkable
 class DurableNativeStopSealer(Protocol):
     """Required committed C03 stop seal; no implementation/default in this phase."""
 
@@ -138,7 +140,7 @@ def _timeout(value: HttpTimeout) -> HttpTimeout:
 @dataclass(frozen=True, slots=True)
 class NativeHostGenerationBindings:
     entity: WorkflowAppGenerateEntity
-    queue: AppQueueManager
+    queue: WorkflowAppQueueManager
     response_filter: ResponseStreamFilter
     workflow_repository: SQLAlchemyWorkflowExecutionRepository
     node_repository: SQLAlchemyWorkflowNodeExecutionRepository
@@ -208,7 +210,7 @@ class _HookScope:
     node: Node
     thread: Thread
     execution_id: str
-    context: AbstractContextManager[None]
+    context: AbstractContextManager[object]
 
 
 class _HostObservationLayer(Layer):
@@ -306,7 +308,8 @@ class NativeHostLaunch:
             or type(journal) is not NodeOperationJournal
             or type(checkpoints) is not NativeCheckpointBridge
             or not callable(fence_pending)
-            or not callable(getattr(stop_sealer, "seal_stop", None))
+            or not isinstance(stop_sealer, DurableNativeStopSealer)
+            or not callable(stop_sealer.seal_stop)
         ):
             raise ValueError("native_host_explicit_owners_required")
         self._lifetime = lifetime
@@ -866,15 +869,17 @@ class NativeHostLaunch:
         self,
         *,
         entity: WorkflowAppGenerateEntity,
-        queue: AppQueueManager,
+        queue: WorkflowAppQueueManager,
         response_filter: ResponseStreamFilter,
         workflow_repository: SQLAlchemyWorkflowExecutionRepository,
         node_repository: SQLAlchemyWorkflowNodeExecutionRepository,
     ) -> None:
+        from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
+
         context = self.lifetime.context
         if (
             type(entity) is not WorkflowAppGenerateEntity
-            or not isinstance(queue, AppQueueManager)
+            or not isinstance(queue, WorkflowAppQueueManager)
             or type(response_filter) is not ResponseStreamFilter
             or type(workflow_repository) is not SQLAlchemyWorkflowExecutionRepository
             or type(node_repository) is not SQLAlchemyWorkflowNodeExecutionRepository
@@ -1003,6 +1008,7 @@ class NativeHostLaunch:
             NodeRunLoopSucceededEvent,
             NodeRunSucceededEvent,
         )
+        from graphon.engine_events.base import NodeEvent
         from graphon.enums import WorkflowNodeExecutionMetadataKey as Metadata
         from services.dify_builder.native_testing.observation_owner import (
             _stored_profile,
@@ -1014,10 +1020,22 @@ class NativeHostLaunch:
             NativeCodeBindingResolver,
         )
 
-        result = getattr(event, "node_run_result", None)
-        metadata = getattr(event, "metadata", None)
-        result_metadata = getattr(result, "metadata", None)
-        execution_metadata = getattr(event, "execution_metadata", None)
+        result = event.node_run_result if isinstance(event, NodeEvent) else None
+        metadata = (
+            event.metadata
+            if isinstance(
+                event,
+                (
+                    NodeRunIterationSucceededEvent,
+                    NodeRunLoopSucceededEvent,
+                    queue.QueueIterationCompletedEvent,
+                    queue.QueueLoopCompletedEvent,
+                ),
+            )
+            else None
+        )
+        result_metadata = result.metadata if result is not None else None
+        execution_metadata = event.execution_metadata if isinstance(event, queue.QueueNodeSucceededEvent) else None
         sources = [value for value in (metadata, result_metadata, execution_metadata) if type(value) is dict]
         if not any(type(value.get(Metadata.TOTAL_PRICE)) is Decimal for value in sources):
             return event
@@ -1055,11 +1073,12 @@ class NativeHostLaunch:
                 or node.execution_id != execution_id
                 or node.node_type != event.node_type
                 or node.runtime_state is not engine.runtime_state
-                or getattr(node, "_native_control_owner", None) is not self.boundary_owner
-                or getattr(node, "_native_control_sink", None) is not self.control_sink
+                or not isinstance(node, _NativeControlBoundary)
+                or node._native_control_owner is not self.boundary_owner
+                or node._native_control_sink is not self.control_sink
             ):
                 guard.fail()
-            updates = {}
+            updates: dict[str, object] = {}
             for name, value in (
                 ("metadata", metadata),
                 ("node_run_result", result_metadata),
@@ -1067,9 +1086,9 @@ class NativeHostLaunch:
             ):
                 if type(value) is dict and type(value.get(Metadata.TOTAL_PRICE)) is Decimal:
                     price = value[Metadata.TOTAL_PRICE]
-                    if not price.is_finite() or price != 0:
+                    if not isinstance(price, Decimal) or not price.is_finite() or price != 0:
                         guard.fail()
-                    copied = {**value, Metadata.TOTAL_PRICE: 0}
+                    copied = {**dict(value), Metadata.TOTAL_PRICE: 0}
                     if name == "node_run_result":
                         if result is None:
                             guard.fail()
@@ -1088,8 +1107,8 @@ class NativeHostLaunch:
         if (
             guard is not self.native_observation
             or queue is not generation.queue
-            or getattr(queue, "native_host", None) is not self
-            or getattr(queue, "native_observation", None) is not guard
+            or queue.native_host is not self
+            or queue.native_observation is not guard
             or generation.entity is not restored.entity
             or (entity is not None and entity is not restored.entity)
             or generation.response_filter is not restored.response_filter
@@ -1137,9 +1156,11 @@ class NativeHostLaunch:
             self._cancellation_fence = fence
 
     def wrap_commands(self, *, channel: CommandChannel) -> CommandChannel:
-        if not callable(getattr(channel, "fetch_commands", None)) or not callable(
-            getattr(channel, "send_command", None)
-        ):
+        try:
+            valid = callable(channel.fetch_commands) and callable(channel.send_command)
+        except AttributeError:
+            valid = False
+        if not valid:
             raise ValueError("native_host_command_channel_invalid")
         with self._registration:
             if self._channel is not None:
@@ -1186,8 +1207,9 @@ class NativeHostLaunch:
         """Observe actual marked native root/frame state, never a caller list."""
         if (
             not isinstance(node, Node)
-            or getattr(node, "_native_control_owner", None) is not self.boundary_owner
-            or getattr(node, "_native_control_sink", None) is not self.control_sink
+            or not isinstance(node, _NativeControlBoundary)
+            or node._native_control_owner is not self.boundary_owner
+            or node._native_control_sink is not self.control_sink
         ):
             raise ValueError("native_host_node_required")
         runtime = node.runtime_state

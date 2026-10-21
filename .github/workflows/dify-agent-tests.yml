@@ -14,6 +14,18 @@ jobs:
   dify-agent-unit:
     name: Dify Agent Unit Tests
     runs-on: depot-ubuntu-24.04
+    services:
+      redis:
+        image: redis:6-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DIFY_AGENT_NATIVE_TEST_REDIS_URL: redis://127.0.0.1:6379/15
     defaults:
       run:
         shell: bash

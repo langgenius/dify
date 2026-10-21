@@ -24,7 +24,7 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
-from testcontainers.core.wait_strategies import HttpWaitStrategy, LogMessageWaitStrategy
+from testcontainers.core.wait_strategies import ExecWaitStrategy, HttpWaitStrategy, LogMessageWaitStrategy
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
@@ -72,7 +72,16 @@ def postgres_container(testcontainers_network: Network) -> Generator[PostgresCon
         .with_tmpfs_mount("/var/lib/postgresql/data", size="rw,size=2g")
         .with_network(testcontainers_network)
     )
-    postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
+    postgres.waiting_for(
+        ExecWaitStrategy(
+            [
+                "sh",
+                "-c",
+                'PGPASSWORD="$POSTGRES_PASSWORD" psql --username "$POSTGRES_USER" '
+                '--dbname "$POSTGRES_DB" --host 127.0.0.1 -tAc "SELECT 1"',
+            ]
+        ).with_startup_timeout(30)
+    )
 
     with ExitStack() as stack:
         postgres = stack.enter_context(postgres)

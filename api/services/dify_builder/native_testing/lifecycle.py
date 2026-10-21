@@ -246,7 +246,7 @@ class NativeTestLifecycleService:
             workflow = validate_invocation_workflow(
                 session, tenant_id=owned.tenant_id, app_id=authority.app_id, workflow_id=authority.workflow_id
             )
-            revision_context = getattr(authority, "revision_context", None)
+            revision_context = authority.revision_context
             revision = (
                 admitted_workflow_revision(workflow, revision_context)
                 if revision_context
@@ -863,7 +863,7 @@ class NativeTestLifecycleService:
             or (state.app_id, state.workflow_id) != (context.app_id, context.workflow_id)
             or (context.tenant_id, context.actor_id, context.app_id, context.workflow_id)
             != (owned.tenant_id, owned.actor_id, owned.app_id, owned.workflow_id)
-            or any(getattr(scope, name) != 0 for name in ("spent_calls", "spent_dispatches", "spent_cost_units"))
+            or any(value != 0 for value in (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units))
             or scope.budget_spent != {}
         ):
             raise BuilderExecutionPolicyError("native_initial_conflict")
@@ -880,7 +880,7 @@ class NativeTestLifecycleService:
             session, tenant_id=owned.tenant_id, app_id=context.app_id, workflow_id=context.workflow_id
         )
         inputs = session.get(DifyBuilderTestInput, owned.test_input_id)
-        revision_context = getattr(owned, "revision_context", None)
+        revision_context = owned.revision_context
         if (
             (
                 admitted_workflow_revision(workflow, revision_context)

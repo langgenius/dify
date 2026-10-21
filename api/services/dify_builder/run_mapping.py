@@ -23,9 +23,11 @@ read as green to the user, even if it's technically "still running"
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
+from enum import Enum
 from typing import Any
 
 from core.dify_builder.models import NodeEvent, NodeOutput, Run, RunVerification
+from models.workflow import WorkflowRun
 
 _FAILED_NODE_STATUSES = {"failed", "exception"}
 
@@ -97,7 +99,7 @@ def _status_value(status: Any) -> Any:
     ``None``), so callers don't need to import ``graphon`` to use this
     module.
     """
-    return getattr(status, "value", status)
+    return status.value if isinstance(status, Enum) else status
 
 
 def _is_paused_shape(data: Mapping[str, Any]) -> bool:
@@ -169,20 +171,19 @@ def run_id_from_stream_chunk(chunk: Mapping[str, Any]) -> str:
     return ""
 
 
-def run_result_data_from_run_row(run_row: Any) -> dict[str, Any]:
+def run_result_data_from_run_row(run_row: WorkflowRun) -> dict[str, Any]:
     """A ``WorkflowRun`` row shaped the way ``map_run_result`` expects it.
 
     The stream is the fast path, not the authority: when it ends without a
-    terminal frame the row is what actually says how the run went. Duck-typed
-    like the node-execution rows, so tests can pass stand-ins.
+    terminal frame the row is what actually says how the run went. Read only declared native WorkflowRun fields.
     """
     return {
-        "id": str(getattr(run_row, "id", "") or ""),
-        "status": _status_value(getattr(run_row, "status", "")) or "",
-        "outputs": (getattr(run_row, "outputs_dict", None) if getattr(run_row, "outputs", True) is not None else None),
-        "error": getattr(run_row, "error", "") or "",
-        "elapsed_time": getattr(run_row, "elapsed_time", 0) or 0,
-        "total_tokens": getattr(run_row, "total_tokens", 0) or 0,
+        "id": str(run_row.id or ""),
+        "status": _status_value(run_row.status) or "",
+        "outputs": run_row.outputs_dict if run_row.outputs is not None else None,
+        "error": run_row.error or "",
+        "elapsed_time": run_row.elapsed_time or 0,
+        "total_tokens": run_row.total_tokens or 0,
     }
 
 
@@ -243,9 +244,9 @@ def map_run_result(data: Mapping[str, Any], node_execs: Sequence[Any]) -> Run:
             title=node.title,
             status=_status_value(node.status),
             error=node.error or "",
-            inputs=dict(node.inputs_dict) if isinstance(getattr(node, "inputs_dict", None), Mapping) else {},
+            inputs=dict(node.inputs_dict) if isinstance(node.inputs_dict, Mapping) else {},
             outputs=dict(node.outputs_dict) if isinstance(node.outputs_dict, Mapping) else {},
-            outputs_available=isinstance(node.outputs_dict, Mapping) and not getattr(node, "outputs_truncated", False),
+            outputs_available=isinstance(node.outputs_dict, Mapping) and not node.outputs_truncated,
         )
         for node in node_execs
     ]

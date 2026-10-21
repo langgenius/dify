@@ -15,7 +15,7 @@ Both foreign keys cascade on delete, so removing a key or a dataset drops its bi
 import sqlalchemy as sa
 from alembic import op
 
-import models as models
+import models
 
 # revision identifiers, used by Alembic.
 revision = "c3f1a9b2e6d4"
@@ -46,7 +46,6 @@ def upgrade():
 
 
 def downgrade():
-    with op.batch_alter_table("dataset_api_token_bindings", schema=None) as batch_op:
-        batch_op.drop_index("dataset_api_token_binding_dataset_idx")
-        batch_op.drop_index("dataset_api_token_binding_token_idx")
+    # DROP TABLE removes its indexes and foreign keys together. MySQL refuses
+    # to drop a supporting index separately while its foreign key still exists.
     op.drop_table("dataset_api_token_bindings")

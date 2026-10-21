@@ -24,6 +24,7 @@ from core.workflow.file_reference import build_file_reference, is_canonical_file
 from graphon.file import File, FileTransferMethod, FileType
 from models import ToolFile
 from models.model import App, AppMode
+from models.tools import ToolFile
 from services.agent_tool_inner_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
@@ -613,7 +614,6 @@ def test_non_plugin_runtime_keeps_existing_configured_precedence(provider_type, 
 def test_api_output_observation_and_file_messages_use_existing_owners(
     output_kind, expected_type, observation, sqlite_session
 ):
-    from types import SimpleNamespace
 
     from core.workflow.file_reference import build_file_reference
     from graphon.file import File, FileTransferMethod, FileType
@@ -655,11 +655,15 @@ def test_api_output_observation_and_file_messages_use_existing_owners(
             ),
         )
     tool = _ordinary_plugin([], {})
-    stored = SimpleNamespace(
-        id="output-id",
+    stored = ToolFile(
+        user_id="user",
+        tenant_id="tenant",
+        conversation_id=None,
+        file_key="file",
         name="sample.png" if output_kind == "image" else "sample.txt",
         mimetype="image/png" if output_kind == "image" else "text/plain",
     )
+    stored.id = "output-id"
     with (
         patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=tool),
         patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=iter([message])),

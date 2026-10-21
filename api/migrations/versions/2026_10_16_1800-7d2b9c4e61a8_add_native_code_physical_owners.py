@@ -7,6 +7,14 @@ Revises: e59b7d32a6c1
 import sqlalchemy as sa
 from alembic import op
 
+from migrations.native_testing import (
+    function_schema_prefix,
+    is_mysql,
+    mysql_changed,
+    mysql_program,
+    require_empty_table,
+    unlock_tables,
+)
 from models.types import StringUUID
 
 revision = "7d2b9c4e61a8"
@@ -16,8 +24,62 @@ depends_on = None
 TABLE = "dify_builder_native_code_physical_operations"
 
 
+def _regex(field: str, pattern: str) -> str:
+    return f"REGEXP_LIKE({field}, '{pattern}', 'c')" if is_mysql() else f"{field} ~ '{pattern}'"
+
+
+def _mysql_monotone(all_fields: tuple[str, ...]) -> None:
+    identity = mysql_changed(
+        (
+            "id",
+            "tenant_id",
+            "actor_id",
+            "request_id",
+            "invocation_id",
+            "operation_id",
+            "attempt_id",
+            "effect_claim_id",
+            "host_dispatch_id",
+            "host_acquisition_id",
+            "root_invocation_id",
+            "host_generation",
+            "invocation_generation",
+            "native_execution_id",
+            "operation_digest",
+            "intent_digest",
+            "scope_id",
+            "scope_generation",
+            "scope_spec_digest",
+            "environment_digest",
+            "payload_digest",
+            "profile_digest",
+            "base_snapshot_ref",
+            "base_snapshot_digest",
+            "scope_expires_at",
+        )
+    )
+    changed = mysql_changed(all_fields)
+    ambiguous_changed = mysql_changed(("scope_create_acked", "job_reserved", "job_id", "input_may_have_been_sent"))
+    mysql_program(f"""CREATE TRIGGER code_physical_monotone_update BEFORE UPDATE ON {TABLE}
+        FOR EACH ROW BEGIN
+        IF {identity} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Code physical identity is immutable'; END IF;
+        IF (OLD.scope_create_acked AND NOT NEW.scope_create_acked)
+           OR (OLD.job_reserved AND NOT NEW.job_reserved)
+           OR (OLD.input_may_have_been_sent AND NOT NEW.input_may_have_been_sent)
+           OR (OLD.ambiguous AND NOT NEW.ambiguous)
+           OR (OLD.job_id IS NOT NULL AND NOT (BINARY NEW.job_id <=> BINARY OLD.job_id))
+           OR NEW.observed_output_offset < OLD.observed_output_offset
+           OR (OLD.destroyed_at IS NOT NULL AND ({changed}))
+           OR (OLD.ambiguous AND ({ambiguous_changed})) THEN
+          SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT =
+            'Code physical evidence cannot regress or dispatch after settlement';
+        END IF; END""")
+    mysql_program(f"""CREATE TRIGGER code_physical_monotone_delete BEFORE DELETE ON {TABLE}
+        FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Code physical evidence must be retained'""")
+
+
 def upgrade():
-    op.create_table(
+    table = op.create_table(
         TABLE,
         sa.Column("id", StringUUID(), primary_key=True),
         sa.Column("tenant_id", StringUUID(), nullable=False),
@@ -85,20 +147,28 @@ def upgrade():
             name="code_physical_input",
         ),
         sa.CheckConstraint("NOT job_reserved OR scope_create_acked", name="code_physical_reserve"),
-        sa.CheckConstraint("scope_id ~ '^code_[0-9a-f]{32}$'", name="code_physical_scope"),
+        sa.CheckConstraint(_regex("scope_id", "^code_[0-9a-f]{32}$"), name="code_physical_scope"),
         sa.CheckConstraint(
-            "job_id IS NULL OR job_id ~ '^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$'",
+            "job_id IS NULL OR " + _regex("job_id", "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"),
             name="code_physical_job_shape",
         ),
         sa.CheckConstraint(
-            "base_snapshot_ref ~ '^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$'",
+            _regex("base_snapshot_ref", "^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$"),
             name="code_physical_snapshot",
         ),
         sa.CheckConstraint(
-            "operation_digest ~ '^[0-9a-f]{64}$' AND intent_digest ~ '^[0-9a-f]{64}$'"
-            " AND scope_spec_digest ~ '^[0-9a-f]{64}$' AND environment_digest ~ '^[0-9a-f]{64}$'"
-            " AND payload_digest ~ '^[0-9a-f]{64}$' AND profile_digest ~ '^[0-9a-f]{64}$'"
-            " AND base_snapshot_digest ~ '^[0-9a-f]{64}$'",
+            " AND ".join(
+                _regex(field, "^[0-9a-f]{64}$")
+                for field in (
+                    "operation_digest",
+                    "intent_digest",
+                    "scope_spec_digest",
+                    "environment_digest",
+                    "payload_digest",
+                    "profile_digest",
+                    "base_snapshot_digest",
+                )
+            ),
             name="code_physical_digests",
         ),
         sa.ForeignKeyConstraint(
@@ -136,12 +206,13 @@ def upgrade():
             ondelete="RESTRICT",
         ),
     )
-    connection = op.get_bind()
-    schema = connection.execute(sa.text("SELECT current_schema()")).scalar_one()
-    quoted = connection.dialect.identifier_preparer.quote(schema)
+    if is_mysql():
+        _mysql_monotone(tuple(column.name for column in table.columns))
+        return
+    quoted = function_schema_prefix()
     op.execute(
         sa.text(f"""
-    CREATE FUNCTION {quoted}.builder_code_physical_monotone() RETURNS trigger
+    CREATE FUNCTION {quoted}builder_code_physical_monotone() RETURNS trigger
     LANGUAGE plpgsql AS $$ BEGIN
       IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'Code physical evidence must be retained';
@@ -195,17 +266,15 @@ def upgrade():
     op.execute(
         sa.text(
             f"CREATE TRIGGER code_physical_monotone BEFORE UPDATE OR DELETE ON {TABLE} "
-            f"FOR EACH ROW EXECUTE FUNCTION {quoted}.builder_code_physical_monotone()"
+            f"FOR EACH ROW EXECUTE FUNCTION {quoted}builder_code_physical_monotone()"
         )
     )
 
 
 def downgrade():
-    connection = op.get_bind()
-    connection.execute(sa.text(f"LOCK TABLE {TABLE} IN ACCESS EXCLUSIVE MODE"))
-    if connection.execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Code physical evidence must be retained")
+    require_empty_table(TABLE, "Code physical evidence must be retained", lock=True)
     op.drop_table(TABLE)
-    schema = connection.execute(sa.text("SELECT current_schema()")).scalar_one()
-    quoted = connection.dialect.identifier_preparer.quote(schema)
-    op.execute(sa.text(f"DROP FUNCTION {quoted}.builder_code_physical_monotone()"))
+    unlock_tables()
+    if not is_mysql():
+        quoted = function_schema_prefix()
+        op.execute(sa.text(f"DROP FUNCTION {quoted}builder_code_physical_monotone()"))

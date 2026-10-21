@@ -268,7 +268,7 @@ class NativeHttpObservationPolicy:
                     _refuse()
             # Unchecked frozen DTO copies can contain arbitrary objects. Inspect
             # plain fields before Pydantic serialization can warn with repr(data).
-            profile_data = {name: getattr(profile, name) for name in NativeRuntimeProfile.model_fields}
+            profile_data = dict(profile)
             _shape(profile_data)
             from services.dify_builder.native_testing.sandbox.qualification import (
                 PROFILE_ID as CODE_PROFILE_ID,
@@ -285,8 +285,8 @@ class NativeHttpObservationPolicy:
                 code_qualification.validate_profile(NativeRuntimeProfile.model_validate(profile_data))
             else:
                 validate_native_http_profile(NativeRuntimeProfile.model_validate(profile_data))
-            context_data = {name: getattr(context, name) for name in ResolvedNativeTestContext.model_fields}
-            context_data["ref"] = {name: getattr(context.ref, name) for name in NativeTestContextRef.model_fields}
+            context_data = dict(context)
+            context_data["ref"] = dict(context.ref)
             _shape(context_data)
             checked = ResolvedNativeTestContext.model_validate(context_data)
             if (
@@ -578,8 +578,9 @@ class NativeHttpObservationPolicy:
             if not any((source, target) == (tail, head) for _, tail, head in self._edges):
                 _refuse()
         fields: dict[str, Any] = {}
+        raw_fields = dict(event)
         for name in cls.model_fields:
-            value = getattr(event, name)
+            value = raw_fields[name]
             if name == "container_id":
                 fields[name] = "" if value == "" else _identity(value)
             elif name == "frame_id":

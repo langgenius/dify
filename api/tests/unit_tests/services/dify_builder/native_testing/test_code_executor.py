@@ -1,9 +1,8 @@
 """Real native nodes/transformers/C02; explicit SQL and deployment doubles only."""
 
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from types import SimpleNamespace
-from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -16,14 +15,24 @@ from runtime_contracts.builder.execution import (
     canonical_digest,
 )
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
+from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.control import (
     BoundaryOwnerState,
     NativeApprovalWait,
     NativePolicyStop,
     marked_native_node_class,
 )
+from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
+from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTest
 from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation, NativeRuntimeBridge
+from services.dify_builder.native_testing.sandbox.host import NativeCodeHostOwner
+from services.dify_builder.native_testing.sandbox.qualification import (
+    NativeCodeBindingProducer,
+    NativeCodeQualification,
+)
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import (
     REF,
     Authorization,
@@ -33,6 +42,31 @@ from tests.unit_tests.services.dify_builder.native_testing.test_code_qualificati
     qualification,
     raw_code,
 )
+from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import (
+    DurablePorts,
+    NoCheckpointLifecycle,
+)
+from tests.unit_tests.services.dify_builder.native_testing.test_runtime_bridge import SyntheticSink, _api
+
+
+@dataclass
+class CodeExecutorCase:
+    q: NativeCodeQualification
+    seen: list
+    events: list
+    state: State
+    auth: Authorization
+    journal: NodeOperationJournal
+    producer: NativeCodeBindingProducer
+    node: CodeNode
+    association: NativeNodePreparation
+    raw: dict
+    installed: list[dict]
+    owner: NativeCodeHostOwner
+
+
+def refuse_constructor_collaborators(**_kwargs):
+    raise AssertionError("node preparation collaborators are not used by executor tests")
 
 
 @pytest.fixture
@@ -70,13 +104,15 @@ def case(monkeypatch):
 
     monkeypatch.setattr(state, "store_node_inputs", store_inputs, raising=False)
     runtime = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
-    bridge = SimpleNamespace(
-        _boundary_owner=BoundaryOwnerState(ref=REF),
-        _control_sink=SimpleNamespace(record_control=lambda **_kw: None),
-        resolve=lambda ref: state.load_context(ref=ref),
+    bridge = NativeRuntimeBridge(
+        state=state,
+        boundary_owner=BoundaryOwnerState(ref=REF),
+        control_sink=SyntheticSink(),
+        collaborators=refuse_constructor_collaborators,
+        node_arguments=refuse_constructor_collaborators,
     )
     association = NativeNodePreparation(
-        bridge=cast(NativeRuntimeBridge, bridge),
+        bridge=bridge,
         ref=REF,
         node_id="code",
         node_class=marked_native_node_class(CodeNode, marked=True),
@@ -93,9 +129,58 @@ def case(monkeypatch):
         code_limits=module.code_limits(),
     )
     association.attach(node)
-    loader = SimpleNamespace(load=lambda **_kw: SimpleNamespace(expires_at=datetime(2030, 1, 1, tzinfo=UTC)))
-    monkeypatch.setattr(module, "validate_private_read", lambda *_a: SimpleNamespace(generation=0))
+    api = _api()
+    loader = api.loader
+    context = state.context
+    owned = OwnedNativeTest(
+        ref=context.ref,
+        tenant_id=context.tenant_id,
+        actor_id=context.actor_id,
+        app_id=context.app_id,
+        workflow_id=context.workflow_id,
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=0,
+        task_approved=True,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="running",
+    )
+    monkeypatch.setattr(loader, "load", lambda **_kw: owned)
+    authority = PrivateReadOwner(
+        tenant_id=context.tenant_id,
+        actor_id=context.actor_id,
+        app_id=context.app_id,
+        workflow_id=context.workflow_id,
+        parent_invocation_id=None,
+        context_object_id="context",
+        generation=0,
+        graph_revision=context.graph_revision,
+        root_revision_matches=True,
+        input_revision=context.input_revision,
+        expires_at=owned.expires_at,
+        cancelled=False,
+        active=True,
+        request_state="running",
+    )
+    monkeypatch.setattr(module, "validate_private_read", lambda *_a: authority)
     journal = NodeOperationJournal(state=state, authorization=auth)
+    dispatch_id = str(uuid4())
+    lifetime = NativeHostLifetime(context=context, dispatch_id=dispatch_id)
+    ports = DurablePorts()
+    host = NativeHostLaunch(
+        context=context,
+        dispatch_id=dispatch_id,
+        lifetime=lifetime,
+        journal=journal,
+        checkpoints=NativeCheckpointBridge(state=state, lifecycle=NoCheckpointLifecycle()),
+        fence_pending=ports.fence_pending,
+        stop_sealer=ports,
+        authorization=auth,
+        http_baseline=(1, 1, 1),
+    )
+    owner = NativeCodeHostOwner(host=host, loader=loader)
+    monkeypatch.setattr(owner, "check_current", lambda _acquisition: None)
     producer = module.NativeCodeBindingProducer(
         association=association,
         loader=loader,
@@ -105,7 +190,8 @@ def case(monkeypatch):
     )
     installed = []
     monkeypatch.setattr(producer, "_install", lambda **kw: installed.append(kw))
-    return SimpleNamespace(
+    return CodeExecutorCase(
+        owner=owner,
         q=q,
         seen=seen,
         events=events,
@@ -179,7 +265,7 @@ def test_code_result_replay_has_zero_sdk_io_and_real_transformer(case, monkeypat
         journal=case.journal,
         max_result_bytes=8 << 20,
     )
-    owner = SimpleNamespace(check_current=lambda _a: None, acquisition=object())
+    owner = case.owner
     execute = NativeCodeExecutor(producer=case.producer, calls=calls, owner=owner, on_prepared=lambda: None)
     assert execute.execute(language=CodeLanguage.PYTHON3, code=case.raw["code"], inputs={}) == {
         "result": "actual parsed"
@@ -281,7 +367,7 @@ def test_current_selector_change_after_claim_refuses_before_transport(case, monk
     execute = module.NativeCodeExecutor(
         producer=case.producer,
         calls=Calls(),
-        owner=SimpleNamespace(check_current=lambda _a: None, acquisition=object()),
+        owner=case.owner,
         on_prepared=lambda: None,
     )
     with pytest.raises(BuilderExecutionPolicyError):
@@ -317,7 +403,7 @@ def test_wait_then_claim_preserves_logical_intent_and_replay_never_constructs_tr
     execute = module.NativeCodeExecutor(
         producer=case.producer,
         calls=calls,
-        owner=SimpleNamespace(check_current=lambda _a: None, acquisition=object()),
+        owner=case.owner,
         on_prepared=lambda: None,
     )
     case.auth.decisions[0] = ApprovalWait(pending_operation_id="pending")

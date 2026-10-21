@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -11,14 +10,19 @@ from graphon.model_runtime.entities.message_entities import UserPromptMessage
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 
 from dify_agent.adapters.llm.provider import DifyApiLLMClient
-from dify_agent.runtime.native_continuation import NativePolicyStopped
+from dify_agent.runtime.native_continuation import NativeContinuation, NativePolicyStopped
+from dify_agent.runtime.native_effects import NativeDispatchEnvelope
+from tests.local.dify_agent.runtime.test_native_effects import INTENT, PERMIT, REF
+
 from ._test_support import build_stream_response, single_text_chunk
 from .test_api_provider import _execution_context
 
 
 class ReceiptBoundary:
     def __init__(self, recorded=None):
-        self.continuation = SimpleNamespace(operation_cursor=0)
+        self.continuation = NativeContinuation(
+            run_id="run", ref=REF, generation=0, config_ref="config", config_digest="b" * 64
+        )
         self.recorded = recorded
         self.saved = None
 
@@ -32,7 +36,7 @@ class ReceiptBoundary:
 def run_provider(chunks, boundary, monkeypatch):
     # Only the policy boundary is controlled; SDK HTTP/SSE parsing stays real.
     monkeypatch.setattr(
-        "dify_agent.runtime.native_effects.current_native_dispatch", lambda: SimpleNamespace(wire=lambda: {})
+        "dify_agent.runtime.native_effects.current_native_dispatch", lambda: NativeDispatchEnvelope(REF, INTENT, PERMIT)
     )
     requests = []
 

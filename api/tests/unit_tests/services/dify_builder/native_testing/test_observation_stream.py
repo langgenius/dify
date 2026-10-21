@@ -1,12 +1,12 @@
 """Actual response owners; Redis/SQL/provider ports are explicit test boundaries."""
 
 from importlib import import_module, util
-from types import SimpleNamespace
 from typing import Protocol, cast
-from unittest.mock import Mock
 
 import pytest
+from redis import Redis
 
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
@@ -15,6 +15,7 @@ from core.app.entities.task_entities import ErrorStreamResponse, WorkflowPauseSt
 from core.workflow.system_variables import build_system_variables
 from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
+from models.model import AppMode
 from models.workflow import Workflow
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
@@ -45,25 +46,43 @@ def guard():
     )
 
 
-def entity(**kwargs) -> WorkflowAppGenerateEntity:
-    """Structural constructor-refusal fixture; no native provenance claim."""
-    return cast(
-        WorkflowAppGenerateEntity,
-        SimpleNamespace(
-            task_id="task",
-            app_config=SimpleNamespace(app_id="app", tenant_id="tenant"),
-            invoke_from=InvokeFrom.DEBUGGER,
-            files=[],
-            inputs={SENTINEL: SENTINEL},
-            workflow_execution_id="run",
-            workflow_execution_timing=WorkflowExecutionTiming(),
-            call_depth=0,
-            native_test_required=True,
-            native_test_ref=None,
-            trace_manager=None,
-            **kwargs,
+def entity() -> WorkflowAppGenerateEntity:
+    """Actual marked DTO with no acquired native host authority."""
+    return WorkflowAppGenerateEntity(
+        task_id="task",
+        user_id="actor",
+        stream=True,
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
         ),
+        invoke_from=InvokeFrom.DEBUGGER,
+        files=[],
+        inputs={SENTINEL: SENTINEL},
+        workflow_execution_id="run",
+        workflow_execution_timing=WorkflowExecutionTiming(),
+        call_depth=0,
+        native_test_required=True,
+        native_test_ref=None,
+        trace_manager=None,
     )
+
+
+def bind_queue_cache(monkeypatch):
+    """Use the actual Redis client with explicit cache command boundaries."""
+    client = Redis()
+    monkeypatch.setattr(client, "setex", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(client, "get", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(client, "delete", lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", client)
+
+
+class RejectDraftSaverFactory:
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, app_id, node_id, node_type, node_execution_id, enclosing_node_id=None):
+        self.calls.append((app_id, node_id, node_type, node_execution_id, enclosing_node_id))
+        raise AssertionError("unknown draft factory must never be invoked")
 
 
 def account():
@@ -84,11 +103,16 @@ def test_domain_projects_and_retains_independent_canonical_markers(guard):
 
 
 def test_marked_converter_requires_guard_before_input_conversion(monkeypatch):
-    touch = Mock(side_effect=AssertionError("raw input conversion"))
+    touch_calls = []
+
+    def touch(*args, **kwargs):
+        touch_calls.append((args, kwargs))
+        raise AssertionError("raw input conversion")
+
     monkeypatch.setattr("services.workflow_runtime.response_converter.WorkflowEntry.handle_special_values", touch)
     with pytest.raises(NativeObservationError, match="native_observation_failed"):
         WorkflowResponseConverter(application_generate_entity=entity(), user=account(), system_variables=[])
-    touch.assert_not_called()
+    assert touch_calls == []
 
 
 def test_marked_pipeline_requires_guard_before_any_initialization():
@@ -104,9 +128,7 @@ def test_marked_pipeline_requires_guard_before_any_initialization():
 
 
 def test_queue_projects_before_base_model_dump_and_direct_publish(guard, monkeypatch):
-    monkeypatch.setattr(
-        "core.app.apps.base_app_queue_manager.redis_client", Mock()
-    )  # Redis ownership/cache boundary only.
+    bind_queue_cache(monkeypatch)
     manager = WorkflowAppQueueManager("task", "actor", InvokeFrom.DEBUGGER, "workflow", native_observation=guard)
     raw = QueueWorkflowSucceededEvent(outputs={SENTINEL: SENTINEL})
     original = QueueWorkflowSucceededEvent.model_dump
@@ -148,7 +170,12 @@ def test_native_finish_reads_live_outputs_without_converter_or_file_routes(guard
     )
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
     state.set_output(SENTINEL, SENTINEL)
-    tripwire = Mock(side_effect=AssertionError("raw encoding/file/truncation"))
+    tripwire_calls = []
+
+    def tripwire(*args, **kwargs):
+        tripwire_calls.append((args, kwargs))
+        raise AssertionError("raw encoding/file/truncation")
+
     monkeypatch.setattr("services.workflow_runtime.response_converter.WorkflowRuntimeTypeConverter", tripwire)
     monkeypatch.setattr(c, "fetch_files_from_node_outputs", tripwire)
     monkeypatch.setattr(c._truncator, "truncate_variable_mapping", tripwire)
@@ -172,7 +199,7 @@ def test_native_finish_reads_live_outputs_without_converter_or_file_routes(guard
         assert response.data.exceptions_count == 2
         assert not response.data.files
     assert state.outputs == {SENTINEL: SENTINEL}
-    tripwire.assert_not_called()
+    assert tripwire_calls == []
 
 
 @pytest.mark.parametrize(
@@ -261,16 +288,16 @@ def test_wrong_node_type_and_unqualified_hitl_fail_before_projection(guard):
 
 def make_pipeline(
     guard, monkeypatch, **updates
-) -> tuple[WorkflowAppGenerateTaskPipeline, WorkflowAppQueueManager, Mock]:
+) -> tuple[WorkflowAppGenerateTaskPipeline, WorkflowAppQueueManager, RejectDraftSaverFactory]:
     from tests.unit_tests.core.app.apps.workflow.test_generate_task_pipeline_core import _make_pipeline
 
     ordinary = _make_pipeline()
     e = ordinary._application_generate_entity.model_copy(
         update={"native_test_required": True, "invoke_from": InvokeFrom.DEBUGGER, **updates}
     )
-    monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", Mock())
+    bind_queue_cache(monkeypatch)
     queue = WorkflowAppQueueManager("task", "actor", InvokeFrom.DEBUGGER, "workflow", native_observation=guard)
-    saver = Mock(side_effect=AssertionError("unknown draft factory must never be invoked"))
+    saver = RejectDraftSaverFactory()
     pipeline = WorkflowAppGenerateTaskPipeline(
         application_generate_entity=e,
         workflow=ordinary._workflow,
@@ -300,7 +327,7 @@ def test_pipeline_projects_internal_events_and_noops_draft_saver(guard, monkeypa
     replies = list(p._dispatch_event(event))
     assert len(replies) == 1
     assert SENTINEL not in replies[0].model_dump_json()
-    saver.assert_not_called()
+    assert saver.calls == []
     assert p._workflow_response_converter._native_observation is guard
     assert q.native_observation is guard
     live = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
@@ -310,12 +337,17 @@ def test_pipeline_projects_internal_events_and_noops_draft_saver(guard, monkeypa
 
 def test_pipeline_refuses_tts_trace_and_files_before_actions(guard, monkeypatch):
     p, q, saver = make_pipeline(guard, monkeypatch)
-    tts = Mock(side_effect=AssertionError("TTS must not initialize"))
+    tts_calls = []
+
+    def tts(*args, **kwargs):
+        tts_calls.append((args, kwargs))
+        raise AssertionError("TTS must not initialize")
+
     monkeypatch.setattr("services.workflow_runtime.workflow_pipeline.AppGeneratorTTSPublisher", tts)
     p._workflow_features_dict = {"text_to_speech": {"enabled": True, "autoPlay": "enabled"}}
     with pytest.raises(NativeObservationError):
         list(p._wrapper_process_stream_response())
-    tts.assert_not_called()
+    assert tts_calls == []
 
 
 def test_pause_live_fallback_is_safe_without_hitl_resolution(guard, monkeypatch):
@@ -329,7 +361,12 @@ def test_pause_live_fallback_is_safe_without_hitl_resolution(guard, monkeypatch)
     )
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
     state.set_output(SENTINEL, SENTINEL)
-    trip = Mock(side_effect=AssertionError("HITL resolution"))
+    trip_calls = []
+
+    def trip(*args, **kwargs):
+        trip_calls.append((args, kwargs))
+        raise AssertionError("HITL resolution")
+
     monkeypatch.setattr("services.workflow_runtime.response_converter.resolve_human_input_pause_reason_inputs", trip)
     r = c.workflow_pause_to_stream_response(
         event=QueueWorkflowPausedEvent(reasons=[SchedulingPause(message=SENTINEL)], paused_nodes=["http"]),
@@ -348,7 +385,7 @@ def test_pause_live_fallback_is_safe_without_hitl_resolution(guard, monkeypatch)
     )
     assert isinstance(explicit[0], WorkflowPauseStreamResponse)
     assert explicit[0].data.outputs["shape"]["fields"] == 2
-    trip.assert_not_called()
+    assert trip_calls == []
 
 
 def test_direct_native_error_handler_never_passes_raw_error_to_base(guard, monkeypatch):
@@ -371,7 +408,16 @@ def test_direct_native_text_handler_rejects_tts_before_publish(guard, monkeypatc
     from core.app.entities.queue_entities import QueueTextChunkEvent
 
     p, q, saver = make_pipeline(guard, monkeypatch)
-    tts = Mock()
+
+    class RejectedTTSPublisher:
+        def __init__(self):
+            self.published = []
+
+        def publish(self, *args, **kwargs):
+            self.published.append((args, kwargs))
+            raise AssertionError("native text reached TTS")
+
+    tts = RejectedTTSPublisher()
     with pytest.raises(NativeObservationError):
         list(
             p._handle_text_chunk_event(
@@ -380,7 +426,7 @@ def test_direct_native_text_handler_rejects_tts_before_publish(guard, monkeypatc
                 queue_message=cast(WorkflowQueueMessage, object()),
             )
         )
-    tts.publish.assert_not_called()
+    assert tts.published == []
 
 
 @pytest.mark.parametrize("kind", ["iteration", "loop"])
@@ -396,7 +442,11 @@ def test_real_container_queue_and_converter_preserve_counts_without_values(kind)
         ),
         on_failure=lambda: None,
     )
-    prefix = "Iteration" if kind == "iteration" else "Loop"
+    start_type, next_type, completed_type = (
+        (q.QueueIterationStartEvent, q.QueueIterationNextEvent, q.QueueIterationCompletedEvent)
+        if kind == "iteration"
+        else (q.QueueLoopStartEvent, q.QueueLoopNextEvent, q.QueueLoopCompletedEvent)
+    )
     base = {
         "node_execution_id": "container-execution",
         "node_id": "container",
@@ -409,11 +459,11 @@ def test_real_container_queue_and_converter_preserve_counts_without_values(kind)
         task_id="task", workflow_run_id="run", workflow_id="workflow", reason=WorkflowStartReason.INITIAL
     )
     events = [
-        getattr(q, "Queue" + prefix + "StartEvent")(
+        start_type(
             **base, start_at=NOW.replace(tzinfo=None), inputs={SENTINEL: SENTINEL}, metadata={kind + "_length": 3}
         ),
-        getattr(q, "Queue" + prefix + "NextEvent")(**base, index=1, output=SENTINEL),
-        getattr(q, "Queue" + prefix + "CompletedEvent")(
+        next_type(**base, index=1, output=SENTINEL),
+        completed_type(
             **base,
             start_at=NOW.replace(tzinfo=None),
             steps=4,
@@ -425,9 +475,18 @@ def test_real_container_queue_and_converter_preserve_counts_without_values(kind)
     for event, method in zip(events, ["start", "next", "completed"], strict=True):
         projected = domain().project_native_queue_event(guard=guard, event=event)
         assert projected == domain().project_native_queue_event(guard=guard, event=projected)
-        response = getattr(c, "workflow_" + kind + "_" + method + "_to_stream_response")(
-            task_id="task", workflow_execution_id="run", event=event
-        )
+        response = {
+            "iteration": {
+                "start": c.workflow_iteration_start_to_stream_response,
+                "next": c.workflow_iteration_next_to_stream_response,
+                "completed": c.workflow_iteration_completed_to_stream_response,
+            },
+            "loop": {
+                "start": c.workflow_loop_start_to_stream_response,
+                "next": c.workflow_loop_next_to_stream_response,
+                "completed": c.workflow_loop_completed_to_stream_response,
+            },
+        }[kind][method](task_id="task", workflow_execution_id="run", event=event)
         assert SENTINEL not in response.model_dump_json()
     assert response is not None
     assert response.data.steps == 4
@@ -556,18 +615,23 @@ def test_pipeline_listen_projects_raw_internal_error_before_base(guard, monkeypa
     assert len(result) == 1
     assert isinstance(result[0], ErrorStreamResponse)
     assert str(result[0].err) == "native_execution_error"
-    saver.assert_not_called()
+    assert saver.calls == []
 
 
 def test_queue_unknown_value_refuses_before_base_serializer(guard, monkeypatch):
-    monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", Mock())
+    bind_queue_cache(monkeypatch)
     q = WorkflowAppQueueManager("task", "actor", InvokeFrom.DEBUGGER, "workflow", native_observation=guard)
-    trip = Mock(side_effect=AssertionError("raw model_dump"))
+    trip_calls = []
+
+    def trip(*args, **kwargs):
+        trip_calls.append((args, kwargs))
+        raise AssertionError("raw model_dump")
+
     monkeypatch.setattr(QueueWorkflowSucceededEvent, "model_dump", trip)
     with pytest.raises(NativeObservationError):
         q.publish(QueueWorkflowSucceededEvent(outputs={"x": Unrenderable()}), PublishFrom.APPLICATION_MANAGER)
     assert q._q.empty()
-    trip.assert_not_called()
+    assert trip_calls == []
 
 
 @pytest.mark.parametrize("bad", [None, object()])
@@ -599,12 +663,12 @@ def test_native_no_hitl_or_history_resume(guard):
 
 
 @pytest.mark.parametrize("route", ["projector", "publish", "direct", "converter"])
-@pytest.mark.parametrize("supplied_host", [None, SimpleNamespace()])
+@pytest.mark.parametrize("supplied_host", [None, object()])
 def test_resumption_requires_actual_host_not_a_caller_port(guard, monkeypatch, route, supplied_host):
     from core.app.entities.queue_entities import QueueWorkflowStartedEvent
     from graphon.entities import WorkflowStartReason
 
-    monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", Mock())
+    bind_queue_cache(monkeypatch)
     event = QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION)
     if supplied_host is not None and route != "projector":
 

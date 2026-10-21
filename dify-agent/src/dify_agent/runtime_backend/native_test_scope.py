@@ -28,8 +28,12 @@ class ShellJobRef(BaseModel):
 
 
 def validate_job_identity(*, saved: ShellJobRef, actual: ShellJobRef) -> None:
-    fields = ("binding_ref", "backend_revision", "workspace_generation", "job_id")
-    if any(getattr(saved, key) != getattr(actual, key) for key in fields):
+    if (saved.binding_ref, saved.backend_revision, saved.workspace_generation, saved.job_id) != (
+        actual.binding_ref,
+        actual.backend_revision,
+        actual.workspace_generation,
+        actual.job_id,
+    ):
         raise AgentJobUnavailable("native_job_identity_mismatch")
 
 

@@ -5,7 +5,7 @@ import warnings
 from collections.abc import Generator
 from contextlib import contextmanager
 from copy import deepcopy
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -70,7 +70,9 @@ def _flask_app() -> Flask:
 def test_post_streams_plugin_compatible_envelope() -> None:
     payload = _payload()
     request = AgentLLMInvokeRequest.model_validate(payload)
-    prepared = PreparedAgentLLMInvocation(request=request, model_instance=MagicMock())
+    prepared = PreparedAgentLLMInvocation(
+        request=request, model_instance=make_model_instance(provider="openai", model="gpt-test")
+    )
     chunk = LLMResultChunk(
         model="gpt-test",
         delta=LLMResultChunkDelta(
@@ -289,7 +291,7 @@ def test_post_preserves_stream_quota_failure() -> None:
     payload = _payload()
     prepared = PreparedAgentLLMInvocation(
         request=AgentLLMInvokeRequest.model_validate(payload),
-        model_instance=MagicMock(),
+        model_instance=make_model_instance(provider="openai", model="gpt-test"),
     )
     with (
         _agent_inner_auth(),
@@ -343,7 +345,8 @@ def test_native_stream_error_is_bounded_even_if_provider_raises_private_text(
 
     payload = {**_payload(), "native_dispatch": envelope().model_dump(mode="json")}
     prepared = PreparedAgentLLMInvocation(
-        request=AgentLLMInvokeRequest.model_validate(payload), model_instance=MagicMock()
+        request=AgentLLMInvokeRequest.model_validate(payload),
+        model_instance=make_model_instance(provider="openai", model="gpt-test"),
     )
     app = _flask_app()
 

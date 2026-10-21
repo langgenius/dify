@@ -22,7 +22,7 @@ from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
-from core.dify_builder.real_call_consent import ConfirmedToolGuard
+from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConfirmedToolGuard
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
 from core.model_manager import QuotaManagedModelInstance
@@ -102,7 +102,9 @@ from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
 from models.model import StorageType, UploadFile
 from models.tools import ToolFile
+from runtime_contracts.builder.execution import ConfirmedToolExecutionContext, context_digest
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
+from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService, ServiceConfirmedToolGuard
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
@@ -2624,18 +2626,51 @@ def test_polling_moderation_stops_delivery_without_refunding_consumed_usage(
 # --- confirmed guard factory: lazy claim at Graphon's actual node-execution-ID callback --------
 
 
-def _confirmed_guard(*, node_id: str = "tool-node", node_execution_id: str = "node-execution-id") -> Mock:
-    guard = Mock()
-    guard.binding = SimpleNamespace(
-        node_id=node_id,
-        native_node_execution_id=node_execution_id,
-        context=SimpleNamespace(tenant_id="tenant-id", app_id="app-id"),
+def _confirmed_guard(
+    *, mocker=None, node_id="tool-node", node_execution_id="node-execution-id", tenant_id="tenant-id", app_id="app-id"
+):
+    context = ConfirmedToolExecutionContext(
+        policy_version="builder-confirmed-gmail-read-v1",
+        request_id="request",
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_id="workflow",
+        actor_id="actor",
+        session_id="session",
+        test_input_id="input",
+        execution_revision="a" * 64,
+        graph_revision="b" * 64,
+        submitted_inputs_digest="c" * 64,
+        effective_inputs_digest="d" * 64,
+        context_digest="e" * 64,
+        mode="confirmed_tool",
+        sandbox_profile="disabled",
+        admitted_nodes=(),
+        consent_id="consent",
+        scope_digest="f" * 64,
+        command_id="command",
     )
-    guard.dispatch_headers.return_value = {
-        "X-Dify-Expected-Plugin-Identifier": "langgenius/dify-gmail:9.9.9@" + "f" * 64,
-        "X-Dify-Expected-Installation-ID": "synthetic-installation",
-        "X-Dify-Confirmed-Dispatch": "v1",
-    }
+    context = context.model_copy(update={"context_digest": context_digest(context)})
+    guard = ServiceConfirmedToolGuard(
+        BuilderRealCallConsentService(sessionmaker()),
+        ConfirmedToolBinding(
+            context=context, node_id=node_id, native_run_id="native-run", native_node_execution_id=node_execution_id
+        ),
+    )
+    if mocker is not None:
+        mocker.patch.object(guard, "before_refresh")
+        mocker.patch.object(guard, "before_invoke")
+        mocker.patch.object(guard, "observe_json")
+        mocker.patch.object(guard, "finish_stream")
+        mocker.patch.object(
+            guard,
+            "dispatch_headers",
+            return_value={
+                "X-Dify-Expected-Plugin-Identifier": "langgenius/dify-gmail:9.9.9@" + "f" * 64,
+                "X-Dify-Expected-Installation-ID": "synthetic-installation",
+                "X-Dify-Confirmed-Dispatch": "v1",
+            },
+        )
     return guard
 
 
@@ -2775,11 +2810,11 @@ def _builtin_node_data(**changes: object) -> ToolNodeData:
 
 
 def test_guard_factory_claims_at_the_actual_execution_id_before_resolution(
-    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+    mocker, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
 ) -> None:
     events: list[str] = []
-    get_runtime = _recording_tool_manager(monkeypatch, events)
-    factory = _GuardFactory(events)
+    get_runtime = _recording_tool_manager(mocker, events)
+    factory = _GuardFactory(events, mocker=mocker)
     maker, sessions = _recording_session_maker(sqlite_engine)
     transport = _ConfirmedTransport(sessions)
     monkeypatch.setattr(PluginToolManager, "_request_with_plugin_daemon_response_stream", transport)
@@ -2802,18 +2837,16 @@ def test_guard_factory_claims_at_the_actual_execution_id_before_resolution(
         )
     )
     assert [message.type.value for message in messages] == ["text", "json"]
-    maker.begin.assert_not_called()
+    assert maker.begin_calls == []
     assert not any(transport.observed)
     guard.finish_stream.assert_called_once_with(complete=True, declared_failure=False)
 
 
 @pytest.mark.parametrize("node_execution_id", [None, ""])
-def test_guard_factory_requires_a_real_execution_id(
-    monkeypatch: pytest.MonkeyPatch, node_execution_id: str | None
-) -> None:
+def test_guard_factory_requires_a_real_execution_id(mocker, node_execution_id: str | None) -> None:
     events: list[str] = []
-    get_runtime = _recording_tool_manager(monkeypatch, events)
-    factory = _GuardFactory(events)
+    get_runtime = _recording_tool_manager(mocker, events)
+    factory = _GuardFactory(events, mocker=mocker)
 
     runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
     with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="execution_launch_mismatch"):
@@ -2832,7 +2865,7 @@ _FACTORY_SECRET = "factory-secret-sentinel-5d1"
 
 def _other_tenant_guard() -> Mock:
     guard = _confirmed_guard(node_id="tool-node", node_execution_id="actual-exec-7")
-    guard.binding.context = SimpleNamespace(tenant_id="other-tenant", app_id="app-id")
+    guard = _confirmed_guard(tenant_id="other-tenant", node_execution_id="actual-exec-7")
     return guard
 
 
@@ -2848,10 +2881,10 @@ def _other_tenant_guard() -> Mock:
     ids=["factory-raises", "factory-refuses", "wrong-node", "wrong-execution", "wrong-tenant"],
 )
 def test_failing_or_mismatched_factory_never_falls_through_to_ordinary_resolution(
-    monkeypatch: pytest.MonkeyPatch, result: Mock | Exception, reason: str
+    mocker, result: Mock | Exception, reason: str
 ) -> None:
     events: list[str] = []
-    get_runtime = _recording_tool_manager(monkeypatch, events)
+    get_runtime = _recording_tool_manager(mocker, events)
     factory = _GuardFactory(events, result=result)
 
     runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
@@ -2864,9 +2897,8 @@ def test_failing_or_mismatched_factory_never_falls_through_to_ordinary_resolutio
     get_runtime.assert_not_called()
 
 
-def test_factory_returning_no_guard_refuses(monkeypatch: pytest.MonkeyPatch) -> None:
-    get_runtime = MagicMock()
-    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+def test_factory_returning_no_guard_refuses(mocker) -> None:
+    get_runtime = mocker.patch.object(node_runtime.ToolManager, "get_workflow_tool_runtime")
 
     def factory(_node_id: str, _node_execution_id: str) -> ConfirmedToolGuard:
         return cast(ConfirmedToolGuard, None)
@@ -2883,12 +2915,10 @@ def test_factory_returning_no_guard_refuses(monkeypatch: pytest.MonkeyPatch) -> 
     ("node_id", "node_execution_id"),
     [("tool-node", "actual-exec-7"), ("tool-node", "actual-exec-8"), ("other-node", "actual-exec-9")],
 )
-def test_bound_factory_guard_is_never_rebuilt_on_replay(
-    monkeypatch: pytest.MonkeyPatch, node_id: str, node_execution_id: str
-) -> None:
+def test_bound_factory_guard_is_never_rebuilt_on_replay(mocker, node_id: str, node_execution_id: str) -> None:
     events: list[str] = []
-    get_runtime = _recording_tool_manager(monkeypatch, events)
-    factory = _GuardFactory(events)
+    get_runtime = _recording_tool_manager(mocker, events)
+    factory = _GuardFactory(events, mocker=mocker)
 
     runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
     runtime.get_runtime(
@@ -2911,41 +2941,64 @@ def _confirmed_invoke(runtime: DifyToolNodeRuntime, guard: Mock) -> Generator[To
     )
 
 
-def test_configured_but_unbound_factory_refuses_direct_invoke(monkeypatch: pytest.MonkeyPatch) -> None:
+class _RecordingSessionMaker(sessionmaker):
+    def __init__(self, engine, *, active=False):
+        super().__init__(engine, expire_on_commit=False)
+        self.sessions = []
+        self.calls = []
+        self.begin_calls = []
+        self.active = active
+
+    def __call__(self, **kwargs):
+        self.calls.append(kwargs)
+        session = super().__call__(**kwargs)
+        self.sessions.append(session)
+        if self.active:
+            session.begin()
+        return session
+
+    @contextmanager
+    def begin(self):
+        self.begin_calls.append({})
+        # Distinguish the begin boundary from a direct call, as the adapter does.
+        with super().__call__() as session, session.begin():
+            self.sessions.append(session)
+            yield session
+
+
+def test_configured_but_unbound_factory_refuses_direct_invoke(mocker, sqlite_engine) -> None:
     events: list[str] = []
-    factory = _GuardFactory(events)
-    transport = Mock()
-    monkeypatch.setattr(PluginToolManager, "_request_with_plugin_daemon_response_stream", transport)
-    guard = _confirmed_guard()
-    maker = Mock()
+    factory = _GuardFactory(events, mocker=mocker)
+    transport = mocker.patch.object(PluginToolManager, "_request_with_plugin_daemon_response_stream")
+    guard = _confirmed_guard(mocker=mocker)
+    maker = _RecordingSessionMaker(sqlite_engine)
 
     runtime = DifyToolNodeRuntime(_build_run_context(), session_maker=maker, confirmed_guard_factory=factory)
     with pytest.raises(node_runtime.ToolRuntimeInvocationError, match="confirmed_guard_unavailable"):
         list(_confirmed_invoke(runtime, guard))
     assert factory.calls == []
-    maker.assert_not_called()
-    maker.begin.assert_not_called()
+    assert maker.calls == []
+    assert maker.begin_calls == []
     guard.before_invoke.assert_not_called()
     transport.assert_not_called()
 
 
-def test_bound_guard_refuses_a_handle_for_another_tool(monkeypatch: pytest.MonkeyPatch) -> None:
-    transport = Mock()
-    monkeypatch.setattr(PluginToolManager, "_request_with_plugin_daemon_response_stream", transport)
-    bound = _confirmed_guard()
-    maker = Mock()
+def test_bound_guard_refuses_a_handle_for_another_tool(mocker, sqlite_engine) -> None:
+    transport = mocker.patch.object(PluginToolManager, "_request_with_plugin_daemon_response_stream")
+    bound = _confirmed_guard(mocker=mocker)
+    maker = _RecordingSessionMaker(sqlite_engine)
 
     runtime = DifyToolNodeRuntime(_build_run_context(), session_maker=maker, confirmed_guard=bound)
     with pytest.raises(node_runtime.ToolRuntimeInvocationError, match="execution_launch_mismatch"):
-        list(_confirmed_invoke(runtime, _confirmed_guard()))
-    maker.assert_not_called()
+        list(_confirmed_invoke(runtime, _confirmed_guard(mocker=mocker)))
+    assert maker.calls == []
     transport.assert_not_called()
 
 
-def test_configured_node_is_refused_before_the_factory_claims(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_configured_node_is_refused_before_the_factory_claims(mocker) -> None:
     events: list[str] = []
-    get_runtime = _recording_tool_manager(monkeypatch, events)
-    factory = _GuardFactory(events)
+    get_runtime = _recording_tool_manager(mocker, events)
+    factory = _GuardFactory(events, mocker=mocker)
 
     runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
     with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="unsupported_tool_configuration"):
@@ -2973,15 +3026,14 @@ _RESOLUTION_SECRET = "resolution-secret-sentinel-8e2"
     ids=["runtime-error", "value-error", "tool-node-error"],
 )
 def test_unexpected_confirmed_resolution_error_is_sanitized(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, error: Exception, use_factory: bool
+    mocker, caplog: pytest.LogCaptureFixture, error: Exception, use_factory: bool
 ) -> None:
-    get_runtime = MagicMock(side_effect=error)
-    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    get_runtime = mocker.patch.object(node_runtime.ToolManager, "get_workflow_tool_runtime", side_effect=error)
     if use_factory:
-        runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=_GuardFactory([]))
+        runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=_GuardFactory([], mocker=mocker))
     else:
         runtime = DifyToolNodeRuntime(
-            _build_run_context(), confirmed_guard=_confirmed_guard(node_execution_id="actual-exec-7")
+            _build_run_context(), confirmed_guard=_confirmed_guard(mocker=mocker, node_execution_id="actual-exec-7")
         )
 
     with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="confirmed_tool_resolution_failed") as raised:
@@ -2996,10 +3048,13 @@ def test_unexpected_confirmed_resolution_error_is_sanitized(
     get_runtime.assert_called_once()
 
 
-def test_declared_confirmed_policy_refusal_keeps_its_reason(monkeypatch: pytest.MonkeyPatch) -> None:
-    get_runtime = MagicMock(side_effect=BuilderExecutionPolicyError("credential_cache_unavailable"))
-    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
-    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard=_confirmed_guard())
+def test_declared_confirmed_policy_refusal_keeps_its_reason(mocker) -> None:
+    get_runtime = mocker.patch.object(
+        node_runtime.ToolManager,
+        "get_workflow_tool_runtime",
+        side_effect=BuilderExecutionPolicyError("credential_cache_unavailable"),
+    )
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard=_confirmed_guard(mocker=mocker))
 
     with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="credential_cache_unavailable") as raised:
         runtime.get_runtime(
@@ -3010,10 +3065,13 @@ def test_declared_confirmed_policy_refusal_keeps_its_reason(monkeypatch: pytest.
         )
     assert "confirmed_tool_resolution_failed" not in str(raised.value)
 
+    get_runtime.assert_called_once()
 
-def test_ordinary_resolution_error_keeps_native_text(monkeypatch: pytest.MonkeyPatch) -> None:
-    get_runtime = MagicMock(side_effect=RuntimeError("ordinary provider detail"))
-    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+
+def test_ordinary_resolution_error_keeps_native_text(mocker) -> None:
+    get_runtime = mocker.patch.object(
+        node_runtime.ToolManager, "get_workflow_tool_runtime", side_effect=RuntimeError("ordinary provider detail")
+    )
     runtime = DifyToolNodeRuntime(_build_run_context())
 
     with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="ordinary provider detail") as raised:
@@ -3025,9 +3083,13 @@ def test_ordinary_resolution_error_keeps_native_text(monkeypatch: pytest.MonkeyP
         )
     assert isinstance(raised.value.__cause__, RuntimeError)
 
+    get_runtime.assert_called_once()
 
-def test_guard_and_factory_together_are_refused() -> None:
+
+def test_guard_and_factory_together_are_refused(mocker) -> None:
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_confirmed_configuration"):
         DifyToolNodeRuntime(
-            _build_run_context(), confirmed_guard=_confirmed_guard(), confirmed_guard_factory=_GuardFactory([])
+            _build_run_context(),
+            confirmed_guard=_confirmed_guard(mocker=mocker),
+            confirmed_guard_factory=_GuardFactory([], mocker=mocker),
         )

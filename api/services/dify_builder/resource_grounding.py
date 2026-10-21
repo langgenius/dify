@@ -280,7 +280,10 @@ def resolve_edit_choices(fields: list[dict], rules: dict, catalogue: TenantResou
 
 
 def resolve_plan_resources(agent: Any, context: Any, graph: dict) -> None:
-    resolver = getattr(agent, "resolve_edit_bindings", None)
+    try:
+        resolver = agent.resolve_edit_bindings
+    except AttributeError:
+        return
     if not callable(resolver):
         return
     selection = resolver(context.form_fields, context.edit_rules, graph)
@@ -323,7 +326,10 @@ def selection_failure_step(
         validation_code=error.reason_code.upper(),
         node_id=error.node_id,
     )
-    refresh = getattr(env.agent, "refresh_edit_bindings", None)
+    try:
+        refresh = env.agent.refresh_edit_bindings
+    except AttributeError:
+        refresh = None
     if callable(refresh):
         impact = refresh(
             context.form_fields, context.edit_rules, graph, node_id=error.node_id, kind=error.resource_kind

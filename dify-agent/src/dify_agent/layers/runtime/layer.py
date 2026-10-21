@@ -37,8 +37,7 @@ class Capability(AbstractCapability[Deps]):
         native = native_binding_identity(config.backend_binding_ref)
         confirmed = (
             ctx.deps.native_effects is not None
-            and getattr(getattr(ctx.deps.native_effects, "continuation", None), "native_test_profile", None)
-            == "confirmed"
+            and ctx.deps.native_effects.continuation.native_test_profile == "confirmed"
         )
         if confirmed and native is not None:
             raise NativePolicyStopped("native_runtime_lineage_mismatch")

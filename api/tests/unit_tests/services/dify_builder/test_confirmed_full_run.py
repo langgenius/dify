@@ -4,23 +4,26 @@ import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from types import SimpleNamespace
+from dataclasses import dataclass
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import Engine, create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.dify_builder.input_schema import SYSTEM_QUERY
 from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, NodeOutput, Run, Session, Turn
 from core.dify_builder.state import PcState
+from models.account import Account
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderRun, DifyBuilderSession, DifyBuilderTestInput
+from models.model import App
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowRun
 from runtime_contracts.builder.execution import canonical_digest
+from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
+from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTestContextRef, WaitingReceipt
 from services.dify_builder import dify_port
 from services.dify_builder.application import handlers_build
 from services.dify_builder.application.placeholder_agent import PlaceholderAgent
@@ -28,6 +31,7 @@ from services.dify_builder.application.runner import Env
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.effect_disclosure import disclose
 from services.dify_builder.repository import SqlDifyBuilderRepository
+from tests.unit_tests.config_override import apply_config_overrides
 
 GRAPH = {
     "nodes": [
@@ -48,6 +52,30 @@ GRAPH = {
     ],
     "edges": [],
 }
+
+
+@dataclass(frozen=True)
+class FullRunDatabase:
+    engine: Engine
+
+
+@dataclass
+class FullRunCase:
+    app: App
+    draft: Workflow
+    saved: DifyBuilderTestInput
+    generate: object
+    finished: Run
+    factory: sessionmaker
+    ids: dict[str, str]
+    native_finish: object
+
+
+def prepared_agent_context():
+    return BuilderAgentExecutionContext(
+        ref=NativeTestContextRef(request_id="request", invocation_id="root", context_digest="a" * 64),
+        native_run_id=str(uuid4()),
+    )
 
 
 def _actor() -> Actor:
@@ -90,7 +118,7 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path):
             )
         )
         session.add(saved)
-    app = SimpleNamespace(id=ids["app"], tenant_id=ids["tenant"], mode="workflow")
+    app = App(id=ids["app"], tenant_id=ids["tenant"], mode="workflow")
     draft = Workflow(
         tenant_id="tenant-1",
         graph=json.dumps(GRAPH),
@@ -98,7 +126,7 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path):
         environment_variables=[],
         conversation_variables=[],
     )
-    monkeypatch.setattr(dify_config, "DIFY_BUILDER_CONFIRMED_RUN_ENABLED", True)
+    apply_config_overrides(monkeypatch, DIFY_BUILDER_CONFIRMED_RUN_ENABLED=True)
     monkeypatch.setattr(WorkflowServiceDifyPort, "_restricted_admissible", lambda *_args: False)
     finished = Run(
         status="succeeded",
@@ -108,21 +136,23 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path):
     native_finish = WorkflowServiceDifyPort._finish_run
     monkeypatch.setattr(WorkflowServiceDifyPort, "_finish_run", lambda *_args, **_kwargs: (deepcopy(finished), None))
     monkeypatch.setattr(WorkflowServiceDifyPort, "_bind_run", lambda _self, result, *_args, **_kwargs: result[0])
+    account = Account(name="Owner", email="owner@example.invalid")
+    account.id = "acc-1"
     with (
         patch.object(dify_port, "_session_factory", return_value=factory),
-        patch.object(dify_port, "db", SimpleNamespace(engine=engine)),
+        patch.object(dify_port, "db", FullRunDatabase(engine=engine)),
         patch.object(dify_port, "set_login_user"),
-        patch.object(dify_port, "resolve_account", return_value=SimpleNamespace(id="acc-1")),
+        patch.object(dify_port, "resolve_account", return_value=account),
         patch.object(dify_port, "load_app", return_value=app),
         patch.object(dify_port, "_load_draft_workflow_or_raise", return_value=draft),
-        patch.object(dify_port, "AppGenerateService") as generate,
+        patch.object(dify_port.AppGenerateService, "generate") as generate,
     ):
-        generate.generate.return_value = {"data": {"id": "native-1", "status": "succeeded"}}
-        state = SimpleNamespace(
+        generate.return_value = {"data": {"id": "native-1", "status": "succeeded"}}
+        state = FullRunCase(
             app=app,
             draft=draft,
             saved=saved,
-            generate=generate.generate,
+            generate=generate,
             finished=finished,
             factory=factory,
             ids=ids,
@@ -140,7 +170,7 @@ def test_real_agent_admission_uses_reserved_parent_and_current_saved_input(harne
     harness.draft.graph = json.dumps(graph)
     signature = disclose(graph, inputs={"topic": "x"}).items[0].signature
     seen = []
-    context = SimpleNamespace(native_run_id=str(uuid4()))
+    context = prepared_agent_context()
     monkeypatch.setattr(
         WorkflowServiceDifyPort,
         "_prepare_confirmed_agent_execution",
@@ -224,7 +254,7 @@ def test_confirmed_pause_frame_is_public_only_after_durable_parent_barrier(harne
     monkeypatch.setattr(
         WorkflowServiceDifyPort,
         "_prepare_confirmed_agent_execution",
-        staticmethod(lambda **_kwargs: SimpleNamespace(native_run_id=str(uuid4()))),
+        staticmethod(lambda **_kwargs: prepared_agent_context()),
     )
     harness.generate.return_value = iter([{"event": "workflow_paused", "data": {"id": "native-1"}}])
     monkeypatch.setattr(
@@ -232,7 +262,7 @@ def test_confirmed_pause_frame_is_public_only_after_durable_parent_barrier(harne
         "_finish_run",
         lambda *_args, **_kwargs: (
             Run(status="failed", dify_run_id="native-1"),
-            SimpleNamespace(status="paused", graph_dict=graph),
+            WorkflowRun(status="paused", graph=json.dumps(graph)),
         ),
     )
     order = []
@@ -241,7 +271,14 @@ def test_confirmed_pause_frame_is_public_only_after_durable_parent_barrier(harne
         order.append("barrier")
         if not barrier_ok:
             raise RuntimeError("storage unavailable")
-        return SimpleNamespace()
+        return WaitingReceipt(
+            request_id="request",
+            invocation_id="root",
+            generation=1,
+            checkpoint=CheckpointRef(checkpoint_id="checkpoint", payload_digest="a" * 64),
+            pending_operation_ids=("operation",),
+            wait_reason="approval",
+        )
 
     monkeypatch.setattr(WorkflowServiceDifyPort, "_settle_confirmed_agent_parent", staticmethod(barrier))
     result = _run(harness, {"agent-1": signature}, on_workflow_event=lambda _event: order.append("public"))
@@ -507,7 +544,7 @@ def test_recovery_keeps_existing_attempt_when_runtime_selection_changes(harness,
 
     harness.generate.side_effect = generate
     _run(harness)
-    monkeypatch.setattr(dify_config, "DIFY_BUILDER_CONFIRMED_RUN_ENABLED", False)
+    apply_config_overrides(monkeypatch, DIFY_BUILDER_CONFIRMED_RUN_ENABLED=False)
     recovered = _run(harness)
 
     assert effects == ["sent"]
@@ -598,7 +635,7 @@ def test_disclosure_is_empty_when_the_flag_is_off(monkeypatch: pytest.MonkeyPatc
         "slack"
     }
 
-    monkeypatch.setattr(dify_config, "DIFY_BUILDER_CONFIRMED_RUN_ENABLED", False)
+    apply_config_overrides(monkeypatch, DIFY_BUILDER_CONFIRMED_RUN_ENABLED=False)
 
     assert WorkflowServiceDifyPort().disclose_effects("app-1", _actor()).items == ()
 
@@ -712,7 +749,7 @@ def test_failed_native_plugin_resource_uses_actual_historical_graph(harness, mon
     monkeypatch.setattr(
         WorkflowServiceDifyPort,
         "_finish_run",
-        lambda *_a, **_kw: (deepcopy(harness.finished), SimpleNamespace(graph_dict=historical)),
+        lambda *_a, **_kw: (deepcopy(harness.finished), WorkflowRun(graph=json.dumps(historical))),
     )
     evidence = _run(harness).verification.execution_evidence
     assert evidence.failure_phase == "execution"

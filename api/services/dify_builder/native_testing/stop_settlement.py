@@ -32,6 +32,11 @@ if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 
 
+class _EvidenceReadDepth(local):
+    def __init__(self) -> None:
+        self.depth = 0
+
+
 class NativeEvidenceReadGate:
     """Drain active evidence reads before seal; wait for exact ACK afterward.
 
@@ -43,7 +48,7 @@ class NativeEvidenceReadGate:
     def __init__(self, host: NativeHostLaunch) -> None:
         self._host = host
         self._condition = Condition()
-        self._local = local()
+        self._local = _EvidenceReadDepth()
         self._readers = 0
         self._record: NativeControlRecord | None = None
         self._deadline: float | None = None
@@ -61,7 +66,7 @@ class NativeEvidenceReadGate:
 
     @contextmanager
     def read(self) -> Generator[None]:
-        nested = getattr(self._local, "depth", 0) > 0
+        nested = self._local.depth > 0
         with self._condition:
             if not nested:
                 while self._record is not None:
@@ -75,7 +80,7 @@ class NativeEvidenceReadGate:
                         break
                     self._wait()
                 self._readers += 1
-            self._local.depth = getattr(self._local, "depth", 0) + 1
+            self._local.depth = self._local.depth + 1
         try:
             yield
         finally:
@@ -87,7 +92,7 @@ class NativeEvidenceReadGate:
 
     def begin_stop(self, *, record: NativeControlRecord, deadline: float) -> None:
         with self._condition:
-            if self._record is not None or getattr(self._local, "depth", 0):
+            if self._record is not None or self._local.depth:
                 raise ValueError("native_stop_settlement_replayed")
             self._record, self._deadline = record, deadline
             while self._readers:

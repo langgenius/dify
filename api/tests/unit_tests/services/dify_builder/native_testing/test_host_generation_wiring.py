@@ -11,11 +11,11 @@ import json
 from contextlib import nullcontext
 from threading import Event, current_thread
 from time import monotonic
-from types import SimpleNamespace
 from typing import cast, override
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
@@ -94,14 +94,14 @@ def generate_fixture(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
 
     generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
     monkeypatch.setattr(generator, "_bind_file_access_scope", lambda **_kwargs: nullcontext())
-    monkeypatch.setattr(module, "db", SimpleNamespace(session=SimpleNamespace(close=lambda: None)))
+    monkeypatch.setattr(module.db.session, "close", lambda: None)
     monkeypatch.setattr(generator, "_get_draft_var_saver_factory", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(generator, "_handle_response", lambda **_kwargs: iter_response())
     monkeypatch.setattr(module.WorkflowAppGenerateResponseConverter, "convert", lambda **kwargs: kwargs["response"])
     arguments: _GenerateArguments = {
-        "app_model": cast(App, SimpleNamespace(mode="workflow", tenant_id=case.state.context.tenant_id)),
-        "workflow": cast(Workflow, SimpleNamespace(features_dict={})),
-        "user": cast(Account, SimpleNamespace()),
+        "app_model": App(mode="workflow", tenant_id=case.state.context.tenant_id),
+        "workflow": Workflow(features="{}"),
+        "user": Account(name="Native actor", email="native@example.test"),
         "application_generate_entity": entity,
         "invoke_from": InvokeFrom.DEBUGGER,
         "workflow_execution_repository": workflow_repo,
@@ -181,10 +181,10 @@ def test_owned_worker_preserves_bound_entity_and_reports_finally_on_actual_threa
     )
 
     bind_component_observation(case, monkeypatch)
-    workflow = SimpleNamespace(graph_dict=case.state.context.graph)
-    monkeypatch.setattr(
-        module.session_factory, "create_session", lambda: nullcontext(SimpleNamespace(scalar=lambda _query: workflow))
-    )
+    workflow = Workflow(graph=json.dumps(case.state.context.graph))
+    session = Session()
+    monkeypatch.setattr(session, "scalar", lambda _query: workflow)
+    monkeypatch.setattr(module.session_factory, "create_session", lambda: session)
     seen = []
 
     class RunnerPort:
@@ -242,7 +242,6 @@ def test_owned_worker_preserves_bound_entity_and_reports_finally_on_actual_threa
 
 def test_entry_installs_actual_host_layer_first_and_disables_raw_observers(monkeypatch: pytest.MonkeyPatch) -> None:
     import services.workflow_runtime.entry as module
-    from configs import dify_config
 
     case = LaunchCase()
     entity, queue, response_filter, workflow_repo, node_repo = generation_objects(case, monkeypatch)
@@ -271,8 +270,9 @@ def test_entry_installs_actual_host_layer_first_and_disables_raw_observers(monke
     )
     graph = Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
     commands = case.host.wrap_commands(channel=InMemoryChannel())
-    monkeypatch.setattr(dify_config, "DEBUG", True)
-    monkeypatch.setattr(dify_config, "ENABLE_OTEL", True)
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, DEBUG=True, ENABLE_OTEL=True)
     monkeypatch.setattr(module, "ObservabilityLayer", lambda: pytest.fail("raw OTel observer"))
     entry = WorkflowEntry(
         graph_config=config,
@@ -585,8 +585,6 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
     monkeypatch.setattr(module, "CombinedCommandChannel", build_channel)
     monkeypatch.setattr(module, "attach_stop_aware_ready_queue", lambda *_args, **_kwargs: None)
 
-    from unittest.mock import Mock
-
     from services import workflow_run_agg as aggregate_module
 
     class PersistencePort(LayerPort):
@@ -604,7 +602,11 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
     monkeypatch.setattr(
         aggregate_module, "build_workflow_agent_workspace_retirement_layer", lambda **_kwargs: LayerPort()
     )
-    monkeypatch.setattr(aggregate_module.WorkflowRunAgg, "_api_run_repository", lambda _self: Mock())
+    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+
+    api_repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker())
+    monkeypatch.setattr(api_repository, "bind_workflow_task", lambda **_kwargs: None)
+    monkeypatch.setattr(aggregate_module.WorkflowRunAgg, "_api_run_repository", lambda _self: api_repository)
     monkeypatch.setattr(aggregate_module.WorkflowRunAgg, "_refresh_form_completions", lambda _self: None)
     runner = module.WorkflowAppRunner(
         application_generate_entity=entity,

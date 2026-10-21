@@ -3,11 +3,14 @@
 import importlib
 import importlib.util
 from collections.abc import Callable
-from dataclasses import replace
-from types import SimpleNamespace
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime
+from types import ModuleType
 from typing import cast
 
+import httpx
 import pytest
+from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.models import Actor
 from graphon.nodes.http_request import HttpRequestNode
@@ -17,10 +20,43 @@ from runtime_contracts.builder.execution import BuilderExecutionPolicyError, can
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
 from services.dify_builder.native_testing.http_adapter import NativeHttpIntentPort
-from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
+from services.dify_builder.native_testing.http_binding import (
+    DeferredNativeHttpClient,
+    NativeHttpBindingProducer,
+    NativeHttpBindingResolver,
+)
+from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
+from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
+from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation, NativeRuntimeBridge
+from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import Authorization, State
 from tests.unit_tests.services.dify_builder.native_testing.test_http_adapter import (
     protected_application_logs as protected_application_logs,  # noqa: PLC0414 - shared pytest fixture
 )
+from tests.unit_tests.services.dify_builder.native_testing.test_runtime_bridge import SyntheticSink
+
+
+@dataclass
+class ConcreteHttpCase:
+    m: ModuleType
+    producer: NativeHttpBindingProducer
+    state: State
+    auth: Authorization
+    journal: NodeOperationJournal
+    association: NativeNodePreparation
+    node: HttpRequestNode
+    events: list
+    uuid: str
+    raw: dict
+    owned: OwnedNativeTest
+    reply: Callable[[httpx.Request], httpx.Response] | None = None
+    prepared: list = field(default_factory=list)
+    sent: list[httpx.Request] = field(default_factory=list)
+    client: DeferredNativeHttpClient | None = None
+
+
+class NonCallableHttpCalls:
+    call: None = None
 
 
 def owner():
@@ -167,10 +203,12 @@ def concrete_case(monkeypatch):
 
     state.store_node_inputs = store_inputs
     runtime = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
-    bridge = SimpleNamespace(
-        _boundary_owner=BoundaryOwnerState(ref=REF),
-        _control_sink=SimpleNamespace(record_control=lambda **_kw: None),
-        resolve=lambda ref: state.load_context(ref=ref),
+    bridge = NativeRuntimeBridge(
+        state=state,
+        collaborators=lambda **_kwargs: pytest.fail("producer test constructed runtime collaborators"),
+        boundary_owner=BoundaryOwnerState(ref=REF),
+        control_sink=SyntheticSink(),
+        node_arguments=lambda **_kwargs: pytest.fail("producer test requested runtime arguments"),
     )
     association = NativeNodePreparation(
         bridge=cast(NativeRuntimeBridge, bridge),
@@ -193,10 +231,46 @@ def concrete_case(monkeypatch):
         file_reference_factory=m.RefusingNativeHttpFiles(),
     )
     association.attach(node)
-    loader = SimpleNamespace(
-        actor=Actor(tenant_id="tenant", account_id="actor"), load=lambda **_kw: events.append(("load",))
+    loader = OwnedNativeTestLoader(
+        sessionmaker(), actor=Actor(tenant_id="tenant", account_id="actor"), resolver=NativeHttpBindingResolver()
     )
-    monkeypatch.setattr(m, "validate_private_read", lambda *_a: SimpleNamespace(generation=0))
+    owned = OwnedNativeTest(
+        ref=REF,
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=0,
+        task_approved=False,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="running",
+    )
+
+    def load(**_kwargs):
+        events.append(("load",))
+        return owned
+
+    monkeypatch.setattr(loader, "load", load)
+    authority = PrivateReadOwner(
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        parent_invocation_id=None,
+        context_object_id="context",
+        generation=0,
+        graph_revision="a" * 64,
+        root_revision_matches=True,
+        input_revision=None,
+        expires_at=owned.expires_at,
+        cancelled=False,
+        active=True,
+        request_state="running",
+    )
+    monkeypatch.setattr(m, "validate_private_read", lambda *_args: authority)
     journal = NodeOperationJournal(state=state, authorization=auth)
     producer = m.NativeHttpBindingProducer(association=association, loader=loader, state_store=state, journal=journal)
 
@@ -205,7 +279,8 @@ def concrete_case(monkeypatch):
         assert any(event[0] == "input_ack" for event in events)
 
     monkeypatch.setattr(producer, "_install", install)
-    return SimpleNamespace(
+    return ConcreteHttpCase(
+        owned=owned,
         m=m,
         producer=producer,
         state=state,
@@ -279,6 +354,7 @@ def physical_http(concrete_case, monkeypatch):
 
     def transport(request):
         sent.append(request)
+        assert c.reply is not None
         return c.reply(request)
 
     lower = httpx.Client(transport=httpx.MockTransport(transport))
@@ -379,7 +455,7 @@ def test_current_classification_does_not_echo_stored_flags(concrete_case, monkey
     stored = frozen.model_copy(
         update={"isolated": True, "cost_units": 0, "destructive": True, "approval_scope": "batch"}
     )
-    owned = SimpleNamespace(ref=c.association.ref, bindings={operation_digest(key): stored.model_dump(mode="json")})
+    owned = replace(c.owned, ref=c.association.ref, bindings={operation_digest(key): stored.model_dump(mode="json")})
     monkeypatch.setattr(c.m, "_current_metadata", lambda **_kw: (c.raw, desc, "c" * 64))
     current = c.m.NativeHttpBindingResolver().resolve_binding(session=object(), owned=owned, key=key)
     assert current == frozen
@@ -393,7 +469,7 @@ def test_actual_wait_exports_one_call_proposal_from_scope_expiry(physical_http):
     from services.dify_builder.native_testing.control import NativeApprovalWait
 
     c = physical_http
-    c.producer.loader.load = lambda **_kw: SimpleNamespace(expires_at=datetime(2030, 1, 1, tzinfo=UTC))
+    c.producer.loader.load = lambda **_kw: replace(c.owned, expires_at=datetime(2030, 1, 1, tzinfo=UTC))
     c.auth.decisions[0] = ApprovalWait(pending_operation_id="pending")
     with pytest.raises(NativeApprovalWait):
         invoke_native_executor(c)
@@ -702,7 +778,7 @@ def test_host_seams_observer_exception_refuses_before_scalar_authority(physical_
     assert c.sent == []
 
 
-@pytest.mark.parametrize("malformed", [None, object(), SimpleNamespace(call=None)], ids=["none", "object", "no-call"])
+@pytest.mark.parametrize("malformed", [None, object(), NonCallableHttpCalls()], ids=["none", "object", "no-call"])
 def test_host_seams_invalid_factory_owner_has_no_fallback(physical_http, malformed):
     from services.dify_builder.native_testing.control import NativePolicyStop
 

@@ -40,8 +40,10 @@ def validate_config_read(
     if not isinstance(layers, list):
         raise BuilderExecutionPolicyError("native_agent_config_mismatch")
 
+    checked_layers = layers
+
     def layer(name: str) -> dict[str, Any]:
-        matches = [v.get("config") for v in layers if isinstance(v, dict) and v.get("name") == name]
+        matches = [v.get("config") for v in checked_layers if isinstance(v, dict) and v.get("name") == name]
         if len(matches) != 1 or not isinstance(matches[0], dict):
             raise BuilderExecutionPolicyError("native_agent_config_mismatch")
         return matches[0]

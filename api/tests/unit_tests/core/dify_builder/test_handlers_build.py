@@ -6,7 +6,6 @@ from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 from typing import NoReturn, Unpack, override
-from unittest.mock import Mock
 
 import pytest
 
@@ -130,7 +129,7 @@ def test_capability_check_renders_agent_fields() -> None:
 
 
 @pytest.mark.parametrize("reply_language", ["en", "es-ES", ""])
-def test_capability_check_binds_session_language_in_requirement_prompt(reply_language: str) -> None:
+def test_capability_check_binds_session_language_in_requirement_prompt(mocker, reply_language: str) -> None:
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
     from services.dify_builder.application.handlers_build import handle_capability_check
 
@@ -169,7 +168,7 @@ def test_capability_check_binds_session_language_in_requirement_prompt(reply_lan
 
     model = _Model()
     agent = LlmBuilderAgent("tenant-1")
-    agent.model_or_none = Mock(return_value=model)
+    mocker.patch.object(agent, "model_or_none", return_value=model)
     env, _ = _new_env(agent=agent)
     fc = DifyBuilderContext(
         goal_text="Create a sales report in USD with a monthly reporting period",
@@ -947,7 +946,9 @@ def test_test_and_repair_model_config_failure_surfaces_without_repair() -> None:
     assert "model" in english_text(assistant.payload["reply_text"]).lower()
 
 
-def test_missing_proof_running_result_stops_at_review() -> None:
+def test_missing_proof_running_result_stops_at_review(
+    mocker,
+) -> None:
     """A truncated verify result requires review and never enters diagnosis."""
     from core.dify_builder.models import Run
     from services.dify_builder.application.handlers_build import handle_test_and_repair
@@ -955,7 +956,7 @@ def test_missing_proof_running_result_stops_at_review() -> None:
 
     diagnose_calls: list[object] = []
     agent = StubAgent()
-    agent.diagnose = Mock(side_effect=lambda *a, **kw: diagnose_calls.append((a, kw)))
+    mocker.patch.object(agent, "diagnose", side_effect=lambda *a, **kw: diagnose_calls.append((a, kw)))
     env, _ = _new_env(agent=agent)
     env.fake_dify = FakeBuildDifyPort()
     env.fake_dify.run_draft = lambda *_a, **_k: Run(

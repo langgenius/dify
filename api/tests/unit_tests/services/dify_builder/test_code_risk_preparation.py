@@ -160,8 +160,7 @@ def test_changed_code_input_redisplays_before_accepting_checkbox_and_reuses_show
 
 
 @pytest.mark.parametrize("flow_index", [0, 1, 2])
-def test_stale_worker_risk_returns_existing_input_interaction_without_repair(flow_index):
-    from unittest.mock import Mock
+def test_stale_worker_risk_returns_existing_input_interaction_without_repair(mocker, flow_index):
 
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from tests.unit_tests.core.dify_builder.fakes import saved_test_context
@@ -173,8 +172,10 @@ def test_stale_worker_risk_returns_existing_input_interaction_without_repair(flo
     port.run_draft = lambda *_, **__: dify_port._unsupported_run(
         BuilderExecutionPolicyError("code_risk_assessment_stale")
     )
-    env.agent.diagnose = Mock(side_effect=AssertionError("Stale disclosure is not a failed Code execution"))
-    result = getattr(module, RUN_HANDLERS[module])(env, turn, session, fc)
+    mocker.patch.object(
+        env.agent, "diagnose", side_effect=AssertionError("Stale disclosure is not a failed Code execution")
+    )
+    result = RUN_HANDLERS[module](env, turn, session, fc)
     assert result.next == flow[5]
     assert any(item.kind == "form" for item in result.items)
     assert not result.context.test_input_ref

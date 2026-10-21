@@ -9,7 +9,6 @@ No network/provider transport or Graphon activation is involved.
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -38,6 +37,7 @@ from services.dify_builder.native_testing.authorization import EffectAuthorizati
 from services.dify_builder.native_testing.pending_intents import PendingDecisionGuard, ProtectedPendingIntentReader
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import NativeBinding, OwnedNativeTestLoader
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import ApprovalLedgerSnapshot
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,  # noqa: PLC0414 - unchanged encrypted owner fixture
 )
@@ -245,7 +245,7 @@ def _counts(c):
             )
             for model in (NativeEffectAttempt, NativeEffectDispatchClaim)
         }
-        return SimpleNamespace(
+        return ApprovalLedgerSnapshot(
             quota=(scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units),
             budget=dict(scope.budget_spent),
             grants=sorted((g.max_calls, g.max_dispatches, g.max_cost_units, g.spent_calls) for g in grants),

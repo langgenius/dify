@@ -6,7 +6,6 @@ never admits another parent or child execution.
 """
 
 import logging
-from types import SimpleNamespace
 from typing import Literal, cast
 
 from dify_agent.protocol.native_continuation import RedisStreamID
@@ -16,6 +15,7 @@ from pydantic import Field, TypeAdapter
 from sqlalchemy import select
 
 from core.dify_builder.models import Actor
+from graphon.entities.pause_reason import SchedulingPause
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import (
     NativeContinuation,
@@ -352,9 +352,7 @@ class ConfirmedAgentCommands:
             )
             if response is None:
                 return False
-            parent = load_confirmed_agent_parent(
-                service=SimpleNamespace(state_store=self.api.store), ref=ref, execution_id=scope.execution_id
-            )
+            parent = load_confirmed_agent_parent(state_store=self.api.store, ref=ref, execution_id=scope.execution_id)
             if parent is None:
                 raise BuilderExecutionPolicyError("native_agent_input_unavailable")
             protected = self.api.store.load_agent_association(ref=ref, parent_node=parent)
@@ -766,7 +764,10 @@ class ConfirmedAgentCommands:
         }
         if status == "paused":
             paused = self.continuation.read_parent_pause(ref=ref)
-            reasons = {getattr(reason, "message", None) for reason in paused.runtime.graph_execution.pause_reasons}
+            reasons = {
+                reason.message if isinstance(reason, SchedulingPause) else None
+                for reason in paused.runtime.graph_execution.pause_reasons
+            }
             if reasons & {
                 "agent_create_ack_unknown",
                 "native_agent_continuation_unknown",
@@ -909,7 +910,7 @@ def _dispatch_owner(payload, *, generate_entity=None):
 
 def guard_confirmed_agent_resume(*, payload, generate_entity) -> bool:
     payload.pop("_builder_agent_claimed", None)
-    if getattr(generate_entity, "builder_agent_execution", None) is None:
+    if generate_entity.builder_agent_execution is None:
         if payload.get("builder_agent_dispatch") is not None:
             raise BuilderExecutionPolicyError("native_dispatch_mismatch")
         return True

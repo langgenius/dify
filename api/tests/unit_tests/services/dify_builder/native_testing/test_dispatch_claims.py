@@ -34,7 +34,7 @@ def test_missing_dispatch_evidence_stops_before_authority_lookup(field):
         ),
     }
     args[field] = None
-    claim = getattr(guard, "claim_dispatch", None)
+    claim = guard.claim_dispatch
     assert callable(claim), "durable physical dispatch claim protocol is unavailable"
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
         claim(**args)
@@ -65,7 +65,7 @@ def test_in_process_dto_bypass_is_revalidated_before_authority_lookup(field, cha
         ),
     }
     args[field] = args[field].model_copy(update=change)
-    claim = getattr(guard, "claim_dispatch", None)
+    claim = guard.claim_dispatch
     assert callable(claim), "durable physical dispatch claim protocol is unavailable"
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
         claim(**args)

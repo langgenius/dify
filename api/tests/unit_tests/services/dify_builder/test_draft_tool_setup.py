@@ -2,12 +2,16 @@
 
 import json
 from dataclasses import asdict
-from types import SimpleNamespace
 
+import pytest
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session as OrmSession
 
 from core.app.app_config.entities import ModelConfig
+from core.dify_builder.models import BuildNodesResult, Graph
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from models.enums import PermissionEnum
 from services.dify_builder.agent import build
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
@@ -30,22 +34,25 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
 draft_tools = installed_draft_tools
 
 
-class GeneratedPlanModel:
-    """Respond at the LLM boundary; retain the actual shared generator pipeline."""
+class GeneratedPlanResponses:
+    """Hold scripted provider responses and the observed generation requests."""
 
-    def __init__(self, *, description="User description: notify the support channel.", credential_id=None):
+    def __init__(
+        self, *, description: str = "User description: notify the support channel.", credential_id: object | None = None
+    ) -> None:
         self.description = description
         self.credential_id = credential_id
         self.requests = []
 
-    def invoke_llm(self, *, prompt_messages, **kwargs):  # noqa: ARG002
+    def respond(self, *, prompt_messages: list[PromptMessage], **kwargs: object) -> LLMResult:  # noqa: ARG002
         self.requests.append(prompt_messages)
         prompt = prompt_messages[1].content
+        assert isinstance(prompt, str)
         if "# Target node" in prompt:
             if "id=s, type=start," in prompt:
-                payload = {"config": {"variables": []}}
+                payload: Graph = {"config": {"variables": []}}
             elif "id=t, type=tool," in prompt:
-                config = {
+                config: Graph = {
                     "desc": self.description,
                     "provider_id": AUTH_PROVIDER,
                     "provider_name": AUTH_PROVIDER,
@@ -78,17 +85,21 @@ class GeneratedPlanModel:
                 ],
                 "edges": [{"source": "s", "target": "t"}, {"source": "t", "target": "e"}],
             }
-        return SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: json.dumps(payload)), usage=None)
+        return LLMResult(
+            model="x", message=AssistantPromptMessage(content=json.dumps(payload)), usage=LLMUsage.empty_usage()
+        )
 
 
-def generate_draft(monkeypatch, model):
+def generate_draft(monkeypatch: pytest.MonkeyPatch, responses: GeneratedPlanResponses) -> BuildNodesResult:
     config = ModelConfig.model_validate({"provider": "anthropic", "name": "x", "mode": "chat"})
     monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: config)  # noqa: ARG005
-    monkeypatch.setattr(
-        ModelManager,
-        "for_tenant",
-        lambda **kw: SimpleNamespace(get_model_instance=lambda **kw: model),  # noqa: ARG005
-    )
+    from tests.unit_tests.core.model_fixtures import make_model_instance
+
+    model = make_model_instance(provider=config.provider, model=config.name)
+    monkeypatch.setattr(model, "invoke_llm", responses.respond)
+    manager = ModelManager.for_tenant(tenant_id=TENANT_ID)
+    monkeypatch.setattr(manager, "get_model_instance", lambda **_kwargs: model)
+    monkeypatch.setattr(ModelManager, "for_tenant", lambda **_kwargs: manager)
     return build.build_nodes(
         TENANT_ID,
         {},
@@ -97,7 +108,7 @@ def generate_draft(monkeypatch, model):
     )
 
 
-def tool_config(result):
+def tool_config(result: BuildNodesResult) -> Graph:
     configs = [i.args["config"] for i in result.intents if i.op == "create_node" and i.args["node_type"] == "tool"]
     assert len(configs) == 1, f"Installed unconfigured Tool was lost: {result.error}"
     return configs[0]
@@ -105,9 +116,9 @@ def tool_config(result):
 
 def test_generated_unauthenticated_tool_has_real_schema_topology_outputs_and_visible_setup_note(
     draft_tools: DraftToolInventory,
-    monkeypatch,
-):
-    result = generate_draft(monkeypatch, GeneratedPlanModel())
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result = generate_draft(monkeypatch, GeneratedPlanResponses())
     config = tool_config(result)
     assert (config["provider_id"], config["provider_type"], config["tool_name"]) == (AUTH_PROVIDER, "builtin", "post")
     assert config["plugin_id"] == "acme/huddle"
@@ -133,8 +144,10 @@ def test_generated_unauthenticated_tool_has_real_schema_topology_outputs_and_vis
     assert draft_tools.forbidden == []
 
 
-def test_repeated_builder_pass_does_not_duplicate_setup_note_or_overwrite_user_edits(draft_tools, monkeypatch):
-    model = GeneratedPlanModel()
+def test_repeated_builder_pass_does_not_duplicate_setup_note_or_overwrite_user_edits(
+    draft_tools: DraftToolInventory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = GeneratedPlanResponses()
     first = tool_config(generate_draft(monkeypatch, model))["desc"]
     model.description = first
     second = tool_config(generate_draft(monkeypatch, model))["desc"]
@@ -149,10 +162,10 @@ def test_repeated_builder_pass_does_not_duplicate_setup_note_or_overwrite_user_e
 
 
 def test_generated_private_credential_is_removed_without_discarding_the_installed_tool(
-    draft_tools,
-    monkeypatch,
+    draft_tools: DraftToolInventory,
+    monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     private = add_credential(
         sqlite_session,
         tenant_id=TENANT_ID,
@@ -160,7 +173,7 @@ def test_generated_private_credential_is_removed_without_discarding_the_installe
         user_id=ACCOUNT_B,
         visibility=PermissionEnum.ONLY_ME,
     )
-    model = GeneratedPlanModel(credential_id=private.id)
+    model = GeneratedPlanResponses(credential_id=private.id)
     result = generate_draft(monkeypatch, model)
     config = tool_config(result)
     assert not config.get("credential_id")
@@ -174,28 +187,30 @@ def test_generated_private_credential_is_removed_without_discarding_the_installe
 
 
 def test_credential_query_failure_still_binds_verified_installation_with_a_verification_note(
-    draft_tools,
-    monkeypatch,
-):
+    draft_tools: DraftToolInventory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     with draft_tools.engine.begin() as connection:
         connection.execute(text("DROP TABLE tool_builtin_providers"))
     bound = build.bind_resources(
         None, TENANT_ID, ["tool node posts to Huddle"], [f"{AUTH_PROVIDER}/post"], account_id=ACCOUNT_A
     )
     assert f"[{AUTH_PROVIDER}/post]" in "\n".join(bound)
-    config = tool_config(generate_draft(monkeypatch, GeneratedPlanModel()))
+    config = tool_config(generate_draft(monkeypatch, GeneratedPlanResponses()))
     assert "verif" in config["desc"].lower()
     assert draft_tools.forbidden == []
 
 
-def test_planner_and_gap_provider_requests_offer_installed_setup_tools(draft_tools, monkeypatch):
+def test_planner_and_gap_provider_requests_offer_installed_setup_tools(
+    draft_tools: DraftToolInventory, monkeypatch: pytest.MonkeyPatch
+) -> None:
     requests = []
 
-    def model_json(_model, *, system, user, **kwargs):  # noqa: ARG001
+    def model_json(_model: object, *, system: str, user: str, **kwargs: object) -> dict[str, list[str] | str]:  # noqa: ARG001
         requests.append((system, user))
         return {"gap": "", "resource_ids": [f"{AUTH_PROVIDER}/post"]}
 
-    def model_text(_model, *, system, user, **kwargs):  # noqa: ARG001
+    def model_text(_model: object, *, system: str, user: str, **kwargs: object) -> str:  # noqa: ARG001
         requests.append((system, user))
         return json.dumps(
             {
@@ -225,17 +240,17 @@ def test_planner_and_gap_provider_requests_offer_installed_setup_tools(draft_too
 
 
 def test_generated_configured_tool_preserves_authorized_selection_and_user_description(
-    draft_tools,
-    monkeypatch,
-    sqlite_session,
-):
+    draft_tools: DraftToolInventory,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: OrmSession,
+) -> None:
     credential = add_credential(
         sqlite_session,
         tenant_id=TENANT_ID,
         provider=AUTH_PROVIDER,
         user_id=ACCOUNT_A,
     )
-    config = tool_config(generate_draft(monkeypatch, GeneratedPlanModel(credential_id=credential.id)))
+    config = tool_config(generate_draft(monkeypatch, GeneratedPlanResponses(credential_id=credential.id)))
     assert config["credential_id"] == credential.id
     assert config["desc"] == "User description: notify the support channel."
     assert draft_tools.forbidden == []

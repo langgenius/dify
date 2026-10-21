@@ -57,6 +57,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask, has_app_context
 from flask.testing import FlaskClient
+from httpx._models import Response
 from pydantic import TypeAdapter
 from sqlalchemy import Engine, event, func, select, text, update
 from sqlalchemy.engine.interfaces import DBAPIConnection
@@ -100,6 +101,7 @@ from core.tools.entities.tool_entities import (
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_key_provider import key_provider_manager
 from extensions.ext_redis import redis_client
@@ -126,6 +128,7 @@ from models.model import App, AppMode, DifySetup
 from models.tools import BuiltinToolProvider, ToolOAuthTenantClient
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, WorkflowRun
 from schedule.dify_builder_reconcile_task import reconcile_interrupted_sessions
+from services.app_generate_service import AppGenerateService
 from services.dify_builder import real_call_consent_service, real_call_metadata, session_lock, wiring
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 from services.dify_builder.agent_factory import set_dify_builder_agent_factory
@@ -1228,12 +1231,20 @@ def gmail(
     metadata_daemon = install_fake_daemon(monkeypatch, FakeToolDaemon())
     metadata_request = metadata_daemon.request
 
-    def public_metadata_request(**kwargs: object):
+    def public_metadata_request(
+        *,
+        method: str,
+        url: str,
+        params: dict[str, object] | None = None,
+        content: str | bytes | None = None,
+        data: dict[str, object] | None = None,
+        **kwargs: object,
+    ) -> Response:
         boundary.mark("draft_schema")
         payload = boundary.declaration.model_dump(mode="json")
         payload["declaration"]["identity"]["name"] = boundary.declaration.provider
         metadata_daemon.providers_by_tenant = {actor.tenant_id: [payload]}
-        return metadata_request(**kwargs)
+        return metadata_request(method=method, url=url, params=params, content=content, data=data, **kwargs)
 
     monkeypatch.setattr(metadata_daemon, "request", public_metadata_request)
 
@@ -1688,13 +1699,14 @@ def test_restricted_default_run_has_zero_decrypt_refresh_or_invoke(gmail: Gmail)
 def test_ordinary_native_gmail_workflow_stays_ordinary(gmail: Gmail) -> None:
     """Without Builder consent the native Tool path is unchanged: no guard, headers, consent or sidecar."""
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from services.app_generate_service import AppGenerateService
     from services.dify_builder.run_mapping import run_id_from_stream_chunk, stream_chunk_as_mapping
 
     drafts_before = gmail.draft_variables()
     with gmail.factory() as session:
         account = session.get(Account, gmail.actor.account_id)
+        assert account is not None
         native_app = session.get(App, gmail.app_id)
+        assert native_app is not None
         assert account is not None
         assert native_app is not None
         response = AppGenerateService.generate(
@@ -1713,9 +1725,8 @@ def test_ordinary_native_gmail_workflow_stays_ordinary(gmail: Gmail) -> None:
             if payload:
                 native_id = native_id or run_id_from_stream_chunk(payload)
     finally:
-        close = getattr(response, "close", None)
-        if callable(close):
-            close()
+        if hasattr(response, "close"):
+            response.close()
     runs = gmail.native_runs()
     assert [run.id for run in runs] == [native_id]
     assert runs[0].status == "succeeded"
@@ -1746,7 +1757,6 @@ def test_published_native_gmail_workflow_runs_the_published_graph(gmail: Gmail) 
     from core.app.entities.app_invoke_entities import InvokeFrom
     from extensions.ext_application_services import application_services
     from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-    from services.app_generate_service import AppGenerateService
     from services.workflow_service import WorkflowService
 
     with gmail.factory.begin() as session:
@@ -1757,7 +1767,9 @@ def test_published_native_gmail_workflow_runs_the_published_graph(gmail: Gmail) 
         native_app.enable_api = True
     with gmail.factory.begin() as session:
         account = session.get(Account, gmail.actor.account_id)
+        assert account is not None
         native_app = session.get(App, gmail.app_id)
+        assert native_app is not None
         assert account is not None
         assert native_app is not None
         published = WorkflowService().publish_workflow(
@@ -2788,6 +2800,14 @@ def _submit_and_deliver(gmail: Gmail, deliveries: list[Delivery], kind: str) -> 
 
 def test_dispatched_recovery_survives_a_paused_old_sweep(gmail: Gmail, deliveries: list[Delivery]) -> None:
     """Real recovery/Runner gates can admit a fresh grant while an old observation is paused."""
+    # Use Fix's verification/decision gates: Build's keep_draft now completes
+    # its task, so it cannot authorize a fresh test in that completed task.
+    # The continuation mode is persisted in the same CAS context as production.
+    _state, version, context = gmail.head()
+    context.active_entry_mode = "fix"
+    SqlDifyBuilderRepository(gmail.factory).compare_and_advance(
+        gmail.session_id, version, PcState.FIX_AWAIT_VERIFY, context, []
+    )
     stranded = _stranded(gmail, deliveries)
     old_version = gmail.head()[1]
 
@@ -2811,8 +2831,6 @@ def test_dispatched_recovery_survives_a_paused_old_sweep(gmail: Gmail, deliverie
                 assert (context.confirmed_consent_id, context.confirmed_command_id) == ("", "")
                 assert context.test_input_ref == gmail.test_input_id
                 assert context.staged_repair == []
-                _submit_and_deliver(gmail, deliveries, "keep_draft")
-                gates.append(gmail.head()[0])
                 fresh.append(gmail.execute(gmail.confirmed("fresh"), key="execute-fresh"))
             return held
 
@@ -2868,11 +2886,11 @@ def test_dispatched_recovery_survives_a_paused_old_sweep(gmail: Gmail, deliverie
         }
 
     facts = run_in_host(gmail, recover_in_host, name="dispatched-recovery")
-    assert facts["gates"] == [str(PcState.BUILD_AWAIT_REPAIR), str(PcState.BUILD_REVIEW)]
+    assert facts["gates"] == [str(PcState.FIX_AWAIT_DECISION)]
     assert facts["settlements"] == [1]
     assert facts["old"] == ["failed", "launch_stranded", None, 0, 0]
     assert facts["fresh"] == ["confirmed", True, None]
-    assert facts["deliveries"] == ["run_confirmed_tool", "recovery_continue", "keep_draft", "run_confirmed_tool"]
+    assert facts["deliveries"] == ["run_confirmed_tool", "recovery_continue", "run_confirmed_tool"]
     assert facts["head_advanced"] is True
     observed = facts["observed"]
     assert isinstance(observed, Observed)
@@ -3065,6 +3083,14 @@ def console(gmail: Gmail, monkeypatch: pytest.MonkeyPatch) -> Iterator[ConsoleHa
     monkeypatch.setattr(dify_config, "LOGIN_DISABLED", False)
     monkeypatch.setattr(dify_config, "DIFY_BUILDER_ENABLED", True)
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    # Main's account migration binds this actual identity owner in create_app. The HTTP proof
+    # must use that composition, including its real short repository Sessions, never inject g.
+    identity = application_services().accounts.identity
+    from types import MethodType
+
+    loader = gmail.app.extensions["account_identity_loader"]
+    assert isinstance(loader, MethodType)
+    assert loader.__self__ is identity
     with gmail.factory.begin() as session:
         if session.scalar(select(DifySetup.version).limit(1)) is None:
             session.add(DifySetup(version="ci-authenticated-native"))

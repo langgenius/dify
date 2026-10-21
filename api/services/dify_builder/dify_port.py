@@ -51,6 +51,7 @@ import logging
 import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
@@ -201,7 +202,7 @@ def _unwrap_status(status: Any) -> Any:
     Mirrors ``run_mapping._status_value`` locally so this module doesn't reach
     into another module's private helper.
     """
-    return getattr(status, "value", status)
+    return status.value if isinstance(status, Enum) else status
 
 
 def _load_draft_workflow_or_raise(app: App, *, session: Session) -> Workflow:
@@ -295,7 +296,12 @@ def _retained_native_agent_selections(*, session: Session, actor: Actor, workflo
     by_node = {row.node_id: row for row in rows}
     for node_id, data in unchanged.items():
         row = by_node.get(node_id)
-        if row is None or row.binding_type != WorkflowAgentBindingType.ROSTER_AGENT:
+        if (
+            row is None
+            or row.binding_type != WorkflowAgentBindingType.ROSTER_AGENT
+            or row.agent_id is None
+            or row.current_snapshot_id is None
+        ):
             raise BuilderExecutionPolicyError("agent_binding_not_prepared")
         expected = native_node_data(
             agent_id=row.agent_id,
@@ -308,11 +314,13 @@ def _retained_native_agent_selections(*, session: Session, actor: Actor, workflo
         tenant_id=actor.tenant_id,
         actor_id=actor.account_id,
         app_id=workflow.app_id,
-        agent_ids=frozenset(row.agent_id for row in rows),
+        agent_ids=frozenset(row.agent_id for row in rows if row.agent_id is not None),
     )
     by_agent = {candidate.agent_id: candidate for candidate in candidates}
     retained, stamps = {}, {}
     for node_id, row in by_node.items():
+        if row.agent_id is None or row.current_snapshot_id is None:
+            raise BuilderExecutionPolicyError("agent_binding_not_prepared")
         candidate = by_agent.get(row.agent_id)
         if candidate is None or candidate.snapshot_id != row.current_snapshot_id:
             raise BuilderExecutionPolicyError("agent_not_available")
@@ -872,8 +880,7 @@ class WorkflowServiceDifyPort:
                 error=node_exec.error or "",
                 inputs=node_exec.inputs_dict or {},
                 outputs=node_exec.outputs_dict or {},
-                outputs_available=isinstance(node_exec.outputs_dict, Mapping)
-                and not getattr(node_exec, "outputs_truncated", False),
+                outputs_available=isinstance(node_exec.outputs_dict, Mapping) and not node_exec.outputs_truncated,
             )
             for node_exec in node_execs
         ]
@@ -1827,7 +1834,10 @@ class WorkflowServiceDifyPort:
                 final = {}
                 error_frame = None
             finally:
-                close = getattr(response, "close", None)
+                try:
+                    close = response.close if response is not None else None
+                except AttributeError:
+                    close = None
                 if callable(close):
                     close()
 
@@ -1857,7 +1867,7 @@ class WorkflowServiceDifyPort:
         # to diagnose/rebuild it. C04 exposes waiting only after the native
         # WorkflowPause has actually persisted; Builder retains its same Run.
         native_row = result[1]
-        native_graph = getattr(native_row, "graph_dict", {})
+        native_graph = native_row.graph_dict if native_row is not None else {}
         has_agent = (
             any(
                 isinstance(node, dict) and isinstance(node.get("data"), dict) and node["data"].get("type") == "agent"
@@ -2070,7 +2080,10 @@ class WorkflowServiceDifyPort:
             raise
         finally:
             try:
-                close = getattr(response, "close", None)
+                try:
+                    close = response.close if response is not None else None
+                except AttributeError:
+                    close = None
                 if callable(close):
                     close()
             except BaseException:
@@ -2217,7 +2230,7 @@ class WorkflowServiceDifyPort:
         if execution_recorder is not None and not execution_recorder.healthy:
             run.execution_refusal = BuilderExecutionRefusal(reason_code="execution_recorder_unhealthy")
             return run
-        native_graph = getattr(row, "graph_dict", None)
+        native_graph = row.graph_dict if row is not None else None
         evidence = run.verification
         if evidence is None or not isinstance(native_graph, dict) or not isinstance(native_graph.get("nodes"), list):
             return run
@@ -2345,6 +2358,6 @@ class WorkflowServiceDifyPort:
 
             session.commit()
             return PublishResult(
-                version_name=getattr(workflow, "marked_name", None) or f"# {workflow.version_number}",
+                version_name=workflow.marked_name or f"# {workflow.version_number}",
                 status="live",
             )

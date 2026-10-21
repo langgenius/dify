@@ -57,16 +57,21 @@ def _request(sql, *, actor, ref):
         or canonical_digest(request.context) != ref.context_digest
         or request.context.get("policy_version") != ref.policy_version
         or request.context.get("invocation_id") != ref.invocation_id
-        or any(
-            request.context.get(key) != getattr(request, key)
-            for key in (
-                "tenant_id",
-                "actor_id",
-                "app_id",
-                "workflow_id",
-                "session_id",
-                "test_input_id",
-            )
+        or (
+            request.context.get("tenant_id"),
+            request.context.get("actor_id"),
+            request.context.get("app_id"),
+            request.context.get("workflow_id"),
+            request.context.get("session_id"),
+            request.context.get("test_input_id"),
+        )
+        != (
+            request.tenant_id,
+            request.actor_id,
+            request.app_id,
+            request.workflow_id,
+            request.session_id,
+            request.test_input_id,
         )
         or _native_run_id(request) is None
         or request.context.get("profile", {}).get("profile_id") != "builder-agent-confirmed-v1"

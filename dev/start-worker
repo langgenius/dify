@@ -101,8 +101,8 @@ if [[ -n "${ENV_FILE}" ]]; then
   echo "Loading environment variables from ${ENV_FILE}"
   # Export everything sourced from the env file
   set -a
-  # The env file is selected at runtime via --env-file.
-  # shellcheck source=/dev/null
+  # Environment assignments follow the repository's documented API env schema.
+  # shellcheck source=../api/.env.example
   source "${ENV_FILE}"
   set +a
 fi
@@ -140,4 +140,4 @@ echo "  Log Level: ${LOGLEVEL}"
 
 uv run \
   celery -A app.celery worker \
-  -P ${POOL} -c ${CONCURRENCY} --loglevel ${LOGLEVEL} -Q ${QUEUES}
+  -P "${POOL}" -c "${CONCURRENCY}" --loglevel "${LOGLEVEL}" -Q "${QUEUES}"

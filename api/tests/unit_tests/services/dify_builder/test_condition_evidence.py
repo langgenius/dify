@@ -3,8 +3,8 @@
 import json
 from collections.abc import Iterator
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime
-from types import SimpleNamespace
 from typing import Never, override
 from unittest.mock import MagicMock, patch
 
@@ -12,6 +12,8 @@ import pytest
 
 from core.dify_builder.errors import NotFoundError
 from core.dify_builder.models import Actor, ApplyResult, Diagnosis, Graph, MutationIntent, NodeOutput, Risk, Run
+from models.enums import ExecutionOffLoadType
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowRun
 from services.dify_builder.agent import fix
 from services.dify_builder.application.runner import Env
 from services.dify_builder.condition_evidence import build_evidence
@@ -19,8 +21,26 @@ from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import PreflightError
 from services.dify_builder.revision import execution_revision
 from tests.unit_tests.core.dify_builder.fakes import FakeEditDifyPort, InMemoryRepository
-from tests.unit_tests.services.dify_builder.test_dify_port import _actor, _configure_session_get, _workflow
+from tests.unit_tests.services.dify_builder.test_dify_port import (
+    PortDatabase,
+    TrackedPortSession,
+    _account,
+    _actor,
+    _app,
+    _configure_session_get,
+    _execution,
+    _run,
+    _workflow,
+)
 from tests.unit_tests.services.dify_builder.test_fix_cognition import _RecordingInstance
+
+
+@pytest.fixture
+def mock_session(sqlite_engine, mocker) -> Iterator[TrackedPortSession]:
+    with TrackedPortSession(sqlite_engine, expire_on_commit=False) as session:
+        for name in ("get", "refresh", "commit"):
+            mocker.spy(session, name)
+        yield session
 
 
 def evidence_graph(operator: str = "is") -> Graph:
@@ -239,50 +259,47 @@ def test_projection_budget_discards_whole_conditions_and_marks_unknown() -> None
     assert len(json.dumps(evidence, ensure_ascii=True).encode()) <= MAX_CONTEXT_BYTES
 
 
-def native_row(node_id: str, *, value: object = 0.69) -> SimpleNamespace:
-    return SimpleNamespace(
-        id="row-" + node_id,
-        node_execution_id="exec-" + node_id,
-        tenant_id="tenant-1",
-        app_id="app-1",
-        workflow_id="workflow-1",
-        workflow_run_id="native-run",
+@dataclass
+class NativeEvidenceCase:
+    port: WorkflowServiceDifyPort
+    graph: Graph
+    workflow: Workflow
+    run: WorkflowRun
+    rows: list[WorkflowNodeExecutionModel]
+    sync: MagicMock
+    repositories: MagicMock
+
+
+def native_row(node_id: str, *, value: object = 0.69) -> WorkflowNodeExecutionModel:
+    row = _execution(
         node_id=node_id,
+        node_type="code" if node_id == "producer" else "if-else",
         title=node_id,
         status="succeeded" if node_id == "producer" else "failed",
         error="" if node_id == "producer" else "Invalid actual value type: string or boolean",
         inputs_dict={},
         outputs_dict={"structured_output": {"confidence": value}} if node_id == "producer" else {},
-        execution_metadata_dict={},
-        outputs_truncated=False,
-        finished_at=datetime.min,
     )
+    row.id = "row-" + node_id
+    row.node_execution_id = "exec-" + node_id
+    row.workflow_run_id = "native-run"
+    row.execution_metadata = json.dumps({})
+    row.finished_at = datetime.min
+    return row
 
 
 @pytest.fixture
-def native_adapter() -> Iterator[SimpleNamespace]:
-    session = MagicMock()
-    session.__enter__.return_value = session
-    session.__exit__.return_value = False
-    _configure_session_get(
-        session, account=SimpleNamespace(id="acc-1"), app=SimpleNamespace(id="app-1", tenant_id="tenant-1")
-    )
+def native_adapter(mock_session, sqlite_engine, monkeypatch) -> Iterator[NativeEvidenceCase]:
+    session = mock_session
+    monkeypatch.setattr("services.dify_builder.dify_port.db", PortDatabase(sqlite_engine))
+    monkeypatch.setattr("services.dify_builder.dify_port._session_factory", lambda: lambda: session)
+    _configure_session_get(session, account=_account(), app=_app())
     graph = evidence_graph()
-    workflow = _workflow(graph_dict=graph)
-    run = SimpleNamespace(
-        id="native-run",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        workflow_id="workflow-1",
-        graph_dict=deepcopy(graph),
-        status="failed",
-        error="",
-    )
+    workflow = _workflow(session=session, graph_dict=graph)
+    run = _run(id="native-run", graph_dict=deepcopy(graph), status="failed", error="")
     rows = [native_row("producer"), native_row("branch")]
     with (
-        patch("services.dify_builder.dify_port.db"),
         patch("services.dify_builder.dify_port.set_login_user"),
-        patch("services.dify_builder.dify_port.sessionmaker", return_value=MagicMock(return_value=session)),
         patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as repositories,
         patch("services.dify_builder.dify_port.WorkflowService") as workflow_service,
         patch("services.dify_builder.dify_port.notify_workflow_draft_changed"),
@@ -291,9 +308,11 @@ def native_adapter() -> Iterator[SimpleNamespace]:
         repositories.create_api_workflow_run_repository.return_value.get_workflow_run_by_id.return_value = run
         node_repository = repositories.create_api_workflow_node_execution_repository.return_value
         node_repository.get_executions_by_workflow_run.return_value = rows
-        workflow_service.return_value.get_draft_workflow.return_value = workflow
+        workflow_service.return_value.get_draft_workflow.side_effect = lambda _app, *, session: session.get(
+            Workflow, workflow.id
+        )
         sync.side_effect = lambda _app, graph, *_args: _workflow(graph_dict=graph)
-        yield SimpleNamespace(
+        yield NativeEvidenceCase(
             port=WorkflowServiceDifyPort(),
             graph=graph,
             workflow=workflow,
@@ -310,13 +329,13 @@ def repair_intent(value: object = "=", path: str = "comparison_operator") -> Mut
     )
 
 
-def apply_native(adapter: SimpleNamespace, intents: list[MutationIntent]) -> ApplyResult:
+def apply_native(adapter: NativeEvidenceCase, intents: list[MutationIntent]) -> ApplyResult:
     return adapter.port.apply_repair(
         "app-1", _actor(), intents, expected_revision=execution_revision(adapter.workflow), failed_run_id="native-run"
     )
 
 
-def test_real_write_rejects_value_only_noop_that_leaves_observed_mismatch(native_adapter: SimpleNamespace) -> None:
+def test_real_write_rejects_value_only_noop_that_leaves_observed_mismatch(native_adapter: NativeEvidenceCase) -> None:
     with pytest.raises(PreflightError, match="IF repair"):
         apply_native(native_adapter, [repair_intent("0.7", "value")])
     native_adapter.sync.assert_not_called()
@@ -324,7 +343,7 @@ def test_real_write_rejects_value_only_noop_that_leaves_observed_mismatch(native
 
 @pytest.mark.parametrize("field", ["tenant_id", "app_id", "id"])
 def test_adapter_denies_mismatched_run_before_reading_any_execution(
-    native_adapter: SimpleNamespace, field: str
+    native_adapter: NativeEvidenceCase, field: str
 ) -> None:
     setattr(native_adapter.run, field, "someone-else")
     with pytest.raises(NotFoundError):
@@ -333,36 +352,43 @@ def test_adapter_denies_mismatched_run_before_reading_any_execution(
 
 
 @pytest.mark.parametrize("field", ["tenant_id", "app_id", "workflow_run_id", "workflow_id"])
-def test_adapter_denies_row_identity_before_ephemeral_raw_handling(native_adapter: SimpleNamespace, field: str) -> None:
-    class PoisonRow:
-        @property
-        def outputs_dict(self) -> Never:
-            raise AssertionError("unauthorized outputs were accessed")
+def test_adapter_denies_row_identity_before_ephemeral_raw_handling(
+    native_adapter: NativeEvidenceCase, field: str
+) -> None:
+    def poisoned_outputs(_row) -> Never:
+        raise AssertionError("unauthorized outputs were accessed")
 
-    poisoned = PoisonRow()
-    poisoned.__dict__.update(vars(native_adapter.rows[1]))
-    poisoned.__dict__.pop("outputs_dict")
-    setattr(poisoned, field, "someone-else")
-    native_adapter.rows[1] = poisoned
-    with pytest.raises(NotFoundError):
+    setattr(native_adapter.rows[1], field, "someone-else")
+    with (
+        patch.object(WorkflowNodeExecutionModel, "outputs_dict", new=property(poisoned_outputs)),
+        pytest.raises(NotFoundError),
+    ):
         native_adapter.port.failed_run_context("app-1", _actor(), "native-run")
 
 
 @pytest.mark.parametrize("kind", ["missing-run", "missing-graph", "offload", "loop-metadata", "retry-metadata"])
 def test_adapter_unavailable_native_evidence_does_not_gain_observed_types(
-    native_adapter: SimpleNamespace, kind: str
+    native_adapter: NativeEvidenceCase, kind: str
 ) -> None:
     if kind == "missing-run":
         run_repository = native_adapter.repositories.create_api_workflow_run_repository.return_value
         run_repository.get_workflow_run_by_id.return_value = None
     elif kind == "missing-graph":
-        native_adapter.run.graph_dict = dict[str, object]()
+        native_adapter.run.graph = json.dumps({})
     elif kind == "offload":
-        native_adapter.rows[0].outputs_truncated = True
+        native_adapter.rows[0].offload_data = [
+            WorkflowNodeExecutionOffload(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                node_execution_id="exec-producer",
+                type_=ExecutionOffLoadType.OUTPUTS,
+                file_id="offloaded-output",
+            )
+        ]
     elif kind == "loop-metadata":
-        native_adapter.rows[0].execution_metadata_dict = {"loop_id": "loop-1"}
+        native_adapter.rows[0].execution_metadata = json.dumps({"loop_id": "loop-1"})
     elif kind == "retry-metadata":
-        native_adapter.rows[0].execution_metadata_dict = {"retry_index": 1}
+        native_adapter.rows[0].execution_metadata = json.dumps({"retry_index": 1})
     historical, rows, _ = native_adapter.port.failed_run_context("app-1", _actor(), "native-run")
     _, _, _, evidence = build_evidence(Run(), native_adapter.graph, historical, rows)
     assert not evidence["conditions"] or evidence["conditions"][0]["producer_json_type"] == "unknown"
@@ -371,7 +397,7 @@ def test_adapter_unavailable_native_evidence_does_not_gain_observed_types(
     native_adapter.sync.assert_not_called()
 
 
-def test_real_write_proven_numeric_equality_changes_only_nested_operator(native_adapter: SimpleNamespace) -> None:
+def test_real_write_proven_numeric_equality_changes_only_nested_operator(native_adapter: NativeEvidenceCase) -> None:
     original = deepcopy(native_adapter.run.graph_dict)
     result = apply_native(native_adapter, [repair_intent()])
     assert result.changed_nodes == ["branch"]
@@ -394,25 +420,27 @@ def test_real_write_proven_numeric_equality_changes_only_nested_operator(native_
     ],
 )
 def test_actual_write_gate_preserves_threshold_selector_and_ordering(
-    native_adapter: SimpleNamespace, operator: str, value: list[str] | str, path: str
+    native_adapter: NativeEvidenceCase, operator: str, value: list[str] | str, path: str
 ) -> None:
     native_adapter.graph["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] = operator
     native_adapter.workflow.graph = json.dumps(native_adapter.graph)
-    native_adapter.run.graph_dict = deepcopy(native_adapter.graph)
+    native_adapter.run.graph = json.dumps(native_adapter.graph)
     with pytest.raises(PreflightError):
         apply_native(native_adapter, [repair_intent(value, path)])
     native_adapter.sync.assert_not_called()
 
 
-def test_real_model_boundary_diagnosis_and_proposal_share_sanitized_types(native_adapter: SimpleNamespace) -> None:
+def test_real_model_boundary_diagnosis_and_proposal_share_sanitized_types(native_adapter: NativeEvidenceCase) -> None:
     from services.dify_builder.agent import llm_agent
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
     from services.dify_builder.condition_evidence import diagnose_failure, propose_failure
 
     secret = "upstream-bearer-sealed-value"
-    native_adapter.rows[0].outputs_dict["token"] = secret
+    native_adapter.rows[0].outputs = json.dumps({**native_adapter.rows[0].outputs_dict, "token": secret})
     native_adapter.rows[1].error += " " + secret
-    native_adapter.run.graph_dict["nodes"][0]["data"]["password"] = secret
+    history = native_adapter.run.graph_dict
+    history["nodes"][0]["data"]["password"] = secret
+    native_adapter.run.graph = json.dumps(history)
     native_adapter.graph["nodes"][1]["data"]["title"] = secret
     raw_run = Run(dify_run_id="native-run", immutable=True, error=secret)
     original = deepcopy(raw_run)
@@ -660,14 +688,16 @@ def test_real_proposal_cannot_bypass_failed_if_gate_via_other_graph_mutations(at
     assert intents == []
 
 
-def test_native_run_error_credentials_are_collected_for_ordinary_fix(native_adapter: SimpleNamespace) -> None:
+def test_native_run_error_credentials_are_collected_for_ordinary_fix(native_adapter: NativeEvidenceCase) -> None:
     from services.dify_builder.agent import llm_agent
     from services.dify_builder.condition_evidence import diagnose_failure
 
     secret = "native-run-error-only-password"
     native_adapter.run.error = "password=" + secret
-    for graph in (native_adapter.graph, native_adapter.run.graph_dict):
+    history = native_adapter.run.graph_dict
+    for graph in (native_adapter.graph, history):
         graph["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] = secret
+    native_adapter.run.graph = json.dumps(history)
     model = _RecordingInstance(['{"culprit_node_id":"branch","root_cause":"mismatch","severity":"high"}'])
     env = Env(
         dify=native_adapter.port,
@@ -683,16 +713,16 @@ def test_native_run_error_credentials_are_collected_for_ordinary_fix(native_adap
 
 @pytest.mark.parametrize("kind", ["target-loop-metadata", "target-duplicate", "incomplete-success", "retry-zero"])
 def test_incomplete_or_repeated_execution_scope_cannot_establish_types(
-    native_adapter: SimpleNamespace, kind: str
+    native_adapter: NativeEvidenceCase, kind: str
 ) -> None:
     if kind == "target-loop-metadata":
-        native_adapter.rows[1].execution_metadata_dict = {"loop_id": "loop-1"}
+        native_adapter.rows[1].execution_metadata = json.dumps({"loop_id": "loop-1"})
     elif kind == "target-duplicate":
         native_adapter.rows.append(deepcopy(native_adapter.rows[1]))
     elif kind == "incomplete-success":
         native_adapter.rows[0].finished_at = None
     else:
-        native_adapter.rows[0].execution_metadata_dict = {"retry_index": 0}
+        native_adapter.rows[0].execution_metadata = json.dumps({"retry_index": 0})
     historical, rows, _ = native_adapter.port.failed_run_context("app-1", _actor(), "native-run")
     _, _, _, evidence = build_evidence(Run(), native_adapter.graph, historical, rows)
     assert evidence["conditions"][0]["producer_json_type"] == "unknown"
@@ -760,7 +790,7 @@ def test_over_budget_execution_identifiers_cannot_escape_context_budget() -> Non
 
 
 @pytest.mark.parametrize("attack", ["producer", "new-node", "delete-if"])
-def test_actual_write_refuses_indirect_if_gate_bypass(native_adapter: SimpleNamespace, attack: str) -> None:
+def test_actual_write_refuses_indirect_if_gate_bypass(native_adapter: NativeEvidenceCase, attack: str) -> None:
     if attack == "producer":
         intent = MutationIntent(
             op="set_node_config", args={"node_id": "producer", "path": "code", "value": "def main(): return {}"}
@@ -817,7 +847,7 @@ def test_proven_equality_repair_preserves_native_threshold_route(
 
 @pytest.mark.parametrize("mode", ["fix", "build", "edit"])
 def test_runtime_handler_write_reloads_trusted_failed_run_and_refuses_value_only(
-    native_adapter: SimpleNamespace, mode: str
+    native_adapter: NativeEvidenceCase, mode: str
 ) -> None:
     from core.dify_builder.models import Action, DifyBuilderContext, EntryMode, Turn
     from core.dify_builder.state import PcState
@@ -858,7 +888,7 @@ def test_runtime_handler_write_reloads_trusted_failed_run_and_refuses_value_only
     native_adapter.sync.assert_not_called()
 
 
-def test_runtime_non_if_fix_keeps_existing_native_write_behavior(native_adapter: SimpleNamespace) -> None:
+def test_runtime_non_if_fix_keeps_existing_native_write_behavior(native_adapter: NativeEvidenceCase) -> None:
     native_adapter.rows[0].status = "failed"
     native_adapter.rows[0].error = "NameError: missing_variable"
     native_adapter.rows[1].status = "skipped"
@@ -889,7 +919,7 @@ def _producer_rewrite_payload() -> str:
 
 
 def _real_context_proposal(
-    adapter: SimpleNamespace, replies: list[str] | None = None
+    adapter: NativeEvidenceCase, replies: list[str] | None = None
 ) -> tuple[Diagnosis, list[MutationIntent], Risk, _RecordingInstance]:
     from services.dify_builder.agent import llm_agent
     from services.dify_builder.condition_evidence import diagnose_failure, propose_failure
@@ -917,17 +947,17 @@ def _real_context_proposal(
 
 @pytest.mark.parametrize("boundary", ["projection", "proposal", "write"])
 def test_review_r1_handled_exception_cannot_hide_terminal_failed_if(
-    native_adapter: SimpleNamespace, boundary: str
+    native_adapter: NativeEvidenceCase, boundary: str
 ) -> None:
     from services.dify_builder.preflight import preflight_errors
 
     producer = native_adapter.graph["nodes"][0]["data"]
     producer["error_strategy"] = "default-value"
     producer["default_value"] = [{"key": "structured_output", "type": "object", "value": {"confidence": "unknown"}}]
-    native_adapter.run.graph_dict = deepcopy(native_adapter.graph)
+    native_adapter.run.graph = json.dumps(native_adapter.graph)
     native_adapter.workflow.graph = json.dumps(native_adapter.graph)
     native_adapter.rows[0].status = "exception"
-    native_adapter.rows[0].execution_metadata_dict = {"error_strategy": "default-value"}
+    native_adapter.rows[0].execution_metadata = json.dumps({"error_strategy": "default-value"})
     assert preflight_errors(native_adapter.graph) == []
     if boundary == "write":
         with pytest.raises(PreflightError):
@@ -961,7 +991,7 @@ def test_review_r1_handled_exception_cannot_hide_terminal_failed_if(
 )
 @pytest.mark.parametrize("boundary", ["proposal", "write"])
 def test_review_r1_r2_unknown_failure_identity_cannot_authorize_producer_rewrite(
-    native_adapter: SimpleNamespace, kind: str, boundary: str
+    native_adapter: NativeEvidenceCase, kind: str, boundary: str
 ) -> None:
     if kind == "two-terminal-failures":
         native_adapter.rows[0].status = "failed"
@@ -974,7 +1004,7 @@ def test_review_r1_r2_unknown_failure_identity_cannot_authorize_producer_rewrite
     elif kind == "empty-rows":
         native_adapter.rows.clear()
     else:
-        native_adapter.run.graph_dict = dict[str, object]()
+        native_adapter.run.graph = json.dumps({})
     if boundary == "proposal":
         _, intents, _, _ = _real_context_proposal(native_adapter)
         assert intents == []
@@ -998,7 +1028,7 @@ def test_review_r1_r2_unknown_failure_identity_cannot_authorize_producer_rewrite
 
 @pytest.mark.parametrize("boundary", ["proposal", "write"])
 def test_review_r3_historical_if_replaced_by_same_id_code_is_stale(
-    native_adapter: SimpleNamespace, boundary: str
+    native_adapter: NativeEvidenceCase, boundary: str
 ) -> None:
     replacement = deepcopy(native_adapter.graph["nodes"][0])
     replacement["id"] = "branch"
@@ -1044,21 +1074,23 @@ def test_review_r3_historical_if_replaced_by_same_id_code_is_stale(
 @pytest.mark.parametrize("spelling", ["client_secret", "clientSecret", "refresh_token", "private_key", "auth_token"])
 @pytest.mark.parametrize("source", ["native-error", "upstream-string", "expected-string"])
 def test_review_r4_normalized_explicit_credentials_never_reach_prompts_or_evidence(
-    native_adapter: SimpleNamespace, spelling: str, source: str
+    native_adapter: NativeEvidenceCase, spelling: str, source: str
 ) -> None:
     secret = "review-sensitive-assignment-value"
     assignment = json.dumps({spelling: secret})
-    for graph in (native_adapter.graph, native_adapter.run.graph_dict):
+    history = native_adapter.run.graph_dict
+    for graph in (native_adapter.graph, history):
         graph["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] = secret
         if source == "expected-string":
             sibling = deepcopy(graph["nodes"][1]["data"]["cases"][0]["conditions"][0])
             sibling["id"] = "credential-assignment"
             sibling["value"] = assignment
             graph["nodes"][1]["data"]["cases"][0]["conditions"].append(sibling)
+    native_adapter.run.graph = json.dumps(history)
     if source == "native-error":
         native_adapter.run.error = spelling + '="' + secret + '"'
     elif source == "upstream-string":
-        native_adapter.rows[0].outputs_dict["annotation"] = assignment
+        native_adapter.rows[0].outputs = json.dumps({**native_adapter.rows[0].outputs_dict, "annotation": assignment})
     diagnosis_reply = json.dumps({"culprit_node_id": "branch", "root_cause": "mismatch " + secret, "severity": "high"})
     diagnosis, _, _, model = _real_context_proposal(
         native_adapter, [diagnosis_reply, _producer_rewrite_payload(), _producer_rewrite_payload()]
@@ -1072,11 +1104,11 @@ def test_review_r4_normalized_explicit_credentials_never_reach_prompts_or_eviden
 
 @pytest.mark.parametrize("boundary", ["proposal", "write"])
 def test_review_r2_missing_history_cannot_use_current_non_if_type(
-    native_adapter: SimpleNamespace, boundary: str
+    native_adapter: NativeEvidenceCase, boundary: str
 ) -> None:
     native_adapter.rows[0].status = "failed"
     native_adapter.rows[1].status = "skipped"
-    native_adapter.run.graph_dict = dict[str, object]()
+    native_adapter.run.graph = json.dumps({})
     if boundary == "proposal":
         _, intents, _, _ = _real_context_proposal(native_adapter)
         assert intents == []
@@ -1100,7 +1132,7 @@ def test_review_r2_missing_history_cannot_use_current_non_if_type(
 
 @pytest.mark.parametrize("missing", ["run", "rows"])
 def test_review_r2_write_does_not_trust_prior_available_diagnosis(
-    native_adapter: SimpleNamespace, missing: str
+    native_adapter: NativeEvidenceCase, missing: str
 ) -> None:
     diagnosis, _, _, _ = _real_context_proposal(native_adapter)
     assert diagnosis.condition_evidence is not None
@@ -1130,7 +1162,7 @@ def test_review_r2_write_does_not_trust_prior_available_diagnosis(
 @pytest.mark.parametrize("attack", ["schema", "routing"])
 @pytest.mark.parametrize("boundary", ["proposal", "write"])
 def test_review_r2_unavailable_context_rejects_schema_and_routing(
-    native_adapter: SimpleNamespace, attack: str, boundary: str
+    native_adapter: NativeEvidenceCase, attack: str, boundary: str
 ) -> None:
     native_adapter.rows.clear()
     if attack == "schema":
@@ -1154,7 +1186,7 @@ def test_review_r2_unavailable_context_rejects_schema_and_routing(
         native_adapter.sync.assert_not_called()
 
 
-def test_review_r2_successful_run_cannot_authorize_a_terminal_non_if_repair(native_adapter: SimpleNamespace) -> None:
+def test_review_r2_successful_run_cannot_authorize_a_terminal_non_if_repair(native_adapter: NativeEvidenceCase) -> None:
     native_adapter.run.status = "succeeded"
     native_adapter.rows[0].status = "failed"
     native_adapter.rows[1].status = "skipped"
@@ -1170,14 +1202,18 @@ def test_review_r2_successful_run_cannot_authorize_a_terminal_non_if_repair(nati
     native_adapter.sync.assert_not_called()
 
 
-def test_review_r4_known_credential_repeated_as_failure_identity_is_sanitized(native_adapter: SimpleNamespace) -> None:
+def test_review_r4_known_credential_repeated_as_failure_identity_is_sanitized(
+    native_adapter: NativeEvidenceCase,
+) -> None:
     from services.dify_builder.agent import llm_agent
     from services.dify_builder.condition_evidence import diagnose_failure
 
     secret = "credential-repeated-as-node-identity"
-    for graph in (native_adapter.graph, native_adapter.run.graph_dict):
+    history = native_adapter.run.graph_dict
+    for graph in (native_adapter.graph, history):
         graph["nodes"][1]["id"] = secret
         graph["edges"][0]["target"] = secret
+    native_adapter.run.graph = json.dumps(history)
     native_adapter.rows[1].node_id = secret
     native_adapter.run.error = 'client_secret="' + secret + '"'
     reply = json.dumps({"culprit_node_id": secret, "root_cause": "mismatch", "severity": "high"})
@@ -1200,15 +1236,17 @@ def test_review_r4_known_credential_repeated_as_failure_identity_is_sanitized(na
 )
 @pytest.mark.parametrize("source", ["native-error", "upstream-string"])
 def test_review_r4_non_sensitive_wrapper_cannot_hide_explicit_inner_credential(
-    native_adapter: SimpleNamespace, wrapper: str, source: str
+    native_adapter: NativeEvidenceCase, wrapper: str, source: str
 ) -> None:
     secret = "sealed-wrapper-value"
-    for graph in (native_adapter.graph, native_adapter.run.graph_dict):
+    history = native_adapter.run.graph_dict
+    for graph in (native_adapter.graph, history):
         graph["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] = secret
+    native_adapter.run.graph = json.dumps(history)
     if source == "native-error":
         native_adapter.run.error = wrapper
     else:
-        native_adapter.rows[0].outputs_dict["annotation"] = wrapper
+        native_adapter.rows[0].outputs = json.dumps({**native_adapter.rows[0].outputs_dict, "annotation": wrapper})
     diagnosis, _, _, model = _real_context_proposal(native_adapter)
     assert secret not in json.dumps(diagnosis.condition_evidence)
     assert all(secret not in " ".join(message.content for message in call["prompt_messages"]) for call in model.calls)
@@ -1216,9 +1254,11 @@ def test_review_r4_non_sensitive_wrapper_cannot_hide_explicit_inner_credential(
 
 @pytest.mark.parametrize("boundary", ["proposal", "write"])
 def test_review_r2_unregistered_historical_type_cannot_prove_non_if(
-    native_adapter: SimpleNamespace, boundary: str
+    native_adapter: NativeEvidenceCase, boundary: str
 ) -> None:
-    native_adapter.run.graph_dict["nodes"][1]["data"]["type"] = "unregistered-native-type"
+    history = native_adapter.run.graph_dict
+    history["nodes"][1]["data"]["type"] = "unregistered-native-type"
+    native_adapter.run.graph = json.dumps(history)
     replacement = deepcopy(native_adapter.graph["nodes"][0])
     replacement["id"] = "branch"
     native_adapter.graph["nodes"][1] = replacement

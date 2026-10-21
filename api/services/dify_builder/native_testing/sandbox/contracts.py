@@ -1,7 +1,7 @@
 """Immutable reference-only Code state. DTO validation never grants authority."""
 
 from datetime import datetime
-from typing import Annotated, Protocol
+from typing import Annotated, Protocol, runtime_checkable
 from uuid import UUID
 
 from pydantic import AfterValidator, Field, StrictBool, model_validator
@@ -36,6 +36,7 @@ class CodeAcquisitionRef(FrozenDTO):
     acquisition_id: UUIDString
 
 
+@runtime_checkable
 class CodeAcquisitionOwner(Protocol):
     def check_current(self, acquisition: CodeAcquisitionRef) -> None:
         """Local retained-object/registry check, before and after every transaction."""

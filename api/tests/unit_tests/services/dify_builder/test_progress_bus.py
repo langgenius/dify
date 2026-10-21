@@ -3,30 +3,45 @@
 import json
 import threading
 from collections.abc import Iterator
-from typing import Self
-from unittest.mock import MagicMock, patch
+from contextlib import contextmanager
+from typing import Self, override
+from unittest.mock import patch
 
 import pytest
+from redis import Redis
 
 from libs.broadcast_channel.channel import Subscription, SupportsPreparedSubscription
+from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel, Topic
 from services.dify_builder import progress_bus, wiring
 
 SESSION_ID = "11111111-1111-1111-1111-111111111111"
 
 
+@contextmanager
+def channel_for(subscriber=None):
+    with Redis() as client, patch.object(client, "publish"):
+        channel = BroadcastChannel(client)
+        topic = Topic(client, f"dify_builder:{SESSION_ID}")
+        with (
+            patch.object(channel, "topic", return_value=topic) as topic_call,
+            patch.object(topic, "as_subscriber", return_value=topic if subscriber is None else subscriber),
+            patch.object(topic, "publish", wraps=topic.publish) as publish_call,
+        ):
+            yield channel, topic, topic_call, publish_call
+
+
 def test_publish_sends_json_encoded_event_to_the_session_topic() -> None:
-    fake_channel = MagicMock()
     event = {"kind": "workflow", "payload": {"event": "workflow_started", "workflow_run_id": "run-1"}}
-
-    with patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=fake_channel):
+    with (
+        channel_for() as (channel, topic, topic_call, publish_call),
+        patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=channel),
+    ):
         progress_bus.publish(SESSION_ID, event)
-
-    fake_channel.topic.assert_called_once_with(f"dify_builder:{SESSION_ID}")
-    fake_topic = fake_channel.topic.return_value
-    fake_topic.publish.assert_called_once()
-    (payload,) = fake_topic.publish.call_args.args
-    assert isinstance(payload, bytes)
-    assert json.loads(payload.decode()) == event
+        topic_call.assert_called_once_with(f"dify_builder:{SESSION_ID}")
+        publish_call.assert_called_once()
+        (payload,) = publish_call.call_args.args
+        assert isinstance(payload, bytes)
+        assert json.loads(payload.decode()) == event
 
 
 class _Subscription(Subscription):
@@ -76,7 +91,8 @@ class _LazySubscriber:
 
 
 class _TerminalSubscription(_Subscription):
-    def receive(self, timeout: float | None = 0.1) -> bytes | None:  # noqa: ARG002
+    @override
+    def receive(self, timeout: float | None = 0.1) -> bytes | None:
         return b'{"kind":"command_finished","state":"success","command_id":""}'
 
 
@@ -86,6 +102,7 @@ class _AckControlledSubscription(_Subscription):
         self.waiting_for_ack = threading.Event()
         self.release_ack = threading.Event()
 
+    @override
     def __enter__(self) -> Self:
         self.order.append("activate")
         self.waiting_for_ack.set()
@@ -99,13 +116,13 @@ def test_subscribe_prepares_stream_delivery_boundary_without_activating() -> Non
     order: list[str] = []
     subscription = _Subscription(order)
     subscriber = _PreparedSubscriber(subscription, order)
-    fake_channel = MagicMock()
-    fake_channel.topic.return_value.as_subscriber.return_value = subscriber
-
-    with patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=fake_channel):
+    with (
+        channel_for(subscriber) as (channel, topic, topic_call, publish_call),
+        patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=channel),
+    ):
         result = progress_bus.subscribe(SESSION_ID)
 
-    fake_channel.topic.assert_called_once_with(f"dify_builder:{SESSION_ID}")
+    topic_call.assert_called_once_with(f"dify_builder:{SESSION_ID}")
     assert result is subscription
     assert order == ["prepare"]
 
@@ -114,10 +131,10 @@ def test_subscribe_activates_pubsub_before_returning_to_dispatch_caller() -> Non
     order: list[str] = []
     subscription = _Subscription(order)
     subscriber = _LazySubscriber(subscription, order)
-    fake_channel = MagicMock()
-    fake_channel.topic.return_value.as_subscriber.return_value = subscriber
-
-    with patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=fake_channel):
+    with (
+        channel_for(subscriber) as (channel, topic, topic_call, publish_call),
+        patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=channel),
+    ):
         result = progress_bus.subscribe(SESSION_ID)
         order.append("dispatch")
 
@@ -130,9 +147,6 @@ def test_publish_after_subscribe_cannot_overtake_pubsub_activation_barrier() -> 
     order: list[str] = []
     subscription = _AckControlledSubscription(order)
     subscriber = _LazySubscriber(subscription, order)
-    fake_channel = MagicMock()
-    fake_topic = fake_channel.topic.return_value
-    fake_topic.as_subscriber.return_value = subscriber
     finished = threading.Event()
     errors: list[BaseException] = []
 
@@ -145,13 +159,16 @@ def test_publish_after_subscribe_cannot_overtake_pubsub_activation_barrier() -> 
         except BaseException as error:
             errors.append(error)
 
-    with patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=fake_channel):
+    with (
+        channel_for(subscriber) as (channel, topic, topic_call, publish_call),
+        patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=channel),
+    ):
         caller = threading.Thread(target=subscribe_then_publish)
         caller.start()
         try:
             assert subscription.waiting_for_ack.wait(timeout=1)
             assert not finished.is_set()
-            fake_topic.publish.assert_not_called()
+            publish_call.assert_not_called()
 
             subscription.release_ack.set()
             caller.join(timeout=1)
@@ -163,18 +180,16 @@ def test_publish_after_subscribe_cannot_overtake_pubsub_activation_barrier() -> 
     assert errors == []
     assert finished.is_set()
     assert order == ["construct", "activate", "ack", "publish"]
-    fake_topic.publish.assert_called_once()
+    publish_call.assert_called_once()
 
 
 def test_subscribe_closes_pubsub_when_activation_fails() -> None:
     order: list[str] = []
     subscription = _Subscription(order, fail_on_enter=True)
     subscriber = _LazySubscriber(subscription, order)
-    fake_channel = MagicMock()
-    fake_channel.topic.return_value.as_subscriber.return_value = subscriber
-
     with (
-        patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=fake_channel),
+        channel_for(subscriber) as (channel, topic, topic_call, publish_call),
+        patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=channel),
         pytest.raises(RuntimeError, match="activation failed"),
     ):
         progress_bus.subscribe(SESSION_ID)
@@ -187,10 +202,10 @@ def test_stream_generator_does_not_reenter_and_closes_prepared_subscription() ->
     order: list[str] = []
     subscription = _TerminalSubscription(order)
     subscriber = _LazySubscriber(subscription, order)
-    fake_channel = MagicMock()
-    fake_channel.topic.return_value.as_subscriber.return_value = subscriber
-
-    with patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=fake_channel):
+    with (
+        channel_for(subscriber) as (channel, topic, topic_call, publish_call),
+        patch("services.dify_builder.progress_bus.get_pubsub_broadcast_channel", return_value=channel),
+    ):
         prepared = progress_bus.subscribe(SESSION_ID)
 
     frames = list(wiring.stream_advance_frames({"session_id": SESSION_ID}, prepared, expect_advance=True))

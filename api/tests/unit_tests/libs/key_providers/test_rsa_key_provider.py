@@ -8,7 +8,6 @@ provider leaves open is visible.
 """
 
 from collections.abc import Iterator
-from types import SimpleNamespace
 
 import pytest
 from Crypto.PublicKey import RSA
@@ -20,6 +19,7 @@ import models.engine
 from libs import gmpy2_pkcs10aep_cipher
 from libs.key_providers.rsa_key_provider import RSAKeyProvider
 from models.account import Tenant
+from tests.unit_tests.database_fixtures import BoundDatabase
 
 _PRIVATE_KEY = RSA.generate(2048)
 _PUBLIC_PEM = _PRIVATE_KEY.publickey().export_key().decode()
@@ -49,11 +49,11 @@ class TxWitness:
 
 @pytest.fixture
 def scoped(
-    sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[scoped_session[Session]]:
     """The request-scoped session the provider sees as ``db.session``."""
     registry = scoped_session(sqlite_session_factory)
-    monkeypatch.setattr(models.engine, "db", SimpleNamespace(session=registry, engine=sqlite_engine))
+    monkeypatch.setattr(models.engine, "db", BoundDatabase(registry))
     try:
         monkeypatch.setattr(key_provider_module, "db", models.engine.db)
         yield registry
