@@ -1,395 +1,495 @@
+import type { StoryProps } from '@storybook/addon-docs/blocks'
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { ToastType } from '.'
+import { ArgTypes, DocsContext, useOf } from '@storybook/addon-docs/blocks'
 import * as React from 'react'
-import { expect, within } from 'storybook/test'
+import { expect, waitFor, within } from 'storybook/test'
 import { createToast, createToastManager, Toaster } from '.'
 import { Button } from '../button'
 
-const manager = createToastManager()
-const toast = createToast(manager)
+type ToastExampleProps = {
+  type: ToastType
+  title: string
+  description?: string
+}
+
+function ToastExample({ type, title, description }: ToastExampleProps) {
+  const [manager] = React.useState(createToastManager)
+  const toast = createToast(manager)
+
+  return (
+    <React.Fragment>
+      <Toaster toastManager={manager} />
+      <Button onClick={() => toast[type](title, { description })}>Show notification</Button>
+    </React.Fragment>
+  )
+}
+
+function ToastDocsPreview({ of, height }: StoryProps) {
+  const context = React.useContext(DocsContext)
+  const { story } = useOf(of ?? 'story', ['story'])
+  const { globals } = context.getStoryContext(story)
+  const params = new URLSearchParams({
+    viewMode: 'story',
+    id: story.id,
+    embed: 'true',
+    globals: `theme:${globals.theme}`,
+  })
+
+  // Storybook 10.6 ignores docs autoplay for iframe stories; embed mode skips play.
+  return (
+    <iframe
+      title={story.name}
+      src={`./iframe.html?${params}`}
+      className="w-full border-0"
+      height={height ?? '440px'}
+    />
+  )
+}
+
+const meta = {
+  title: 'Base/UI/Toast',
+  component: ToastExample,
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      components: { Story: ToastDocsPreview, Controls: ArgTypes },
+      canvas: { withToolbar: false },
+      description: {
+        component:
+          'Create a manager with `createToastManager()`, pass it to `Toaster`, and use `createToast(manager)` to send notifications from outside the React tree. Each example owns its manager. `Toaster` supplies the Base UI provider, portal, viewport, and default cards; Base UI manages dismissal, timers, focus, and stacking state. Press F6 to enter or leave the notifications region. The default timeout is 5 seconds and the visible stack limit is 3. Lifecycle examples use `timeout={0}` so they remain available for inspection.',
+      },
+      story: { autoplay: false },
+    },
+  },
+  decorators: [
+    (Story) => (
+      <div className="flex min-h-100 flex-wrap items-end gap-3 bg-background-default-subtle p-6">
+        <Story />
+      </div>
+    ),
+  ],
+  argTypes: {
+    type: { control: 'select', options: ['success', 'info', 'warning', 'error'] },
+    title: { control: 'text' },
+    description: { control: 'text' },
+  },
+  args: {
+    type: 'success',
+    title: 'Export complete',
+    description: 'Your workflow is ready to download.',
+  },
+  play: async ({ args, canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Show notification' }))
+    const notification = await body.findByRole('dialog', { name: args.title })
+    await waitFor(() => expect(notification).toBeVisible())
+    if (args.description) {
+      await expect(within(notification).getByText(args.description)).toBeVisible()
+    }
+  },
+} satisfies Meta<typeof ToastExample>
+
+export default meta
+type Story = StoryObj<typeof meta>
+
+export const Success: Story = {}
+
+export const Info: Story = {
+  args: {
+    type: 'info',
+    title: 'Workflow restored',
+    description: 'A collaborator restored an earlier version.',
+  },
+}
+
+export const Warning: Story = {
+  args: {
+    type: 'warning',
+    title: 'Import completed with warnings',
+    description: 'Two unsupported files were skipped.',
+  },
+}
+
+export const Error: Story = {
+  args: {
+    type: 'error',
+    title: 'Export failed',
+    description: 'The storage service is unavailable. Try again later.',
+  },
+}
+
+function StackedExample() {
+  const [manager] = React.useState(createToastManager)
+  const toast = createToast(manager)
+  const countRef = React.useRef(0)
+
+  return (
+    <React.Fragment>
+      <Toaster toastManager={manager} timeout={0} limit={3} />
+      <Button
+        onClick={() => {
+          countRef.current += 1
+          toast.info(`Background task ${countRef.current} completed`)
+        }}
+      >
+        Add notification
+      </Button>
+      <Button variant="secondary" onClick={() => toast.dismiss()}>
+        Clear notifications
+      </Button>
+    </React.Fragment>
+  )
+}
+
+export const Stacked: Story = {
+  parameters: {
+    controls: { disable: true },
+    docs: {
+      description: {
+        story:
+          'Add notifications repeatedly to inspect the three-item stack and overflow. Hover or focus the viewport to expand it; clear the stack to start again.',
+      },
+    },
+  },
+  render: () => <StackedExample />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const add = canvas.getByRole('button', { name: 'Add notification' })
+    await userEvent.click(add)
+    await userEvent.click(add)
+    await userEvent.click(add)
+    await userEvent.hover(await body.findByRole('dialog', { name: 'Background task 3 completed' }))
+    await expect(body.getAllByRole('dialog')).toHaveLength(3)
+    for (const notification of body.getAllByRole('dialog')) {
+      await expect(notification).toHaveAttribute('data-expanded')
+    }
+  },
+}
+
+function VaryingHeightsExample() {
+  const [manager] = React.useState(createToastManager)
+  const toast = createToast(manager)
+
+  const showStack = () => {
+    toast.error('Workflow could not be published', {
+      id: 'publication',
+      description:
+        'Several dependent resources are unavailable. Check the model provider credentials, reconnect the knowledge base, and try publishing again after every dependency is ready.',
+    })
+    toast.success('Export complete', { id: 'export' })
+  }
+
+  return (
+    <React.Fragment>
+      <Toaster toastManager={manager} timeout={0} />
+      <Button onClick={showStack}>Show different heights</Button>
+    </React.Fragment>
+  )
+}
+
+export const VaryingHeights: Story = {
+  parameters: {
+    controls: { disable: true },
+    docs: {
+      description: {
+        story:
+          'A tall notification sits behind a short one. The collapsed stack uses the front card’s height; hover or focus reveals each card at its own height.',
+      },
+    },
+  },
+  render: () => <VaryingHeightsExample />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Show different heights' }))
+    const front = await body.findByRole('dialog', { name: 'Export complete' })
+    const behind = body.getByRole('dialog', { name: 'Workflow could not be published' })
+    await waitFor(() => {
+      expect(Math.abs(behind.clientHeight - front.clientHeight)).toBeLessThanOrEqual(1)
+    })
+    await userEvent.hover(front)
+    await waitFor(() => expect(behind.clientHeight).toBeGreaterThan(front.clientHeight))
+    await waitFor(() =>
+      expect(within(behind).getByText(/Several dependent resources/)).toBeVisible(),
+    )
+  },
+}
+
+function ActionExample() {
+  const [manager] = React.useState(createToastManager)
+  const toast = createToast(manager)
+
+  const archive = () => {
+    const id = toast.success('Project archived', {
+      description: 'You can restore the project with Undo.',
+      actionProps: {
+        children: 'Undo',
+        onClick: () => {
+          toast.dismiss(id)
+          toast.success('Project restored')
+        },
+      },
+    })
+  }
+
+  return (
+    <React.Fragment>
+      <Toaster toastManager={manager} timeout={0} />
+      <Button onClick={archive}>Archive project</Button>
+    </React.Fragment>
+  )
+}
+
+export const WithAction: Story = {
+  parameters: {
+    controls: { disable: true },
+    docs: {
+      description: {
+        story:
+          'Use `actionProps` for a notification action. The caller closes the original notification when Undo completes.',
+      },
+    },
+  },
+  render: () => <ActionExample />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Archive project' }))
+    const archived = await body.findByRole('dialog', { name: 'Project archived' })
+    await userEvent.click(within(archived).getByRole('button', { name: 'Undo' }))
+    const restored = await body.findByRole('dialog', { name: 'Project restored' })
+    await waitFor(() => expect(restored).toBeVisible())
+    await waitFor(() => expect(archived).not.toBeInTheDocument())
+  },
+}
+
+function PromiseExample({ outcome }: { outcome: 'success' | 'error' }) {
+  const [manager] = React.useState(createToastManager)
+  const toast = createToast(manager)
+  const [request, setRequest] = React.useState<{
+    resolve: (fileName: string) => void
+    reject: (error: Error) => void
+  } | null>(null)
+
+  const startExport = () => {
+    const promise = new Promise<string>((resolve, reject) => setRequest({ resolve, reject }))
+    void toast
+      .promise(promise, {
+        loading: 'Preparing export',
+        success: (fileName) => ({
+          title: 'Export complete',
+          description: `${fileName} is ready to download.`,
+        }),
+        error: 'Export failed',
+      })
+      .catch(() => undefined)
+      .finally(() => setRequest(null))
+  }
+
+  return (
+    <React.Fragment>
+      <Toaster toastManager={manager} timeout={0} />
+      <Button disabled={request !== null} onClick={startExport}>
+        Start export
+      </Button>
+      <Button
+        variant="secondary"
+        disabled={request === null}
+        onClick={() => {
+          if (outcome === 'success') request?.resolve('workflow.yml')
+          else request?.reject(new globalThis.Error('Storage unavailable'))
+        }}
+      >
+        {outcome === 'success' ? 'Complete export' : 'Fail export'}
+      </Button>
+    </React.Fragment>
+  )
+}
+
+export const PromiseSuccess: Story = {
+  parameters: {
+    controls: { disable: true },
+    docs: {
+      description: {
+        story:
+          'Start an export, then resolve the simulated request. `toast.promise` updates the same card from loading to success. The completion button makes each state available for inspection.',
+      },
+    },
+  },
+  render: () => <PromiseExample outcome="success" />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Start export' }))
+    const notification = await body.findByRole('dialog', { name: 'Preparing export' })
+    await expect(notification).toHaveAttribute('data-type', 'loading')
+    await userEvent.click(canvas.getByRole('button', { name: 'Complete export' }))
+    await expect(await body.findByRole('dialog', { name: 'Export complete' })).toBe(notification)
+    await waitFor(() =>
+      expect(within(notification).getByText('workflow.yml is ready to download.')).toBeVisible(),
+    )
+    await expect(canvas.getByRole('button', { name: 'Start export' })).toBeEnabled()
+  },
+}
+
+export const PromiseError: Story = {
+  parameters: {
+    controls: { disable: true },
+    docs: {
+      description: {
+        story:
+          'Reject the simulated request to inspect loading → error. The rejection is handled after the notification reports the failure.',
+      },
+    },
+  },
+  render: () => <PromiseExample outcome="error" />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Start export' }))
+    const notification = await body.findByRole('dialog', { name: 'Preparing export' })
+    await expect(notification).toHaveAttribute('data-type', 'loading')
+    await userEvent.click(canvas.getByRole('button', { name: 'Fail export' }))
+    await expect(await body.findByRole('dialog', { name: 'Export failed' })).toBe(notification)
+    await waitFor(() => expect(notification).toBeVisible())
+    await expect(notification).toHaveAttribute('data-type', 'error')
+    await expect(canvas.getByRole('button', { name: 'Start export' })).toBeEnabled()
+  },
+}
+
+function DeduplicatedExample() {
+  const [manager] = React.useState(createToastManager)
+  const toast = createToast(manager)
+  const savesRef = React.useRef(0)
+
+  return (
+    <React.Fragment>
+      <Toaster toastManager={manager} timeout={0} />
+      <Button
+        onClick={() => {
+          savesRef.current += 1
+          toast.success('Draft saved', {
+            id: 'draft-save',
+            description: `Saved ${savesRef.current} times in this session.`,
+          })
+        }}
+      >
+        Save draft
+      </Button>
+    </React.Fragment>
+  )
+}
+
+export const Deduplicated: Story = {
+  parameters: {
+    controls: { disable: true },
+    docs: {
+      description: {
+        story:
+          'Repeated calls with the same `id` update the mounted notification instead of adding another card. Dify uses Base UI’s upsert behavior without adding a pulse animation.',
+      },
+    },
+  },
+  render: () => <DeduplicatedExample />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const save = canvas.getByRole('button', { name: 'Save draft' })
+    await userEvent.click(save)
+    const notification = await body.findByRole('dialog', { name: 'Draft saved' })
+    await userEvent.click(save)
+    await waitFor(() =>
+      expect(within(notification).getByText('Saved 2 times in this session.')).toBeVisible(),
+    )
+    await expect(body.getAllByRole('dialog')).toEqual([notification])
+  },
+}
+
+function UpdateExample() {
+  const [manager] = React.useState(createToastManager)
+  const toast = createToast(manager)
+  const [id, setId] = React.useState<string | null>(null)
+
+  return (
+    <React.Fragment>
+      <Toaster toastManager={manager} timeout={0} />
+      <Button
+        disabled={id !== null}
+        onClick={() => {
+          setId(toast.info('Import queued', { onClose: () => setId(null) }))
+        }}
+      >
+        Queue import
+      </Button>
+      <Button
+        variant="secondary"
+        disabled={id === null}
+        onClick={() => {
+          if (id)
+            toast.update(id, {
+              type: 'success',
+              title: 'Import complete',
+              description: '128 records imported.',
+            })
+        }}
+      >
+        Complete import
+      </Button>
+      <Button
+        variant="secondary"
+        disabled={id === null}
+        onClick={() => {
+          if (id) toast.dismiss(id)
+        }}
+      >
+        Dismiss import
+      </Button>
+    </React.Fragment>
+  )
+}
+
+export const ProgrammaticUpdate: Story = {
+  parameters: {
+    controls: { disable: true },
+    docs: {
+      description: {
+        story:
+          'Keep the returned notification ID to update or dismiss it later, without a promise. The close callback resets the controls for another run.',
+      },
+    },
+  },
+  render: () => <UpdateExample />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Queue import' }))
+    const notification = await body.findByRole('dialog', { name: 'Import queued' })
+    await userEvent.click(canvas.getByRole('button', { name: 'Complete import' }))
+    await expect(await body.findByRole('dialog', { name: 'Import complete' })).toBe(notification)
+    await userEvent.click(canvas.getByRole('button', { name: 'Dismiss import' }))
+    await waitFor(() => expect(notification).not.toBeInTheDocument())
+    await expect(canvas.getByRole('button', { name: 'Queue import' })).toBeEnabled()
+  },
+}
 
 const longToastTitle =
   'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
 const longToastDescription =
   'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
 
-const buttonClassName =
-  'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
-const cardClassName =
-  'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
-
-function ExampleCard({
-  eyebrow,
-  title,
-  description,
-  children,
-}: {
-  eyebrow: string
-  title: string
-  description: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className={cardClassName}>
-      <div className="space-y-2">
-        <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">{eyebrow}</div>
-        <h3 className="text-base leading-6 font-semibold text-text-primary">{title}</h3>
-        <p className="text-sm leading-6 text-text-secondary">{description}</p>
-      </div>
-      <div className="mt-auto flex flex-wrap gap-3">{children}</div>
-    </section>
-  )
-}
-
-function VariantExamples() {
-  const createVariantToast = (type: 'success' | 'error' | 'warning' | 'info') => {
-    const copy = {
-      success: {
-        title: 'Changes saved',
-        description: 'Your draft is available to collaborators.',
-      },
-      error: {
-        title: 'Sync failed',
-        description: 'Check your network connection and try again.',
-      },
-      warning: {
-        title: 'Storage almost full',
-        description: 'You have less than 10% of workspace quota remaining.',
-      },
-      info: {
-        title: 'Invitation sent',
-        description: 'An email has been sent to the new teammate.',
-      },
-    } as const
-
-    toast[type](copy[type].title, {
-      description: copy[type].description,
-    })
-  }
-
-  return (
-    <ExampleCard
-      eyebrow="Variants"
-      title="Tone-specific notifications"
-      description="Trigger the four supported tones from the shared viewport to validate iconography, gradient treatment, and copy density."
-    >
-      <button
-        type="button"
-        className={buttonClassName}
-        onClick={() => createVariantToast('success')}
-      >
-        Success
-      </button>
-      <button type="button" className={buttonClassName} onClick={() => createVariantToast('info')}>
-        Info
-      </button>
-      <button
-        type="button"
-        className={buttonClassName}
-        onClick={() => createVariantToast('warning')}
-      >
-        Warning
-      </button>
-      <button type="button" className={buttonClassName} onClick={() => createVariantToast('error')}>
-        Error
-      </button>
-    </ExampleCard>
-  )
-}
-
-function StackExamples() {
-  const createStack = () => {
-    ;[
-      {
-        type: 'info' as const,
-        title: 'Generating preview',
-        description: 'The first toast compresses behind the newest notification.',
-      },
-      {
-        type: 'warning' as const,
-        title: 'Review required',
-        description: 'A second toast should deepen the stack without breaking spacing.',
-      },
-      {
-        type: 'success' as const,
-        title: 'Ready to publish',
-        description: 'The newest toast stays frontmost while older items tuck behind it.',
-      },
-    ].forEach((item) => {
-      toast[item.type](item.title, {
-        description: item.description,
-      })
-    })
-  }
-
-  const createBurst = () => {
-    Array.from({ length: 5 }).forEach((_, index) => {
-      toast[index % 2 === 0 ? 'info' : 'success'](`Background task ${index + 1}`, {
-        description: 'Use this to inspect how the stack behaves near the host limit.',
-      })
-    })
-  }
-
-  const createVaryingHeightStack = () => {
-    toast.error('Failed to publish the workflow', {
-      description:
-        'The workflow could not be published because several dependent resources are unavailable. Check the model provider credentials, reconnect the knowledge base, and try publishing again after every dependency is ready.',
-    })
-    toast.success('Short front toast', {
-      description: 'Short message.',
-    })
-  }
-
-  return (
-    <ExampleCard
-      eyebrow="Stack"
-      title="Stacked viewport behavior"
-      description="These examples mirror the Base UI docs pattern: repeated triggers should compress into a single shared stack at the top-right corner."
-    >
-      <button type="button" className={buttonClassName} onClick={createStack}>
-        Create 3 stacked toasts
-      </button>
-      <button type="button" className={buttonClassName} onClick={createBurst}>
-        Stress the stack
-      </button>
-      <button type="button" className={buttonClassName} onClick={createVaryingHeightStack}>
-        Varying heights
-      </button>
-    </ExampleCard>
-  )
-}
-
-function PromiseExamples() {
-  const [pendingExample, setPendingExample] = React.useState<'success' | 'error' | null>(null)
-
-  const exportDsl = async (outcome: 'success' | 'error') => {
-    if (pendingExample) return
-
-    setPendingExample(outcome)
-    const request = new Promise<string>((resolve, reject) => {
-      window.setTimeout(() => {
-        if (outcome === 'success') resolve('customer-support-agent.yml')
-        else reject(new Error('The DSL could not be generated.'))
-      }, 1400)
-    })
-
-    await toast
-      .promise(request, {
-        loading: {
-          title: 'Preparing DSL export',
-          description: 'Collecting the app configuration and generating a YAML file.',
-        },
-        success: (fileName) => ({
-          title: 'Download started',
-          description: `${fileName} was sent to your browser.`,
-          timeout: 3000,
-        }),
-        error: () => ({
-          title: 'Export failed',
-          description: 'The DSL could not be generated. Try again.',
-        }),
-      })
-      .catch(() => undefined)
-
-    setPendingExample(null)
-  }
-
-  return (
-    <ExampleCard
-      eyebrow="Promise"
-      title="Export lifecycle"
-      description="A single toast follows the export from preparation to browser handoff, while the trigger prevents duplicate requests."
-    >
-      <Button
-        variant="secondary"
-        loading={pendingExample === 'success'}
-        disabled={pendingExample === 'error'}
-        onClick={() => exportDsl('success')}
-      >
-        Export DSL
-      </Button>
-      <Button
-        variant="secondary"
-        loading={pendingExample === 'error'}
-        disabled={pendingExample === 'success'}
-        onClick={() => exportDsl('error')}
-      >
-        Simulate failure
-      </Button>
-    </ExampleCard>
-  )
-}
-
-function ActionExamples() {
-  const createActionToast = () => {
-    let archivedToastId = ''
-    archivedToastId = toast.warning('Project archived', {
-      description: 'You can restore it from workspace settings for the next 30 days.',
-      timeout: 10000,
-      actionProps: {
-        children: 'Undo',
-        onClick: () => {
-          toast.dismiss(archivedToastId)
-          toast.success('Project restored', {
-            description: 'The workspace is active again.',
-          })
-        },
-      },
-    })
-  }
-
-  const createLongCopyToast = () => {
-    toast.error(longToastTitle, {
-      description: longToastDescription,
-      actionProps: {
-        children: 'View details',
-        onClick: () => {
-          toast.info('Job details opened')
-        },
-      },
-    })
-  }
-
-  return (
-    <ExampleCard
-      eyebrow="Action"
-      title="Actionable toasts"
-      description="Use these to verify the secondary action button, multi-line content, and the close affordance under tighter layouts."
-    >
-      <button type="button" className={buttonClassName} onClick={createActionToast}>
-        Undo action
-      </button>
-      <button type="button" className={buttonClassName} onClick={createLongCopyToast}>
-        Long content
-      </button>
-    </ExampleCard>
-  )
-}
-
-function DeduplicateExamples() {
-  const saveCountRef = React.useRef(0)
-
-  const saveDraft = () => {
-    saveCountRef.current += 1
-    toast.success('Draft saved', {
-      id: 'draft-save-status',
-      description:
-        saveCountRef.current === 1
-          ? 'Click again while this toast is visible to update the same mounted toast.'
-          : `Same toast updated ${saveCountRef.current} times.`,
-    })
-  }
-
-  return (
-    <ExampleCard
-      eyebrow="Deduplicated"
-      title="Same-id upsert"
-      description="Matches the Base UI deduplicated toast example: repeated triggers use a stable id, so the visible toast is updated instead of adding another stack item."
-    >
-      <button type="button" className={buttonClassName} onClick={saveDraft}>
-        Save draft
-      </button>
-    </ExampleCard>
-  )
-}
-
-function UpdateExamples() {
-  const createUpdatableToast = () => {
-    const toastId = toast.info('Import started', {
-      description: 'Preparing assets and metadata for processing.',
-      timeout: 0,
-    })
-
-    window.setTimeout(() => {
-      toast.update(toastId, {
-        type: 'success',
-        title: 'Import finished',
-        description: '128 records were imported successfully.',
-        timeout: 5000,
-      })
-    }, 1400)
-  }
-
-  const clearAll = () => {
-    toast.dismiss()
-  }
-
-  return (
-    <ExampleCard
-      eyebrow="Update"
-      title="Programmatic lifecycle"
-      description="This example exercises manual updates on an existing toast and keeps a clear-all control nearby for repeated interaction during review."
-    >
-      <button type="button" className={buttonClassName} onClick={createUpdatableToast}>
-        Add then update
-      </button>
-      <button type="button" className={buttonClassName} onClick={clearAll}>
-        Clear all
-      </button>
-    </ExampleCard>
-  )
-}
-
-function ToastDocsDemo() {
-  return (
-    <React.Fragment>
-      <Toaster toastManager={manager} />
-      <div className="min-h-screen bg-background-default-subtle px-6 py-12">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-          <div className="space-y-3">
-            <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">
-              Base UI toast docs
-            </div>
-            <h2 className="text-[24px] leading-8 font-semibold text-text-primary">
-              Shared stacked toast examples
-            </h2>
-            <p className="max-w-3xl text-sm leading-6 text-text-secondary">
-              Each example card below triggers the same shared toast viewport in the top-right
-              corner, so you can review stacking, state transitions, actions, and tone variants the
-              same way the official Base UI documentation demonstrates toast behavior.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <VariantExamples />
-            <StackExamples />
-            <PromiseExamples />
-            <ActionExamples />
-            <DeduplicateExamples />
-            <UpdateExamples />
-          </div>
-        </div>
-      </div>
-    </React.Fragment>
-  )
-}
-
-const meta = {
-  title: 'Base/UI/Toast',
-  component: ToastDocsDemo,
+export const LongContent: Story = {
+  args: { type: 'error', title: longToastTitle, description: longToastDescription },
   parameters: {
-    layout: 'fullscreen',
     docs: {
       description: {
-        component:
-          'Dify toast host built on Base UI Toast. The story is organized as multiple example panels that all feed the same shared toast viewport, matching the way the Base UI documentation showcases toast behavior.',
+        story:
+          'Long diagnostic text wraps within the card. Resize the preview to inspect the title, description, and close button at narrow widths.',
       },
     },
   },
-  tags: ['autodocs'],
-} satisfies Meta<typeof ToastDocsDemo>
-
-export default meta
-type Story = StoryObj<typeof meta>
-
-export const DocsPattern: Story = {
-  render: () => <ToastDocsDemo />,
   play: async ({ canvas, canvasElement, userEvent }) => {
     const body = within(canvasElement.ownerDocument.body)
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Long content' }))
-
-    const title = await body.findByText(longToastTitle)
-    const description = await body.findByText(longToastDescription)
-    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
-    expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth)
+    await userEvent.click(canvas.getByRole('button', { name: 'Show notification' }))
+    const notification = await body.findByRole('dialog', { name: longToastTitle })
+    await waitFor(() => expect(notification).toBeVisible())
+    const title = within(notification).getByText(longToastTitle)
+    const description = within(notification).getByText(longToastDescription)
+    await expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
+    await expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth)
   },
 }

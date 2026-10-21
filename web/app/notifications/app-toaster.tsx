@@ -5,7 +5,7 @@ import { ToastCard, Toaster, useToasts } from '@langgenius/dify-ui/toast'
 import { manager } from '.'
 import { CopyErrorAction } from './copy-error-action'
 
-export type AppToastHostProps = {
+export type AppToasterProps = {
   manager?: ToastManager
   timeout?: number
   limit?: number
@@ -27,12 +27,12 @@ function Notifications() {
   })
 }
 
-export function AppToastHost({
+export function AppToaster({
   manager: toastManager = manager,
   timeout = 5000,
   limit = 3,
   offset,
-}: AppToastHostProps) {
+}: AppToasterProps) {
   return (
     <Toaster toastManager={toastManager} timeout={timeout} limit={limit} offset={offset}>
       <Notifications />

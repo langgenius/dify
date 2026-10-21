@@ -9,7 +9,7 @@ import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import DatasetsDetailProvider from '@/app/components/workflow/datasets-detail-store/provider'
 import { useStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
@@ -126,7 +126,7 @@ function setup(
           <DatasetsDetailProvider nodes={nodes}>
             <OpenPanels />
             <WorkflowPanel />
-            <AppToastHost timeout={0} />
+            <AppToaster timeout={0} />
           </DatasetsDetailProvider>
         </EventEmitterContextProvider>
       </FeaturesProvider>

@@ -2,7 +2,7 @@ import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
@@ -46,7 +46,7 @@ const setup = ({
   renderWithConsoleQuery(
     <DataSourceContext value={store}>
       <LocalFile allowedExtensions={allowedExtensions} supportBatchUpload={supportBatchUpload} />
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
     </DataSourceContext>,
     { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
   )
