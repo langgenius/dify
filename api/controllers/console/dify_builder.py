@@ -32,7 +32,7 @@ import dataclasses
 import functools
 import logging
 from collections.abc import Callable, Iterator
-from typing import cast
+from typing import Literal, cast
 
 from flask import Flask, Response, current_app, request
 from flask_restx import Resource
@@ -727,7 +727,14 @@ class DifyBuilderAgentPingApi(Resource):
         return _ping(request.get_json(silent=True), _actor(current_user, current_tenant_id))
 
 
-def _native_command(*, actor: Actor, session_id: str, command: str, payload_model=None, request_id=None):
+def _native_command(
+    *,
+    actor: Actor,
+    session_id: str,
+    command: Literal["start", "get", "decide", "resume", "cancel"],
+    payload_model=None,
+    request_id=None,
+):
     """Transport-only strict parsing; never include raw validation/owner errors."""
     kwargs = {"actor": actor, "session_id": session_id}
     if request_id is not None:
@@ -739,7 +746,15 @@ def _native_command(*, actor: Actor, session_id: str, command: str, payload_mode
             raise BadRequest("Invalid native test request.") from None
         kwargs.update(payload.model_dump(exclude={"schema_version"}))
     try:
-        receipt = getattr(build_native_test_api_service(actor=actor), command)(**kwargs)
+        service = build_native_test_api_service(actor=actor)
+        commands: dict[str, Callable[..., object]] = {
+            "start": service.start,
+            "get": service.get,
+            "decide": service.decide,
+            "resume": service.resume,
+            "cancel": service.cancel,
+        }
+        receipt = commands[command](**kwargs)
     except (BuilderExecutionPolicyError, NativeContextUnavailable) as error:
         if error.reason_code in {"native_owner_mismatch", "execution_owner_mismatch"}:
             raise NotFound("Native test not found.") from None
