@@ -53,7 +53,7 @@ const CustomPage = () => {
       )}
       <CustomWebAppBrand />
       {showContact && (
-        <div className="absolute bottom-0 h-12.5 text-xs leading-12.5 text-text-quaternary">
+        <div className="mt-6 pb-4 text-xs leading-5 wrap-anywhere text-text-quaternary">
           {t(($) => $['customize.prefix'], { ns: 'custom' })}
           <a
             className="text-text-accent"
