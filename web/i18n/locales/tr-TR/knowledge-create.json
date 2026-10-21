@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Ekle ve işle",
+  "addAndProcess": "İşlemeyi başlat",
   "crawlPreview": "Tarama önizlemesi",
+  "createAndProcess": "Oluştur ve belgeleri işle",
   "createFailed": "Bu Agent bilgi tabanını oluşturamadık. Erişiminizi kontrol edip tekrar deneyin.",
   "createTitle": "Agent bilgi tabanı oluştur",
   "description": "Açıklama",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Eklendi",
   "uploadDocuments": "Belgeleri yükleyin",
   "uploadDropZoneTitle": "Dosyaları sürükleyip bırakın veya göz atın",
+  "uploadFilesDescription": "Bilgisayarınızdan dosya ekleyin. Belgeler, bilgi tabanı oluşturulduktan sonra işlenir.",
   "uploadingFiles": "Yükleniyor…"
 }

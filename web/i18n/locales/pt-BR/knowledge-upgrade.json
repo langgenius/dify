@@ -13,9 +13,11 @@
   "upgrade.justNow": "Agora mesmo",
   "upgrade.menuLabel": "Atualizar para uma base de conhecimento Agent",
   "upgrade.migratingDocuments": "Migrando documentos…",
+  "upgrade.modelCostDescription": "A atualização usa modelos para processar os documentos desta base de conhecimento e consome tokens. Quanto mais conteúdo os documentos tiverem, geralmente maior o consumo, o que pode gerar custos elevados. O custo real depende da forma de cobrança do modelo utilizado.",
   "upgrade.start": "Iniciar atualização",
   "upgrade.startFailed": "Não foi possível iniciar a atualização. Tente novamente.",
   "upgrade.statusFailed": "Falha na atualização",
   "upgrade.statusUpgrading": "Atualizando",
+  "upgrade.summary": "Base de conhecimento: {{name}}",
   "upgrade.upgradedJustNow": "Atualizada agora mesmo"
 }

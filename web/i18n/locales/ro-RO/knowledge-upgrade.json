@@ -13,9 +13,11 @@
   "upgrade.justNow": "Chiar acum",
   "upgrade.menuLabel": "Actualizează la o bază de cunoștințe Agent",
   "upgrade.migratingDocuments": "Se migrează documentele…",
+  "upgrade.modelCostDescription": "Actualizarea folosește modele pentru a procesa documentele din această bază de cunoștințe și consumă tokenuri. Cu cât documentele au mai mult conținut, cu atât consumul este de obicei mai mare și pot apărea costuri ridicate. Costul real depinde de modul de facturare al modelului folosit.",
   "upgrade.start": "Începe actualizarea",
   "upgrade.startFailed": "Actualizarea nu a putut fi începută. Încearcă din nou.",
   "upgrade.statusFailed": "Actualizarea a eșuat",
   "upgrade.statusUpgrading": "Se actualizează",
+  "upgrade.summary": "Bază de cunoștințe: {{name}}",
   "upgrade.upgradedJustNow": "Actualizată chiar acum"
 }

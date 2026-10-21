@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Thêm và xử lý",
+  "addAndProcess": "Bắt đầu xử lý",
   "crawlPreview": "Xem trước thu thập",
+  "createAndProcess": "Tạo và xử lý tài liệu",
   "createFailed": "Chúng tôi không thể tạo ra cơ sở tri thức Agent này. Hãy kiểm tra quyền truy cập của bạn và thử lại.",
   "createTitle": "Tạo cơ sở tri thức Agent",
   "description": "Mô tả",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Đã thêm",
   "uploadDocuments": "Tải tài liệu lên",
   "uploadDropZoneTitle": "Kéo và thả tệp hoặc duyệt",
+  "uploadFilesDescription": "Thêm tệp từ máy tính. Tài liệu sẽ được xử lý sau khi tạo cơ sở kiến thức.",
   "uploadingFiles": "Đang tải lên…"
 }

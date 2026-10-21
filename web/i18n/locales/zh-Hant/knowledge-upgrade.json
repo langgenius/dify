@@ -13,9 +13,11 @@
   "upgrade.justNow": "剛剛",
   "upgrade.menuLabel": "升級為 Agent 知識庫",
   "upgrade.migratingDocuments": "正在移轉文件…",
+  "upgrade.modelCostDescription": "升級會呼叫模型處理知識庫中的文件並消耗 token。文件內容越多，通常消耗越高，並可能產生較高費用。實際費用取決於所用模型的計費方式。",
   "upgrade.start": "開始升級",
   "upgrade.startFailed": "無法開始升級，請重試。",
   "upgrade.statusFailed": "升級失敗",
   "upgrade.statusUpgrading": "正在升級",
+  "upgrade.summary": "知識庫：{{name}}",
   "upgrade.upgradedJustNow": "剛剛升級"
 }

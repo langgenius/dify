@@ -13,9 +13,11 @@
   "upgrade.justNow": "방금",
   "upgrade.menuLabel": "Agent 지식 베이스로 업그레이드",
   "upgrade.migratingDocuments": "문서 마이그레이션 중…",
+  "upgrade.modelCostDescription": "업그레이드 시 모델이 지식 베이스의 문서를 처리하며 토큰을 소비합니다. 문서 내용이 많을수록 일반적으로 사용량이 늘어나며 높은 비용이 발생할 수 있습니다. 실제 비용은 사용하는 모델의 과금 방식에 따라 달라집니다.",
   "upgrade.start": "업그레이드 시작",
   "upgrade.startFailed": "업그레이드를 시작할 수 없습니다. 다시 시도하세요.",
   "upgrade.statusFailed": "업그레이드 실패",
   "upgrade.statusUpgrading": "업그레이드 중",
+  "upgrade.summary": "지식 베이스: {{name}}",
   "upgrade.upgradedJustNow": "방금 업그레이드됨"
 }

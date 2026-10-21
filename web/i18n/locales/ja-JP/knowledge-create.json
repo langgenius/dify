@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "追加して処理",
+  "addAndProcess": "処理を開始",
   "crawlPreview": "クロールのプレビュー",
+  "createAndProcess": "作成してドキュメントを処理",
   "createFailed": "この Agent ナレッジベースを作成できませんでした。アクセスを確認して再試行してください。",
   "createTitle": "Agent ナレッジベースを作成",
   "description": "説明",
@@ -17,5 +18,6 @@
   "uploadCompleted": "追加済み",
   "uploadDocuments": "ドキュメントのアップロード",
   "uploadDropZoneTitle": "ファイルをドラッグ＆ドロップするか、参照",
+  "uploadFilesDescription": "コンピューターからファイルを追加します。ナレッジベースの作成後にドキュメントの処理を開始します。",
   "uploadingFiles": "アップロード中…"
 }

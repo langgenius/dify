@@ -13,9 +13,11 @@
   "upgrade.justNow": "Przed chwilą",
   "upgrade.menuLabel": "Zaktualizuj do bazy wiedzy Agent",
   "upgrade.migratingDocuments": "Migracja dokumentów…",
+  "upgrade.modelCostDescription": "Uaktualnienie używa modeli do przetworzenia dokumentów tej bazy wiedzy i zużywa tokeny. Im więcej treści w dokumentach, tym zwykle większe zużycie i potencjalnie wysokie koszty. Rzeczywisty koszt zależy od sposobu rozliczania używanego modelu.",
   "upgrade.start": "Rozpocznij aktualizację",
   "upgrade.startFailed": "Nie udało się rozpocząć aktualizacji. Spróbuj ponownie.",
   "upgrade.statusFailed": "Aktualizacja nie powiodła się",
   "upgrade.statusUpgrading": "Aktualizowanie",
+  "upgrade.summary": "Baza wiedzy: {{name}}",
   "upgrade.upgradedJustNow": "Zaktualizowano przed chwilą"
 }

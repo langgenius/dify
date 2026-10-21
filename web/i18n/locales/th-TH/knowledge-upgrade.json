@@ -13,9 +13,11 @@
   "upgrade.justNow": "เมื่อสักครู่",
   "upgrade.menuLabel": "อัปเกรดเป็นฐานความรู้ Agent",
   "upgrade.migratingDocuments": "กำลังย้ายเอกสาร…",
+  "upgrade.modelCostDescription": "การอัปเกรดจะใช้โมเดลประมวลผลเอกสารในฐานความรู้นี้และใช้โทเค็น ยิ่งเอกสารมีเนื้อหามาก โดยทั่วไปยิ่งใช้มากขึ้นและอาจมีค่าใช้จ่ายสูง ค่าใช้จ่ายจริงขึ้นอยู่กับวิธีคิดค่าบริการของโมเดลที่ใช้",
   "upgrade.start": "เริ่มอัปเกรด",
   "upgrade.startFailed": "เริ่มอัปเกรดไม่ได้ โปรดลองอีกครั้ง",
   "upgrade.statusFailed": "อัปเกรดไม่สำเร็จ",
   "upgrade.statusUpgrading": "กำลังอัปเกรด",
+  "upgrade.summary": "ฐานความรู้: {{name}}",
   "upgrade.upgradedJustNow": "อัปเกรดเมื่อสักครู่"
 }

@@ -13,9 +13,11 @@
   "upgrade.justNow": "همین حالا",
   "upgrade.menuLabel": "ارتقا به پایگاه دانش Agent",
   "upgrade.migratingDocuments": "در حال انتقال اسناد…",
+  "upgrade.modelCostDescription": "ارتقا از مدل‌ها برای پردازش اسناد این پایگاه دانش استفاده کرده و توکن مصرف می‌کند. هرچه محتوای اسناد بیشتر باشد، معمولاً مصرف بیشتر است و ممکن است هزینه بالایی ایجاد شود. هزینه واقعی به روش صورت‌حساب مدل مورد استفاده بستگی دارد.",
   "upgrade.start": "شروع ارتقا",
   "upgrade.startFailed": "ارتقا شروع نشد. دوباره تلاش کنید.",
   "upgrade.statusFailed": "ارتقا ناموفق بود",
   "upgrade.statusUpgrading": "در حال ارتقا",
+  "upgrade.summary": "پایگاه دانش: {{name}}",
   "upgrade.upgradedJustNow": "همین حالا ارتقا یافت"
 }

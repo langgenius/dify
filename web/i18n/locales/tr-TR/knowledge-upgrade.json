@@ -13,9 +13,11 @@
   "upgrade.justNow": "Az önce",
   "upgrade.menuLabel": "Agent bilgi tabanına yükselt",
   "upgrade.migratingDocuments": "Belgeler taşınıyor…",
+  "upgrade.modelCostDescription": "Yükseltme, bu bilgi tabanındaki belgeleri işlemek için modelleri kullanır ve token tüketir. Belge içeriği arttıkça tüketim genellikle artar ve yüksek maliyetler oluşabilir. Gerçek maliyet, kullanılan modelin faturalandırma yöntemine bağlıdır.",
   "upgrade.start": "Yükseltmeyi başlat",
   "upgrade.startFailed": "Yükseltme başlatılamadı. Tekrar deneyin.",
   "upgrade.statusFailed": "Yükseltme başarısız",
   "upgrade.statusUpgrading": "Yükseltiliyor",
+  "upgrade.summary": "Bilgi tabanı: {{name}}",
   "upgrade.upgradedJustNow": "Az önce yükseltildi"
 }

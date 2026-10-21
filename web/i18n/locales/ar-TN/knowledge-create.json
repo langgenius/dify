@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "إضافة ومعالجة",
+  "addAndProcess": "بدء المعالجة",
   "crawlPreview": "معاينة الزحف",
+  "createAndProcess": "إنشاء ومعالجة المستندات",
   "createFailed": "لم نتمكن من إنشاء قاعدة معرفة Agent هذه. تحقق من وصولك وحاول مرة أخرى.",
   "createTitle": "إنشاء قاعدة معرفة Agent",
   "description": "الوصف",
@@ -17,5 +18,6 @@
   "uploadCompleted": "تمت الإضافة",
   "uploadDocuments": "تحميل المستندات",
   "uploadDropZoneTitle": "اسحب الملفات وأفلتها، أو تصفّح",
+  "uploadFilesDescription": "أضف ملفات من جهاز الكمبيوتر. تتم معالجة المستندات بعد إنشاء قاعدة المعرفة.",
   "uploadingFiles": "جارٍ الرفع…"
 }

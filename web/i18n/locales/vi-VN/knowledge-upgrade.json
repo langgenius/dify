@@ -13,9 +13,11 @@
   "upgrade.justNow": "Vừa xong",
   "upgrade.menuLabel": "Nâng cấp lên cơ sở tri thức Agent",
   "upgrade.migratingDocuments": "Đang di chuyển tài liệu…",
+  "upgrade.modelCostDescription": "Nâng cấp sẽ dùng mô hình để xử lý các tài liệu trong cơ sở kiến thức này và tiêu thụ token. Tài liệu càng nhiều nội dung thì mức tiêu thụ thường càng cao và có thể phát sinh chi phí lớn. Chi phí thực tế phụ thuộc vào cách tính phí của mô hình được sử dụng.",
   "upgrade.start": "Bắt đầu nâng cấp",
   "upgrade.startFailed": "Không thể bắt đầu nâng cấp. Hãy thử lại.",
   "upgrade.statusFailed": "Nâng cấp thất bại",
   "upgrade.statusUpgrading": "Đang nâng cấp",
+  "upgrade.summary": "Cơ sở kiến thức: {{name}}",
   "upgrade.upgradedJustNow": "Vừa nâng cấp"
 }

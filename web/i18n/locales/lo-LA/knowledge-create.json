@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "ເພີ່ມ ແລະ ປະມວນຜົນ",
+  "addAndProcess": "ເລີ່ມປະມວນຜົນ",
   "crawlPreview": "ຕົວຢ່າງການລວບລວມຂໍ້ມູນ",
+  "createAndProcess": "ສ້າງ ແລະ ປະມວນຜົນເອກະສານ",
   "createFailed": "ພວກເຮົາບໍ່ສາມາດສ້າງຖານຄວາມຮູ້ Agent ນີ້ໄດ້. ກະລຸນາກວດສອບສິດການເຂົ້າເຖິງແລ້ວລອງໃໝ່ອີກຄັ້ງ.",
   "createTitle": "ສ້າງຖານຄວາມຮູ້ Agent",
   "description": "ຄຳອະທິບາຍ",
@@ -17,5 +18,6 @@
   "uploadCompleted": "ເພີ່ມແລ້ວ",
   "uploadDocuments": "ອັບໂຫລດເອກະສານ",
   "uploadDropZoneTitle": "ລາກແລະວາງໄຟລ໌ ຫຼື ເລືອກໄຟລ໌",
+  "uploadFilesDescription": "ເພີ່ມໄຟລ໌ຈາກຄອມພິວເຕີຂອງທ່ານ. ເອກະສານຈະຖືກປະມວນຜົນຫຼັງຈາກສ້າງຖານຄວາມຮູ້.",
   "uploadingFiles": "ກຳລັງອັບໂຫລດ..."
 }

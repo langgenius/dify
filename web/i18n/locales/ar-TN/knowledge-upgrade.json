@@ -13,9 +13,11 @@
   "upgrade.justNow": "الآن",
   "upgrade.menuLabel": "الترقية إلى قاعدة معرفة Agent",
   "upgrade.migratingDocuments": "جارٍ نقل المستندات…",
+  "upgrade.modelCostDescription": "تستخدم الترقية النماذج لمعالجة مستندات قاعدة المعرفة هذه وتستهلك الرموز (tokens). كلما زاد محتوى المستندات زاد الاستهلاك عادةً وقد تنشأ تكاليف مرتفعة. تعتمد التكلفة الفعلية على طريقة احتساب رسوم النموذج المستخدم.",
   "upgrade.start": "بدء الترقية",
   "upgrade.startFailed": "تعذر بدء الترقية. حاول مرة أخرى.",
   "upgrade.statusFailed": "فشلت الترقية",
   "upgrade.statusUpgrading": "الترقية جارية",
+  "upgrade.summary": "قاعدة المعرفة: {{name}}",
   "upgrade.upgradedJustNow": "تمت الترقية الآن"
 }

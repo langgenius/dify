@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Add & process",
+  "addAndProcess": "Emala başla",
   "crawlPreview": "Skan önbaxışı",
+  "createAndProcess": "Yarat və sənədləri emal et",
   "createFailed": "Bu bilik bazasını yarada bilmədik. Giriş icazənizi yoxlayın və yenidən cəhd edin.",
   "createTitle": "Bilik bazası yarat",
   "description": "Təsvir",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Əlavə edildi",
   "uploadDocuments": "Sənədləri yüklə",
   "uploadDropZoneTitle": "Drag and drop files, or browse",
+  "uploadFilesDescription": "Kompüterinizdən fayl əlavə edin. Sənədlər bilik bazası yaradıldıqdan sonra emal olunur.",
   "uploadingFiles": "Yüklənir…"
 }

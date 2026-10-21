@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Adaugă și procesează",
+  "addAndProcess": "Pornește procesarea",
   "crawlPreview": "Previzualizarea explorării",
+  "createAndProcess": "Creează și procesează documentele",
   "createFailed": "Nu am putut crea această bază de cunoștințe Agent. Verificați accesul și încercați din nou.",
   "createTitle": "Creează o bază de cunoștințe Agent",
   "description": "Descriere",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Adăugat",
   "uploadDocuments": "Încărcați documente",
   "uploadDropZoneTitle": "Trage și plasează fișiere sau răsfoiește",
+  "uploadFilesDescription": "Adaugă fișiere de pe computer. Documentele sunt procesate după crearea bazei de cunoștințe.",
   "uploadingFiles": "Se încarcă…"
 }

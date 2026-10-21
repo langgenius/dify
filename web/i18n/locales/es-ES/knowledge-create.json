@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Agregar y procesar",
+  "addAndProcess": "Iniciar procesamiento",
   "crawlPreview": "Vista previa del rastreo",
+  "createAndProcess": "Crear y procesar documentos",
   "createFailed": "No pudimos crear esta base de conocimientos Agent. Comprueba tu acceso y vuelve a intentarlo.",
   "createTitle": "Crear base de conocimientos Agent",
   "description": "Descripción",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Añadido",
   "uploadDocuments": "Subir documentos",
   "uploadDropZoneTitle": "Arrastra y suelta archivos o selecciónalos en tu equipo",
+  "uploadFilesDescription": "Añade archivos desde tu equipo. Los documentos se procesan después de crear la base de conocimiento.",
   "uploadingFiles": "Subiendo…"
 }

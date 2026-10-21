@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "添加并处理",
+  "addAndProcess": "开始处理",
   "crawlPreview": "抓取预览",
+  "createAndProcess": "创建并处理文档",
   "createFailed": "无法创建此 Agent 知识库，请检查权限后重试。",
   "createTitle": "创建 Agent 知识库",
   "description": "描述",
@@ -17,5 +18,6 @@
   "uploadCompleted": "已添加",
   "uploadDocuments": "上传文档",
   "uploadDropZoneTitle": "拖放文件，或点击选择文件",
+  "uploadFilesDescription": "从电脑添加文件，创建知识库后开始处理文档。",
   "uploadingFiles": "正在上传…"
 }

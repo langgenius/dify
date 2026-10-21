@@ -13,9 +13,11 @@
   "upgrade.justNow": "刚刚",
   "upgrade.menuLabel": "升级为 Agent 知识库",
   "upgrade.migratingDocuments": "正在迁移文档…",
+  "upgrade.modelCostDescription": "升级会调用模型处理知识库中的文档并消耗 token。文档内容越多，通常消耗越高，并可能产生较高费用。实际费用取决于所用模型的计费方式。",
   "upgrade.start": "开始升级",
   "upgrade.startFailed": "无法开始升级，请重试。",
   "upgrade.statusFailed": "升级失败",
   "upgrade.statusUpgrading": "正在升级",
+  "upgrade.summary": "知识库：{{name}}",
   "upgrade.upgradedJustNow": "刚刚升级"
 }

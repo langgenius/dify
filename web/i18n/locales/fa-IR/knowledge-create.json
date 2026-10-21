@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "افزودن و پردازش",
+  "addAndProcess": "شروع پردازش",
   "crawlPreview": "پیش‌نمایش خزش",
+  "createAndProcess": "ایجاد و پردازش اسناد",
   "createFailed": "ما نتوانستیم این پایگاه دانش Agent را ایجاد کنیم. دسترسی خود را بررسی کنید و دوباره امتحان کنید.",
   "createTitle": "ایجاد پایگاه دانش Agent",
   "description": "توضیحات",
@@ -17,5 +18,6 @@
   "uploadCompleted": "اضافه شد",
   "uploadDocuments": "اسناد را بارگذاری کنید",
   "uploadDropZoneTitle": "فایل‌ها را بکشید و رها کنید یا انتخاب کنید",
+  "uploadFilesDescription": "فایل‌ها را از رایانه خود اضافه کنید. اسناد پس از ایجاد پایگاه دانش پردازش می‌شوند.",
   "uploadingFiles": "در حال بارگذاری…"
 }

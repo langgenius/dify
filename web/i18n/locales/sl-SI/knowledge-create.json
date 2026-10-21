@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Dodaj in obdelaj",
+  "addAndProcess": "Začni obdelavo",
   "crawlPreview": "Predogled iskanja",
+  "createAndProcess": "Ustvari in obdelaj dokumente",
   "createFailed": "Te zbirke znanja Agent nismo mogli ustvariti. Preverite dostop in poskusite znova.",
   "createTitle": "Ustvari zbirko znanja Agent",
   "description": "Opis",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Dodano",
   "uploadDocuments": "Nalaganje dokumentov",
   "uploadDropZoneTitle": "Povlecite in spustite datoteke ali prebrskajte",
+  "uploadFilesDescription": "Dodajte datoteke iz računalnika. Dokumenti se obdelajo po ustvarjanju baze znanja.",
   "uploadingFiles": "Nalaganje…"
 }

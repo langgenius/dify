@@ -13,9 +13,11 @@
   "upgrade.justNow": "Pravkar",
   "upgrade.menuLabel": "Nadgradi v zbirko znanja Agent",
   "upgrade.migratingDocuments": "Selitev dokumentov…",
+  "upgrade.modelCostDescription": "Nadgradnja uporablja modele za obdelavo dokumentov v tej bazi znanja in porablja žetone. Več vsebine v dokumentih običajno pomeni večjo porabo in lahko povzroči visoke stroške. Dejanski stroški so odvisni od načina obračunavanja uporabljenega modela.",
   "upgrade.start": "Začni nadgradnjo",
   "upgrade.startFailed": "Nadgradnje ni bilo mogoče začeti. Poskusite znova.",
   "upgrade.statusFailed": "Nadgradnja ni uspela",
   "upgrade.statusUpgrading": "Nadgrajevanje",
+  "upgrade.summary": "Baza znanja: {{name}}",
   "upgrade.upgradedJustNow": "Pravkar nadgrajeno"
 }

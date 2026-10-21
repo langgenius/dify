@@ -13,9 +13,11 @@
   "upgrade.justNow": "ຫາກໍ",
   "upgrade.menuLabel": "ອັບເກຣດເປັນຖານຄວາມຮູ້ Agent",
   "upgrade.migratingDocuments": "ກຳລັງຍ້າຍເອກະສານ…",
+  "upgrade.modelCostDescription": "ການອັບເກຣດຈະໃຊ້ໂມເດວປະມວນຜົນເອກະສານໃນຖານຄວາມຮູ້ນີ້ ແລະ ໃຊ້ໂທເຄັນ. ເອກະສານຍິ່ງມີເນື້ອຫາຫຼາຍ ໂດຍທົ່ວໄປຍິ່ງໃຊ້ຫຼາຍຂຶ້ນ ແລະ ອາດມີຄ່າໃຊ້ຈ່າຍສູງ. ຄ່າໃຊ້ຈ່າຍຕົວຈິງຂຶ້ນກັບວິທີຄິດໄລ່ຄ່າບໍລິການຂອງໂມເດວທີ່ໃຊ້.",
   "upgrade.start": "ເລີ່ມອັບເກຣດ",
   "upgrade.startFailed": "ເລີ່ມອັບເກຣດບໍ່ໄດ້. ລອງອີກຄັ້ງ.",
   "upgrade.statusFailed": "ອັບເກຣດບໍ່ສຳເລັດ",
   "upgrade.statusUpgrading": "ກຳລັງອັບເກຣດ",
+  "upgrade.summary": "ຖານຄວາມຮູ້: {{name}}",
   "upgrade.upgradedJustNow": "ຫາກໍອັບເກຣດ"
 }

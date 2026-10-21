@@ -2516,6 +2516,15 @@ describe('DocumentsPage', () => {
     )
     await waitForDocumentFilesStaged()
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('region', { name: 'knowledgeSpace.modelCost.title' }),
+    ).toHaveTextContent('knowledgeSpace.modelCost.uploadDescription')
+    expect(screen.getByText(/knowledgeSpace\.modelCost\.uploadSummary/)).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }),
+    ).toHaveAccessibleDescription(
+      expect.stringContaining('knowledgeSpace.modelCost.uploadDescription'),
+    )
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
       body: { upload_id: 'staged-one.md' },

@@ -13,9 +13,11 @@
   "upgrade.justNow": "Gerade eben",
   "upgrade.menuLabel": "Upgrade auf Agent-Wissensdatenbank",
   "upgrade.migratingDocuments": "Dokumente werden migriert…",
+  "upgrade.modelCostDescription": "Beim Upgrade verarbeiten Modelle die Dokumente dieser Wissensdatenbank und verbrauchen Tokens. Mehr Dokumentinhalt bedeutet in der Regel einen höheren Verbrauch und kann erhebliche Kosten verursachen. Die tatsächlichen Kosten hängen vom Abrechnungsmodell des verwendeten Modells ab.",
   "upgrade.start": "Upgrade starten",
   "upgrade.startFailed": "Das Upgrade konnte nicht gestartet werden. Versuchen Sie es erneut.",
   "upgrade.statusFailed": "Upgrade fehlgeschlagen",
   "upgrade.statusUpgrading": "Upgrade läuft",
+  "upgrade.summary": "Wissensdatenbank: {{name}}",
   "upgrade.upgradedJustNow": "Upgrade gerade abgeschlossen"
 }

@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "जोड़ें और प्रोसेस करें",
+  "addAndProcess": "प्रोसेसिंग शुरू करें",
   "crawlPreview": "क्रॉल पूर्वावलोकन",
+  "createAndProcess": "बनाएँ और दस्तावेज़ प्रोसेस करें",
   "createFailed": "हम यह Agent ज्ञान आधार नहीं बना सके। अपनी पहुंच जांचें और पुनः प्रयास करें।",
   "createTitle": "Agent ज्ञान आधार बनाएँ",
   "description": "विवरण",
@@ -17,5 +18,6 @@
   "uploadCompleted": "जोड़ा गया",
   "uploadDocuments": "दस्तावेज़ अपलोड करें",
   "uploadDropZoneTitle": "फ़ाइलें खींचकर छोड़ें या ब्राउज़ करें",
+  "uploadFilesDescription": "अपने कंप्यूटर से फ़ाइलें जोड़ें। नॉलेज बेस बनने के बाद दस्तावेज़ प्रोसेस किए जाते हैं।",
   "uploadingFiles": "अपलोड हो रहा है…"
 }

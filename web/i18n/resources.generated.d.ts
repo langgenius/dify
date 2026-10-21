@@ -3060,8 +3060,9 @@ export default interface Resources {
     documentNotFoundDescription: 'This document may have been removed, or you may not have access.'
   }
   knowledgeCreate: {
-    addAndProcess: 'Add & process'
+    addAndProcess: 'Start processing'
     crawlPreview: 'Crawl preview'
+    createAndProcess: 'Create and process documents'
     createFailed: "We couldn't create this Agent Knowledge Base. Check your access and try again."
     createTitle: 'Create Agent Knowledge Base'
     description: 'Description'
@@ -3078,6 +3079,7 @@ export default interface Resources {
     uploadCompleted: 'Added'
     uploadDocuments: 'Upload documents'
     uploadDropZoneTitle: 'Drag and drop files, or browse'
+    uploadFilesDescription: 'Add files from your computer. Documents are processed after the knowledge base is created.'
     uploadingFiles: 'Uploading…'
   }
   knowledgeDocuments: {
@@ -3638,6 +3640,9 @@ export default interface Resources {
     learnMore: 'Learn more'
     loadMore: 'Load more'
     metadata: 'Meta Data'
+    'modelCost.title': 'Model usage and costs'
+    'modelCost.uploadDescription': 'Once processing starts, models process the documents in this upload and consume tokens. More document content usually means higher usage and may result in significant costs. Actual costs depend on how the model you use is billed.'
+    'modelCost.uploadSummary': 'Files to process: {{count}}'
     moreProviders: 'More providers'
     name: 'Agent Knowledge Base name'
     new: 'Agent Knowledge Base'
@@ -3758,10 +3763,12 @@ export default interface Resources {
     'upgrade.justNow': 'Just now'
     'upgrade.menuLabel': 'Upgrade to Agent Knowledge Base'
     'upgrade.migratingDocuments': 'Migrating documents…'
+    'upgrade.modelCostDescription': 'Upgrading uses models to process the documents in this knowledge base and consumes tokens. More document content usually means higher usage and may result in significant costs. Actual costs depend on how the model you use is billed.'
     'upgrade.start': 'Start upgrade'
     'upgrade.startFailed': "The upgrade couldn't be started. Try again."
     'upgrade.statusFailed': 'Upgrade failed'
     'upgrade.statusUpgrading': 'Upgrading'
+    'upgrade.summary': 'Knowledge base: {{name}}'
     'upgrade.upgradedJustNow': 'Upgraded just now'
   }
   layout: {

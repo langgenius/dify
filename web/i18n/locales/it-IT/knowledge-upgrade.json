@@ -13,9 +13,11 @@
   "upgrade.justNow": "Ora",
   "upgrade.menuLabel": "Aggiorna a una base di conoscenza Agent",
   "upgrade.migratingDocuments": "Migrazione dei documenti…",
+  "upgrade.modelCostDescription": "L'aggiornamento usa modelli per elaborare i documenti di questa knowledge base e consuma token. Più contenuto hanno i documenti, maggiore è di solito il consumo, con possibili costi elevati. Il costo effettivo dipende dalla modalità di fatturazione del modello utilizzato.",
   "upgrade.start": "Avvia aggiornamento",
   "upgrade.startFailed": "Impossibile avviare l’aggiornamento. Riprova.",
   "upgrade.statusFailed": "Aggiornamento non riuscito",
   "upgrade.statusUpgrading": "Aggiornamento in corso",
+  "upgrade.summary": "Knowledge base: {{name}}",
   "upgrade.upgradedJustNow": "Appena aggiornata"
 }

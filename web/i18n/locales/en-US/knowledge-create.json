@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Add & process",
+  "addAndProcess": "Start processing",
   "crawlPreview": "Crawl preview",
+  "createAndProcess": "Create and process documents",
   "createFailed": "We couldn't create this Agent Knowledge Base. Check your access and try again.",
   "createTitle": "Create Agent Knowledge Base",
   "description": "Description",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Added",
   "uploadDocuments": "Upload documents",
   "uploadDropZoneTitle": "Drag and drop files, or browse",
+  "uploadFilesDescription": "Add files from your computer. Documents are processed after the knowledge base is created.",
   "uploadingFiles": "Uploading…"
 }

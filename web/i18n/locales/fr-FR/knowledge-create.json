@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Ajouter et traiter",
+  "addAndProcess": "Lancer le traitement",
   "crawlPreview": "Aperçu de l’exploration",
+  "createAndProcess": "Créer et traiter les documents",
   "createFailed": "Nous n'avons pas pu créer cette base de connaissances Agent. Vérifiez votre accès et réessayez.",
   "createTitle": "Créer une base de connaissances Agent",
   "description": "Descriptif",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Ajouté",
   "uploadDocuments": "Télécharger des documents",
   "uploadDropZoneTitle": "Glissez-déposez des fichiers ou parcourez",
+  "uploadFilesDescription": "Ajoutez des fichiers depuis votre ordinateur. Les documents sont traités après la création de la base de connaissances.",
   "uploadingFiles": "Téléversement…"
 }

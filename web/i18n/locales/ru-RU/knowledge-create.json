@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Добавить и обработать",
+  "addAndProcess": "Начать обработку",
   "crawlPreview": "Предпросмотр обхода",
+  "createAndProcess": "Создать и обработать документы",
   "createFailed": "Мы не смогли создать эту базу знаний Agent. Проверьте доступ и повторите попытку.",
   "createTitle": "Создать базу знаний Agent",
   "description": "Описание",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Добавлено",
   "uploadDocuments": "Загрузить документы",
   "uploadDropZoneTitle": "Перетащите файлы или выберите их",
+  "uploadFilesDescription": "Добавьте файлы с компьютера. Документы будут обработаны после создания базы знаний.",
   "uploadingFiles": "Загрузка…"
 }

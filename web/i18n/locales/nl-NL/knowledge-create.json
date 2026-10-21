@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Toevoegen en verwerken",
+  "addAndProcess": "Verwerking starten",
   "crawlPreview": "Crawlvoorbeeld",
+  "createAndProcess": "Maken en documenten verwerken",
   "createFailed": "We konden deze Agent-kennisbank niet creëren. Controleer uw toegang en probeer het opnieuw.",
   "createTitle": "Agent-kennisbank maken",
   "description": "Beschrijving",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Toegevoegd",
   "uploadDocuments": "Documenten uploaden",
   "uploadDropZoneTitle": "Sleep bestanden hierheen of blader",
+  "uploadFilesDescription": "Voeg bestanden toe vanaf je computer. Documenten worden verwerkt nadat de kennisbank is gemaakt.",
   "uploadingFiles": "Uploaden…"
 }

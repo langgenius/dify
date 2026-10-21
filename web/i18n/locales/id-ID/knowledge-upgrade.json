@@ -13,9 +13,11 @@
   "upgrade.justNow": "Baru saja",
   "upgrade.menuLabel": "Tingkatkan ke basis pengetahuan Agent",
   "upgrade.migratingDocuments": "Memigrasikan dokumen…",
+  "upgrade.modelCostDescription": "Peningkatan menggunakan model untuk memproses dokumen dalam basis pengetahuan ini dan menggunakan token. Semakin banyak isi dokumen, biasanya semakin besar penggunaannya dan dapat menimbulkan biaya tinggi. Biaya sebenarnya bergantung pada cara penagihan model yang digunakan.",
   "upgrade.start": "Mulai peningkatan",
   "upgrade.startFailed": "Peningkatan tidak dapat dimulai. Coba lagi.",
   "upgrade.statusFailed": "Peningkatan gagal",
   "upgrade.statusUpgrading": "Sedang meningkatkan",
+  "upgrade.summary": "Basis pengetahuan: {{name}}",
   "upgrade.upgradedJustNow": "Baru saja ditingkatkan"
 }

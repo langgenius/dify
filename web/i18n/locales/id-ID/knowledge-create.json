@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Tambahkan & proses",
+  "addAndProcess": "Mulai pemrosesan",
   "crawlPreview": "Pratinjau perayapan",
+  "createAndProcess": "Buat dan proses dokumen",
   "createFailed": "Kami tidak dapat membuat basis pengetahuan Agent ini. Periksa akses Anda dan coba lagi.",
   "createTitle": "Buat basis pengetahuan Agent",
   "description": "Deskripsi",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Ditambahkan",
   "uploadDocuments": "Unggah dokumen",
   "uploadDropZoneTitle": "Seret dan lepas file, atau pilih",
+  "uploadFilesDescription": "Tambahkan file dari komputer Anda. Dokumen diproses setelah basis pengetahuan dibuat.",
   "uploadingFiles": "Mengunggah…"
 }

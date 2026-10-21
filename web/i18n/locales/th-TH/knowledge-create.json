@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "เพิ่มและประมวลผล",
+  "addAndProcess": "เริ่มประมวลผล",
   "crawlPreview": "ตัวอย่างการเก็บข้อมูล",
+  "createAndProcess": "สร้างและประมวลผลเอกสาร",
   "createFailed": "เราไม่สามารถสร้างฐานความรู้ Agent นี้ได้ ตรวจสอบการเข้าถึงของคุณแล้วลองอีกครั้ง",
   "createTitle": "สร้างฐานความรู้ Agent",
   "description": "คำอธิบาย",
@@ -17,5 +18,6 @@
   "uploadCompleted": "เพิ่มแล้ว",
   "uploadDocuments": "อัพโหลดเอกสาร",
   "uploadDropZoneTitle": "ลากและวางไฟล์ หรือเรียกดู",
+  "uploadFilesDescription": "เพิ่มไฟล์จากคอมพิวเตอร์ของคุณ เอกสารจะได้รับการประมวลผลหลังจากสร้างฐานความรู้",
   "uploadingFiles": "กำลังอัปโหลด…"
 }

@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Додати й обробити",
+  "addAndProcess": "Почати обробку",
   "crawlPreview": "Попередній перегляд обходу",
+  "createAndProcess": "Створити й обробити документи",
   "createFailed": "Ми не змогли створити цю базу знань Agent. Перевірте свій доступ і повторіть спробу.",
   "createTitle": "Створити базу знань Agent",
   "description": "опис",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Додано",
   "uploadDocuments": "Завантажити документи",
   "uploadDropZoneTitle": "Перетягніть файли або виберіть їх",
+  "uploadFilesDescription": "Додайте файли з комп’ютера. Документи буде оброблено після створення бази знань.",
   "uploadingFiles": "Завантаження…"
 }

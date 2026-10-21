@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "新增並處理",
+  "addAndProcess": "開始處理",
   "crawlPreview": "抓取預覽",
+  "createAndProcess": "建立並處理文件",
   "createFailed": "無法建立此 Agent 知識庫，請檢查權限後再試一次。",
   "createTitle": "建立 Agent 知識庫",
   "description": "描述",
@@ -17,5 +18,6 @@
   "uploadCompleted": "已新增",
   "uploadDocuments": "上傳文件",
   "uploadDropZoneTitle": "拖放檔案，或點選以選擇檔案",
+  "uploadFilesDescription": "從電腦新增檔案，建立知識庫後開始處理文件。",
   "uploadingFiles": "正在上傳…"
 }

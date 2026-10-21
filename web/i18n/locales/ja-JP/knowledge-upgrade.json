@@ -13,9 +13,11 @@
   "upgrade.justNow": "たった今",
   "upgrade.menuLabel": "Agent ナレッジベースにアップグレード",
   "upgrade.migratingDocuments": "ドキュメントを移行中…",
+  "upgrade.modelCostDescription": "アップグレードではモデルがナレッジベース内のドキュメントを処理し、トークンを消費します。ドキュメントの内容が多いほど通常は消費量が増え、高額な費用が発生する可能性があります。実際の費用は使用するモデルの課金方式によって異なります。",
   "upgrade.start": "アップグレードを開始",
   "upgrade.startFailed": "アップグレードを開始できませんでした。もう一度お試しください。",
   "upgrade.statusFailed": "アップグレード失敗",
   "upgrade.statusUpgrading": "アップグレード中",
+  "upgrade.summary": "ナレッジベース：{{name}}",
   "upgrade.upgradedJustNow": "たった今アップグレード"
 }

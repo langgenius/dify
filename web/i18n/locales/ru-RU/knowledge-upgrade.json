@@ -13,9 +13,11 @@
   "upgrade.justNow": "Только что",
   "upgrade.menuLabel": "Обновить до базы знаний Agent",
   "upgrade.migratingDocuments": "Перенос документов…",
+  "upgrade.modelCostDescription": "При обновлении модели обрабатывают документы этой базы знаний и расходуют токены. Чем больше содержимого в документах, тем обычно выше расход и тем выше могут быть затраты. Фактическая стоимость зависит от тарификации используемой модели.",
   "upgrade.start": "Начать обновление",
   "upgrade.startFailed": "Не удалось начать обновление. Повторите попытку.",
   "upgrade.statusFailed": "Ошибка обновления",
   "upgrade.statusUpgrading": "Обновление",
+  "upgrade.summary": "База знаний: {{name}}",
   "upgrade.upgradedJustNow": "Только что обновлено"
 }

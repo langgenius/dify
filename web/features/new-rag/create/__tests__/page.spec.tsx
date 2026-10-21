@@ -1324,7 +1324,7 @@ describe('CreateKnowledgePage', () => {
       new File(['content'], 'guide.txt', { type: 'text/plain' }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
 
     expect(
       await screen.findByRole('dialog', {
@@ -1415,7 +1415,7 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.create).not.toHaveBeenCalled()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'knowledgeSpace.documentUploadFailed',
     )
@@ -1434,7 +1434,7 @@ describe('CreateKnowledgePage', () => {
     expect(nameInput).toBeDisabled()
     expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toBeDisabled()
     await user.type(nameInput, ' changed')
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
 
     await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledTimes(2))
     expect(serviceMock.create).toHaveBeenCalledOnce()
@@ -1482,7 +1482,7 @@ describe('CreateKnowledgePage', () => {
     expect(screen.queryByText('knowledgeCreate.uploadCompleted')).not.toBeInTheDocument()
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('knowledgeDocuments.documentUploadIncomplete')
     expect(alert).toHaveTextContent('knowledgeErrors.taskFailure.documentCountQuotaExceeded')
@@ -1496,7 +1496,7 @@ describe('CreateKnowledgePage', () => {
       queryClient.getQueryState(consoleQuery.features.vectorSpace.get.key())?.isInvalidated,
     ).toBe(true)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalled())
     expect(serviceMock.create).toHaveBeenCalledOnce()
     expect(serviceMock.upload.mock.calls.map(([input]) => input.body.upload_id)).toEqual([
@@ -1588,7 +1588,7 @@ describe('CreateKnowledgePage', () => {
     expect(uploadInput.nextElementSibling).toHaveClass('peer-focus-visible:ring-2')
     uploadInput.focus()
     expect(uploadInput).toHaveFocus()
-    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' })).toBeDisabled()
   })
 
   it('prompts for provider installation when source setup has no installed integration', async () => {
@@ -1647,7 +1647,7 @@ describe('CreateKnowledgePage', () => {
     const uploadFiles = screen.getByRole('radio', { name: 'knowledgeSpace.uploadFiles' })
     expect(uploadFiles).toBeDisabled()
     expect(uploadFiles).toHaveAccessibleDescription(
-      'knowledgeSpace.uploadFilesDescription dataset.cornerLabel.unavailable',
+      'knowledgeCreate.uploadFilesDescription dataset.cornerLabel.unavailable',
     )
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
@@ -1698,7 +1698,7 @@ describe('CreateKnowledgePage', () => {
     await waitFor(() => expect(serviceMock.stageUpload).toHaveBeenCalledOnce())
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
 
     expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toBeDisabled()
     expect(serviceMock.create).not.toHaveBeenCalled()
@@ -1712,7 +1712,7 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.upload).not.toHaveBeenCalled()
     expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toBeEnabled()
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
 
     await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledOnce()
@@ -1769,14 +1769,14 @@ describe('CreateKnowledgePage', () => {
       [new File(['one'], 'one.txt'), new File(['two'], 'two.txt')],
     )
     await fillRequiredFields(user)
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
     await screen.findByRole('alert')
     expect(serviceMock.upload).toHaveBeenCalledTimes(2)
 
     uploadQuotaMock.mockResolvedValue('taskFailure.documentCountQuotaExceeded')
     const checksBeforeFinishing = uploadQuotaMock.mock.calls.length
     await user.click(screen.getByRole('button', { name: /two\.txt/ }))
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
@@ -1802,7 +1802,7 @@ describe('CreateKnowledgePage', () => {
     )
     await fillRequiredFields(user)
     await choosePermission(user, 'datasetSettings.form.permissionsOnlyMe')
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
@@ -1814,6 +1814,38 @@ describe('CreateKnowledgePage', () => {
       params: { control_space_id: createdKnowledge.control_space_id },
     })
     expect(uploadQuotaMock).not.toHaveBeenCalled()
+  })
+
+  it('shows the model cost notice beside the upload action without starting processing', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    renderPage()
+
+    const notice = screen.getByRole('region', { name: 'knowledgeSpace.modelCost.title' })
+    expect(notice).toHaveTextContent('knowledgeSpace.modelCost.uploadDescription')
+    expect(screen.queryByText(/knowledgeSpace\.modelCost\.uploadSummary/)).toBeNull()
+    const createButton = screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' })
+    expect(createButton).toHaveAccessibleDescription(
+      expect.stringContaining('knowledgeSpace.modelCost.uploadDescription'),
+    )
+
+    await user.upload(
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+    expect(await screen.findByText(/knowledgeSpace\.modelCost\.uploadSummary/)).toBeVisible()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+    expect(serviceMock.upload).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.startEmpty' }))
+    expect(screen.queryByRole('region', { name: 'knowledgeSpace.modelCost.title' })).toBeNull()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.upload).not.toHaveBeenCalled()
   })
 
   it('queues uploads when native random UUID generation is unavailable', async () => {
@@ -2756,7 +2788,7 @@ describe('CreateKnowledgePage', () => {
     expect(
       screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'knowledgeSpace.preview' })).toBeNull()
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
@@ -2809,7 +2841,7 @@ describe('CreateKnowledgePage', () => {
     )
     expect(serviceMock.stageUpload).not.toHaveBeenCalled()
     expect(serviceMock.create).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' })).toBeDisabled()
   })
 
   it('allows one Sandbox file and blocks accumulated selections before staging', async () => {
@@ -2830,7 +2862,7 @@ describe('CreateKnowledgePage', () => {
     )
     expect(serviceMock.stageUpload).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('two.md')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
     await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledTimes(1))
   })
 
@@ -2853,7 +2885,7 @@ describe('CreateKnowledgePage', () => {
     const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
       selector: 'input[type="file"]',
     })
-    const createButton = screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })
+    const createButton = screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' })
     await user.upload(input, [
       new File(['one'], 'one.md'),
       new File(['two'], 'two.md'),
@@ -2938,7 +2970,7 @@ describe('CreateKnowledgePage', () => {
     await user.upload(input, [new File(['one'], 'one.md'), new File(['two'], 'two.md')])
     await waitFor(() => expect(input).toBeEnabled())
     expect(serviceMock.stageUpload).toHaveBeenCalledTimes(2)
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
     await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledTimes(2))
   })
 
@@ -2965,12 +2997,16 @@ describe('CreateKnowledgePage', () => {
       )
       if (extraBytes) {
         expect(serviceMock.stageUpload).not.toHaveBeenCalled()
-        expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
+        expect(
+          screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }),
+        ).toBeDisabled()
         expect(screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/)).toBeVisible()
       } else {
         await waitFor(() => expect(serviceMock.stageUpload).toHaveBeenCalledTimes(1))
         await waitFor(() =>
-          expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeEnabled(),
+          expect(
+            screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }),
+          ).toBeEnabled(),
         )
       }
     },
@@ -2990,7 +3026,7 @@ describe('CreateKnowledgePage', () => {
       file,
     )
     expect(serviceMock.stageUpload).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' })).toBeDisabled()
     expect(
       screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize:.*"size":15/),
     ).toBeVisible()
@@ -3012,7 +3048,7 @@ describe('CreateKnowledgePage', () => {
 
     expect(screen.getByText('empty.txt')).toBeInTheDocument()
     expect(screen.getByText('knowledgeSpace.documentUploadExclusion.fileEmpty')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' })).toBeDisabled()
     expect(serviceMock.stageUpload).not.toHaveBeenCalled()
     expect(serviceMock.upload).not.toHaveBeenCalled()
     expect(serviceMock.create).not.toHaveBeenCalled()
@@ -3046,7 +3082,7 @@ describe('CreateKnowledgePage', () => {
     )
     expect(serviceMock.stageUpload).toHaveBeenCalledTimes(1)
     const createButton = screen.getByRole('button', {
-      name: 'knowledgeCreate.createTitle',
+      name: 'knowledgeCreate.createAndProcess',
     })
     await waitFor(() => expect(createButton).not.toHaveAttribute('data-disabled'))
     await user.click(createButton)
@@ -3095,7 +3131,7 @@ describe('CreateKnowledgePage', () => {
     )
     expect(screen.queryByText('knowledgeSpace.previewUnavailable')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
 
     expect(
       await within(handbookRow as HTMLElement).findByText('knowledgeCreate.uploadingFiles'),
@@ -3135,7 +3171,7 @@ describe('CreateKnowledgePage', () => {
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
 
     await waitFor(() => expect(serviceMock.getSpace).toHaveBeenCalledOnce())
     expect(serviceMock.upload).not.toHaveBeenCalled()
@@ -3195,11 +3231,11 @@ describe('CreateKnowledgePage', () => {
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'knowledgeSpace.documentUploadFailed',
     )
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalled())
     expect(serviceMock.create).toHaveBeenCalledOnce()
@@ -3276,7 +3312,7 @@ describe('CreateKnowledgePage', () => {
     )
     await fillRequiredFields(user)
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createAndProcess' }))
     expect(await screen.findByText('knowledgeSpace.documentUploadFailed')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))

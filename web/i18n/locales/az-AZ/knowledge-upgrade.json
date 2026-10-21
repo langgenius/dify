@@ -13,9 +13,11 @@
   "upgrade.justNow": "Just now",
   "upgrade.menuLabel": "Upgrade to Agent Knowledge Base",
   "upgrade.migratingDocuments": "Migrating documents…",
+  "upgrade.modelCostDescription": "Yeniləmə bu bilik bazasındakı sənədləri emal etmək üçün modellərdən istifadə edir və token sərf edir. Sənədlərin məzmunu nə qədər çox olsa, istifadə adətən bir o qədər yüksək olur və böyük xərclər yarana bilər. Faktiki xərc istifadə olunan modelin ödəniş qaydasından asılıdır.",
   "upgrade.start": "Start upgrade",
   "upgrade.startFailed": "The upgrade couldn't be started. Try again.",
   "upgrade.statusFailed": "Upgrade failed",
   "upgrade.statusUpgrading": "Upgrading",
+  "upgrade.summary": "Bilik bazası: {{name}}",
   "upgrade.upgradedJustNow": "Upgraded just now"
 }

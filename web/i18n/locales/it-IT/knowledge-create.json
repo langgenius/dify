@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Aggiungi ed elabora",
+  "addAndProcess": "Avvia elaborazione",
   "crawlPreview": "Anteprima scansione",
+  "createAndProcess": "Crea ed elabora documenti",
   "createFailed": "Non è stato possibile creare questa base di conoscenza Agent. Controlla il tuo accesso e riprova.",
   "createTitle": "Crea una base di conoscenza Agent",
   "description": "Descrizione",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Aggiunto",
   "uploadDocuments": "Carica documenti",
   "uploadDropZoneTitle": "Trascina e rilascia i file oppure sfoglia",
+  "uploadFilesDescription": "Aggiungi file dal tuo computer. I documenti vengono elaborati dopo la creazione della knowledge base.",
   "uploadingFiles": "Caricamento…"
 }

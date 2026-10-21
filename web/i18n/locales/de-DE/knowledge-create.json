@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "Hinzufügen und verarbeiten",
+  "addAndProcess": "Verarbeitung starten",
   "crawlPreview": "Crawl-Vorschau",
+  "createAndProcess": "Erstellen und Dokumente verarbeiten",
   "createFailed": "Wir konnten diese Agent-Wissensdatenbank nicht erstellen. Überprüfen Sie Ihren Zugang und versuchen Sie es erneut.",
   "createTitle": "Agent-Wissensdatenbank erstellen",
   "description": "Beschreibung",
@@ -17,5 +18,6 @@
   "uploadCompleted": "Hinzugefügt",
   "uploadDocuments": "Dokumente hochladen",
   "uploadDropZoneTitle": "Dateien ziehen und ablegen oder durchsuchen",
+  "uploadFilesDescription": "Dateien von Ihrem Computer hinzufügen. Die Dokumente werden nach dem Erstellen der Wissensdatenbank verarbeitet.",
   "uploadingFiles": "Wird hochgeladen…"
 }

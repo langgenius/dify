@@ -87,7 +87,14 @@ describe('KnowledgeUpgradeDialog', () => {
     const learnMore = screen.getByRole('link', { name: 'knowledgeSpace.learnMore' })
     expect(learnMore).toHaveAttribute('href', 'https://docs.dify.ai/en/guides/knowledge-base')
     expect(learnMore).toHaveAttribute('target', '_blank')
+    expect(screen.getByText(/knowledgeUpgrade\.upgrade\.summary/)).toBeVisible()
+    expect(
+      screen.getByRole('region', { name: 'knowledgeSpace.modelCost.title' }),
+    ).toHaveTextContent('knowledgeUpgrade.upgrade.modelCostDescription')
     const startButton = screen.getByRole('button', { name: 'knowledgeUpgrade.upgrade.start' })
+    expect(startButton).toHaveAccessibleDescription(
+      expect.stringContaining('knowledgeUpgrade.upgrade.modelCostDescription'),
+    )
     await waitFor(() => expect(startButton).toBeEnabled())
     expect(startUpgradeMock).not.toHaveBeenCalled()
 

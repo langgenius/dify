@@ -13,9 +13,11 @@
   "upgrade.justNow": "अभी",
   "upgrade.menuLabel": "Agent ज्ञान आधार में अपग्रेड करें",
   "upgrade.migratingDocuments": "दस्तावेज़ माइग्रेट हो रहे हैं…",
+  "upgrade.modelCostDescription": "अपग्रेड इस नॉलेज बेस के दस्तावेज़ों को प्रोसेस करने के लिए मॉडल का उपयोग करता है और टोकन खर्च करता है। दस्तावेज़ों में जितनी अधिक सामग्री होगी, आम तौर पर उपयोग उतना अधिक होगा और लागत काफ़ी हो सकती है। वास्तविक लागत उपयोग किए गए मॉडल की बिलिंग पद्धति पर निर्भर करती है।",
   "upgrade.start": "अपग्रेड शुरू करें",
   "upgrade.startFailed": "अपग्रेड शुरू नहीं हो सका। फिर कोशिश करें।",
   "upgrade.statusFailed": "अपग्रेड विफल",
   "upgrade.statusUpgrading": "अपग्रेड हो रहा है",
+  "upgrade.summary": "नॉलेज बेस: {{name}}",
   "upgrade.upgradedJustNow": "अभी अपग्रेड हुआ"
 }

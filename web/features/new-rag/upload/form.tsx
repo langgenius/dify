@@ -3,9 +3,18 @@
 import type { Ref } from 'react'
 import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
 import { Button } from '@langgenius/dify-ui/button'
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { ModelCostNotice } from '../components/model-cost-notice'
 import { DocumentUploadFileList } from './file-list'
 import { DocumentUploadPlanNotice } from './plan-notice'
 import {
@@ -48,6 +57,7 @@ export function DocumentUploadForm({
   const { t: tCommon } = useTranslation(['common'])
   const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
   const inputRef = useRef<HTMLInputElement>(null)
+  const modelCostNoticeId = useId()
   const initialFilesAnnouncedRef = useRef(false)
   const filesRef = useRef(initialFiles)
   const [files, setFiles] = useState(initialFiles)
@@ -207,7 +217,17 @@ export function DocumentUploadForm({
         </section>
       )}
 
-      <div className="mt-4 flex justify-end gap-3 pt-5">
+      <ModelCostNotice
+        id={modelCostNoticeId}
+        className="mt-4"
+        summary={
+          remainingFiles.length > 0 &&
+          t(($) => $['modelCost.uploadSummary'], { count: remainingFiles.length })
+        }
+        description={t(($) => $['modelCost.uploadDescription'])}
+      />
+
+      <div className="flex justify-end gap-3 pt-5">
         <Button disabled={uploading} type="button" onClick={onCancel}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
@@ -216,6 +236,7 @@ export function DocumentUploadForm({
           loading={uploading}
           type="submit"
           variant="primary"
+          aria-describedby={modelCostNoticeId}
         >
           {t(($) => (canRetryRemainingFiles ? $.retryRemainingFiles : $.addAndProcess), {
             ns: 'knowledgeCreate',

@@ -37,6 +37,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
+import { ModelCostNotice } from '../components/model-cost-notice'
 import { knowledgeFsRequestFailureMessageKey } from '../knowledge-fs-task-error'
 import { createRequestId } from '../request-id'
 import {
@@ -96,6 +97,7 @@ function CreateKnowledgeSession() {
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const dialogTitleId = useId()
+  const modelCostNoticeId = useId()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
@@ -567,7 +569,7 @@ function CreateKnowledgeSession() {
                         selected={startMode === 'upload'}
                         disabled={!uploadAvailable}
                         title={t(($) => $.uploadFiles)}
-                        description={t(($) => $.uploadFilesDescription)}
+                        description={t(($) => $.uploadFilesDescription, { ns: 'knowledgeCreate' })}
                       >
                         <CreateUploadQueue
                           supportBatchUpload={supportBatchUpload}
@@ -602,6 +604,17 @@ function CreateKnowledgeSession() {
               </div>
 
               <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10">
+                {startMode === 'upload' && (
+                  <ModelCostNotice
+                    id={modelCostNoticeId}
+                    className="mb-4"
+                    summary={
+                      validUploads.length > 0 &&
+                      t(($) => $['modelCost.uploadSummary'], { count: validUploads.length })
+                    }
+                    description={t(($) => $['modelCost.uploadDescription'])}
+                  />
+                )}
                 <div className="flex justify-end gap-2">
                   <Button type="button" disabled={submissionPending} onClick={requestClose}>
                     {tCommon(($) => $['operation.cancel'])}
@@ -611,8 +624,11 @@ function CreateKnowledgeSession() {
                     variant="primary"
                     loading={submissionPending}
                     disabled={uploadSubmissionBlocked || sourceSubmissionBlocked || membersInvalid}
+                    aria-describedby={startMode === 'upload' ? modelCostNoticeId : undefined}
                   >
-                    {t(($) => $.createTitle, { ns: 'knowledgeCreate' })}
+                    {startMode === 'upload'
+                      ? t(($) => $.createAndProcess, { ns: 'knowledgeCreate' })
+                      : t(($) => $.createTitle, { ns: 'knowledgeCreate' })}
                   </Button>
                 </div>
               </div>

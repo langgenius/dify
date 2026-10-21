@@ -1,6 +1,7 @@
 {
-  "addAndProcess": "추가 및 처리",
+  "addAndProcess": "처리 시작",
   "crawlPreview": "크롤링 미리보기",
+  "createAndProcess": "생성 후 문서 처리",
   "createFailed": "이 Agent 지식 베이스를 만들 수 없습니다. 액세스 권한을 확인하고 다시 시도하세요.",
   "createTitle": "Agent 지식 베이스 만들기",
   "description": "설명",
@@ -17,5 +18,6 @@
   "uploadCompleted": "추가됨",
   "uploadDocuments": "문서 업로드",
   "uploadDropZoneTitle": "파일을 끌어다 놓거나 찾아보기",
+  "uploadFilesDescription": "컴퓨터에서 파일을 추가합니다. 지식 베이스를 생성한 후 문서 처리를 시작합니다.",
   "uploadingFiles": "업로드 중…"
 }

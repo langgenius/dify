@@ -14,8 +14,9 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { useRef } from 'react'
+import { useId, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { ModelCostNotice } from '@/features/new-rag/components/model-cost-notice'
 import { createRequestId } from '@/features/new-rag/request-id'
 import { consoleQuery } from '@/service/console'
 
@@ -33,6 +34,7 @@ export function KnowledgeUpgradeDialog({
   const { t } = useTranslation(['knowledgeUpgrade', 'knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const modelCostNoticeId = useId()
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
   const discoveryQuery = useQuery(
     consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.get.queryOptions({
@@ -92,6 +94,19 @@ export function KnowledgeUpgradeDialog({
                 }}
               />
             </p>
+            {dataset && (
+              <ModelCostNotice
+                id={modelCostNoticeId}
+                className="my-3"
+                summary={t(($) => $['upgrade.summary'], {
+                  ns: 'knowledgeUpgrade',
+                  name: dataset.name,
+                })}
+                description={t(($) => $['upgrade.modelCostDescription'], {
+                  ns: 'knowledgeUpgrade',
+                })}
+              />
+            )}
             <ul className="mt-0 list-disc pl-5">
               <li>{t(($) => $['upgrade.dialogDuration'], { ns: 'knowledgeUpgrade' })}</li>
               <li>{t(($) => $['upgrade.dialogLinkedApps'], { ns: 'knowledgeUpgrade' })}</li>
@@ -124,6 +139,7 @@ export function KnowledgeUpgradeDialog({
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton
             tone="default"
+            aria-describedby={modelCostNoticeId}
             loading={discoveryQuery.isFetching || startMutation.isPending}
             disabled={discoveryQuery.data?.can_upgrade !== true}
             onClick={startUpgrade}
