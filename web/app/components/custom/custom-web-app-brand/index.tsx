@@ -126,9 +126,9 @@ const CustomWebAppBrand = () => {
         </div>
       )}
       <div className="mt-5 mb-2 flex items-center gap-2">
-        <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">
+        <h4 className="shrink-0 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['overview.appInfo.preview'], { ns: 'appOverview' })}
-        </div>
+        </h4>
         <Separator decorative variant="gradient" className="my-2 h-[0.5px] grow" />
       </div>
       <div className="relative mb-2 flex items-center gap-3">

@@ -271,6 +271,21 @@ it('allows regular members to read billing without management permissions', asyn
   ).not.toBeInTheDocument()
 })
 
+it('exposes the customization page and preview through heading navigation', async () => {
+  renderSettings(TAB.CUSTOM)
+  const dialog = await findSettings()
+  expect(within(dialog).getByRole('heading', { level: 2 })).toHaveAccessibleName(
+    'navigation.settings.settings',
+  )
+  expect(within(dialog).getByRole('heading', { level: 3 })).toHaveAccessibleName('custom.custom')
+  expect(
+    await within(dialog).findByRole('heading', {
+      level: 4,
+      name: 'appOverview.overview.appInfo.preview',
+    }),
+  ).toBeInTheDocument()
+})
+
 it.each([
   {
     reason: 'dataset operators',
