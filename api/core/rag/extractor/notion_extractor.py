@@ -12,6 +12,7 @@ from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionIn
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
+from libs.pagination import CursorPaginationGuard
 from models.dataset import Document as DocumentModel
 
 logger = logging.getLogger(__name__)
@@ -157,7 +158,9 @@ class NotionExtractor(BaseExtractor):
         result_lines_arr = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=page_id)
+        cursor_guard = CursorPaginationGuard()
         while True:
+            cursor_guard.check(start_cursor)
             query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
             try:
                 res = httpx.request(
@@ -219,7 +222,9 @@ class NotionExtractor(BaseExtractor):
         result_lines_arr = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
+        cursor_guard = CursorPaginationGuard()
         while True:
+            cursor_guard.check(start_cursor)
             query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
 
             res = httpx.request(

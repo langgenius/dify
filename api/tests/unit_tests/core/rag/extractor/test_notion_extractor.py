@@ -57,6 +57,163 @@ def _mock_response(data: object, status_code: int = 200, text: str = "") -> mock
     return response
 
 
+def _paragraph_block(text: str, block_id: str, *, has_children: bool = False) -> dict[str, object]:
+    return {
+        "id": block_id,
+        "type": "paragraph",
+        "has_children": has_children,
+        "paragraph": {"rich_text": [{"plain_text": text}]},
+    }
+
+
+class TestNotionCursorPagination:
+    @pytest.fixture
+    def extractor(self) -> notion_extractor.NotionExtractor:
+        return notion_extractor.NotionExtractor(
+            notion_workspace_id="workspace",
+            notion_obj_id="page",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_token_loader=lambda: "synthetic-token",
+        )
+
+    @pytest.mark.parametrize("nested", [False, True], ids=["page", "child-block"])
+    @pytest.mark.parametrize("next_cursors", [("A", "A"), ("A", "B", "A")], ids=["repeat", "cycle"])
+    @pytest.mark.parametrize("empty", [False, True], ids=["with-content", "empty-pages"])
+    def test_extract_rejects_repeated_cursor_before_another_request(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        extractor: notion_extractor.NotionExtractor,
+        nested: bool,
+        next_cursors: tuple[str, ...],
+        empty: bool,
+    ) -> None:
+        requested_cursors: list[str | None] = []
+
+        def respond(request: httpx.Request) -> httpx.Response:
+            if nested and request.url.path == "/v1/blocks/page/children":
+                return httpx.Response(
+                    200,
+                    json={"results": [_paragraph_block("parent", "child", has_children=True)], "next_cursor": None},
+                )
+            page_index = len(requested_cursors)
+            requested_cursors.append(request.url.params.get("start_cursor"))
+            assert page_index < len(next_cursors), "Extractor requested an already visited cursor again"
+            results: list[dict[str, object]] = [] if empty else [_paragraph_block(f"page-{page_index}", "leaf")]
+            return httpx.Response(200, json={"results": results, "next_cursor": next_cursors[page_index]})
+
+        with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+            monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+            with pytest.raises(ValueError, match=r"^Repeated pagination cursor detected\.$"):
+                extractor.extract()
+
+        assert requested_cursors == [None, *next_cursors[:-1]]
+
+    @pytest.mark.parametrize("nested", [False, True], ids=["page", "child-block"])
+    @pytest.mark.parametrize("multiple_pages", [False, True], ids=["single-page", "multiple-pages"])
+    def test_extract_preserves_pages_and_resets_cursors_between_imports(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        extractor: notion_extractor.NotionExtractor,
+        nested: bool,
+        multiple_pages: bool,
+    ) -> None:
+        requested_cursors: list[str | None] = []
+
+        def respond(request: httpx.Request) -> httpx.Response:
+            if nested and request.url.path == "/v1/blocks/page/children":
+                return httpx.Response(
+                    200,
+                    json={"results": [_paragraph_block("parent", "child", has_children=True)], "next_cursor": None},
+                )
+            cursor = request.url.params.get("start_cursor")
+            requested_cursors.append(cursor)
+            assert cursor in (None, "A")
+            return httpx.Response(
+                200,
+                json={
+                    "results": [_paragraph_block("first" if cursor is None else "second", "leaf")],
+                    "next_cursor": "A" if cursor is None and multiple_pages else None,
+                },
+            )
+
+        with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+            monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+            for _ in range(2):
+                documents = extractor.extract()
+                assert len(documents) == 1
+                lines = [line for line in documents[0].page_content.splitlines() if line]
+                expected_lines = ["parent", "\tfirst"] if nested else ["first"]
+                if multiple_pages:
+                    expected_lines.append("\tsecond" if nested else "second")
+                assert lines == expected_lines
+
+        assert requested_cursors == ([None, "A"] if multiple_pages else [None]) * 2
+
+    def test_extract_scopes_cursors_to_each_parent_and_child_listing(
+        self, monkeypatch: pytest.MonkeyPatch, extractor: notion_extractor.NotionExtractor
+    ) -> None:
+        requests: list[tuple[str, str | None]] = []
+
+        def respond(request: httpx.Request) -> httpx.Response:
+            block_id = request.url.path.split("/")[-2]
+            cursor = request.url.params.get("start_cursor")
+            requests.append((block_id, cursor))
+            if block_id == "page" and cursor is None:
+                results = [
+                    _paragraph_block("parent-1", "child-1", has_children=True),
+                    _paragraph_block("parent-2", "child-2", has_children=True),
+                ]
+            else:
+                results = [_paragraph_block(f"{block_id}-{'first' if cursor is None else 'last'}", "leaf")]
+            return httpx.Response(200, json={"results": results, "next_cursor": "A" if cursor is None else None})
+
+        with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+            monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+            documents = extractor.extract()
+
+        assert [line for line in documents[0].page_content.splitlines() if line] == [
+            "parent-1",
+            "\tchild-1-first",
+            "\tchild-1-last",
+            "parent-2",
+            "\tchild-2-first",
+            "\tchild-2-last",
+            "page-last",
+        ]
+        assert requests == [
+            ("page", None),
+            ("child-1", None),
+            ("child-1", "A"),
+            ("child-2", None),
+            ("child-2", "A"),
+            ("page", "A"),
+        ]
+
+    def test_extract_continues_after_an_empty_page_with_a_new_cursor(
+        self, monkeypatch: pytest.MonkeyPatch, extractor: notion_extractor.NotionExtractor
+    ) -> None:
+        requested_cursors: list[str | None] = []
+
+        def respond(request: httpx.Request) -> httpx.Response:
+            cursor = request.url.params.get("start_cursor")
+            requested_cursors.append(cursor)
+            return httpx.Response(
+                200,
+                json={
+                    "results": [] if cursor is None else [_paragraph_block("after empty page", "leaf")],
+                    "next_cursor": "A" if cursor is None else None,
+                },
+            )
+
+        with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+            monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+            documents = extractor.extract()
+
+        assert documents[0].page_content == "after empty page\n\n"
+        assert requested_cursors == [None, "A"]
+
+
 class TestNotionExtractorInitAndPublicMethods:
     def test_init_with_explicit_token(self) -> None:
         extractor = notion_extractor.NotionExtractor(
