@@ -12,12 +12,16 @@ import {
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useQuery } from '@tanstack/react-query'
 import { Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
@@ -206,8 +210,8 @@ export function KnowledgeSpaceShell({
         >
           <div
             className={cn(
-              'flex h-12 min-w-0 items-center',
-              sidebarExpanded ? 'py-2 pr-2 pl-1' : 'justify-center px-3 pt-2 pb-1',
+              'flex min-w-0 items-center',
+              sidebarExpanded ? 'py-2 pr-2 pl-1' : 'w-full justify-center px-3 pt-2 pb-1',
             )}
           >
             {sidebarExpanded && (
@@ -221,35 +225,52 @@ export function KnowledgeSpaceShell({
                       <BreadcrumbLink
                         render={<Link href="/" />}
                         aria-label={tCommon(($) => $['mainNav.home'], { ns: 'navigation' })}
-                        className="shrink-0 rounded-lg py-2 pr-1.5 pl-0.5 transition-colors hover:bg-state-base-hover"
+                        className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
                       >
                         <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-                        <span aria-hidden className="i-ri-home-5-line size-4" />
+                        <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="system-md-regular" />
-                    <BreadcrumbItem className="min-w-0">
+                    <BreadcrumbItem className="shrink-0">
                       <BreadcrumbLink
                         render={<Link href={newKnowledgeListPath} />}
-                        className="truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-state-base-hover hover:text-text-primary"
+                        className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
                       >
                         {t(($) => $.knowledge, { ns: 'dataset' })}
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                   </BreadcrumbList>
                 </Breadcrumb>
-                <DialogTrigger
-                  handle={gotoAnythingDialogHandle}
-                  render={
-                    <button
-                      type="button"
-                      aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
-                      className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary outline-hidden transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                    >
-                      <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-                    </button>
-                  }
-                />
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <DialogTrigger
+                        handle={gotoAnythingDialogHandle}
+                        render={
+                          <button
+                            type="button"
+                            aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
+                            className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
+                          >
+                            <span
+                              aria-hidden
+                              className="i-custom-vender-main-nav-quick-search size-4"
+                            />
+                          </button>
+                        }
+                      />
+                    }
+                  />
+                  <TooltipContent placement="bottom" className="flex items-center gap-1">
+                    <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
+                    <KbdGroup>
+                      {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+                        <Kbd key={key}>{key}</Kbd>
+                      ))}
+                    </KbdGroup>
+                  </TooltipContent>
+                </Tooltip>
               </>
             )}
             <DetailSidebarToggleButton
@@ -261,7 +282,6 @@ export function KnowledgeSpaceShell({
                   className="i-custom-vender-line-arrows-sidebar-left-arrow size-4"
                 />
               }
-              className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
             />
           </div>
           <div className="flex min-w-0 items-center px-1 py-2">

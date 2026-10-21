@@ -1,11 +1,15 @@
 import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { KnowledgeFsProductPermission } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
+import type { ReactElement } from 'react'
 import type { NewKnowledgeSourceDraft } from '../../setup/source-draft'
 import type { SourceConnection, SourceProvider } from '../../source-models'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { newKnowledgeSourceDraftStorageKey } from '../../setup/source-draft'
 import { AddSourcePage } from '../page'
 
@@ -20,7 +24,7 @@ const routerMock = vi.hoisted(() => ({
   replace: vi.fn(),
 }))
 const knowledgeSpacePermissionState = vi.hoisted(() => ({
-  keys: ['knowledge_space_document_write'],
+  keys: ['knowledge_space_document_write'] as KnowledgeFsProductPermission[],
 }))
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -29,10 +33,6 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('../../../space/context', () => ({
-  useKnowledgeSpacePermission: (permission: string) =>
-    knowledgeSpacePermissionState.keys.includes(permission),
-}))
 const openMock = vi.hoisted(() => vi.fn())
 
 const connectFirecrawlButtonName = 'knowledgeSources.connectProvider:{"provider":"Firecrawl"}'
@@ -142,189 +142,89 @@ vi.mock('@/app/notifications', () => ({
   toast: { info: toastInfoMock },
 }))
 
-type ConnectionsInfiniteData = {
-  pages: GetKnowledgeSpacesByIdSourceConnectionsResponse[]
-}
-const connectionInfiniteDataApiResponse = vi.hoisted(() => (data: ConnectionsInfiniteData) => ({
-  pages: data.pages.map((page) => ({
-    data: page.items.map(connectionApiResponse),
-    next_cursor: page.nextCursor ?? null,
-  })),
-}))
+type ServerResource<T> = { data: T; error: unknown; pending: boolean }
 
-type ConnectionsInfiniteOptions = {
-  enabled?: boolean
-  getNextPageParam: (lastPage: {
-    data: ReturnType<typeof connectionApiResponse>[]
-    next_cursor?: string | null
-  }) => string | null | undefined
-  input: (pageParam: string | null) => unknown
-  initialPageParam: string | null
-}
-
-const queryState = vi.hoisted(() => ({
+// Server-side state behind the real Query observers; each test edits it before or between fetches.
+const server = vi.hoisted(() => ({
   connections: {
-    data: { pages: [{ items: [] }] } as ConnectionsInfiniteData | undefined,
+    data: [{ items: [] }] as GetKnowledgeSpacesByIdSourceConnectionsResponse[],
     error: null as unknown,
-    fetchNextPage: vi.fn(),
-    hasNextPage: false,
-    isFetchNextPageError: false,
-    isFetchingNextPage: false,
-    isPending: false,
-    refetch: vi.fn(),
-  },
-  providers: {
-    data: undefined as GetSourceProvidersResponse | undefined,
-    error: null as unknown,
-    isPending: false,
-    refetch: vi.fn(),
+    nextPageError: null as unknown,
+    pending: false,
   },
   datasourceAuth: {
-    data: { result: [] } as DatasourceProviderAuthListResponse | undefined,
+    data: { result: [] } as DatasourceProviderAuthListResponse,
     error: null as unknown,
-    isPending: false,
-    refetch: vi.fn(),
+    pending: false,
   },
-  datasourcePlugins: {
-    data: [] as DataSourceItem[],
+  datasourcePlugins: { data: [] as DataSourceItem[], error: null as unknown, pending: false },
+  providers: {
+    data: { items: [] } as GetSourceProvidersResponse,
     error: null as unknown,
-    isPending: false,
-    refetch: vi.fn(),
+    pending: false,
   },
+  listConnections: vi.fn(),
+  listDatasourceAuth: vi.fn(),
+  listDatasourcePlugins: vi.fn(),
+  listProviders: vi.fn(),
 }))
+
+const respond = vi.hoisted(
+  () =>
+    <T, R>(resource: ServerResource<T>, toApi: (data: T) => R) =>
+      resource.pending
+        ? new Promise<R>(() => {})
+        : resource.error
+          ? Promise.reject(resource.error)
+          : Promise.resolve(toApi(resource.data)),
+)
 
 const clientMock = vi.hoisted(() => ({
   createConnection: vi.fn(),
   refreshConnection: vi.fn(),
 }))
 
-const queryClientMock = vi.hoisted(() => ({
-  invalidateQueries: vi.fn(),
-}))
-
-const providerQueryOptionsMock = vi.hoisted(() =>
-  vi.fn((options: { enabled?: boolean; select?: (data: unknown) => unknown }) => ({
-    enabled: options.enabled,
-    queryKey: ['source-providers'],
-    select: options.select,
-  })),
-)
-const connectionInfiniteOptionsMock = vi.hoisted(() =>
-  vi.fn((options: ConnectionsInfiniteOptions) => ({
-    enabled: options.enabled,
-    queryKey: ['source-connections'],
-  })),
-)
-const providerHookOptionsMock = vi.hoisted(() => vi.fn())
-const datasourceAuthQueryOptionsMock = vi.hoisted(() =>
-  vi.fn((options: { enabled?: boolean }) => ({
-    enabled: options.enabled,
-    queryKey: ['datasource-auth'],
-  })),
-)
-const connectionHookOptionsMock = vi.hoisted(() => vi.fn())
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
   return {
-    ...original,
-    useInfiniteQuery: (options: unknown) => {
-      connectionHookOptionsMock(options)
-      return {
-        ...queryState.connections,
-        data: queryState.connections.data
-          ? connectionInfiniteDataApiResponse(queryState.connections.data)
-          : undefined,
-        refetch: async () => {
-          const result = (await queryState.connections.refetch()) as
-            | { data?: ConnectionsInfiniteData; error?: unknown }
-            | undefined
-          if (!result?.data) return result
-          return {
-            ...result,
-            data: connectionInfiniteDataApiResponse(result.data),
-          }
-        },
-      }
-    },
-    useQuery: (options: { queryKey?: string[]; select?: (data: unknown) => unknown }) => {
-      if (options.queryKey?.[0] === 'datasource-plugins') return queryState.datasourcePlugins
-      providerHookOptionsMock(options)
-      if (options.queryKey?.[0] === 'datasource-auth') return queryState.datasourceAuth
-      const raw = queryState.providers.data
-        ? { data: queryState.providers.data.items.map(providerApiResponse) }
-        : undefined
-      return {
-        ...queryState.providers,
-        data: raw && options.select ? options.select(raw) : raw,
-      }
-    },
-    useQueryClient: () => queryClientMock,
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      [`${space}.sourceConnections.byConnectionId.refresh.post`]: async (input: never) =>
+        connectionApiResponse(await clientMock.refreshConnection(input)),
+      [`${space}.sourceConnections.post`]: async (input: never) =>
+        connectionApiResponse(await clientMock.createConnection(input)),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.defaultList.get': (input: never) => {
+        server.listDatasourceAuth(input)
+        return respond(server.datasourceAuth, (data) => data)
+      },
+      'rag.pipelines.datasourcePlugins.get': (input: never) => {
+        server.listDatasourcePlugins(input)
+        return respond(server.datasourcePlugins, (data) => data)
+      },
+      [`${space}.sourceConnections.get`]: (input: { query: { cursor?: string } }) => {
+        server.listConnections(input)
+        const index = input.query.cursor ? Number(input.query.cursor.replace('page-', '')) : 0
+        if (index > 0 && server.connections.nextPageError)
+          return Promise.reject(server.connections.nextPageError)
+        return respond(server.connections, (pages) => ({
+          data: (pages[index]?.items ?? []).map(connectionApiResponse),
+          next_cursor: index + 1 < pages.length ? `page-${index + 1}` : null,
+        }))
+      },
+      [`${space}.sourceProviders.get`]: (input: never) => {
+        server.listProviders(input)
+        return respond(server.providers, (data) => ({
+          data: data.items.map(providerApiResponse),
+        }))
+      },
+    }),
   }
 })
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          sourceConnections: {
-            byConnectionId: {
-              refresh: {
-                post: async (input: unknown) =>
-                  connectionApiResponse(await clientMock.refreshConnection(input)),
-              },
-            },
-            post: async (input: unknown) =>
-              connectionApiResponse(await clientMock.createConnection(input)),
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    rag: {
-      pipelines: {
-        datasourcePlugins: {
-          get: {
-            queryOptions: (options: { enabled?: boolean }) => ({
-              ...options,
-              queryKey: ['datasource-plugins'],
-            }),
-          },
-        },
-      },
-    },
-    auth: {
-      plugin: {
-        datasource: {
-          defaultList: {
-            get: {
-              queryOptions: datasourceAuthQueryOptionsMock,
-            },
-          },
-        },
-      },
-    },
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          sourceConnections: {
-            get: {
-              infiniteOptions: connectionInfiniteOptionsMock,
-              key: vi.fn(() => ['source-connections']),
-            },
-          },
-          sourceProviders: {
-            get: {
-              queryOptions: providerQueryOptionsMock,
-            },
-          },
-        },
-      },
-    },
-  },
-}))
 
 const firecrawlProvider: GetSourceProvidersResponse['items'][number] = {
   authKinds: ['api-key', 'endpoint'],
@@ -575,33 +475,41 @@ function createDeferred<T>() {
   return { promise, resolve }
 }
 
+const connectionsKey = () =>
+  consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.key()
+
+let currentQueryClient: ReturnType<typeof renderWithConsoleQuery>['queryClient'] | undefined
+
+/** Renders inside the space shell's context; by default waits until every settled request lands. */
+async function renderPage(ui: ReactElement, { settle = true } = {}) {
+  const view = renderWithConsoleQuery(
+    <KnowledgeSpaceTestProvider
+      space={createKnowledgeSpaceFixture({ permission_keys: knowledgeSpacePermissionState.keys })}
+    >
+      {ui}
+    </KnowledgeSpaceTestProvider>,
+  )
+  currentQueryClient = view.queryClient
+  if (settle) await waitFor(() => expect(view.queryClient.isFetching()).toBe(0))
+  return view
+}
+
+/** Lets the page observe the current server state, as a later background refetch would. */
+async function refetchConnections() {
+  await act(() => currentQueryClient!.invalidateQueries({ queryKey: connectionsKey() }))
+}
+
 describe('AddSourcePage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     knowledgeSpacePermissionState.keys = ['knowledge_space_document_write']
     vi.stubGlobal('open', openMock)
     globalThis.sessionStorage.clear()
     clientMock.createConnection.mockReset()
     clientMock.refreshConnection.mockReset()
-    queryState.connections.refetch.mockReset()
-    queryState.providers.refetch.mockReset()
-    queryState.datasourceAuth.refetch.mockReset()
-    queryState.datasourcePlugins.refetch.mockReset()
-    queryState.providers.data = { items: [firecrawlProvider] }
-    queryState.providers.error = null
-    queryState.providers.isPending = false
-    queryState.datasourceAuth.data = { result: [] }
-    queryState.datasourceAuth.error = null
-    queryState.datasourceAuth.isPending = false
-    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin]
-    queryState.datasourcePlugins.error = null
-    queryState.datasourcePlugins.isPending = false
-    queryState.connections.data = { pages: [{ items: [] }] }
-    queryState.connections.error = null
-    queryState.connections.hasNextPage = false
-    queryState.connections.isFetchNextPageError = false
-    queryState.connections.isFetchingNextPage = false
-    queryState.connections.isPending = false
+    server.providers = { data: { items: [firecrawlProvider] }, error: null, pending: false }
+    server.datasourceAuth = { data: { result: [] }, error: null, pending: false }
+    server.datasourcePlugins = { data: [firecrawlDatasourcePlugin], error: null, pending: false }
+    server.connections = { data: [{ items: [] }], error: null, nextPageError: null, pending: false }
   })
 
   afterEach(() => {
@@ -694,7 +602,7 @@ describe('AddSourcePage', () => {
   })
 
   it('finds the provider connection on a later loaded page', () => {
-    queryState.connections.data = { pages: [{ items: [] }, { items: [connection('active')] }] }
+    server.connections.data = [{ items: [], { items: [connection('active')] }] }
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
@@ -705,7 +613,7 @@ describe('AddSourcePage', () => {
   })
 
   it('offers replacement setup when the saved provider connection is revoked', () => {
-    queryState.connections.data = { pages: [{ items: [connection('revoked')] }] }
+    server.connections.data = [{ items: [connection('revoked')]] }
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
@@ -717,7 +625,7 @@ describe('AddSourcePage', () => {
 
   it('restores a website draft handed off by the creation flow', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    server.connections.data = [{ items: [connection('active')]] }
 
     render(
       <AddSourcePage
@@ -772,7 +680,7 @@ describe('AddSourcePage', () => {
 
   it('clears provider-specific draft fields when falling back to another website provider', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    server.connections.data = [{ items: [connection('active')]] }
 
     render(
       <AddSourcePage
@@ -860,7 +768,7 @@ describe('AddSourcePage', () => {
   })
 
   it('restores a website draft from session storage', async () => {
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    server.connections.data = [{ items: [connection('active')]] }
     const storageKey = newKnowledgeSourceDraftStorageKey('draft-1')
     globalThis.sessionStorage.setItem(
       storageKey,
@@ -887,7 +795,7 @@ describe('AddSourcePage', () => {
   })
 
   it('retains the draft through Strict Mode, delayed loading, and a real remount', async () => {
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    server.connections.data = [{ items: [connection('active')]] }
     queryState.connections.isPending = true
     const storageKey = newKnowledgeSourceDraftStorageKey('strict-draft')
     globalThis.sessionStorage.setItem(
@@ -997,8 +905,8 @@ describe('AddSourcePage', () => {
   })
 
   it('automatically binds the default Dify Firecrawl credential for the real KnowledgeFS provider', async () => {
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
-    queryState.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
     clientMock.createConnection.mockResolvedValue({
       ...connection('active'),
       authKind: 'endpoint',
@@ -1038,8 +946,8 @@ describe('AddSourcePage', () => {
   })
 
   it('names the provider when automatic credential binding fails', async () => {
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
-    queryState.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
     clientMock.createConnection.mockRejectedValue(new Error('provider unavailable'))
     queryState.connections.refetch.mockResolvedValue({ data: queryState.connections.data })
 
@@ -1051,9 +959,9 @@ describe('AddSourcePage', () => {
   })
 
   it('binds an installed Jina Reader datasource without reusing a Firecrawl connection', async () => {
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
-    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
-    queryState.datasourceAuth.data = { result: [jinaDatasourceAuth] }
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
+    server.datasourceAuth.data = { result: [jinaDatasourceAuth] }
     queryState.connections.data = {
       pages: [
         {
@@ -1117,9 +1025,9 @@ describe('AddSourcePage', () => {
 
   it('clears website parameters when switching between configured providers', async () => {
     const user = userEvent.setup()
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
-    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
-    queryState.datasourceAuth.data = { result: [firecrawlDatasourceAuth, jinaDatasourceAuth] }
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
+    server.datasourceAuth.data = { result: [firecrawlDatasourceAuth, jinaDatasourceAuth] }
     queryState.connections.data = {
       pages: [
         {
@@ -1168,7 +1076,7 @@ describe('AddSourcePage', () => {
 
   it('opens Data Source settings when Dify has no Firecrawl credential', async () => {
     const user = userEvent.setup()
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     expect(screen.queryByLabelText(/Api Key/)).not.toBeInTheDocument()
@@ -1202,8 +1110,8 @@ describe('AddSourcePage', () => {
   })
 
   it('treats an active managed connection as unconfigured after its credential is deleted', () => {
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
-    queryState.datasourceAuth.data = {
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.datasourceAuth.data = {
       result: [{ ...firecrawlDatasourceAuth, credentials_list: [] }],
     }
     queryState.connections.data = {
@@ -1284,7 +1192,7 @@ describe('AddSourcePage', () => {
   })
 
   it('discovers installed website providers and keeps the provider-management action', () => {
-    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, customCrawlerDatasourcePlugin]
+    server.datasourcePlugins.data = [firecrawlDatasourcePlugin, customCrawlerDatasourcePlugin]
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('group', { name: 'knowledgeSpace.providerLabel' })).toBeInTheDocument()
@@ -1299,7 +1207,7 @@ describe('AddSourcePage', () => {
   })
 
   it('prompts for provider installation when no datasource integration is installed', () => {
-    queryState.datasourcePlugins.data = []
+    server.datasourcePlugins.data = []
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
@@ -1329,7 +1237,7 @@ describe('AddSourcePage', () => {
       screen.queryByRole('textbox', { name: 'knowledgeSources.rootUrl' }),
     ).not.toBeInTheDocument()
 
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    server.connections.data = [{ items: [connection('active')]] }
     view.rerender(
       <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
     )
@@ -1342,7 +1250,7 @@ describe('AddSourcePage', () => {
   })
 
   it('does not select a lookalike provider by fuzzy display name', () => {
-    queryState.providers.data = {
+    server.providers.data = {
       items: [{ ...firecrawlProvider, displayName: 'Firecrawl impostor', id: 'impostor' }],
     }
 
@@ -1449,7 +1357,7 @@ describe('AddSourcePage', () => {
         },
       ],
     }
-    queryState.providers.data = { items: [booleanProvider] }
+    server.providers.data = { items: [booleanProvider] }
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
@@ -1460,7 +1368,7 @@ describe('AddSourcePage', () => {
 
   it('refreshes an errored connection using its current version', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    server.connections.data = [{ items: [connection('error')]] }
     clientMock.refreshConnection.mockResolvedValue(connection('active'))
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
@@ -1482,7 +1390,7 @@ describe('AddSourcePage', () => {
   it('keeps the refresh action focused and explicitly named while pending', async () => {
     const user = userEvent.setup()
     const refreshConnectionDeferred = createDeferred<ReturnType<typeof connection>>()
-    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    server.connections.data = [{ items: [connection('error')]] }
     clientMock.refreshConnection.mockReturnValue(refreshConnectionDeferred.promise)
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
@@ -1504,7 +1412,7 @@ describe('AddSourcePage', () => {
 
   it('reconciles a refresh version race and retries with the server version', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    server.connections.data = [{ items: [connection('error')]] }
     clientMock.refreshConnection
       .mockRejectedValueOnce(new Error('version conflict'))
       .mockResolvedValueOnce(connection('active', 4))
@@ -1540,7 +1448,7 @@ describe('AddSourcePage', () => {
 
   it('does not regress the current version when reconciliation reads a stale replica', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('error', 3)] }] }
+    server.connections.data = [{ items: [connection('error', 3)]] }
     clientMock.refreshConnection
       .mockRejectedValueOnce(new Error('response lost'))
       .mockResolvedValueOnce(connection('active', 4))
@@ -1563,7 +1471,7 @@ describe('AddSourcePage', () => {
 
   it('lets a newer remote connection version replace a local mutation response', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    server.connections.data = [{ items: [connection('error')]] }
     clientMock.refreshConnection.mockResolvedValue(connection('provisioning', 3))
 
     const view = render(<AddSourcePage knowledgeSpaceId="space-1" />)
@@ -1593,7 +1501,7 @@ describe('AddSourcePage', () => {
 
   it('reconciles a provisioning connection with the refreshed server state', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('provisioning')] }] }
+    server.connections.data = [{ items: [connection('provisioning')]] }
     queryState.connections.refetch.mockResolvedValue({
       data: { pages: [{ items: [connection('active')] }] },
     })
@@ -1608,7 +1516,7 @@ describe('AddSourcePage', () => {
 
   it('shows a retryable error when provisioning reconciliation fails', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('provisioning')] }] }
+    server.connections.data = [{ items: [connection('provisioning')]] }
     queryState.connections.refetch.mockResolvedValue({
       data: queryState.connections.data,
       error: new Error('temporary failure'),
@@ -1626,9 +1534,9 @@ describe('AddSourcePage', () => {
 
   it('shows a retryable error when provisioning reconciliation finds no connection', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('provisioning')] }] }
+    server.connections.data = [{ items: [connection('provisioning')]] }
     queryState.connections.refetch.mockImplementation(async () => {
-      queryState.connections.data = { pages: [{ items: [] }] }
+      server.connections.data = [{ items: []] }
       return { data: queryState.connections.data }
     })
 
@@ -1727,7 +1635,7 @@ describe('AddSourcePage', () => {
   })
 
   it('shows catalog unavailability instead of offering a fake connection', () => {
-    queryState.providers.data = {
+    server.providers.data = {
       items: [{ ...firecrawlProvider, available: false, unavailableReason: 'Disabled by admin' }],
     }
 
@@ -1740,7 +1648,7 @@ describe('AddSourcePage', () => {
   })
 
   it('does not offer unsupported OAuth or undocumented direct connection paths', () => {
-    queryState.providers.data = {
+    server.providers.data = {
       items: [
         {
           ...firecrawlProvider,
