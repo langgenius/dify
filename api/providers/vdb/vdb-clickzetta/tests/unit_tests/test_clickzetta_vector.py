@@ -41,7 +41,7 @@ def _build_fake_clickzetta_module():
     def connect(**_kwargs):
         return _FakeConnection()
 
-    clickzetta.connect = connect
+    vars(clickzetta)["connect"] = connect
     return clickzetta
 
 
@@ -422,7 +422,9 @@ def test_write_queue_initialization_worker_and_execute_write(clickzetta_module, 
     clickzetta_module.ClickzettaVector._shutdown = False
     clickzetta_module.ClickzettaVector._init_write_queue()
     clickzetta_module.ClickzettaVector._init_write_queue()
-    assert clickzetta_module.ClickzettaVector._write_thread.started == 1
+    write_thread = clickzetta_module.ClickzettaVector._write_thread
+    assert isinstance(write_thread, _Thread)
+    assert write_thread.started == 1
 
     result_queue_ok = queue.Queue()
     result_queue_fail = queue.Queue()
@@ -809,7 +811,7 @@ def test_clickzetta_pool_cleanup_and_shutdown_edge_paths(clickzetta_module):
     pool._pools["missing-lock-key"] = [(MagicMock(), 0.0)]
     pool._cleanup_expired_connections()
     pool.shutdown()
-    assert pool._shutdown is True
+    assert pool._shutdown is True  # pyrefly: ignore[unnecessary-comparison]
 
 
 def test_clickzetta_pool_cleanup_thread_and_worker_exception_paths(clickzetta_module, monkeypatch: pytest.MonkeyPatch):

@@ -32,8 +32,8 @@ def _build_fake_upstash_module():
             self.delete = MagicMock()
             self.reset = MagicMock()
 
-    upstash_module.Vector = Vector
-    upstash_module.Index = Index
+    vars(upstash_module)["Vector"] = Vector
+    vars(upstash_module)["Index"] = Index
     return upstash_module
 
 

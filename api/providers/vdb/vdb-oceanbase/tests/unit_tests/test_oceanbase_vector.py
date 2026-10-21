@@ -50,12 +50,12 @@ def _build_fake_pyobvector_module():
             self.ann_search = MagicMock(return_value=[])
             self.drop_table_if_exist = MagicMock()
 
-    pyobvector.VECTOR = VECTOR
-    pyobvector.ObVecClient = ObVecClient
-    pyobvector.VecIndexType = VecIndexType
-    pyobvector.l2_distance = l2_distance
-    pyobvector.cosine_distance = cosine_distance
-    pyobvector.inner_product = inner_product
+    vars(pyobvector)["VECTOR"] = VECTOR
+    vars(pyobvector)["ObVecClient"] = ObVecClient
+    vars(pyobvector)["VecIndexType"] = VecIndexType
+    vars(pyobvector)["l2_distance"] = l2_distance
+    vars(pyobvector)["cosine_distance"] = cosine_distance
+    vars(pyobvector)["inner_product"] = inner_product
     return pyobvector
 
 

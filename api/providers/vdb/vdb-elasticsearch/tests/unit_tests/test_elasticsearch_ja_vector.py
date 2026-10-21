@@ -26,8 +26,8 @@ def _build_fake_elasticsearch_modules():
                 refresh=MagicMock(), delete=MagicMock(), exists=MagicMock(return_value=False), create=MagicMock()
             )
 
-    elasticsearch.Elasticsearch = Elasticsearch
-    elasticsearch.ConnectionError = ConnectionError
+    vars(elasticsearch)["Elasticsearch"] = Elasticsearch
+    vars(elasticsearch)["ConnectionError"] = ConnectionError
     elasticsearch.__dict__["NotFoundError"] = NotFoundError
     return {"elasticsearch": elasticsearch}
 

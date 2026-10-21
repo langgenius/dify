@@ -47,8 +47,8 @@ def _install_openapi_stubs(monkeypatch: pytest.MonkeyPatch):
             self.config = config
 
     gpdb_client = types.ModuleType("alibabacloud_gpdb20160503.client")
-    gpdb_client.Client = _Client
-    gpdb_package.models = gpdb_models
+    vars(gpdb_client)["Client"] = _Client
+    vars(gpdb_package)["models"] = gpdb_models
 
     tea_openapi = types.ModuleType("alibabacloud_tea_openapi")
     tea_openapi.__path__ = []
@@ -59,8 +59,8 @@ def _install_openapi_stubs(monkeypatch: pytest.MonkeyPatch):
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
-    tea_openapi_models.Config = OpenApiConfig
-    tea_openapi.models = tea_openapi_models
+    vars(tea_openapi_models)["Config"] = OpenApiConfig
+    vars(tea_openapi)["models"] = tea_openapi_models
 
     tea_package = types.ModuleType("Tea")
     tea_package.__path__ = []
@@ -73,8 +73,8 @@ def _install_openapi_stubs(monkeypatch: pytest.MonkeyPatch):
             self.statusCode = status_code
             self.status_code = status_code
 
-    tea_exceptions.TeaException = TeaError
-    tea_package.exceptions = tea_exceptions
+    vars(tea_exceptions)["TeaException"] = TeaError
+    vars(tea_package)["exceptions"] = tea_exceptions
 
     monkeypatch.setitem(sys.modules, "alibabacloud_gpdb20160503", gpdb_package)
     monkeypatch.setitem(sys.modules, "alibabacloud_gpdb20160503.models", gpdb_models)
@@ -141,7 +141,7 @@ def test_init_creates_openapi_client_and_runs_initialize(monkeypatch: pytest.Mon
     assert isinstance(vector._client_config, stubs.OpenApiConfig)
     assert vector._client_config.user_agent == "dify"
     assert vector._client_config.access_key_id == "ak"
-    assert vector._client.config is vector._client_config
+    assert vars(vector._client)["config"] is vector._client_config
     initialize_mock.assert_called_once_with()
 
 
@@ -170,7 +170,8 @@ def test_initialize_runs_when_cache_is_missing(monkeypatch: pytest.MonkeyPatch):
     lock.__exit__.return_value = None
     monkeypatch.setattr(openapi_module.redis_client, "lock", MagicMock(return_value=lock))
     monkeypatch.setattr(openapi_module.redis_client, "get", MagicMock(return_value=None))
-    monkeypatch.setattr(openapi_module.redis_client, "set", MagicMock())
+    redis_set = MagicMock()
+    monkeypatch.setattr(openapi_module.redis_client, "set", redis_set)
 
     vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
     vector.config = _config()
@@ -181,7 +182,7 @@ def test_initialize_runs_when_cache_is_missing(monkeypatch: pytest.MonkeyPatch):
 
     vector._initialize_vector_database.assert_called_once()
     vector._create_namespace_if_not_exists.assert_called_once()
-    openapi_module.redis_client.set.assert_called_once()
+    redis_set.assert_called_once()
 
 
 def test_initialize_vector_database_calls_openapi_client(monkeypatch: pytest.MonkeyPatch):
@@ -241,7 +242,8 @@ def test_create_collection_if_not_exists_creates_when_missing(monkeypatch: pytes
     lock.__exit__.return_value = None
     monkeypatch.setattr(openapi_module.redis_client, "lock", MagicMock(return_value=lock))
     monkeypatch.setattr(openapi_module.redis_client, "get", MagicMock(return_value=None))
-    monkeypatch.setattr(openapi_module.redis_client, "set", MagicMock())
+    redis_set = MagicMock()
+    monkeypatch.setattr(openapi_module.redis_client, "set", redis_set)
 
     vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
     vector._collection_name = "collection_1"
@@ -252,7 +254,7 @@ def test_create_collection_if_not_exists_creates_when_missing(monkeypatch: pytes
     vector.create_collection_if_not_exists(embedding_dimension=1024)
 
     vector._client.create_collection.assert_called_once()
-    openapi_module.redis_client.set.assert_called_once()
+    redis_set.assert_called_once()
 
 
 def test_create_collection_if_not_exists_skips_when_cached(monkeypatch: pytest.MonkeyPatch):
@@ -302,7 +304,7 @@ def test_openapi_add_delete_and_search_methods(monkeypatch: pytest.MonkeyPatch):
 
     documents = [
         Document(page_content="doc 1", metadata={"doc_id": "d1", "document_id": "doc-1"}),
-        SimpleNamespace(page_content="doc 2", metadata=None),
+        Document.model_construct(page_content="doc 2", metadata=None),
     ]
     embeddings = [[0.1, 0.2], [0.2, 0.3]]
     vector.add_texts(documents, embeddings)

@@ -68,18 +68,18 @@ def _build_fake_pymochow_modules():
         JSON = "JSON"
         FLOAT_VECTOR = "FLOAT_VECTOR"
 
-    pymochow.MochowClient = _SimpleObject
-    pymochow_credentials.BceCredentials = _SimpleObject
-    pymochow_configuration.Configuration = _SimpleObject
-    pymochow_exception.ServerError = ServerError
-    pymochow_model_database.Database = _SimpleObject
+    vars(pymochow)["MochowClient"] = _SimpleObject
+    vars(pymochow_credentials)["BceCredentials"] = _SimpleObject
+    vars(pymochow_configuration)["Configuration"] = _SimpleObject
+    vars(pymochow_exception)["ServerError"] = ServerError
+    vars(pymochow_model_database)["Database"] = _SimpleObject
 
-    pymochow_model_enum.FieldType = FieldType
-    pymochow_model_enum.IndexState = IndexState
-    pymochow_model_enum.IndexType = IndexType
-    pymochow_model_enum.MetricType = MetricType
-    pymochow_model_enum.ServerErrCode = ServerErrCode
-    pymochow_model_enum.TableState = TableState
+    vars(pymochow_model_enum)["FieldType"] = FieldType
+    vars(pymochow_model_enum)["IndexState"] = IndexState
+    vars(pymochow_model_enum)["IndexType"] = IndexType
+    vars(pymochow_model_enum)["MetricType"] = MetricType
+    vars(pymochow_model_enum)["ServerErrCode"] = ServerErrCode
+    vars(pymochow_model_enum)["TableState"] = TableState
 
     for cls_name in [
         "AutoBuildRowCountIncrement",
@@ -92,20 +92,20 @@ def _build_fake_pymochow_modules():
         "VectorIndex",
     ]:
         setattr(pymochow_model_schema, cls_name, _SimpleObject)
-    pymochow_model_schema.InvertedIndexAnalyzer = InvertedIndexAnalyzer
-    pymochow_model_schema.InvertedIndexFieldAttribute = InvertedIndexFieldAttribute
-    pymochow_model_schema.InvertedIndexParseMode = InvertedIndexParseMode
+    vars(pymochow_model_schema)["InvertedIndexAnalyzer"] = InvertedIndexAnalyzer
+    vars(pymochow_model_schema)["InvertedIndexFieldAttribute"] = InvertedIndexFieldAttribute
+    vars(pymochow_model_schema)["InvertedIndexParseMode"] = InvertedIndexParseMode
 
     for cls_name in ["AnnSearch", "BM25SearchRequest", "HNSWSearchParams", "Partition", "Row"]:
         setattr(pymochow_model_table, cls_name, _SimpleObject)
 
-    pymochow.auth = pymochow_auth
-    pymochow.model = pymochow_model
-    pymochow_auth.bce_credentials = pymochow_credentials
-    pymochow_model.database = pymochow_model_database
-    pymochow_model.enum = pymochow_model_enum
-    pymochow_model.schema = pymochow_model_schema
-    pymochow_model.table = pymochow_model_table
+    vars(pymochow)["auth"] = pymochow_auth
+    vars(pymochow)["model"] = pymochow_model
+    vars(pymochow_auth)["bce_credentials"] = pymochow_credentials
+    vars(pymochow_model)["database"] = pymochow_model_database
+    vars(pymochow_model)["enum"] = pymochow_model_enum
+    vars(pymochow_model)["schema"] = pymochow_model_schema
+    vars(pymochow_model)["table"] = pymochow_model_table
 
     modules = {
         "pymochow": pymochow,

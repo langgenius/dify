@@ -126,18 +126,18 @@ def _build_fake_couchbase_modules():
         def bucket(self, _name):
             return self._bucket
 
-    couchbase_auth.PasswordAuthenticator = PasswordAuthenticator
-    couchbase_cluster.Cluster = Cluster
-    couchbase_management_search.SearchIndex = SearchIndex
-    couchbase_options.ClusterOptions = ClusterOptions
-    couchbase_options.SearchOptions = SearchOptions
-    couchbase_vector.VectorQuery = VectorQuery
-    couchbase_vector.VectorSearch = VectorSearch
-    couchbase_search.QueryStringQuery = QueryStringQuery
-    couchbase_search.SearchRequest = SearchRequest
+    vars(couchbase_auth)["PasswordAuthenticator"] = PasswordAuthenticator
+    vars(couchbase_cluster)["Cluster"] = Cluster
+    vars(couchbase_management_search)["SearchIndex"] = SearchIndex
+    vars(couchbase_options)["ClusterOptions"] = ClusterOptions
+    vars(couchbase_options)["SearchOptions"] = SearchOptions
+    vars(couchbase_vector)["VectorQuery"] = VectorQuery
+    vars(couchbase_vector)["VectorSearch"] = VectorSearch
+    vars(couchbase_search)["QueryStringQuery"] = QueryStringQuery
+    vars(couchbase_search)["SearchRequest"] = SearchRequest
 
-    couchbase.search = couchbase_search
-    couchbase.management = couchbase_management
+    vars(couchbase)["search"] = couchbase_search
+    vars(couchbase)["management"] = couchbase_management
 
     return {
         "couchbase": couchbase,

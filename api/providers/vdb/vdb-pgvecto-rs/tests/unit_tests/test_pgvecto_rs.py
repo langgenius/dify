@@ -22,7 +22,7 @@ def _build_fake_pgvecto_modules():
         def __init__(self, dim):
             self.dim = dim
 
-    pgvecto_rs_sqlalchemy.VECTOR = VECTOR
+    vars(pgvecto_rs_sqlalchemy)["VECTOR"] = VECTOR
     return {
         "pgvecto_rs": pgvecto_rs,
         "pgvecto_rs.sqlalchemy": pgvecto_rs_sqlalchemy,

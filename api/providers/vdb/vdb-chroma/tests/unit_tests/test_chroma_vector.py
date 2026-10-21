@@ -13,8 +13,8 @@ from models.dataset import Dataset
 
 def _build_fake_chroma_modules():
     chroma = types.ModuleType("chromadb")
-    chroma.DEFAULT_TENANT = "default_tenant"
-    chroma.DEFAULT_DATABASE = "default_database"
+    vars(chroma)["DEFAULT_TENANT"] = "default_tenant"
+    vars(chroma)["DEFAULT_DATABASE"] = "default_database"
 
     class Settings:
         def __init__(self, **kwargs):
@@ -38,9 +38,9 @@ def _build_fake_chroma_modules():
             self.get_or_create_collection = MagicMock(return_value=self.collection)
             self.delete_collection = MagicMock()
 
-    chroma.Settings = Settings
-    chroma.QueryResult = QueryResult
-    chroma.HttpClient = _Client
+    vars(chroma)["Settings"] = Settings
+    vars(chroma)["QueryResult"] = QueryResult
+    vars(chroma)["HttpClient"] = _Client
     return chroma
 
 

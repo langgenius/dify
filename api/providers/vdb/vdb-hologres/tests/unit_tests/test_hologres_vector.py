@@ -2,7 +2,6 @@ import importlib
 import json
 import sys
 import types
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,9 +15,9 @@ def _build_fake_hologres_modules():
     holo_module = types.ModuleType("holo_search_sdk")
     holo_types_module = types.ModuleType("holo_search_sdk.types")
 
-    holo_types_module.BaseQuantizationType = str
-    holo_types_module.DistanceType = str
-    holo_types_module.TokenizerType = str
+    vars(holo_types_module)["BaseQuantizationType"] = str
+    vars(holo_types_module)["DistanceType"] = str
+    vars(holo_types_module)["TokenizerType"] = str
 
     def _connect(**kwargs):
         client = MagicMock()
@@ -30,7 +29,7 @@ def _build_fake_hologres_modules():
         client.drop_table = MagicMock()
         return client
 
-    holo_module.connect = MagicMock(side_effect=_connect)
+    vars(holo_module)["connect"] = MagicMock(side_effect=_connect)
 
     return {
         "holo_search_sdk": holo_module,
@@ -124,7 +123,7 @@ def test_add_texts_batches_and_serializes_metadata(hologres_module):
         Document(page_content=f"doc-{i}", metadata={"doc_id": f"id-{i}", "document_id": f"document-{i}"})
         for i in range(100)
     ]
-    documents.append(SimpleNamespace(page_content="doc-100", metadata=None))
+    documents.append(Document(page_content="doc-100"))
     embeddings = [[float(i)] for i in range(len(documents))]
 
     ids = vector.add_texts(documents, embeddings)

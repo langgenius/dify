@@ -26,7 +26,7 @@ def _build_fake_elasticsearch_modules():
                 refresh=MagicMock(), delete=MagicMock(), exists=MagicMock(return_value=False), create=MagicMock()
             )
 
-    elasticsearch.Elasticsearch = Elasticsearch
+    vars(elasticsearch)["Elasticsearch"] = Elasticsearch
     return {"elasticsearch": elasticsearch}
 
 

@@ -26,11 +26,11 @@ def _build_fake_psycopg2_modules():
             self.getconn = MagicMock()
             self.putconn = MagicMock()
 
-    psycopg2_pool.SimpleConnectionPool = SimpleConnectionPool
-    psycopg2_extras.execute_values = MagicMock()
+    vars(psycopg2_pool)["SimpleConnectionPool"] = SimpleConnectionPool
+    vars(psycopg2_extras)["execute_values"] = MagicMock()
 
-    psycopg2.pool = psycopg2_pool
-    psycopg2.extras = psycopg2_extras
+    vars(psycopg2)["pool"] = psycopg2_pool
+    vars(psycopg2)["extras"] = psycopg2_extras
     return {
         "psycopg2": psycopg2,
         "psycopg2.pool": psycopg2_pool,

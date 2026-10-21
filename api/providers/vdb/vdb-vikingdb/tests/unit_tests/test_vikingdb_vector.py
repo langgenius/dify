@@ -67,14 +67,14 @@ def _build_fake_vikingdb_modules():
             self.get_collection = MagicMock(return_value=self._collection)
             self.get_index = MagicMock(return_value=self._index)
 
-    viking_db.Data = Data
-    viking_db.DistanceType = DistanceType
-    viking_db.Field = Field
-    viking_db.FieldType = FieldType
-    viking_db.IndexType = IndexType
-    viking_db.QuantType = QuantType
-    viking_db.VectorIndexParams = VectorIndexParams
-    viking_db.VikingDBService = VikingDBService
+    vars(viking_db)["Data"] = Data
+    vars(viking_db)["DistanceType"] = DistanceType
+    vars(viking_db)["Field"] = Field
+    vars(viking_db)["FieldType"] = FieldType
+    vars(viking_db)["IndexType"] = IndexType
+    vars(viking_db)["QuantType"] = QuantType
+    vars(viking_db)["VectorIndexParams"] = VectorIndexParams
+    vars(viking_db)["VikingDBService"] = VikingDBService
 
     return {"volcengine": volcengine, "volcengine.viking_db": viking_db}
 

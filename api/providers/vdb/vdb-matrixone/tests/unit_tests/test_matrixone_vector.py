@@ -28,8 +28,8 @@ def _build_fake_mo_vector_modules():
             self.query = MagicMock(return_value=[])
             self.full_text_query = MagicMock(return_value=[])
 
-    mo_vector_client.MoVectorClient = MoVectorClient
-    mo_vector.client = mo_vector_client
+    vars(mo_vector_client)["MoVectorClient"] = MoVectorClient
+    vars(mo_vector)["client"] = mo_vector_client
     return {"mo_vector": mo_vector, "mo_vector.client": mo_vector_client}
 
 
