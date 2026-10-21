@@ -96,8 +96,8 @@ def clean_dataset_task(
                 schedule_billing_vector_space_refresh(dataset.tenant_id)
 
             # Stop on failure so documents and their resources outlive any remaining segments.
-            _run_step(session, dataset_id, "segments", lambda: _delete_segments(session, dataset_id))
-            _run_step(session, dataset_id, "documents", lambda: _delete_documents(session, dataset_id))
+            _run_step(session, dataset_id, "segments", lambda: _delete_segments(session, tenant_id, dataset_id))
+            _run_step(session, dataset_id, "documents", lambda: _delete_documents(session, tenant_id, dataset_id))
             _run_step(session, dataset_id, "attachments", lambda: _delete_attachments(session, tenant_id, dataset_id))
             _run_step(
                 session,
@@ -165,7 +165,7 @@ def _clean_index(session: Session, dataset: Dataset, doc_form: str) -> None:
     logger.info(click.style(f"Successfully cleaned vector database for dataset: {dataset.id}", fg="green"))
 
 
-def _delete_segments(session: Session, dataset_id: str) -> None:
+def _delete_segments(session: Session, tenant_id: str, dataset_id: str) -> None:
     """Delete document segments in batches, removing their inline image files first."""
     while True:
         segments = session.scalars(
@@ -176,12 +176,12 @@ def _delete_segments(session: Session, dataset_id: str) -> None:
         image_upload_file_ids: list[str] = []
         for segment in segments:
             image_upload_file_ids.extend(get_image_upload_file_ids(segment.content))
-        _delete_upload_files(session, image_upload_file_ids)
+        _delete_upload_files(session, tenant_id, dataset_id, image_upload_file_ids)
         session.execute(delete(DocumentSegment).where(DocumentSegment.id.in_([segment.id for segment in segments])))
         session.commit()
 
 
-def _delete_documents(session: Session, dataset_id: str) -> None:
+def _delete_documents(session: Session, tenant_id: str, dataset_id: str) -> None:
     """Delete documents in batches, removing their uploaded source files first."""
     while True:
         documents = session.scalars(
@@ -195,22 +195,36 @@ def _delete_documents(session: Session, dataset_id: str) -> None:
                 data_source_info = document.data_source_info_dict
                 if data_source_info and "upload_file_id" in data_source_info:
                     file_ids.append(data_source_info["upload_file_id"])
-        _delete_upload_files(session, file_ids)
+        _delete_upload_files(session, tenant_id, dataset_id, file_ids)
         session.execute(delete(Document).where(Document.id.in_([document.id for document in documents])))
         session.commit()
 
 
-def _delete_upload_files(session: Session, file_ids: Sequence[str]) -> None:
-    """Delete blobs before their lookup rows so failures retain storage keys for retry."""
+def _delete_upload_files(session: Session, tenant_id: str, dataset_id: str, file_ids: Sequence[str]) -> None:
+    """Delete unshared blobs before their lookup rows so failures retain storage keys for retry."""
     if not file_ids:
         return
-    files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
+    shared_file_ids = set(
+        session.scalars(
+            select(SegmentAttachmentBinding.attachment_id).where(
+                SegmentAttachmentBinding.tenant_id == tenant_id,
+                SegmentAttachmentBinding.dataset_id != dataset_id,
+                SegmentAttachmentBinding.attachment_id.in_(file_ids),
+            )
+        ).all()
+    )
+    orphaned_file_ids = list(dict.fromkeys(file_id for file_id in file_ids if file_id not in shared_file_ids))
+    if not orphaned_file_ids:
+        return
+    files = session.scalars(
+        select(UploadFile).where(UploadFile.tenant_id == tenant_id, UploadFile.id.in_(orphaned_file_ids))
+    ).all()
     for file in files:
         try:
             storage.delete(file.key)
         except FileNotFoundError:
             logger.debug("Upload file already absent from storage, upload_file_id: %s", file.id)
-    session.execute(delete(UploadFile).where(UploadFile.id.in_(file_ids)))
+    session.execute(delete(UploadFile).where(UploadFile.tenant_id == tenant_id, UploadFile.id.in_(orphaned_file_ids)))
 
 
 def _delete_attachments(session: Session, tenant_id: str, dataset_id: str) -> None:
@@ -230,18 +244,30 @@ def _delete_attachments(session: Session, tenant_id: str, dataset_id: str) -> No
         attachment_file.id for _, attachment_file in attachments_with_bindings if attachment_file is not None
     ]
     binding_ids = [binding.id for binding, _ in attachments_with_bindings]
-    for binding, attachment_file in attachments_with_bindings:
-        if attachment_file is None:
-            continue
+    shared_attachment_ids = set(
+        session.scalars(
+            select(SegmentAttachmentBinding.attachment_id).where(
+                SegmentAttachmentBinding.attachment_id.in_(attachment_ids),
+                SegmentAttachmentBinding.id.not_in(binding_ids),
+            )
+        ).all()
+    )
+    orphaned_attachment_ids = set(attachment_ids) - shared_attachment_ids
+    orphaned_files = {
+        attachment_file.id: attachment_file
+        for _, attachment_file in attachments_with_bindings
+        if attachment_file is not None and attachment_file.id in orphaned_attachment_ids
+    }
+    for attachment_file in orphaned_files.values():
         try:
             storage.delete(attachment_file.key)
         except Exception:
             logger.exception(
                 "Delete attachment_file failed when storage deleted, attachment_file_id: %s",
-                binding.attachment_id,
+                attachment_file.id,
             )
-    if attachment_ids:
-        session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
+    if orphaned_attachment_ids:
+        session.execute(delete(UploadFile).where(UploadFile.id.in_(orphaned_attachment_ids)))
     session.execute(delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.id.in_(binding_ids)))
     session.commit()
 
