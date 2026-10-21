@@ -67,6 +67,8 @@ def _document(
         created_at=datetime(2026, 1, 1),
         used=True,
     )
+    session.add(upload_file)
+    session.flush()
     document = Document(
         tenant_id=dataset.tenant_id,
         dataset_id=dataset.id,
@@ -87,7 +89,7 @@ def _document(
         document.id = document_id
     if indexing_status == IndexingStatus.COMPLETED:
         document.completed_at = datetime(2026, 1, 1)
-    session.add_all((upload_file, document))
+    session.add(document)
     session.flush()
     return document
 
