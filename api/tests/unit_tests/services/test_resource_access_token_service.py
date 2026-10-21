@@ -1,5 +1,7 @@
 """Service policy tests use the Store contract without ORM/session fixtures."""
 
+from collections.abc import Callable
+
 import pytest
 
 from constants.resource_access_token import ResourceAccessTokenManagedBy as ManagedBy
@@ -206,7 +208,9 @@ def test_enterprise_user_token_requires_creator_but_managed_token_does_not(
     ],
 )
 def test_managed_token_is_invalid_on_account_facing_routes(
-    service: ResourceAccessTokenService, store: FakeResourceAccessTokenStore, authorize
+    service: ResourceAccessTokenService,
+    store: FakeResourceAccessTokenStore,
+    authorize: Callable[[ResourceAccessTokenService], object],
 ) -> None:
     store.access = ResourceAccessTokenAccess(
         "token",

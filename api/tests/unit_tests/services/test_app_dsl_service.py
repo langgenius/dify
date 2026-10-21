@@ -966,8 +966,8 @@ def test_workflow_export_encrypts_knowledge_dataset_ids_unless_plain_ids_are_req
             "edges": [],
         }
     )
-    monkeypatch.setattr(AppDslService, "_load_export_workflow", Mock(return_value=workflow))
-    monkeypatch.setattr(AppDslService, "_extract_dependencies_from_workflow", Mock(return_value=[]))
+    monkeypatch.setattr(AppDslService, "_load_export_workflow", lambda *_args, **_kwargs: workflow)
+    monkeypatch.setattr(AppDslService, "_extract_dependencies_from_workflow", lambda *_args, **_kwargs: [])
     monkeypatch.setattr(
         "services.app_dsl_service.AgentDslService.export_workflow_packages",
         lambda _self, *, graph, **_kwargs: (graph, {}),
@@ -985,7 +985,8 @@ def test_workflow_export_encrypts_knowledge_dataset_ids_unless_plain_ids_are_req
         plain_dataset_ids=plain_dataset_ids,
     )
 
-    exported = cast(dict, export_data["workflow"])["graph"]["nodes"][0]["data"]["dataset_ids"]
+    graph = cast(dict[str, dict[str, list[dict[str, dict[str, list[str]]]]]], export_data["workflow"])["graph"]
+    exported = graph["nodes"][0]["data"]["dataset_ids"]
     if plain_dataset_ids:
         assert exported == [dataset_id]
     else:

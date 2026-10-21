@@ -4004,25 +4004,18 @@ class TestDatasetRetrievalAdditionalHelpers:
                 user_from="account",
                 user_id=user_id,
             )
-        added_queries = sqlite_session.scalars(select(DatasetQuery).order_by(DatasetQuery.dataset_id)).all()
-        assert [row.dataset_id for row in added_queries] == sorted(dataset_ids)
-        assert all(row.created_by == user_id for row in added_queries)
-
-    def test_on_query_skips_non_uuid_user_id(
-        self, retrieval: DatasetRetrieval, sqlite_engine: Engine, sqlite_session: Session
-    ) -> None:
-        # AppDeploy runners forward the Service API caller's own user string.
-        with patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=sqlite_engine)):
+            # AppDeploy runners forward the Service API caller's own user string.
             retrieval._on_query(
                 query="python",
                 attachment_ids=None,
-                dataset_ids=[str(uuid4())],
-                app_id=str(uuid4()),
+                dataset_ids=dataset_ids,
+                app_id=app_id,
                 user_from="end-user",
                 user_id="api-user-42",
             )
-
-        assert sqlite_session.scalars(select(DatasetQuery)).all() == []
+        added_queries = sqlite_session.scalars(select(DatasetQuery).order_by(DatasetQuery.dataset_id)).all()
+        assert [row.dataset_id for row in added_queries] == sorted(dataset_ids)
+        assert all(row.created_by == user_id for row in added_queries)
 
     def test_on_query_normalizes_workflow_end_user_role(
         self, retrieval: DatasetRetrieval, sqlite_engine: Engine, sqlite_session: Session
