@@ -2451,6 +2451,7 @@ class MessageAgentThought(TypeBase):
     # plugin_id = mapped_column(StringUUID, nullable=True)  ## for future design
     tool_process_data: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     message: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    model_messages: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     message_unit_price: Mapped[Decimal | None] = mapped_column(sa.Numeric, nullable=True, default=None)
     message_price_unit: Mapped[Decimal] = mapped_column(sa.Numeric(10, 7), nullable=False, default=Decimal("0.001"))

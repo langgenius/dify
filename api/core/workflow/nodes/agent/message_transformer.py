@@ -23,6 +23,7 @@ from graphon.node_events import (
 )
 from graphon.variables.segments import ArrayFileSegment
 from models import ToolFile
+from services.agent.message_history import AgentMessageHistory
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .events import AgentLogEvent
@@ -63,6 +64,7 @@ class AgentMessageTransformer:
         agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
         llm_usage = LLMUsage.empty_usage()
         variables: dict[str, Any] = {}
+        process_data: dict[str, Any] = {}
 
         for message in message_stream:
             if message.type in {
@@ -136,6 +138,11 @@ class AgentMessageTransformer:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if node_type == BuiltinNodeTypes.AGENT:
                     if isinstance(message.message.json_object, dict):
+                        model_history = message.message.json_object.pop("model_history", None)
+                        if model_history is not None:
+                            process_data["model_history"] = AgentMessageHistory.model_validate(
+                                model_history
+                            ).model_dump(mode="json")
                         msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
                         llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
                         agent_execution_metadata = {
@@ -306,6 +313,7 @@ class AgentMessageTransformer:
                     WorkflowNodeExecutionMetadataKey.AGENT_LOG: agent_logs,
                 },
                 inputs=parameters_for_log,
+                process_data=process_data,
                 llm_usage=llm_usage,
             )
         )

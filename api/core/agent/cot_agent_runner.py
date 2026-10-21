@@ -25,9 +25,9 @@ from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageTool,
-    ToolPromptMessage,
     UserPromptMessage,
 )
+from graphon.model_runtime.model_providers.base.large_language_model import LLMResultAccumulator
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -129,9 +129,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                 )
 
-            # recalc llm max tokens
             prompt_messages = self._organize_prompt_messages()
-            self.recalc_llm_max_tokens(self.model_config, prompt_messages)
 
             # Release any setup/tool transaction before waiting on the provider stream.
             session.commit()
@@ -155,7 +153,18 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             )
 
             usage_dict: dict[str, LLMUsage | None] = {}
-            react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict)
+            accumulator = LLMResultAccumulator()
+
+            def collect_response(
+                source: Generator[LLMResultChunk], target: LLMResultAccumulator
+            ) -> Generator[LLMResultChunk]:
+                for chunk in source:
+                    target.consume(chunk)
+                    yield chunk
+
+            react_chunks = CotAgentOutputParser.handle_react_stream_output(
+                collect_response(chunks, accumulator), usage_dict
+            )
             scratchpad = AgentScratchpadUnit(
                 agent_response="",
                 thought="",
@@ -190,6 +199,10 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=chunk), usage=None),
                     )
 
+            thought_start = len(self._current_thoughts)
+            result = accumulator.to_result(model=model_instance.model_name, prompt_messages=prompt_messages)
+            self._current_thoughts.append(result.message)
+
             assert scratchpad.thought is not None
             scratchpad.thought = scratchpad.thought.strip() or "I am thinking about how to help you"
             self._agent_scratchpad.append(scratchpad)
@@ -216,6 +229,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 answer=scratchpad.agent_response or "",
                 messages_ids=[],
                 llm_usage=usage_dict["usage"],
+                model_messages=self._current_thoughts[thought_start:],
             )
 
             if not scratchpad.is_final():
@@ -251,6 +265,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     )
                     scratchpad.observation = tool_invoke_response
                     scratchpad.agent_response = tool_invoke_response
+                    self._current_thoughts.append(
+                        UserPromptMessage(
+                            content=f"Observation: {tool_invoke_response}\n\ncontinue", name="agent_observation"
+                        )
+                    )
 
                     self.save_agent_thought(
                         agent_thought_id=agent_thought_id,
@@ -262,6 +281,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         answer=scratchpad.agent_response,
                         messages_ids=message_file_ids,
                         llm_usage=usage_dict["usage"],
+                        model_messages=self._current_thoughts[thought_start:],
                     )
 
                     self.queue_manager.publish(
@@ -388,6 +408,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         """
         self._query = query
         self._agent_scratchpad = []
+        self._current_thoughts = []
         self._historic_prompt_messages = self._organize_historic_prompt_messages()
 
     @abstractmethod
@@ -419,53 +440,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         """
         organize historic prompt messages
         """
-        result: list[PromptMessage] = []
-        scratchpads: list[AgentScratchpadUnit] = []
-        current_scratchpad: AgentScratchpadUnit | None = None
-
-        for message in self.history_prompt_messages:
-            match message:
-                case AssistantPromptMessage():
-                    if not current_scratchpad:
-                        assert isinstance(message.content, str)
-                        current_scratchpad = AgentScratchpadUnit(
-                            agent_response=message.content,
-                            thought=message.content or "I am thinking about how to help you",
-                            action_str="",
-                            action=None,
-                            observation=None,
-                        )
-                        scratchpads.append(current_scratchpad)
-                    if message.tool_calls:
-                        try:
-                            current_scratchpad.action = AgentScratchpadUnit.Action(
-                                action_name=message.tool_calls[0].function.name,
-                                action_input=json.loads(message.tool_calls[0].function.arguments),
-                            )
-                            current_scratchpad.action_str = json.dumps(current_scratchpad.action.to_dict())
-                        except Exception:
-                            logger.exception("Failed to parse tool call from assistant message")
-                case ToolPromptMessage():
-                    if current_scratchpad:
-                        assert isinstance(message.content, str)
-                        current_scratchpad.observation = message.content
-                    else:
-                        raise NotImplementedError("expected str type")
-                case UserPromptMessage():
-                    if scratchpads:
-                        result.append(AssistantPromptMessage(content=self._format_assistant_message(scratchpads)))
-                        scratchpads = []
-                        current_scratchpad = None
-
-                    result.append(message)
-
-        if scratchpads:
-            result.append(AssistantPromptMessage(content=self._format_assistant_message(scratchpads)))
-
-        historic_prompts = AgentHistoryPromptTransform(
+        return AgentHistoryPromptTransform(
             model_config=self.model_config,
             prompt_messages=current_session_messages or [],
-            history_messages=result,
+            history_messages=self.history_prompt_messages,
             memory=self.memory,
         ).get_prompt()
-        return historic_prompts

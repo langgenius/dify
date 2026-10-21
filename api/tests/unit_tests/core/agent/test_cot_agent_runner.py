@@ -14,7 +14,8 @@ from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.credit_usage import CreditUsageAppType
-from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
@@ -396,12 +397,14 @@ class TestRun:
 
         def provider_chunks():
             events.append("first-chunk")
-            yield "chunk"
+            yield LLMResultChunk(
+                model="m", delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="chunk"))
+            )
 
         runner.model_instance.invoke_llm.return_value = provider_chunks()
         mocker.patch(
             "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
-            side_effect=lambda chunks, _usage: list(chunks),
+            side_effect=lambda chunks, _usage: [chunk.delta.message.get_text_content() for chunk in chunks],
         )
 
         results = list(runner.run(session, message, "query", {}))
@@ -544,13 +547,12 @@ class TestOrganizeHistoricPromptMessagesExtended:
         result = runner._organize_historic_prompt_messages([])
         assert result == ["final"]
 
-    def test_tool_message_without_scratchpad_raises(self, runner: DummyRunner):
+    def test_history_without_memory_is_omitted(self, runner: DummyRunner):
         from graphon.model_runtime.entities.message_entities import ToolPromptMessage
 
         runner.history_prompt_messages = [ToolPromptMessage(content="obs", tool_call_id="1")]
 
-        with pytest.raises(NotImplementedError):
-            runner._organize_historic_prompt_messages([])
+        assert runner._organize_historic_prompt_messages([]) == []
 
     def test_agent_history_transform_invocation(self, runner: DummyRunner, mocker: MockerFixture):
         mock_transform = MagicMock()

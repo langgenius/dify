@@ -29,6 +29,7 @@ from pydantic_ai.tools import ToolDefinition
 
 from dify_agent.adapters.llm import DifyApiLLMProvider, DifyLLMAdapterModel
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.history import State as HistoryState
 
 from ._test_support import (
     AssistantPromptMessage,
@@ -560,6 +561,99 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
         self.assertEqual(response.usage.input_tokens, 11)
         self.assertEqual(response.usage.output_tokens, 7)
+
+    async def test_restored_history_preserves_provider_message(self) -> None:
+        for streaming in (False, True):
+            for snapshot in ({"signature": "signed", "id": 9007199254740993}, {}, [], "", 0, False):
+                with self.subTest(streaming=streaming, snapshot=snapshot):
+                    tool_call = AssistantPromptMessage.ToolCall(
+                        id="call-1",
+                        type="function",
+                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                            name="lookup",
+                            arguments='{"id":9007199254740993}',
+                        ),
+                    )
+                    block = TextPromptMessageContent(data="", opaque_body={"signature": "block"})
+                    chunks = [
+                        LLMResultChunk(
+                            model="demo-model",
+                            delta=LLMResultChunkDelta(
+                                index=0,
+                                message=AssistantPromptMessage(content="before", opaque_body={"old": True}),
+                            ),
+                        ),
+                        LLMResultChunk(
+                            model="demo-model",
+                            delta=LLMResultChunkDelta(
+                                index=1,
+                                message=AssistantPromptMessage(
+                                    content=[block],
+                                    tool_calls=[tool_call],
+                                    opaque_body=snapshot,
+                                ),
+                            ),
+                        ),
+                        LLMResultChunk(
+                            model="demo-model",
+                            delta=LLMResultChunkDelta(
+                                index=2,
+                                message=AssistantPromptMessage(content="after"),
+                            ),
+                        ),
+                    ]
+                    requests = []
+
+                    def handler(request: httpx.Request) -> httpx.Response:
+                        requests.append(json.loads(request.content))
+                        return build_stream_response(*(chunks if len(requests) == 1 else single_text_chunk("done")))
+
+                    messages = [ModelRequest(parts=[UserPromptPart("look up")])]
+                    async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                        adapter = DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai")
+                        if streaming:
+                            async with adapter.request_stream(messages, None, ModelRequestParameters()) as stream:
+                                _events = [event async for event in stream]
+                                response = stream.get()
+                        else:
+                            response = await adapter.request(messages, None, ModelRequestParameters())
+
+                        saved = HistoryState(
+                            messages=[
+                                *messages,
+                                response,
+                                ModelRequest(
+                                    parts=[
+                                        ToolReturnPart(tool_name="lookup", tool_call_id="call-1", content=""),
+                                    ]
+                                ),
+                            ]
+                        ).model_dump_json()
+                        restored = HistoryState.model_validate_json(saved).messages
+                        fresh_adapter = DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai")
+                        await fresh_adapter.request(restored, None, ModelRequestParameters())
+                        for next_provider, next_model in (("other-provider", "demo-model"), ("openai", "other-model")):
+                            changed_adapter = DifyLLMAdapterModel(
+                                next_model, self.make_provider(), model_provider=next_provider
+                            )
+                            await changed_adapter.request(restored, None, ModelRequestParameters())
+
+                    for request in requests[2:]:
+                        changed = AssistantPromptMessage.model_validate(request["target"]["prompt_messages"][1])
+                        self.assertIsNone(changed.opaque_body)
+                        self.assertEqual(changed.get_text_content(), "beforeafter")
+                    replayed = AssistantPromptMessage.model_validate(requests[1]["target"]["prompt_messages"][1])
+                    self.assertEqual(
+                        replayed.content,
+                        [
+                            TextPromptMessageContent(data="before"),
+                            block,
+                            TextPromptMessageContent(data="after"),
+                        ],
+                    )
+                    self.assertEqual(replayed.tool_calls, [tool_call])
+                    self.assertEqual(replayed.opaque_body, snapshot)
+                    self.assertIs(type(replayed.opaque_body), type(snapshot))
 
     async def test_request_stream_splits_embedded_thinking_tags_from_text_content_parts(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
