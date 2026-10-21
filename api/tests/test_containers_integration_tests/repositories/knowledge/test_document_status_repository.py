@@ -326,12 +326,13 @@ def test_failed_current_generation_can_be_requeued_with_a_new_generation(
     tenant_id = str(uuid4())
     actor_id = str(uuid4())
     dataset = _dataset(db_session_with_containers, tenant_id=tenant_id, owner_id=actor_id, name="Retry")
+    failed_generation = str(uuid4())
     document = _document(
         db_session_with_containers,
         dataset=dataset,
         enabled=enabled,
         archived=archived,
-        generation="failed-generation",
+        generation=failed_generation,
     )
     db_session_with_containers.add(
         KnowledgeTaskOutbox(
@@ -340,7 +341,7 @@ def test_failed_current_generation_can_be_requeued_with_a_new_generation(
             document_id=document.id,
             resource_id=document.id,
             task_kind="document_index_state",
-            payload={"document_id": document.id, "generation": "failed-generation", "action": index_action},
+            payload={"document_id": document.id, "generation": failed_generation, "action": index_action},
             status="failed",
         )
     )
@@ -433,13 +434,17 @@ def test_website_sync_rechecks_archived_after_waiting_for_document_lock(
     tenant_id = str(uuid4())
     actor_id = str(uuid4())
     dataset = _dataset(db_session_with_containers, tenant_id=tenant_id, owner_id=actor_id, name="Sync race")
+    archive_generation = str(uuid4())
+    sync_generation = str(uuid4())
     document = _document(
         db_session_with_containers,
         dataset=dataset,
-        generation="archive-generation",
+        generation=archive_generation,
     )
     document.data_source_type = DataSourceType.WEBSITE_CRAWL
     document.data_source_info = json.dumps({"url": "https://example.com", "mode": "crawl"})
+    dataset_id = dataset.id
+    document_id = document.id
     db_session_with_containers.commit()
     sessions = _sessions(db_session_with_containers)
     engine = db_session_with_containers.get_bind()
@@ -461,13 +466,13 @@ def test_website_sync_rechecks_archived_after_waiting_for_document_lock(
     def sync_document() -> None:
         sync_thread_id.append(get_ident())
         SQLAlchemyDocumentRepository(session_factory=sessions).sync_website(
-            DatasetRef(tenant_id, dataset.id).document(document.id),
-            generation="sync-generation",
+            DatasetRef(tenant_id, dataset_id).document(document_id),
+            generation=sync_generation,
         )
 
     archive_session = sessions()
     try:
-        locked = archive_session.scalar(select(Document).where(Document.id == document.id).with_for_update(of=Document))
+        locked = archive_session.scalar(select(Document).where(Document.id == document_id).with_for_update(of=Document))
         assert locked is not None
         locked.archived = True
         locked.archived_at = datetime(2026, 10, 20)
@@ -484,9 +489,9 @@ def test_website_sync_rechecks_archived_after_waiting_for_document_lock(
         archive_session.close()
 
     with sessions() as verification_session:
-        persisted = verification_session.get(Document, document.id)
+        persisted = verification_session.get(Document, document_id)
         assert persisted is not None
         assert persisted.archived is True
-        assert persisted.indexing_generation == "archive-generation"
+        assert persisted.indexing_generation == archive_generation
         assert persisted.data_source_info_dict["mode"] == "crawl"
-        assert _intents(verification_session, document.id) == []
+        assert _intents(verification_session, document_id) == []
