@@ -32,6 +32,7 @@ def upgrade() -> None:
         sa.Column("oauth_client_configuration_id", StringUUID(), nullable=True),
         sa.Column("oauth_client_id", LongText(), nullable=True),
         sa.Column("expires_at", sa.DateTime(), nullable=True),
+        sa.Column("account_label", LongText(), nullable=True),
         sa.Column("revision", sa.Integer(), server_default=sa.text("1"), nullable=False),
         sa.Column("last_active_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
@@ -47,6 +48,10 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "status IN ('connected', 'reconnect_required', 'invalid')",
             name=sa.schema.conv("end_user_connection_status_check"),
+        ),
+        sa.CheckConstraint(
+            "credential_type = 'oauth2' OR account_label IS NULL",
+            name=sa.schema.conv("end_user_connection_account_label_check"),
         ),
         sa.CheckConstraint("revision > 0", name=sa.schema.conv("end_user_connection_revision_check")),
         sa.CheckConstraint(

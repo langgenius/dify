@@ -54,6 +54,10 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
             "status IN ('connected', 'reconnect_required', 'invalid')",
             name=sa.schema.conv("end_user_connection_status_check"),
         ),
+        sa.CheckConstraint(
+            "credential_type = 'oauth2' OR account_label IS NULL",
+            name=sa.schema.conv("end_user_connection_account_label_check"),
+        ),
         sa.CheckConstraint("revision > 0", name=sa.schema.conv("end_user_connection_revision_check")),
         sa.CheckConstraint(
             sa.func.char_length(sa.column("name")).between(1, 100),
@@ -91,6 +95,9 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
     oauth_client_id: Mapped[str | None] = mapped_column(LongText, nullable=True)
     # None means unknown expiration, or not applicable for API keys.
     expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
+    # Already masked OAuth account identity, independent of the editable name.
+    # None means unavailable identity metadata or an API-key connection.
+    account_label: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     revision: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=1, server_default=sa.text("1"))
     last_active_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
