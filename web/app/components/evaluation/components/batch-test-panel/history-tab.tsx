@@ -8,12 +8,12 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { getEvaluationFile, useEvaluationActions, useEvaluationLogsQuery } from '../../queries'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
@@ -39,9 +39,11 @@ const formatCreatedAt = (createdAt: number | null | undefined, formatTime: Forma
 }
 
 const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const { formatTime } = useTimestamp()
-  const { data: membersData } = useMembers()
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const [page, setPage] = useState(0)
   const resource = useEvaluationResource(resourceType, resourceId)
   const setSelectedRunId = useEvaluationStore((state) => state.setSelectedRunId)
