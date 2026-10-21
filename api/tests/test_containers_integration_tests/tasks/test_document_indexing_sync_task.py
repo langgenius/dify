@@ -215,11 +215,18 @@ class TestDocumentIndexingSyncTask:
     def test_document_not_found(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task handles missing document gracefully."""
         # Arrange
-        dataset_id = str(uuid4())
+        account, tenant = DocumentIndexingSyncTaskTestDataFactory.create_account_with_tenant(
+            db_session_with_containers
+        )
+        dataset = DocumentIndexingSyncTaskTestDataFactory.create_dataset(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=account.id,
+        )
         document_id = str(uuid4())
 
         # Act
-        _run_document_indexing_sync_task(dataset_id, document_id, str(uuid4()), None)
+        _run_document_indexing_sync_task(dataset.id, document_id, str(uuid4()), None)
 
         # Assert
         mock_external_dependencies["datasource_service"].get_datasource_credentials.assert_not_called()

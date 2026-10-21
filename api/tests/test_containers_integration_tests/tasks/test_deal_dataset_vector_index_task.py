@@ -18,14 +18,15 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.knowledge_task import KnowledgeTaskOutbox
-from services.knowledge.task_outbox.contracts import KnowledgeTaskKind
-from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
+from repositories.knowledge.segment_repository import SQLAlchemySegmentAttachmentWriter
+from services.knowledge.task_outbox.contracts import KnowledgeTaskKind, KnowledgeTaskRequeuedError
+from tasks.deal_dataset_vector_index_task import DatasetVectorIndexingError, deal_dataset_vector_index_task
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
-def _run_current_vector_delivery(dataset: Dataset, action: str) -> None:
-    """Exercise the generation-aware worker body without a persisted delivery lease."""
+def _run_current_vector_delivery(dataset: Dataset, action: str, *, outbox_id: str | None = None) -> None:
+    """Exercise the generation-aware worker body with an optional persisted delivery lease."""
 
     deal_dataset_vector_index_task.run(
         dataset.id,
@@ -34,7 +35,7 @@ def _run_current_vector_delivery(dataset: Dataset, action: str) -> None:
         dataset.embedding_model_provider,
         dataset.embedding_model,
         False,
-        None,
+        outbox_id,
         dataset.tenant_id,
     )
 
@@ -634,8 +635,29 @@ class TestDealDatasetVectorIndexTask:
         mock_processor = mock_factory.init_index_processor.return_value
         mock_processor.load.side_effect = Exception("Test exception during indexing")
 
-        # Execute add action
-        _run_current_vector_delivery(dataset, "add")
+        intent = KnowledgeTaskOutbox(
+            tenant_id=tenant.id,
+            dataset_id=dataset.id,
+            resource_id=dataset.id,
+            task_kind=KnowledgeTaskKind.DATASET_VECTOR_INDEX_UPDATE.value,
+            payload={
+                "tenant_id": tenant.id,
+                "dataset_id": dataset.id,
+                "action": "add",
+                "expected_indexing_technique": str(dataset.indexing_technique),
+                "expected_embedding_model_provider": dataset.embedding_model_provider,
+                "expected_embedding_model": dataset.embedding_model,
+                "regenerate_summary_vectors": False,
+            },
+            status="dispatched",
+        )
+        db_session_with_containers.add(intent)
+        db_session_with_containers.commit()
+
+        # Execute add action through the durable delivery boundary.
+        with pytest.raises(KnowledgeTaskRequeuedError) as error:
+            _run_current_vector_delivery(dataset, "add", outbox_id=intent.id)
+        assert isinstance(error.value.__cause__, DatasetVectorIndexingError)
 
         # The outbox/Celery delivery owns the retry. The source document remains
         # completed and can be selected again by the next attempt.
@@ -644,6 +666,12 @@ class TestDealDatasetVectorIndexTask:
         )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
         assert updated_document.error is None
+        db_session_with_containers.expire_all()
+        persisted_intent = db_session_with_containers.get(KnowledgeTaskOutbox, intent.id)
+        assert persisted_intent is not None
+        assert persisted_intent.status == "pending"
+        assert persisted_intent.execution_attempts == 1
+        assert "Test exception during indexing" in (persisted_intent.last_error or "")
 
     def test_deal_dataset_vector_index_task_with_custom_index_type(
         self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
@@ -716,7 +744,10 @@ class TestDealDatasetVectorIndexTask:
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with custom index type
-        mock_index_processor_factory.assert_called_once_with(IndexStructureType.QA_INDEX)
+        mock_index_processor_factory.assert_called_once()
+        factory_args, factory_kwargs = mock_index_processor_factory.call_args
+        assert factory_args == (IndexStructureType.QA_INDEX,)
+        assert isinstance(factory_kwargs["attachment_writer"], SQLAlchemySegmentAttachmentWriter)
         mock_factory = mock_index_processor_factory.return_value
         mock_processor = mock_factory.init_index_processor.return_value
         mock_processor.load.assert_called_once()
@@ -792,7 +823,10 @@ class TestDealDatasetVectorIndexTask:
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with the document's index type
-        mock_index_processor_factory.assert_called_once_with(IndexStructureType.PARAGRAPH_INDEX)
+        mock_index_processor_factory.assert_called_once()
+        factory_args, factory_kwargs = mock_index_processor_factory.call_args
+        assert factory_args == (IndexStructureType.PARAGRAPH_INDEX,)
+        assert isinstance(factory_kwargs["attachment_writer"], SQLAlchemySegmentAttachmentWriter)
         mock_factory = mock_index_processor_factory.return_value
         mock_processor = mock_factory.init_index_processor.return_value
         mock_processor.load.assert_called_once()

@@ -535,8 +535,8 @@ class TestDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called()
 
-        # Terminal documents are fenced out; the remaining current generation is processed.
-        for doc_id in [document.id for document in [*base_documents, doc2]]:
+        # Terminal and inactive documents are fenced out; active current generations continue.
+        for doc_id in [document.id for document in base_documents]:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
             assert updated_document is not None
             assert updated_document.indexing_status == IndexingStatus.PARSING
@@ -545,12 +545,16 @@ class TestDocumentIndexingTasks:
         assert completed_document is not None
         assert completed_document.indexing_status == IndexingStatus.COMPLETED
         assert completed_document.processing_started_at is None
+        disabled_document = db_session_with_containers.get(Document, doc2.id)
+        assert disabled_document is not None
+        assert disabled_document.indexing_status == IndexingStatus.WAITING
+        assert disabled_document.processing_started_at is None
 
-        # Verify the run method was called only with mutable documents.
+        # Verify the run method was called only with active mutable documents.
         call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
         assert call_args is not None
         processed_documents = self._runner_documents_arg(mock_external_service_dependencies)
-        assert len(processed_documents) == 3
+        assert {ref.document_id for ref in processed_documents} == {document.id for document in base_documents}
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_document_indexing_task_billing_sandbox_plan_batch_limit(
