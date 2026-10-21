@@ -1,7 +1,7 @@
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { useNodes } from 'reactflow'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
@@ -48,14 +48,14 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
+const mockStopWorkflowRun = vi
+  .fn()
+  .mockImplementation(async () => Response.json({ result: 'success' }))
+
 const mockSsePost = vi.fn()
 vi.mock('@/service/base', () => ({
   ssePost: (...args: unknown[]) => mockSsePost(...args),
-}))
-
-const mockStopWorkflowRun = vi.fn()
-vi.mock('@/service/workflow', () => ({
-  stopWorkflowRun: (url: string) => mockStopWorkflowRun(url),
+  request: (...args: unknown[]) => mockStopWorkflowRun(...args),
 }))
 
 const mockInvalidAllLastRun = vi.fn()
@@ -347,8 +347,14 @@ describe('usePipelineRunByCanEdit', () => {
 
       act(() => result.current.run.handleStopRun('task-123'))
 
-      expect(mockStopWorkflowRun).toHaveBeenCalledExactlyOnceWith(
-        '/rag/pipelines/test-pipeline-id/workflow-runs/tasks/task-123/stop',
+      await waitFor(() =>
+        expect(mockStopWorkflowRun).toHaveBeenCalledWith(
+          expect.stringContaining(
+            '/rag/pipelines/test-pipeline-id/workflow-runs/tasks/task-123/stop',
+          ),
+          expect.anything(),
+          expect.anything(),
+        ),
       )
       expect(controller.signal.aborted).toBe(true)
     })

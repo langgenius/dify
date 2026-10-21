@@ -364,66 +364,79 @@ describe('WorkflowLogArchivesPage', () => {
       }
     })
 
-    it('allows a confirmed retry after observing an active deletion for one minute', async () => {
-      const user = userEvent.setup()
-      vi.useFakeTimers()
-      try {
-        renderPage({ ...archiveData, months: [{ ...archiveMonth, deletion_status: 'pending' }] })
-        await act(async () => vi.advanceTimersByTimeAsync(59_999))
-        expect(
-          screen.getByRole('button', { name: 'appLog.archives.delete.deleting 2025-03' }),
-        ).toHaveAttribute('aria-disabled', 'true')
-        await act(async () => vi.advanceTimersByTimeAsync(1))
-      } finally {
-        vi.useRealTimers()
-      }
+    it.each(['pending', 'processing'] as const)(
+      'keeps a long-running %s deletion disabled and polling without offering retry',
+      async (status) => {
+        const user = userEvent.setup()
+        vi.useFakeTimers()
+        try {
+          const deletingArchiveData = {
+            ...archiveData,
+            months: [{ ...archiveMonth, deletion_status: status }],
+          }
+          archiveRequests.list.mockResolvedValue(deletingArchiveData)
+          renderPage(deletingArchiveData)
 
-      await user.click(screen.getByRole('button', { name: 'appLog.archives.delete.retry 2025-03' }))
-      const dialog = await screen.findByRole('alertdialog')
-      expect(archiveRequests.delete).not.toHaveBeenCalled()
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-      await user.click(
-        within(dialog).getByRole('button', { name: 'appLog.archives.delete.confirm' }),
-      )
+          await act(async () => vi.advanceTimersByTimeAsync(300_000))
+          const pollCount = archiveRequests.list.mock.calls.length
 
-      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-      expect(archiveRequests.delete).toHaveBeenCalledWith({ params: { year: 2025, month: 3 } })
-      expect(
-        screen.getByRole('button', { name: 'appLog.archives.delete.deleting 2025-03' }),
-      ).toHaveAttribute('aria-disabled', 'true')
-      expect(
-        screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2025-03' }),
-      ).toHaveAttribute('aria-disabled', 'true')
-    })
+          await act(async () => vi.advanceTimersByTimeAsync(3001))
+          expect(archiveRequests.list.mock.calls.length).toBeGreaterThan(pollCount)
+          const deletion = screen.getByRole('button', {
+            name: 'appLog.archives.delete.deleting 2025-03',
+          })
+          const download = screen.getByRole('button', {
+            name: 'appLog.archives.action.prepareDownload 2025-03',
+          })
+          expect(deletion).toHaveAttribute('aria-disabled', 'true')
+          expect(download).toHaveAttribute('aria-disabled', 'true')
+          expect(
+            screen.queryByRole('button', {
+              name: 'appLog.archives.delete.retry 2025-03',
+            }),
+          ).not.toBeInTheDocument()
+          expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+        } finally {
+          vi.useRealTimers()
+        }
 
-    it('shows a request error when retrying an active deletion fails', async () => {
-      const user = userEvent.setup()
-      archiveRequests.delete.mockRejectedValueOnce(new Error('Network unavailable'))
+        await user.click(
+          screen.getByRole('button', {
+            name: 'appLog.archives.delete.deleting 2025-03',
+          }),
+        )
+        await user.click(
+          screen.getByRole('button', {
+            name: 'appLog.archives.action.prepareDownload 2025-03',
+          }),
+        )
+        expect(archiveRequests.delete).not.toHaveBeenCalled()
+        expect(archiveRequests.prepareDownload).not.toHaveBeenCalled()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      },
+    )
+
+    it('offers retry only after the server reports that an active deletion failed', async () => {
       vi.useFakeTimers()
       try {
         renderPage({ ...archiveData, months: [{ ...archiveMonth, deletion_status: 'processing' }] })
-        await act(async () => vi.advanceTimersByTimeAsync(60_000))
+        expect(
+          screen.getByRole('button', { name: 'appLog.archives.delete.deleting 2025-03' }),
+        ).toHaveAttribute('aria-disabled', 'true')
+
+        archiveRequests.list.mockResolvedValue({
+          ...archiveData,
+          months: [{ ...archiveMonth, deletion_status: 'failed' }],
+        })
+        await act(async () => vi.advanceTimersByTimeAsync(3001))
+        expect(screen.getByRole('alert')).toHaveTextContent('appLog.archives.delete.failed')
+        expect(
+          screen.getByRole('button', { name: 'appLog.archives.delete.retry 2025-03' }),
+        ).not.toHaveAttribute('aria-disabled', 'true')
+        expect(archiveRequests.delete).not.toHaveBeenCalled()
       } finally {
         vi.useRealTimers()
       }
-
-      await user.click(screen.getByRole('button', { name: 'appLog.archives.delete.retry 2025-03' }))
-      const dialog = await screen.findByRole('alertdialog')
-      await user.click(
-        within(dialog).getByRole('button', { name: 'appLog.archives.delete.confirm' }),
-      )
-
-      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-        'appLog.archives.delete.requestFailed',
-      )
-      expect(
-        within(dialog).getByRole('button', { name: 'appLog.archives.delete.deleting' }),
-      ).toHaveAttribute('aria-disabled', 'true')
-      await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-      expect(
-        screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2025-03' }),
-      ).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('removes a month immediately when deletion is already completed', async () => {

@@ -270,12 +270,6 @@ class TestVariablePoolSerialization:
         ]
 
         # Create comprehensive user inputs
-        user_inputs = {
-            "string_input": "test_value",
-            "number_input": 42,
-            "object_input": {"nested": {"key": "value"}},
-            "array_input": ["item1", "item2", "item3"],
-        }
 
         # Create VariablePool
         pool = VariablePool()

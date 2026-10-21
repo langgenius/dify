@@ -1,3 +1,5 @@
+import { renderToStaticMarkup } from 'react-dom/server'
+
 const mocks = vi.hoisted(() => ({
   dehydrateSystemFeatures: vi.fn(() => ({ mutations: [], queries: [] })),
   getOptionalSystemFeatures: vi.fn(),
@@ -32,6 +34,26 @@ describe('Root layout System Features bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.headers.mockResolvedValue(new Headers())
+  })
+
+  it('renders the terminal error document without requesting console bootstrap', async () => {
+    mocks.headers.mockResolvedValue(
+      new Headers({
+        'x-dify-pathname': '/webapp-unavailable',
+        'accept-language': 'zh-CN,zh;q=0.9',
+      }),
+    )
+    const { default: RootLayout, generateMetadata } = await import('../layout')
+
+    const html = renderToStaticMarkup(await RootLayout({ children: <main>App unavailable</main> }))
+    const document = new DOMParser().parseFromString(html, 'text/html')
+
+    expect(document.documentElement.lang).toBe('zh-Hans')
+    expect(document.body.querySelector('main')).toHaveTextContent('App unavailable')
+    await expect(generateMetadata()).resolves.toEqual({ icons: { icon: '/favicon.ico' } })
+
+    expect(mocks.getOptionalSystemFeatures).not.toHaveBeenCalled()
+    expect(mocks.dehydrateSystemFeatures).not.toHaveBeenCalled()
   })
 
   it('uses optional System Features for branded metadata', async () => {

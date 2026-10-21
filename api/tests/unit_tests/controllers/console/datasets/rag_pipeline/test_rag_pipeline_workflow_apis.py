@@ -20,6 +20,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
 import models.workflow as workflow_models
 import services
+import services.rag_pipeline.rag_pipeline as rag_pipeline_service
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as workflow_controller
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
@@ -83,6 +84,7 @@ def sqlite_database(
     database = SQLiteDatabase(engine=sqlite_engine, session=database_session)
     monkeypatch.setattr(workflow_controller, "db", database)
     monkeypatch.setattr(workflow_models, "db", database)
+    monkeypatch.setattr(rag_pipeline_service, "db", database)
 
     with database_session() as session:
         default_author = Account(name="Default Author", email="default-author@example.com")
@@ -490,11 +492,46 @@ class TestDraftNodeRun:
                 return_value=service,
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Workflow node execution not found"):
                 method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
 
 
 class TestPublishedPipelineApis:
+    def test_get_published_workflow_preserves_response_fields(
+        self, app: Flask, workflow_author: Account, sqlite_database: scoped_session[Session]
+    ) -> None:
+        workflow = make_workflow(id=str(uuid4()), created_by=workflow_author.id)
+        sqlite_database.add(workflow)
+        sqlite_database.commit()
+        pipeline = make_pipeline(
+            id=workflow.app_id,
+            tenant_id=workflow.tenant_id,
+            workflow_id=workflow.id,
+            is_published=True,
+        )
+
+        with app.test_request_context("/"):
+            result = unwrap(PublishedRagPipelineApi.get)(PublishedRagPipelineApi(), pipeline)
+
+        assert result["id"] == workflow.id
+        assert result["graph"] == {"nodes": [], "edges": []}
+        assert result["hash"] == workflow.unique_hash
+        assert result["created_by"]["id"] == workflow_author.id
+
+    @pytest.mark.parametrize("is_published", [False, True])
+    def test_get_without_published_workflow_returns_null(self, app: Flask, is_published: bool) -> None:
+        pipeline = make_pipeline(
+            id=DEFAULT_WORKFLOW_APP_ID,
+            tenant_id=DEFAULT_WORKFLOW_TENANT_ID,
+            workflow_id=str(uuid4()),
+            is_published=is_published,
+        )
+
+        with app.test_request_context("/"):
+            result = unwrap(PublishedRagPipelineApi.get)(PublishedRagPipelineApi(), pipeline)
+
+        assert result is None
+
     def test_publish_success(self, app: Flask) -> None:
         api = PublishedRagPipelineApi()
         method = unwrap(api.post)
@@ -616,7 +653,7 @@ class TestDefaultBlockConfigApi:
         pipeline = make_pipeline()
 
         with app.test_request_context("/?q=bad-json"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Invalid filters"):
                 method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
 
 

@@ -1,3 +1,6 @@
+import type { ReasoningConfigValue } from '../reasoning-config-form'
+import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
+import type { Var } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
@@ -18,10 +21,31 @@ import {
   updateVariableTypeValue,
 } from '../reasoning-config-form.helpers'
 
+const createSchema = (overrides: Partial<ToolFormSchema> = {}): ToolFormSchema => ({
+  name: 'field',
+  variable: 'field',
+  label: { en_US: 'Field', zh_Hans: '字段' },
+  type: FormTypeEnum.textInput,
+  _type: 'string',
+  form: 'llm',
+  required: false,
+  default: '',
+  tooltip: { en_US: 'Tooltip', zh_Hans: '提示' },
+  show_on: [],
+  options: [],
+  placeholder: { en_US: 'Placeholder', zh_Hans: '占位符' },
+  scope: 'all',
+  url: '',
+  input_schema: undefined,
+  ...overrides,
+})
+
+const createVar = (type: Var['type']): Var => ({ variable: 'field', type })
+
 describe('reasoning-config-form helpers', () => {
   it('restores conditional fields to typed schema defaults', () => {
     const schema = (type: FormTypeEnum, defaultValue?: string, originalType?: string) =>
-      ({ type, _type: originalType ?? type, default: defaultValue }) as never
+      createSchema({ type, _type: originalType ?? type, default: defaultValue })
 
     expect(coerceReasoningScalarDefault(schema(FormTypeEnum.checkbox, 'true', 'boolean'))).toBe(
       true,
@@ -38,155 +62,162 @@ describe('reasoning-config-form helpers', () => {
     expect(coerceReasoningScalarDefault(schema(FormTypeEnum.textInput))).toBeNull()
   })
 
-  it('maps schema types to variable-kind types and target variable types', () => {
-    expect(getVarKindType(FormTypeEnum.files)).toBe(VarKindType.variable)
-    expect(getVarKindType(FormTypeEnum.textNumber)).toBe(VarKindType.constant)
-    expect(getVarKindType(FormTypeEnum.textInput)).toBe(VarKindType.mixed)
-    expect(getVarKindType(FormTypeEnum.date)).toBe(VarKindType.constant)
-    expect(getVarKindType(FormTypeEnum.dateRange)).toBe(VarKindType.constant)
-    expect(getVarKindType(FormTypeEnum.dynamicSelect)).toBeUndefined()
-
-    expect(resolveTargetVarType(FormTypeEnum.textInput)).toBe(VarType.string)
-    expect(resolveTargetVarType(FormTypeEnum.textNumber)).toBe(VarType.number)
-    expect(resolveTargetVarType(FormTypeEnum.date)).toBe(VarType.string)
-    expect(resolveTargetVarType(FormTypeEnum.dateRange)).toBe(VarType.string)
-    expect(resolveTargetVarType(FormTypeEnum.files)).toBe(VarType.arrayFile)
-    expect(resolveTargetVarType(FormTypeEnum.file)).toBe(VarType.file)
-    expect(resolveTargetVarType(FormTypeEnum.checkbox)).toBe(VarType.boolean)
-    expect(resolveTargetVarType(FormTypeEnum.object)).toBe(VarType.object)
-    expect(resolveTargetVarType(FormTypeEnum.array)).toBe(VarType.arrayObject)
+  it.each([
+    {
+      type: FormTypeEnum.files,
+      kind: VarKindType.variable,
+      target: VarType.arrayFile,
+    },
+    {
+      type: FormTypeEnum.textNumber,
+      kind: VarKindType.constant,
+      target: VarType.number,
+    },
+    {
+      type: FormTypeEnum.textInput,
+      kind: VarKindType.mixed,
+      target: VarType.string,
+    },
+    {
+      type: FormTypeEnum.date,
+      kind: VarKindType.constant,
+      target: VarType.string,
+    },
+    {
+      type: FormTypeEnum.dateRange,
+      kind: VarKindType.constant,
+      target: VarType.string,
+    },
+    {
+      type: FormTypeEnum.dynamicSelect,
+      kind: undefined,
+      target: VarType.string,
+    },
+  ])('maps $type fields to their input and target variable contracts', ({ type, kind, target }) => {
+    expect(getVarKindType(type)).toBe(kind)
+    expect(resolveTargetVarType(type)).toBe(target)
   })
 
-  it('creates variable filters for supported field types', () => {
-    const numberFilter = createFilterVar(FormTypeEnum.textNumber)
-    const stringFilter = createFilterVar(FormTypeEnum.textInput)
-    const fileFilter = createFilterVar(FormTypeEnum.files)
-
-    expect(numberFilter?.({ type: VarType.number } as never)).toBe(true)
-    expect(numberFilter?.({ type: VarType.string } as never)).toBe(false)
-    expect(stringFilter?.({ type: VarType.secret } as never)).toBe(true)
-    expect(fileFilter?.({ type: VarType.arrayFile } as never)).toBe(true)
+  it.each([
+    [FormTypeEnum.file, VarType.file],
+    [FormTypeEnum.checkbox, VarType.boolean],
+    [FormTypeEnum.object, VarType.object],
+    [FormTypeEnum.array, VarType.arrayObject],
+  ])('resolves %s fields to %s variables', (type, target) => {
+    expect(resolveTargetVarType(type)).toBe(target)
   })
 
-  it('creates variable filters for date fields', () => {
+  it('filters variables according to the field type', () => {
+    const numberFilter = createFilterVar(FormTypeEnum.textNumber)!
+    const stringFilter = createFilterVar(FormTypeEnum.textInput)!
+    const fileFilter = createFilterVar(FormTypeEnum.files)!
+
+    expect(numberFilter(createVar(VarType.number))).toBe(true)
+    expect(numberFilter(createVar(VarType.string))).toBe(false)
+    expect(stringFilter(createVar(VarType.secret))).toBe(true)
+    expect(fileFilter(createVar(VarType.arrayFile))).toBe(true)
+    expect(fileFilter(createVar(VarType.string))).toBe(false)
+  })
+
+  it('applies date-specific picker filtering without filtering date ranges', () => {
     const dateFilter = createPickerProps({
       type: FormTypeEnum.date,
       value: {},
       language: 'en_US',
-      schema: { type: FormTypeEnum.date } as never,
-    }).filterVar
-    expect(dateFilter?.({ type: VarType.string } as never)).toBe(true)
-    expect(dateFilter?.({ type: VarType.number } as never)).toBe(true)
-    expect(dateFilter?.({ type: VarType.file } as never)).toBe(false)
+      schema: createSchema({ type: FormTypeEnum.date }),
+    }).filterVar!
+
+    expect(dateFilter(createVar(VarType.string))).toBe(true)
+    expect(dateFilter(createVar(VarType.number))).toBe(true)
+    expect(dateFilter(createVar(VarType.file))).toBe(false)
     expect(
       createPickerProps({
         type: FormTypeEnum.dateRange,
         value: {},
         language: 'en_US',
-        schema: { type: FormTypeEnum.dateRange } as never,
+        schema: createSchema({ type: FormTypeEnum.dateRange }),
       }).filterVar,
     ).toBeUndefined()
   })
 
-  it('filters select options based on show_on conditions', () => {
-    const options = [
+  it('requires every show_on condition and falls back to the English option label', () => {
+    const options: NonNullable<ToolFormSchema['options']> = [
       {
-        value: 'one',
-        label: { en_US: 'One', zh_Hans: 'One' },
+        value: 'always',
+        label: { en_US: 'Always', zh_Hans: '始终' },
         show_on: [],
       },
       {
-        value: 'two',
-        label: { en_US: 'Two', zh_Hans: 'Two' },
-        show_on: [{ variable: 'mode', value: 'advanced' }],
+        value: 'qualified',
+        label: { en_US: 'Qualified', zh_Hans: '符合条件' },
+        show_on: [
+          { variable: 'mode', value: 'advanced' },
+          { variable: 'tier', value: 'pro' },
+        ],
       },
     ]
-
-    expect(
-      getVisibleSelectOptions(
-        options as never,
-        {
-          mode: { value: { value: 'advanced' } },
-        },
-        'en_US',
-      ),
-    ).toEqual([
-      { value: 'one', name: 'One' },
-      { value: 'two', name: 'Two' },
-    ])
-
-    expect(
-      getVisibleSelectOptions(
-        options as never,
-        {
-          mode: { value: { value: 'basic' } },
-        },
-        'en_US',
-      ),
-    ).toEqual([{ value: 'one', name: 'One' }])
-  })
-
-  it('updates reasoning values for auto, constant, variable, and merged states', () => {
-    const value = {
-      prompt: {
-        value: {
-          type: VarKindType.constant,
-          value: 'hello',
-        },
-        auto: 0 as const,
-      },
+    const value: ReasoningConfigValue = {
+      mode: { value: { value: 'advanced' } },
+      tier: { value: { value: 'pro' } },
     }
 
-    expect(updateInputAutoState(value, 'prompt', true, FormTypeEnum.textInput)).toEqual({
-      prompt: {
-        value: null,
-        auto: 1,
-      },
-    })
-
-    expect(updateVariableTypeValue(value, 'prompt', VarKindType.variable, '')).toEqual({
-      prompt: {
-        value: {
-          type: VarKindType.variable,
-          value: '',
-        },
-        auto: 0,
-      },
-    })
-
-    expect(updateReasoningValue(value, 'prompt', FormTypeEnum.textInput, 'updated')).toEqual({
-      prompt: {
-        value: {
-          type: VarKindType.mixed,
-          value: 'updated',
-        },
-        auto: 0,
-      },
-    })
-
-    expect(mergeReasoningValue(value, 'prompt', { extra: true })).toEqual({
-      prompt: {
-        value: {
-          type: VarKindType.constant,
-          value: 'hello',
-          extra: true,
-        },
-        auto: 0,
-      },
-    })
-
-    expect(updateVariableSelectorValue(value, 'prompt', ['node', 'field'])).toEqual({
-      prompt: {
-        value: {
-          type: VarKindType.variable,
-          value: ['node', 'field'],
-        },
-        auto: 0,
-      },
-    })
+    expect(getVisibleSelectOptions(options, value, 'de_DE')).toEqual([
+      { value: 'always', name: 'Always' },
+      { value: 'qualified', name: 'Qualified' },
+    ])
+    expect(
+      getVisibleSelectOptions(options, { ...value, tier: { value: { value: 'basic' } } }, 'de_DE'),
+    ).toEqual([{ value: 'always', name: 'Always' }])
   })
 
-  it('derives field flags and picker props from schema types', () => {
+  it('transitions a field while preserving unrelated values and the original input', () => {
+    const original: ReasoningConfigValue = {
+      prompt: {
+        value: { type: VarKindType.constant, value: 'hello' },
+        auto: 0,
+      },
+      untouched: {
+        value: { type: VarKindType.constant, value: 'keep me', metadata: true },
+        auto: 0,
+      },
+    }
+    const snapshot = structuredClone(original)
+
+    const automatic = updateInputAutoState(original, 'prompt', true, FormTypeEnum.textInput)
+    expect(automatic.prompt).toEqual({ value: null, auto: 1 })
+    expect(automatic.untouched).toEqual(original.untouched)
+
+    const variable = updateVariableTypeValue(
+      updateInputAutoState(automatic, 'prompt', false, FormTypeEnum.textInput),
+      'prompt',
+      VarKindType.variable,
+      'ignored default',
+    )
+    expect(variable.prompt).toEqual({
+      value: { type: VarKindType.variable, value: '' },
+      auto: 0,
+    })
+
+    const edited = updateReasoningValue(variable, 'prompt', FormTypeEnum.textInput, 'updated')
+    expect(edited.prompt!.value).toEqual({ type: VarKindType.mixed, value: 'updated' })
+
+    const merged = mergeReasoningValue(edited, 'prompt', { format: 'markdown' })
+    expect(merged.prompt!.value).toEqual({
+      type: VarKindType.mixed,
+      value: 'updated',
+      format: 'markdown',
+    })
+
+    const selected = updateVariableSelectorValue(merged, 'prompt', ['node', 'field'])
+    expect(selected.prompt!.value).toEqual({
+      type: VarKindType.variable,
+      value: ['node', 'field'],
+    })
+    expect(selected.untouched).toEqual(original.untouched)
+    expect(original).toEqual(snapshot)
+  })
+
+  it('derives editor flags and select picker props from typed schemas', () => {
     expect(getFieldFlags(FormTypeEnum.object, { type: VarKindType.constant })).toEqual(
       expect.objectContaining({
         isObject: true,
@@ -195,7 +226,6 @@ describe('reasoning-config-form helpers', () => {
         isConstant: true,
       }),
     )
-
     expect(getFieldFlags(FormTypeEnum.date)).toEqual(
       expect.objectContaining({
         isDate: true,
@@ -213,22 +243,22 @@ describe('reasoning-config-form helpers', () => {
       }),
     )
 
-    expect(
-      createPickerProps({
+    const pickerProps = createPickerProps({
+      type: FormTypeEnum.select,
+      value: {},
+      language: 'en_US',
+      schema: createSchema({
         type: FormTypeEnum.select,
-        value: {},
-        language: 'en_US',
-        schema: {
-          options: [
-            {
-              value: 'one',
-              label: { en_US: 'One', zh_Hans: 'One' },
-              show_on: [],
-            },
-          ],
-        } as never,
+        options: [
+          {
+            value: 'one',
+            label: { en_US: 'One', zh_Hans: '一' },
+            show_on: [],
+          },
+        ],
       }),
-    ).toEqual(
+    })
+    expect(pickerProps).toEqual(
       expect.objectContaining({
         targetVarType: VarType.string,
         selectItems: [{ value: 'one', name: 'One' }],
@@ -236,7 +266,7 @@ describe('reasoning-config-form helpers', () => {
     )
   })
 
-  it('uses the selected language and falls back to English for missing translations', () => {
+  it('uses the requested field-title language and falls back to English', () => {
     const labels = { en_US: 'Prompt', zh_Hans: '提示词' }
     expect(getFieldTitle(labels, 'zh_Hans')).toBe('提示词')
     expect(getFieldTitle(labels, 'de_DE')).toBe('Prompt')

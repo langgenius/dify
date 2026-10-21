@@ -11,6 +11,7 @@ vi.mock('@/app/components/base/markdown', () => ({
 
 describe('SubmittedHumanInputContent Integration', () => {
   const mockFormData: HumanInputFilledFormData = {
+    form_id: 'form-1',
     rendered_content: 'Rendered **Markdown** content',
     action_id: 'btn_1',
     action_text: 'Submit Action',
@@ -38,8 +39,8 @@ describe('SubmittedHumanInputContent Integration', () => {
       />,
     )
 
-    expect(screen.getByTestId('submitted-field-answer')).toHaveTextContent('approved')
-    expect(screen.queryByTestId('submitted-content')).not.toBeInTheDocument()
+    expect(screen.getByText('approved')).toBeInTheDocument()
+    expect(screen.queryByText('Rendered **Markdown** content')).not.toBeInTheDocument()
   })
 
   it('should render submitted select and file fields with the original form layout', () => {
@@ -83,7 +84,7 @@ describe('SubmittedHumanInputContent Integration', () => {
 
     expect(screen.getByRole('combobox', { name: 'decision' })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: 'decision' })).toHaveTextContent('approve')
-    expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
+    expect(screen.getByText('decision.pdf')).toBeInTheDocument()
   })
 
   it.each([undefined, {}])(
@@ -102,7 +103,6 @@ describe('SubmittedHumanInputContent Integration', () => {
       expect(
         screen.getByText('workflowHumanInput.nodes.humanInput.userActions.triggered'),
       ).toBeInTheDocument()
-      expect(screen.queryByTestId('submitted-field-values')).not.toBeInTheDocument()
     },
   )
 
@@ -118,7 +118,7 @@ describe('SubmittedHumanInputContent Integration', () => {
       />,
     )
 
-    expect(screen.getByTestId('submitted-field-answer')).toHaveTextContent('approved')
-    expect(screen.queryByTestId('submitted-content')).not.toBeInTheDocument()
+    expect(screen.getByText('approved')).toBeInTheDocument()
+    expect(screen.queryByText('Rendered **Markdown** content')).not.toBeInTheDocument()
   })
 })

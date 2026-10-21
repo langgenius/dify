@@ -63,7 +63,6 @@
   "account.workspaceNamePlaceholder": "Введіть назву робочого простору",
   "resourceAccessToken.accessibleResources": "Доступні ресурси",
   "resourceAccessToken.actions": "Дії",
-  "resourceAccessToken.app": "Застосунок",
   "resourceAccessToken.appCount": "{{count}} Застосунок",
   "resourceAccessToken.appsCount": "{{count}} Застосунки",
   "resourceAccessToken.appsSection": "Застосунки",
@@ -80,7 +79,6 @@
   "resourceAccessToken.editTitle": "Змінити токен доступу",
   "resourceAccessToken.empty": "Токенів доступу ще немає",
   "resourceAccessToken.emptyDescription": "Створіть токен доступу, щоб автоматизовані завдання й зовнішні системи могли знаходити вибрані ресурси та отримувати до них доступ через Difyctl.",
-  "resourceAccessToken.knowledge": "База знань",
   "resourceAccessToken.knowledgeBasesSection": "Бази знань",
   "resourceAccessToken.knowledgeCount": "{{count}} База знань",
   "resourceAccessToken.knowledgesCount": "{{count}} Бази знань",
@@ -100,6 +98,5 @@
   "resourceAccessToken.tabApps": "Застосунки",
   "resourceAccessToken.tabKnowledgeBases": "Бази знань",
   "resourceAccessToken.token": "Токен",
-  "resourceAccessToken.total": "Усього: {{total}}",
-  "resourceAccessToken.trackingId": "Ідентифікатор відстеження"
+  "resourceAccessToken.total": "Усього: {{total}}"
 }

@@ -1,5 +1,6 @@
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -35,6 +36,7 @@ from graphon.model_runtime.entities.message_entities import (
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
 from models.model import AppMode, Conversation, Message, StorageType, UploadFile
+from services.workflow_run_agg import WorkflowRunAgg
 
 # ==============================
 # Dummy Helper Classes
@@ -87,10 +89,10 @@ class DummyMessage:
         self.tool_calls: list[Any] = tool_calls or []
 
 
+@dataclass(eq=False, repr=False)
 class DummyDelta:
-    def __init__(self, message: DummyMessage | None = None, usage: LLMUsage | None = None):
-        self.message: DummyMessage | None = message
-        self.usage: LLMUsage | None = usage
+    message: DummyMessage | None = None
+    usage: LLMUsage | None = None
 
 
 class DummyChunk:
@@ -130,6 +132,7 @@ def real_runner(
     assert app_config.agent is not None
     app_config.agent.strategy = AgentEntity.Strategy.FUNCTION_CALLING
     return FunctionCallAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
         session=sqlite_session,
         tenant_id=app_config.tenant_id,
         application_generate_entity=agent_generate_entity,
@@ -188,6 +191,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     conversation = _make_conversation()
 
     runner = FunctionCallAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
         tenant_id="tenant",
         application_generate_entity=application_generate_entity,
         conversation=conversation,

@@ -1,0 +1,71 @@
+import type { Rule } from 'eslint'
+import fs from 'node:fs'
+import path, { normalize, sep } from 'node:path'
+import { getTranslationSourceKey } from '../../../i18n-plurals.ts'
+
+const rule: Rule.RuleModule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description: 'Reject unrelated translation keys while allowing locale-specific plural forms',
+    },
+    fixable: 'code',
+  },
+  create(context) {
+    return {
+      Program(node) {
+        const { filename, sourceCode } = context
+
+        if (!filename.endsWith('.json')) return
+
+        const parts = normalize(filename).split(sep)
+        // e.g., i18n/locales/ar-TN/common.json -> jsonFile = common.json, lang = ar-TN
+        const jsonFile = parts.at(-1)
+        const lang = parts.at(-2)
+
+        // Skip English files
+        if (!lang || lang === 'en-US') return
+
+        let currentJson = {}
+        let englishJson = {}
+
+        try {
+          currentJson = JSON.parse(sourceCode.text)
+          // Look for the same filename in en-US folder
+          // e.g., i18n/locales/ar-TN/common.json -> i18n/locales/en-US/common.json
+          const englishFilePath = path.join(path.dirname(filename), '..', 'en-US', jsonFile ?? '')
+          englishJson = JSON.parse(fs.readFileSync(englishFilePath, 'utf8'))
+        } catch (error) {
+          context.report({
+            node,
+            message: `Error parsing JSON: ${error instanceof Error ? error.message : String(error)}`,
+          })
+          return
+        }
+
+        const sourceKeys = new Set(Object.keys(englishJson))
+        const extraKeys = Object.keys(currentJson).filter(
+          (key) => !getTranslationSourceKey(sourceKeys, key, lang),
+        )
+
+        for (const key of extraKeys) {
+          context.report({
+            node,
+            message: `Key "${key}" is present in ${lang}/${jsonFile} but not in en-US/${jsonFile}`,
+            fix(fixer) {
+              const newJson = Object.fromEntries(
+                Object.entries(currentJson).filter(([k]) => !extraKeys.includes(k)),
+              )
+
+              const newText = `${JSON.stringify(newJson, null, 2)}\n`
+
+              return fixer.replaceText(node, newText)
+            },
+          })
+        }
+      },
+    }
+  },
+}
+
+export default rule

@@ -48,13 +48,13 @@ class WebsiteCrawlApi(Resource):
         try:
             api_request = WebsiteCrawlApiRequest.from_args(req_data.model_dump())
         except ValueError as e:
-            raise WebsiteCrawlError(str(e))
+            raise WebsiteCrawlError(str(e)) from e
 
         # Crawl URL using typed request
         try:
             result = WebsiteService(providers=application_services().data_sources.providers).crawl_url(api_request)
         except Exception as e:
-            raise WebsiteCrawlError(str(e))
+            raise WebsiteCrawlError(str(e)) from e
         return result, 200
 
 
@@ -76,7 +76,7 @@ class WebsiteCrawlStatusApi(Resource):
         try:
             api_request = WebsiteCrawlStatusApiRequest.from_args(req_data.model_dump(), job_id)
         except ValueError as e:
-            raise WebsiteCrawlError(str(e))
+            raise WebsiteCrawlError(str(e)) from e
 
         # Get crawl status using typed request
         try:
@@ -84,5 +84,5 @@ class WebsiteCrawlStatusApi(Resource):
                 api_request
             )
         except Exception as e:
-            raise WebsiteCrawlError(str(e))
+            raise WebsiteCrawlError(str(e)) from e
         return result, 200

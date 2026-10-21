@@ -1,22 +1,8 @@
-import type {
-  WorkflowPaginationResponse,
-  WorkflowPublishResponse,
-  WorkflowResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
-import type {
-  EnvironmentDeployment,
-  GetEnvironmentDeploymentResponse,
-  ListEnvironmentDeploymentsResponse,
-  WorkflowVersion,
-} from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { InfiniteData, QueryClient, UseQueryOptions } from '@tanstack/react-query'
+import type { UseQueryOptions } from '@tanstack/react-query'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
-  PublishWorkflowParams,
-  UpdateWorkflowParams,
-  WorkflowConfigResponse,
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import {
@@ -26,9 +12,11 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { consoleClient, consoleQuery } from '@/service/console'
-// oxlint-disable-next-line no-restricted-imports -- run history, config, version and publish hooks take prebuilt flow URLs
-import { del, get, patch, post } from './base'
+// oxlint-disable-next-line no-restricted-imports -- run and version history hooks take prebuilt flow URLs
+import { get } from './base'
+import { legacyWorkflowVersionHistoryKey } from './console/workflow-version-cache'
 import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'
 
 const NAME_SPACE = 'workflow'
@@ -71,23 +59,7 @@ export const useInvalidateAppWorkflow = () => {
   }
 }
 
-export const useWorkflowConfig = <T = WorkflowConfigResponse>(
-  url: string,
-  onSuccess: (v: T) => void,
-) => {
-  return useQuery({
-    enabled: !!url,
-    queryKey: [NAME_SPACE, 'config', url],
-    staleTime: 0,
-    queryFn: async () => {
-      const data = await get<T>(url)
-      onSuccess(data)
-      return data
-    },
-  })
-}
-
-const WorkflowVersionHistoryKey = [NAME_SPACE, 'versionHistory']
+const WorkflowVersionHistoryKey = legacyWorkflowVersionHistoryKey
 
 export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) => {
   const { url, initialPage, limit, userId, namedOnly } = params
@@ -118,192 +90,79 @@ export const useResetWorkflowVersionHistory = () => {
     ])
 }
 
-function syncWorkflowVersionMetadata(
-  version: WorkflowVersion | undefined,
-  updatedWorkflow: WorkflowResponse,
-) {
-  if (!version || version.id !== updatedWorkflow.id) return version
-  if (
-    version.marked_name === updatedWorkflow.marked_name &&
-    version.marked_comment === updatedWorkflow.marked_comment
-  )
-    return version
-
-  return {
-    ...version,
-    marked_name: updatedWorkflow.marked_name,
-    marked_comment: updatedWorkflow.marked_comment,
-  }
-}
-
-function syncEnvironmentDeploymentVersion(
-  environmentDeployment: EnvironmentDeployment,
-  updatedWorkflow: WorkflowResponse,
-) {
-  const deployment = environmentDeployment.deployment
-  if (!deployment) return environmentDeployment
-
-  const currentVersion = syncWorkflowVersionMetadata(deployment.current_version, updatedWorkflow)
-  const latestOperation = deployment.latest_operation
-  const targetVersion = syncWorkflowVersionMetadata(
-    latestOperation?.target_version,
-    updatedWorkflow,
-  )
-  const currentVersionChanged = currentVersion !== deployment.current_version
-  const targetVersionChanged = targetVersion !== latestOperation?.target_version
-
-  if (!currentVersionChanged && !targetVersionChanged) return environmentDeployment
-
-  return {
-    ...environmentDeployment,
-    deployment: {
-      ...deployment,
-      current_version: currentVersion,
-      latest_operation:
-        latestOperation && targetVersionChanged
-          ? {
-              ...latestOperation,
-              target_version: targetVersion,
-            }
-          : latestOperation,
-    },
-  }
-}
-
-function syncWorkflowVersionPages(
-  data: InfiniteData<WorkflowPaginationResponse> | undefined,
-  updatedWorkflow: WorkflowResponse,
-) {
-  if (!data) return data
-
-  let changed = false
-  const pages = data.pages.map((page) => {
-    let pageChanged = false
-    const items = page.items.map((workflow) => {
-      if (workflow.id !== updatedWorkflow.id) return workflow
-
-      changed = true
-      pageChanged = true
-      return updatedWorkflow
-    })
-
-    return pageChanged ? { ...page, items } : page
-  })
-
-  return changed ? { ...data, pages } : data
-}
-
-function syncEnvironmentDeployments(
-  data: ListEnvironmentDeploymentsResponse | undefined,
-  updatedWorkflow: WorkflowResponse,
-) {
-  if (!data) return data
-
-  let changed = false
-  const environmentDeployments = data.environment_deployments.map((deployment) => {
-    const updatedDeployment = syncEnvironmentDeploymentVersion(deployment, updatedWorkflow)
-    if (updatedDeployment !== deployment) changed = true
-    return updatedDeployment
-  })
-
-  return changed ? { ...data, environment_deployments: environmentDeployments } : data
-}
-
-function syncAppWorkflowVersionCaches(
-  queryClient: QueryClient,
-  appId: string,
-  updatedWorkflow: WorkflowResponse,
-) {
-  const publishedWorkflowQuery = appWorkflowQueryOptions(appId)
-
-  queryClient.setQueryData<WorkflowResponse>(publishedWorkflowQuery.queryKey, (workflow) =>
-    workflow?.id === updatedWorkflow.id ? updatedWorkflow : workflow,
-  )
-  queryClient.setQueriesData<InfiniteData<WorkflowPaginationResponse>>(
-    { queryKey: appWorkflowVersionsInfiniteQueryKey() },
-    (data) => syncWorkflowVersionPages(data, updatedWorkflow),
-  )
-}
-
-function syncWorkflowDeploymentCaches(
-  queryClient: QueryClient,
-  appId: string,
-  updatedWorkflow: WorkflowResponse,
-) {
-  const environmentDeploymentsQuery =
-    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
-      input: {
-        params: {
-          app_id: appId,
-        },
-      },
-    })
-
-  queryClient.setQueryData<ListEnvironmentDeploymentsResponse>(
-    environmentDeploymentsQuery.queryKey,
-    (data) => syncEnvironmentDeployments(data, updatedWorkflow),
-  )
-  queryClient.setQueriesData<GetEnvironmentDeploymentResponse>(
-    {
-      queryKey: consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.key({
-        type: 'query',
-      }),
-    },
-    (data) => {
-      if (!data) return data
-
-      const environmentDeployment = syncEnvironmentDeploymentVersion(
-        data.environment_deployment,
-        updatedWorkflow,
-      )
-      return environmentDeployment === data.environment_deployment
-        ? data
-        : { ...data, environment_deployment: environmentDeployment }
-    },
-  )
-
-  return environmentDeploymentsQuery.queryKey
+type UpdateVersionParams = {
+  resource:
+    | Omit<Extract<EditorResource, { kind: 'app' }>, 'mode'>
+    | Exclude<EditorResource, { kind: 'app' }>
+  versionId: string
+  title: string
+  releaseNotes: string
 }
 
 export const useUpdateWorkflow = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'update'],
-    mutationFn: (params: UpdateWorkflowParams) =>
-      patch<WorkflowResponse>(params.url, {
-        body: {
-          marked_name: params.title,
-          marked_comment: params.releaseNotes,
-        },
-      }),
-    onSuccess: (updatedWorkflow, params) => {
-      if (params.appId) syncAppWorkflowVersionCaches(queryClient, params.appId, updatedWorkflow)
-
-      const environmentDeploymentsQueryKey =
-        params.appId && (params.appMode === 'workflow' || params.appMode === 'advanced-chat')
-          ? syncWorkflowDeploymentCaches(queryClient, params.appId, updatedWorkflow)
-          : undefined
-      const invalidations = [
-        queryClient.invalidateQueries({ queryKey: [...WorkflowVersionHistoryKey] }),
-        queryClient.invalidateQueries({ queryKey: appWorkflowVersionsInfiniteQueryKey() }),
-      ]
-
-      if (environmentDeploymentsQueryKey) {
-        invalidations.push(
-          queryClient.invalidateQueries({ queryKey: environmentDeploymentsQueryKey }),
-        )
+  const { mutateAsync: updateAppVersion } = useMutation(
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions(),
+  )
+  const { mutateAsync: updatePipelineVersion } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch.mutationOptions(),
+  )
+  const { mutateAsync: updateSnippetVersion } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions(),
+  )
+  const mutateAsync = useCallback(
+    ({ resource, versionId, title, releaseNotes }: UpdateVersionParams) => {
+      const body = { marked_name: title, marked_comment: releaseNotes }
+      switch (resource.kind) {
+        case 'app':
+          return updateAppVersion({
+            params: { app_id: resource.appId, workflow_id: versionId },
+            body,
+          })
+        case 'knowledge-pipeline':
+          return updatePipelineVersion({
+            params: { pipeline_id: resource.pipelineId, workflow_id: versionId },
+            body,
+          })
+        case 'snippet':
+          return updateSnippetVersion({
+            params: { snippet_id: resource.snippetId, workflow_id: versionId },
+            body,
+          })
       }
-
-      return Promise.all(invalidations)
     },
-  })
+    [updateAppVersion, updatePipelineVersion, updateSnippetVersion],
+  )
+  return { mutateAsync }
 }
 
-export const useDeleteWorkflow = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'delete'],
-    mutationFn: (url: string) => del(url),
-  })
+export const useDeleteWorkflow = (resource: EditorResource) => {
+  const { mutateAsync: deleteAppVersion } = useMutation(
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.delete.mutationOptions(),
+  )
+  const { mutateAsync: deletePipelineVersion } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete.mutationOptions(),
+  )
+  const { mutateAsync: deleteSnippetVersion } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.delete.mutationOptions(),
+  )
+
+  return useCallback(
+    (versionId: string) => {
+      switch (resource.kind) {
+        case 'app':
+          return deleteAppVersion({ params: { app_id: resource.appId, workflow_id: versionId } })
+        case 'knowledge-pipeline':
+          return deletePipelineVersion({
+            params: { pipeline_id: resource.pipelineId, workflow_id: versionId },
+          })
+        case 'snippet':
+          return deleteSnippetVersion({
+            params: { snippet_id: resource.snippetId, workflow_id: versionId },
+          })
+      }
+    },
+    [resource, deleteAppVersion, deletePipelineVersion, deleteSnippetVersion],
+  )
 }
 
 export const useRestoreWorkflow = (resource: EditorResource) => {
@@ -328,19 +187,6 @@ export const useRestoreWorkflow = (resource: EditorResource) => {
           )
       }
     },
-  })
-}
-
-export const usePublishWorkflow = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'publish'],
-    mutationFn: (params: PublishWorkflowParams) =>
-      post<WorkflowPublishResponse>(params.url, {
-        body: {
-          marked_name: params.title,
-          marked_comment: params.releaseNotes,
-        },
-      }),
   })
 }
 

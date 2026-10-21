@@ -1,10 +1,11 @@
 import json
 import logging
 import re
+from collections.abc import Sequence
 from typing import Any, Literal, override
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient, cosine_distance, inner_product, l2_distance  # type: ignore
+from pyobvector import VECTOR, ObVecClient, VecIndexType, cosine_distance, inner_product, l2_distance  # type: ignore
 from sqlalchemy import JSON, Column, String
 from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.exc import SQLAlchemyError
@@ -22,7 +23,7 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
-OCEANBASE_SUPPORTED_VECTOR_INDEX_TYPE = "HNSW"
+OCEANBASE_SUPPORTED_VECTOR_INDEX_TYPE = VecIndexType.HNSW
 _VALID_TABLE_NAME_RE = re.compile(r"^[a-zA-Z0-9_]+$")
 
 _DISTANCE_FUNC_MAP = {
@@ -171,7 +172,7 @@ class OceanBaseVector(BaseVector):
                         "Failed to set ob_vector_memory_limit_percentage. "
                         + "Maybe the database user has insufficient privilege.",
                         e,
-                    )
+                    ) from e
 
             cols = [
                 Column("id", String(36), primary_key=True, autoincrement=False),
@@ -254,7 +255,10 @@ class OceanBaseVector(BaseVector):
 
             # return OceanBase_CE 4.3.5.1 (r101000042025031818-bxxxx) (Built Mar 18 2025 18:13:36)
             result = self._client.perform_raw_text_sql("SELECT @@version_comment AS version")
-            ob_full_version = result.fetchone()[0]
+            row = result.fetchone()
+            if row is None:
+                raise ValueError("version query returned no row")
+            ob_full_version = row[0]
             ob_version = ob_full_version.split()[1]
             logger.debug("Current OceanBase version is %s", ob_version)
             return version.parse(ob_version) >= version.parse("4.3.5.1")
@@ -386,7 +390,7 @@ class OceanBaseVector(BaseVector):
             logger.debug("No documents found to delete with metadata field '%s'='%s'", key, value)
 
     def _process_search_results(
-        self, results: list[tuple], score_threshold: float = 0.0, score_key: str = "score"
+        self, results: Sequence[Sequence[Any]], score_threshold: float = 0.0, score_key: str = "score"
     ) -> list[Document]:
         """
         Common method to process search results

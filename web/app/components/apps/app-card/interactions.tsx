@@ -4,9 +4,9 @@ import type {
   AppPartial,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { FormEventHandler, MouseEvent, ReactElement } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
@@ -27,6 +27,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,8 +43,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import {
@@ -63,9 +65,6 @@ import { getRedirection } from '@/utils/app-redirection'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 
-const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
-  ssr: false,
-})
 const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
   ssr: false,
 })
@@ -274,7 +273,6 @@ export function AppCardInteractions({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { push } = useRouter()
   const { mutate: copyApp } = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
-  const { mutateAsync: updateApp } = useMutation(consoleQuery.apps.byAppId.put.mutationOptions())
   const { mutate: deleteApp, isPending: isDeleting } = useMutation(
     consoleQuery.apps.byAppId.delete.mutationOptions(),
   )
@@ -285,6 +283,11 @@ export function AppCardInteractions({
     consoleQuery.apps.byAppId.star.delete.mutationOptions(),
   )
 
+  const editActionsRef = useRef<DialogActions>(null)
+  const edit = useMutation(
+    consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
+  )
+  const editNameRef = useRef<HTMLInputElement>(null)
   const [activeDialog, setActiveDialog] = useState<
     'delete' | 'duplicate' | 'edit' | 'switch' | null
   >(null)
@@ -400,37 +403,6 @@ export function AppCardInteractions({
     setIsOperationsMenuOpen(false)
     push(`/app/${app.id}/access-config`)
   }, [app.id, push, setIsOperationsMenuOpen])
-
-  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(
-    async ({
-      name,
-      icon_type,
-      icon,
-      icon_background,
-      description,
-      use_icon_as_answer_icon,
-      max_active_requests,
-    }) => {
-      try {
-        await updateApp({
-          params: { app_id: app.id },
-          body: {
-            name,
-            icon_type,
-            icon,
-            icon_background,
-            description,
-            use_icon_as_answer_icon,
-            max_active_requests,
-          },
-        })
-        setActiveDialog(null)
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : t(($) => $.editFailed, { ns: 'app' }))
-      }
-    },
-    [app.id, t, updateApp],
-  )
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = ({
     name,
@@ -641,23 +613,39 @@ export function AppCardInteractions({
           )}
         </div>
       </div>
-      {activeDialog === 'edit' && (
-        <EditAppModal
-          isEditModal
-          appName={app.name}
-          appIconType={appIconType}
-          appIcon={app.icon ?? ''}
-          appIconBackground={app.icon_background}
-          appIconUrl={app.icon_url}
-          appDescription={app.description ?? ''}
-          appMode={app.mode}
-          appUseIconAsAnswerIcon={app.use_icon_as_answer_icon ?? false}
-          max_active_requests={app.max_active_requests ?? null}
-          show
-          onConfirm={onEdit}
-          onHide={() => setActiveDialog(null)}
-        />
-      )}
+      <Dialog
+        actionsRef={editActionsRef}
+        open={activeDialog === 'edit'}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && edit.isPending && details.reason !== 'imperative-action') details.cancel()
+          else if (!open) setActiveDialog(null)
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            edit.reset()
+          }
+        }}
+      >
+        <DialogContent initialFocus={editNameRef}>
+          <AppMetadataForm
+            appDetail={app}
+            nameInputRef={editNameRef}
+            operation="edit"
+            isPending={edit.isPending}
+            error={edit.error?.message}
+            onSubmit={(body) => {
+              if (edit.isPending) return
+              edit.mutate(
+                { params: { app_id: app.id }, body },
+                {
+                  onSuccess: () => editActionsRef.current?.close(),
+                },
+              )
+            }}
+          />
+        </DialogContent>
+      </Dialog>
       {activeDialog === 'duplicate' && (
         <DuplicateAppModal
           appName={app.name}

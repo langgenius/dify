@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { OpenDeploymentDialog } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentDeployMenu } from '../deploy-menu'
@@ -9,7 +9,7 @@ import { EmptyTableSkeleton } from './skeleton'
 type EnvironmentTableEmptyProps =
   | {
       state: 'empty'
-      onSelectEnvironment: (environment: AppEnvironment) => void
+      onOpenDeployment: OpenDeploymentDialog
     }
   | {
       state: 'error'
@@ -36,7 +36,10 @@ export function EnvironmentTableEmpty(props: EnvironmentTableEmptyProps) {
               <span aria-hidden className="i-ri-instance-line size-6 text-text-tertiary" />
             </div>
           </div>
-          <div className="flex w-full flex-col items-center gap-2">
+          <div
+            role={isError ? 'alert' : undefined}
+            className="flex w-full flex-col items-center gap-2"
+          >
             <h3 className="system-md-medium text-text-secondary">{title}</h3>
             <p className="system-sm-regular text-text-tertiary">{description}</p>
           </div>
@@ -46,10 +49,7 @@ export function EnvironmentTableEmpty(props: EnvironmentTableEmptyProps) {
               {tCommon(($) => $['operation.retry'])}
             </Button>
           ) : (
-            <EnvironmentDeployMenu
-              appearance="empty"
-              onSelectEnvironment={props.onSelectEnvironment}
-            />
+            <EnvironmentDeployMenu appearance="empty" onOpenDeployment={props.onOpenDeployment} />
           )}
         </div>
       </div>

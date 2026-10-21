@@ -354,7 +354,7 @@ class TestPluginData:
 
         # Act & Assert - Malformed JSON triggers ValueError
         with app.test_request_context(data="not valid json", content_type="application/json"):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValueError, match="invalid json") as exc_info:
                 protected_view()
             # PEP 3134: the re-raised ValueError must chain the underlying JSON parse failure.
             assert exc_info.value.__cause__ is not None
