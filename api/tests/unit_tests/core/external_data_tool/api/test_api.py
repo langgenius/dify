@@ -120,6 +120,7 @@ def test_query_no_result_in_response(
     mock_encrypter: MagicMock,
     api_tool: ApiExternalDataTool,
     api_extension: APIBasedExtension,
+    sqlite_session: Session,
 ) -> None:
     mock_encrypter.decrypt_token.return_value = "decrypted_key"
 
@@ -137,6 +138,7 @@ def test_query_result_not_string(
     mock_encrypter: MagicMock,
     api_tool: ApiExternalDataTool,
     api_extension: APIBasedExtension,
+    sqlite_session: Session,
 ) -> None:
     mock_encrypter.decrypt_token.return_value = "decrypted_key"
 

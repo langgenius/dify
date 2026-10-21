@@ -1,6 +1,5 @@
 from collections.abc import Mapping
 from typing import Any, override
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session, scoped_session
@@ -63,7 +62,7 @@ class TestExternalDataTool:
         assert tool.variable == "var_1"
         assert tool.config is None
 
-    def test_validate_config_raises_not_implemented(self) -> None:
+    def test_validate_config_raises_not_implemented(self, sqlite_session: Session) -> None:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
@@ -82,9 +81,9 @@ class TestExternalDataTool:
                 return ""
 
         with pytest.raises(NotImplementedError):
-            ConcreteTool.validate_config("tenant_1", {}, MagicMock())
+            ConcreteTool.validate_config("tenant_1", {}, sqlite_session)
 
-    def test_query_raises_not_implemented(self) -> None:
+    def test_query_raises_not_implemented(self, sqlite_session: Session) -> None:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
@@ -104,4 +103,4 @@ class TestExternalDataTool:
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")
         with pytest.raises(NotImplementedError):
-            tool.query({}, MagicMock())
+            tool.query({}, sqlite_session)
