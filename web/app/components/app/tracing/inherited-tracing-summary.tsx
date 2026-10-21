@@ -9,6 +9,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -54,11 +55,10 @@ export function InheritedTracingSummary({
   const policy = statusQuery.data
   const provider = hasProviderForm(policy?.tracing_provider) ? policy.tracing_provider : null
   const enabled = !!policy?.enabled && !!provider
-  const { data: agentTracingEnabled } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (features) => features.agent_tracing_api_collection_enabled,
-    }),
-  )
+  const { data: agentTracingEnabled } = useQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (features) => features.agent_tracing_api_collection_enabled,
+  })
   const capabilitiesQuery = useQuery(
     traceCapabilitiesQueryOptions(
       resource,

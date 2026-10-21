@@ -42,8 +42,7 @@ function setup({
   configured = true,
 } = {}) {
   const { wrapper: QueryWrapper, queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { rbac_enabled: true },
-    features: { agent_tracing_api_collection_enabled: true },
+    systemFeatures: { rbac_enabled: true, agent_tracing_api_collection_enabled: true },
   })
   const detailKey = consoleQuery.agent.byAgentId.get.queryKey({
     input: { params: { agent_id: 'agent-1' } },

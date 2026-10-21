@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { ProviderConfigModal } from './provider-config-modal'
 import { ProviderPanel } from './provider-panel'
@@ -70,11 +71,10 @@ export function ConfigPopup({
           ? consoleQuery.agent.byAgentId.traceConfig.key({ type: 'mutation' })
           : consoleQuery.apps.byAppId.traceConfig.key({ type: 'mutation' }),
     }) > 0
-  const { data: agentTracingEnabled } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (features) => features.agent_tracing_api_collection_enabled,
-    }),
-  )
+  const { data: agentTracingEnabled } = useQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (features) => features.agent_tracing_api_collection_enabled,
+  })
   // Deployment availability is independent of the application destination.
   const agentTracingSection =
     usesAgentTracePipeline(resource) && agentTracingEnabled !== undefined

@@ -55,7 +55,7 @@ function setup({
   agentTracingEnabled?: boolean
 } = {}) {
   const { wrapper, queryClient } = createConsoleQueryWrapper({
-    features: { agent_tracing_api_collection_enabled: agentTracingEnabled },
+    systemFeatures: { agent_tracing_api_collection_enabled: agentTracingEnabled },
   })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'workflow-1' } } }),
