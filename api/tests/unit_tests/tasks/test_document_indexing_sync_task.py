@@ -75,12 +75,14 @@ class RecordingLock:
         try:
             yield lease
         finally:
+            lease.lost = True
             self.events.append(f"exit:{name}")
 
 
 @dataclass
 class RecordingIndexingService:
     calls: list[tuple[tuple[DocumentRef, ...], Mapping[str, DocumentIndexingExecution]]] = field(default_factory=list)
+    error: Exception | None = None
 
     def run(
         self,
@@ -89,6 +91,8 @@ class RecordingIndexingService:
         executions: Mapping[str, DocumentIndexingExecution],
     ) -> None:
         self.calls.append((tuple(refs), dict(executions)))
+        if self.error is not None:
+            raise self.error
 
 
 @dataclass
@@ -673,6 +677,35 @@ def test_changed_content_passes_generation_fence_and_uses_stable_lock_order(
         f"assert:{document_index_lock_name(document_id)}",
         generation_assert_event,
     ]
+
+
+def test_runner_failure_is_fenced_and_persisted_before_indexing_leases_are_released(
+    sqlite_session: Session,
+    document: Document,
+    dataset_id: str,
+    document_id: str,
+    indexing_lock: RecordingLock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert document.id == document_id
+    indexing_service = RecordingIndexingService(error=RuntimeError("provider indexing failed"))
+    _install_changed_content_collaborators(
+        monkeypatch,
+        provider=DataSourceProvider(),
+        processor=RecordingProcessor(),
+        indexing_service=indexing_service,
+    )
+
+    _run_document_indexing_sync_task(dataset_id, document_id, _GENERATION, None)
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Document, document_id)
+    assert persisted is not None
+    assert persisted.indexing_status == IndexingStatus.ERROR
+    assert persisted.error == "provider indexing failed"
+    assert len(indexing_service.calls) == 1
+    document_exit = indexing_lock.events.index(f"exit:{document_index_lock_name(document_id)}")
+    assert all(event.startswith("assert:") for event in indexing_lock.events[document_exit - 3 : document_exit])
 
 
 def test_generation_change_after_vector_cleanup_stops_and_enqueues_current_repair(

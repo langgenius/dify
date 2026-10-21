@@ -1,6 +1,9 @@
 import json
 import logging
 import time
+from collections.abc import Generator
+from contextlib import contextmanager
+from dataclasses import dataclass
 
 import click
 from celery import shared_task
@@ -53,6 +56,46 @@ def _indexing_lock() -> RedisKnowledgeIndexingLock:
     return RedisKnowledgeIndexingLock(redis=redis_client)
 
 
+@dataclass
+class _SyncExecutionState:
+    document_ref: DocumentRef | None = None
+    indexing_execution: DocumentIndexingExecution | None = None
+    side_effect_started: bool = False
+
+
+@contextmanager
+def _persist_sync_failure_before_releasing_leases(
+    *,
+    state: _SyncExecutionState,
+    documents: SQLAlchemyDocumentRepository,
+    outbox_id: str | None,
+) -> Generator[None]:
+    """Persist an owned generation failure while its Redis leases are still held."""
+
+    try:
+        yield
+    except (
+        DocumentIndexingGenerationChangedError,
+        KnowledgeIndexingLeaseLostError,
+        KnowledgeTaskExecutionLeaseLostError,
+        KnowledgeIndexingLockBusyError,
+        DocumentIsPausedError,
+        KnowledgeTaskDeliveryHandledError,
+    ):
+        raise
+    except Exception as error:
+        failed_document_id = state.document_ref.document_id if state.document_ref else "unknown"
+        logger.exception("document_indexing_sync_task failed for document_id: %s", failed_document_id)
+        document_ref = state.document_ref
+        indexing_execution = state.indexing_execution
+        if document_ref is None or indexing_execution is None:
+            raise
+        indexing_execution.assert_owned()
+        documents.fail_indexing(document_ref, str(error), execution=indexing_execution)
+        if outbox_id is not None:
+            raise
+
+
 @shared_task(
     queue="dataset",
     acks_late=True,
@@ -97,9 +140,7 @@ def _run_document_indexing_sync_task(
     """Synchronize a Notion document under one generation and renewable indexing leases."""
     logger.info(click.style(f"Start sync document: {document_id}", fg="green"))
     started_at = time.perf_counter()
-    document_ref: DocumentRef | None = None
-    indexing_execution: DocumentIndexingExecution | None = None
-    side_effect_started = False
+    state = _SyncExecutionState()
     documents = SQLAlchemyDocumentRepository(
         session_factory=session_factory.get_session_maker(),
         wake_after_commit=wake_knowledge_task_dispatcher_after_commit,
@@ -113,6 +154,11 @@ def _run_document_indexing_sync_task(
             with (
                 locks.hold(document_index_lock_name(document_id), timeout=_LEASE_TIMEOUT_SECONDS) as document_lease,
                 knowledge_task_execution(outbox_id) as delivery_execution,
+                _persist_sync_failure_before_releasing_leases(
+                    state=state,
+                    documents=documents,
+                    outbox_id=outbox_id,
+                ),
             ):
                 if delivery_execution is None:
                     return
@@ -175,7 +221,7 @@ def _run_document_indexing_sync_task(
                         logger.info("Skipping stale Notion sync generation for document %s", document_id)
                         return
                     ref = DatasetRef(dataset.tenant_id, dataset.id).document(document.id)
-                    document_ref = ref
+                    state.document_ref = ref
                     tenant_id = dataset.tenant_id
                     workspace_id = str(data_source_info["notion_workspace_id"])
                     page_id = str(data_source_info["notion_page_id"])
@@ -211,6 +257,7 @@ def _run_document_indexing_sync_task(
                     task_intent_id=delivery_execution.intent_id,
                     task_execution_id=delivery_execution.execution_id,
                 )
+                state.indexing_execution = indexing_execution
                 assert_owned()
 
                 datasource_provider_service = build_data_source_credentials(
@@ -268,7 +315,7 @@ def _run_document_indexing_sync_task(
                             raise DocumentIndexingGenerationChangedError(document_id)
                         require_owned_indexing_document(session, ref, execution=indexing_execution)
                         try:
-                            side_effect_started = True
+                            state.side_effect_started = True
                             IndexProcessorFactory(index_type).init_index_processor().clean(
                                 dataset,
                                 index_node_ids,
@@ -283,7 +330,7 @@ def _run_document_indexing_sync_task(
                             session.rollback()
                     assert_owned()
 
-                side_effect_started = True
+                state.side_effect_started = True
                 with session_factory.create_session() as session:
                     if lock_dataset_for_child_write(session, ref.dataset) is None:
                         raise DocumentIndexingGenerationChangedError(ref.document_id)
@@ -311,11 +358,11 @@ def _run_document_indexing_sync_task(
                 )
     except DocumentIndexingGenerationChangedError:
         logger.info("Notion sync generation changed for document %s", document_id)
-        if side_effect_started and document_ref is not None:
-            documents.enqueue_current_indexing_repairs(document_ref.dataset, [document_ref.document_id])
+        if state.side_effect_started and state.document_ref is not None:
+            documents.enqueue_current_indexing_repairs(state.document_ref.dataset, [state.document_ref.document_id])
     except (KnowledgeIndexingLeaseLostError, KnowledgeTaskExecutionLeaseLostError):
-        if document_ref is not None:
-            documents.enqueue_current_indexing_repairs(document_ref.dataset, [document_ref.document_id])
+        if state.document_ref is not None:
+            documents.enqueue_current_indexing_repairs(state.document_ref.dataset, [state.document_ref.document_id])
         raise
     except KnowledgeIndexingLockBusyError as error:
         if outbox_id is None:
@@ -328,22 +375,6 @@ def _run_document_indexing_sync_task(
         ) from error
     except DocumentIsPausedError as error:
         logger.info(click.style(str(error), fg="yellow"))
-        if outbox_id is not None:
-            raise
-    except Exception as error:
-        logger.exception("document_indexing_sync_task failed for document_id: %s", document_id)
-        if document_ref is None or indexing_execution is None:
-            raise
-        try:
-            indexing_execution.assert_owned()
-        except DocumentIndexingGenerationChangedError:
-            if side_effect_started:
-                documents.enqueue_current_indexing_repairs(document_ref.dataset, [document_ref.document_id])
-            return
-        except (KnowledgeIndexingLeaseLostError, KnowledgeTaskExecutionLeaseLostError):
-            documents.enqueue_current_indexing_repairs(document_ref.dataset, [document_ref.document_id])
-            raise
-        documents.fail_indexing(document_ref, str(error), execution=indexing_execution)
         if outbox_id is not None:
             raise
 
