@@ -47,11 +47,11 @@ const CustomWebAppBrand = () => {
       </div>
       <div
         className={cn(
-          'flex h-14 items-center justify-between rounded-xl bg-background-section-burn px-4',
+          'flex min-h-14 flex-col items-start gap-3 rounded-xl bg-background-section-burn p-4 sm:flex-row sm:items-center sm:justify-between sm:py-2',
           webappBrandRemoved && 'opacity-30',
         )}
       >
-        <div>
+        <div className="min-w-0 wrap-anywhere">
           <label htmlFor={logoInputId} className="block system-md-medium text-text-primary">
             {t(($) => $['webapp.changeLogo'], { ns: 'custom' })}
           </label>
@@ -59,7 +59,7 @@ const CustomWebAppBrand = () => {
             {t(($) => $['webapp.changeLogoTip'], { ns: 'custom' })}
           </div>
         </div>
-        <div className="flex items-center">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
           {!uploadDisabled && webappLogo && !webappBrandRemoved && (
             <>
               <Button
@@ -69,11 +69,11 @@ const CustomWebAppBrand = () => {
               >
                 {t(($) => $.restore, { ns: 'custom' })}
               </Button>
-              <div className="mx-2 h-5 w-px bg-divider-regular"></div>
+              <div className="h-5 w-px shrink-0 bg-divider-regular"></div>
             </>
           )}
           {!uploading && (
-            <Button className="relative mr-2" disabled={uploadDisabled}>
+            <Button className="relative" disabled={uploadDisabled}>
               <span className="i-ri-image-add-line size-4" />
               {webappLogo || fileId
                 ? t(($) => $.change, { ns: 'custom' })
@@ -93,23 +93,18 @@ const CustomWebAppBrand = () => {
             </Button>
           )}
           {uploading && (
-            <Button className="relative mr-2" disabled={true}>
+            <Button className="relative" disabled={true}>
               <span className="i-ri-loader-2-line size-4 animate-spin" />
               {t(($) => $.uploading, { ns: 'custom' })}
             </Button>
           )}
           {fileId && (
             <>
-              <Button
-                className="mr-2"
-                onClick={handleCancel}
-                disabled={webappBrandRemoved || !canManageCustomBrand}
-              >
+              <Button onClick={handleCancel} disabled={webappBrandRemoved || !canManageCustomBrand}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button
                 variant="primary"
-                className="mr-2"
                 onClick={handleApply}
                 disabled={
                   isCustomConfigUnavailable ||
