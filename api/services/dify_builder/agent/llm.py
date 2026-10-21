@@ -24,14 +24,22 @@ from services.dify_builder import trace_diagnostics as diagnostics
 
 # --- Reply-language instruction (M1) -----------------------------------------
 # Appended to user-facing prompts so generated prose adopts the user's input
-# language. The user's text is already in each prompt, so the model infers the
-# language; no explicit language value is plumbed.
+# language. Callers with a persisted session locale must use that explicitly:
+# technical JSON and schema corrections are not evidence of the user's language.
 LANGUAGE_INSTRUCTION = " Always write your reply in the same language as the user's input."
 
 
-def json_language_instruction(fields: str) -> str:
+def json_language_instruction(fields: str, *, reply_language: str | None = None) -> str:
     """Language instruction for a JSON-emitting prompt: localize only the named
     human-readable field(s); keep JSON keys and enum values in English."""
+    if reply_language:
+        return (
+            f" Write the {fields} in the session reply language (BCP-47: {reply_language}). "
+            "This language takes precedence over the language of technical JSON, graph configuration, "
+            "examples and schema-correction feedback. Write explanatory text and each plan step as "
+            "natural-language prose in that language, not as English engine commands. "
+            "Keep JSON keys, enum values, code, resource IDs, selectors and literal business values unchanged."
+        )
     return (
         f" Write the {fields} in the same language as the user's input; keep all JSON keys and enum values in English."
     )
