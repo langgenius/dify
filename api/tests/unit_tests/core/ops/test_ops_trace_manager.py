@@ -808,7 +808,8 @@ def test_restricted_trace_policy_survives_shared_queue_and_persistence(monkeypat
     restricted = TraceQueueManager(app_id="restricted", external_tracing_disabled=True)
     provider.assert_not_called()
     restricted._enterprise_telemetry_enabled = True
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda _: True)
+    provider.side_effect = None
+    provider.return_value = True
     ordinary = TraceQueueManager(app_id="ordinary")
     storage = RecordingStorage()
     monkeypatch.setattr(module.storage, "save", storage.save)

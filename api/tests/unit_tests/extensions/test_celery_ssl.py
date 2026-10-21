@@ -4,7 +4,12 @@ import ssl
 from importlib import import_module
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from enums import DeploymentEdition
+from tests.unit_tests.celery_fixtures import preserve_celery_apps
+
+pytestmark = pytest.mark.usefixtures(preserve_celery_apps.__name__)
 
 
 class TestCelerySSLConfiguration:
