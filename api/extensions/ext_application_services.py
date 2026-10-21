@@ -675,6 +675,7 @@ def build_application_services(
             apps=SQLAlchemyNetworkAccessGroupAppRepository(session_factory=database_client),
             memberships=workspace_repository,
             entitlement=BillingNetworkAccessGroupEntitlementGateway(),
+            rbac_enabled=lambda: dify_config.RBAC_ENABLED,
         ),
         step_by_step_tour=StepByStepTourService(
             accounts=accounts,

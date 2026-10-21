@@ -15,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, HTTPException, NotFound, ServiceUnavailable
 from werkzeug.test import TestResponse
 
+from controllers.common.rbac import Workspace
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.workspace.network_access_group import (
     AppNetworkAccessGroupApi,
@@ -31,7 +32,7 @@ from controllers.console.workspace.network_access_group import (
     _translate_service_error,
     _translate_upstream_error,
 )
-from controllers.console.wraps import validate_request
+from controllers.console.wraps import RBACPermission, validate_request
 from core.network_access.client_ip import NetworkAccessClientIPUnavailableError
 from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
@@ -64,12 +65,37 @@ from services.network_access_group_service import (
     NetworkAccessGroupUnsupportedAppModeError,
     NetworkAccessGroupUpstreamError,
 )
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 TENANT_ID = "11111111-1111-4111-8111-111111111111"
 ACCOUNT_ID = "22222222-2222-4222-8222-222222222222"
 APP_ID = "33333333-3333-4333-8333-333333333333"
 GROUP_ID = "44444444-4444-4444-8444-444444444444"
 BINDING_ID = "55555555-5555-4555-8555-555555555555"
+
+
+@pytest.mark.parametrize(
+    ("view", "permission"),
+    [
+        (CurrentWorkspaceNetworkAccessGroupsApi.get, RBACPermission.IP_POLICY_VIEW),
+        (CurrentWorkspaceNetworkAccessGroupsApi.post, RBACPermission.IP_POLICY_MANAGE),
+        (CurrentWorkspaceNetworkAccessGroupApi.get, RBACPermission.IP_POLICY_VIEW),
+        (CurrentWorkspaceNetworkAccessGroupApi.put, RBACPermission.IP_POLICY_MANAGE),
+        (CurrentWorkspaceNetworkAccessGroupApi.delete, RBACPermission.IP_POLICY_MANAGE),
+        (CurrentWorkspaceNetworkAccessGroupCurrentIPApi.get, RBACPermission.IP_POLICY_VIEW),
+        (CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi.get, RBACPermission.IP_POLICY_VIEW),
+        (AppNetworkAccessGroupApi.get, RBACPermission.IP_POLICY_VIEW),
+        (AppNetworkAccessGroupApi.put, RBACPermission.IP_POLICY_MANAGE),
+        (AppNetworkAccessGroupStatusApi.get, RBACPermission.IP_POLICY_VIEW),
+    ],
+)
+def test_all_network_access_group_routes_declare_rbac_permission(
+    view: Callable[..., object], permission: RBACPermission
+) -> None:
+    (check,) = rbac_checks(view)
+
+    assert check.scene is permission
+    assert isinstance(check.locator, Workspace)
 
 
 def _request_context() -> RequestContext:
@@ -1023,7 +1049,11 @@ def _typed_binding_http_response(services: ApplicationServices, wire: Mapping[st
             http_client=client,
         )
         service = NetworkAccessGroupService(
-            control_plane=gateway, apps=apps, memberships=memberships, entitlement=entitlement
+            control_plane=gateway,
+            apps=apps,
+            memberships=memberships,
+            entitlement=entitlement,
+            rbac_enabled=lambda: False,
         )
         api = AppNetworkAccessGroupApi()
 
@@ -1074,7 +1104,11 @@ def _typed_status_http_response(
             http_client=client,
         )
         service = NetworkAccessGroupService(
-            control_plane=gateway, apps=apps, memberships=memberships, entitlement=entitlement
+            control_plane=gateway,
+            apps=apps,
+            memberships=memberships,
+            entitlement=entitlement,
+            rbac_enabled=lambda: False,
         )
         api = AppNetworkAccessGroupStatusApi()
 

@@ -170,11 +170,13 @@ class NetworkAccessGroupService:
         apps: NetworkAccessGroupAppQuery,
         memberships: WorkspaceMembershipRoleQuery,
         entitlement: NetworkAccessGroupEntitlement,
+        rbac_enabled: Callable[[], bool],
     ) -> None:
         self._control_plane = control_plane
         self._apps = apps
         self._memberships = memberships
         self._entitlement = entitlement
+        self._rbac_enabled = rbac_enabled
 
     def list_groups(self, context: RequestContext) -> NetworkAccessGroupList:
         self._ensure_workspace_role(context, _POLICY_READ_ROLES)
@@ -362,6 +364,8 @@ class NetworkAccessGroupService:
         return self._control_plane.cleanup_app_binding(workspace_id, app_id)
 
     def _ensure_workspace_role(self, context: RequestContext, allowed_roles: frozenset[str]) -> None:
+        if self._rbac_enabled():
+            return
         role = self._memberships.get_account_role(
             tenant_id=context.active_workspace_id,
             account_id=context.account_id,
