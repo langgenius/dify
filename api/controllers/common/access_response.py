@@ -104,7 +104,7 @@ def _parse_mcp_error_request_id(body: bytes) -> str:
             # Reject unpaired surrogates instead of creating invalid UTF-8.
             request_id.encode("utf-8")
             return _json(request_id)
-    except (ValueError, UnicodeError, RecursionError):
+    except (ValueError, RecursionError):
         pass
     return "null"
 
