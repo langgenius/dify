@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
+from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.agent import (
     Agent,
@@ -37,8 +38,8 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.enums import ConversationFromSource, ConversationStatus
-from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
+from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole
+from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, UploadFile
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
@@ -5726,6 +5727,22 @@ class TestWorkflowAgentDraftBindingSync:
             size=1,
         )
         archive_file.id = "archive-1"
+        config_file = UploadFile(
+            tenant_id="tenant-1",
+            storage_type=StorageType.LOCAL,
+            key="uploads/guide.md",
+            name="guide.md",
+            size=1,
+            extension="md",
+            mime_type="text/markdown",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-1",
+            created_at=datetime(2025, 1, 1),
+            used=True,
+        )
+        config_file.id = "file-1"
+        session.add(config_file)
+        session.commit()
         session.add_all([binding, agent, snapshot, skill, skill_version, skill_binding, archive_file])
         session.commit()
 

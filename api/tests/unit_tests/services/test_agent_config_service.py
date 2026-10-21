@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import delete, event, select, update
+from sqlalchemy import delete, event, insert, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.storage.storage_type import StorageType
@@ -378,7 +378,17 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
         name="alpha.zip",
     )
     skill_source.id = SKILL_FILE
-    sqlite_session.add_all([file_source, skill_source])
+    normalized_skill = ToolFile(
+        tenant_id=TENANT,
+        user_id=USER,
+        conversation_id=None,
+        size=321,
+        mimetype="application/zip",
+        file_key="normalized-skill-key",
+        name="alpha.zip",
+    )
+    normalized_skill.id = NORMALIZED_SKILL_FILE
+    sqlite_session.add_all([file_source, skill_source, normalized_skill])
     sqlite_session.commit()
     skill_ref = AgentConfigSkillRefConfig(
         name="alpha",
@@ -807,7 +817,6 @@ def test_request_download_signs_tenant_scoped_config_upload_file(sqlite_session:
     soul = _soul(
         config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="upload_file", file_id=UPLOAD_FILE)]
     )
-    _persist_target(sqlite_session, _draft(soul=soul))
     upload_file = UploadFile(
         tenant_id=TENANT,
         storage_type=StorageType.LOCAL,
@@ -824,6 +833,7 @@ def test_request_download_signs_tenant_scoped_config_upload_file(sqlite_session:
     upload_file.id = UPLOAD_FILE
     sqlite_session.add(upload_file)
     sqlite_session.commit()
+    _persist_target(sqlite_session, _draft(soul=soul))
 
     result = _service(sqlite_session).request_download(
         tenant_id=TENANT,
@@ -843,7 +853,6 @@ def test_request_download_signs_tenant_scoped_config_upload_file(sqlite_session:
 @pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
 def test_request_download_rejects_config_source_from_another_tenant(sqlite_session: Session) -> None:
     soul = _soul(config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="tool_file", file_id=TOOL_FILE)])
-    _persist_target(sqlite_session, _draft(soul=soul))
     source = ToolFile(
         tenant_id=OTHER_TENANT,
         user_id=END_USER,
@@ -854,7 +863,19 @@ def test_request_download_rejects_config_source_from_another_tenant(sqlite_sessi
         name="guide.txt",
     )
     source.id = TOOL_FILE
-    sqlite_session.add(source)
+    sqlite_session.add_all([_agent(), source])
+    sqlite_session.commit()
+    sqlite_session.execute(
+        insert(AgentConfigDraft).values(
+            id=DRAFT,
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            draft_owner_key="",
+            config_snapshot=soul,
+        )
+    )
     sqlite_session.commit()
 
     with pytest.raises(AgentConfigServiceError) as exc_info:
