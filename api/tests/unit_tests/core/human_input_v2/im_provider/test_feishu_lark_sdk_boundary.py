@@ -16,6 +16,8 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from lark_oapi.core.cache import LocalCache
+from lark_oapi.core.token import TokenManager
 
 from controllers.console.human_input_v2.providers import (
     FeishuCredentialsInput as FeishuCredentialRequest,
@@ -63,6 +65,7 @@ class _RequestRecord:
     method: str
     path: str
     body: dict[str, object] | None
+    authorization: str | None
 
 
 @dataclass(slots=True)
@@ -73,6 +76,8 @@ class _ServerState:
     paginated_directory: bool = False
     live_readiness_directory: bool = False
     omitted_empty_directory: bool = False
+    issued_tokens: int = 0
+    token_error_code: int | None = None
 
 
 class _SDKHTTPServer(ThreadingHTTPServer):
@@ -125,15 +130,23 @@ class _SDKRequestHandler(BaseHTTPRequestHandler):
                 method=self.command,
                 path=self.path,
                 body=body,
+                authorization=self.headers.get("Authorization"),
             )
         )
         route = self.path.split("?", maxsplit=1)[0]
         if route == "/open-apis/auth/v3/tenant_access_token/internal":
+            if self.server.state.token_error_code is not None:
+                self._respond({"code": self.server.state.token_error_code, "msg": "credential rejected"})
+                return
+            if body is None or body.get("app_secret") != "sanitized-app-secret":
+                self._respond({"code": 10014, "msg": "invalid app secret"})
+                return
+            self.server.state.issued_tokens += 1
             self._respond(
                 {
                     "code": 0,
                     "msg": "ok",
-                    "tenant_access_token": "t-sanitized-access-token",
+                    "tenant_access_token": f"t-sanitized-access-token-{self.server.state.issued_tokens}",
                     "expire": 7200,
                 }
             )
@@ -428,6 +441,9 @@ class _FailingConsumer:
 
 
 class _ScriptedGateway:
+    def request_tenant_access_token(self) -> str:
+        return "sanitized-access-token"
+
     def __init__(self) -> None:
         self.tenant: list[Mapping[str, object] | Exception] = []
         self.scope: list[Mapping[str, object] | Exception] = []
@@ -444,15 +460,20 @@ class _ScriptedGateway:
             raise value
         return value
 
-    def query_tenant(self) -> Mapping[str, object]:
+    def query_tenant(self, *, request_option: object = None) -> Mapping[str, object]:
+        del request_option
         self.calls.append("tenant")
         return self._next(self.tenant)
 
-    def list_scope(self, _page_token: str | None) -> Mapping[str, object]:
+    def list_scope(self, _page_token: str | None, *, request_option: object = None) -> Mapping[str, object]:
+        del request_option
         self.calls.append("scope")
         return self._next(self.scope)
 
-    def list_departments(self, _department_id: str, _page_token: str | None) -> Mapping[str, object]:
+    def list_departments(
+        self, _department_id: str, _page_token: str | None, *, request_option: object = None
+    ) -> Mapping[str, object]:
+        del request_option
         self.calls.append("departments")
         return self._next(self.departments)
 
@@ -552,7 +573,8 @@ def _signed_request(
 
 
 @pytest.fixture
-def sdk_server() -> Generator[_RunningServer, None, None]:
+def sdk_server(monkeypatch: pytest.MonkeyPatch) -> Generator[_RunningServer, None, None]:
+    monkeypatch.setattr(TokenManager, "cache", LocalCache())
     state = _ServerState()
     server = _SDKHTTPServer(("127.0.0.1", 0), _SDKRequestHandler)
     server.state = state
@@ -565,6 +587,78 @@ def sdk_server() -> Generator[_RunningServer, None, None]:
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+@pytest.mark.parametrize("changed_secret", [False, True], ids=["revoked-credentials", "wrong-secret"])
+def test_credential_test_rejects_invalid_credentials_despite_a_cached_token(
+    monkeypatch: pytest.MonkeyPatch,
+    sdk_server: _RunningServer,
+    provider: IMProvider,
+    changed_secret: bool,
+) -> None:
+    monkeypatch.setattr(
+        adapter_module,
+        "_create_sdk_gateway",
+        lambda credentials, _domain: _OfficialSDKGateway(credentials, sdk_server.domain),
+    )
+    credentials = _credentials()
+    _OfficialSDKGateway(credentials, sdk_server.domain).query_tenant()
+    if changed_secret:
+        credentials = credentials.model_copy(update={"app_secret": "invalid-secret"})
+    else:
+        sdk_server.state.token_error_code = 10014
+    adapter = (
+        FeishuIMProviderAdapter(credentials)
+        if provider is IMProvider.FEISHU
+        else LarkIMProviderAdapter(
+            LarkCredentials(provider=IMProvider.LARK, app_id=credentials.app_id, app_secret=credentials.app_secret)
+        )
+    )
+
+    result = adapter.test_credentials()
+
+    assert isinstance(result, CredentialTestFailure)
+    assert result.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    assert result.provider_error_code == "10014"
+
+
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_repeated_credential_tests_use_fresh_tokens_without_replacing_the_runtime_cache(
+    monkeypatch: pytest.MonkeyPatch,
+    sdk_server: _RunningServer,
+    provider: IMProvider,
+) -> None:
+    monkeypatch.setattr(
+        adapter_module,
+        "_create_sdk_gateway",
+        lambda credentials, _domain: _OfficialSDKGateway(credentials, sdk_server.domain),
+    )
+    runtime_gateway = _OfficialSDKGateway(_credentials(), sdk_server.domain)
+    runtime_gateway.query_tenant()
+    adapter = (
+        FeishuIMProviderAdapter(_credentials())
+        if provider is IMProvider.FEISHU
+        else LarkIMProviderAdapter(
+            LarkCredentials(
+                provider=IMProvider.LARK,
+                app_id=_credentials().app_id,
+                app_secret=_credentials().app_secret,
+            )
+        )
+    )
+
+    for token_number in (2, 3):
+        request_start = len(sdk_server.state.requests)
+        assert adapter.test_credentials() == CredentialTestSuccess(provider, "tenant_sanitized")
+        test_requests = sdk_server.state.requests[request_start:]
+        assert test_requests[0].path == "/open-apis/auth/v3/tenant_access_token/internal"
+        assert {request.authorization for request in test_requests[1:]} == {
+            f"Bearer t-sanitized-access-token-{token_number}"
+        }
+
+    runtime_gateway.query_tenant()
+    assert sdk_server.state.requests[-1].authorization == "Bearer t-sanitized-access-token-1"
 
 
 def test_official_sdk_gateway_maps_tenant_directory_and_message_operations(sdk_server: _RunningServer) -> None:

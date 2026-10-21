@@ -42,7 +42,7 @@ class _CallRecorder:
         self.result = result
         self.requests: list[object] = []
 
-    def __call__(self, request: object) -> dict[str, object]:
+    def __call__(self, request: object, _option: object = None) -> dict[str, object]:
         self.requests.append(request)
         return self.result
 
@@ -88,6 +88,9 @@ class _ClientBuilder:
         return self
 
     def domain(self, _value: str) -> _ClientBuilder:
+        return self
+
+    def enable_set_token(self, _value: bool) -> _ClientBuilder:
         return self
 
     def log_level(self, _value: object) -> _ClientBuilder:

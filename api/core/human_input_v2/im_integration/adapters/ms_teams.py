@@ -8,6 +8,7 @@ import json
 import logging
 import re
 from collections.abc import Mapping
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.message import Message
@@ -886,8 +887,22 @@ class MSTeamsIMProviderAdapter:
             raise CredentialTestTimeoutError() from error
 
     def _test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        # Azure Identity and Bot Framework cache tokens within their credential
+        # instances. Each test must authenticate again, even on the same adapter.
+        with closing(
+            ClientSecretCredential(
+                self._credentials.tenant_id,
+                self._credentials.client_id,
+                self._credentials.client_secret,
+            )
+        ) as graph_credential:
+            return self._verify_credentials(graph_credential)
+
+    def _verify_credentials(
+        self, graph_credential: ClientSecretCredential
+    ) -> CredentialTestSuccess | CredentialTestFailure:
         try:
-            graph_token = self._graph_credential.get_token(_GRAPH_SCOPE).token
+            graph_token = graph_credential.get_token(_GRAPH_SCOPE).token
         except ClientAuthenticationError as error:
             provider_error_code = _microsoft_error_code(error)
             if provider_error_code is None and error.response is None:
@@ -926,7 +941,12 @@ class MSTeamsIMProviderAdapter:
         # Teams has no conversation-free Connector read probe. Test its tenant-scoped
         # Bot Framework credentials through the SDK without sending a message.
         try:
-            bot_token = self._bot_credentials.get_access_token()
+            bot_credentials = _MSTeamsBotCredentials(
+                self._credentials.client_id,
+                self._credentials.client_secret,
+                channel_auth_tenant=self._credentials.tenant_id,
+            )
+            bot_token = bot_credentials.get_access_token()
         except PermissionError as error:
             if not str(error).startswith(_BOT_TOKEN_REJECTION_PREFIX):
                 raise

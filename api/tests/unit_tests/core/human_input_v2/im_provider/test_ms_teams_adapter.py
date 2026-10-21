@@ -313,6 +313,51 @@ def test_credential_test_confirms_graph_permission_bot_auth_and_tenant(mocker) -
     bot_credentials.get_access_token.assert_called_once_with()
 
 
+@pytest.mark.parametrize("rejected_scope", ["graph", "bot"])
+def test_credential_test_rejects_revoked_credentials_after_a_cached_success(
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    rejected_scope: str,
+) -> None:
+    credentials_valid = True
+
+    class GraphCredential:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            self.cached = False
+
+        def get_token(self, _scope: str) -> SimpleNamespace:
+            if not self.cached and not credentials_valid and rejected_scope == "graph":
+                raise ClientAuthenticationError("AADSTS7000215: invalid client secret")
+            self.cached = True
+            return SimpleNamespace(token="opaque-graph-token")
+
+        def close(self) -> None:
+            pass
+
+    class BotCredentials:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            self.cached = False
+
+        def get_access_token(self) -> str:
+            if not self.cached and not credentials_valid and rejected_scope == "bot":
+                raise PermissionError("Failed to get access token with error: invalid_client")
+            self.cached = True
+            return "opaque-bot-token"
+
+    monkeypatch.setattr(ms_teams, "ClientSecretCredential", GraphCredential)
+    monkeypatch.setattr(ms_teams, "_MSTeamsBotCredentials", BotCredentials)
+    graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
+    graph_client.get.return_value = httpx.Response(200, json={"value": []})
+    adapter = ms_teams.MSTeamsIMProviderAdapter(_credentials())
+
+    assert adapter.test_credentials() == CredentialTestSuccess(IMProvider.MS_TEAMS, _credentials().tenant_id)
+    credentials_valid = False
+    rejected = adapter.test_credentials()
+
+    assert isinstance(rejected, CredentialTestFailure)
+    assert rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+
+
 def test_credential_test_returns_safe_typed_failures(mocker) -> None:
     adapter, _, graph_client, bot_credentials = _adapter_with_tokens(mocker, graph_claims={}, bot_claims={})
     graph_client.get.return_value = httpx.Response(

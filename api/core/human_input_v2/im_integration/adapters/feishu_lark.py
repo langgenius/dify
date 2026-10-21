@@ -28,7 +28,7 @@ from urllib.parse import parse_qs, urlsplit
 import lark_oapi as lark
 from cryptography.hazmat.primitives import padding as symmetric_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from lark_oapi.api import contact, im, tenant
+from lark_oapi.api import auth, contact, im, tenant
 from lark_oapi.channel import FeishuChannel, TransportConfig
 from lark_oapi.core.exception import AccessTokenException, ObtainAccessTokenException
 from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTrigger, P2CardActionTriggerResponse
@@ -110,7 +110,7 @@ class _DepartmentIdentity:
 
 
 _ROOT_DEPARTMENT = _DepartmentIdentity("0", "department_id")
-_AUTHENTICATION_REJECTED_CODES = frozenset((99991663, 99991664, 99991665))
+_AUTHENTICATION_REJECTED_CODES = frozenset((10014, 99991663, 99991664, 99991665))
 _STALE_MESSAGE_CODES = frozenset((230001, 230011, 230020))
 _JSON_RESPONSE_HEADERS = (("Content-Type", "application/json"),)
 _STREAM_READY_TIMEOUT_SECONDS = 30.0
@@ -128,13 +128,26 @@ def _log_safe_error(message: str, *, extra: Mapping[str, object] | None = None) 
 
 
 class _SDKGateway(Protocol):
-    """Narrow synchronous boundary over official generated SDK resources."""
+    """Narrow synchronous boundary over official generated SDK resources.
 
-    def query_tenant(self) -> Mapping[str, object]: ...
+    Omitting request options delegates authentication to the SDK token lifecycle.
+    """
 
-    def list_scope(self, page_token: str | None) -> Mapping[str, object]: ...
+    def request_tenant_access_token(self) -> str: ...
 
-    def list_departments(self, department: _DepartmentIdentity, page_token: str | None) -> Mapping[str, object]: ...
+    def query_tenant(self, *, request_option: lark.RequestOption | None = None) -> Mapping[str, object]: ...
+
+    def list_scope(
+        self, page_token: str | None, *, request_option: lark.RequestOption | None = None
+    ) -> Mapping[str, object]: ...
+
+    def list_departments(
+        self,
+        department: _DepartmentIdentity,
+        page_token: str | None,
+        *,
+        request_option: lark.RequestOption | None = None,
+    ) -> Mapping[str, object]: ...
 
     def list_users(self, department: _DepartmentIdentity, page_token: str | None) -> Mapping[str, object]: ...
 
@@ -169,6 +182,7 @@ class _OfficialSDKGateway(_SDKGateway):
             .app_id(credentials.app_id)
             .app_secret(credentials.app_secret)
             .domain(domain)
+            .enable_set_token(True)
             .log_level(lark.LogLevel.ERROR)
             .build()
         )
@@ -180,14 +194,46 @@ class _OfficialSDKGateway(_SDKGateway):
         self._tenant_service = tenant_service
         self._contact_service = contact_service
         self._im_service = im_service
+        self._client = client
+        self._credentials = credentials
 
     @override
-    def query_tenant(self) -> Mapping[str, object]:
+    def request_tenant_access_token(self) -> str:
+        """Authenticate submitted credentials without consulting the SDK token cache."""
+
+        auth_service = self._client.auth
+        if auth_service is None:
+            raise IMProviderError("official SDK client did not initialize authentication")
+        body = (
+            auth.v3.InternalTenantAccessTokenRequestBody.builder()
+            .app_id(self._credentials.app_id)
+            .app_secret(self._credentials.app_secret)
+            .build()
+        )
+        request = auth.v3.InternalTenantAccessTokenRequest.builder().request_body(body).build()
+        response = auth_service.v3.tenant_access_token.internal(request)
+        raw = response.raw
+        if raw is None or raw.content is None or raw.status_code is None:
+            raise IMProviderError("provider token response is empty")
+        token_response = _TenantAccessTokenResponse.model_validate_json(raw.content)
+        if token_response.code is None:
+            raise IMProviderError("provider token response did not confirm authentication")
+        if token_response.code != 0:
+            raise AccessTokenException(raw.status_code, token_response.code, "credential test rejected", "")
+        if token_response.tenant_access_token is None:
+            raise IMProviderError("provider token response did not provide an access token")
+
+        return token_response.tenant_access_token
+
+    @override
+    def query_tenant(self, *, request_option: lark.RequestOption | None = None) -> Mapping[str, object]:
         request = tenant.v2.QueryTenantRequest.builder().build()
-        return _sdk_response_mapping(self._tenant_service.v2.tenant.query(request))
+        return _sdk_response_mapping(self._tenant_service.v2.tenant.query(request, request_option))
 
     @override
-    def list_scope(self, page_token: str | None) -> Mapping[str, object]:
+    def list_scope(
+        self, page_token: str | None, *, request_option: lark.RequestOption | None = None
+    ) -> Mapping[str, object]:
         builder = (
             contact.v3.ListScopeRequest.builder()
             .page_size(_DIRECTORY_PAGE_SIZE)
@@ -196,10 +242,16 @@ class _OfficialSDKGateway(_SDKGateway):
         )
         if page_token is not None:
             builder = builder.page_token(page_token)
-        return _sdk_response_mapping(self._contact_service.v3.scope.list(builder.build()))
+        return _sdk_response_mapping(self._contact_service.v3.scope.list(builder.build(), request_option))
 
     @override
-    def list_departments(self, department: _DepartmentIdentity, page_token: str | None) -> Mapping[str, object]:
+    def list_departments(
+        self,
+        department: _DepartmentIdentity,
+        page_token: str | None,
+        *,
+        request_option: lark.RequestOption | None = None,
+    ) -> Mapping[str, object]:
         builder = (
             contact.v3.ChildrenDepartmentRequest.builder()
             .department_id_type(department.id_type)
@@ -211,7 +263,7 @@ class _OfficialSDKGateway(_SDKGateway):
             builder = builder.page_token(page_token)
         request = builder.build()
         request.paths["department_id"] = department.value
-        return _sdk_response_mapping(self._contact_service.v3.department.children(request))
+        return _sdk_response_mapping(self._contact_service.v3.department.children(request, request_option))
 
     @override
     def list_users(self, department: _DepartmentIdentity, page_token: str | None) -> Mapping[str, object]:
@@ -642,6 +694,10 @@ class _CredentialResponse(_ExternalResponseModel):
     code: int | None = None
     error: JsonValue = None
     raw: _HTTPResponseMetadata | None = None
+
+
+class _TenantAccessTokenResponse(_CredentialResponse):
+    tenant_access_token: str | None = Field(default=None, min_length=1, pattern=r"\S", repr=False)
 
 
 def _credential_rejection(response: _CredentialResponse, reason: str) -> CredentialTestFailure:
@@ -1675,7 +1731,9 @@ class _FeishuLarkIMProviderAdapter:
 
     def _test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
         self._ensure_open()
-        tenant_payload = self._gateway.query_tenant()
+        access_token = self._gateway.request_tenant_access_token()
+        request_option = lark.RequestOption.builder().tenant_access_token(access_token).build()
+        tenant_payload = self._gateway.query_tenant(request_option=request_option)
         tenant_envelope = _CredentialResponse.model_validate(tenant_payload)
         if tenant_envelope.code != 0:
             return _credential_rejection(
@@ -1684,19 +1742,19 @@ class _FeishuLarkIMProviderAdapter:
         tenant_response = _TenantResponse.model_validate(tenant_payload)
         if tenant_response.data is None or tenant_response.data.tenant.tenant_key is None:
             raise IMProviderError(f"{_provider_name(self._provider)} did not provide a stable tenant identity.")
-        scope_failure = self._validate_complete_scope()
+        scope_failure = self._validate_complete_scope(request_option)
         if scope_failure is not None:
             return scope_failure
-        department_failure = self._validate_root_department_access()
+        department_failure = self._validate_root_department_access(request_option)
         if department_failure is not None:
             return department_failure
         return CredentialTestSuccess(self._provider, tenant_response.data.tenant.tenant_key)
 
-    def _validate_complete_scope(self) -> CredentialTestFailure | None:
+    def _validate_complete_scope(self, request_option: lark.RequestOption) -> CredentialTestFailure | None:
         page_token: str | None = None
         seen_tokens: set[str] = set()
         while True:
-            scope_payload = self._gateway.list_scope(page_token)
+            scope_payload = self._gateway.list_scope(page_token, request_option=request_option)
             scope_envelope = _CredentialResponse.model_validate(scope_payload)
             if scope_envelope.code != 0:
                 return _credential_rejection(
@@ -1709,8 +1767,8 @@ class _FeishuLarkIMProviderAdapter:
             if page_token is None:
                 return None
 
-    def _validate_root_department_access(self) -> CredentialTestFailure | None:
-        department_payload = self._gateway.list_departments(_ROOT_DEPARTMENT, None)
+    def _validate_root_department_access(self, request_option: lark.RequestOption) -> CredentialTestFailure | None:
+        department_payload = self._gateway.list_departments(_ROOT_DEPARTMENT, None, request_option=request_option)
         department_envelope = _CredentialResponse.model_validate(department_payload)
         if department_envelope.code != 0:
             return _credential_rejection(

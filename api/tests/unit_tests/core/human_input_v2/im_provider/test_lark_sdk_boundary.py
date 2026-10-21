@@ -367,9 +367,10 @@ def test_lark_invalid_app_secret_returns_a_safe_failure() -> None:
     adapter = LarkIMProviderAdapter(_credentials(app_secret="invalid-test-secret"))
 
     assert adapter.test_credentials() == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
+        CredentialTestFailureKind.AUTHENTICATION_REJECTED,
         "Lark rejected the credential test.",
         provider_error_code="10014",
+        http_status=200,
     )
 
 

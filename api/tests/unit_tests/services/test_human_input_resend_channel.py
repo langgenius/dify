@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import httpx
 import pytest
@@ -77,6 +77,23 @@ def test_send_test_uses_resend_test_recipient_once_with_unique_idempotency_key()
             "<p>You can close this email after confirming delivery.</p>"
         ),
     }
+
+
+def test_send_test_rejects_invalid_credentials_after_a_successful_test() -> None:
+    http_client = FakeHTTPClient(
+        FakeResponse(200, {"id": "email-1"}),
+        FakeResponse(403, {"name": "invalid_api_key"}),
+    )
+    gateway = ResendProviderGateway(http_client=http_client)
+
+    gateway.send_test(_candidate())
+    with pytest.raises(EmailProviderValidationError):
+        gateway.send_test(replace(_candidate(), api_key="re_invalid"))
+
+    for (_, _, kwargs), api_key in zip(http_client.calls, ("re_secret", "re_invalid"), strict=True):
+        headers = kwargs["headers"]
+        assert isinstance(headers, dict)
+        assert headers["Authorization"] == f"Bearer {api_key}"
 
 
 @pytest.mark.parametrize(

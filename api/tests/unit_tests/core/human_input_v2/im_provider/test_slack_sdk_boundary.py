@@ -498,6 +498,28 @@ def test_real_adapter_rejects_text_reference_without_update(
     assert len(state.requests_for("chat.update")) == 1
 
 
+def test_repeated_credential_tests_reject_a_previously_valid_token(
+    monkeypatch: pytest.MonkeyPatch,
+    slack_api_server: _SlackApiServer,
+) -> None:
+    state = slack_api_server.state
+    state.enqueue(
+        "auth.test",
+        {"ok": True, "team_id": "sanitized-team"},
+        headers=(("X-OAuth-Scopes", "chat:write,users:read,users:read.email"),),
+    )
+    state.enqueue("apps.connections.open", {"ok": True, "url": "wss://sanitized.invalid/socket"})
+    state.enqueue("auth.test", {"ok": False, "error": "token_revoked"})
+    adapter, _ = _adapter(monkeypatch, slack_api_server)
+
+    assert adapter.test_credentials() == CredentialTestSuccess(IMProvider.SLACK, "sanitized-team")
+    rejected = adapter.test_credentials()
+
+    assert isinstance(rejected, CredentialTestFailure)
+    assert rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    assert rejected.provider_error_code == "token_revoked"
+
+
 @pytest.mark.parametrize(
     ("auth_body", "auth_headers", "expected_kind"),
     [

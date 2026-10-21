@@ -128,7 +128,10 @@ class IMProviderAdapter(Protocol):
     def provider(self) -> IMProvider: ...
 
     def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
-        """Return provider results; execution errors propagate, with timeouts classified separately."""
+        """Authenticate submitted credentials without reusing previously acquired tokens.
+
+        Execution errors propagate, with timeouts classified separately.
+        """
         ...
 
     @property

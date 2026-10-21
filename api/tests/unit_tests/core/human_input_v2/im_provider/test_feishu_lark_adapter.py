@@ -52,6 +52,9 @@ from core.human_input_v2.resolved_form import (
 
 
 class FakeSDKGateway:
+    def request_tenant_access_token(self) -> str:
+        return "sanitized-access-token"
+
     def __init__(self) -> None:
         self.tenant_responses: list[Mapping[str, object] | Exception] = []
         self.scope_responses: list[Mapping[str, object] | Exception] = []
@@ -72,15 +75,20 @@ class FakeSDKGateway:
     def _department_value(department: object) -> object:
         return getattr(department, "value", department)
 
-    def query_tenant(self) -> Mapping[str, object]:
+    def query_tenant(self, *, request_option: object = None) -> Mapping[str, object]:
+        del request_option
         self.calls.append(("query_tenant", None))
         return self._next(self.tenant_responses)
 
-    def list_scope(self, page_token: str | None) -> Mapping[str, object]:
+    def list_scope(self, page_token: str | None, *, request_option: object = None) -> Mapping[str, object]:
+        del request_option
         self.calls.append(("list_scope", page_token))
         return self._next(self.scope_responses)
 
-    def list_departments(self, department_id: object, page_token: str | None) -> Mapping[str, object]:
+    def list_departments(
+        self, department_id: object, page_token: str | None, *, request_option: object = None
+    ) -> Mapping[str, object]:
+        del request_option
         self.calls.append(("list_departments", (self._department_value(department_id), page_token)))
         return self._next(self.department_responses)
 
@@ -104,7 +112,10 @@ class IdentityAwareFakeSDKGateway(FakeSDKGateway):
     def _identity_parts(department: object) -> tuple[object, object]:
         return (getattr(department, "value", department), getattr(department, "id_type", None))
 
-    def list_departments(self, department_id: object, page_token: str | None) -> Mapping[str, object]:
+    def list_departments(
+        self, department_id: object, page_token: str | None, *, request_option: object = None
+    ) -> Mapping[str, object]:
+        del request_option
         self.calls.append(("list_departments", (*self._identity_parts(department_id), page_token)))
         return self._next(self.department_responses)
 
