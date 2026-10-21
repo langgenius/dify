@@ -1,7 +1,5 @@
-import type { StoryProps } from '@storybook/addon-docs/blocks'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { ToastType } from '.'
-import { ArgTypes, DocsContext, useOf } from '@storybook/addon-docs/blocks'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import { createToast, createToastManager, Toaster } from '.'
@@ -25,41 +23,17 @@ function ToastExample({ type, title, description }: ToastExampleProps) {
   )
 }
 
-function ToastDocsPreview({ of, height }: StoryProps) {
-  const context = React.useContext(DocsContext)
-  const { story } = useOf(of ?? 'story', ['story'])
-  const { globals } = context.getStoryContext(story)
-  const params = new URLSearchParams({
-    viewMode: 'story',
-    id: story.id,
-    embed: 'true',
-    globals: `theme:${globals.theme}`,
-  })
-
-  // Storybook 10.6 ignores docs autoplay for iframe stories; embed mode skips play.
-  return (
-    <iframe
-      title={story.name}
-      src={`./iframe.html?${params}`}
-      className="w-full border-0"
-      height={height ?? '440px'}
-    />
-  )
-}
-
 const meta = {
   title: 'Base/UI/Toast',
   component: ToastExample,
   parameters: {
     layout: 'fullscreen',
     docs: {
-      components: { Story: ToastDocsPreview, Controls: ArgTypes },
-      canvas: { withToolbar: false },
       description: {
         component:
           'Create a manager with `createToastManager()`, pass it to `Toaster`, and use `createToast(manager)` to send notifications from outside the React tree. Each example owns its manager. `Toaster` supplies the Base UI provider, portal, viewport, and default cards; Base UI manages dismissal, timers, focus, and stacking state. Press F6 to enter or leave the notifications region. The default timeout is 5 seconds and the visible stack limit is 3. Lifecycle examples use `timeout={0}` so they remain available for inspection.',
       },
-      story: { autoplay: false },
+      story: { inline: false, height: '440px' },
     },
   },
   decorators: [
