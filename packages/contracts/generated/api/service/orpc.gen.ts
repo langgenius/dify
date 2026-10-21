@@ -8,7 +8,9 @@ import {
   zArchivedDocumentImmutableError,
   zAudioTooLargeError,
   zCompletionRequestError,
+  zDatasetAccessDeniedError,
   zDatasetNameDuplicateError,
+  zDatasetNotInitializedError,
   zEndUserNotFoundError,
   zFileAccessDeniedError,
   zFileExtensionBlockedError,
@@ -1716,6 +1718,8 @@ export const post26 = oc
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
   .errors({
     completion_request_error: { status: 400, data: zCompletionRequestError },
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    dataset_not_initialized: { status: 400, data: zDatasetNotInitializedError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1998,6 +2002,8 @@ export const post31 = oc
   .output(zPostDatasetsByDatasetIdRetrieveResponse)
   .errors({
     completion_request_error: { status: 400, data: zCompletionRequestError },
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    dataset_not_initialized: { status: 400, data: zDatasetNotInitializedError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },

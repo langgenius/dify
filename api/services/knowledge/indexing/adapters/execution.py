@@ -33,6 +33,7 @@ from models.enums import DataSourceType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.knowledge.entities.resource_scope import DocumentRef
 from services.knowledge.indexing.adapters.sources import (
     CompositeStoredSourceResolver,
     FileSourceAdapter,
@@ -41,7 +42,6 @@ from services.knowledge.indexing.adapters.sources import (
 )
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.indexing.execution import DocumentIndexingService, IndexingDocument
-from services.knowledge.resource_scope import DocumentRef
 from services.vector_space_admission_service import VectorSpaceAdmissionService
 
 

@@ -21,8 +21,8 @@ from libs.datetime_utils import naive_utc_now
 from models.enums import SegmentType
 from repositories.knowledge.segment_repository import SegmentIndexingSnapshot, SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.knowledge.entities.resource_scope import DocumentRef, SegmentRef
 from services.knowledge.entities.segments import ChildChunkRecord
-from services.knowledge.resource_scope import DocumentRef, SegmentRef
 from services.knowledge.segments.adapters import RedisSegmentClient
 from services.knowledge.segments.application import ChildChunkState, SegmentDatasetRecord, SegmentIndexTarget
 from services.knowledge.summaries.adapters import SummaryIndexAdapter

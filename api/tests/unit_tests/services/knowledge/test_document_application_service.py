@@ -6,7 +6,8 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 
 from machinery.context import RequestContext
-from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess, DatasetAccessDeniedError
+from services.errors.dataset import DatasetAccessDeniedError
+from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess
 from services.knowledge.documents.application import (
     DatasetDocumentApplicationService,
     DocumentArchivedError,
@@ -16,7 +17,7 @@ from services.knowledge.documents.application import (
     DocumentOperations,
     DocumentState,
 )
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
 DATASET = DatasetRef("tenant-1", "dataset-1")

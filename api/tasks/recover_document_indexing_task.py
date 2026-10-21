@@ -7,9 +7,9 @@ from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from models.dataset import Document
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.resource_scope import DatasetRef
 
 logger = logging.getLogger(__name__)
 

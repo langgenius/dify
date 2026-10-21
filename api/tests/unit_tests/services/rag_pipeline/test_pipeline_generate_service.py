@@ -11,7 +11,7 @@ from models.dataset import Dataset, Document, Pipeline
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 
 

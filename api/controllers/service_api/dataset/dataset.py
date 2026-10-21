@@ -542,6 +542,7 @@ class DatasetListApi(DatasetApiResource):
             assert isinstance(current_user, Account)
             dataset = DatasetService.create_empty_dataset(
                 session=session,
+                external_templates=application_services().knowledge.external_templates,
                 tenant_id=tenant_id,
                 name=payload.name,
                 description=payload.description,
@@ -724,7 +725,13 @@ class DatasetApi(DatasetApiResource):
                 payload.partial_member_list,
                 session=session,
             )
-        dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user, session=session)
+        dataset = DatasetService.update_dataset(
+            dataset_id_str,
+            update_data,
+            current_user,
+            session=session,
+            external_templates=application_services().knowledge.external_templates,
+        )
 
         if dataset is None:
             raise NotFound("Dataset not found.")

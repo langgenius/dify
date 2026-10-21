@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 
 from machinery.context import RequestContext
-from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess, DatasetAccessDeniedError
+from services.errors.dataset import DatasetAccessDeniedError
+from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess
 from services.knowledge.datasets.application import (
     DatasetApplicationService,
     DatasetListFilter,
