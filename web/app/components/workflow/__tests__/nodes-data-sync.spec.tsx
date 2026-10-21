@@ -11,18 +11,25 @@ import { BlockEnum, VarType } from '../types'
 import { createNode, createStartNode } from './fixtures'
 import { renderWorkflowFlowComponent } from './workflow-test-env'
 
-const services = vi.hoisted(() => ({ tools: { data: [] }, selectNode: vi.fn() }))
+const services = vi.hoisted(() => ({ selectNode: vi.fn() }))
 
 vi.mock('../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({ handleNodeSelect: services.selectNode }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => services.tools,
-  useAllCustomTools: () => services.tools,
-  useAllWorkflowTools: () => services.tools,
-  useAllMCPTools: () => services.tools,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('../nodes/_base/components/variable/variable-label', () => ({
   VariableLabelInNode: ({ nodeTitle, variables }: { nodeTitle?: string; variables: string[] }) => (

@@ -1,4 +1,4 @@
-export type TraceDirection = 'in' | 'out'
+type TraceDirection = 'in' | 'out'
 
 export type TraceEntry = {
   seq: number
@@ -9,7 +9,7 @@ export type TraceEntry = {
   version?: number
 }
 
-export type TraceInput = Omit<TraceEntry, 'seq' | 'ts'>
+type TraceInput = Omit<TraceEntry, 'seq' | 'ts'>
 
 export type TraceSnapshot = {
   entries: TraceEntry[]
@@ -22,7 +22,7 @@ export type TraceBuffer = {
   clear: () => void
 }
 
-export const TRACE_BUFFER_CAP = 2000
+const TRACE_BUFFER_CAP = 2000
 
 export const createTraceBuffer = (cap: number = TRACE_BUFFER_CAP): TraceBuffer => {
   let entries: TraceEntry[] = []
