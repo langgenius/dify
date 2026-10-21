@@ -1,28 +1,19 @@
 import importlib
 import json
 import sys
-import types
 from types import SimpleNamespace
-from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-class _FakeModule(types.ModuleType):
-    """A stand-in SDK module whose attributes the test sets one by one."""
-
-    @override
-    def __setattr__(self, name: str, value: object) -> None:
-        super().__setattr__(name, value)
-
-
 def _build_fake_tablestore_module():
-    tablestore = _FakeModule("tablestore")
+    tablestore = FakeModule("tablestore")
 
     class _BatchGetRowRequest:
         def __init__(self):

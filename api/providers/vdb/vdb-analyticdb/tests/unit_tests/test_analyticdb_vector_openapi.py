@@ -1,8 +1,6 @@
 import json
 import sys
-import types
 from types import SimpleNamespace
-from typing import override
 from unittest.mock import MagicMock
 
 import dify_vdb_analyticdb.analyticdb_vector_openapi as openapi_module
@@ -12,15 +10,8 @@ from dify_vdb_analyticdb.analyticdb_vector_openapi import (
     AnalyticdbVectorOpenAPIConfig,
 )
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
-
-
-class _FakeModule(types.ModuleType):
-    """A stand-in SDK module whose attributes the test sets one by one."""
-
-    @override
-    def __setattr__(self, name: str, value: object) -> None:
-        super().__setattr__(name, value)
 
 
 def _request_class(name: str):
@@ -39,9 +30,9 @@ class _StubClient:
 
 
 def _install_openapi_stubs(monkeypatch: pytest.MonkeyPatch):
-    gpdb_package = _FakeModule("alibabacloud_gpdb20160503")
+    gpdb_package = FakeModule("alibabacloud_gpdb20160503")
     gpdb_package.__path__ = []
-    gpdb_models = _FakeModule("alibabacloud_gpdb20160503.models")
+    gpdb_models = FakeModule("alibabacloud_gpdb20160503.models")
     for class_name in [
         "InitVectorDatabaseRequest",
         "DescribeNamespaceRequest",
@@ -56,13 +47,13 @@ def _install_openapi_stubs(monkeypatch: pytest.MonkeyPatch):
     ]:
         setattr(gpdb_models, class_name, _request_class(class_name))
 
-    gpdb_client = _FakeModule("alibabacloud_gpdb20160503.client")
+    gpdb_client = FakeModule("alibabacloud_gpdb20160503.client")
     gpdb_client.Client = _StubClient
     gpdb_package.models = gpdb_models
 
-    tea_openapi = _FakeModule("alibabacloud_tea_openapi")
+    tea_openapi = FakeModule("alibabacloud_tea_openapi")
     tea_openapi.__path__ = []
-    tea_openapi_models = _FakeModule("alibabacloud_tea_openapi.models")
+    tea_openapi_models = FakeModule("alibabacloud_tea_openapi.models")
 
     class OpenApiConfig:
         def __init__(self, **kwargs):
@@ -72,9 +63,9 @@ def _install_openapi_stubs(monkeypatch: pytest.MonkeyPatch):
     tea_openapi_models.Config = OpenApiConfig
     tea_openapi.models = tea_openapi_models
 
-    tea_package = _FakeModule("Tea")
+    tea_package = FakeModule("Tea")
     tea_package.__path__ = []
-    tea_exceptions = _FakeModule("Tea.exceptions")
+    tea_exceptions = FakeModule("Tea.exceptions")
 
     class TeaError(Exception):
         def __init__(self, status_code=None, **kwargs):

@@ -1,39 +1,30 @@
 import importlib
 import json
 import sys
-import types
 from types import SimpleNamespace
-from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-class _FakeModule(types.ModuleType):
-    """A stand-in SDK module whose attributes the test sets one by one."""
-
-    @override
-    def __setattr__(self, name: str, value: object) -> None:
-        super().__setattr__(name, value)
-
-
 def _build_fake_pymochow_modules():
-    pymochow = _FakeModule("pymochow")
+    pymochow = FakeModule("pymochow")
     pymochow.__path__ = []
-    pymochow_auth = _FakeModule("pymochow.auth")
+    pymochow_auth = FakeModule("pymochow.auth")
     pymochow_auth.__path__ = []
-    pymochow_credentials = _FakeModule("pymochow.auth.bce_credentials")
-    pymochow_configuration = _FakeModule("pymochow.configuration")
-    pymochow_exception = _FakeModule("pymochow.exception")
-    pymochow_model = _FakeModule("pymochow.model")
+    pymochow_credentials = FakeModule("pymochow.auth.bce_credentials")
+    pymochow_configuration = FakeModule("pymochow.configuration")
+    pymochow_exception = FakeModule("pymochow.exception")
+    pymochow_model = FakeModule("pymochow.model")
     pymochow_model.__path__ = []
-    pymochow_model_database = _FakeModule("pymochow.model.database")
-    pymochow_model_enum = _FakeModule("pymochow.model.enum")
-    pymochow_model_schema = _FakeModule("pymochow.model.schema")
-    pymochow_model_table = _FakeModule("pymochow.model.table")
+    pymochow_model_database = FakeModule("pymochow.model.database")
+    pymochow_model_enum = FakeModule("pymochow.model.enum")
+    pymochow_model_schema = FakeModule("pymochow.model.schema")
+    pymochow_model_table = FakeModule("pymochow.model.table")
 
     class _SimpleObject:
         def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):

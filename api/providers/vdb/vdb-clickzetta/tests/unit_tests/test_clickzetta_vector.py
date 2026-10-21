@@ -1,28 +1,19 @@
 import importlib
 import queue
 import sys
-import types
 from contextlib import contextmanager
 from types import SimpleNamespace
-from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-class _FakeModule(types.ModuleType):
-    """A stand-in SDK module whose attributes the test sets one by one."""
-
-    @override
-    def __setattr__(self, name: str, value: object) -> None:
-        super().__setattr__(name, value)
-
-
 def _build_fake_clickzetta_module():
-    clickzetta = _FakeModule("clickzetta")
+    clickzetta = FakeModule("clickzetta")
 
     class _FakeCursor:
         def __init__(self):
