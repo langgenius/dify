@@ -4193,11 +4193,11 @@ JSON result for published runs and draft runs using `response_mode: blocking`.
 
 #### ProcessRuleMode
 
-Dataset Process Rule Mode
+Dataset process-rule mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ProcessRuleMode | string | Dataset Process Rule Mode |  |
+| ProcessRuleMode | string | Dataset process-rule mode. |  |
 
 #### ProviderModelWithStatusEntity
 
