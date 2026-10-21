@@ -1,5 +1,7 @@
+from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -67,7 +69,7 @@ def test_get_notification_validates_language_query_and_serializes_result(
         app.test_request_context("/notification", query_string=query_string),
         patch("controllers.console.notification.application_services", return_value=services),
     ):
-        result, status = api.get()
+        result, status = cast(Callable[..., tuple[dict, int]], api.get)()
 
     assert status == 200
     assert result == {
