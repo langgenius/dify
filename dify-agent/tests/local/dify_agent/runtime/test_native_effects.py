@@ -5,6 +5,7 @@ import importlib
 import importlib.util
 
 import pytest
+
 from dify_agent.protocol.native_testing import (
     AgentApprovalWait,
     AgentDispatchPermit,
@@ -15,6 +16,7 @@ from dify_agent.protocol.native_testing import (
     AgentRecordedResult,
 )
 from dify_agent.runtime.native_continuation import NativeApprovalSuspended, NativePolicyStopped
+from tests.local.dify_agent.runtime.native_test_entities import run_context
 
 REF = AgentNativeTestRef(
     policy_version="builder-native-test-v1", request_id="request", invocation_id="invocation", context_digest="a" * 64
@@ -197,11 +199,12 @@ def test_opaque_call_discloses_uncertainty():
 def test_real_sdk_pre_tool_boundary_checkpoints_wait_before_handler(reason):
     async def exercise():
         import httpx
-        from dify_agent.runtime.context import Deps, Services
-        from dify_agent.runtime.native_continuation import NativeContinuation
         from pydantic_ai import Agent, DeferredToolRequests
         from pydantic_ai.messages import ModelResponse, ToolCallPart
         from pydantic_ai.models.function import FunctionModel
+
+        from dify_agent.runtime.context import Deps, Services
+        from dify_agent.runtime.native_continuation import NativeContinuation
 
         module = implementation()
         assert hasattr(module, "NativeEffectsCapability"), "Real SDK effect capability is missing"
@@ -265,13 +268,14 @@ def test_real_sdk_pre_tool_boundary_checkpoints_wait_before_handler(reason):
 def test_actual_tool_layer_defers_with_final_arguments_before_transport(family, file_kind, permit_available):
     async def exercise():
         import httpx
+        from pydantic_ai import Agent, DeferredToolRequests
+        from pydantic_ai.messages import ModelResponse, ToolCallPart
+        from pydantic_ai.models.function import FunctionModel
+
         from dify_agent.layers.dify_core_tools.layer import Toolset as CoreTools
         from dify_agent.layers.dify_plugin.tools_layer import Toolset as PluginTools
         from dify_agent.runtime.context import Deps, Services
         from dify_agent.runtime.native_continuation import NativeContinuation
-        from pydantic_ai import Agent, DeferredToolRequests
-        from pydantic_ai.messages import ModelResponse, ToolCallPart
-        from pydantic_ai.models.function import FunctionModel
 
         module = implementation()
         transport_calls = []
@@ -364,11 +368,12 @@ def test_actual_tool_layer_defers_with_final_arguments_before_transport(family, 
 def test_sdk_permit_is_spent_once_and_result_can_replay_without_handler():
     async def exercise():
         import httpx
-        from dify_agent.runtime.context import Deps, Services
-        from dify_agent.runtime.native_continuation import NativeContinuation
         from pydantic_ai import Agent, DeferredToolRequests
         from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
         from pydantic_ai.models.function import FunctionModel
+
+        from dify_agent.runtime.context import Deps, Services
+        from dify_agent.runtime.native_continuation import NativeContinuation
 
         module = implementation()
         calls = []
@@ -452,6 +457,7 @@ def waiting_session():
 def test_eager_knowledge_waits_before_http_and_cache_write():
     async def exercise():
         import httpx
+
         from dify_agent.layers.knowledge.layer import _KnowledgeOperations
         from tests.local.dify_agent.layers.knowledge.test_layer import config, deps_for
 
@@ -472,22 +478,25 @@ def test_eager_knowledge_waits_before_http_and_cache_write():
     asyncio.run(exercise())
 
 
-def test_config_pull_waits_before_shell_io():
+def test_config_pull_waits_before_shell_io(monkeypatch):
     async def exercise():
-        from types import SimpleNamespace
-
         from dify_agent.adapters.shell.protocols import CompleteShellCommandResult
         from dify_agent.layers.config.layer import Config, State, _ConfigContext
 
         calls = []
 
-        async def run(script, **kwargs):
+        async def run(self, script, **kwargs):
             calls.append(script)
             return CompleteShellCommandResult("pull", "exited", True, 0, "{}", True, None, 2)
 
-        shell = SimpleNamespace(
-            deps=SimpleNamespace(native_effects=waiting_session()), run_remote_script=run, name="shell"
-        )
+        from dify_agent.layers.shell.layer import DifyShellLayerConfig, ShellSession
+        from dify_agent.layers.shell.layer import State as ShellState
+        from tests.local.dify_agent.module_support import deps_for
+
+        deps = deps_for("shell", DifyShellLayerConfig(), ShellState().model_dump(mode="json"))
+        deps.native_effects = waiting_session()
+        shell = ShellSession("shell", deps)
+        monkeypatch.setattr(ShellSession, "run_remote_script", run)
         context = _ConfigContext(Config(), State(), shell)
         with pytest.raises(NativeApprovalSuspended):
             await context._run_mentioned_pull(script="dify-agent config files pull --json file", target_kind="file")
@@ -508,11 +517,12 @@ def test_config_pull_waits_before_shell_io():
 def test_shell_native_tool_waits_before_session_access(name, arguments):
     async def exercise():
         import httpx
-        from dify_agent.layers.shell.layer import Capability
-        from dify_agent.runtime.context import Deps, Services
         from pydantic_ai import Agent, DeferredToolRequests
         from pydantic_ai.messages import ModelResponse, ToolCallPart
         from pydantic_ai.models.function import FunctionModel
+
+        from dify_agent.layers.shell.layer import Capability
+        from dify_agent.runtime.context import Deps, Services
 
         session = waiting_session()
         async with httpx.AsyncClient() as client:
@@ -535,9 +545,8 @@ def test_shell_native_tool_waits_before_session_access(name, arguments):
 
 def test_bootstrap_waits_before_runtime_resource_access():
     async def exercise():
-        from types import SimpleNamespace
-
         import httpx
+
         from dify_agent.layers.shell.layer import Capability, State
         from dify_agent.runtime.context import Deps, Services
 
@@ -558,7 +567,7 @@ def test_bootstrap_waits_before_runtime_resource_access():
                 pytest.fail("run entered before bootstrap approval")
 
             with pytest.raises(NativeApprovalSuspended):
-                await Capability("shell").wrap_run(SimpleNamespace(deps=deps), handler=handler)
+                await Capability("shell").wrap_run(run_context(deps), handler=handler)
         assert deps.layers["shell"]["state"]["initialized"] is False
 
     asyncio.run(exercise())
@@ -567,6 +576,7 @@ def test_bootstrap_waits_before_runtime_resource_access():
 def test_actual_model_client_waits_before_http():
     async def exercise():
         import httpx
+
         from dify_agent.adapters.llm.provider import DifyApiLLMClient
         from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 
@@ -614,8 +624,9 @@ def test_actual_model_client_waits_before_http():
 
 def test_marked_runner_requires_real_effect_owner_before_loading(monkeypatch):
     async def exercise():
-        import dify_agent.runtime.runner as runner_module
         import httpx
+
+        import dify_agent.runtime.runner as runner_module
         from dify_agent.protocol.native_testing import NativeTestCapabilities, NativeTestProtocolUnsupported
         from dify_agent.protocol.schemas import CreateRunRequest
         from dify_agent.runtime.context import Services
@@ -667,12 +678,13 @@ def test_actual_direct_plugin_claim_precedes_one_daemon_request(claim_allowed):
         import json
 
         import httpx
-        from dify_agent.adapters.native_testing.client import AgentPolicyTransportUnavailable, HttpAgentPolicyClient
-        from dify_agent.layers.dify_plugin.tools_layer import Toolset
-        from dify_agent.runtime.context import Deps, Services
         from pydantic_ai import Agent
         from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
         from pydantic_ai.models.function import FunctionModel
+
+        from dify_agent.adapters.native_testing.client import AgentPolicyTransportUnavailable, HttpAgentPolicyClient
+        from dify_agent.layers.dify_plugin.tools_layer import Toolset
+        from dify_agent.runtime.context import Deps, Services
         from tests.local.dify_agent.layers.dify_plugin.test_layers import identity
 
         events = []
@@ -864,8 +876,6 @@ def test_direct_plugin_target_guard_precedes_materialize_claim_and_dispatch():
 
 
 async def _exercise_direct_plugin_json_guard(approved, actual, matches, *, changed_target=False):
-    from types import SimpleNamespace
-
     import httpx
 
     from dify_agent.adapters.native_testing.client import HttpAgentPolicyClient
@@ -913,7 +923,9 @@ async def _exercise_direct_plugin_json_guard(approved, actual, matches, *, chang
         effect = INTENT.model_copy(update={"target": target, "parameters": approved})
         token = module._dispatch.set(module.NativeDispatchEnvelope(REF, effect, PERMIT))
         try:
-            ctx = SimpleNamespace(deps=SimpleNamespace(native_effects=session))
+            from dify_agent.runtime.context import Deps, Services
+
+            ctx = run_context(Deps(layers={}, services=Services(client, client), run_id="run", native_effects=session))
             if matches:
                 assert await tool.function(ctx, **actual) == "done"
                 assert events == ["materialize", "claim-dispatch", "invoke"]

@@ -96,7 +96,10 @@ def test_json_caller_explicit_read_session_closes_before_native_spawn(
         return original_generate(cls, *args, **kwargs)
 
     def capture_spawn(thread: threading.Thread) -> None:
-        if getattr(getattr(thread, "_target", None), "__name__", None) == "_generate_worker":
+        from types import FunctionType, MethodType
+
+        target = thread._target
+        if isinstance(target, (FunctionType, MethodType)) and target.__name__ == "_generate_worker":
             assert caller_session is not None
             at_spawn.append(caller_session.in_transaction())
         return original_start(thread)

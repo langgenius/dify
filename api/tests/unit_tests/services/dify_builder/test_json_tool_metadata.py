@@ -87,7 +87,7 @@ def _owners(monkeypatch, installations=None, provider=None, error=None):
 def _expected(actual: metadata.InstalledJsonParse) -> QualifiedJsonToolBinding:
     return QualifiedJsonToolBinding(
         node_id="node2",
-        **{field: getattr(actual, field) for field in actual.__dataclass_fields__},
+        **actual.binding_fields(),
         final_parameters_digest="a" * 64,
     )
 

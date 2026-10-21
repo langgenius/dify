@@ -6,6 +6,7 @@ These exercise the API boundary, not a qualified Graphon execution.
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import inspect as inspect_orm
 from sqlalchemy import select
 
 from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
@@ -13,6 +14,9 @@ from libs.passport import PassportService
 from libs.token import _real_cookie_name, generate_csrf_token
 from models.account import Account
 from models.model import DifySetup
+from services.dify_builder.native_testing.http_binding import NativeHttpDisclosure
+from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
+from services.entities.feature_entities import FeatureModel
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,  # noqa: PLC0414
 )
@@ -46,10 +50,9 @@ def console_case(flask_app_with_containers, continuation_case, monkeypatch):
             session.add(DifySetup(version="native-console-ci"))
     # Login, CSRF and SQL ownership use real owners. Entitlement and capability
     # metadata are synthetic; RBAC tests stub the external access RPC explicitly.
-    from types import SimpleNamespace
 
     monkeypatch.setattr(
-        controller.FeatureService, "get_features", lambda _tenant: SimpleNamespace(dify_builder_enabled=True)
+        controller.FeatureService, "get_features", lambda _tenant: FeatureModel(dify_builder_enabled=True)
     )
     wraps._is_setup_completed.reset_success()
     db.session.close()
@@ -309,8 +312,7 @@ def test_cross_session_request_is_not_visible(pending_console):
 
 
 @pytest.mark.parametrize("qualified_disclosure", [True, False])
-def test_old_checkpoint_without_full_intent_fails_closed(console_case, monkeypatch, qualified_disclosure):
-    from types import SimpleNamespace
+def test_old_checkpoint_without_full_intent_fails_closed(mocker, console_case, monkeypatch, qualified_disclosure):
 
     from controllers.console import dify_builder as controller
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
@@ -323,6 +325,8 @@ def test_old_checkpoint_without_full_intent_fails_closed(console_case, monkeypat
         pytest.fail("missing full intent must fail before disclosure")
 
     wait = c.pause()
+    disclosure = NativeHttpDisclosure(loader=c.store.loader, state_store=c.store)
+    mocker.patch.object(disclosure, "describe", side_effect=never_disclose)
     service = NativeTestApiService(
         session_factory=c.factory,
         actor=c.ledger.actor,
@@ -330,7 +334,7 @@ def test_old_checkpoint_without_full_intent_fails_closed(console_case, monkeypat
         admission=None,
         resolution=c.resolution,
         runtime=None,
-        disclosure=SimpleNamespace(describe=never_disclose) if qualified_disclosure else None,
+        disclosure=disclosure if qualified_disclosure else None,
     )
     original_load = service.pending.load
 
@@ -399,11 +403,21 @@ def test_actual_child_permission_revocation_blocks_root_public_receipt(console_c
     c = console_case
     with c.factory.begin() as session:
         original = session.get(App, c.context.app_id)
-        app = App(**{col.key: getattr(original, col.key) for col in inspect(App).column_attrs if col.key != "id"})
+        app = App(
+            **{
+                col.key: inspect_orm(original).attrs[col.key].value
+                for col in inspect(App).column_attrs
+                if col.key != "id"
+            }
+        )
         app.id, app.maintainer = str(uuid4()), str(uuid4())
         source = session.get(Workflow, c.context.workflow_id)
         workflow = Workflow(
-            **{col.key: getattr(source, col.key) for col in inspect(Workflow).column_attrs if col.key != "id"}
+            **{
+                col.key: inspect_orm(source).attrs[col.key].value
+                for col in inspect(Workflow).column_attrs
+                if col.key != "id"
+            }
         )
         workflow.id, workflow.app_id = str(uuid4()), app.id
         app.workflow_id = workflow.id
@@ -623,8 +637,7 @@ def test_cancel_without_cleanup_ack_reports_cancelling(pending_console):
     assert receipt["status"] == "running"
 
 
-def test_cleanup_ack_cannot_erase_unknown_dispatched_effect(pending_console):
-    from types import SimpleNamespace
+def test_cleanup_ack_cannot_erase_unknown_dispatched_effect(mocker, pending_console):
 
     from runtime_contracts.builder.native.contracts import DispatchPermit
 
@@ -633,7 +646,9 @@ def test_cleanup_ack_cannot_erase_unknown_dispatched_effect(pending_console):
     _claim_approved_generation(c)
     permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
     assert isinstance(permit, DispatchPermit)
-    c.api.lifecycle.runtime = SimpleNamespace(cancel=lambda *, refs: tuple(ref.invocation_id for ref in refs))
+    runtime = DifyNativeRuntimeOwner()
+    mocker.patch.object(runtime, "cancel", side_effect=lambda *, refs: tuple(ref.invocation_id for ref in refs))
+    c.api.lifecycle.runtime = runtime
     response = c.client.post(
         c.url + f"/{c.ref.request_id}/cancel",
         json={"schema_version": "builder-native-test-v1", "idempotency_key": "cancel-1"},
@@ -748,11 +763,21 @@ def test_final_child_authority_refresh_precedes_decision_write(console_case, mon
     c = console_case
     with c.factory.begin() as session:
         original = session.get(App, c.context.app_id)
-        child_app = App(**{col.key: getattr(original, col.key) for col in inspect(App).column_attrs if col.key != "id"})
+        child_app = App(
+            **{
+                col.key: inspect_orm(original).attrs[col.key].value
+                for col in inspect(App).column_attrs
+                if col.key != "id"
+            }
+        )
         child_app.id, child_app.maintainer = str(uuid4()), str(uuid4())
         source = session.get(Workflow, c.context.workflow_id)
         child_workflow = Workflow(
-            **{col.key: getattr(source, col.key) for col in inspect(Workflow).column_attrs if col.key != "id"}
+            **{
+                col.key: inspect_orm(source).attrs[col.key].value
+                for col in inspect(Workflow).column_attrs
+                if col.key != "id"
+            }
         )
         child_workflow.id, child_workflow.app_id = str(uuid4()), child_app.id
         child_app.workflow_id = child_workflow.id
@@ -771,7 +796,7 @@ def test_final_child_authority_refresh_precedes_decision_write(console_case, mon
     def check(_tenant, _actor, *, scene, resource_type, resource_id):
         assert resource_type is not None
         checks.append((revoked, resource_id, scene))
-        return not (revoked and resource_id == app_id and scene == getattr(RBACPermission, revoked_permission))
+        return not (revoked and resource_id == app_id and scene == RBACPermission[revoked_permission])
 
     monkeypatch.setattr(RBACService.CheckAccess, "check", check)
     # The actual child effect is publicly readable before the final boundary.
@@ -789,7 +814,7 @@ def test_final_child_authority_refresh_precedes_decision_write(console_case, mon
     monkeypatch.setattr(c.api.authorization, "decide", revoke_at_final_boundary)
     response = c.client.post(c.url + f"/{c.ref.request_id}/decisions", json=c.body)
     assert response.status_code == 403, response.get_json()
-    assert (True, app_id, getattr(RBACPermission, revoked_permission)) in checks
+    assert (True, app_id, RBACPermission[revoked_permission]) in checks
     with c.factory() as session:
         assert (
             session.scalar(

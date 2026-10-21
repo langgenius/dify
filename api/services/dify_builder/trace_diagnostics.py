@@ -241,14 +241,26 @@ def cognition(method):
 
         def correlated(record):
             instance = self._model_instance
-            metadata = {"provider": getattr(instance, "provider", None), "model": getattr(instance, "model_name", None)}
+            try:
+                provider = instance.provider
+            except AttributeError:
+                provider = None
+            try:
+                model = instance.model_name
+            except AttributeError:
+                model = None
+            metadata = {"provider": provider, "model": model}
             if callback is not None:
                 callback(project({**record, **metadata}))
 
         with scope(correlated if callback is not None else None, method.__name__.replace("_", "-")):
             result = method(self, *args, **kwargs)
             if callback is not None and method.__name__ == "build_nodes":
-                generation(getattr(result, "diagnostics", ()))
+                try:
+                    records = result.diagnostics
+                except AttributeError:
+                    records = ()
+                generation(records)
             return result
 
     return wrapped

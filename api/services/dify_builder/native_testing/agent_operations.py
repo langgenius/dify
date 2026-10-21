@@ -7,6 +7,7 @@ HTTP response; response loss therefore cannot turn a completed effect unknown.
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import NotRequired, TypedDict
 
 from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
 from dify_agent.protocol.native_testing import AgentEffectIntent, AgentNativeTestRef, AgentOperationKey
@@ -59,6 +60,8 @@ from services.dify_builder.native_testing.repository import (
     native_workflow_revision,
 )
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, ObjectReceipt, owner_query
+from services.entities.agent_llm_inner import AgentLLMInvokeCaller
+from services.entities.agent_tool_inner import AgentToolInvokeCaller
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 
@@ -121,6 +124,13 @@ _RESOURCE_KEY = "_agent_operations_v1"
 _OPACITY = "Approval covers one bounded tool invocation. Provider internal effects remain opaque."
 
 
+class _ShellLayerConfigs(TypedDict):
+    shell: dict[str, JsonValue]
+    runtime: dict[str, JsonValue]
+    config: dict[str, JsonValue]
+    workspace_stamp: NotRequired[str]
+
+
 @dataclass(frozen=True)
 class AgentResolvedTool:
     """Inert current configured declaration and explicit account, never credentials."""
@@ -146,7 +156,7 @@ def _sql_resource(*, session, owned, descriptor):
     workflow = validate_invocation_workflow(
         session, tenant_id=owned.tenant_id, app_id=owned.app_id, workflow_id=owned.workflow_id
     )
-    revision_context = getattr(owned, "revision_context", None)
+    revision_context = owned.revision_context
     revision = (
         admitted_workflow_revision(workflow, revision_context)
         if revision_context
@@ -250,7 +260,7 @@ class AgentOperationService:
         self.disclosure = self
 
     def _endpoint(self, ref):
-        endpoint = getattr(g, "agent_runtime_context", None)
+        endpoint = g.get("agent_runtime_context")
         if not isinstance(endpoint, NativeAgentEndpointContext) or api_ref(endpoint.ref) != ref:
             raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
         if endpoint.native_test_profile != "confirmed":
@@ -501,15 +511,24 @@ class AgentOperationService:
         layers = composition.get("layers") if isinstance(composition, dict) else None
         if not isinstance(layers, list):
             raise BuilderExecutionPolicyError("native_agent_config_mismatch")
-        configs = {}
-        for name in ("shell", "runtime", "config"):
-            selected = [item.get("config") for item in layers if isinstance(item, dict) and item.get("name") == name]
+        checked_layers = layers
+
+        def selected_config(name: str) -> dict[str, JsonValue]:
+            selected = [
+                item.get("config") for item in checked_layers if isinstance(item, dict) and item.get("name") == name
+            ]
             if len(selected) != 1 or not isinstance(selected[0], dict):
                 raise BuilderExecutionPolicyError("native_agent_config_mismatch")
-            configs[name] = selected[0]
+            return selected[0]
+
+        configs: _ShellLayerConfigs = {
+            "shell": selected_config("shell"),
+            "runtime": selected_config("runtime"),
+            "config": selected_config("config"),
+        }
         if configs["runtime"].get("backend_binding_ref") != prepared.workspace.backend_binding_ref:
             raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
-        expected = {"shell": "shell"}
+        expected: dict[str, JsonValue] = {"shell": "shell"}
         if boundary == "bootstrap":
             expected["runtime"] = configs["shell"].get("runtime")
         elif boundary == "config_pull":
@@ -739,20 +758,27 @@ class AgentOperationService:
             ref=ref, intent=intent, proposal=proposal, assessment=assessment, descriptor=descriptor, binding=binding
         )
 
-    def validate_caller(self, *, ref, caller):
+    def validate_caller(self, *, ref, caller: AgentToolInvokeCaller | AgentLLMInvokeCaller):
         endpoint = self._endpoint(ref)
         context = self.state_store.load_context(ref=ref)
-        for field, value in (
-            ("tenant_id", context.tenant_id),
-            ("app_id", context.app_id),
-            ("user_id", context.actor_id),
-            ("user_from", "account"),
-            ("workflow_id", context.workflow_id),
-            ("workflow_run_id", context.native_run_id),
-            ("node_execution_id", endpoint.config.parent_node.execution_id),
+        if not isinstance(caller, (AgentToolInvokeCaller, AgentLLMInvokeCaller)) or (
+            caller.tenant_id,
+            caller.app_id,
+            caller.user_id,
+            caller.user_from,
+            caller.workflow_id,
+            caller.workflow_run_id,
+            caller.node_execution_id,
+        ) != (
+            context.tenant_id,
+            context.app_id,
+            context.actor_id,
+            "account",
+            context.workflow_id,
+            context.native_run_id,
+            endpoint.config.parent_node.execution_id,
         ):
-            if getattr(caller, field, None) != value:
-                raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
+            raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
 
     def validate_model(self, *, envelope):
         self.bridge.authorization.validate_dispatch(
@@ -852,7 +878,7 @@ class AgentOperationService:
             )
             if row is None:
                 raise BuilderExecutionPolicyError("native_agent_intent_unavailable")
-            receipt = ObjectReceipt(**{name: getattr(row, name) for name in ObjectReceipt.__dataclass_fields__})
+            receipt = ObjectReceipt.from_payload_object(row)
         payload = self.state_store._read_object(receipt)
         self.loader.load(ref=native_ref)
         return (

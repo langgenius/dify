@@ -5,7 +5,6 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -108,6 +107,14 @@ def workflow_rows(factory: sessionmaker[Session]) -> list[tuple[object, ...]]:
         ]
 
 
+@dataclass
+class EmptyDraftDatabase:
+    owner_session: Session
+
+    def session(self) -> Session:
+        return self.owner_session
+
+
 def post_empty_draft(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
@@ -127,7 +134,7 @@ def post_empty_draft(
     handle and service repository factory are bound to the test database;
     parsing, validation, locking, hash checks and writes are real.
     """
-    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(session=lambda: session))
+    monkeypatch.setattr(workflow_module, "db", EmptyDraftDatabase(session))
     service = WorkflowService(sessionmaker(bind=session.get_bind(), expire_on_commit=False))
     monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
     target = app_model if app_model is not None else owner.app

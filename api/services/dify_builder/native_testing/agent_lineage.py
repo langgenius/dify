@@ -154,5 +154,5 @@ class NativeAgentEndpointLineage:
             ref=AgentNativeTestRef.model_validate(parent.ref.model_dump(mode="json")),
             config=config,
             association=association,
-            native_test_profile=getattr(actual, "native_test_profile", "isolated"),
+            native_test_profile=actual.native_test_profile,
         )

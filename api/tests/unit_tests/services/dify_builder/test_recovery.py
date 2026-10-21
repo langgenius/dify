@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import override
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -9,8 +8,9 @@ from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMod
 from core.dify_builder.state import PcState
 from services.dify_builder.application.handlers_edit import edit_registry
 from services.dify_builder.application.runner import Env, Runner
-from services.dify_builder.service import DifyBuilderService, SessionLock, resolve_submitted_action
+from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
+from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock, resolve_submitted_action
 
 type EditFlow = tuple[DifyBuilderService, InMemoryRepository, FakeDifyPort, ImpactAgent, Session, Actor]
 
@@ -71,12 +71,13 @@ def edit_flow() -> EditFlow:
         Env(dify=dify, agent=agent, repo=repository, now=lambda: datetime.min),
         edit_registry(),
     )
-    lock = MagicMock(spec=SessionLock)
-    lock.exists.return_value = False
-    lock.acquire.return_value = "lease"
+    lock = FakeSessionLock()
 
     def enqueue(session_id: str, action: Action, actor: Actor, _token: str) -> None:
-        runner.advance(session_id, Turn(action=action, actor=actor))
+        try:
+            runner.advance(session_id, Turn(action=action, actor=actor))
+        finally:
+            lock.release(session_id, _token)
 
     service = DifyBuilderService(
         repository,

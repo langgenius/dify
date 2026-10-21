@@ -2,14 +2,23 @@
 
 from collections import UserList
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.sql import operators
-from sqlalchemy.sql.elements import BinaryExpression, BooleanClauseList
+from sqlalchemy.sql.elements import (
+    BinaryExpression,
+    BindParameter,
+    BooleanClauseList,
+    ColumnClause,
+    False_,
+    Null,
+    True_,
+)
 
-from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
+from core.dify_builder.models import Actor
+from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
 from models.dify_builder_native_tests import (
     NativeContinuation,
     NativeDispatch,
@@ -19,6 +28,7 @@ from models.dify_builder_native_tests import (
     NativeEffectOutcome,
     NativeInvocationState,
     NativePayloadObject,
+    NativePendingAction,
     NativeTestInvocation,
     NativeTestScope,
 )
@@ -28,7 +38,12 @@ from runtime_contracts.builder.execution import BuilderExecutionPolicyError, can
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
-from services.dify_builder.native_testing.repository import native_workflow_revision
+from services.dify_builder.native_testing.repository import (
+    OwnedNativeTest,
+    OwnedNativeTestLoader,
+    native_workflow_revision,
+)
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 
 NOW = datetime(2026, 10, 16, tzinfo=UTC)
 
@@ -53,13 +68,104 @@ class SQL:
                 return any(results) if expression.operator is operators.or_ else all(results)
             if not isinstance(expression, BinaryExpression):
                 return True
-            field = getattr(expression.left, "key", None)
-            if field is None or not hasattr(row, field):
+            field = expression.left.key if isinstance(expression.left, ColumnClause) else None
+            if field is None:
                 return True
-            value = getattr(expression.right, "value", None)
-            if not hasattr(expression.right, "value"):
-                value = {"true": True, "false": False, "NULL": None}.get(str(expression.right))
-            actual = getattr(row, field)
+            if isinstance(expression.right, BindParameter):
+                value = expression.right.value
+            elif isinstance(expression.right, (True_, False_, Null)):
+                value = {True_: True, False_: False, Null: None}[type(expression.right)]
+            else:
+                raise AssertionError("unsupported SQL predicate operand")
+            # This unit boundary only evaluates the native ownership predicates
+            # represented by these explicit records; real SQL is tested separately.
+            try:
+                if field == "account_id":
+                    actual = row.account_id
+                elif field == "context_digest":
+                    actual = row.context_digest
+                elif field == "type":
+                    actual = row.type
+                elif field == "value_digest":
+                    actual = row.value_digest
+                elif field == "id":
+                    actual = row.id
+                elif field == "tenant_id":
+                    actual = row.tenant_id
+                elif field == "actor_id":
+                    actual = row.actor_id
+                elif field == "request_id":
+                    actual = row.request_id
+                elif field == "invocation_id":
+                    actual = row.invocation_id
+                elif field == "parent_invocation_id":
+                    actual = row.parent_invocation_id
+                elif field == "app_id":
+                    actual = row.app_id
+                elif field == "workflow_id":
+                    actual = row.workflow_id
+                elif field == "session_id":
+                    actual = row.session_id
+                elif field == "state":
+                    actual = row.state
+                elif field == "status":
+                    actual = row.status
+                elif field == "generation":
+                    actual = row.generation
+                elif field == "active":
+                    actual = row.active
+                elif field == "cancelled":
+                    actual = row.cancelled
+                elif field == "logical_key":
+                    actual = row.logical_key
+                elif field == "kind":
+                    actual = row.kind
+                elif field == "scope_digest":
+                    actual = row.scope_digest
+                elif field == "operation_id":
+                    actual = row.operation_id
+                elif field == "attempt_id":
+                    actual = row.attempt_id
+                elif field == "cleanup_complete":
+                    actual = row.cleanup_complete
+                elif field == "claim_expires_at":
+                    actual = row.claim_expires_at
+                elif field == "claimed_at":
+                    actual = row.claimed_at
+                elif field == "expires_at":
+                    actual = row.expires_at
+                elif field == "source_generation":
+                    actual = row.source_generation
+                elif field == "context_object_id":
+                    actual = row.context_object_id
+                elif field == "checkpoint_id":
+                    actual = row.checkpoint_id
+                elif field == "payload_digest":
+                    actual = row.payload_digest
+                elif field == "test_input_id":
+                    actual = row.test_input_id
+                elif field == "owner_account_id":
+                    actual = row.owner_account_id
+                elif field == "version":
+                    actual = row.version
+                elif field == "cancellation_key":
+                    actual = row.cancellation_key
+                elif field == "created_by":
+                    actual = row.created_by
+                elif field == "created_by_role":
+                    actual = row.created_by_role
+                elif field == "workflow_run_id":
+                    actual = row.workflow_run_id
+                elif field == "node_id":
+                    actual = row.node_id
+                elif field == "node_execution_id":
+                    actual = row.node_execution_id
+                elif field == "triggered_from":
+                    actual = row.triggered_from
+                else:
+                    raise AssertionError(f"unsupported SQL predicate column: {field}")
+            except AttributeError:
+                return True
             if expression.operator in {operators.eq, operators.is_}:
                 return actual == value
             if expression.operator in {operators.ne, operators.is_not}:
@@ -72,7 +178,13 @@ class SQL:
 
         rows = [row for row in rows if all(matches(clause, row) for clause in query._where_criteria)]
         return Rows(
-            getattr(r, description["name"]) if description["name"] in {"invocation_id", "id", "request_id"} else r
+            r.invocation_id
+            if description["name"] == "invocation_id"
+            else r.id
+            if description["name"] == "id"
+            else r.request_id
+            if description["name"] == "request_id"
+            else r
             for r in rows
         )
 
@@ -97,15 +209,32 @@ class SQL:
                 row.id = "dispatch-" + str(i)
 
 
+@dataclass
+class HostCapacityCase:
+    lifecycle: NativeTestLifecycleService
+    loader: OwnedNativeTestLoader
+    session: SQL
+    state: NativeInvocationState
+    scope: NativeTestScope
+    request: DifyBuilderExecutionRequest
+    context: ResolvedNativeTestContext
+    ref: NativeTestContextRef
+    events: list[str]
+    owned: OwnedNativeTest
+
+
 @pytest.fixture
-def case():
+def case(monkeypatch):
     events = []
-    workflow = SimpleNamespace(
+    workflow = Workflow(
+        type="workflow",
+        version="draft",
+        created_by="actor",
         id="workflow",
         app_id="app",
         tenant_id="tenant",
         graph="{}",
-        serialized_features="{}",
+        _features="{}",
         _environment_variables="[]",
         _conversation_variables="[]",
     )
@@ -114,7 +243,7 @@ def case():
     ref = NativeTestContextRef(
         request_id="request", invocation_id="root", context_digest=canonical_digest(context_body)
     )
-    state = SimpleNamespace(
+    state = NativeInvocationState(
         id="state",
         tenant_id="tenant",
         request_id="request",
@@ -133,7 +262,8 @@ def case():
         cancellation_key=None,
         cleanup_complete=False,
     )
-    request = SimpleNamespace(
+    request = DifyBuilderExecutionRequest(
+        session_id="session",
         id="request",
         tenant_id="tenant",
         actor_id="actor",
@@ -144,7 +274,13 @@ def case():
         context_digest=ref.context_digest,
         state="running",
     )
-    scope = SimpleNamespace(
+    scope = NativeTestScope(
+        task_approved=False,
+        max_calls=16,
+        max_dispatches=16,
+        max_cost_units=16,
+        budget_limits={},
+        profile={},
         request_id="request",
         tenant_id="tenant",
         cancelled=False,
@@ -180,12 +316,17 @@ def case():
         DifyBuilderExecutionRequest: [request],
         NativeTestScope: [scope],
         NativeTestInvocation: [
-            SimpleNamespace(
-                id="invocation", tenant_id="tenant", request_id="request", invocation_id="root", active=True
+            NativeTestInvocation(
+                id="invocation",
+                tenant_id="tenant",
+                request_id="request",
+                invocation_id="root",
+                active=True,
+                bindings={},
             )
         ],
         NativeDispatch: [
-            SimpleNamespace(
+            NativeDispatch(
                 id="dispatch",
                 tenant_id="tenant",
                 request_id="request",
@@ -203,7 +344,10 @@ def case():
         NativeEffectDispatchClaim: [],
         NativeEffectOutcome: [],
         NativePayloadObject: [
-            SimpleNamespace(
+            NativePayloadObject(
+                logical_key="context",
+                storage_key="private-context",
+                payload_digest="e" * 64,
                 id="context",
                 tenant_id="tenant",
                 request_id="request",
@@ -212,12 +356,21 @@ def case():
                 value_digest=canonical_digest(context.model_dump(mode="json")),
             )
         ],
-        DifyBuilderTestInput: [SimpleNamespace(id="input", inputs={"x": True})],
+        DifyBuilderTestInput: [
+            DifyBuilderTestInput(
+                id="input", inputs={"x": True}, session_id="session", source="mock", start_schema_hash=""
+            )
+        ],
         Workflow: [workflow],
-        App: [SimpleNamespace(id="app", tenant_id="tenant", status="normal")],
+        App: [App(id="app", tenant_id="tenant", status="normal")],
     }
     session = SQL(rows, events)
-    owned = SimpleNamespace(
+    owned = OwnedNativeTest(
+        session_id="session",
+        bindings={},
+        generation=0,
+        task_approved=False,
+        revision_context=None,
         ref=ref,
         tenant_id="tenant",
         actor_id="actor",
@@ -252,22 +405,19 @@ def case():
         yield session, owned, scope
         events.append("commit")
 
-    loader = SimpleNamespace(
-        session_factory=factory,
-        _load=load,
-        load=lambda **_: owned,
-        locked=locked,
-        actor=SimpleNamespace(tenant_id="tenant", account_id="actor"),
-    )
+    loader = OwnedNativeTestLoader(factory, actor=Actor(tenant_id="tenant", account_id="actor"), resolver=object())
+    monkeypatch.setattr(loader, "_load", load)
+    monkeypatch.setattr(loader, "load", lambda **_: owned)
+    monkeypatch.setattr(loader, "locked", locked)
 
     def load_context(**_):
         events.append("private")
         return context
 
-    lifecycle = NativeTestLifecycleService(
-        loader, state_store=SimpleNamespace(load_context=load_context), clock=lambda: NOW
-    )
-    return SimpleNamespace(
+    store = NativeExecutionStateStore(loader)
+    monkeypatch.setattr(store, "load_context", load_context)
+    lifecycle = NativeTestLifecycleService(loader, state_store=store, clock=lambda: NOW)
+    return HostCapacityCase(
         lifecycle=lifecycle,
         loader=loader,
         session=session,
@@ -295,7 +445,14 @@ def test_initial_generation_claim_uses_acknowledged_context_without_fake_checkpo
     ["prepare_dispatch_claim", "consume_dispatch_claim", "enqueue_initial_dispatch", "finalize_dispatch_locked"],
 )
 def test_transaction_local_c03_ports_are_explicit(method):
-    assert callable(getattr(NativeTestLifecycleService, method, None))
+    assert callable(
+        {
+            "prepare_dispatch_claim": NativeTestLifecycleService.prepare_dispatch_claim,
+            "consume_dispatch_claim": NativeTestLifecycleService.consume_dispatch_claim,
+            "enqueue_initial_dispatch": NativeTestLifecycleService.enqueue_initial_dispatch,
+            "finalize_dispatch_locked": NativeTestLifecycleService.finalize_dispatch_locked,
+        }[method]
+    )
 
 
 def test_capacity_requires_actual_cleanup_verifier(case):
@@ -334,7 +491,8 @@ def test_unclean_existing_root_holds_capacity_across_sessions_and_terminal_statu
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 
     owner = NativeHostCapacity(case.lifecycle, cleanup_verifier=OnceVerifier(case.events))
-    q = SimpleNamespace(
+    q = DifyBuilderExecutionRequest(
+        test_input_id="other-input",
         id="other-request",
         tenant_id="tenant",
         app_id="app",
@@ -345,7 +503,11 @@ def test_unclean_existing_root_holds_capacity_across_sessions_and_terminal_statu
         context_digest=case.request.context_digest,
         state=request_status,
     )
-    r = SimpleNamespace(
+    r = NativeInvocationState(
+        context_object_id="other-context",
+        generation=0,
+        pending_ids=[],
+        resolution=[],
         request_id=q.id,
         tenant_id="tenant",
         invocation_id="other-root",
@@ -355,11 +517,52 @@ def test_unclean_existing_root_holds_capacity_across_sessions_and_terminal_statu
         cleanup_complete=False,
         state="cancelled",
     )
-    d = SimpleNamespace(state=status, request_id=q.id, tenant_id=q.tenant_id, invocation_id=r.invocation_id)
-    b = SimpleNamespace(tenant_id="tenant", app_id="app", owner_account_id=q.actor_id)
-    invocation = SimpleNamespace(request_id=q.id, tenant_id=q.tenant_id, invocation_id=r.invocation_id)
-    scope = SimpleNamespace(request_id=q.id, tenant_id=q.tenant_id)
-    case.session.occupancy = [(q, d, r, invocation, scope, b, SimpleNamespace(session_id=q.session_id))]
+    d = NativeDispatch(
+        state=status,
+        request_id=q.id,
+        tenant_id=q.tenant_id,
+        invocation_id=r.invocation_id,
+        generation=0,
+        idempotency_digest="a" * 64,
+    )
+    b = DifyBuilderSession(
+        id=q.session_id,
+        tenant_id="tenant",
+        app_id="app",
+        owner_account_id=q.actor_id,
+        entry_mode="new",
+        current_state="build.review",
+    )
+    invocation = NativeTestInvocation(
+        request_id=q.id, tenant_id=q.tenant_id, invocation_id=r.invocation_id, active=True, bindings={}
+    )
+    scope = NativeTestScope(
+        request_id=q.id,
+        tenant_id=q.tenant_id,
+        generation=0,
+        task_approved=False,
+        cancelled=False,
+        expires_at=NOW + timedelta(days=1),
+        max_calls=16,
+        max_dispatches=16,
+        max_cost_units=16,
+        budget_limits={},
+        budget_spent={},
+        profile={},
+    )
+    case.session.occupancy = [
+        (
+            q,
+            d,
+            r,
+            invocation,
+            scope,
+            b,
+            DifyBuilderTestInput(
+                id="other-input", session_id=q.session_id, source="mock", inputs={}, start_schema_hash=""
+            ),
+        )
+    ]
     with pytest.raises(BuilderExecutionPolicyError, match="native_capacity_busy"):
         owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
     assert case.session.rows[NativeDispatch][0].state == "queued"
@@ -390,7 +593,7 @@ def test_composed_recovery_refuses_unclean_history_before_requeue(case):
 
     NativeHostCapacity(case.lifecycle, cleanup_verifier=OnceVerifier(case.events))
     case.state.state = "unknown"
-    case.owned.state = "running"
+    assert case.owned.state == "running"
     with pytest.raises(BuilderExecutionPolicyError, match="native_cleanup_unproven"):
         case.lifecycle._check_recovery_authority(case.session, case.ref, case.owned, case.scope)
 
@@ -402,7 +605,13 @@ def test_runtime_cancel_ids_do_not_release_composed_capacity_without_verifier(ca
     verifier.current = False
     owner = NativeHostCapacity(case.lifecycle, cleanup_verifier=verifier)
     assert owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
-    case.lifecycle.runtime = SimpleNamespace(cancel=lambda **_: ("root",))
+
+    class UnprovenCancelRuntime:
+        def cancel(self, *, refs):
+            assert refs
+            return ("root",)
+
+    case.lifecycle.runtime = UnprovenCancelRuntime()
     result = case.lifecycle.cancel(actor=case.loader.actor, request_id="request", idempotency_key="cancel")
     assert result.status == "cancelling"
     assert not case.state.cleanup_complete
@@ -411,7 +620,8 @@ def test_runtime_cancel_ids_do_not_release_composed_capacity_without_verifier(ca
 def test_transaction_local_finalize_cannot_mutate_another_requests_claim(case):
     from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
 
-    foreign = SimpleNamespace(
+    foreign = NativeDispatch(
+        idempotency_digest="a" * 64,
         id="foreign-dispatch",
         tenant_id="tenant",
         request_id="foreign",
@@ -456,7 +666,6 @@ def test_initial_enqueue_is_real_acknowledged_idempotent_outbox_not_a_checkpoint
 
 @pytest.mark.parametrize("fault", ["wrong_initial_key", "already_clean", "unrepresented_form"])
 def test_initial_claim_cannot_borrow_resume_or_prior_pending_authority(case, fault):
-    from models.dify_builder_native_tests import NativePendingAction
 
     if fault == "wrong_initial_key":
         case.session.rows[NativeDispatch][0].idempotency_digest = "foreign"
@@ -464,7 +673,18 @@ def test_initial_claim_cannot_borrow_resume_or_prior_pending_authority(case, fau
         case.state.cleanup_complete = True
     else:
         case.session.rows[NativePendingAction] = [
-            SimpleNamespace(id="pending", request_id="request", tenant_id="tenant")
+            NativePendingAction(
+                id="pending",
+                request_id="request",
+                tenant_id="tenant",
+                invocation_id="root",
+                generation=0,
+                category="approval",
+                reference_digest="a" * 64,
+                reference="reference",
+                owner_ref="app",
+                owner_version="1",
+            )
         ]
     with pytest.raises(BuilderExecutionPolicyError, match="native_initial_conflict"):
         case.lifecycle.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
@@ -483,7 +703,23 @@ def test_initial_enqueue_rechecks_actual_context_and_sql_inputs_before_outbox(ca
         case.session.rows[Workflow][0].graph = '{"changed":true}'
     else:
         case.session.rows[NativeEffectAttempt] = [
-            SimpleNamespace(id="attempt", tenant_id="tenant", request_id="request")
+            NativeEffectAttempt(
+                id="attempt",
+                tenant_id="tenant",
+                request_id="request",
+                invocation_id="root",
+                operation_id="operation",
+                grant_id="grant",
+                dispatch_index=0,
+                permit_digest="a" * 64,
+                expires_at=NOW + timedelta(days=1),
+                cost_units=1,
+                budget_reservation_ref="budget",
+                execution_id="execution",
+                invocation_digest="b" * 64,
+                budget={},
+                profile={},
+            )
         ]
     with pytest.raises(BuilderExecutionPolicyError):
         case.lifecycle.enqueue_initial_dispatch(ref=case.ref)
@@ -493,7 +729,11 @@ def test_initial_enqueue_rechecks_actual_context_and_sql_inputs_before_outbox(ca
 def test_boolean_cleanup_result_is_not_actual_trusted_none_success(case):
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 
-    owner = NativeHostCapacity(case.lifecycle, cleanup_verifier=SimpleNamespace(consume_cleanup=lambda **_: True))
+    class BooleanCleanupVerifier:
+        def consume_cleanup(self, **_kwargs):
+            return True
+
+    owner = NativeHostCapacity(case.lifecycle, cleanup_verifier=BooleanCleanupVerifier())
     assert owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
     with pytest.raises(BuilderExecutionPolicyError, match="native_cleanup_unproven"):
         owner.record_cleanup(ref=case.ref, generation=0, dispatch_id="dispatch")
@@ -551,8 +791,16 @@ def test_transaction_local_outcome_cannot_attach_a_foreign_private_result(case):
     dispatch.state = "claimed"
     case.state.state = "running"
     case.session.rows[NativePayloadObject].append(
-        SimpleNamespace(
-            id="foreign-result", tenant_id="tenant", request_id="foreign", invocation_id="root", kind="result"
+        NativePayloadObject(
+            logical_key="result",
+            storage_key="foreign-storage",
+            payload_digest="a" * 64,
+            value_digest="b" * 64,
+            id="foreign-result",
+            tenant_id="tenant",
+            request_id="foreign",
+            invocation_id="root",
+            kind="result",
         )
     )
     outcome = NativeWorkflowOutcome(
@@ -636,7 +884,17 @@ def test_preclaim_cancel_refuses_uncertain_history_without_calling_physical_veri
     elif fault == "missing_context":
         case.session.rows[NativePayloadObject] = []
     else:
-        case.session.rows[NativeEffectDispatchClaim] = [SimpleNamespace(id="effect", request_id="request")]
+        case.session.rows[NativeEffectDispatchClaim] = [
+            NativeEffectDispatchClaim(
+                id="effect",
+                request_id="request",
+                tenant_id="tenant",
+                invocation_id="root",
+                operation_id="operation",
+                attempt_id="attempt",
+                claimed_at=NOW,
+            )
+        ]
     result = case.lifecycle.cancel(actor=case.loader.actor, request_id="request", idempotency_key="cancel")
     assert result.status == "cancelling"
     assert not case.state.cleanup_complete

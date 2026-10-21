@@ -17,9 +17,7 @@ from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass, field
 from datetime import timedelta
 from threading import Lock
-from types import SimpleNamespace
 from typing import Literal
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -237,7 +235,7 @@ def world(consent_owner: Owner, monkeypatch: pytest.MonkeyPatch) -> Iterator[Wor
     # A fresh request-scoped provider cache, exactly as get_plugin_provider initializes it.
     contexts.plugin_tool_providers.set({})
     contexts.plugin_tool_providers_lock.set(Lock())
-    monkeypatch.setattr(tool_manager_module, "time", SimpleNamespace(time=lambda: state.now))
+    monkeypatch.setattr(tool_manager_module.time, "time", lambda: state.now)
 
     def fetch_tool_provider(_self: PluginToolManager, tenant_id: str, provider: str) -> PluginToolProviderEntity:
         assert (tenant_id, provider) == (consent_owner.actor.tenant_id, PROVIDER)
@@ -329,9 +327,16 @@ def world(consent_owner: Owner, monkeypatch: pytest.MonkeyPatch) -> Iterator[Wor
     monkeypatch.setattr(OAuthHandler, "_request_with_plugin_daemon_response_stream", refresh_stream)
     monkeypatch.setattr(PluginToolManager, "_request_with_plugin_daemon_response_stream", invoke_stream)
     monkeypatch.setattr(ToolProviderCredentialsCache, "delete", cache_delete)
+
     # The confirmed path bypasses the ordinary credential cache entirely.
-    monkeypatch.setattr(ToolProviderCredentialsCache, "get", Mock(side_effect=AssertionError("ordinary cache read")))
-    monkeypatch.setattr(ToolProviderCredentialsCache, "set", Mock(side_effect=AssertionError("ordinary cache write")))
+    def forbid_cache_read(*_args, **_kwargs):
+        raise AssertionError("ordinary cache read")
+
+    def forbid_cache_write(*_args, **_kwargs):
+        raise AssertionError("ordinary cache write")
+
+    monkeypatch.setattr(ToolProviderCredentialsCache, "get", forbid_cache_read)
+    monkeypatch.setattr(ToolProviderCredentialsCache, "set", forbid_cache_write)
     yield state
     contexts.plugin_tool_providers.set({})
 

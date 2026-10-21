@@ -113,7 +113,14 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
         # Diagnostic failure cannot suppress/replace the real operation/error.
         note(stage + ".diagnostic_unavailable", **facts)
 
-    ordinary_verbs = tuple(getattr(ssrf_proxy, name) for name in ("get", "post", "put", "patch", "delete", "head"))
+    ordinary_verbs = (
+        ssrf_proxy.get,
+        ssrf_proxy.post,
+        ssrf_proxy.put,
+        ssrf_proxy.patch,
+        ssrf_proxy.delete,
+        ssrf_proxy.head,
+    )
     original_create = DifyNodeFactory.create_node
 
     @wraps(original_create)
@@ -129,10 +136,8 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
                 required=factory._dify_context.native_test_required,
                 has_ref=factory._dify_context.native_test_ref is not None,
                 native_runtime=type(node.runtime_state) is NativeGraphRuntimeState,
-                boundary_owner=(
-                    bridge is not None and getattr(node, "_native_control_owner", None) is bridge._boundary_owner
-                ),
-                deferred_http=type(getattr(node, "_http_client", None)) is DeferredNativeHttpClient,
+                boundary_owner=(bridge is not None and node._native_control_owner is bridge._boundary_owner),
+                deferred_http=hasattr(node, "_http_client") and type(node._http_client) is DeferredNativeHttpClient,
             )
         except Exception:
             failure("factory_node")
@@ -227,8 +232,7 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
 
     monkeypatch.setattr(StopAwareReadyQueue, "_should_reject", reject)
 
-    def wrap(owner, name, stage, *, identity=False, decision=False):
-        original = getattr(owner, name)
+    def wrap(owner, name, original, stage, *, identity=False, decision=False):
 
         @wraps(original)
         def observed(instance, *args, **kwargs):
@@ -256,12 +260,21 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
 
         monkeypatch.setattr(owner, name, observed)
 
-    wrap(NativeHttpBindingProducer, "begin", "producer")
-    wrap(NativeCallAdapter, "call", "scalar", identity=True)
-    wrap(EffectAuthorizationService, "before_call", "authorization", identity=True, decision=True)
-    wrap(EffectAuthorizationService, "claim_dispatch", "claim", identity=True)
-    wrap(NativeHttpClient, "_send_and_buffer", "http_transport")
-    wrap(httpx.Client, "send", "fixture_send")
+    wrap(NativeHttpBindingProducer, "begin", NativeHttpBindingProducer.begin, "producer")
+    wrap(NativeCallAdapter, "call", NativeCallAdapter.call, "scalar", identity=True)
+    wrap(
+        EffectAuthorizationService,
+        "before_call",
+        EffectAuthorizationService.before_call,
+        "authorization",
+        identity=True,
+        decision=True,
+    )
+    wrap(
+        EffectAuthorizationService, "claim_dispatch", EffectAuthorizationService.claim_dispatch, "claim", identity=True
+    )
+    wrap(NativeHttpClient, "_send_and_buffer", NativeHttpClient._send_and_buffer, "http_transport")
+    wrap(httpx.Client, "send", httpx.Client.send, "fixture_send")
     try:
         yield
     finally:
@@ -274,6 +287,8 @@ def native_runtime_resume_diagnostics(request, monkeypatch, record_property):
                 "records": list(records),
                 "dropped": dropped,
                 "fixture_send_count": len(case.sends),
-                "ordinary_verb_call_counts": [getattr(verb, "call_count", None) for verb in ordinary_verbs],
+                "ordinary_verb_call_counts": [
+                    verb.call_count if hasattr(verb, "call_count") else None for verb in ordinary_verbs
+                ],
             }
         record_property("native_resume_diagnostics", json.dumps(receipt, sort_keys=True, separators=(",", ":")))

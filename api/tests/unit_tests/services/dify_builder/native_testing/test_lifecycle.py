@@ -91,12 +91,21 @@ def test_payload_codec_snapshots_caller_mutation():
 
 
 def test_controlling_proof_keeps_independently_unknown_and_completed_branches_inactive():
-    from types import SimpleNamespace
-
+    from models.dify_builder_native_tests import NativeInvocationState
     from services.dify_builder.native_testing.transitions import recoverable_invocation_ids
 
     def state(identity, parent, status):
-        return SimpleNamespace(invocation_id=identity, parent_invocation_id=parent, state=status)
+        return NativeInvocationState(
+            tenant_id="tenant",
+            request_id="request",
+            invocation_id=identity,
+            parent_invocation_id=parent,
+            state=status,
+            context_object_id="context",
+            generation=0,
+            pending_ids=[],
+            resolution={},
+        )
 
     # Descendants precede parents deliberately; topology, not row order, decides.
     states = [
