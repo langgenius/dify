@@ -44,7 +44,12 @@ function AppTypeItem({
 }) {
   const descriptionId = useId()
   return (
-    <Tooltip disableHoverablePopup>
+    <Tooltip
+      disableHoverablePopup
+      onOpenChange={(_open, details) => {
+        if (details.reason === 'escape-key') details.allowPropagation()
+      }}
+    >
       <TooltipTrigger
         delay={200}
         render={

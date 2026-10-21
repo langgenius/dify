@@ -131,6 +131,25 @@ describe('Create app entry', () => {
     )
   })
 
+  it('closes the menu and restores its trigger focus with one Escape while a description is visible', async () => {
+    const user = userEvent.setup()
+    renderEntry()
+    const trigger = screen.getByRole('button', { name: 'common.operation.create' })
+    act(() => trigger.focus())
+    await user.keyboard('{Enter}')
+    const workflow = screen.getByRole('menuitem', { name: 'app.types.workflow' })
+    await waitFor(() => expect(workflow).toHaveFocus())
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'app.newApp.menu.workflowDescription',
+    )
+
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'))
+    await waitFor(() => expect(trigger).toHaveFocus())
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
   it.each([
     ['workflow', 'app.types.workflow', '/workflow'],
     ['advanced-chat', 'app.types.advanced', '/workflow'],
