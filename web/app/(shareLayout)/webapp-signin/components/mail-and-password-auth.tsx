@@ -111,7 +111,8 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           <Input
             defaultValue={emailFromLink}
             id="email"
-            type="email"
+            type="text"
+            inputMode="email"
             autoComplete="email"
             spellCheck={false}
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
