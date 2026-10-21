@@ -124,6 +124,8 @@ class SQLAlchemyKnowledgeFSCutoverRepository(KnowledgeFSCutoverRepository):
                 values[field_name] = value
         if update_values.clear_smoke_results:
             values["smoke_results"] = None
+        if update_values.clear_rolled_back_at:
+            values["rolled_back_at"] = None
         statement = (
             update(KnowledgeFSWorkspaceCutoverLedger)
             .where(

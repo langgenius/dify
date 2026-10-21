@@ -68,6 +68,7 @@ class KnowledgeFSCutoverCASUpdate:
     remote_activation_applied: bool | None = None
     remote_activation_replayed: bool | None = None
     clear_smoke_results: bool = False
+    clear_rolled_back_at: bool = False
     freeze_at: datetime | None = None
     cutover_at: datetime | None = None
     rolled_back_at: datetime | None = None

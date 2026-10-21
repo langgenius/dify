@@ -1447,6 +1447,9 @@ class KnowledgeFSWorkspaceCutoverService:
                     integrated_mode_enabled=True,
                     legacy_acl_read_only=True,
                     clear_smoke_results=True,
+                    # A cutover after rollback resumes KnowledgeFS traffic; the runtime gate
+                    # rejects every ledger that still carries a rollback marker.
+                    clear_rolled_back_at=True,
                     remote_activation_id=ack.activation_id,
                     remote_activation_revision=ack.activation_revision,
                     remote_activation_digest=ack.source_revision_digest,

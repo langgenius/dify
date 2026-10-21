@@ -48,6 +48,7 @@ from services.knowledge_fs.cutover import (
     ShadowCompletionInput,
     WorkspaceInventoryInput,
 )
+from services.knowledge_fs.cutover_runtime_gate import SQLKnowledgeFSWorkspaceRuntimeGate
 from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSDifyIntegrationActivationAck,
     KnowledgeFSDifyIntegrationActivationRequest,
@@ -57,6 +58,7 @@ from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSLifecycleRemotePort,
     KnowledgeFSRemoteSpace,
 )
+from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 
 _MODELS = (
     KnowledgeFSControlSpace,
@@ -1801,6 +1803,34 @@ def test_rollback_honors_cutoff_and_never_restores_legacy_authority(
     assert ledger.remote_activation_revision is not None
     assert ledger.remote_activation_digest is not None
     assert ledger.remote_activation_acknowledged_at is not None
+
+
+def test_cutover_after_rollback_resumes_runtime_traffic(
+    cutover_context: tuple[KnowledgeFSWorkspaceCutoverService, sessionmaker[Session]],
+) -> None:
+    service, session_maker = cutover_context
+    tenant_id = _advance_to_cutover(service, _inventory())
+    gate = SQLKnowledgeFSWorkspaceRuntimeGate(session_maker)
+    service.rollback(
+        tenant_id=tenant_id,
+        expected_cas_version=_cas(service, tenant_id),
+        rolled_back_at=_BASE_TIME + timedelta(hours=1),
+    )
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="not cut over"):
+        gate.require_product_routes(tenant_id=tenant_id)
+
+    ledger = service.cutover(
+        tenant_id=tenant_id,
+        expected_cas_version=_cas(service, tenant_id),
+        cutover_at=_BASE_TIME + timedelta(hours=2),
+        rollback_cutoff_at=_BASE_TIME + timedelta(days=2),
+    )
+
+    assert ledger.phase is KnowledgeFSWorkspaceCutoverPhase.CUTOVER
+    assert ledger.rolled_back_at is None
+    assert ledger.product_routes_enabled is True
+    gate.require_product_routes(tenant_id=tenant_id)
+    gate.require_capability_v2(tenant_id=tenant_id)
 
 
 def test_rollback_rejects_cutoff_and_irreversible_cleanup(
