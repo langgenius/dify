@@ -1,18 +1,18 @@
 import importlib
 import json
 import sys
-import types
 from collections import UserDict
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
 def _build_fake_chroma_modules():
-    chroma = types.ModuleType("chromadb")
+    chroma = FakeModule("chromadb")
     chroma.DEFAULT_TENANT = "default_tenant"
     chroma.DEFAULT_DATABASE = "default_database"
 
