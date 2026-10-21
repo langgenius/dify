@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -171,6 +172,31 @@ def _task(
 def _filtered_ids(session: Session, status: str) -> set[str]:
     statement = select(Document).where(Document.tenant_id == _TENANT_ID, Document.dataset_id == _DATASET_ID)
     return {document.id for document in session.scalars(apply_document_display_status_filter(statement, status))}
+
+
+def test_display_status_filter_compares_json_generation_to_postgres_uuid_as_text() -> None:
+    statement = apply_document_display_status_filter(select(Document), "error")
+
+    sql = str(statement.compile(dialect=postgresql.dialect()))
+
+    assert "CAST(documents.indexing_generation AS VARCHAR)" in sql
+
+
+def test_display_status_filter_matches_exact_current_generation_on_sqlite(sqlite_session: Session) -> None:
+    document = _document(_STATE_CASES[0])
+    current_generation = document.indexing_generation
+    assert current_generation is not None
+    sqlite_session.add_all(
+        [
+            document,
+            _task(document, status="failed", action="add", generation=str(uuid4())),
+            _task(document, status="pending", action="add", generation=current_generation),
+        ]
+    )
+    sqlite_session.commit()
+
+    assert document.id in _filtered_ids(sqlite_session, "indexing")
+    assert document.id not in _filtered_ids(sqlite_session, "error")
 
 
 @pytest.mark.parametrize("case", _STATE_CASES, ids=lambda case: case.name)

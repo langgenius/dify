@@ -57,7 +57,7 @@ def _build_document_display_status_filters(status: str | None) -> tuple[sa.Colum
         KnowledgeTaskOutbox.resource_id == Document.id,
         KnowledgeTaskOutbox.task_kind == "document_index_state",
         KnowledgeTaskOutbox.payload["superseded"].as_boolean().is_not(True),
-        KnowledgeTaskOutbox.payload["generation"].as_string() == Document.indexing_generation,
+        KnowledgeTaskOutbox.payload["generation"].as_string() == sa.cast(Document.indexing_generation, sa.String),
         KnowledgeTaskOutbox.payload["action"].as_string().in_(("add", "remove")),
     )
     failed = sa.exists(select(KnowledgeTaskOutbox.id).where(*current, KnowledgeTaskOutbox.status == "failed"))
