@@ -1169,7 +1169,18 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             env,
             s,
             fc,
-            text_parts(copy_text(BuilderCopyId.EDIT_COMPLETED_DRAFT, changes="; ".join(fc.plan_items))),
+            text_parts(
+                copy_text(
+                    BuilderCopyId.EDIT_COMPLETED_DRAFT,
+                    changes=fc.change_set.diff,
+                )
+                if fc.change_set and fc.change_set.diff
+                else text_parts(
+                    copy_text(BuilderCopyId.LABELS_KEPT_THE_DRAFT),
+                    "\n",
+                    copy_text(BuilderCopyId.EDIT_NO_EFFECTIVE_CHANGES),
+                )
+            ),
         )
         return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=[*decision_items, *turn_items])
     if kind == "re_fix":  # continue_adjusting -> re-analyze impact
