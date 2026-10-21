@@ -1,8 +1,8 @@
 """Model configuration routes retain admin and workspace RBAC admission."""
 
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import create_autospec
 
 import pytest
@@ -19,6 +19,11 @@ from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account
 
 METHODS = [controller.ModelProviderModelApi.post, controller.ModelProviderModelCredentialApi.get]
+
+
+@dataclass(frozen=True)
+class LoadBalancingTestServices:
+    model_load_balancing: ModelLoadBalancingApplicationService
 
 
 def _admission(method: Callable[..., object]) -> Callable[..., object]:
@@ -88,7 +93,9 @@ def test_model_update_reaches_the_injected_service_after_admission(
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace"))
     monkeypatch.setattr(flask_admission, "enforce_rbac_checks", lambda **_kwargs: None)
     service = create_autospec(ModelLoadBalancingApplicationService, instance=True)
-    monkeypatch.setattr(controller, "application_services", lambda: SimpleNamespace(model_load_balancing=service))
+    monkeypatch.setattr(
+        controller, "application_services", lambda: LoadBalancingTestServices(model_load_balancing=service)
+    )
     with app.test_request_context(
         method="POST",
         json={

@@ -1,7 +1,7 @@
 """The credential validation envelope and unconditional privileged-role gate."""
 
+from dataclasses import dataclass
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import create_autospec
 
 import pytest
@@ -21,6 +21,11 @@ from tests.unit_tests.model_factories import make_account
 CONTEXT = RequestContext("request", None, "account", "workspace")
 
 
+@dataclass(frozen=True)
+class LoadBalancingTestServices:
+    model_load_balancing: ModelLoadBalancingApplicationService
+
+
 @pytest.mark.parametrize("config_id", [None, "config"])
 @pytest.mark.parametrize("failure", [None, "invalid credentials"])
 def test_validation_response(
@@ -32,7 +37,9 @@ def test_validation_response(
     service = create_autospec(ModelLoadBalancingApplicationService, instance=True)
     if failure:
         service.validate_credentials.side_effect = CredentialsValidateFailedError(failure)
-    monkeypatch.setattr(controller, "application_services", lambda: SimpleNamespace(model_load_balancing=service))
+    monkeypatch.setattr(
+        controller, "application_services", lambda: LoadBalancingTestServices(model_load_balancing=service)
+    )
     account = make_account(role=TenantAccountRole.OWNER)
     monkeypatch.setattr(controller, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace"))
     payload = controller.LoadBalancingCredentialPayload(
@@ -72,7 +79,9 @@ def test_role_gate_is_independent_of_rbac(
 ) -> None:
     apply_config_overrides(monkeypatch, RBAC_ENABLED=rbac_enabled)
     service = create_autospec(ModelLoadBalancingApplicationService, instance=True)
-    monkeypatch.setattr(controller, "application_services", lambda: SimpleNamespace(model_load_balancing=service))
+    monkeypatch.setattr(
+        controller, "application_services", lambda: LoadBalancingTestServices(model_load_balancing=service)
+    )
     account = make_account(role=role)
     monkeypatch.setattr(controller, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace"))
     payload = controller.LoadBalancingCredentialPayload(model="gpt-4", model_type=ModelType.LLM, credentials={})
@@ -94,7 +103,9 @@ def test_role_gate_is_independent_of_rbac(
 def test_missing_config_stays_a_value_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     service = create_autospec(ModelLoadBalancingApplicationService, instance=True)
     service.validate_credentials.side_effect = ValueError("Load balancing config missing does not exist.")
-    monkeypatch.setattr(controller, "application_services", lambda: SimpleNamespace(model_load_balancing=service))
+    monkeypatch.setattr(
+        controller, "application_services", lambda: LoadBalancingTestServices(model_load_balancing=service)
+    )
     account = make_account(role=TenantAccountRole.ADMIN)
     monkeypatch.setattr(controller, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace"))
     api = controller.LoadBalancingConfigCredentialsValidateApi()
