@@ -4,8 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import StatusItem from '../index'
 
-const { changeStatus, toastError } = vi.hoisted(() => ({
+const { changeStatus, retryDocuments, toastError } = vi.hoisted(() => ({
   changeStatus: vi.fn(),
+  retryDocuments: vi.fn(),
   toastError: vi.fn(),
 }))
 vi.mock('@/app/notifications', async (importOriginal) => ({
@@ -19,6 +20,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'datasets.byDatasetId.documents.status.byAction.batch.patch': changeStatus,
+      'datasets.byDatasetId.retry.post': retryDocuments,
     }),
   }
 })
@@ -35,11 +37,13 @@ const show = (props: Partial<ComponentProps<typeof StatusItem>> = {}) =>
     />,
   )
 beforeEach(() => {
+  vi.clearAllMocks()
   changeStatus.mockResolvedValue({ result: 'success' })
+  retryDocuments.mockResolvedValue(undefined)
 })
 afterEach(() => vi.useRealTimers())
 
-it('discloses an indexing error without exposing editing controls in the list', async () => {
+it('discloses the server error without exposing editing controls in the list', async () => {
   const user = userEvent.setup()
   render(<StatusItem status="error" errorMessage="Parse failed" />)
   expect(screen.queryByRole('switch')).not.toBeInTheDocument()
@@ -85,6 +89,15 @@ it.each([
   expect(onUpdate).toHaveBeenCalledExactlyOnceWith(action)
 })
 
+it.each([
+  { ...detail, enabled: false },
+  { ...detail, archived: true },
+])('does not offer recovery without a server retry action for %j', (unrecoverableDetail) => {
+  show({ status: 'error', detail: unrecoverableDetail, retryAction: null })
+
+  expect(screen.queryByRole('button', { name: 'dataset.retry' })).not.toBeInTheDocument()
+})
+
 it('reports failed status changes without notifying the owner of success', async () => {
   const user = userEvent.setup()
   changeStatus.mockRejectedValueOnce(new Error('Unavailable'))
@@ -95,4 +108,48 @@ it('reports failed status changes without notifying the owner of success', async
     expect(toastError).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
   )
   expect(onUpdate).not.toHaveBeenCalled()
+})
+
+it.each([
+  {
+    action: 'retry' as const,
+    expected: () =>
+      expect(retryDocuments).toHaveBeenCalledExactlyOnceWith({
+        params: { dataset_id: 'dataset-1' },
+        body: { document_ids: ['doc-1'] },
+      }),
+  },
+  {
+    action: 'enable' as const,
+    expected: () =>
+      expect(changeStatus).toHaveBeenCalledExactlyOnceWith({
+        params: { dataset_id: 'dataset-1', action: 'enable' },
+        query: { document_id: ['doc-1'] },
+      }),
+  },
+  {
+    action: 'disable' as const,
+    expected: () =>
+      expect(changeStatus).toHaveBeenCalledExactlyOnceWith({
+        params: { dataset_id: 'dataset-1', action: 'disable' },
+        query: { document_id: ['doc-1'] },
+      }),
+  },
+  {
+    action: 'archive' as const,
+    expected: () =>
+      expect(changeStatus).toHaveBeenCalledExactlyOnceWith({
+        params: { dataset_id: 'dataset-1', action: 'archive' },
+        query: { document_id: ['doc-1'] },
+      }),
+  },
+])('dispatches the server-provided $action recovery action', async ({ action, expected }) => {
+  const user = userEvent.setup()
+  const onUpdate = vi.fn()
+  show({ status: 'error', retryAction: action, onUpdate })
+
+  await user.click(screen.getByRole('button', { name: 'dataset.retry' }))
+
+  await waitFor(expected)
+  expect(onUpdate).toHaveBeenCalledExactlyOnceWith(action)
 })

@@ -1,6 +1,8 @@
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
+import type { DocumentIndexingRetryAction } from '../hooks/use-document-retry-actions'
 import type { OperationName } from '../types'
 import type { DocumentDisplayStatus } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -14,6 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
+import { useDocumentRetryActions } from '../hooks/use-document-retry-actions'
 import s from '../style.module.css'
 import { useIndexStatus } from './hooks'
 
@@ -26,6 +29,7 @@ const STATUS_TEXT_COLOR_MAP: Record<StatusDotStatus, string> = {
 }
 type StatusItemProps = {
   status: DocumentDisplayStatus
+  retryAction?: DocumentIndexingRetryAction | null
   reverse?: boolean
   scene?: 'list' | 'detail'
   textCls?: string
@@ -41,6 +45,7 @@ type StatusItemProps = {
 }
 const StatusItem = ({
   status,
+  retryAction,
   reverse = false,
   scene = 'list',
   textCls = '',
@@ -52,7 +57,7 @@ const StatusItem = ({
 }: StatusItemProps) => {
   const statusLabelId = React.useId()
 
-  const { t } = useTranslation(['common', 'datasetDocuments'])
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
   const statusItem = DOC_INDEX_STATUS_MAP[localStatus]
@@ -62,6 +67,7 @@ const StatusItem = ({
     documents.status.byAction.batch.patch.mutationOptions(),
   )
   const { mutateAsync: deleteDocuments } = useMutation(documents.delete.mutationOptions())
+  const { retryDocuments, isPending: isRetrying } = useDocumentRetryActions(datasetId)
   const onOperate = async (operationName: OperationName) => {
     if (!canEdit) return
 
@@ -91,6 +97,16 @@ const StatusItem = ({
   const embedding = useMemo(() => {
     return ['queuing', 'indexing', 'paused'].includes(localStatus)
   }, [localStatus])
+  const handleRetry = async () => {
+    if (!canEdit || !retryAction || !id) return
+
+    const [e] = await asyncRunSafe(retryDocuments([{ id, action: retryAction }]))
+    if (!e) {
+      onUpdate?.(retryAction)
+    } else {
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    }
+  }
   return (
     <div
       className={cn(
@@ -113,6 +129,17 @@ const StatusItem = ({
             {errorMessage}
           </InfotipContent>
         </Infotip>
+      )}
+      {retryAction && canEdit && (
+        <Button
+          variant="ghost-accent"
+          size="small"
+          className="ml-1.5"
+          loading={isRetrying}
+          onClick={handleRetry}
+        >
+          {t(($) => $.retry, { ns: 'dataset' })}
+        </Button>
       )}
       {scene === 'detail' && (
         <div className="ml-1.5 flex items-center justify-between">

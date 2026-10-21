@@ -178,7 +178,19 @@ const DocumentTableRow = React.memo(
         </td>
         <td>
           {isDocumentDisplayStatus(doc.display_status) && (
-            <StatusItem status={doc.display_status} />
+            <StatusItem
+              status={doc.display_status}
+              retryAction={doc.indexing_retry_action}
+              errorMessage={doc.error ?? undefined}
+              detail={{
+                enabled: doc.enabled ?? false,
+                archived: doc.archived ?? false,
+                id: doc.id,
+              }}
+              datasetId={datasetId}
+              onUpdate={onUpdate}
+              canEdit={datasetACLCapabilities.canEdit}
+            />
           )}
         </td>
         <td>

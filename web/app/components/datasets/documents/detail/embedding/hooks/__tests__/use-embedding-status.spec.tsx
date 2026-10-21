@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as datasetsService from '@/service/datasets'
 import {
   calculatePercent,
+  getIndexingStatusRefetchInterval,
   isEmbeddingStatus,
   isTerminalStatus,
   useEmbeddingStatus,
@@ -58,6 +59,7 @@ describe('use-embedding-status', () => {
   })
 
   it.each([
+    ['waiting', true, false],
     ['indexing', true, false],
     ['splitting', true, false],
     ['parsing', true, false],
@@ -69,6 +71,16 @@ describe('use-embedding-status', () => {
   ] as const)('classifies indexing status %s', (status, embedding, terminal) => {
     expect(isEmbeddingStatus(status)).toBe(embedding)
     expect(isTerminalStatus(status)).toBe(terminal)
+  })
+
+  it.each([
+    ['error', false],
+    ['completed', false],
+    ['paused', false],
+    ['waiting', 2500],
+    ['indexing', 2500],
+  ] as const)('uses the effective %s status to choose polling interval', (status, interval) => {
+    expect(getIndexingStatusRefetchInterval(status)).toBe(interval)
   })
 
   describe('calculatePercent', () => {

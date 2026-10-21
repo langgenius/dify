@@ -1,3 +1,4 @@
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,13 +8,16 @@ import { consoleQuery } from '@/service/console'
 import { useDocumentDownloadZip } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { downloadBlob } from '@/utils/download'
+import { useDocumentRetryActions } from '../../../hooks/use-document-retry-actions'
 
 type UseDocumentActionsOptions = {
   datasetId: string
   selectedIds: string[]
+  selectedDocuments: Array<Pick<DocumentWithSegmentsResponse, 'id' | 'indexing_retry_action'>>
   downloadableSelectedIds: string[]
   onUpdate: () => void
   onClearSelection: () => void
+  onRemoveFromSelection: (documentIds: string[]) => void
 }
 
 /**
@@ -31,9 +35,11 @@ const generateDocsZipFileName = (): string => {
 export const useDocumentActions = ({
   datasetId,
   selectedIds,
+  selectedDocuments,
   downloadableSelectedIds,
   onUpdate,
   onClearSelection,
+  onRemoveFromSelection,
 }: UseDocumentActionsOptions) => {
   const { t } = useTranslation(['common'])
 
@@ -45,9 +51,7 @@ export const useDocumentActions = ({
     documents.generateSummary.post.mutationOptions(),
   )
   const { mutateAsync: deleteDocuments } = useMutation(documents.delete.mutationOptions())
-  const { mutateAsync: retryIndexDocuments } = useMutation(
-    consoleQuery.datasets.byDatasetId.retry.post.mutationOptions(),
-  )
+  const { retryDocuments } = useDocumentRetryActions(datasetId)
   const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip()
 
   type SupportedActionType =
@@ -98,20 +102,20 @@ export const useDocumentActions = ({
   )
 
   const handleBatchReIndex = useCallback(async () => {
-    const [e] = await asyncRunSafe(
-      retryIndexDocuments({
-        params: { dataset_id: datasetId },
-        body: { document_ids: selectedIds },
-      }),
+    const targets = selectedDocuments.flatMap(({ id, indexing_retry_action }) =>
+      indexing_retry_action ? [{ id, action: indexing_retry_action }] : [],
     )
+    if (targets.length === 0) return
+
+    const [e] = await asyncRunSafe(retryDocuments(targets))
     if (!e) {
-      onClearSelection()
+      onRemoveFromSelection(targets.map(({ id }) => id))
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onUpdate()
     } else {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
-  }, [retryIndexDocuments, datasetId, selectedIds, onClearSelection, onUpdate, t])
+  }, [onRemoveFromSelection, onUpdate, retryDocuments, selectedDocuments, t])
 
   const handleBatchDownload = useCallback(async () => {
     if (isDownloadingZip) return

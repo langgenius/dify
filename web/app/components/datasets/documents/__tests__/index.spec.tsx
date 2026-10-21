@@ -15,6 +15,9 @@ import Documents from '../index'
 const api = vi.hoisted(() => ({
   push: vi.fn(),
   documents: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.get>(),
+  changeStatus:
+    vi.fn<typeof consoleClient.datasets.byDatasetId.documents.status.byAction.batch.patch>(),
+  retryDocuments: vi.fn<typeof consoleClient.datasets.byDatasetId.retry.post>(),
   rename: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.byDocumentId.rename.post>(),
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -39,6 +42,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       'datasets.metadata.builtIn.get': async () => ({ fields: [] }),
       'datasets.byDatasetId.autoDisableLogs.get': async () => ({ document_ids: [] }),
       'datasets.byDatasetId.errorDocs.get': async () => ({ data: [], total: 0 }),
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': api.changeStatus,
+      'datasets.byDatasetId.retry.post': api.retryDocuments,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'datasets.byDatasetId.documents.byDocumentId.rename.post': api.rename,
@@ -125,6 +130,8 @@ const lastURL = (onUrlUpdate: Awaited<ReturnType<typeof setup>>['onUrlUpdate']) 
 
 beforeEach(() => {
   api.documents.mockReset().mockResolvedValue(documentList())
+  api.changeStatus.mockReset().mockResolvedValue({ result: 'success' })
+  api.retryDocuments.mockReset().mockResolvedValue(undefined)
   api.rename
     .mockReset()
     .mockImplementation(async ({ body }) => ({ ...documentList().data[1]!, name: body.name }))
@@ -309,6 +316,78 @@ it('requests the next page and resets the page when changing the page size or so
   })
 })
 
+it('recovers eligible documents selected across pages and keeps an ineligible selection', async () => {
+  const firstPageDocument = {
+    ...documentList().data[0]!,
+    id: 'doc-page-a',
+    name: 'Page A',
+    indexing_status: 'error' as const,
+    display_status: 'error' as const,
+    indexing_state: 'failed' as const,
+    indexing_retry_action: 'enable' as const,
+  }
+  const secondPageRetryDocument = {
+    ...documentList().data[1]!,
+    id: 'doc-page-b',
+    name: 'Page B',
+    indexing_status: 'error' as const,
+    display_status: 'error' as const,
+    indexing_state: 'failed' as const,
+    indexing_retry_action: 'retry' as const,
+  }
+  const secondPageIneligibleDocument = {
+    ...documentList().data[0]!,
+    id: 'doc-page-disabled',
+    name: 'Disabled recovery',
+    enabled: false,
+    indexing_status: 'error' as const,
+    display_status: 'error' as const,
+    indexing_state: 'failed' as const,
+    indexing_retry_action: null,
+  }
+  const firstPage = documentList({
+    data: [firstPageDocument],
+    total: 12,
+    page: 1,
+    has_more: true,
+  })
+  const secondPage = documentList({
+    data: [secondPageRetryDocument, secondPageIneligibleDocument],
+    total: 12,
+    page: 2,
+    has_more: false,
+  })
+  api.documents.mockImplementation(async ({ query }) =>
+    query?.page === 2 ? secondPage : firstPage,
+  )
+  const { user } = await setup()
+
+  await user.click(screen.getByRole('checkbox', { name: 'Page A' }))
+  await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+  expect(await screen.findByText('Page B')).toBeInTheDocument()
+  await user.click(screen.getByRole('checkbox', { name: 'Page B' }))
+  await user.click(screen.getByRole('checkbox', { name: 'Disabled recovery' }))
+
+  await user.click(screen.getByRole('button', { name: 'dataset.batchAction.reIndex' }))
+
+  await waitFor(() =>
+    expect(api.changeStatus).toHaveBeenCalledExactlyOnceWith({
+      params: { dataset_id: 'dataset-1', action: 'enable' },
+      query: { document_id: ['doc-page-a'] },
+    }),
+  )
+  expect(api.retryDocuments).toHaveBeenCalledExactlyOnceWith({
+    params: { dataset_id: 'dataset-1' },
+    body: { document_ids: ['doc-page-b'] },
+  })
+  await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Page B' })).not.toBeChecked())
+  expect(screen.getByRole('checkbox', { name: 'Disabled recovery' })).toBeChecked()
+  expect(
+    screen.queryByRole('button', { name: 'dataset.batchAction.reIndex' }),
+  ).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'dataset.batchAction.cancel' })).toBeInTheDocument()
+})
+
 it('renames the selected document through its real form and refreshes the row after success', async () => {
   const { user } = await setup()
   const row = screen.getByRole('row', { name: /Reference/ })
@@ -334,23 +413,75 @@ it('renames the selected document through its real form and refreshes the row af
   expect(await screen.findByText('API Reference')).toBeInTheDocument()
 })
 
-it('polls processing documents until all documents reach a terminal state', async () => {
+it.each([
+  ['indexing', 'indexing'],
+  ['waiting', 'queuing'],
+] as const)(
+  'polls %s documents until all documents reach a terminal state',
+  async (indexingStatus, displayStatus) => {
+    vi.useFakeTimers()
+    const pending = documentList({
+      data: documentList().data.map((doc) => ({
+        ...doc,
+        indexing_status: indexingStatus,
+        display_status: displayStatus,
+        indexing_state: indexingStatus === 'waiting' ? 'pending' : null,
+      })),
+    })
+    api.documents.mockResolvedValue(documentList())
+    await setup({ cached: pending, waitForList: false })
+    expect(api.documents).not.toHaveBeenCalled()
+    await act(async () => vi.advanceTimersByTimeAsync(2500))
+    expect(api.documents).toHaveBeenCalledOnce()
+    await act(async () => vi.advanceTimersByTimeAsync(10000))
+    expect(api.documents).toHaveBeenCalledOnce()
+    expect(screen.getByText('Guide')).toBeInTheDocument()
+  },
+)
+
+it('stops polling a failed intent once the server reports the effective error state', async () => {
   vi.useFakeTimers()
-  const pending = documentList({
+  const failed = documentList({
     data: documentList().data.map((doc) => ({
       ...doc,
-      indexing_status: 'indexing',
-      display_status: 'indexing',
+      indexing_status: 'error',
+      display_status: 'error',
+      indexing_state: 'failed' as const,
+      error: 'The previous add intent failed after raw indexing completed',
     })),
   })
-  api.documents.mockResolvedValue(documentList())
-  await setup({ cached: pending, waitForList: false })
+  await setup({ cached: failed, waitForList: false })
+
   expect(api.documents).not.toHaveBeenCalled()
-  await act(async () => vi.advanceTimersByTimeAsync(2500))
-  expect(api.documents).toHaveBeenCalledOnce()
   await act(async () => vi.advanceTimersByTimeAsync(10000))
-  expect(api.documents).toHaveBeenCalledOnce()
-  expect(screen.getByText('Guide')).toBeInTheDocument()
+  expect(api.documents).not.toHaveBeenCalled()
+  expect(screen.getAllByText('datasetDocuments.list.status.error')).toHaveLength(2)
+})
+
+it('shows the error filter result and executes its server-provided recovery action', async () => {
+  const failedDocument = {
+    ...documentList().data[0]!,
+    indexing_status: 'error',
+    display_status: 'error',
+    indexing_state: 'failed' as const,
+    indexing_retry_action: 'enable' as const,
+    error: 'The add intent failed',
+  }
+  api.documents.mockResolvedValue(documentList({ data: [failedDocument], total: 1 }))
+  const { user } = await setup({ searchParams: '?status=error' })
+
+  expect(filter()).toHaveTextContent('datasetDocuments.list.status.error')
+  const row = screen.getByRole('row', { name: /Guide/ })
+  expect(within(row).getByText('datasetDocuments.list.status.error')).toBeInTheDocument()
+  await user.click(within(row).getByRole('button', { name: 'dataset.retry' }))
+
+  await waitFor(() =>
+    expect(api.changeStatus).toHaveBeenCalledExactlyOnceWith({
+      params: { dataset_id: 'dataset-1', action: 'enable' },
+      query: { document_id: ['doc-0'] },
+    }),
+  )
+  expect(api.retryDocuments).not.toHaveBeenCalled()
 })
 
 it('continues polling an empty indexing filter so newly queued documents can appear', async () => {

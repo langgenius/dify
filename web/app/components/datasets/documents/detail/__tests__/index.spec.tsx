@@ -60,6 +60,12 @@ const mocks = vi.hoisted(() => {
       vi.fn<
         typeof import('@/service/console').consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.resume.patch
       >(),
+    changeStatus:
+      vi.fn<
+        typeof import('@/service/console').consoleClient.datasets.byDatasetId.documents.status.byAction.batch.patch
+      >(),
+    retryDocuments:
+      vi.fn<typeof import('@/service/console').consoleClient.datasets.byDatasetId.retry.post>(),
   }
 })
 
@@ -184,6 +190,8 @@ describe('DocumentDetail', () => {
     mocks.state.searchParams = ''
     mocks.indexing.mockReset().mockResolvedValue(indexingStatus())
     mocks.resume.mockReset().mockResolvedValue({ result: 'success' })
+    mocks.changeStatus.mockReset().mockResolvedValue({ result: 'success' })
+    mocks.retryDocuments.mockReset().mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -232,6 +240,28 @@ describe('DocumentDetail', () => {
         ).not.toBeInTheDocument()
       },
     )
+
+    it('offers the recovery action returned for an effective error state', async () => {
+      const user = userEvent.setup()
+      mocks.state.documentDetail = createDocumentDetail({
+        display_status: 'error',
+        indexing_status: 'error',
+        indexing_state: 'failed',
+        indexing_retry_action: 'retry',
+        error: 'Indexing failed',
+      })
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+
+      await user.click(screen.getByRole('button', { name: 'dataset.retry' }))
+
+      await waitFor(() =>
+        expect(mocks.retryDocuments).toHaveBeenCalledExactlyOnceWith({
+          params: { dataset_id: 'ds-1' },
+          body: { document_ids: ['doc-1'] },
+        }),
+      )
+      expect(mocks.changeStatus).not.toHaveBeenCalled()
+    })
   })
 
   describe('SegmentAdd Visibility', () => {
@@ -569,9 +599,9 @@ vi.mock('@/service/console', async (importOriginal) => {
         built_in_field_enabled: false,
       }),
       'datasets.byDatasetId.documents.delete': async () => ({ result: 'success' }),
-      'datasets.byDatasetId.documents.status.byAction.batch.patch': async () => ({
-        result: 'success',
-      }),
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': (input) =>
+        mocks.changeStatus(input),
+      'datasets.byDatasetId.retry.post': (input) => mocks.retryDocuments(input),
       'datasets.batchImportStatus.byJobId.get': (input) => mocks.checkProgress(input),
       'datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post': (input) =>
         mocks.batchImport(input),

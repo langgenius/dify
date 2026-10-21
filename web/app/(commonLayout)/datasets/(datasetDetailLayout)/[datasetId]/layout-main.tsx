@@ -9,6 +9,7 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { VectorIndexStatus } from '@/app/components/datasets/vector-index-status'
 import DatasetDetailContext from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
@@ -104,6 +105,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     consoleQuery.datasets.byDatasetId.get.queryOptions({
       input: { params: { dataset_id: datasetId } },
       enabled: !!datasetId,
+      refetchInterval: (query) =>
+        query.state.data?.vector_indexing_status === 'indexing' ? 2500 : false,
     }),
   )
   const shouldRedirect = shouldRedirectToDatasetList(error)
@@ -161,7 +164,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   ) : (
     <div
       className={cn(
-        'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
+        'relative flex h-0 min-h-0 min-w-0 grow flex-col overflow-hidden',
         !isPipelinePage && 'pt-1 pr-1 pb-1',
       )}
     >
@@ -172,6 +175,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           mutateDatasetRes,
         }}
       >
+        {datasetRes && <VectorIndexStatus dataset={datasetRes} />}
         <div
           className={cn(
             'min-w-0 grow overflow-hidden bg-components-panel-bg',

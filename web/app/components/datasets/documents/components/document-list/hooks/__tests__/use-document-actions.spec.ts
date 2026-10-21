@@ -56,9 +56,14 @@ describe('useDocumentActions', () => {
   const defaultOptions = {
     datasetId: 'ds-1',
     selectedIds: ['doc-1', 'doc-2'],
+    selectedDocuments: [
+      { id: 'doc-1', indexing_retry_action: 'retry' as const },
+      { id: 'doc-2', indexing_retry_action: 'retry' as const },
+    ],
     downloadableSelectedIds: ['doc-1'],
     onUpdate: vi.fn(),
     onClearSelection: vi.fn(),
+    onRemoveFromSelection: vi.fn(),
   }
 
   beforeEach(() => {
@@ -142,6 +147,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
+      expect(defaultOptions.onRemoveFromSelection).not.toHaveBeenCalled()
+      expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
       expect(defaultOptions.onUpdate).not.toHaveBeenCalled()
     })
   })
@@ -159,7 +166,11 @@ describe('useDocumentActions', () => {
         params: { dataset_id: 'ds-1' },
         body: { document_ids: ['doc-1', 'doc-2'] },
       })
-      expect(defaultOptions.onClearSelection).toHaveBeenCalled()
+      expect(defaultOptions.onRemoveFromSelection).toHaveBeenCalledExactlyOnceWith([
+        'doc-1',
+        'doc-2',
+      ])
+      expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
     })
 
@@ -172,6 +183,83 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
+      expect(defaultOptions.onRemoveFromSelection).not.toHaveBeenCalled()
+      expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
+      expect(defaultOptions.onUpdate).not.toHaveBeenCalled()
+    })
+
+    it('groups a mixed selection by the server retry action', async () => {
+      mockRetryIndex.mockResolvedValue({ result: 'success' })
+      mockEnable.mockResolvedValue({ result: 'success' })
+      mockDisable.mockResolvedValue({ result: 'success' })
+      mockArchive.mockResolvedValue({ result: 'success' })
+      const { result } = renderHook(() =>
+        useDocumentActions({
+          ...defaultOptions,
+          selectedIds: ['doc-retry', 'doc-enable', 'doc-disable', 'doc-archive', 'doc-completed'],
+          selectedDocuments: [
+            { id: 'doc-retry', indexing_retry_action: 'retry' },
+            { id: 'doc-enable', indexing_retry_action: 'enable' },
+            { id: 'doc-disable', indexing_retry_action: 'disable' },
+            { id: 'doc-archive', indexing_retry_action: 'archive' },
+            { id: 'doc-completed', indexing_retry_action: null },
+          ],
+        }),
+      )
+
+      await act(async () => {
+        await result.current.handleBatchReIndex()
+      })
+
+      expect(mockRetryIndex).toHaveBeenCalledExactlyOnceWith({
+        params: { dataset_id: 'ds-1' },
+        body: { document_ids: ['doc-retry'] },
+      })
+      expect(mockEnable).toHaveBeenCalledExactlyOnceWith({
+        params: { dataset_id: 'ds-1', action: 'enable' },
+        query: { document_id: ['doc-enable'] },
+      })
+      expect(mockDisable).toHaveBeenCalledExactlyOnceWith({
+        params: { dataset_id: 'ds-1', action: 'disable' },
+        query: { document_id: ['doc-disable'] },
+      })
+      expect(mockArchive).toHaveBeenCalledExactlyOnceWith({
+        params: { dataset_id: 'ds-1', action: 'archive' },
+        query: { document_id: ['doc-archive'] },
+      })
+      expect(defaultOptions.onRemoveFromSelection).toHaveBeenCalledExactlyOnceWith([
+        'doc-retry',
+        'doc-enable',
+        'doc-disable',
+        'doc-archive',
+      ])
+      expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
+    })
+
+    it('does not report success or mutate selection when no selected document is recoverable', async () => {
+      const { result } = renderHook(() =>
+        useDocumentActions({
+          ...defaultOptions,
+          selectedIds: ['doc-disabled', 'doc-archived'],
+          selectedDocuments: [
+            { id: 'doc-disabled', indexing_retry_action: null },
+            { id: 'doc-archived', indexing_retry_action: null },
+          ],
+        }),
+      )
+
+      await act(async () => {
+        await result.current.handleBatchReIndex()
+      })
+
+      expect(mockRetryIndex).not.toHaveBeenCalled()
+      expect(mockEnable).not.toHaveBeenCalled()
+      expect(mockDisable).not.toHaveBeenCalled()
+      expect(mockArchive).not.toHaveBeenCalled()
+      expect(mockToastSuccess).not.toHaveBeenCalled()
+      expect(defaultOptions.onRemoveFromSelection).not.toHaveBeenCalled()
+      expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
+      expect(defaultOptions.onUpdate).not.toHaveBeenCalled()
     })
   })
 
