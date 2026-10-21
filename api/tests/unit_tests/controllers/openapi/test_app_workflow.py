@@ -241,9 +241,8 @@ def test_set_env_without_a_draft_is_not_found(
 
     body = EnvVariableSetPayload(name="KEY", value_type="string", value="v")
     api = AppEnvItemApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="PUT"):
-        with pytest.raises(DraftNotFound):
-            cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "e-1", body=body)
+    with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="PUT"), pytest.raises(DraftNotFound):
+        cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "e-1", body=body)
 
     assert sqlite_session.scalars(select(Workflow)).all() == []
 
@@ -258,9 +257,8 @@ def test_delete_env_without_a_draft_is_not_found(
     ctx = _app_context(sqlite_session, env_id="e-1")
 
     api = AppEnvItemApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="DELETE"):
-        with pytest.raises(DraftNotFound):
-            cast(_EndpointView, api.delete).__handler__(api, ctx, "app-1", "e-1")
+    with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="DELETE"), pytest.raises(DraftNotFound):
+        cast(_EndpointView, api.delete).__handler__(api, ctx, "app-1", "e-1")
 
     assert sqlite_session.scalars(select(Workflow)).all() == []
 
@@ -375,9 +373,8 @@ def test_run_node_list_is_not_found_for_a_run_of_another_app(
     ctx = _app_context(sqlite_session, run_id=run_id)
 
     api = AppRunNodeListApi()
-    with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{run_id}/nodes"):
-        with pytest.raises(RunNotFound):
-            cast(_EndpointView, api.get).__handler__(api, ctx, "app-1", run_id)
+    with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{run_id}/nodes"), pytest.raises(RunNotFound):
+        cast(_EndpointView, api.get).__handler__(api, ctx, "app-1", run_id)
 
     assert step_reads == []
 

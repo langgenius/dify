@@ -20,9 +20,11 @@ def test_remote_file_gateway_bounds_a_get_without_content_length(
         request=httpx.Request("GET", url),
     )
 
-    with patch("services.file_grant_gateways.remote_fetcher.make_request", side_effect=[head, download]) as request:
-        with pytest.raises(FileTooLargeError):
-            FileGrantRemoteFileGateway().fetch(url)
+    with (
+        patch("services.file_grant_gateways.remote_fetcher.make_request", side_effect=[head, download]) as request,
+        pytest.raises(FileTooLargeError),
+    ):
+        FileGrantRemoteFileGateway().fetch(url)
 
     assert request.call_args_list[1].kwargs["stream_response"] is True
     assert download.is_closed
@@ -45,9 +47,11 @@ def test_remote_file_gateway_uses_the_actual_body_size_when_content_length_is_in
         request=httpx.Request("GET", url),
     )
 
-    with patch("services.file_grant_gateways.remote_fetcher.make_request", side_effect=[head, download]):
-        with pytest.raises(FileTooLargeError):
-            FileGrantRemoteFileGateway().fetch(url)
+    with (
+        patch("services.file_grant_gateways.remote_fetcher.make_request", side_effect=[head, download]),
+        pytest.raises(FileTooLargeError),
+    ):
+        FileGrantRemoteFileGateway().fetch(url)
 
     assert download.is_closed
 

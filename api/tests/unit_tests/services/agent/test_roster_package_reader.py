@@ -759,15 +759,17 @@ def test_export_rejects_unusable_or_oversized_skill_payload(
 def test_read_member_enforces_actual_output_limit(max_bytes: int) -> None:
     package = _zip({"payload.bin": b"x" * 32})
 
-    with zipfile.ZipFile(io.BytesIO(package)) as archive:
-        with pytest.raises(RosterAgentPackageTooLargeError) as exc_info:
-            RosterAgentPackageReader._read_member(
-                archive,
-                archive.getinfo("payload.bin"),
-                collect=True,
-                max_bytes=max_bytes,
-                expected_size=32,
-            )
+    with (
+        zipfile.ZipFile(io.BytesIO(package)) as archive,
+        pytest.raises(RosterAgentPackageTooLargeError) as exc_info,
+    ):
+        RosterAgentPackageReader._read_member(
+            archive,
+            archive.getinfo("payload.bin"),
+            collect=True,
+            max_bytes=max_bytes,
+            expected_size=32,
+        )
 
     assert exc_info.value.error_code == "roster_agent_package_too_large"
 
@@ -776,15 +778,17 @@ def test_read_member_enforces_actual_output_limit(max_bytes: int) -> None:
 def test_read_member_validates_actual_size_while_streaming(expected_size: int) -> None:
     package = _zip({"payload.bin": b"x" * 32})
 
-    with zipfile.ZipFile(io.BytesIO(package)) as archive:
-        with pytest.raises(InvalidRosterAgentPackageError, match="failed integrity checks"):
-            RosterAgentPackageReader._read_member(
-                archive,
-                archive.getinfo("payload.bin"),
-                collect=False,
-                max_bytes=32,
-                expected_size=expected_size,
-            )
+    with (
+        zipfile.ZipFile(io.BytesIO(package)) as archive,
+        pytest.raises(InvalidRosterAgentPackageError, match="failed integrity checks"),
+    ):
+        RosterAgentPackageReader._read_member(
+            archive,
+            archive.getinfo("payload.bin"),
+            collect=False,
+            max_bytes=32,
+            expected_size=expected_size,
+        )
 
 
 @pytest.mark.parametrize("collect", [False, True])
@@ -1029,9 +1033,11 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
     max_entries = dify_config.AGENT_PACKAGE_MAX_ENTRIES
     max_manifest_bytes = dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=4)
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
-        with zipfile.ZipFile(exported.archive) as archive:
-            assert len(archive.infolist()) == 4
+    with (
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported,
+        zipfile.ZipFile(exported.archive) as archive,
+    ):
+        assert len(archive.infolist()) == 4
 
     reads_before_limit_check = storage.read_count
     apply_config_overrides(monkeypatch, AGENT_PACKAGE_MAX_ENTRIES=3)
@@ -1154,24 +1160,26 @@ def test_export_uses_current_workspace_skill_bindings(
         storage_backend=storage,
         dependency_provider=lambda _tenant_id, _dependencies: [],
     )
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
-        with RosterAgentPackageReader().read(exported.archive) as prepared:
-            assert len(prepared.manifest.skills) == 1
-            assert prepared.manifest.skills[0].scope == "workspace"
-            assert set(prepared.manifest.skills[0].model_dump()) == {
-                "id",
-                "path",
-                "size",
-                "sha256",
-                "scope",
-                "name",
-            }
-            assert prepared.apps["app.yaml"].package.workspace_skills[0].priority == 0
-            assert prepared.manifest.skills[0].name == "legacy-published"
-            assert prepared.apps["app.yaml"].package.workspace_skills[0].display_name == "Legacy Published"
-            assert prepared.apps["app.yaml"].package.workspace_skills[0].description == "Research skill."
-            assert prepared.apps["app.yaml"].package.soul.config_skills[0].is_missing is True
-            assert prepared.manifest.skills[0].sha256 == hashlib.sha256(workspace_payload).hexdigest()
+    with (
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported,
+        RosterAgentPackageReader().read(exported.archive) as prepared,
+    ):
+        assert len(prepared.manifest.skills) == 1
+        assert prepared.manifest.skills[0].scope == "workspace"
+        assert set(prepared.manifest.skills[0].model_dump()) == {
+            "id",
+            "path",
+            "size",
+            "sha256",
+            "scope",
+            "name",
+        }
+        assert prepared.apps["app.yaml"].package.workspace_skills[0].priority == 0
+        assert prepared.manifest.skills[0].name == "legacy-published"
+        assert prepared.apps["app.yaml"].package.workspace_skills[0].display_name == "Legacy Published"
+        assert prepared.apps["app.yaml"].package.workspace_skills[0].description == "Research skill."
+        assert prepared.apps["app.yaml"].package.soul.config_skills[0].is_missing is True
+        assert prepared.manifest.skills[0].sha256 == hashlib.sha256(workspace_payload).hexdigest()
 
     draft = AgentConfigDraft(
         tenant_id="tenant-1",
@@ -1187,10 +1195,12 @@ def test_export_uses_current_workspace_skill_bindings(
     sqlite_session.add(draft)
     sqlite_session.commit()
 
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported:
-        with RosterAgentPackageReader().read(exported.archive) as prepared:
-            assert prepared.apps["app.yaml"].package.soul.prompt.system_prompt == "current draft"
-            assert prepared.manifest.skills == []
+    with (
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=None) as exported,
+        RosterAgentPackageReader().read(exported.archive) as prepared,
+    ):
+        assert prepared.apps["app.yaml"].package.soul.prompt.system_prompt == "current draft"
+        assert prepared.manifest.skills == []
 
     historical_version_id = UUID(snapshot.id)
     active_snapshot = AgentConfigSnapshot(
@@ -1215,11 +1225,13 @@ def test_export_uses_current_workspace_skill_bindings(
     )
     sqlite_session.commit()
 
-    with exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=historical_version_id) as exported:
-        with RosterAgentPackageReader().read(exported.archive) as prepared:
-            assert prepared.apps["app.yaml"].package.soul.prompt.system_prompt == ""
-            assert prepared.manifest.skills[0].name == "legacy-published"
-            assert prepared.apps["app.yaml"].package.workspace_skills[0].priority == 0
+    with (
+        exporter.export(tenant_id="tenant-1", agent_id=agent.id, version_id=historical_version_id) as exported,
+        RosterAgentPackageReader().read(exported.archive) as prepared,
+    ):
+        assert prepared.apps["app.yaml"].package.soul.prompt.system_prompt == ""
+        assert prepared.manifest.skills[0].name == "legacy-published"
+        assert prepared.apps["app.yaml"].package.workspace_skills[0].priority == 0
 
     app_model = sqlite_session.get(App, agent.app_id)
     assert app_model is not None

@@ -153,9 +153,8 @@ def test_response_construction_failure_closes_owned_stream(monkeypatch: pytest.M
 
     monkeypatch.setattr(response_module, "Response", fail_response)
     app = Flask(__name__)
-    with app.test_request_context("/audio"):
-        with pytest.raises(RuntimeError) as caught:
-            audio_binary_response(AudioOutput(data=source, mime_type=None))
+    with app.test_request_context("/audio"), pytest.raises(RuntimeError) as caught:
+        audio_binary_response(AudioOutput(data=source, mime_type=None))
     assert caught.value is error
     assert source.close_calls == 1
     assert not has_request_context()

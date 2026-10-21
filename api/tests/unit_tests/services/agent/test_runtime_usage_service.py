@@ -196,9 +196,11 @@ def test_activation_survives_restarts_and_config_changes_are_rejected() -> None:
     state = SandboxUsageService.get_state(project_id=PROJECT)
     assert state["started_at"] == START
     assert SandboxUsageService.get_state(project_id=PROJECT) == state
-    with config_overrides_context(AGENT_SANDBOX_METERING_START_AT="2026-09-21T00:00:00Z"):
-        with pytest.raises(SandboxUsageError, match="immutable"):
-            SandboxUsageService.get_state(project_id=PROJECT)
+    with (
+        config_overrides_context(AGENT_SANDBOX_METERING_START_AT="2026-09-21T00:00:00Z"),
+        pytest.raises(SandboxUsageError, match="immutable"),
+    ):
+        SandboxUsageService.get_state(project_id=PROJECT)
 
 
 def test_no_old_data_even_when_terminal_arrives_after_activation(sqlite_session_factory: sessionmaker[Session]) -> None:

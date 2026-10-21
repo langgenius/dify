@@ -46,10 +46,12 @@ def test_different_providers_with_the_same_email_contend_for_one_claim(monkeypat
     email = f"account-{uuid4().hex}@example.com"
     account_claims = RedisOAuthAccountClaimLock(client=redis_client)
 
-    with account_claims.acquire(provider="github", open_id=f"github-{uuid4().hex}", email=email):
-        with pytest.raises(OAuthIdentityLockUnavailableError):
-            with account_claims.acquire(provider="google", open_id=f"google-{uuid4().hex}", email=email):
-                raise AssertionError("same-email claim body must not run concurrently")
+    with (
+        account_claims.acquire(provider="github", open_id=f"github-{uuid4().hex}", email=email),
+        pytest.raises(OAuthIdentityLockUnavailableError),
+        account_claims.acquire(provider="google", open_id=f"google-{uuid4().hex}", email=email),
+    ):
+        raise AssertionError("same-email claim body must not run concurrently")
 
 
 @pytest.mark.usefixtures("flask_app_with_containers")
@@ -58,7 +60,9 @@ def test_final_account_claim_serializes_different_provider_identities(monkeypatc
     account_claims = RedisOAuthAccountClaimLock(client=redis_client)
     account_id = f"account-{uuid4().hex}"
 
-    with account_claims.acquire_account(account_id):
-        with pytest.raises(OAuthIdentityLockUnavailableError):
-            with account_claims.acquire_account(account_id):
-                raise AssertionError("same-account claim body must not run concurrently")
+    with (
+        account_claims.acquire_account(account_id),
+        pytest.raises(OAuthIdentityLockUnavailableError),
+        account_claims.acquire_account(account_id),
+    ):
+        raise AssertionError("same-account claim body must not run concurrently")

@@ -205,9 +205,9 @@ class TestHitTestingApi:
                 "get_and_validate_dataset",
                 side_effect=NotFound("Dataset not found"),
             ),
+            pytest.raises(NotFound, match="Dataset not found"),
         ):
-            with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, MagicMock(), account, "tenant-1", dataset_id)
+            method(api, MagicMock(), account, "tenant-1", dataset_id)
 
     def test_hit_testing_invalid_args(self, app: Flask, dataset: Dataset, dataset_id: UUID, account: Account) -> None:
         api = HitTestingApi()
@@ -235,6 +235,6 @@ class TestHitTestingApi:
                 "hit_testing_args_check",
                 side_effect=ValueError("Invalid parameters"),
             ),
+            pytest.raises(ValueError, match="Invalid parameters"),
         ):
-            with pytest.raises(ValueError, match="Invalid parameters"):
-                method(api, MagicMock(), account, "tenant-1", dataset_id)
+            method(api, MagicMock(), account, "tenant-1", dataset_id)

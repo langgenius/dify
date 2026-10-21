@@ -146,9 +146,8 @@ class TestMemberCancelInviteApiWithContainers:
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
 
-        with flask_app_with_containers.test_request_context("/"):
-            with pytest.raises(HTTPException):
-                method(api, RequestContext("request", None, current_user.id, tenant.id), str(uuid4()))
+        with flask_app_with_containers.test_request_context("/"), pytest.raises(HTTPException):
+            method(api, RequestContext("request", None, current_user.id, tenant.id), str(uuid4()))
 
     def test_cancel_cannot_operate_self(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session
@@ -166,9 +165,9 @@ class TestMemberCancelInviteApiWithContainers:
                 "remove",
                 side_effect=services.errors.workspace.CannotOperateSelfError("x"),
             ),
+            pytest.raises(BaseHTTPException) as exc_info,
         ):
-            with pytest.raises(BaseHTTPException) as exc_info:
-                method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
+            method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
         assert exc_info.value.code == 400
         assert exc_info.value.data == {
@@ -191,9 +190,9 @@ class TestMemberCancelInviteApiWithContainers:
                 "remove",
                 side_effect=services.errors.base.NoPermissionError("x"),
             ),
+            pytest.raises(BaseHTTPException) as exc_info,
         ):
-            with pytest.raises(BaseHTTPException) as exc_info:
-                method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
+            method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
         assert exc_info.value.code == 403
         assert exc_info.value.data == {"code": "forbidden", "message": exc_info.value.description, "status": 403}
@@ -214,9 +213,9 @@ class TestMemberCancelInviteApiWithContainers:
                 "remove",
                 side_effect=services.errors.workspace.MemberNotInTenantError(),
             ),
+            pytest.raises(BaseHTTPException) as exc_info,
         ):
-            with pytest.raises(BaseHTTPException) as exc_info:
-                method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
+            method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
         assert exc_info.value.code == 404
         assert exc_info.value.data == {"code": "member_not_found", "message": exc_info.value.description, "status": 404}
@@ -254,9 +253,11 @@ class TestMemberUpdateRoleApiWithContainers:
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
 
-        with flask_app_with_containers.test_request_context("/", json={"role": "normal"}):
-            with pytest.raises(HTTPException):
-                method(api, RequestContext("request", None, current_user.id, tenant.id), str(uuid4()))
+        with (
+            flask_app_with_containers.test_request_context("/", json={"role": "normal"}),
+            pytest.raises(HTTPException),
+        ):
+            method(api, RequestContext("request", None, current_user.id, tenant.id), str(uuid4()))
 
 
 class TestOwnerTransferApiWithContainers:
@@ -268,9 +269,11 @@ class TestOwnerTransferApiWithContainers:
         member = factory.create_account(db_session_with_containers, email_prefix="member")
         token = factory.create_owner_transfer_token(current_user)
 
-        with flask_app_with_containers.test_request_context("/", json={"token": token}):
-            with pytest.raises(MemberNotInTenantError):
-                method(api, RequestContext("test", None, current_user.id, tenant.id), member.id)
+        with (
+            flask_app_with_containers.test_request_context("/", json={"token": token}),
+            pytest.raises(MemberNotInTenantError),
+        ):
+            method(api, RequestContext("test", None, current_user.id, tenant.id), member.id)
 
     def test_member_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
@@ -279,9 +282,11 @@ class TestOwnerTransferApiWithContainers:
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         token = factory.create_owner_transfer_token(current_user)
 
-        with flask_app_with_containers.test_request_context("/", json={"token": token}):
-            with pytest.raises(HTTPException):
-                method(api, RequestContext("test", None, current_user.id, tenant.id), str(uuid4()))
+        with (
+            flask_app_with_containers.test_request_context("/", json={"token": token}),
+            pytest.raises(HTTPException),
+        ):
+            method(api, RequestContext("test", None, current_user.id, tenant.id), str(uuid4()))
 
     def test_transfer_success(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
