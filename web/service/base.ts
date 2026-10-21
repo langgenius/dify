@@ -449,6 +449,28 @@ export const handleStream = (
   let buffer = ''
   let bufferObj: Record<string, any>
   let isFirstMessage = true
+  let pendingStreamError:
+    | {
+        message?: string
+        code?: string
+        conversationId?: string
+        messageId?: string
+      }
+    | undefined
+  const completePendingStreamError = () => {
+    if (!pendingStreamError) return false
+
+    const error = pendingStreamError
+    pendingStreamError = undefined
+    onData('', false, {
+      conversationId: error.conversationId,
+      messageId: error.messageId ?? '',
+      errorMessage: error.message,
+      errorCode: error.code,
+    })
+    onCompleted?.(true, error.message)
+    return true
+  }
   const completeWithError = (errorMessage: string, errorCode?: string) => {
     onData('', false, {
       conversationId: bufferObj?.conversation_id,
@@ -464,7 +486,7 @@ export const handleStream = (
     reader?.read().then(
       (result: ReadableStreamReadResult<Uint8Array>) => {
         if (result.done) {
-          onCompleted?.()
+          if (!completePendingStreamError()) onCompleted?.()
           return
         }
         buffer += decoder.decode(result.value, { stream: true })
@@ -478,6 +500,7 @@ export const handleStream = (
               try {
                 bufferObj = JSON.parse(message.substring(6)) as Record<string, any> // remove data: and parse as json
               } catch {
+                if (pendingStreamError) return
                 // mute handle message cut off
                 onData('', isFirstMessage, {
                   conversationId: bufferObj?.conversation_id,
@@ -496,16 +519,34 @@ export const handleStream = (
                 onCompleted?.(true, 'Invalid response data')
                 return
               }
+              if (pendingStreamError) {
+                if (bufferObj.event === 'workflow_finished') {
+                  onWorkflowFinished?.(bufferObj as WorkflowFinishedResponse)
+                  completePendingStreamError()
+                  hasError = true
+                }
+                return
+              }
               const hasErrorStatus = typeof bufferObj.status === 'number' && bufferObj.status >= 400
               if (bufferObj.event === 'error' || hasErrorStatus || !bufferObj.event) {
+                const streamError = {
+                  conversationId: bufferObj.conversation_id,
+                  messageId: bufferObj.message_id,
+                  message: bufferObj.message,
+                  code: bufferObj.code,
+                }
+                if (bufferObj.followed_by_event === 'workflow_finished') {
+                  pendingStreamError = streamError
+                  return
+                }
                 onData('', false, {
-                  conversationId: undefined,
-                  messageId: '',
-                  errorMessage: bufferObj?.message,
-                  errorCode: bufferObj?.code,
+                  conversationId: streamError.conversationId,
+                  messageId: streamError.messageId ?? '',
+                  errorMessage: streamError.message,
+                  errorCode: streamError.code,
                 })
                 hasError = true
-                onCompleted?.(true, bufferObj?.message)
+                onCompleted?.(true, streamError.message)
                 return
               }
               if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
@@ -607,7 +648,7 @@ export const handleStream = (
         if (!hasError) read()
       },
       (e: unknown) => {
-        completeWithError(String(e), 'stream_read_error')
+        if (!completePendingStreamError()) completeWithError(String(e), 'stream_read_error')
       },
     )
   }

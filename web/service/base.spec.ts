@@ -39,6 +39,125 @@ const failedStream = (error: Error) =>
   )
 
 describe('handleStream', () => {
+  it('delivers workflow completion that follows a stream error', async () => {
+    const callbackOrder: string[] = []
+    const onData = vi.fn(() => callbackOrder.push('error'))
+    const onCompleted = vi.fn(() => callbackOrder.push('completed'))
+    const onWorkflowFinished = vi.fn(() => callbackOrder.push('workflow_finished'))
+    handleStream(
+      streamResponse([
+        'data: {"event":"error","message":"Run failed","code":"invalid_param","followed_by_event":"workflow_finished"}\n',
+        'data: {"event":"workflow_finished","data":{"status":"failed"}}\n',
+      ]),
+      onData,
+      onCompleted,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      onWorkflowFinished,
+    )
+
+    await waitFor(() => expect(onCompleted).toHaveBeenCalledExactlyOnceWith(true, 'Run failed'))
+    expect(onWorkflowFinished).toHaveBeenCalledExactlyOnceWith({
+      event: 'workflow_finished',
+      data: { status: 'failed' },
+    })
+    expect(onData).toHaveBeenCalledExactlyOnceWith('', false, {
+      conversationId: undefined,
+      messageId: '',
+      errorMessage: 'Run failed',
+      errorCode: 'invalid_param',
+    })
+    expect(callbackOrder).toEqual(['workflow_finished', 'error', 'completed'])
+  })
+
+  it('reports a deferred workflow error if the stream ends before workflow_finished', async () => {
+    const onData = vi.fn()
+    const onCompleted = vi.fn()
+    handleStream(
+      streamResponse([
+        'data: {"event":"error","message":"Run failed","code":"invalid_param","followed_by_event":"workflow_finished"}\n',
+      ]),
+      onData,
+      onCompleted,
+    )
+
+    await waitFor(() => expect(onCompleted).toHaveBeenCalledExactlyOnceWith(true, 'Run failed'))
+    expect(onData).toHaveBeenCalledExactlyOnceWith('', false, {
+      conversationId: undefined,
+      messageId: '',
+      errorMessage: 'Run failed',
+      errorCode: 'invalid_param',
+    })
+  })
+
+  it('keeps a deferred workflow error through malformed and non-terminal frames', async () => {
+    const onData = vi.fn()
+    const onCompleted = vi.fn()
+    const onWorkflowFinished = vi.fn()
+    handleStream(
+      streamResponse([
+        'data: {"event":"error","message":"Run failed","followed_by_event":"workflow_finished"}\n',
+        'data: not-json\n',
+        'data: {"event":"ping"}\n',
+        'data: {"event":"workflow_finished","data":{"status":"failed"}}\n',
+      ]),
+      onData,
+      onCompleted,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      onWorkflowFinished,
+    )
+
+    await waitFor(() => expect(onCompleted).toHaveBeenCalledExactlyOnceWith(true, 'Run failed'))
+    expect(onWorkflowFinished).toHaveBeenCalledExactlyOnceWith({
+      event: 'workflow_finished',
+      data: { status: 'failed' },
+    })
+    expect(onData).toHaveBeenCalledExactlyOnceWith('', false, {
+      conversationId: undefined,
+      messageId: '',
+      errorMessage: 'Run failed',
+      errorCode: undefined,
+    })
+  })
+
+  it('preserves a deferred workflow error if the stream reader fails', async () => {
+    const onData = vi.fn()
+    const onCompleted = vi.fn()
+    let emittedWorkflowError = false
+    const response = new Response(
+      new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (emittedWorkflowError) {
+            controller.error(new Error('connection lost'))
+            return
+          }
+          emittedWorkflowError = true
+          controller.enqueue(
+            new TextEncoder().encode(
+              'data: {"event":"error","message":"Run failed","followed_by_event":"workflow_finished"}\n',
+            ),
+          )
+        },
+      }),
+    )
+    handleStream(response, onData, onCompleted)
+
+    await waitFor(() => expect(onCompleted).toHaveBeenCalledExactlyOnceWith(true, 'Run failed'))
+    expect(onData).toHaveBeenCalledExactlyOnceWith('', false, {
+      conversationId: undefined,
+      messageId: '',
+      errorMessage: 'Run failed',
+      errorCode: undefined,
+    })
+  })
+
   it.each([null, 'string', 42])('reports invalid event payload %s once', async (payload) => {
     const onData = vi.fn()
     const onCompleted = vi.fn()

@@ -49,6 +49,7 @@ from core.app.entities.task_entities import (
     MessageEndStreamResponse,
     PingStreamResponse,
     ReasoningChunkStreamResponse,
+    StreamEvent,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.nodes.human_input.entities import UserActionConfig
@@ -489,7 +490,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._save_message = lambda **kwargs: None
         pipeline._base_task_pipeline.queue_manager.publish = lambda *args, **kwargs: None
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
-        pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
+        pipeline._base_task_pipeline.error_to_stream_response = lambda err, **kwargs: (err, kwargs)
         pipeline._get_message = lambda **kwargs: Message(id="message-id")
 
         succeeded_responses = list(pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent(outputs={})))
@@ -505,10 +506,14 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert len(partial_success_responses) == 2
         assert isinstance(partial_success_responses[0], MessageEndStreamResponse)
         assert partial_success_responses[1] == "finish"
-        assert (
-            list(pipeline._handle_workflow_failed_event(QueueWorkflowFailedEvent(error="err", exceptions_count=1)))[0]
-            == "finish"
+        failed_responses = list(
+            pipeline._handle_workflow_failed_event(QueueWorkflowFailedEvent(error="err", exceptions_count=1))
         )
+        error_response, error_kwargs = failed_responses[0]
+        assert isinstance(error_response, ValueError)
+        assert str(error_response) == "boom"
+        assert error_kwargs == {"followed_by_event": StreamEvent.WORKFLOW_FINISHED}
+        assert failed_responses[1] == "finish"
         assert list(pipeline._handle_workflow_paused_event(QueueWorkflowPausedEvent(reasons=[], outputs={}))) == [
             "pause"
         ]
