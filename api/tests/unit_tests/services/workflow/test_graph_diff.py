@@ -72,7 +72,7 @@ def _workflow(version: str) -> Workflow:
         type=WorkflowType.WORKFLOW,
         version=version,
         graph='{"nodes": [], "edges": []}',
-        features="{}",
+        _features="{}",
         created_by="account-1",
     )
 

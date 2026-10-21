@@ -15,7 +15,7 @@ from fields.workflow_run_fields import node_execution_response_source
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionStatus, WorkflowNodeExecutionTriggeredFrom
 
 
 def _execution(role: CreatorUserRole, created_by: str) -> WorkflowNodeExecutionModel:
@@ -35,7 +35,7 @@ def _execution(role: CreatorUserRole, created_by: str) -> WorkflowNodeExecutionM
         inputs=None,
         process_data=None,
         outputs=None,
-        status="succeeded",
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
         error=None,
         elapsed_time=0.0,
         execution_metadata=None,

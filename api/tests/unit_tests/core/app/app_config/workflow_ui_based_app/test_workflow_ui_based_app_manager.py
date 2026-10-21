@@ -199,7 +199,7 @@ class TestWorkflowVariablesConfigManagerConvertRag:
 
     def test_rag_pipeline_none(self, mock_workflow: Workflow) -> None:
         # Arrange
-        mock_workflow._rag_pipeline_variables = None  # pyrefly: ignore[bad-argument-type]
+        mock_workflow._rag_pipeline_variables = None
 
         # Act
         result = WorkflowVariablesConfigManager.convert_rag_pipeline_variable(mock_workflow, "node1")

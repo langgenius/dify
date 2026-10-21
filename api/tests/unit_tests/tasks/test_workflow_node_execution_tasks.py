@@ -91,7 +91,7 @@ def _stored_execution(
     app_id: str = APP_ID,
     process_data: dict[str, object] | None = None,
 ) -> WorkflowNodeExecutionModel:
-    return WorkflowNodeExecutionModel(
+    run = WorkflowNodeExecutionModel(
         id=execution_id,
         tenant_id=tenant_id,
         app_id=app_id,
@@ -112,11 +112,12 @@ def _stored_execution(
         error=None,
         elapsed_time=0,
         execution_metadata="{}",
-        created_at=datetime(2026, 8, 12, 1),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=ACCOUNT_ID,
         finished_at=None,
     )
+    run.created_at = datetime(2026, 8, 12, 1)
+    return run
 
 
 def test_create_helper_builds_real_mapped_model_with_serialized_runtime_values() -> None:

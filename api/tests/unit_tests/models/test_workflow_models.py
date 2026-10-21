@@ -522,7 +522,7 @@ class TestNodeExecutionRelationships:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
             workflow_run_id=None,  # Single-step has no workflow run
             index=1,
             node_id="llm_test",

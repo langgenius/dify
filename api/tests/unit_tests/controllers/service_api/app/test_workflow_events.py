@@ -48,7 +48,7 @@ def _end_user() -> EndUser:
 
 
 def _workflow_run(*, created_by_role: CreatorUserRole = CreatorUserRole.END_USER) -> WorkflowRun:
-    return WorkflowRun(
+    run = WorkflowRun(
         id="run-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -66,8 +66,9 @@ def _workflow_run(*, created_by_role: CreatorUserRole = CreatorUserRole.END_USER
         total_steps=0,
         created_by_role=created_by_role,
         created_by="end-user-1" if created_by_role == CreatorUserRole.END_USER else "account-1",
-        created_at=datetime(2026, 1, 1, tzinfo=UTC),
     )
+    run.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+    return run
 
 
 def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_engine: Engine):

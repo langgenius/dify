@@ -113,10 +113,10 @@ def _workflow(*, workflow_id: str = "workflow-1") -> Workflow:
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph={"nodes": [], "edges": []},
-        features={},
+        _features={},
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
 
 
