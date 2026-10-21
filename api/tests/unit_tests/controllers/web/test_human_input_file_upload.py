@@ -157,14 +157,16 @@ def test_non_http_whitespace_cannot_bypass_gateway_upload_identity(
 ) -> None:
     service = MagicMock()
     _patch_upload_service(monkeypatch, service)
-    with app.test_request_context(
-        "/api/human-input-forms/files",
-        method="POST",
-        headers={"Authorization": f"Bearer{separator}hitl_upload_token-1"},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/api/human-input-forms/files",
+            method="POST",
+            headers={"Authorization": f"Bearer{separator}hitl_upload_token-1"},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(InvalidUploadTokenUnauthorizedError),
     ):
-        with pytest.raises(InvalidUploadTokenUnauthorizedError):
-            HumanInputFileUploadApi().post()
+        HumanInputFileUploadApi().post()
     service.validate_upload_token.assert_not_called()
     service.upload_local_file.assert_not_called()
     service.upload_remote_file.assert_not_called()
