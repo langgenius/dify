@@ -19,6 +19,7 @@ from models import EndUser
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_task_service import AppTaskService
 from tests.unit_tests.services.test_app_task_service import _StopRedis
@@ -88,18 +89,18 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.PAUSED,
         created_by_role=CreatorUserRole.END_USER,
         created_by="user-1",
-        created_at=datetime(2026, 10, 10),
         elapsed_time=1,
         total_tokens=0,
         total_steps=2,
         exceptions_count=0,
     )
+    run.created_at = datetime(2026, 10, 10)
     run.task_id = "11111111-1111-1111-1111-111111111111"
     pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
     sqlite_session.add_all([run, pause])
@@ -220,7 +221,7 @@ def test_stop_after_resume_claim_uses_durable_owner_before_queue_is_recreated(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.PAUSED,
@@ -274,7 +275,7 @@ def test_running_task_admission_rejects_foreign_tenant_app_user_and_role(
         app_id="app-1",
         workflow_id="workflow-1",
         task_id=task_id,
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.RUNNING,

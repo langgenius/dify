@@ -16,6 +16,7 @@ from core.workflow.system_variables import default_system_variables
 from graphon.runtime import RuntimeState, VariablePool
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
+from models.workflow import WorkflowType as ModelWorkflowType
 
 
 def _make_graph_state():
@@ -71,7 +72,7 @@ def test_run_uses_single_node_execution_branch(
         tenant_id="tenant",
         app_id="app",
         id="workflow",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="v1",
         graph=json.dumps({"nodes": [], "edges": []}),
     )
@@ -221,7 +222,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
         tenant_id="tenant",
         app_id="app",
         id="workflow",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="v1",
         graph=json.dumps({"nodes": [], "edges": []}),
         kind=WorkflowKind.SNIPPET,

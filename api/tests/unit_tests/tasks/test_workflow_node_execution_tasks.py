@@ -18,6 +18,7 @@ from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus, WorkflowNod
 from models import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from tasks.workflow_node_execution_tasks import (
     _create_node_execution_from_domain,
     _update_node_execution_from_domain,
@@ -362,7 +363,7 @@ def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_afte
                 tenant_id=TENANT_ID,
                 app_id=APP_ID,
                 workflow_id=WORKFLOW_ID,
-                type=WorkflowType.WORKFLOW,
+                type=ModelWorkflowType(WorkflowType.WORKFLOW),
                 triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
                 version="1",
                 status=WorkflowExecutionStatus.STOPPED,
@@ -430,7 +431,7 @@ def test_delayed_write_preserves_node_cleanup_before_workflow_summary_finishes(
                 tenant_id=TENANT_ID,
                 app_id=APP_ID,
                 workflow_id=WORKFLOW_ID,
-                type=WorkflowType.WORKFLOW,
+                type=ModelWorkflowType(WorkflowType.WORKFLOW),
                 triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
                 version="1",
                 status=WorkflowExecutionStatus.RUNNING,

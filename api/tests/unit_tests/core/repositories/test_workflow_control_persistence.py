@@ -17,11 +17,12 @@ from extensions.logstore.repositories.logstore_workflow_node_execution_repositor
     LogstoreWorkflowNodeExecutionRepository,
 )
 from graphon.entities import WorkflowNodeExecution
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models import Account, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.entities.workflow_execution import WorkflowExecution
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.workflow_run_control import apply_workflow_stop_to_node
@@ -67,7 +68,7 @@ def test_task_owner_is_durable_before_start_and_delayed_writes_cannot_revive_sto
     execution = WorkflowExecution(
         id_="run-1",
         workflow_id="workflow-1",
-        workflow_type=WorkflowType.WORKFLOW,
+        workflow_type=ModelWorkflowType.WORKFLOW,
         workflow_version="1",
         graph={"nodes": [], "edges": []},
         inputs={},
@@ -132,7 +133,7 @@ def test_logstore_pause_lifecycle_uses_sql_control_with_dual_write_disabled(
         WorkflowExecution(
             id_="run-1",
             workflow_id="workflow-1",
-            workflow_type=WorkflowType.WORKFLOW,
+            workflow_type=ModelWorkflowType.WORKFLOW,
             workflow_version="1",
             graph={},
             inputs={},
@@ -173,7 +174,7 @@ def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
         accumulated_elapsed_time=3.5,
         id_="run-1",
         workflow_id="workflow-1",
-        workflow_type=WorkflowType.WORKFLOW,
+        workflow_type=ModelWorkflowType.WORKFLOW,
         workflow_version="1",
         graph={},
         inputs={},
@@ -304,7 +305,7 @@ def test_stop_preserves_completed_node_history(status: WorkflowNodeExecutionStat
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType.WORKFLOW,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.STOPPED,

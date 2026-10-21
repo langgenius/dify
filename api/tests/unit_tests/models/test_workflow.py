@@ -28,6 +28,7 @@ from models.workflow import (
     WorkflowVersionCounter,
     is_system_variable_editable,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 
 
 def test_workflow_models_use_typebase_registry_and_generated_defaults() -> None:
@@ -78,7 +79,7 @@ def test_environment_variables():
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
         _features="{}",
@@ -109,7 +110,7 @@ def test_llm_environment_variable_round_trip():
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
         _features="{}",
@@ -138,7 +139,7 @@ def test_update_environment_variables():
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
         _features="{}",
@@ -191,7 +192,7 @@ def test_to_dict():
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
         _features="{}",
@@ -232,7 +233,7 @@ def test_workflow_account_accessors_use_caller_session(sqlite_session: Session):
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
         _features="{}",
@@ -253,7 +254,7 @@ def test_workflow_tool_published_accessor_uses_caller_session(sqlite_session: Se
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
         _features="{}",

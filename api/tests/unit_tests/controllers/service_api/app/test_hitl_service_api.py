@@ -47,6 +47,7 @@ from models.enums import CreatorUserRole, EndUserType, MessageStatus
 from models.human_input import HumanInputForm
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun, WorkflowType
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
@@ -267,7 +268,7 @@ def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         triggered_from="app-run",
         version="v1",
         graph=None,

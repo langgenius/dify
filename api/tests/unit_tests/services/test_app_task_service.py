@@ -21,6 +21,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowPause, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.app_task_service import AppTaskControlService, AppTaskService
 
 _TASK_ID = "task-with-non-uuid-id"
@@ -219,7 +220,7 @@ def app_task_workflow_run(sqlite_session: Session, monkeypatch: pytest.MonkeyPat
         app_id="app-1",
         workflow_id="workflow-1",
         task_id="11111111-1111-1111-1111-111111111111",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="1",
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         status=WorkflowExecutionStatus.RUNNING,
@@ -515,7 +516,7 @@ def test_live_chatflow_stop_sends_signals_for_its_owner(
         app_id="app-1",
         workflow_id="workflow-1",
         task_id=task_id,
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="1",
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         status=WorkflowExecutionStatus.RUNNING,

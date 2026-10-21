@@ -13,6 +13,7 @@ from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Pipeline
 from models.workflow import Workflow
+from models.workflow import WorkflowType as ModelWorkflowType
 from tasks.rag_pipeline.priority_rag_pipeline_run_task import (
     priority_rag_pipeline_run_task,
     run_single_rag_pipeline_task,
@@ -97,7 +98,7 @@ class TestRagPipelineRunTasks:
             id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             app_id=str(uuid.uuid4()),
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
             _features="{}",

@@ -30,6 +30,7 @@ from models.agent import (
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
@@ -696,7 +697,7 @@ def test_retire_workflow_tool_workspace_follows_persisted_run_owner(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         version="1",
         graph="{}",
@@ -807,7 +808,7 @@ def test_deleting_paused_root_app_retires_and_deletes_nested_participants(
                 tenant_id="tenant-1",
                 app_id="app-1",
                 workflow_id="workflow-1",
-                type=WorkflowType.WORKFLOW,
+                type=ModelWorkflowType(WorkflowType.WORKFLOW),
                 triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
                 version="1",
                 graph="{}",

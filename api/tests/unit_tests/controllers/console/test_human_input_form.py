@@ -33,6 +33,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.enterprise.rbac_service import RBACService
 from services.entities.app_entities import AppAgentBinding
 from tests.unit_tests.config_override import apply_config_overrides
@@ -71,7 +72,7 @@ def _workflow_run(
         tenant_id="t1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         version="draft",
         graph="{}",

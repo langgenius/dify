@@ -14,6 +14,7 @@ from models.model import (
     Message,
 )
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_service import AppService, CreateAppParams
@@ -144,7 +145,7 @@ class TestWorkflowRunService:
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=str(uuid.uuid4()),
-            type="chat",
+            type=ModelWorkflowType("chat"),
             triggered_from=triggered_from,
             version="1.0.0",
             graph=json.dumps({"nodes": [], "edges": []}),

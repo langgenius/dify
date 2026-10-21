@@ -13,6 +13,7 @@ from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.trigger.webhook_service import WebhookService
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -100,7 +101,7 @@ def test_data(
     workflow = Workflow(
         tenant_id=tenant.id,
         app_id=app.id,
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         graph=json.dumps(workflow_data),
         _features=json.dumps({}),
         created_by=account.id,

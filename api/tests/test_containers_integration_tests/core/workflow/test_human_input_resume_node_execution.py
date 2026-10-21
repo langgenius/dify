@@ -34,6 +34,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -202,7 +203,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
         workflow = Workflow(
             tenant_id=tenant.id,
             app_id=app.id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph='{"nodes": [], "edges": []}',
             _features='{"file_upload": {"enabled": false}}',

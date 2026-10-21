@@ -36,6 +36,7 @@ from models import WorkflowPause as WorkflowPauseModel
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     _WorkflowRunError,
@@ -216,7 +217,7 @@ class TestWorkflowPauseIntegration:
             id=self.test_workflow_id,
             tenant_id=self.test_tenant_id,
             app_id=self.test_app_id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph='{"nodes": [], "edges": []}',
             _features='{"file_upload": {"enabled": false}}',
@@ -271,7 +272,7 @@ class TestWorkflowPauseIntegration:
             tenant_id=self.test_tenant_id,
             app_id=self.test_app_id,
             workflow_id=self.test_workflow_id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             triggered_from="debugging",
             version="draft",
             status=status,
@@ -724,7 +725,7 @@ class TestWorkflowPauseIntegration:
             id=str(uuid.uuid4()),
             tenant_id=tenant2.id,
             app_id=str(uuid.uuid4()),
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph='{"nodes": [], "edges": []}',
             _features='{"file_upload": {"enabled": false}}',
@@ -741,7 +742,7 @@ class TestWorkflowPauseIntegration:
             tenant_id=tenant2.id,
             app_id=workflow2.app_id,
             workflow_id=workflow2.id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             triggered_from="debugging",
             version="draft",
             status=WorkflowExecutionStatus.RUNNING,

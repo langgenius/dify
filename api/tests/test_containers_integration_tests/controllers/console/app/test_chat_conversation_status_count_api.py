@@ -16,6 +16,7 @@ from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from tests.test_containers_integration_tests.controllers.console.helpers import ensure_dify_setup
 
 
@@ -86,7 +87,7 @@ def _create_workflow_run(db_session: Session, app_id: str, tenant_id: str, accou
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=str(uuid.uuid4()),
-        type="chat",
+        type=ModelWorkflowType("chat"),
         triggered_from="app-run",
         version="1.0.0",
         graph=json.dumps({"nodes": [], "edges": []}),
