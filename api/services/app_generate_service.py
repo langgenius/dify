@@ -24,7 +24,7 @@ from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.account import Tenant
 from models.model import Account, App, AppMode, EndUser
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -33,6 +33,7 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
+from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
@@ -146,8 +147,10 @@ class AppGenerateService:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             try:
                 quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, app_model.tenant_id)
-            except QuotaExceededError:
-                raise InvokeRateLimitError(f"Workflow execution quota limit reached for tenant {app_model.tenant_id}")
+            except QuotaExceededError as caught_error:
+                raise InvokeRateLimitError(
+                    f"Workflow execution quota limit reached for tenant {app_model.tenant_id}"
+                ) from caught_error
 
         workspace_rate_limit = RateLimit(
             f"workspace:{app_model.tenant_id}", cls._get_workspace_max_active_requests(app_model, session=session)
@@ -205,7 +208,7 @@ class AppGenerateService:
             case AppMode.AGENT_CHAT:
                 return rate_limit_lease.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
-                        AgentChatAppGenerator().generate(
+                        AgentChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                             session=session,
                             app_model=app_model,
                             user=user,
@@ -263,10 +266,9 @@ class AppGenerateService:
                         workflow_based_app_execution_task.delay(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
-                    generator = AdvancedChatAppGenerator()
                     return rate_limit_lease.generate(
-                        generator.convert_to_event_stream(
-                            generator.retrieve_events(
+                        AdvancedChatAppGenerator.convert_to_event_stream(
+                            AdvancedChatAppGenerator.retrieve_events(
                                 AppMode.ADVANCED_CHAT,
                                 payload.workflow_run_id,
                                 on_subscribe=on_subscribe,
@@ -280,7 +282,7 @@ class AppGenerateService:
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )
-                advanced_generator = AdvancedChatAppGenerator()
+                advanced_generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
                 return rate_limit_lease.generate(
                     advanced_generator.convert_to_event_stream(
                         advanced_generator.generate(
@@ -334,7 +336,7 @@ class AppGenerateService:
                 )
                 return rate_limit_lease.generate(
                     WorkflowAppGenerator.convert_to_event_stream(
-                        WorkflowAppGenerator().generate(
+                        WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
@@ -401,7 +403,7 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    AdvancedChatAppGenerator().single_iteration_generate(
+                    AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -414,7 +416,7 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    WorkflowAppGenerator().single_iteration_generate(
+                    WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -446,7 +448,7 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    AdvancedChatAppGenerator().single_loop_generate(
+                    AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -459,7 +461,7 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    WorkflowAppGenerator().single_loop_generate(
+                    WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -525,8 +527,8 @@ class AppGenerateService:
         if workflow_id:
             try:
                 _ = uuid.UUID(workflow_id)
-            except ValueError:
-                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
+            except ValueError as caught_error:
+                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ") from caught_error
             workflow = workflow_service.get_published_workflow_by_id(
                 app_model=app_model, workflow_id=workflow_id, session=session
             )
@@ -548,19 +550,3 @@ class AppGenerateService:
                 raise ValueError("Workflow not published")
 
         return workflow
-
-    @classmethod
-    def get_response_generator(
-        cls,
-        app_model: App,
-        workflow_run: WorkflowRun,
-    ):
-        if workflow_run.status.is_ended():
-            # TODO(QuantumGhost): handled the ended scenario.
-            pass
-
-        generator = AdvancedChatAppGenerator()
-
-        return generator.convert_to_event_stream(
-            generator.retrieve_events(AppMode(app_model.mode), workflow_run.id),
-        )

@@ -647,7 +647,7 @@ describe('useEmbeddedChatbot', () => {
 
       expect(updateFeedback).toHaveBeenCalledExactlyOnceWith(
         {
-          url: '/messages/msg-123/feedbacks',
+          messageId: 'msg-123',
           body: { rating: 'like', content: undefined },
         },
         AppSourceType.webApp,

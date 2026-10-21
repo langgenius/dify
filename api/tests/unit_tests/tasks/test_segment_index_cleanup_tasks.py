@@ -190,7 +190,7 @@ def test_delete_segment_removes_attachment_blobs_from_storage(
     binding_id = binding.id
 
     with (
-        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory"),
         patch("tasks.delete_segment_from_index_task.storage.delete") as storage_delete,
     ):
         delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
@@ -305,7 +305,7 @@ def test_delete_segment_keeps_database_cleanup_when_attachment_storage_delete_fa
     binding_id = binding.id
 
     with (
-        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory"),
         patch(
             "tasks.delete_segment_from_index_task.storage.delete",
             side_effect=RuntimeError("storage unavailable"),

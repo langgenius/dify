@@ -9,7 +9,7 @@ import {
   zConversationDetail,
   zConversationMessageDetail,
 } from '@dify/contracts/api/console/apps/zod.gen'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
@@ -20,6 +20,7 @@ import {
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import ConversationList from '../list'
@@ -51,6 +52,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.chatMessages.get': (input) => api.messages(input),
       'apps.byAppId.chatConversations.byConversationId.get': (input) => api.chatDetail(input),
       'apps.byAppId.completionConversations.byConversationId.get': (input) =>
         api.completionDetail(input),
@@ -431,6 +433,40 @@ it('adds, edits and removes an annotation from a conversation answer', async () 
   })
 })
 
+it('removes the annotation of the displayed answer when the conversation has regenerated answers', async () => {
+  const user = userEvent.setup()
+  api.messages.mockResolvedValue({
+    data: [
+      createChatMessage('message-1'),
+      createChatMessage('message-2', { parent_message_id: 'message-1' }),
+      createChatMessage('message-3', {
+        parent_message_id: 'message-1',
+        annotation: {
+          id: 'annotation-3',
+          content: 'Annotated answer',
+          account: { id: 'account-1', email: 'admin@example.com', name: 'Admin' },
+          created_at: 1710000100,
+        },
+      }),
+    ],
+    has_more: false,
+    limit: 10,
+  })
+  renderConversationList({ searchParams: '?conversation_id=conversation-1' })
+  await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+  const editor = await screen.findByRole('dialog', { name: 'appAnnotation.editModal.title' })
+  await user.click(
+    within(editor).getByRole('button', { name: 'appAnnotation.editModal.removeThisCache' }),
+  )
+  const confirm = await screen.findByRole('alertdialog')
+  await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() =>
+    expect(api.removeAnnotation).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', annotation_id: 'annotation-3' },
+    }),
+  )
+})
+
 it('loads older messages at the top using the oldest answer as the pagination cursor', async () => {
   api.messages
     .mockResolvedValueOnce({
@@ -614,4 +650,81 @@ it('shows each chatflow status and its conversation feedback counts', () => {
     expect(row.getByText('2')).toBeVisible()
     expect(row.getByText('3')).toBeVisible()
   }
+})
+
+it('keeps the table and close action available while conversation requests resolve independently', async () => {
+  const user = userEvent.setup()
+  const detail = createDeferred<ConversationDetail>()
+  const messages =
+    createDeferred<Awaited<ReturnType<typeof consoleClient.apps.byAppId.chatMessages.get>>>()
+  api.chatDetail.mockReturnValue(detail.promise)
+  api.messages.mockReturnValue(messages.promise)
+  renderConversationList()
+  await user.click(screen.getByText('hello world'))
+  const dialog = await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' })
+  expect(within(dialog).getByRole('button', { name: 'common.operation.close' })).toBeVisible()
+  expect(screen.getByText('hello world')).toBeVisible()
+  expect(api.messages).toHaveBeenCalled()
+  await act(async () => {
+    detail.resolve(createChatDetail())
+  })
+  expect(screen.getByText('hello world')).toBeVisible()
+  expect(within(dialog).queryByText('Assistant reply message-1')).not.toBeInTheDocument()
+  await act(async () => {
+    messages.resolve({ data: [createChatMessage('message-1')], has_more: false, limit: 10 })
+  })
+  expect(await within(dialog).findByText('Assistant reply message-1')).toBeVisible()
+  expect(screen.getByText('hello world')).toBeVisible()
+})
+
+it('opens a deep-linked conversation while the list is still pending', async () => {
+  const { wrapper: UrlState } = createNuqsTestWrapper({
+    searchParams: '?conversation_id=conversation-1',
+  })
+  renderWithConsoleQuery(
+    <UrlState>
+      <ConversationList
+        appDetail={createAppDetailFixture({ id: 'app-1', mode: 'chat' })}
+        onRefresh={onRefresh}
+      />
+    </UrlState>,
+    { queryClient: createClient() },
+  )
+  expect(screen.getByText('appLog.table.header.summary')).toBeVisible()
+  expect(await screen.findByText('Assistant reply message-1')).toBeVisible()
+})
+
+it('keeps desktop details open while interacting outside and switching to another row', async () => {
+  const user = userEvent.setup()
+  const { wrapper: UrlState } = createNuqsTestWrapper({ searchParams: '' })
+  const logs = createLogs()
+  logs.data.push({ ...logs.data[0]!, id: 'conversation-2', name: 'another conversation' })
+  logs.total = 2
+  api.messages.mockImplementation(async ({ query }) => ({
+    data: [
+      createChatMessage(query.conversation_id === 'conversation-2' ? 'message-2' : 'message-1'),
+    ],
+    has_more: false,
+    limit: 10,
+  }))
+  renderWithConsoleQuery(
+    <UrlState>
+      <button type="button">Background action</button>
+      <ConversationList
+        appDetail={createAppDetailFixture({ id: 'app-1', mode: 'chat' })}
+        logs={logs}
+        onRefresh={onRefresh}
+      />
+    </UrlState>,
+    { queryClient: createClient() },
+  )
+  await user.click(screen.getByText('hello world'))
+  expect(await screen.findByText('Assistant reply message-1')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Background action' }))
+  expect(screen.getByRole('dialog')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Background action' })).toHaveFocus()
+  await user.click(screen.getByText('another conversation'))
+  expect(await screen.findByText('Assistant reply message-2')).toBeVisible()
+  expect(screen.queryByText('Assistant reply message-1')).not.toBeInTheDocument()
+  expect(onRefresh).not.toHaveBeenCalled()
 })

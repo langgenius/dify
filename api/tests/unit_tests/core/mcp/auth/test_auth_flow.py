@@ -140,7 +140,7 @@ class TestRedisStateManagement:
         """Test retrieving non-existent state from Redis."""
         mock_redis.get.return_value = None
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="State parameter has expired or does not exist") as exc_info:
             _retrieve_redis_state("nonexistent-key")
 
         assert "State parameter has expired or does not exist" in str(exc_info.value)
@@ -150,7 +150,9 @@ class TestRedisStateManagement:
         """Test retrieving invalid JSON state from Redis."""
         mock_redis.get.return_value = '{"invalid": json}'
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="Invalid state parameter: 1 validation error for OAuthCallbackState"
+        ) as exc_info:
             _retrieve_redis_state("test-key")
 
         assert "Invalid state parameter" in str(exc_info.value)
@@ -342,7 +344,9 @@ class TestAuthorizationFlow:
         )
         client_info = OAuthClientInformation(client_id="test-client-id")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="Incompatible auth server: does not support response type code"
+        ) as exc_info:
             start_authorization(
                 "https://api.example.com",
                 metadata,
@@ -412,7 +416,7 @@ class TestAuthorizationFlow:
 
         client_info = OAuthClientInformation(client_id="test-client-id")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Token exchange failed: HTTP 400") as exc_info:
             exchange_authorization(
                 "https://api.example.com",
                 None,
@@ -525,7 +529,9 @@ class TestAuthorizationFlow:
         )
         client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://redirect.example.com"])
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match=('Client registration failed: HTTP 400, Response: \\{"error":"invalid_redirect_uri"\\}')
+        ) as exc_info:
             register_client("https://api.example.com", metadata, client_metadata)
 
         message = str(exc_info.value)
@@ -542,7 +548,9 @@ class TestAuthorizationFlow:
         )
         client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://redirect.example.com"])
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="Incompatible auth server: does not support dynamic client registration"
+        ) as exc_info:
             register_client("https://api.example.com", metadata, client_metadata)
 
         assert "does not support dynamic client registration" in str(exc_info.value)
@@ -709,7 +717,9 @@ class TestAuthOrchestration:
 
         provider.credentials["client_information"] = {"client_id": "existing-client"}
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="State parameter is required when exchanging authorization code"
+        ) as exc_info:
             auth(provider, authorization_code="auth-code")
 
         assert "State parameter is required" in str(exc_info.value)
@@ -780,7 +790,9 @@ class TestAuthOrchestration:
 
         provider.credentials.pop("client_information", None)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match=("Existing OAuth client information is required when exchanging an authorization code")
+        ) as exc_info:
             auth(provider, authorization_code="auth-code")
 
         assert "Existing OAuth client information is required" in str(exc_info.value)

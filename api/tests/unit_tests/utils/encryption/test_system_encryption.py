@@ -113,10 +113,12 @@ class TestSystemEncrypter:
         """Test encryption with invalid input types"""
         encrypter = SystemEncrypter("test_secret")
 
-        with pytest.raises(Exception):  # noqa: B017
+        with pytest.raises(Exception, match="Encryption failed: 'NoneType' object is not iterable"):
             encrypter.encrypt_params(None)
 
-        with pytest.raises(Exception):  # noqa: B017
+        with pytest.raises(
+            Exception, match=("Encryption failed: dictionary update sequence element \\#0 has length 1; 2 is required")
+        ):
             encrypter.encrypt_params("not_a_dict")
 
     def test_decrypt_params_basic(self):
@@ -195,7 +197,7 @@ class TestSystemEncrypter:
         """Test decryption with empty string"""
         encrypter = SystemEncrypter("test_secret")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data cannot be empty") as exc_info:
             encrypter.decrypt_params("")
 
         assert "encrypted_data cannot be empty" in str(exc_info.value)
@@ -204,12 +206,12 @@ class TestSystemEncrypter:
         """Test decryption with non-string input"""
         encrypter = SystemEncrypter("test_secret")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data must be a string") as exc_info:
             encrypter.decrypt_params(123)
 
         assert "encrypted_data must be a string" in str(exc_info.value)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data must be a string") as exc_info:
             encrypter.decrypt_params(None)
 
         assert "encrypted_data must be a string" in str(exc_info.value)
@@ -455,14 +457,14 @@ class TestConvenienceFunctions:
     def test_convenience_functions_with_errors(self):
         """Test convenience functions with error conditions"""
         # Test encryption with invalid input
-        with pytest.raises(Exception):  # noqa: B017
+        with pytest.raises(Exception, match="Encryption failed: 'NoneType' object is not iterable"):
             encrypt_system_params(None)
 
         # Test decryption with invalid input
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="encrypted_data cannot be empty"):
             decrypt_system_params("")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="encrypted_data must be a string"):
             decrypt_system_params(None)
 
 
@@ -490,12 +492,12 @@ class TestErrorHandling:
         encrypter = SystemEncrypter("test_secret")
 
         # Test empty string error
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data cannot be empty") as exc_info:
             encrypter.decrypt_params("")
         assert "encrypted_data cannot be empty" in str(exc_info.value)
 
         # Test non-string error
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data must be a string") as exc_info:
             encrypter.decrypt_params(123)
         assert "encrypted_data must be a string" in str(exc_info.value)
 

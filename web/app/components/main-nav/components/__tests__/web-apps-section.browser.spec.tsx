@@ -18,24 +18,17 @@ vi.mock('@/context/permission-state', async () => {
   const { atom } = await import('jotai')
   return { workspacePermissionKeysAtom: atom(['app_library.access']) }
 })
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    installedApps: {
-      get: {
-        infiniteOptions: (options: {
-          input: (cursor?: string) => { query: { name?: string } }
-        }) => ({
-          ...options,
-          queryKey: ['installed-apps', options.input().query.name ?? ''],
-          queryFn: () => service.list(),
-        }),
-      },
-      byInstalledAppId: {
-        patch: { mutationOptions: () => ({ mutationFn: service.pin }) },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'installedApps.get': () => service.list(),
+      'installedApps.byInstalledAppId.patch': () => service.pin(),
+    }),
+  }
+})
 
 function createApp(index: number): InstalledAppResponse {
   return {

@@ -152,13 +152,13 @@ class TestValidateUrlWithPath:
 
     def test_restricted_scheme_rejects_http(self):
         """Test https-only validation rejects http and names only https in the error"""
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match="URL must start with https://") as excinfo:
             validate_url_with_path("http://langsmith.internal/api", "https://default.com", allowed_schemes=("https",))
         assert str(excinfo.value) == "URL must start with https://"
 
     def test_default_schemes_keep_original_error_message(self):
         """Test the two-scheme default keeps the exact message existing providers assert on"""
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match="URL must start with https:// or http://") as excinfo:
             validate_url_with_path("ftp://example.com", "https://default.com")
         assert str(excinfo.value) == "URL must start with https:// or http://"
 

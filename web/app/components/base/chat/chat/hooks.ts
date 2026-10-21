@@ -13,7 +13,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidV4 } from 'uuid'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
+import {
+  updateFilledHumanInputForm,
+  updateHumanInputFormTimeout,
+  updatePendingHumanInputForm,
+} from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
@@ -22,6 +26,11 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import {
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -204,7 +213,7 @@ export const useChat = (
     inputsForm: InputForm[]
   },
   prevChatTree?: ChatItemInTree[],
-  stopChat?: (taskId: string) => void,
+  stopChat?: (taskId: string) => void | Promise<unknown>,
   clearChatList?: boolean,
   clearChatListCallback?: (state: boolean) => void,
   initialConversationId?: string,
@@ -539,7 +548,15 @@ export const useChat = (
   const handleStop = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
-    if (stopChat && taskIdRef.current && !pausedStateRef.current) stopChat(taskIdRef.current)
+    if (stopChat && taskIdRef.current && !pausedStateRef.current) {
+      void (async () => {
+        try {
+          await stopChat(taskIdRef.current)
+        } catch {
+          // The request layer owns error feedback; stopping locally must still finish.
+        }
+      })()
+    }
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
@@ -955,18 +972,7 @@ export const useChat = (
             options: otherOptions,
           }
           updateChatTreeNode(messageId, (responseItem) => {
-            if (!responseItem.humanInputFormDataList) {
-              responseItem.humanInputFormDataList = [humanInputRequiredData]
-            } else {
-              const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputRequiredData.node_id,
-              )
-              if (currentFormIndex > -1) {
-                responseItem.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
-              } else {
-                responseItem.humanInputFormDataList.push(humanInputRequiredData)
-              }
-            }
+            updatePendingHumanInputForm(responseItem, humanInputRequiredData)
             if (responseItem.workflowProcess?.tracing) {
               const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(
                 (item) => item.node_id === humanInputRequiredData.node_id,
@@ -981,38 +987,12 @@ export const useChat = (
           workflowPauseConfirmedRef.current = false
           handleResponding(true)
           updateChatTreeNode(messageId, (responseItem) => {
-            let requiredFormData:
-              | NonNullable<ChatItem['humanInputFormDataList']>[number]
-              | undefined
-            if (responseItem.humanInputFormDataList?.length) {
-              const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputFilledFormData.node_id,
-              )
-              if (currentFormIndex > -1) {
-                requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
-                responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
-              }
-            }
-            const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(
-              humanInputFilledFormData,
-              requiredFormData,
-            )
-            if (!responseItem.humanInputFilledFormDataList) {
-              responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
-            } else {
-              responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
-            }
+            updateFilledHumanInputForm(responseItem, humanInputFilledFormData)
           })
         },
         onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
           updateChatTreeNode(messageId, (responseItem) => {
-            if (responseItem.humanInputFormDataList?.length) {
-              const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputFormTimeoutData.node_id,
-              )
-              responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
-                humanInputFormTimeoutData.expiration_time
-            }
+            updateHumanInputFormTimeout(responseItem, humanInputFormTimeoutData)
           })
         },
         onWorkflowPaused: ({ data: workflowPausedData }) => {
@@ -1110,6 +1090,11 @@ export const useChat = (
       pausedStateRef.current = false
       resetWorkflowEventsSubscription()
       const requestGeneration = ++workflowRequestGenerationRef.current
+      const appAccessScope = isPublicAPI ? captureAppAccessScope() : null
+      const isCurrentRequest = () =>
+        requestGeneration === workflowRequestGenerationRef.current &&
+        isAppAccessScopeCurrent(appAccessScope) &&
+        !hasAppAccessError(appAccessScope)
 
       const parentMessage = threadMessages.find((item) => item.id === data.parent_message_id)
 
@@ -1182,13 +1167,13 @@ export const useChat = (
       let hasNotifiedConversationComplete = false
       let currentWorkflowRunId = ''
       const settleSend = (hasError?: boolean) => {
-        if (hasSettled) return
+        if (hasSettled || !isCurrentRequest()) return
 
         hasSettled = true
         onSendSettled?.(hasError)
       }
       const notifyConversationComplete = (workflowRunId?: string) => {
-        if (hasNotifiedConversationComplete) return
+        if (hasNotifiedConversationComplete || !isCurrentRequest()) return
 
         hasNotifiedConversationComplete = true
         onConversationComplete?.(conversationIdRef.current, workflowRunId)
@@ -1255,7 +1240,7 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          if (requestGeneration !== workflowRequestGenerationRef.current) return
+          if (!isCurrentRequest()) return
 
           handleResponding(false)
 
@@ -1269,11 +1254,22 @@ export const useChat = (
               !hasStopRespondedRef.current &&
               onGetConversationMessages
             ) {
-              const conversationMessagesResponse = await onGetConversationMessages(
-                conversationIdRef.current,
-                (newAbortController) =>
-                  (conversationMessagesAbortControllerRef.current = newAbortController),
-              )
+              let conversationMessagesResponse: unknown
+              try {
+                conversationMessagesResponse = await onGetConversationMessages(
+                  conversationIdRef.current,
+                  (newAbortController) => {
+                    if (isCurrentRequest())
+                      conversationMessagesAbortControllerRef.current = newAbortController
+                    else newAbortController.abort()
+                  },
+                )
+              } catch {
+                // Keep the streamed answer and its settlement when history cannot be refreshed.
+                return
+              }
+              if (!isCurrentRequest()) return
+
               const data = getConversationMessagesData(conversationMessagesResponse)
               const newResponseItem = data.find((item) => item.id === responseItem.id)
               completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
@@ -1336,6 +1332,7 @@ export const useChat = (
             notifyConversationComplete(completedWorkflowRunId)
 
             if (
+              isCurrentRequest() &&
               config?.suggested_questions_after_answer?.enabled &&
               !hasStopRespondedRef.current &&
               onGetSuggestedQuestions
@@ -1343,12 +1340,15 @@ export const useChat = (
               try {
                 const { data }: any = await onGetSuggestedQuestions(
                   responseItem.id,
-                  (newAbortController) =>
-                    (suggestedQuestionsAbortControllerRef.current = newAbortController),
+                  (newAbortController) => {
+                    if (isCurrentRequest())
+                      suggestedQuestionsAbortControllerRef.current = newAbortController
+                    else newAbortController.abort()
+                  },
                 )
-                setSuggestedQuestions(data)
+                if (isCurrentRequest()) setSuggestedQuestions(data)
               } catch {
-                setSuggestedQuestions([])
+                if (isCurrentRequest()) setSuggestedQuestions([])
               }
             }
           } finally {
@@ -1684,18 +1684,7 @@ export const useChat = (
             workflowRunId: pausedWorkflowRunId || currentWorkflowRunId,
             options: otherOptions,
           }
-          if (!responseItem.humanInputFormDataList) {
-            responseItem.humanInputFormDataList = [humanInputRequiredData]
-          } else {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputRequiredData.node_id,
-            )
-            if (currentFormIndex > -1) {
-              responseItem.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
-            } else {
-              responseItem.humanInputFormDataList.push(humanInputRequiredData)
-            }
-          }
+          updatePendingHumanInputForm(responseItem, humanInputRequiredData)
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(
             (item) => item.node_id === humanInputRequiredData.node_id,
           )
@@ -1713,25 +1702,7 @@ export const useChat = (
         onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
           workflowPauseConfirmedRef.current = false
           handleResponding(true)
-          let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
-          if (responseItem.humanInputFormDataList?.length) {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputFilledFormData.node_id,
-            )
-            if (currentFormIndex > -1) {
-              requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
-              responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
-            }
-          }
-          const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(
-            humanInputFilledFormData,
-            requiredFormData,
-          )
-          if (!responseItem.humanInputFilledFormDataList) {
-            responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
-          } else {
-            responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
-          }
+          updateFilledHumanInputForm(responseItem, humanInputFilledFormData)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1740,13 +1711,7 @@ export const useChat = (
           })
         },
         onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
-          if (responseItem.humanInputFormDataList?.length) {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputFormTimeoutData.node_id,
-            )
-            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
-              humanInputFormTimeoutData.expiration_time
-          }
+          updateHumanInputFormTimeout(responseItem, humanInputFormTimeoutData)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,

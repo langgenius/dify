@@ -1,7 +1,7 @@
 'use client'
 
 import type { InitialConfigType } from '@lexical/react/LexicalComposer'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { EditorState } from 'lexical'
 import type { FC } from 'react'
 import type {
@@ -125,7 +125,7 @@ type PromptEditorProps = PromptEditorAriaProps & {
   disableSlashPicker?: boolean
   disableBracePicker?: boolean
   shortcutPopups?: Array<{
-    hotkey: Hotkey
+    hotkey: HotkeyChord
     displayMode?: ShortcutPopupDisplayMode
     Popup: React.ComponentType<{ onClose: () => void; onInsert: ShortcutPopupInsertHandler }>
   }>

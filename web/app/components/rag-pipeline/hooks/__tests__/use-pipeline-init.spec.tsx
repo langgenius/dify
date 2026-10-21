@@ -11,10 +11,12 @@ import { createRagPipelineSliceSlice } from '../../store'
 import { usePipelineInit } from '../use-pipeline-init'
 
 const mockFetchWorkflowDraft = vi.fn()
-const mockSyncWorkflowDraft = vi.fn()
+const mockRequest = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
+vi.mock('@/service/base', () => ({
+  request: mockRequest,
+}))
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
-  syncWorkflowDraft: (params: unknown) => mockSyncWorkflowDraft(params),
 }))
 
 // Default block/publish/upload config queries are covered by use-pipeline-config.spec.
@@ -133,7 +135,7 @@ describe('usePipelineInit', () => {
       }),
     )
     mockFetchWorkflowDraft.mockResolvedValueOnce(createDraft({ hash: 'new-hash' }))
-    mockSyncWorkflowDraft.mockResolvedValue({ updated_at: 1_704_153_600 })
+    mockRequest.mockResolvedValue(Response.json({ updated_at: 1_704_153_600 }))
     const { result, store } = renderPipelineInit()
 
     await waitFor(() => expect(result.current.data?.hash).toBe('new-hash'))
@@ -142,15 +144,18 @@ describe('usePipelineInit', () => {
       shouldAutoOpenStartNodeSelector: true,
       isWorkflowDataLoaded: true,
     })
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith({
-      url: '/rag/pipelines/test-pipeline-id/workflows/draft',
-      params: {
-        graph: {
-          nodes: [expect.objectContaining({ id: 'knowledgeBase' })],
-          edges: [],
-        },
-        environment_variables: [],
+    expect(mockRequest).toHaveBeenCalledOnce()
+    const request = mockRequest.mock.calls[0]![2]!.request!
+    expect(new URL(request.url).pathname).toBe(
+      '/console/api/rag/pipelines/test-pipeline-id/workflows/draft',
+    )
+    expect(request.method).toBe('POST')
+    await expect(request.json()).resolves.toEqual({
+      graph: {
+        nodes: [expect.objectContaining({ id: 'knowledgeBase' })],
+        edges: [],
       },
+      environment_variables: [],
     })
   })
 })

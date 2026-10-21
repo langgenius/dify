@@ -791,10 +791,6 @@ function environmentTableProps(
   return {
     appId: APP_ID,
     canViewAccessPoint: true,
-    onChangeVersion: vi.fn(),
-    onDeployLatest: vi.fn(),
-    onDeployToEnvironment: vi.fn(),
-    onRedeploy: vi.fn(),
     onUndeploy: vi.fn(),
     ...overrides,
   }
@@ -825,6 +821,8 @@ vi.mock('react-i18next', async () => {
     'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED': 'Not deployed',
     'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYING': 'Undeploying',
     'deployments.status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED': 'Unknown',
+    'deployments.studio.activity.deploy': 'Deploy {{target}}',
+    'deployments.studio.activity.deployFailed': 'Deploy {{target}} failed',
     'deployments.studio.activity.deploySucceeded': 'Deploy {{target}} succeeded',
     'deployments.studio.activity.meta': '{{name}} · {{time}}',
     'deployments.studio.versionValue': 'Version value',
@@ -905,6 +903,97 @@ describe('AppDeploy', () => {
     )
   })
 
+  it('names the deployment table and identifies each environment as its row header', () => {
+    render(<AppDeploy />)
+
+    const table = within(screen.getByRole('table', { name: 'deployments.studio.environments' }))
+    expect(table.getByRole('rowheader', { name: 'Canary' })).toHaveAttribute('scope', 'row')
+    for (const header of table.getAllByRole('columnheader'))
+      expect(header).toHaveAttribute('scope', 'col')
+  })
+
+  it('keeps the environment name in the live status when deployment state changes', async () => {
+    const view = render(<AppDeploy />, {
+      environmentDeployments: [
+        environmentDeployment({
+          id: 'canary',
+          name: 'Canary',
+          runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
+        }),
+      ],
+    })
+    const status = within(screen.getByRole('row', { name: /Canary/ }))
+      .getAllByRole('status')
+      .find((region) => within(region).queryByText('Running'))
+    expect(status).toHaveTextContent('Canary: Running')
+    expect(status).toHaveAttribute('aria-atomic', 'true')
+
+    act(() => {
+      view.queryClient.setQueryData(appEnvironmentDeploymentsQueryOptions.queryKey, {
+        environment_deployments: [
+          environmentDeployment({
+            id: 'canary',
+            name: 'Canary',
+            runtimeState: RuntimeState.RUNTIME_STATE_ERROR,
+          }),
+        ],
+      })
+    })
+
+    await waitFor(() => expect(status).toHaveTextContent('Canary: Invalid'))
+  })
+
+  it('announces a failed deployment while the previous version stays running', async () => {
+    const row = environmentDeployment({
+      currentVersion: VERSIONS.beta,
+      id: 'canary',
+      latestOperation: deploymentOperation({
+        id: 'upgrade-canary',
+        status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+        targetVersion: VERSIONS.sprint42,
+      }),
+      name: 'Canary',
+      runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
+    })
+    const view = render(
+      <AppDeployStateBoundary appId={APP_ID}>
+        <EnvironmentTable {...environmentTableProps()} />
+      </AppDeployStateBoundary>,
+      { environmentDeployments: [row] },
+    )
+    const canary = within(screen.getByRole('row', { name: /Canary/ }))
+    const runtimeStatus = canary
+      .getAllByRole('status')
+      .find((region) => within(region).queryByText('Running'))
+    const activityStatus = canary
+      .getAllByRole('status')
+      .find((region) => within(region).queryByText('Deploy Sprint-42'))
+    expect(activityStatus).toHaveTextContent('Canary: Deploy Sprint-42')
+
+    act(() => {
+      view.queryClient.setQueryData(appEnvironmentDeploymentsQueryOptions.queryKey, {
+        environment_deployments: [
+          {
+            ...row,
+            deployment: {
+              ...row.deployment,
+              runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
+              latest_operation: deploymentOperation({
+                id: 'upgrade-canary',
+                status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED,
+                targetVersion: VERSIONS.sprint42,
+              }),
+            },
+          },
+        ],
+      })
+    })
+
+    await waitFor(() => expect(activityStatus).toHaveTextContent('Canary: Deploy Sprint-42 failed'))
+    expect(runtimeStatus).toHaveTextContent('Canary: Running')
+    expect(activityStatus).not.toHaveTextContent('activity time')
+  })
+
   it.each(ACTION_MATRIX_CASES)(
     'provides the designed row actions when $name',
     ({ actions, row }) => {
@@ -972,7 +1061,8 @@ describe('AppDeploy', () => {
       name: 'deployments.studio.deployLatest',
     })
     expect(deployLatestButtons.length).toBeGreaterThan(0)
-    for (const button of deployLatestButtons) expect(button).toBeDisabled()
+    for (const button of deployLatestButtons)
+      expect(button).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
 
@@ -988,7 +1078,7 @@ describe('AppDeploy', () => {
     })
     expect(
       stagingRow.getByRole('button', { name: 'deployments.studio.deployLatest' }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
     expect(requestCount).toBe(2)
   })
 
@@ -1143,7 +1233,7 @@ describe('AppDeploy', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent(
+    expect(within(screen.getByRole('menu')).getByRole('status')).toHaveTextContent(
       'deployments.deployDrawer.noNewEnvironmentAvailable',
     )
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
@@ -1276,6 +1366,7 @@ describe('AppDeploy', () => {
     const portSource = rootVariables.getByRole('combobox', { name: /PORT/ })
     expect(portSource).toHaveTextContent('Version value')
     const portInput = rootVariables.getByRole('textbox', { name: 'PORT' })
+    expect(portInput).toHaveAccessibleDescription('Server port')
     expect(portInput).toBeDisabled()
     expect(portInput).toHaveAttribute('placeholder', '2')
     expect(rootVariables.getByRole('textbox', { name: 'API_KEY' })).toHaveAttribute(
@@ -1405,9 +1496,17 @@ describe('AppDeploy', () => {
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     )
     expect(deploymentRequests).toHaveLength(0)
-    expect(toast.error).toHaveBeenCalledWith('Finance APP · PORT: workflow.env.modal.valueRequired')
+    expect(customPortInput).toHaveAttribute('aria-invalid', 'true')
+    expect(customPortInput).toHaveAccessibleDescription(
+      'Server port workflow.env.modal.valueRequired',
+    )
+    expect(customPortInput).toHaveFocus()
+    expect(
+      within(rootVariables.getByRole('group', { name: 'PORT' })).getByRole('alert'),
+    ).toHaveTextContent('workflow.env.modal.valueRequired')
 
     await user.type(customPortInput, '3000')
+    expect(customPortInput).not.toHaveAttribute('aria-invalid', 'true')
     await user.click(
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     )
@@ -1421,7 +1520,7 @@ describe('AppDeploy', () => {
     })
   })
 
-  it('shows a toast instead of submitting when a credential is missing', async () => {
+  it('identifies and focuses a missing credential instead of submitting', async () => {
     const user = userEvent.setup()
     const deploymentRequests: Request[] = []
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -1472,7 +1571,10 @@ describe('AppDeploy', () => {
     await user.click(deployButton)
 
     expect(deploymentRequests).toHaveLength(0)
-    expect(toast.error).toHaveBeenCalledWith('Moonshot: deployments.deployDrawer.selectCredential')
+    const credential = within(configurationDialog).getByRole('combobox', { name: 'Moonshot' })
+    expect(credential).toHaveAttribute('aria-invalid', 'true')
+    expect(credential).toHaveAccessibleDescription('deployments.deployDrawer.selectCredential')
+    expect(credential).toHaveFocus()
   })
 
   it('deploys the selected workflow configuration and refreshes the deployment list', async () => {
@@ -1929,6 +2031,87 @@ describe('AppDeploy', () => {
     ).toBeInTheDocument()
   })
 
+  it('preserves the deployment session when published and deployed versions refresh', async () => {
+    const user = userEvent.setup()
+    const requests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (!request.url.endsWith('/deployment:deploy'))
+        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+      requests.push(request.clone())
+      return Response.json({ message: 'Deployment failed' }, { status: 502 })
+    })
+    const row = environmentDeployment({
+      currentVersion: VERSIONS.version02,
+      id: 'pre-release',
+      name: 'Pre-release',
+      runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
+      versionsBehind: 1,
+    })
+    const view = render(<AppDeploy />, { environmentDeployments: [row] })
+    const environmentRow = screen.getByRole('row', { name: /Pre-release/ })
+    const builtIn = screen.getByRole('region', { name: 'deployments.studio.builtInTitle' })
+    await user.click(
+      within(environmentRow).getByRole('button', { name: 'deployments.studio.deployLatest' }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    const configuration = within(dialog)
+    await user.click(configuration.getByRole('combobox', { name: 'Moonshot' }))
+    await user.click(await screen.findByRole('option', { name: 'Development key' }))
+    const variables = within(configuration.getByRole('group', { name: 'Finance APP' }))
+    await user.click(variables.getByRole('combobox', { name: /PORT/ }))
+    await user.click(
+      await screen.findByRole('option', {
+        name: 'deployments.deployDrawer.envVarSource.literal',
+      }),
+    )
+    const port = variables.getByRole('spinbutton', { name: 'PORT' })
+    await user.type(port, '3000')
+
+    act(() => {
+      view.queryClient.setQueryData(appEnvironmentDeploymentsQueryOptions.queryKey, {
+        environment_deployments: [
+          environmentDeployment({
+            currentVersion: workflowVersion('Release 7', 'workflow-version-7'),
+            id: 'pre-release',
+            name: 'Pre-release',
+            runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
+            versionsBehind: 0,
+          }),
+        ],
+      })
+      view.queryClient.setQueryData(latestPublishedWorkflowQuery.queryKey, {
+        ...mockBuiltInEnvironment.publishedWorkflow,
+        id: 'workflow-version-8',
+        marked_name: 'Release 8',
+      })
+    })
+    await waitFor(() => {
+      expect(environmentRow).toHaveTextContent('deployments.studio.changeVersion')
+      expect(builtIn).toHaveTextContent('Release 8')
+    })
+    expect(dialog).toBeInTheDocument()
+    expect(configuration.getByText('Release 7')).toBeInTheDocument()
+    expect(configuration.getByRole('combobox', { name: 'Moonshot' })).toHaveTextContent(
+      'Development key',
+    )
+    expect(variables.getByRole('spinbutton', { name: 'PORT' })).toHaveValue(3000)
+    expect(port).toHaveFocus()
+    await user.click(configuration.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await waitFor(() => expect(requests).toHaveLength(1))
+    expect(new URL(requests[0]!.url).pathname).toContain(
+      '/workflows/workflow-version-7/environments/pre-release/deployment:deploy',
+    )
+    const body = await requests[0]!.json()
+    expect(body.environment_variable_groups[0].environment_variables).toContainEqual({
+      key: 'PORT',
+      value: 3000,
+      value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
+    })
+  })
+
   it('keeps deployment configuration and entered values open after an outside press', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
@@ -2065,80 +2248,91 @@ describe('AppDeploy', () => {
     expect(screen.getByRole('menuitem', { name: /Testing/ })).toBeInTheDocument()
   })
 
-  it('shows loading and retries after the environment deployment list fails', async () => {
-    const user = userEvent.setup()
-    const deploymentRequests: Request[] = []
-    let resolveInitialRequest: ((response: Response) => void) | undefined
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
-      const request = input instanceof Request ? input : new Request(input, init)
-      if (
-        !new URL(request.url).pathname.endsWith(
-          '/enterprise/app-deploy/apps/app-1/workflows/environment-deployments',
+  it.each(['HTTP', 'network'] as const)(
+    'announces an environment deployment list %s failure and recovers after retry',
+    async (failure) => {
+      const user = userEvent.setup()
+      const deploymentRequests: Request[] = []
+      let failInitialRequest: (() => void) | undefined
+      vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+        const request = input instanceof Request ? input : new Request(input, init)
+        if (
+          !new URL(request.url).pathname.endsWith(
+            '/enterprise/app-deploy/apps/app-1/workflows/environment-deployments',
+          )
         )
+          throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+
+        deploymentRequests.push(request.clone())
+        if (deploymentRequests.length === 1) {
+          return new Promise((resolve, reject) => {
+            failInitialRequest = () => {
+              if (failure === 'network') {
+                reject(new TypeError('Failed to fetch'))
+                return
+              }
+              resolve(
+                new Response(JSON.stringify({ message: 'Failed to load deployments' }), {
+                  headers: { 'Content-Type': 'application/json' },
+                  status: 500,
+                }),
+              )
+            }
+          })
+        }
+
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              environment_deployments: APP_ENVIRONMENT_DEPLOYMENTS,
+            }),
+            {
+              headers: { 'Content-Type': 'application/json' },
+              status: 200,
+            },
+          ),
+        )
+      })
+      const queryClient = createConsoleQueryClient()
+      queryClient.setQueryData(appEnvironmentsQueryOptions.queryKey, {
+        data: APP_ENVIRONMENTS,
+      })
+      queryClient.setQueryData(
+        latestPublishedWorkflowQuery.queryKey,
+        mockBuiltInEnvironment.publishedWorkflow,
       )
-        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
 
-      deploymentRequests.push(request.clone())
-      if (deploymentRequests.length === 1) {
-        return new Promise((resolve) => {
-          resolveInitialRequest = resolve
-        })
-      }
-
-      return Promise.resolve(
-        new Response(
-          JSON.stringify({
-            environment_deployments: APP_ENVIRONMENT_DEPLOYMENTS,
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200,
-          },
-        ),
+      renderWithConsoleQuery(
+        <AppDeployStateBoundary appId={APP_ID}>
+          <EnvironmentTable {...environmentTableProps()} />
+        </AppDeployStateBoundary>,
+        { queryClient },
       )
-    })
-    const queryClient = createConsoleQueryClient()
-    queryClient.setQueryData(appEnvironmentsQueryOptions.queryKey, {
-      data: APP_ENVIRONMENTS,
-    })
-    queryClient.setQueryData(
-      latestPublishedWorkflowQuery.queryKey,
-      mockBuiltInEnvironment.publishedWorkflow,
-    )
 
-    renderWithConsoleQuery(
-      <AppDeployStateBoundary appId={APP_ID}>
-        <EnvironmentTable {...environmentTableProps()} />
-      </AppDeployStateBoundary>,
-      { queryClient },
-    )
+      expect(screen.getByRole('progressbar', { name: /loading/ })).toBeInTheDocument()
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(deploymentRequests).toHaveLength(1)
+      })
 
-    expect(screen.getByRole('progressbar', { name: /loading/ })).toBeInTheDocument()
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(deploymentRequests).toHaveLength(1)
-    })
+      failInitialRequest?.()
 
-    resolveInitialRequest?.(
-      new Response(JSON.stringify({ message: 'Failed to load deployments' }), {
-        headers: { 'Content-Type': 'application/json' },
-        status: 500,
-      }),
-    )
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent('common.errorBoundary.title')
+      expect(alert).toHaveTextContent('deployments.common.loadFailed')
+      const retryButton = screen.getByRole('button', {
+        name: 'common.operation.retry',
+      })
+      expect(screen.queryByText('deployments.list.emptyTitle')).not.toBeInTheDocument()
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
 
-    const retryButton = await screen.findByRole('button', {
-      name: 'common.operation.retry',
-    })
-    expect(screen.getByRole('heading', { name: 'common.errorBoundary.title' })).toBeInTheDocument()
-    expect(screen.getByText('deployments.common.loadFailed')).toBeInTheDocument()
-    expect(screen.queryByText('deployments.list.emptyTitle')).not.toBeInTheDocument()
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      await user.click(retryButton)
 
-    await user.click(retryButton)
-
-    expect(await screen.findByRole('cell', { name: /Staging/ })).toBeInTheDocument()
-    expect(deploymentRequests).toHaveLength(2)
-  })
+      expect(await screen.findByRole('rowheader', { name: /Staging/ })).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(deploymentRequests).toHaveLength(2)
+    },
+  )
 
   it('exposes only the first action and moves every remaining action into More', async () => {
     const user = userEvent.setup()
@@ -2185,7 +2379,7 @@ describe('AppDeploy', () => {
       stagingRow.getByRole('button', {
         name: 'deployments.studio.deployLatest',
       }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(
       stagingRow.getByRole('button', {
@@ -2233,6 +2427,49 @@ describe('AppDeploy', () => {
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(onUndeploy).not.toHaveBeenCalled()
+  })
+
+  it('keeps undeploy confirmation open while pending and allows retry after failure', async () => {
+    const user = userEvent.setup()
+    let rejectUndeploy: ((error: Error) => void) | undefined
+    const onUndeploy = vi
+      .fn<(deployment: EnvironmentDeployment) => Promise<void>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectUndeploy = reject
+          }),
+      )
+      .mockResolvedValueOnce(undefined)
+    render(
+      <AppDeployStateBoundary appId={APP_ID}>
+        <EnvironmentTable {...environmentTableProps({ onUndeploy })} />
+      </AppDeployStateBoundary>,
+    )
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Canary · deployments.deployTab.moreActions',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'deployments.deployTab.undeploy' }))
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Undeploy Sprint-42 from Canary',
+    })
+    const confirm = within(dialog).getByRole('button', { name: 'Undeploy' })
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' })
+    await user.click(confirm)
+    expect(onUndeploy).toHaveBeenCalledWith(APP_ENVIRONMENT_DEPLOYMENTS[1])
+    expect(cancel).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+
+    await act(async () => rejectUndeploy?.(new Error('Undeploy failed')))
+    await waitFor(() => expect(cancel).toBeEnabled())
+    expect(dialog).toBeInTheDocument()
+    await user.click(confirm)
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(onUndeploy).toHaveBeenCalledTimes(2)
   })
 
   it('shows the version description from the deployment contract on hover', async () => {

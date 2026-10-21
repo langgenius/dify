@@ -210,7 +210,7 @@ class TestDeleteSegmentFromIndexTask:
         segments = []
 
         for i in range(count):
-            created_at = fake.date_time_this_year()
+            fake.date_time_this_year()
             segment = DocumentSegment(
                 tenant_id=document.tenant_id,
                 dataset_id=document.dataset_id,
