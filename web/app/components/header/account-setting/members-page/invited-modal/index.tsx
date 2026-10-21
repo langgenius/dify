@@ -14,7 +14,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +27,7 @@ type IInvitedModalProps = {
 }
 const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
-  const failureReasonId = useId()
+  const failedEmailId = useId()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -123,30 +123,33 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
                           key={item.email}
                           className="flex max-w-full min-w-0 rounded-md border border-red-300 bg-orange-50 px-1"
                         >
-                          <Tooltip>
-                            <TooltipTrigger
+                          <Popover>
+                            <PopoverTrigger
                               type="button"
-                              closeOnClick={false}
-                              render={(props, state) => (
-                                <button
-                                  {...props}
-                                  aria-describedby={
-                                    state.open ? `${failureReasonId}-${index}` : undefined
-                                  }
-                                />
-                              )}
-                              className="flex min-h-6 min-w-0 cursor-help items-center justify-center gap-1 rounded-sm text-start text-sm focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                              openOnHover
+                              delay={300}
+                              closeDelay={200}
+                              className="flex min-h-6 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-sm text-start text-sm"
                             >
-                              <span className="min-w-0 wrap-anywhere">{item.email}</span>
+                              <span
+                                id={`${failedEmailId}-${index}`}
+                                className="min-w-0 wrap-anywhere"
+                              >
+                                {item.email}
+                              </span>
                               <span
                                 aria-hidden="true"
                                 className="i-ri-question-line size-4 shrink-0 text-red-300"
                               />
-                            </TooltipTrigger>
-                            <TooltipContent id={`${failureReasonId}-${index}`} role="tooltip">
+                            </PopoverTrigger>
+                            <PopoverContent
+                              placement="top"
+                              aria-labelledby={`${failedEmailId}-${index}`}
+                              className="max-w-75 p-2 system-xs-medium wrap-break-word text-text-secondary"
+                            >
                               {item.message}
-                            </TooltipContent>
-                          </Tooltip>
+                            </PopoverContent>
+                          </Popover>
                         </li>
                       ))}
                     </ul>

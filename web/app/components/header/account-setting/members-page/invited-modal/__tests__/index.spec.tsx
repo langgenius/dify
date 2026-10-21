@@ -39,7 +39,7 @@ describe('InvitedModal', () => {
     expect(screen.getByRole('button', { name: 'failed@example.com' })).toBeInTheDocument()
   })
 
-  it('shows failure reasons on keyboard focus and dismisses the tooltip without closing the dialog', async () => {
+  it('opens and reopens a failure reason with the keyboard without closing the results dialog', async () => {
     const user = userEvent.setup()
     render(
       <InvitedModal
@@ -52,22 +52,40 @@ describe('InvitedModal', () => {
 
     const closeButton = screen.getByRole('button', { name: /operation\.close/ })
     await waitFor(() => expect(closeButton).toHaveFocus())
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'failed@example.com' })).not.toBeInTheDocument()
 
     await user.tab()
     const failureTrigger = screen.getByRole('button', { name: 'failed@example.com' })
     expect(failureTrigger).toHaveFocus()
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Quota exceeded')
-    expect(failureTrigger).toHaveAccessibleDescription('Quota exceeded')
-
     await user.keyboard('{Enter}')
-    expect(screen.getByRole('tooltip')).toBeVisible()
+    expect(await screen.findByRole('dialog', { name: 'failed@example.com' })).toHaveTextContent(
+      'Quota exceeded',
+    )
 
     await user.keyboard('{Escape}')
-    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'failed@example.com' })).not.toBeInTheDocument(),
+    )
     expect(mockOnCancel).not.toHaveBeenCalled()
-    expect(screen.getByRole('dialog')).toBeVisible()
+    expect(screen.getByRole('dialog', { name: /members\.invitationSent$/ })).toBeVisible()
     expect(failureTrigger).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog', { name: 'failed@example.com' })).toHaveTextContent(
+      'Quota exceeded',
+    )
+  })
+
+  it('opens a failure reason by clicking without hovering first', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
+
+    await user.click(screen.getByRole('button', { name: 'failed@example.com' }))
+
+    expect(await screen.findByRole('dialog', { name: 'failed@example.com' })).toHaveTextContent(
+      'Error msg',
+    )
+    expect(mockOnCancel).not.toHaveBeenCalled()
   })
 
   it('shows each failure reason when its email is hovered', async () => {
@@ -84,16 +102,20 @@ describe('InvitedModal', () => {
 
     const firstTrigger = screen.getByRole('button', { name: 'first@example.com' })
     await user.hover(firstTrigger)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Quota exceeded')
-    expect(firstTrigger).toHaveAccessibleDescription('Quota exceeded')
+    expect(await screen.findByRole('dialog', { name: 'first@example.com' })).toHaveTextContent(
+      'Quota exceeded',
+    )
 
     await user.unhover(firstTrigger)
-    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'first@example.com' })).not.toBeInTheDocument(),
+    )
 
     const secondTrigger = screen.getByRole('button', { name: 'second@example.com' })
     await user.hover(secondTrigger)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Email delivery failed')
-    expect(secondTrigger).toHaveAccessibleDescription('Email delivery failed')
+    expect(await screen.findByRole('dialog', { name: 'second@example.com' })).toHaveTextContent(
+      'Email delivery failed',
+    )
   })
 
   it('should hide invitation link section when there are no successes', () => {
