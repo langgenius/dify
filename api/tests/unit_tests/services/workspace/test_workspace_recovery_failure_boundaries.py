@@ -1,10 +1,12 @@
 """Durable workspace recovery behavior at claim and commit failure boundaries."""
 
+from dataclasses import replace
 from datetime import timedelta
 from unittest.mock import create_autospec
+from uuid import uuid4
 
 import pytest
-from sqlalchemy import event, select
+from sqlalchemy import delete, event, select
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,6 +19,8 @@ from models import (
     WorkspaceProvisioningOperation,
 )
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from services.errors.base import NoPermissionError
+from services.errors.workspace import MemberNotInTenantError, WorkspaceNotFoundError
 from services.workspace.contracts import (
     WorkspaceCreation,
     WorkspaceOwnerTransfer,
@@ -478,3 +482,338 @@ def test_setup_cancellation_reports_unknown_commit_and_preserves_recovery_state(
         tenant = session.get(Tenant, preparation.workspace_id)
     assert operation.status == "compensation_pending"
     assert tenant is None
+
+
+def test_pending_owner_transfer_is_idempotent_and_rejects_a_conflicting_aba_attempt(
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    workspace_id, owner_id, member_id = workspace_members
+    transfer = account_domain.workspaces.prepare_owner_transfer(
+        workspace_id=workspace_id,
+        actor_account_id=owner_id,
+        account_id=member_id,
+        notification=_notification_details(),
+    )
+
+    retried = account_domain.workspaces.prepare_owner_transfer(
+        workspace_id=workspace_id,
+        actor_account_id=owner_id,
+        account_id=member_id,
+        notification=_notification_details(),
+    )
+    with pytest.raises(NoPermissionError, match="already in progress"):
+        account_domain.workspaces.prepare_owner_transfer(
+            workspace_id=workspace_id,
+            actor_account_id=member_id,
+            account_id=owner_id,
+        )
+
+    assert retried == transfer
+    with sqlite_session_factory() as session:
+        operation = session.get_one(WorkspaceOwnerTransferOperation, workspace_id)
+        notifications = tuple(
+            session.scalars(
+                select(WorkspaceOwnerTransferNotificationModel).where(
+                    WorkspaceOwnerTransferNotificationModel.operation_id == transfer.operation_id
+                )
+            )
+        )
+    assert operation.operation_id == transfer.operation_id
+    assert {notification.recipient_type for notification in notifications} == {"old_owner", "new_owner"}
+
+
+def test_owner_transfer_preparation_validates_the_locked_workspace_memberships(
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    workspace_id, owner_id, member_id = workspace_members
+
+    with pytest.raises(WorkspaceNotFoundError):
+        account_domain.workspaces.prepare_owner_transfer(
+            workspace_id=str(uuid4()),
+            actor_account_id=owner_id,
+            account_id=member_id,
+        )
+    with pytest.raises(NoPermissionError, match="current workspace owner"):
+        account_domain.workspaces.prepare_owner_transfer(
+            workspace_id=workspace_id,
+            actor_account_id=member_id,
+            account_id=owner_id,
+        )
+    with pytest.raises(MemberNotInTenantError):
+        account_domain.workspaces.prepare_owner_transfer(
+            workspace_id=workspace_id,
+            actor_account_id=owner_id,
+            account_id=str(uuid4()),
+        )
+
+    with sqlite_session_factory.begin() as session:
+        membership = session.scalar(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == workspace_id,
+                TenantAccountJoin.account_id == member_id,
+            )
+        )
+        assert membership is not None
+        membership.role = TenantAccountRole.OWNER
+    with pytest.raises(NoPermissionError, match="already owns"):
+        account_domain.workspaces.prepare_owner_transfer(
+            workspace_id=workspace_id,
+            actor_account_id=owner_id,
+            account_id=member_id,
+        )
+
+
+def test_owner_transfer_claim_rejects_a_stale_operation_identity(
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    workspace_id, owner_id, member_id = workspace_members
+    transfer = account_domain.workspaces.prepare_owner_transfer(
+        workspace_id=workspace_id,
+        actor_account_id=owner_id,
+        account_id=member_id,
+    )
+
+    assert (
+        account_domain.workspaces.claim_owner_transfer_execution(replace(transfer, operation_id=str(uuid4()))) is None
+    )
+    with sqlite_session_factory() as session:
+        operation = session.get_one(WorkspaceOwnerTransferOperation, workspace_id)
+    assert operation.status == "pending"
+    assert operation.execution_id is None
+    assert operation.operation_id == transfer.operation_id
+
+
+def test_owner_transfer_watch_defers_recovery_when_local_ownership_is_ambiguous(
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    workspace_id, old_owner_id, _ = workspace_members
+    transfer = _prepare_owner_watch(account_domain, workspace_members, sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        old_owner = session.scalar(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == workspace_id,
+                TenantAccountJoin.account_id == old_owner_id,
+            )
+        )
+        assert old_owner is not None
+        old_owner.role = TenantAccountRole.OWNER
+
+    assert account_domain.workspaces.claim_owner_transfer_execution(transfer) is None
+    with sqlite_session_factory() as session:
+        operation = session.get_one(WorkspaceOwnerTransferOperation, workspace_id)
+    assert operation.status == "watch"
+    assert operation.execution_id is None
+    assert operation.next_reconcile_at > naive_utc_now()
+    assert operation.last_error == "Workspace no longer has exactly one local owner."
+
+
+def test_invalidated_pending_transfer_becomes_a_deferred_watch_for_ambiguous_owners(
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    workspace_id, owner_id, member_id = workspace_members
+    transfer = account_domain.workspaces.prepare_owner_transfer(
+        workspace_id=workspace_id,
+        actor_account_id=owner_id,
+        account_id=member_id,
+    )
+    claimed = account_domain.workspaces.claim_owner_transfer_execution(transfer)
+    assert claimed is not None
+
+    with sqlite_session_factory.begin() as session:
+        another_owner = Account(name="Another owner", email="other-owner@example.com")
+        session.add(another_owner)
+        session.flush()
+        session.add(
+            TenantAccountJoin(
+                tenant_id=workspace_id,
+                account_id=another_owner.id,
+                role=TenantAccountRole.OWNER,
+            )
+        )
+        session.execute(
+            delete(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == workspace_id,
+                TenantAccountJoin.account_id == member_id,
+            )
+        )
+        operation = session.get_one(WorkspaceOwnerTransferOperation, workspace_id)
+        operation.lease_expires_at = naive_utc_now() - timedelta(seconds=1)
+
+    assert account_domain.workspaces.claim_owner_transfer_execution(transfer) is None
+    with sqlite_session_factory() as session:
+        operation = session.get_one(WorkspaceOwnerTransferOperation, workspace_id)
+    assert operation.status == "watch"
+    assert operation.operation_id != transfer.operation_id
+    assert operation.execution_id is None
+    assert operation.next_reconcile_at > naive_utc_now()
+    assert operation.last_error == "Workspace no longer has exactly one local owner."
+
+
+def test_owner_transfer_completion_consumes_deleted_workspace_and_rejects_a_missing_operation(
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    workspace_id, owner_id, member_id = workspace_members
+    transfer = account_domain.workspaces.prepare_owner_transfer(
+        workspace_id=workspace_id,
+        actor_account_id=owner_id,
+        account_id=member_id,
+    )
+    claimed = account_domain.workspaces.claim_owner_transfer_execution(transfer)
+    assert claimed is not None
+    with sqlite_session_factory.begin() as session:
+        session.execute(delete(TenantAccountJoin).where(TenantAccountJoin.tenant_id == workspace_id))
+        session.execute(delete(Tenant).where(Tenant.id == workspace_id))
+
+    assert not account_domain.workspaces.complete_owner_transfer(claimed)
+    assert not account_domain.workspaces.complete_owner_transfer(claimed)
+    with sqlite_session_factory() as session:
+        assert session.get(WorkspaceOwnerTransferOperation, workspace_id) is None
+
+
+@pytest.mark.parametrize("invalid_state", ["missing-new-owner", "missing-old-owner", "neither-member-is-owner"])
+def test_owner_transfer_completion_rechecks_member_integrity(
+    invalid_state: str,
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    workspace_id, owner_id, member_id = workspace_members
+    transfer = account_domain.workspaces.prepare_owner_transfer(
+        workspace_id=workspace_id,
+        actor_account_id=owner_id,
+        account_id=member_id,
+    )
+    claimed = account_domain.workspaces.claim_owner_transfer_execution(transfer)
+    assert claimed is not None
+    with sqlite_session_factory.begin() as session:
+        memberships = {
+            membership.account_id: membership
+            for membership in session.scalars(
+                select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == workspace_id)
+            )
+        }
+        if invalid_state == "missing-new-owner":
+            session.delete(memberships[member_id])
+        elif invalid_state == "missing-old-owner":
+            session.delete(memberships[owner_id])
+        else:
+            memberships[owner_id].role = TenantAccountRole.NORMAL
+            memberships[member_id].role = TenantAccountRole.NORMAL
+
+    expected_error = NoPermissionError if invalid_state == "neither-member-is-owner" else MemberNotInTenantError
+    with pytest.raises(expected_error):
+        account_domain.workspaces.complete_owner_transfer(claimed)
+    with sqlite_session_factory() as session:
+        operation = session.get_one(WorkspaceOwnerTransferOperation, workspace_id)
+    assert operation.status == "pending"
+    assert operation.execution_id == claimed.execution_id
+
+
+def test_owner_transfer_notification_commands_require_the_current_claim_identity(
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    transfer = _transfer_with_notifications(account_domain, workspace_members)
+    notification = account_domain.workspaces.list_pending_owner_transfer_notifications(
+        operation_id=transfer.operation_id
+    )[0]
+
+    assert not account_domain.workspaces.complete_owner_transfer_notification(notification)
+    account_domain.workspaces.record_owner_transfer_notification_error(notification, error="claimless failure")
+    stale_identity = replace(notification, operation_id=str(uuid4()))
+    assert account_domain.workspaces.claim_owner_transfer_notification(stale_identity) is None
+
+    claimed = account_domain.workspaces.claim_owner_transfer_notification(notification)
+    assert claimed is not None
+    stale_claim = replace(claimed, operation_id=str(uuid4()))
+    assert not account_domain.workspaces.complete_owner_transfer_notification(stale_claim)
+    account_domain.workspaces.record_owner_transfer_notification_error(stale_claim, error="stale claim")
+
+    with sqlite_session_factory() as session:
+        row = session.get_one(WorkspaceOwnerTransferNotificationModel, notification.notification_id)
+    assert row.status == "pending"
+    assert row.claim_id == claimed.claim_id
+    assert row.attempts == 1
+    assert row.last_error is None
+
+
+def test_owner_transfer_notification_claim_respects_retry_time_and_rejects_corrupt_payload(
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    transfer = _transfer_with_notifications(account_domain, workspace_members)
+    notifications = account_domain.workspaces.list_pending_owner_transfer_notifications(
+        operation_id=transfer.operation_id
+    )
+    notification = notifications[0]
+    with sqlite_session_factory.begin() as session:
+        retry_later = session.get_one(WorkspaceOwnerTransferNotificationModel, notification.notification_id)
+        retry_later.next_attempt_at = naive_utc_now() + timedelta(hours=1)
+
+    assert account_domain.workspaces.claim_owner_transfer_notification(notification) is None
+
+    with sqlite_session_factory.begin() as session:
+        corrupt = session.get_one(WorkspaceOwnerTransferNotificationModel, notifications[1].notification_id)
+        corrupt.recipient_type = "unknown"
+    with pytest.raises(ValueError, match="Unknown owner-transfer notification recipient"):
+        account_domain.workspaces.list_pending_owner_transfer_notifications(operation_id=transfer.operation_id)
+
+
+def test_committed_workspace_is_a_tombstone_against_late_compensation(
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _, owner_id, _ = workspace_members
+    missing = WorkspacePreparation(str(uuid4()), str(uuid4()))
+    assert not account_domain.workspaces.request_compensation(missing, error="late failure")
+    account_domain.workspaces.finish_compensation(missing.workspace_id, error=None)
+
+    preparation = _provision_setup_workspace(account_domain, owner_id)
+    assert not account_domain.workspaces.request_compensation(preparation, error="late failure")
+    account_domain.workspaces.finish_compensation(preparation.workspace_id, error=None)
+
+    with sqlite_session_factory() as session:
+        operation = session.get_one(WorkspaceProvisioningOperation, preparation.workspace_id)
+        tenant = session.get(Tenant, preparation.workspace_id)
+    assert operation.status == "committed"
+    assert operation.compensation_attempts == 0
+    assert tenant is not None
+
+
+def test_setup_cancellation_preserves_recovery_after_the_tenant_was_already_removed(
+    account_domain: AccountDomain,
+    workspace_members: tuple[str, str, str],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _, owner_id, _ = workspace_members
+    preparation = _provision_setup_workspace(account_domain, owner_id)
+    with sqlite_session_factory.begin() as session:
+        session.execute(delete(TenantAccountJoin).where(TenantAccountJoin.tenant_id == preparation.workspace_id))
+        session.execute(delete(Tenant).where(Tenant.id == preparation.workspace_id))
+
+    result = account_domain.workspaces.cancel_setup_workspace(
+        workspace_id=preparation.workspace_id,
+        owner_id=owner_id,
+    )
+
+    assert result.outcome == WorkspaceProvisioningCommitOutcome.COMMITTED
+    with sqlite_session_factory() as session:
+        operation = session.get_one(WorkspaceProvisioningOperation, preparation.workspace_id)
+    assert operation.status == "compensation_pending"
+    assert operation.finished_at is None
+    assert operation.last_error == "setup initialization failed after workspace commit"
