@@ -24,7 +24,7 @@ def _render(dialect_name: str, step: str) -> str:
     output = StringIO()
     context = MigrationContext.configure(dialect_name=dialect_name, opts={"as_sql": True, "output_buffer": output})
     migration.__dict__["op"] = Operations(context)
-    getattr(migration, step)()
+    {"upgrade": migration.upgrade, "downgrade": migration.downgrade}[step]()
     return output.getvalue()
 
 
