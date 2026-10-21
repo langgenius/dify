@@ -16,6 +16,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
 from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -767,7 +768,7 @@ def test_get_agent_runtime_apply_runtime_parameters():
         manager = Mock()
         manager.decrypt_tool_parameters.return_value = {"query": "decrypted"}
         with patch("core.tools.tool_manager.ToolParameterConfigurationManager", return_value=manager):
-            agent_tool = SimpleNamespace(
+            agent_tool = AgentToolEntity(
                 provider_type=ToolProviderType.API,
                 provider_id="api-1",
                 tool_name="search",
