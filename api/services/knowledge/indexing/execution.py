@@ -9,9 +9,9 @@ from typing import Literal, Protocol
 from core.credit_usage import CreditUsageCreatedBy
 from core.model_context import with_credit_usage_created_by
 from core.rag.models.document import Document
+from services.knowledge.entities.resource_scope import DocumentRef
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
 from services.knowledge.indexing.estimate import StoredSource
-from services.knowledge.resource_scope import DocumentRef
 
 logger = logging.getLogger(__name__)
 

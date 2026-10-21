@@ -1,24 +1,23 @@
 """External knowledge use cases without transport or persistence dependencies."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any, Protocol
 
 from machinery.context import RequestContext
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
+from services.errors.knowledge_retrieval import ExternalHitTestingError
 from services.knowledge.dataset_access import DatasetAccess
 from services.knowledge.entities.datasets import DatasetDetailRecord
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.external import ExternalDatasetCreatePayload, ExternalKnowledgeRetrievalRequest
+from services.knowledge.entities.hit_testing import (
+    HitTestingQueryRecorder,
+    RetrieveResponseDict,
+    external_hit_testing_response,
+    validate_hit_testing_input,
+)
+from services.knowledge.entities.resource_scope import DatasetRef
 
 
-class ExternalTemplateNotFoundError(Exception):
-    pass
-
-
-class ExternalHitTestingError(Exception):
-    pass
-
-
-class ExternalKnowledgeOperations(Protocol):
+class ExternalKnowledgeRepository(Protocol):
     def list_templates(self, workspace_id: str, *, page: int, limit: int, keyword: str | None) -> dict[str, Any]: ...
     def get_template(self, workspace_id: str, template_id: str) -> dict[str, Any]: ...
     def create_template(self, context: RequestContext, *, name: str, settings: Mapping[str, Any]) -> dict[str, Any]: ...
@@ -27,22 +26,43 @@ class ExternalKnowledgeOperations(Protocol):
     ) -> dict[str, Any]: ...
     def delete_template(self, workspace_id: str, template_id: str) -> None: ...
     def template_usage(self, workspace_id: str, template_id: str) -> tuple[bool, int]: ...
-    def create_dataset(self, context: RequestContext, payload: ExternalDatasetCreatePayload) -> DatasetDetailRecord: ...
-    def retrieve(
+    def create_dataset(self, context: RequestContext, payload: ExternalDatasetCreatePayload) -> DatasetRef: ...
+    def prepare_retrieval(
         self,
-        context: RequestContext,
         ref: DatasetRef,
         *,
         query: str,
         retrieval_model: dict[str, Any] | None,
         metadata_filters: dict[str, Any] | None,
-    ) -> dict[str, Any]: ...
+    ) -> ExternalKnowledgeRetrievalRequest | None: ...
+
+
+class ExternalKnowledgeRetrieval(Protocol):
+    def check_settings(self, settings: Mapping[str, Any]) -> None: ...
+    def retrieve(self, request: ExternalKnowledgeRetrievalRequest) -> list[dict[str, Any]]: ...
+
+
+class ExternalDatasetDetails(Protocol):
+    def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord: ...
 
 
 class ExternalKnowledgeApplicationService:
-    def __init__(self, *, dataset_access: DatasetAccess, operations: ExternalKnowledgeOperations) -> None:
+    def __init__(
+        self,
+        *,
+        dataset_access: DatasetAccess,
+        repository: ExternalKnowledgeRepository,
+        retrieval: ExternalKnowledgeRetrieval,
+        queries: HitTestingQueryRecorder,
+        dataset_details: ExternalDatasetDetails,
+        sync_creator_access: Callable[[RequestContext, DatasetRef], None],
+    ) -> None:
         self._dataset_access = dataset_access
-        self._operations = operations
+        self._repository = repository
+        self._retrieval = retrieval
+        self._queries = queries
+        self._dataset_details = dataset_details
+        self._sync_creator_access = sync_creator_access
 
     @staticmethod
     def _validate_settings(settings: Mapping[str, Any]) -> None:
@@ -54,29 +74,32 @@ class ExternalKnowledgeApplicationService:
             raise ValueError("api_key is required")
 
     def list_templates(self, context: RequestContext, *, page: int, limit: int, keyword: str | None) -> dict[str, Any]:
-        return self._operations.list_templates(context.active_workspace_id, page=page, limit=limit, keyword=keyword)
+        return self._repository.list_templates(context.active_workspace_id, page=page, limit=limit, keyword=keyword)
 
     def get_template(self, context: RequestContext, *, template_id: str) -> dict[str, Any]:
-        return self._operations.get_template(context.active_workspace_id, template_id)
+        return self._repository.get_template(context.active_workspace_id, template_id)
 
     def create_template(self, context: RequestContext, *, name: str, settings: Mapping[str, Any]) -> dict[str, Any]:
         self._validate_settings(settings)
-        return self._operations.create_template(context, name=name, settings=settings)
+        self._retrieval.check_settings(settings)
+        return self._repository.create_template(context, name=name, settings=settings)
 
     def update_template(
         self, context: RequestContext, *, template_id: str, name: str, settings: Mapping[str, Any]
     ) -> dict[str, Any]:
         self._validate_settings(settings)
-        return self._operations.update_template(context, template_id, name=name, settings=settings)
+        return self._repository.update_template(context, template_id, name=name, settings=settings)
 
     def delete_template(self, context: RequestContext, *, template_id: str) -> None:
-        self._operations.delete_template(context.active_workspace_id, template_id)
+        self._repository.delete_template(context.active_workspace_id, template_id)
 
     def template_usage(self, context: RequestContext, *, template_id: str) -> tuple[bool, int]:
-        return self._operations.template_usage(context.active_workspace_id, template_id)
+        return self._repository.template_usage(context.active_workspace_id, template_id)
 
     def create_dataset(self, context: RequestContext, *, payload: ExternalDatasetCreatePayload) -> DatasetDetailRecord:
-        return self._operations.create_dataset(context, payload)
+        ref = self._repository.create_dataset(context, payload)
+        self._sync_creator_access(context, ref)
+        return self._dataset_details.get_dataset(context, ref)
 
     def hit_testing(
         self,
@@ -86,19 +109,21 @@ class ExternalKnowledgeApplicationService:
         query: str,
         retrieval_model: dict[str, Any] | None,
         metadata_filters: dict[str, Any] | None,
-    ) -> dict[str, Any]:
+    ) -> RetrieveResponseDict:
         dataset = self._dataset_access.require_accessible(context, dataset_id)
-        if not query:
-            raise ValueError("Query or attachment_ids is required")
-        if len(query) > 250:
-            raise ValueError("Query cannot exceed 250 characters")
+        validate_hit_testing_input(query, None)
+        ref = DatasetRef(dataset.workspace_id, dataset.id)
         try:
-            return self._operations.retrieve(
-                context,
-                DatasetRef(dataset.workspace_id, dataset.id),
+            request = self._repository.prepare_retrieval(
+                ref,
                 query=query,
                 retrieval_model=retrieval_model,
                 metadata_filters=metadata_filters,
             )
+            if request is None:
+                return external_hit_testing_response(query, [])
+            documents = self._retrieval.retrieve(request)
+            self._queries.record_hit_testing_query(context, ref, query)
+            return external_hit_testing_response(query, documents)
         except Exception as error:
             raise ExternalHitTestingError(str(error)) from error

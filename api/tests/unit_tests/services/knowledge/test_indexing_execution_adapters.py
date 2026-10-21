@@ -25,10 +25,10 @@ from models.model import UploadFile
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import IndexingExecutionAdapter
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.indexing.execution import DocumentIndexingService, IndexingDocument
-from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.repositories.knowledge.test_document_repository import _dataset, _document
 

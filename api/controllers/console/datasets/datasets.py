@@ -45,8 +45,8 @@ from models.account import TenantAccountRole
 from models.enums import CreatorUserRole, DatasetQuerySource
 from models.enums import PermissionEnum as DatasetPermissionEnum
 from models.model import AppMode, IconType
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.entities.indexing_estimate import (
     NewEstimateSource,

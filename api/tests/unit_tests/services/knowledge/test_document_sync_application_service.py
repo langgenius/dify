@@ -3,7 +3,8 @@ from dataclasses import dataclass, field
 import pytest
 
 from machinery.context import RequestContext
-from services.knowledge.dataset_access import AccessibleDataset, DatasetAccessDeniedError, DatasetAccessSnapshot
+from services.errors.dataset import DatasetAccessDeniedError
+from services.knowledge.dataset_access import AccessibleDataset, DatasetAccessSnapshot
 from services.knowledge.document_sync import (
     DocumentSyncApplicationService,
     SyncDocumentNotFoundError,
@@ -11,7 +12,7 @@ from services.knowledge.document_sync import (
     SyncDocumentSourceError,
 )
 from services.knowledge.document_sync_adapters import CeleryDocumentSyncDispatcher
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 
 
 def _context() -> RequestContext:

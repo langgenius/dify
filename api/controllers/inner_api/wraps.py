@@ -3,12 +3,15 @@ from collections.abc import Callable
 from functools import wraps
 from hashlib import sha1
 from hmac import new as hmac_new
+from typing import Concatenate
 
 from flask import abort, request
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from core.logging.context import get_request_id, get_trace_id
 from libs.exception import BaseHTTPException
+from machinery.context import RequestContext
 from models.model import EndUser
 
 
@@ -91,6 +94,29 @@ def plugin_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         return view(*args, **kwargs)
 
     return decorated
+
+
+def plugin_inner_api_admission[T, **P, R](
+    view: Callable[Concatenate[T, RequestContext, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    """Authenticate the trusted plugin bridge and capture stable request metadata.
+
+    Plugin authentication admits a service, so the account and workspace fields
+    are empty. Caller app and tenant claims are validated by the application use case.
+    """
+
+    @wraps(view)
+    def admitted(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        context = RequestContext(
+            request_id=get_request_id(),
+            trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+            account_id="",
+            active_workspace_id="",
+            remote_ip=request.remote_addr,
+        )
+        return view(self, context, *args, **kwargs)
+
+    return plugin_inner_api_only(admitted)
 
 
 def agent_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:

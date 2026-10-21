@@ -1,8 +1,9 @@
-"""Dataset access use case, read model, errors, and consumer-owned ports."""
+"""Dataset access use case, read model, and consumer-owned ports."""
 
 from typing import NamedTuple, Protocol
 
 from machinery.context import RequestContext
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 
 _OWNER_ROLE = "owner"
 _ALL_TEAM_MEMBERS = "all_team_members"
@@ -48,20 +49,6 @@ class WorkspaceRoleReader(Protocol):
     """Read the account's legacy role in a workspace."""
 
     def get_legacy_role(self, *, workspace_id: str, account_id: str) -> str | None: ...
-
-
-class DatasetAccessError(Exception):
-    """Base class for framework-neutral dataset access failures."""
-
-
-class DatasetNotFoundError(DatasetAccessError):
-    def __init__(self) -> None:
-        super().__init__("Dataset not found")
-
-
-class DatasetAccessDeniedError(DatasetAccessError):
-    def __init__(self) -> None:
-        super().__init__("You do not have permission to access this dataset")
 
 
 def can_access_dataset(snapshot: DatasetAccessSnapshot, *, actor_id: str, workspace_role: str | None) -> bool:

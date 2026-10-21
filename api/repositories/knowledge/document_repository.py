@@ -1,21 +1,25 @@
 """SQLAlchemy repository for tenant-owned document state."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from pydantic import TypeAdapter, ValidationError
-from sqlalchemy import exists, select, update
+from sqlalchemy import and_, exists, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.sql import ColumnElement
 
+from core.rag.entities import MetadataFilteringCondition
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.dataset import Dataset, DatasetProcessRule, Document, Pipeline
 from models.enums import IndexingStatus
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from repositories.knowledge.metadata_filter import process_metadata_filter_func
 from services.knowledge.document_sync import SyncDocumentRecord
+from services.knowledge.entities.hit_testing import RetrievalDocumentRecord
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
 from services.knowledge.indexing.estimate import EstimateDocumentRecord, StoredSource
 from services.knowledge.indexing.execution import IndexingDocument
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
 
 _MAPPING_ADAPTER = TypeAdapter(dict[str, object])
 
@@ -85,6 +89,64 @@ class SQLAlchemyDocumentRepository:
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_hit_testing_document_filter(self, ref: DatasetRef, conditions: dict[str, object]) -> list[str]:
+        model = MetadataFilteringCondition.model_validate(conditions)
+        filters: list[ColumnElement[bool]] = []
+        for sequence, condition in enumerate(model.conditions or []):
+            process_metadata_filter_func(
+                sequence, condition.comparison_operator, condition.name, condition.value, filters
+            )
+        statement = (
+            select(Document.id)
+            .join(Dataset, Dataset.id == Document.dataset_id)
+            .where(
+                Document.tenant_id == ref.tenant_id,
+                Document.dataset_id == ref.dataset_id,
+                Dataset.tenant_id == ref.tenant_id,
+                Document.enabled.is_(True),
+                Document.archived.is_(False),
+                Document.indexing_status == "completed",
+            )
+        )
+        if filters:
+            statement = statement.where(and_(*filters) if model.logical_operator == "and" else or_(*filters))
+        with self._session_factory() as session:
+            return list(session.scalars(statement))
+
+    def get_retrieval_documents(
+        self, ref: DatasetRef, document_ids: Sequence[str]
+    ) -> dict[str, RetrievalDocumentRecord]:
+        if not document_ids:
+            return {}
+        with self._session_factory() as session:
+            documents = session.scalars(
+                select(Document)
+                .join(Dataset, Dataset.id == Document.dataset_id)
+                .where(
+                    Document.id.in_(document_ids),
+                    Document.dataset_id == ref.dataset_id,
+                    Document.tenant_id == ref.tenant_id,
+                    Dataset.tenant_id == ref.tenant_id,
+                    Document.enabled.is_(True),
+                    Document.archived.is_(False),
+                    Document.indexing_status == "completed",
+                )
+            )
+            return {
+                document.id: RetrievalDocumentRecord(
+                    document.id,
+                    str(document.doc_form),
+                    {
+                        "id": document.id,
+                        "data_source_type": document.data_source_type,
+                        "name": document.name,
+                        "doc_type": document.doc_type,
+                        "doc_metadata": document.doc_metadata,
+                    },
+                )
+                for document in documents
+            }
 
     def get_pipeline_dataset(self, pipeline: Pipeline, *, session: Session) -> Dataset | None:
         """Read within the pipeline caller's transaction, including uncommitted changes."""

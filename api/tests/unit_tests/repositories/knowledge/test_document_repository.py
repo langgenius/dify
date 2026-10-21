@@ -6,10 +6,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, DatasetProcessRule, Document
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode
+from models.enums import (
+    DataSourceType,
+    DocumentCreatedFrom,
+    IndexingStatus,
+    ProcessRuleMode,
+)
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
-from services.knowledge.resource_scope import DatasetRef
 
 
 def _dataset(dataset_id: str, workspace_id: str) -> Dataset:
@@ -86,6 +91,45 @@ def test_document_queries_enforce_the_complete_owner_chain(
     assert record.workspace_id == "workspace-1"
     assert record.data_source_info == {"notion_page_id": "page-document-1"}
     assert repository.get_estimate_document(DatasetRef("workspace-2", "dataset-1").document("document-1")) is None
+
+
+def test_retrieval_document_batches_and_metadata_filters_validate_owners_and_state(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    document_ids = [
+        "owned",
+        "foreign",
+        "broken-chain",
+        "wrong-document-tenant",
+        "disabled",
+        "archived",
+        "pending",
+        "missing",
+    ]
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _dataset("dataset-1", "workspace-1"),
+                _dataset("dataset-2", "workspace-2"),
+                _document("owned"),
+                _document("foreign", workspace_id="workspace-2", dataset_id="dataset-2"),
+                _document("broken-chain", dataset_id="dataset-2"),
+                _document("wrong-document-tenant", workspace_id="workspace-2"),
+                _document("disabled", enabled=False),
+                _document("archived", archived=True),
+                _document("pending", status=IndexingStatus.INDEXING),
+            ]
+        )
+    repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1")
+    documents = repository.get_retrieval_documents(ref, document_ids)
+    assert set(documents) == {"owned"}
+    assert documents["owned"].values["name"] == "Document owned"
+    assert repository.get_hit_testing_document_filter(ref, {"conditions": []}) == ["owned"]
+    for invalid_ref in [DatasetRef("workspace-2", "dataset-1"), DatasetRef("workspace-1", "dataset-2")]:
+        assert repository.get_retrieval_documents(invalid_ref, document_ids) == {}
+        assert repository.get_hit_testing_document_filter(invalid_ref, {"conditions": []}) == []
+    assert repository.get_retrieval_documents(ref, []) == {}
 
 
 def test_pipeline_document_store_owns_sessions_and_scopes_updates(

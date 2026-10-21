@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from events.event_handlers import create_document_index as handler_module
 from models.dataset import Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.knowledge.entities.resource_scope import DocumentRef
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.resource_scope import DocumentRef
 
 
 @pytest.fixture
