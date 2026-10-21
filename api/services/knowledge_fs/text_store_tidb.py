@@ -12,10 +12,13 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
 from services.knowledge_fs.text_store import TextIndexPendingError, TextPayload, TextPoint
+from services.knowledge_fs.text_store_diagnostics import text_backend_stage
 from services.knowledge_fs.vector_store import VectorResult, VectorStoreUnavailableError
 
 if TYPE_CHECKING:
     import pymysql
+
+    from services.knowledge_fs.text_search_deadline import TextSearchDeadline
 
 
 @lru_cache(maxsize=128)
@@ -39,52 +42,80 @@ def _sql_endpoint(cluster_id: str) -> tuple[str, int]:
 
 
 class TidbTextStore:
-    def __init__(self, connection: "pymysql.Connection"):
+    def __init__(self, connection: "pymysql.Connection", deadline: "TextSearchDeadline | None" = None):
         self.connection = connection
+        self.deadline = deadline
 
     @classmethod
-    def from_tenant(cls, tenant_id: str, *, allow_create: bool) -> "TidbTextStore":
+    def from_tenant(
+        cls, tenant_id: str, *, allow_create: bool, deadline: "TextSearchDeadline | None" = None
+    ) -> "TidbTextStore":
         import pymysql
 
         from services.tidb_binding_service import resolve_tidb_auth_binding
 
-        binding = resolve_tidb_auth_binding(tenant_id, allow_create=allow_create)
-        host, port = _sql_endpoint(binding.cluster_id)
-        connection = pymysql.connect(
-            host=host,
-            port=port,
-            user=binding.account,
-            password=binding.password,
-            database=None,
-            ssl=ssl.create_default_context(),
-            connect_timeout=10,
-            read_timeout=120,
-            write_timeout=30,
-            autocommit=True,
-            charset="utf8mb4",
-        )
+        if deadline:
+            deadline.remaining()
+        with text_backend_stage("binding_resolution"):
+            binding = resolve_tidb_auth_binding(tenant_id, allow_create=allow_create)
+        with text_backend_stage("endpoint_lookup"):
+            host, port = _sql_endpoint(binding.cluster_id)
+        with text_backend_stage("connect"):
+            remaining = deadline.remaining() if deadline else 120.0
+            connection = pymysql.connect(
+                host=host,
+                port=port,
+                user=binding.account,
+                password=binding.password,
+                database=None,
+                ssl=ssl.create_default_context(),
+                connect_timeout=min(10, remaining),
+                read_timeout=remaining,
+                write_timeout=min(30, remaining),
+                autocommit=True,
+                charset="utf8mb4",
+            )
         if allow_create:
             try:
                 # Full-text ingestion must initialize its database independently of vector writes.
-                with connection.cursor() as cursor:
-                    cursor.execute("CREATE DATABASE IF NOT EXISTS `ai`")
-                connection.select_db("ai")
+                with text_backend_stage("database_initialize"):
+                    with connection.cursor() as cursor:
+                        cursor.execute("CREATE DATABASE IF NOT EXISTS `ai`")
+                    connection.select_db("ai")
             except Exception:
                 with suppress(Exception):
                     connection.close()
                 raise
-        return cls(connection)
+        return cls(connection, deadline)
 
     def close(self) -> None:
+        if self.deadline:
+            # PyMySQL close() sends COM_QUIT before closing the socket. Do not let that
+            # final write spend another 30 seconds after the search has timed out.
+            self.connection._write_timeout = 0.1  # type: ignore[attr-defined]
         self.connection.close()
+
+    def _search_timeout_hint(self) -> str:
+        if self.deadline is None:
+            return ""
+        remaining = self.deadline.remaining()
+        # PyMySQL has no public timeout setter; refresh its per-I/O limits before every SQL.
+        self.connection._read_timeout = remaining  # type: ignore[attr-defined]
+        self.connection._write_timeout = min(30, remaining)  # type: ignore[attr-defined]
+        # The server must stop executing too; a client socket timeout alone cannot ensure that.
+        # Zero means unlimited in TiDB, so always send a positive integer, leaving 1s to unwind.
+        return f"MAX_EXECUTION_TIME({max(1, int((remaining - 1) * 1000))})"
 
     def _ensure(self, payload: TextPayload) -> bool:
         import pymysql
 
         name = payload.scope.collection_name  # fixed prefix plus scope SHA; never user SQL
         with self.connection.cursor() as cursor:
+            hint = self._search_timeout_hint()
             cursor.execute(
-                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s", ("ai", name)
+                f"SELECT {'/*+ ' + hint + ' */ ' if hint else ''}TABLE_NAME "
+                "FROM information_schema.TABLES WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s",
+                ("ai", name),
             )
             exists = bool(cursor.fetchone())
             if not exists:
@@ -110,20 +141,26 @@ class TidbTextStore:
                             raise
             else:
                 # An interrupted first write may leave no database; select it only after finding the index.
-                self.connection.select_db("ai")
+                with text_backend_stage("database_select"):
+                    self._search_timeout_hint()
+                    self.connection.select_db("ai")
             if payload.operation in {"upsert", "search"}:
-                cursor.execute(
-                    "SELECT AVAILABLE FROM information_schema.TIFLASH_REPLICA WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s",
-                    ("ai", name),
-                )
-                row = cursor.fetchone()
-                if not row or not row[0]:
-                    raise TextIndexPendingError()
+                with text_backend_stage("replica_readiness"):
+                    hint = self._search_timeout_hint()
+                    cursor.execute(
+                        f"SELECT {'/*+ ' + hint + ' */ ' if hint else ''}AVAILABLE "
+                        "FROM information_schema.TIFLASH_REPLICA WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s",
+                        ("ai", name),
+                    )
+                    row = cursor.fetchone()
+                    if not row or not row[0]:
+                        raise TextIndexPendingError()
         return True
 
     def execute(self, payload: TextPayload) -> VectorResult:
-        if not self._ensure(payload):
-            return {"points": [], "matches": []}
+        with text_backend_stage("index_check"):
+            if not self._ensure(payload):
+                return {"points": [], "matches": []}
         name = payload.scope.collection_name
         with self.connection.cursor() as cursor:
             if payload.operation == "upsert":
@@ -147,7 +184,8 @@ class TidbTextStore:
                 # TiDB otherwise picks Batch_Point_Get for the authorized UUID list;
                 # that TiKV plan cannot execute FTS_MATCH_WORD (error 1815).
                 cursor.execute(
-                    f"SELECT /*+ READ_FROM_STORAGE(TIFLASH[{name}]) */ id, fts_match_word(%s,text) AS score "
+                    f"SELECT /*+ READ_FROM_STORAGE(TIFLASH[{name}]) {self._search_timeout_hint()} */ "
+                    "id, fts_match_word(%s,text) AS score "
                     f"FROM `{name}` IGNORE INDEX (PRIMARY) WHERE fts_match_word(%s,text) "
                     f"AND id IN ({placeholders}) AND {token_filter} ORDER BY score DESC LIMIT %s",
                     (payload.query, payload.query, *payload.ids, *patterns, payload.limit),
