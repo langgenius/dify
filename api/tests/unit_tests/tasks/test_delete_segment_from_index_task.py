@@ -201,6 +201,61 @@ def test_delete_segment_removes_attachment_blobs_from_storage(
     assert sqlite_session.get(UploadFile, attachment_id) is None
 
 
+@pytest.mark.parametrize(
+    ("document_state", "value"),
+    [("enabled", False), ("archived", True), ("indexing_status", IndexingStatus.PARSING)],
+)
+def test_delete_segment_cleans_attachments_when_document_cannot_be_indexed(
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+    sqlite_session: Session,
+    document_state: str,
+    value: object,
+) -> None:
+    dataset, document, segment = indexed_segment
+    dataset.is_multimodal = True
+    setattr(document, document_state, value)
+    attachment = UploadFile(
+        tenant_id=dataset.tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="attachments/disabled-document-image.png",
+        name="disabled-document-image.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=segment.created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    binding = SegmentAttachmentBinding(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add_all([dataset, document, attachment, binding])
+    sqlite_session.commit()
+    attachment_id = attachment.id
+    attachment_key = attachment.key
+    binding_id = binding.id
+
+    with (
+        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch("tasks.delete_segment_from_index_task.storage.delete") as storage_delete,
+    ):
+        delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
+
+    processor = processor_factory.return_value.init_index_processor.return_value
+    processor.clean.assert_called_once()
+    assert processor.clean.call_args.kwargs["node_ids"] == [attachment_id]
+    assert processor.clean.call_args.kwargs["with_keywords"] is False
+    storage_delete.assert_called_once_with(attachment_key)
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is None
+
+
 def test_delete_segment_preserves_attachment_shared_by_another_segment(
     indexed_segment: tuple[Dataset, Document, DocumentSegment],
     sqlite_session: Session,

@@ -343,12 +343,17 @@ class SegmentIndexingGateway:
     def delete(
         self, document_ref: DocumentRef, segments: Sequence[SegmentIndexTarget], children: Sequence[ChildChunkState]
     ) -> None:
+        enabled_segment_ids = {segment.id for segment in segments if segment.enabled}
         self._delete_task(
-            [segment.index_node_id for segment in segments],
+            [segment.index_node_id for segment in segments if segment.enabled and segment.index_node_id],
             document_ref.dataset.dataset_id,
             document_ref.document_id,
             [segment.id for segment in segments],
-            [child.index_node_id for child in children if child.index_node_id],
+            [
+                child.index_node_id
+                for child in children
+                if child.index_node_id and child.data.segment_id in enabled_segment_ids
+            ],
         )
 
     def change_status(self, document_ref: DocumentRef, segment_ids: Sequence[str], action: str) -> None:
