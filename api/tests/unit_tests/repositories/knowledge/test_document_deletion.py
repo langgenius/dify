@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from datetime import datetime
 
 import pytest
@@ -10,12 +11,37 @@ from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.knowledge_task import KnowledgeTaskOutbox
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.knowledge.upload_file_repository import (
+    guard_knowledge_owner_upload_references,
+    sync_knowledge_owner_upload_references,
+)
 from services.knowledge.documents.contracts import DocumentPersistenceArchivedError
 from services.knowledge.resource_scope import DatasetRef
 from services.knowledge.task_outbox import gateway
 from services.knowledge.task_outbox.gateway import wake_knowledge_task_dispatcher_after_commit
+from tests.unit_tests.model_factories import make_upload_file
 
 REF = DatasetRef("tenant-1", "dataset-1")
+
+
+@pytest.fixture(autouse=True)
+def _registered_document_upload_reference_guards() -> Generator[None]:
+    listeners = (
+        ("before_insert", guard_knowledge_owner_upload_references),
+        ("before_update", guard_knowledge_owner_upload_references),
+        ("after_insert", sync_knowledge_owner_upload_references),
+        ("after_update", sync_knowledge_owner_upload_references),
+    )
+    initial_state = {
+        (operation, listener): event.contains(Document, operation, listener) for operation, listener in listeners
+    }
+    for operation, listener in listeners:
+        if not initial_state[(operation, listener)]:
+            event.listen(Document, operation, listener)
+    yield
+    for operation, listener in listeners:
+        if not initial_state[(operation, listener)]:
+            event.remove(Document, operation, listener)
 
 
 def _document() -> Document:
@@ -41,9 +67,17 @@ def _document() -> Document:
 
 def _seed(session_factory: sessionmaker[Session], *, with_document: bool = True) -> None:
     with session_factory.begin() as session:
-        session.add(Dataset(id=REF.dataset_id, tenant_id=REF.tenant_id, name="Dataset", created_by="account-1"))
+        session.add_all(
+            [
+                Dataset(id=REF.dataset_id, tenant_id=REF.tenant_id, name="Dataset", created_by="account-1"),
+                make_upload_file(file_id="file-1", tenant_id=REF.tenant_id, key="uploads/file-1"),
+            ]
+        )
+        # The upload fence must observe the UploadFile before the Document flush.
+        session.flush()
         if with_document:
             session.add(_document())
+            session.flush()
 
 
 class WakeRecorder:
@@ -103,7 +137,7 @@ def test_delete_document_commits_cleanup_intent_before_waking_dispatcher(
             "doc_form": "text_model",
             "file_id": "file-1",
             "cleanup_manifest": {
-                "document_files": [{"id": "file-1", "key": None}],
+                "document_files": [{"id": "file-1", "key": "uploads/file-1"}],
                 "image_files": [],
                 "segment_attachments": [],
             },
@@ -189,7 +223,10 @@ def test_batch_delete_rejects_all_rows_when_one_locked_document_is_archived(
     second.data_source_info = '{"upload_file_id":"file-2"}'
     second.archived = True
     with sqlite_session_factory.begin() as session:
+        session.add(make_upload_file(file_id="file-2", tenant_id=REF.tenant_id, key="uploads/file-2"))
+        session.flush()
         session.add(second)
+        session.flush()
 
     with pytest.raises(DocumentPersistenceArchivedError):
         _repository(sqlite_session_factory).delete_documents(REF, ["document-1", "document-2"])
