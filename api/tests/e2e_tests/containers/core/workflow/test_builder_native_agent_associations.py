@@ -5,11 +5,37 @@ material are explicit no-network fixture boundaries, never Redis ACK, physical
 cleanup, actual Agent execution or whole-chain qualification.
 """
 
+from __future__ import annotations
+
+from collections.abc import Generator
+from typing import TYPE_CHECKING
+
+from pydantic import JsonValue
+from typing_extensions import TypedDict
+
+from models.workflow import Workflow
+from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import NativeOwner
+
+if TYPE_CHECKING:
+    from dify_agent.protocol.execution_binding import CreateExecutionBindingRequest
+
+    from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, ResolvedNativeTestContext
+
+
+from typing import TYPE_CHECKING, NotRequired, Unpack
+
+if TYPE_CHECKING:
+    import services.dify_builder.native_testing.repository as _forward_types_0
+
+
 import json
 from contextlib import contextmanager
 from uuid import uuid4
 
 import pytest
+import pytest_mock
 from dify_agent.client import Client
 from dify_agent.protocol.execution_binding import CreateExecutionBindingResponse
 from shellctl.shared.schemas import NativeScopeLimits
@@ -32,7 +58,6 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.dify_builder_native_tests import NativePayloadObject
-from models.workflow import Workflow
 from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
     canonical_digest,
@@ -40,6 +65,7 @@ from runtime_contracts.builder.execution import (
 from runtime_contracts.builder.native.agent_contracts import (
     AgentNodeAssociation,
     AgentParentNodeRef,
+    AgentWaitAssociation,
 )
 from runtime_contracts.builder.native.runtime_contracts import (
     NativeCheckpointPayload,
@@ -83,7 +109,14 @@ CANARY = "PRIVATE_A5_PROTECTED_BYTES_CANARY_81ac"
 
 
 @pytest.fixture
-def association_case(mocker, native_owner, no_live, migrated_continuation_tables, monkeypatch, request):
+def association_case(
+    mocker: pytest_mock.MockerFixture,
+    native_owner: NativeOwner,
+    no_live: None,
+    migrated_continuation_tables: None,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+) -> AgentAssociationCase:
     from extensions.ext_database import db
 
     assert migrated_continuation_tables is None
@@ -96,7 +129,7 @@ def association_case(mocker, native_owner, no_live, migrated_continuation_tables
     node = graph["nodes"][-1]
     snapshot_id = node["data"]["agent_binding"]["current_snapshot_id"]
     snapshot = db.session.get(AgentConfigSnapshot, snapshot_id)
-    agent_id = snapshot.agent_id
+    agent_id = require_instance(snapshot, AgentConfigSnapshot).agent_id
     soul = AgentSoulConfig.model_validate(
         {
             "model": {
@@ -106,7 +139,7 @@ def association_case(mocker, native_owner, no_live, migrated_continuation_tables
             }
         }
     )
-    snapshot.config_snapshot = soul
+    require_instance(snapshot, AgentConfigSnapshot).config_snapshot = soul
     db.session.add(
         Agent(
             id=agent_id,
@@ -150,25 +183,37 @@ def association_case(mocker, native_owner, no_live, migrated_continuation_tables
     key = generate_key_pair(ledger.actor.tenant_id)
     native_run_id = str(uuid4())
     with ledger.factory.begin() as session:
-        session.get(Tenant, ledger.actor.tenant_id).encrypt_public_key = key
-        request = session.get(DifyBuilderExecutionRequest, ledger.ref.request_id)
-        workflow = session.get(Workflow, request.workflow_id)
-        selected_input = session.get(DifyBuilderTestInput, request.test_input_id)
-        graph = json.loads(workflow.graph)
-        inputs = selected_input.inputs
-        revision = native_workflow_revision(workflow)
-        request.context = {
-            **request.context,
+        require_instance(session.get(Tenant, ledger.actor.tenant_id), Tenant).encrypt_public_key = key
+        saved_request = session.get(DifyBuilderExecutionRequest, ledger.ref.request_id)
+        workflow = session.get(Workflow, require_instance(saved_request, DifyBuilderExecutionRequest).workflow_id)
+        selected_input = session.get(
+            DifyBuilderTestInput, require_instance(saved_request, DifyBuilderExecutionRequest).test_input_id
+        )
+        graph = json.loads(require_instance(workflow, Workflow).graph)
+        inputs = require_instance(selected_input, DifyBuilderTestInput).inputs
+        revision = native_workflow_revision(require_instance(workflow, Workflow))
+        require_instance(saved_request, DifyBuilderExecutionRequest).context = {
+            **require_instance(saved_request, DifyBuilderExecutionRequest).context,
             "mode": "native",
             "native_run_id": native_run_id,
             "input_revision": canonical_digest(inputs),
-            "start_schema_hash": selected_input.start_schema_hash,
+            "start_schema_hash": require_instance(selected_input, DifyBuilderTestInput).start_schema_hash,
         }
         if legacy_confirmed:
-            request.context = {**request.context, "profile": {"profile_id": "builder-agent-confirmed-v1"}}
-        request.context_digest = canonical_digest(request.context)
-        ref = ledger.ref.model_copy(update={"context_digest": request.context_digest})
-        app_id, workflow_id = request.app_id, request.workflow_id
+            require_instance(saved_request, DifyBuilderExecutionRequest).context = {
+                **require_instance(saved_request, DifyBuilderExecutionRequest).context,
+                "profile": {"profile_id": "builder-agent-confirmed-v1"},
+            }
+        require_instance(saved_request, DifyBuilderExecutionRequest).context_digest = canonical_digest(
+            require_instance(saved_request, DifyBuilderExecutionRequest).context
+        )
+        ref = ledger.ref.model_copy(
+            update={"context_digest": require_instance(saved_request, DifyBuilderExecutionRequest).context_digest}
+        )
+        app_id, workflow_id = (
+            require_instance(saved_request, DifyBuilderExecutionRequest).app_id,
+            require_instance(saved_request, DifyBuilderExecutionRequest).workflow_id,
+        )
         snapshot_id = graph["nodes"][-1]["data"]["agent_binding"]["current_snapshot_id"]
     loader = OwnedNativeTestLoader(ledger.factory, actor=ledger.actor, resolver=ledger.metadata)
     store = NativeExecutionStateStore(loader)
@@ -195,13 +240,14 @@ def association_case(mocker, native_owner, no_live, migrated_continuation_tables
     store.initialize_context(context=context)  # Exactly one real immutable admission.
     calls = []
 
-    def create(request):
+    def create(request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
         calls.append(request.binding_id)
+        assert request.native_test_scope is not None
         backend_ref = f"native:{request.binding_id}:{request.native_test_scope.generation}"
         return CreateExecutionBindingResponse(binding_ref=backend_ref, workspace_ref=backend_ref)
 
     @contextmanager
-    def backend():
+    def backend() -> Generator[Client]:
         client = Client(base_url="http://127.0.0.1:1")
         mocker.patch.object(client, "create_execution_binding_sync", side_effect=create)
         yield client
@@ -223,7 +269,7 @@ def association_case(mocker, native_owner, no_live, migrated_continuation_tables
     )
     workspace = service.prepare(ref=ref, pinned_snapshot_id=snapshot_id, input_file_refs=())
     execution_id = str(uuid4())  # Actual canonical UUID fixture; runtime node composition is later.
-    typed_inputs = {"typed": [True, 1, "1"]}
+    typed_inputs: dict[str, JsonValue] = {"typed": [True, 1, "1"]}
     input_ref = store.store_node_inputs(ref=ref, generation=0, native_execution_id=execution_id, inputs=typed_inputs)
     parent = AgentParentNodeRef(
         ref=ref, execution_id=execution_id, input_result_ref=input_ref, input_digest=canonical_digest(typed_inputs)
@@ -240,14 +286,14 @@ def association_case(mocker, native_owner, no_live, migrated_continuation_tables
     )
 
 
-def bound(c):
-    config = {"protected-config": CANARY, "typed": [True, 1, "1"]}
+def bound(c: AgentAssociationCase) -> tuple[AgentNodeAssociation, str]:
+    config: dict[str, JsonValue] = {"protected-config": CANARY, "typed": [True, 1, "1"]}
     config_ref = c.store.store_agent_config(
         ref=c.ref, parent_node=c.parent, expected_invocation_generation=0, config=config
     )
     association = AgentNodeAssociation(
         parent_node=c.parent,
-        workflow_native_run_id=c.context.native_run_id,
+        workflow_native_run_id=require_instance(c.context.native_run_id, str),
         agent_run_id=str(uuid4()),
         config_ref=config_ref,
         config_digest=canonical_digest(config),
@@ -261,10 +307,10 @@ def bound(c):
     return association, ref
 
 
-def waiting(c):
+def waiting(c: AgentAssociationCase) -> tuple[AgentNodeAssociation, AgentWaitArguments]:
     association, ref = bound(c)
     # Opaque backend-selected material fixture; no actual Redis/SDK parse qualification.
-    material = {
+    material: dict[str, JsonValue] = {
         "run_id": association.agent_run_id,
         "generation": 7,
         "ref": c.ref.model_dump(mode="json"),
@@ -277,7 +323,7 @@ def waiting(c):
         "job_refs": [],
         "session_snapshot": {"layers": {}},
     }
-    args = {
+    args: AgentWaitArguments = {
         "ref": c.ref,
         "parent_node": c.parent,
         "association_object_ref": ref,
@@ -288,7 +334,7 @@ def waiting(c):
     return association, args
 
 
-def payload(c, wait):
+def payload(c: NormalAgentParent | AgentAssociationCase, wait: AgentWaitAssociation) -> NativeCheckpointPayload:
     parent = c.parent
     journal = NodeJournalState(
         invocation_id=c.ref.invocation_id,
@@ -301,7 +347,7 @@ def payload(c, wait):
     )
     return NativeCheckpointPayload(
         schema_version="1",
-        native_run_id=c.context.native_run_id,
+        native_run_id=require_instance(c.context.native_run_id, str),
         generation=0,
         generate_entity_json="{}",
         graph_runtime_state_json="{}",
@@ -313,7 +359,9 @@ def payload(c, wait):
     )
 
 
-def test_real_encrypted_association_checkpoint_roundtrip_preserves_nonempty_private_relations(association_case):
+def test_real_encrypted_association_checkpoint_roundtrip_preserves_nonempty_private_relations(
+    association_case: AgentAssociationCase,
+) -> None:
     from extensions.ext_storage import storage
 
     c = association_case
@@ -340,7 +388,9 @@ def test_real_encrypted_association_checkpoint_roundtrip_preserves_nonempty_priv
 
 
 @pytest.mark.parametrize("fault", ["changed-run", "foreign-checkpoint"])
-def test_real_immutable_agent_selection_refuses_without_new_private_write(mocker, association_case, fault):
+def test_real_immutable_agent_selection_refuses_without_new_private_write(
+    mocker: pytest_mock.MockerFixture, association_case: AgentAssociationCase, fault: str
+) -> None:
     from extensions.ext_storage import storage
 
     c = association_case
@@ -348,7 +398,7 @@ def test_real_immutable_agent_selection_refuses_without_new_private_write(mocker
     wait = c.store.store_agent_wait(**args)
     save = mocker.patch.object(storage, "save", side_effect=AssertionError("unexpected new encrypted write"))
 
-    def refuse():
+    def refuse() -> None:
         if fault == "changed-run":
             c.store.bind_agent_run(
                 ref=c.ref,
@@ -368,18 +418,24 @@ def test_real_immutable_agent_selection_refuses_without_new_private_write(mocker
     save.assert_not_called()
 
 
-def test_real_current_workspace_retirement_blocks_selected_checkpoint_read(association_case):
+def test_real_current_workspace_retirement_blocks_selected_checkpoint_read(
+    association_case: AgentAssociationCase,
+) -> None:
     c = association_case
     _, args = waiting(c)
     wait = c.store.store_agent_wait(**args)
     cp = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload(c, wait))
     with c.factory.begin() as session:
-        session.get(AgentWorkspaceBinding, c.workspace.binding_id).status = AgentWorkingResourceStatus.RETIRED
+        require_instance(
+            session.get(AgentWorkspaceBinding, c.workspace.binding_id), AgentWorkspaceBinding
+        ).status = AgentWorkingResourceStatus.RETIRED
     with pytest.raises(BuilderExecutionPolicyError, match="native_workspace_owner_mismatch"):
         c.store.read_checkpoint(ref=c.ref, checkpoint=cp)
 
 
-def test_real_post_commit_ack_loss_reuses_private_object_without_rewrite(mocker, association_case, monkeypatch):
+def test_real_post_commit_ack_loss_reuses_private_object_without_rewrite(
+    mocker: pytest_mock.MockerFixture, association_case: AgentAssociationCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from extensions.ext_storage import storage
 
     c = association_case
@@ -388,7 +444,11 @@ def test_real_post_commit_ack_loss_reuses_private_object_without_rewrite(mocker,
     lost = [True]
 
     @contextmanager
-    def commit_then_lose(**kwargs):
+    def commit_then_lose(
+        **kwargs: Unpack[_ForwardArguments425],
+    ) -> _forward_types_0.Generator[
+        tuple[_forward_types_0.Session, _forward_types_0.OwnedNativeTest, _forward_types_0.NativeTestScope]
+    ]:
         with original(**kwargs) as selected:
             yield selected
         if lost[0]:
@@ -406,13 +466,15 @@ def test_real_post_commit_ack_loss_reuses_private_object_without_rewrite(mocker,
     )
 
 
-def test_real_second_node_occurrence_cannot_share_temporary_single_workspace(mocker, association_case):
+def test_real_second_node_occurrence_cannot_share_temporary_single_workspace(
+    mocker: pytest_mock.MockerFixture, association_case: AgentAssociationCase
+) -> None:
     from extensions.ext_storage import storage
 
     c = association_case
     bound(c)
     second = str(uuid4())
-    inputs = {"typed": [True, 1, "1"]}
+    inputs: dict[str, JsonValue] = {"typed": [True, 1, "1"]}
     input_ref = c.store.store_node_inputs(ref=c.ref, generation=0, native_execution_id=second, inputs=inputs)
     parent = AgentParentNodeRef(
         ref=c.ref, execution_id=second, input_result_ref=input_ref, input_digest=canonical_digest(inputs)
@@ -428,7 +490,9 @@ def test_real_second_node_occurrence_cannot_share_temporary_single_workspace(moc
     assert len(c.allocation_calls) == 1
 
 
-def test_real_queued_agent_checkpoint_is_readable_before_single_dispatch_claim(association_case):
+def test_real_queued_agent_checkpoint_is_readable_before_single_dispatch_claim(
+    association_case: AgentAssociationCase,
+) -> None:
     from models.dify_builder_native_tests import NativePendingAction
     from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
     from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ResolutionOwner
@@ -482,8 +546,12 @@ def test_real_queued_agent_checkpoint_is_readable_before_single_dispatch_claim(a
 
 @pytest.mark.parametrize("guard_change", ["none", "canvas", "execution", "input", "actor", "target"])
 def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
-    mocker, association_case, native_owner, monkeypatch, guard_change
-):
+    mocker: pytest_mock.MockerFixture,
+    association_case: AgentAssociationCase,
+    native_owner: NativeOwner,
+    monkeypatch: pytest.MonkeyPatch,
+    guard_change: str,
+) -> None:
     """Actual normal SQL/crypto owners; only backend allocation is a no-I/O fixture."""
     from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
     from models.dify_builder import DifyBuilderSession
@@ -500,9 +568,10 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
     snapshot_id = c.workspace.pinned_snapshot_id
     with factory.begin() as session:
         snapshot = session.get(AgentConfigSnapshot, snapshot_id)
-        snapshot.home_snapshot_id = None
-        agent_id = snapshot.agent_id
-        version = session.get(DifyBuilderSession, session_id).version
+        require_instance(snapshot, AgentConfigSnapshot).home_snapshot_id = None
+        agent_id = require_instance(snapshot, AgentConfigSnapshot).agent_id
+        assert session is not None
+        version = require_instance(session.get(DifyBuilderSession, session_id), DifyBuilderSession).version
     run_id, execution_id = str(uuid4()), str(uuid4())
     context = admit_confirmed_agent_execution(
         actor=actor,
@@ -513,7 +582,12 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
         idempotency_key="normal-blank-home",
         limits={"calls": 4, "dispatches": 4, "cost_units": 4},
     )
-    node_id = context.graph["nodes"][-1]["id"]
+    graph_nodes = context.graph["nodes"]
+    assert isinstance(graph_nodes, list)
+    agent_node = graph_nodes[-1]
+    assert isinstance(agent_node, dict)
+    node_id = agent_node["id"]
+    assert isinstance(node_id, str)
     with factory.begin() as session:
         node_binding = session.scalar(
             select(WorkflowAgentNodeBinding).where(
@@ -521,7 +595,7 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
                 WorkflowAgentNodeBinding.node_id == node_id,
             )
         )
-        workflow_binding_id = node_binding.id
+        workflow_binding_id = require_instance(node_binding, WorkflowAgentNodeBinding).id
         session.add(
             WorkflowRun(
                 id=run_id,
@@ -560,8 +634,8 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
     allocations = []
 
     @contextmanager
-    def normal_backend():
-        def create(request):
+    def normal_backend() -> Generator[Client]:
+        def create(request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
             assert request.home_snapshot_ref is None
             assert request.native_test_scope is None
             allocations.append(request.binding_id)
@@ -590,7 +664,7 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
         actor=actor, backend=DifyAgentBackendRunClient(Client(base_url="http://127.0.0.1:1"))
     )
     store, ref = service.state_store, context.ref
-    inputs = {"typed": [True, 1, "1"]}
+    inputs: dict[str, JsonValue] = {"typed": [True, 1, "1"]}
     input_ref = store.store_node_inputs(ref=ref, generation=0, native_execution_id=execution_id, inputs=inputs)
     parent = AgentParentNodeRef(
         ref=ref, execution_id=execution_id, input_result_ref=input_ref, input_digest=canonical_digest(inputs)
@@ -621,7 +695,7 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
     association_ref = store.bind_agent_run(
         ref=ref, parent_node=parent, expected_invocation_generation=0, association=association
     )
-    checkpoint = {
+    checkpoint: dict[str, JsonValue] = {
         "run_id": association.agent_run_id,
         "generation": 7,
         "ref": ref.model_dump(mode="json"),
@@ -646,29 +720,36 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
     saved = store.commit_checkpoint(ref=ref, generation=0, payload=payload(normal, wait))
     with factory.begin() as session:
         state = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id))
-        state.generation = 1
-        session.get(NativeTestScope, ref.request_id).generation = 1
+        require_instance(state, NativeInvocationState).generation = 1
+        assert session is not None
+        require_instance(session.get(NativeTestScope, ref.request_id), NativeTestScope).generation = 1
         if guard_change in {"canvas", "execution"}:
             workflow = session.get(Workflow, context.workflow_id)
-            graph = json.loads(workflow.graph)
+            graph = json.loads(require_instance(workflow, Workflow).graph)
             graph["viewport"] = {"x": 41, "y": 12, "zoom": 0.8}
             for node in graph["nodes"]:
                 node["positionAbsolute"] = {"x": 41, "y": 12}
                 node["width"], node["selected"] = 244, True
             if guard_change == "execution":
                 graph["nodes"][-1]["data"]["new_execution_input"] = "changed"
-            workflow.graph = json.dumps(graph, separators=(",", ":"))
+            require_instance(workflow, Workflow).graph = json.dumps(graph, separators=(",", ":"))
         elif guard_change == "input":
-            session.get(DifyBuilderTestInput, test_input_id).inputs = {"changed": True}
+            assert session is not None
+            require_instance(session.get(DifyBuilderTestInput, test_input_id), DifyBuilderTestInput).inputs = {
+                "changed": True
+            }
         elif guard_change == "actor":
             from models.dify_builder import DifyBuilderSession
 
-            session.get(DifyBuilderSession, session_id).owner_account_id = str(uuid4())
+            assert session is not None
+            require_instance(session.get(DifyBuilderSession, session_id), DifyBuilderSession).owner_account_id = str(
+                uuid4()
+            )
         elif guard_change == "target":
             snapshot = session.get(AgentConfigSnapshot, snapshot_id)
-            soul = snapshot.config_snapshot_dict
+            soul = require_instance(snapshot, AgentConfigSnapshot).config_snapshot_dict
             soul["model"]["model"] = "changed-model"
-            snapshot.config_snapshot = AgentSoulConfig.model_validate(soul)
+            require_instance(snapshot, AgentConfigSnapshot).config_snapshot = AgentSoulConfig.model_validate(soul)
     if guard_change not in {"none", "canvas"}:
         with pytest.raises(BuilderExecutionPolicyError):
             store.read_checkpoint(ref=ref, checkpoint=saved)
@@ -695,34 +776,62 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
         )
     # Current SQL drift still invalidates the original protected null pin.
     with factory.begin() as session:
-        session.get(AgentWorkspaceBinding, stored.binding_id).base_home_snapshot_id = c.workspace.home_snapshot_id
+        assert session is not None
+        require_instance(
+            session.get(AgentWorkspaceBinding, stored.binding_id), AgentWorkspaceBinding
+        ).base_home_snapshot_id = c.workspace.home_snapshot_id
     with pytest.raises(BuilderExecutionPolicyError, match="native_agent_pin_mismatch"):
         store.read_checkpoint(ref=ref, checkpoint=saved)
 
 
 @pytest.mark.parametrize("association_case", ["legacy_confirmed", "isolated"], indirect=True)
-def test_real_unmarked_profiles_keep_raw_revision_and_immutable_private_scope(association_case):
+def test_real_unmarked_profiles_keep_raw_revision_and_immutable_private_scope(
+    association_case: AgentAssociationCase,
+) -> None:
     from models.dify_builder_native_tests import NativeEffectAttempt, NativeEffectGrant
 
     c = association_case
     assert c.store.load_context(ref=c.ref).ref == c.ref
     with c.factory.begin() as session:
         request = session.get(DifyBuilderExecutionRequest, c.ref.request_id)
-        original_context, original_digest = json.loads(json.dumps(request.context)), request.context_digest
+        original_context, original_digest = (
+            json.loads(json.dumps(require_instance(request, DifyBuilderExecutionRequest).context)),
+            require_instance(request, DifyBuilderExecutionRequest).context_digest,
+        )
         assert "revision_basis" not in original_context
-        workflow = session.get(Workflow, request.workflow_id)
-        graph = json.loads(workflow.graph)
+        workflow = session.get(Workflow, require_instance(request, DifyBuilderExecutionRequest).workflow_id)
+        graph = json.loads(require_instance(workflow, Workflow).graph)
         graph["viewport"] = {"x": 28, "y": 13, "zoom": 1}
-        workflow.graph = json.dumps(graph, separators=(",", ":"))
+        require_instance(workflow, Workflow).graph = json.dumps(graph, separators=(",", ":"))
     with pytest.raises(BuilderExecutionPolicyError, match="native_revision_drift"):
         c.loader.load(ref=c.ref)
     with pytest.raises(BuilderExecutionPolicyError, match="native_revision_drift"):
         c.store.load_context(ref=c.ref)
     with c.factory() as session:
         request = session.get(DifyBuilderExecutionRequest, c.ref.request_id)
-        assert (request.context, request.context_digest) == (original_context, original_digest)
+        assert (
+            require_instance(request, DifyBuilderExecutionRequest).context,
+            require_instance(request, DifyBuilderExecutionRequest).context_digest,
+        ) == (
+            original_context,
+            original_digest,
+        )
         assert (
             session.scalar(select(NativeEffectAttempt).where(NativeEffectAttempt.request_id == c.ref.request_id))
             is None
         )
         assert session.scalar(select(NativeEffectGrant).where(NativeEffectGrant.request_id == c.ref.request_id)) is None
+
+
+class _ForwardArguments425(TypedDict, closed=True):
+    ref: _forward_types_0.NativeTestContextRef
+    settlement: NotRequired[bool]
+
+
+class AgentWaitArguments(TypedDict, closed=True):
+    ref: NativeTestContextRef
+    parent_node: AgentParentNodeRef
+    association_object_ref: str
+    agent_generation: int
+    checkpoint: JsonValue
+    backend_wait_event_id: str

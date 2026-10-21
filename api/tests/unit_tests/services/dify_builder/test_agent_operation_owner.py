@@ -1,8 +1,20 @@
 """The actual API dispatcher spends only a current, exact operation permit."""
 
+from collections.abc import Generator
+from typing import Never, Unpack, cast
+
 import pytest
+import sqlalchemy.orm
 from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
-from dify_agent.protocol.native_testing import AgentDispatchPermit, AgentEffectIntent, AgentNativeTestRef
+from dify_agent.protocol.native_testing import (
+    AgentDispatchPermit,
+    AgentEffectIntent,
+    AgentNativeTestRef,
+    AgentOperationKey,
+)
+from flask import Request
+from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor
 from models.dify_builder_native_tests import (
@@ -11,7 +23,8 @@ from models.dify_builder_native_tests import (
     NativeTestInvocation,
 )
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from services.dify_builder.native_testing.agent_operations import AgentOperationService
+from runtime_contracts.builder.native.contracts import JsonValue, NativeTestContextRef
+from services.dify_builder.native_testing.agent_operations import AgentOperationService, AgentToolDispatchOwner
 from tests.unit_tests.services.dify_builder import native_owner_fixtures
 from tests.unit_tests.services.dify_builder.native_testing.test_authorization import intent
 
@@ -19,7 +32,20 @@ operations_service = native_owner_fixtures.operations_service
 preparation_sql = native_owner_fixtures.preparation_sql
 
 
-def envelope():
+class PrepareObjectArgs(TypedDict, closed=True):
+    ref: NativeTestContextRef
+    tenant_id: str
+    kind: str
+    logical_key: str
+    payload: JsonValue
+
+
+class ResultIdentity(TypedDict, closed=True):
+    ref: AgentNativeTestRef
+    key: AgentOperationKey
+
+
+def envelope() -> AgentPhysicalDispatchPayload:
     effect = intent().model_copy(update={"kind": "tool"})
     return AgentPhysicalDispatchPayload(
         ref=AgentNativeTestRef(
@@ -32,10 +58,16 @@ def envelope():
     )
 
 
-def owner(events, operations_service, monkeypatch, *, drift=False):
+def owner(
+    events: list[object],
+    operations_service: AgentOperationService,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    drift: bool = False,
+) -> AgentToolDispatchOwner:
     from services.dify_builder.native_testing.agent_operations import AgentToolDispatchOwner
 
-    def revalidate(**_kwargs):
+    def revalidate(**_kwargs: object) -> None:
         events.append("revalidate")
         if drift:
             raise BuilderExecutionPolicyError("native_credential_drift")
@@ -58,8 +90,10 @@ def owner(events, operations_service, monkeypatch, *, drift=False):
     )
 
 
-def test_physical_claim_is_adjacent_to_dispatch_and_real_result_is_saved(operations_service, monkeypatch):
-    events = []
+def test_physical_claim_is_adjacent_to_dispatch_and_real_result_is_saved(
+    operations_service: AgentOperationService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    events: list[object] = []
     operation = owner(events, operations_service, monkeypatch)
     result = operation.invoke(envelope=envelope(), invoke=lambda: events.append("business") or {"observation": "real"})
     assert result == {"observation": "real"}
@@ -73,8 +107,10 @@ def test_physical_claim_is_adjacent_to_dispatch_and_real_result_is_saved(operati
     ]
 
 
-def test_current_resource_drift_stops_before_physical_claim_or_business(operations_service, monkeypatch):
-    events = []
+def test_current_resource_drift_stops_before_physical_claim_or_business(
+    operations_service: AgentOperationService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    events: list[object] = []
     with pytest.raises(BuilderExecutionPolicyError, match="native_credential_drift"):
         owner(events, operations_service, monkeypatch, drift=True).invoke(
             envelope=envelope(), invoke=lambda: events.append("business")
@@ -82,10 +118,12 @@ def test_current_resource_drift_stops_before_physical_claim_or_business(operatio
     assert events == ["validate", "revalidate"]
 
 
-def test_lost_business_response_closes_unknown_and_never_retries(operations_service, monkeypatch):
-    events = []
+def test_lost_business_response_closes_unknown_and_never_retries(
+    operations_service: AgentOperationService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    events: list[object] = []
 
-    def invoke():
+    def invoke() -> Never:
         events.append("business")
         raise TimeoutError
 
@@ -94,7 +132,7 @@ def test_lost_business_response_closes_unknown_and_never_retries(operations_serv
     assert events == ["validate", "revalidate", "claim", "business", ("outcome", "unknown", None)]
 
 
-def test_confirmed_plugin_declaration_uses_api_owned_core_without_credentials():
+def test_confirmed_plugin_declaration_uses_api_owned_core_without_credentials() -> None:
     from models.agent_config_entities import AgentSoulToolsConfig
     from services.dify_builder.native_testing.agent_tool_declarations import (
         AgentToolDeclarationService,
@@ -120,13 +158,14 @@ def test_confirmed_plugin_declaration_uses_api_owned_core_without_credentials():
         metadata=lambda **_kwargs: AgentToolMetadata(entity(), "plugin@rev", True)
     ).prepare(tenant_id="tenant", actor_id="actor", app_id="app", tools=tools, profile="confirmed")
     assert declarations.plugin_tools is None
+    assert declarations.core_tools is not None
     config = declarations.core_tools.tools[0]
     assert config.provider_id == "test/plugin/provider"
     assert config.credential_id == "credential"
     assert "credentials" not in config.model_dump()
 
 
-def test_reasoning_assessment_cannot_grant_or_hide_opaque_tool_scope():
+def test_reasoning_assessment_cannot_grant_or_hide_opaque_tool_scope() -> None:
     from pydantic import ValidationError
 
     from services.dify_builder.native_testing.agent_operations import AgentCallAssessment
@@ -146,8 +185,8 @@ def test_reasoning_assessment_cannot_grant_or_hide_opaque_tool_scope():
 
 @pytest.mark.parametrize("boundary", ["core_tool", "model", "shell_run", "bootstrap", "config_pull"])
 def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth(
-    monkeypatch, boundary, operations_service
-):
+    monkeypatch: pytest.MonkeyPatch, boundary: str, operations_service: AgentOperationService
+) -> None:
     from contextlib import contextmanager
     from datetime import UTC, datetime
 
@@ -201,15 +240,15 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
     )
 
     @contextmanager
-    def locked(**_kwargs):
+    def locked(**_kwargs: object) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
         with service.loader.session_factory.begin() as session:
             yield session, owned, scope
 
     monkeypatch.setattr(service.loader, "load", lambda **_kwargs: owned)
     monkeypatch.setattr(service.loader, "locked", locked)
-    stored = []
+    stored: list[PrepareObjectArgs] = []
 
-    def prepare_object(**kwargs):
+    def prepare_object(**kwargs: Unpack[PrepareObjectArgs]) -> ObjectReceipt:
         stored.append(kwargs)
         digest = canonical_digest(kwargs["payload"])
         return ObjectReceipt(
@@ -217,7 +256,7 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
         )
 
     monkeypatch.setattr(service.state_store, "prepare_object", prepare_object)
-    reasoning = []
+    reasoning: list[dict[str, object]] = []
     assessment = {
         "action": "Write declared value",
         "account_label": None,
@@ -327,19 +366,27 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
         target = {"shell": "shell"}
     result = service.prepare_intent(
         ref=AgentNativeTestRef.model_validate(ref.model_dump(mode="json")),
-        key=key,
+        key=AgentOperationKey.model_validate(key.model_dump(mode="json")),
         boundary=boundary,
         target=target,
         parameters={"enabled": True},
     )
     assert result.parameters == {"enabled": True}
+    payload = stored[0]["payload"]
+    assert isinstance(payload, dict)
+    saved_assessment = payload["assessment"]
+    proposal = payload["proposal"]
+    assert isinstance(saved_assessment, dict)
+    assert isinstance(proposal, dict)
+    terms = proposal["terms"]
+    assert isinstance(terms, dict)
     if boundary != "model":
         assert reasoning[0]["parameters"] == result.parameters
-        assert stored[0]["payload"]["assessment"] == assessment
+        assert saved_assessment == assessment
     else:
         assert reasoning == []
-        assert stored[0]["payload"]["assessment"]["action"] == "Invoke selected Agent model"
-    assert stored[0]["payload"]["proposal"]["terms"]["max_calls"] == 1
+        assert saved_assessment["action"] == "Invoke selected Agent model"
+    assert terms["max_calls"] == 1
     with service.loader.session_factory() as session:
         persisted = session.get(NativeTestInvocation, invocation.id)
         assert persisted is not None
@@ -350,7 +397,7 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
     assert result.key.occurrence_path == key.occurrence_path
 
 
-def test_only_the_selected_confirmed_model_can_use_the_outer_task_grant():
+def test_only_the_selected_confirmed_model_can_use_the_outer_task_grant() -> None:
     from services.dify_builder.native_testing.authorization import task_grant_allowed
     from tests.unit_tests.services.dify_builder.native_testing.test_authorization import binding
 
@@ -363,7 +410,7 @@ def test_only_the_selected_confirmed_model_can_use_the_outer_task_grant():
     )
 
 
-def test_model_target_keeps_the_published_provider_and_model():
+def test_model_target_keeps_the_published_provider_and_model() -> None:
     from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
     from services.dify_builder.native_testing.agent_runtime_config import NativeAgentDefinition
 
@@ -391,7 +438,9 @@ def test_model_target_keeps_the_published_provider_and_model():
 
 
 @pytest.mark.parametrize("report", ["unknown", "completed"])
-def test_backend_lost_response_preserves_real_api_completed_result(report, operations_service, monkeypatch):
+def test_backend_lost_response_preserves_real_api_completed_result(
+    report: str, operations_service: AgentOperationService, monkeypatch: pytest.MonkeyPatch
+) -> None:
 
     from services.dify_builder.native_testing.agent_bridge import api_ref
 
@@ -423,7 +472,9 @@ def test_backend_lost_response_preserves_real_api_completed_result(report, opera
         service.settle(ref=pending.ref, permit=pending.permit, outcome="completed", result_ref="fabricated-result")
 
 
-def test_result_upload_cannot_create_or_replace_a_physical_result(monkeypatch, operations_service):
+def test_result_upload_cannot_create_or_replace_a_physical_result(
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService
+) -> None:
 
     from dify_agent.protocol.native_testing import AgentOperationKey
 
@@ -467,7 +518,10 @@ def test_result_upload_cannot_create_or_replace_a_physical_result(monkeypatch, o
     monkeypatch.setattr(service.loader, "load", lambda **_kwargs: owned)
     monkeypatch.setattr(service.state_store, "load_result", lambda **_kwargs: "real")
     monkeypatch.setattr(service, "_endpoint", lambda _ref: None)
-    kwargs = {"ref": pending.ref, "key": AgentOperationKey.model_validate(pending.intent.key.model_dump(mode="json"))}
+    kwargs: ResultIdentity = {
+        "ref": pending.ref,
+        "key": AgentOperationKey.model_validate(pending.intent.key.model_dump(mode="json")),
+    }
     assert service.store_result(**kwargs, result="real") == "real-result"
     with pytest.raises(BuilderExecutionPolicyError, match="native_result_conflict"):
         service.store_result(**kwargs, result="fabricated")
@@ -476,8 +530,11 @@ def test_result_upload_cannot_create_or_replace_a_physical_result(monkeypatch, o
 @pytest.mark.parametrize("approved", [False, True])
 @pytest.mark.parametrize("sqlite_session", [("models.model.App",)], indirect=True)
 def test_actual_inner_tool_service_never_prepares_or_dispatches_before_permission(
-    sqlite_session, monkeypatch, approved, operations_service
-):
+    sqlite_session: sqlalchemy.orm.Session,
+    monkeypatch: pytest.MonkeyPatch,
+    approved: bool,
+    operations_service: AgentOperationService,
+) -> None:
     from core.plugin.impl.oauth import OAuthHandler
     from core.tools.tool_engine import ToolEngine
     from core.tools.tool_manager import ToolManager
@@ -506,7 +563,7 @@ def test_actual_inner_tool_service_never_prepares_or_dispatches_before_permissio
     request.native_dispatch = pending
     calls = []
 
-    def validate(**_kwargs):
+    def validate(**_kwargs: object) -> None:
         if not approved:
             raise BuilderExecutionPolicyError("invalid_dispatch_permit")
 
@@ -534,7 +591,7 @@ def test_actual_inner_tool_service_never_prepares_or_dispatches_before_permissio
     monkeypatch.setattr(service, "validate_caller", lambda **_kwargs: None)
     monkeypatch.setattr(module, "agent_operations_for_ref", lambda _ref: service)
 
-    def forbidden(*_args, **_kwargs):
+    def forbidden(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Ordinary runtime/OAuth owner used for a confirmed tool")
 
     monkeypatch.setattr(ToolManager, "get_agent_tool_runtime", forbidden)
@@ -552,7 +609,7 @@ def test_actual_inner_tool_service_never_prepares_or_dispatches_before_permissio
         assert calls == []
 
 
-def test_direct_service_cannot_lose_a_known_native_envelope_before_runtime():
+def test_direct_service_cannot_lose_a_known_native_envelope_before_runtime() -> None:
     from typing import cast
 
     from flask import Flask, g, request
@@ -567,17 +624,19 @@ def test_direct_service_cannot_lose_a_known_native_envelope_before_runtime():
     app = Flask(__name__)
     with app.test_request_context():
         g.agent_runtime_context = context
-        g.agent_runtime_request = cast(LocalProxy, request)._get_current_object()
+        g.agent_runtime_request = cast(LocalProxy[Request], request)._get_current_object()
         with pytest.raises(BuilderExecutionPolicyError, match="native_endpoint_owner_mismatch"):
-            AgentToolInnerService().invoke(_request(), session=object())
+            AgentToolInnerService().invoke(_request(), session=cast(Session, object()))
 
 
-def test_confirmed_tool_error_never_returns_private_provider_text(monkeypatch, operations_service):
+def test_confirmed_tool_error_never_returns_private_provider_text(
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService
+) -> None:
     from services.agent_tool_inner_service import AgentToolInnerService
     from services.dify_builder.native_testing import agent_operations as module
     from tests.unit_tests.services.test_agent_tool_inner_service import _request
 
-    def failed(**_kwargs):
+    def failed(**_kwargs: object) -> Never:
         raise ValueError("PRIVATE_PROVIDER_TOKEN_CANARY")
 
     monkeypatch.setattr(operations_service, "invoke_tool", failed)
@@ -585,17 +644,19 @@ def test_confirmed_tool_error_never_returns_private_provider_text(monkeypatch, o
     request = _request()
     request.native_dispatch = envelope()
     with pytest.raises(BuilderExecutionPolicyError) as error:
-        AgentToolInnerService().invoke(request, session=object())
+        AgentToolInnerService().invoke(request, session=cast(Session, object()))
     assert "PRIVATE_PROVIDER_TOKEN_CANARY" not in str(error.value)
     assert error.value.reason_code == "native_agent_tool_dispatch_failed"
 
 
 @pytest.mark.parametrize("phase", ["prepare", "invoke"])
-def test_confirmed_model_exception_never_returns_private_provider_text(monkeypatch, phase, operations_service):
+def test_confirmed_model_exception_never_returns_private_provider_text(
+    monkeypatch: pytest.MonkeyPatch, phase: str, operations_service: AgentOperationService
+) -> None:
     from services.agent_llm_inner_service import AgentLLMInnerService
     from services.dify_builder.native_testing import agent_operations as module
 
-    def failed(*_args, **_kwargs):
+    def failed(*_args: object, **_kwargs: object) -> Never:
         raise ValueError("PRIVATE_MODEL_TOKEN_CANARY")
 
     from services.agent_llm_inner_service import PreparedAgentLLMInvocation

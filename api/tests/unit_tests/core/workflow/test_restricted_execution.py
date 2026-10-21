@@ -6,7 +6,7 @@ import json
 import math
 from collections.abc import Callable
 from copy import deepcopy
-from typing import TypedDict, cast
+from typing import Never, TypedDict, cast
 
 import pytest
 
@@ -150,9 +150,15 @@ def test_file_collaborators_deny_and_record(owned: Owned, entry: str) -> None:
         elif entry == "factory":
             node._tool_file_manager_factory()
         elif entry == "create_file_by_raw":
+            from services.dify_builder.restricted_execution import DeniedHttpFiles
+
+            assert isinstance(node._file_manager, DeniedHttpFiles)
             node._file_manager.create_file_by_raw(file_binary=b"x", mimetype="x")
         else:
             assert entry == "get_file_generator_by_tool_file_id"
+            from services.dify_builder.restricted_execution import DeniedHttpFiles
+
+            assert isinstance(node._file_manager, DeniedHttpFiles)
             node._file_manager.get_file_generator_by_tool_file_id(tool_file_id="x")
 
     with pytest.raises(PolicyTransportError, match="execution_policy: http_file_capability"):
@@ -168,7 +174,7 @@ def test_forbidden_raw_type_refused_before_concrete_validation_or_model_resoluti
     factory, _, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
     calls = []
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: object, **kwargs: object) -> Never:
         calls.append((args, kwargs))
         raise AssertionError("effectful class validation reached")
 
@@ -198,7 +204,7 @@ def test_raw_identity_and_config_gate_runs_before_concrete_validation(
     node = deepcopy(factory.init_params.graph_config["nodes"][0])
     calls = []
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: object, **kwargs: object) -> Never:
         calls.append((args, kwargs))
         raise AssertionError("concrete validation reached")
 
@@ -367,7 +373,7 @@ def test_actual_resolved_class_is_guarded_before_its_validator_when_registry_cha
     factory, _, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
     calls = []
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: object, **kwargs: object) -> Never:
         calls.append((args, kwargs))
         raise AssertionError("unreviewed concrete validator reached")
 
@@ -413,7 +419,7 @@ def test_default_restricted_branch_still_denies_tool_nodes_after_confirmed_branc
 
     resolutions = []
 
-    def resolved(*args, **kwargs):
+    def resolved(*args: object, **kwargs: object) -> Never:
         resolutions.append((args, kwargs))
         raise AssertionError("unadmitted Tool resolution reached")
 

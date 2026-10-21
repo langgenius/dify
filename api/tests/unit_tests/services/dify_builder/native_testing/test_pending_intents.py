@@ -1,13 +1,37 @@
 """Complete protected intents preserve exact occurrence identity."""
 
+from typing import Literal
+
 import pytest
 from pydantic import ValidationError
+from typing_extensions import TypedDict
 
 from runtime_contracts.builder.native.contracts import EffectIntent, OperationKey
 from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, NodeJournalState
 
 
-def effect():
+class JournalFields(TypedDict, closed=True):
+    invocation_id: str
+    occurrence_path: tuple[str, ...]
+    input_result_ref: str
+    input_digest: str
+    cursor: int
+    operation_keys: tuple[OperationKey, ...]
+    result_refs: tuple[str, ...]
+
+
+class CheckpointFields(TypedDict, closed=True):
+    schema_version: Literal["1"]
+    native_run_id: str
+    generation: int
+    generate_entity_json: str
+    graph_runtime_state_json: str
+    response_stream_filter_json: str
+    child_refs: tuple[()]
+    input_result_refs: tuple[()]
+
+
+def effect() -> EffectIntent:
     return EffectIntent(
         key=OperationKey(invocation_id="inv", occurrence_path=("node", "0"), cursor=0),
         kind="tool",
@@ -21,7 +45,7 @@ def effect():
     )
 
 
-def journal():
+def journal() -> JournalFields:
     intent = effect()
     return {
         "invocation_id": "inv",
@@ -34,33 +58,35 @@ def journal():
     }
 
 
-def test_old_checkpoint_journal_reads_with_empty_intents():
+def test_old_checkpoint_journal_reads_with_empty_intents() -> None:
     value = NodeJournalState(**journal())
     assert hasattr(value, "intents"), "journal lacks protected complete intent payload"
     assert value.intents == ()
 
 
-def test_checkpoint_preserves_typed_frozen_intent_without_using_result_slot():
+def test_checkpoint_preserves_typed_frozen_intent_without_using_result_slot() -> None:
     value = NodeJournalState(**journal(), intents=(effect(),))
     restored = NodeJournalState.model_validate_json(value.model_dump_json())
     assert restored.intents == (effect(),)
-    assert restored.intents[0].parameters["limit"] is True
+    parameters = restored.intents[0].parameters
+    assert isinstance(parameters, dict)
+    assert parameters["limit"] is True
     assert restored.result_refs == ()
 
 
 @pytest.mark.parametrize("change", [{"invocation_id": "other"}, {"occurrence_path": ("other",)}, {"cursor": 1}])
-def test_journal_refuses_foreign_or_unclaimed_intent_key(change):
+def test_journal_refuses_foreign_or_unclaimed_intent_key(change: dict[str, object]) -> None:
     intent = effect().model_copy(update={"key": effect().key.model_copy(update=change)})
     with pytest.raises(ValidationError):
         NodeJournalState(**journal(), intents=(intent,))
 
 
-def test_journal_refuses_duplicate_intents():
+def test_journal_refuses_duplicate_intents() -> None:
     with pytest.raises(ValidationError):
         NodeJournalState(**journal(), intents=(effect(), effect()))
 
 
-def test_checkpoint_refuses_repeated_operation_identity_across_journals():
+def test_checkpoint_refuses_repeated_operation_identity_across_journals() -> None:
     value = NodeJournalState(**journal())
     with pytest.raises(ValidationError):
         NativeCheckpointPayload(
@@ -76,7 +102,7 @@ def test_checkpoint_refuses_repeated_operation_identity_across_journals():
         )
 
 
-def test_checkpoint_proposals_require_complete_matching_intent_and_unique_key():
+def test_checkpoint_proposals_require_complete_matching_intent_and_unique_key() -> None:
     import importlib.util
     from datetime import UTC, datetime, timedelta
 
@@ -93,7 +119,7 @@ def test_checkpoint_proposals_require_complete_matching_intent_and_unique_key():
             expires_at=(datetime.now(UTC) + timedelta(minutes=5)).isoformat(),
         ),
     )
-    values = {
+    values: CheckpointFields = {
         "schema_version": "1",
         "native_run_id": "run",
         "generation": 0,

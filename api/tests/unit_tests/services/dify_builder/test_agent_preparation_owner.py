@@ -1,22 +1,81 @@
 """S1 boundaries with real owner/entity types, SQLite ACKs and explicit I/O ports."""
 
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
+from typing import Never, NotRequired, Protocol, Unpack, cast
 
 import pytest
+from dify_agent.client import Client
+from dify_agent.protocol.native_testing import ReadAgentRuntimeIdentity
 from flask import Flask
+from httpx import Request
+from httpx._models import Response
+from pydantic import JsonValue
+from sqlalchemy import Select
+from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
+from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
+from graphon.runtime import InitParams, RuntimeState
+from models.dify_builder_native_tests import NativePayloadObject, NativeTestScope
 from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
     canonical_digest,
 )
 from runtime_contracts.builder.native.agent_contracts import (
+    AgentCreateClaim,
     AgentDefinitionReceipt,
+    AgentNodeAssociation,
     AgentParentNodeRef,
     AgentTestWorkspaceRef,
 )
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing import state_store as state
+from services.dify_builder.native_testing.agent_operations import AgentOperationService
+from services.dify_builder.native_testing.agent_workspace import AgentTestWorkspaceService
+from services.dify_builder.native_testing.control import BoundaryOwnerState, NativeControlSink
+from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTest
+from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation
+from services.dify_builder.native_testing.state_store import (
+    NativeExecutionStateStore,
+    ObjectReceipt,
+    PayloadKind,
+    _AgentPreparation,
+)
+from services.workflow_runtime.agent_node import DifyAgentNode
 from tests.unit_tests.services.dify_builder import native_owner_fixtures
+
+
+class PrepareObjectArgs(TypedDict, closed=True):
+    ref: NativeTestContextRef
+    tenant_id: str
+    kind: PayloadKind
+    logical_key: str
+    payload: JsonValue
+    max_bytes: NotRequired[int | None]
+
+
+class MarkedAgentConstructor(Protocol):
+    def __call__(
+        self,
+        *,
+        node_id: str,
+        data: DifyAgentNodeData,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
+        native_control_owner: BoundaryOwnerState,
+        native_control_sink: NativeControlSink,
+        **kwargs: object,
+    ) -> DifyAgentNode: ...
+
+
+@pytest.fixture
+def agent_backend() -> Generator[Client]:
+    with Client(base_url="http://agent.invalid") as client:
+        yield client
+
 
 REF = NativeTestContextRef(request_id="req", invocation_id="inv", context_digest="a" * 64)
 PARENT = AgentParentNodeRef(
@@ -34,14 +93,14 @@ WORKSPACE = AgentTestWorkspaceRef(
     home_snapshot_id="home",
     workspace_generation=9,
 )
-CONFIG = {"composition": {"schema_version": 2, "layers": []}, "session_snapshot": None}
+CONFIG: dict[str, JsonValue] = {"composition": {"schema_version": 2, "layers": []}, "session_snapshot": None}
 
 
 operations_service = native_owner_fixtures.operations_service
 preparation_sql = native_owner_fixtures.preparation_sql
 
 
-def resolved_context(**updates):
+def resolved_context(**updates: object) -> ResolvedNativeTestContext:
     from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 
     return ResolvedNativeTestContext(
@@ -66,7 +125,7 @@ def resolved_context(**updates):
     ).model_copy(update=updates)
 
 
-def read_authority():
+def read_authority() -> PrivateReadOwner:
     from datetime import UTC, datetime
 
     from services.dify_builder.native_testing.private_reads import PrivateReadOwner
@@ -89,7 +148,7 @@ def read_authority():
     )
 
 
-def prepared_state():
+def prepared_state() -> _AgentPreparation:
     return state._AgentPreparation(
         parent=PARENT,
         context=resolved_context(),
@@ -100,13 +159,13 @@ def prepared_state():
     )
 
 
-def payloads(session):
+def payloads(session: Session) -> Sequence[NativePayloadObject]:
     from sqlalchemy import select
 
     return session.scalars(select(state.NativePayloadObject)).all()
 
 
-def preparation_owner():
+def preparation_owner() -> OwnedNativeTest:
     from datetime import UTC, datetime
 
     from services.dify_builder.native_testing.repository import OwnedNativeTest
@@ -127,7 +186,9 @@ def preparation_owner():
     )
 
 
-def preparation_session(monkeypatch, operations_service, preparation_sql):
+def preparation_session(
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService, preparation_sql: Session
+) -> tuple[Session, OwnedNativeTest, NativeTestScope]:
     from datetime import UTC, datetime
 
     from services.dify_builder.native_testing.repository import OwnedNativeTest
@@ -167,7 +228,7 @@ def preparation_session(monkeypatch, operations_service, preparation_sql):
     session.info["locked"] = False
 
     @contextmanager
-    def locked_root(**_kwargs):
+    def locked_root(**_kwargs: object) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
         assert not session.info["locked"]
         session.info["locked"] = True
         try:
@@ -183,7 +244,12 @@ def preparation_session(monkeypatch, operations_service, preparation_sql):
     return session, owned, scope
 
 
-def node_association(monkeypatch, operations_service, context, data):
+def node_association(
+    monkeypatch: pytest.MonkeyPatch,
+    operations_service: AgentOperationService,
+    context: ResolvedNativeTestContext,
+    data: DifyAgentNodeData,
+) -> NativeNodePreparation:
     from graphon.runtime import InitParams
     from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
     from services.dify_builder.native_testing.control import marked_native_node_class
@@ -209,7 +275,7 @@ def node_association(monkeypatch, operations_service, context, data):
         http_baseline=(1.0, 1.0, 1.0),
     )
 
-    def unused(**_kwargs):
+    def unused(**_kwargs: object) -> Never:
         pytest.fail("Node association attempted effect collaborator construction")
 
     bridge = NativeRuntimeBridge(
@@ -228,7 +294,9 @@ def node_association(monkeypatch, operations_service, context, data):
     association = NativeNodePreparation(
         bridge=bridge, ref=context.ref, node_id="node", node_class=node_class, runtime_state=factory.runtime_state
     )
-    node = node_class(
+    # The factory documents the additional constructor arguments of its generated subclass.
+    constructor = cast(MarkedAgentConstructor, node_class)
+    node = constructor(
         node_id="node",
         data=data,
         init_params=InitParams(
@@ -247,7 +315,11 @@ def node_association(monkeypatch, operations_service, context, data):
     return association
 
 
-def workspace_service(monkeypatch, operations_service, prepare):
+def workspace_service(
+    monkeypatch: pytest.MonkeyPatch,
+    operations_service: AgentOperationService,
+    prepare: Callable[..., AgentTestWorkspaceRef],
+) -> AgentTestWorkspaceService:
     from shellctl.shared.schemas import NativeScopeLimits
 
     from services.dify_builder.native_testing.agent_workspace import AgentTestWorkspaceService
@@ -270,7 +342,9 @@ def workspace_service(monkeypatch, operations_service, prepare):
     return service
 
 
-def claim_store(monkeypatch, operations_service, preparation_sql):
+def claim_store(
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService, preparation_sql: Session
+) -> tuple[NativeExecutionStateStore, Session]:
     sql, _owned, _scope = preparation_session(monkeypatch, operations_service, preparation_sql)
     store = operations_service.state_store
     prep = prepared_state()
@@ -279,7 +353,7 @@ def claim_store(monkeypatch, operations_service, preparation_sql):
     monkeypatch.setattr(store, "_agent_refresh_access", lambda *_args: None, raising=False)
     monkeypatch.setattr(store, "_agent_object", lambda *_args, **_kwargs: None)
 
-    def prepare(**_kwargs):
+    def prepare(**_kwargs: Unpack[PrepareObjectArgs]) -> ObjectReceipt:
         assert not sql.info["locked"], "crypto/storage must precede SQL writer"
         return state.ObjectReceipt(
             "obj",
@@ -297,7 +371,9 @@ def claim_store(monkeypatch, operations_service, preparation_sql):
     return store, sql
 
 
-def test_claim_observes_first_insertion_under_actual_state_owner(monkeypatch, operations_service, preparation_sql):
+def test_claim_observes_first_insertion_under_actual_state_owner(
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService, preparation_sql: Session
+) -> None:
     assert hasattr(state.NativeExecutionStateStore, "claim_agent_create"), "S1 atomic create claim missing"
     store, sql = claim_store(monkeypatch, operations_service, preparation_sql)
     first = store.claim_agent_create(
@@ -329,11 +405,13 @@ def test_claim_observes_first_insertion_under_actual_state_owner(monkeypatch, op
         )
 
 
-def test_storage_mutation_invalidates_final_claim(monkeypatch, operations_service, preparation_sql):
+def test_storage_mutation_invalidates_final_claim(
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService, preparation_sql: Session
+) -> None:
     assert hasattr(state.NativeExecutionStateStore, "claim_agent_create"), "S1 atomic create claim missing"
     store, sql = claim_store(monkeypatch, operations_service, preparation_sql)
 
-    def refuse(*_args, **_kwargs):
+    def refuse(*_args: object, **_kwargs: object) -> Never:
         raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
 
     monkeypatch.setattr(store, "_agent_recheck", refuse)
@@ -350,13 +428,15 @@ def test_storage_mutation_invalidates_final_claim(monkeypatch, operations_servic
 
 @pytest.mark.parametrize("path", ["prepare-run", "prepared-config"])
 @pytest.mark.parametrize("key", [None, "wrong"])
-def test_actual_flask_service_auth_stops_before_preparation_lookup(monkeypatch, path, key):
+def test_actual_flask_service_auth_stops_before_preparation_lookup(
+    monkeypatch: pytest.MonkeyPatch, path: str, key: None | str
+) -> None:
     import controllers.inner_api.agent.native_testing as controller
     from controllers.inner_api import bp
     from tests.unit_tests.config_override import config_overrides_context
 
     assert hasattr(controller, "AgentNativePrepareRunApi"), "S1 authenticated callback missing"
-    calls = []
+    calls: list[object] = []
     monkeypatch.setattr(controller, "agent_preparation_for_ref", lambda ref: calls.append(ref))
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -372,7 +452,9 @@ def test_actual_flask_service_auth_stops_before_preparation_lookup(monkeypatch, 
 
 
 @pytest.mark.parametrize("mutation", ["run", "mode", "parent", "digest", "generation"])
-def test_backend_identity_is_read_outside_writer_before_bind(mutation, monkeypatch, operations_service):
+def test_backend_identity_is_read_outside_writer_before_bind(
+    mutation: str, monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService
+) -> None:
     from dify_agent.protocol.native_testing import (
         AgentPrepareRunPayload,
         AgentRuntimeIdentity,
@@ -389,17 +471,17 @@ def test_backend_identity_is_read_outside_writer_before_bind(mutation, monkeypat
         config_digest=canonical_digest(CONFIG),
         config=CONFIG,
     )
-    calls = []
+    calls: list[object] = []
 
-    def load_prepared_config(**_kwargs):
+    def load_prepared_config(**_kwargs: object) -> AgentPreparedConfig:
         calls.append("load")
         return config
 
-    def bind_agent_run(**_kwargs):
+    def bind_agent_run(**_kwargs: object) -> str:
         calls.append("bind")
         return "association"
 
-    def load_context(**_kwargs):
+    def load_context(**_kwargs: object) -> ResolvedNativeTestContext:
         return resolved_context()
 
     store = operations_service.state_store
@@ -407,7 +489,7 @@ def test_backend_identity_is_read_outside_writer_before_bind(mutation, monkeypat
     monkeypatch.setattr(store, "bind_agent_run", bind_agent_run)
     monkeypatch.setattr(store, "load_context", load_context)
 
-    def read_run_identity_sync(_run_id, _selection):
+    def read_run_identity_sync(_run_id: object, _selection: object) -> AgentRuntimeIdentity:
         calls.append("backend")
         raw = {
             "run_id": "run",
@@ -447,7 +529,9 @@ def test_backend_identity_is_read_outside_writer_before_bind(mutation, monkeypat
 
 
 @pytest.mark.parametrize("routes", [False, True])
-def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(monkeypatch, routes, operations_service):
+def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(
+    monkeypatch: pytest.MonkeyPatch, routes: bool, operations_service: AgentOperationService
+) -> None:
     from core.app.llm import model_access
     from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
     from services.dify_builder.native_testing.agent_runtime_config import (
@@ -458,15 +542,15 @@ def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(mon
         PreparedAgentToolDeclarations,
     )
 
-    calls = []
+    calls: list[object] = []
 
-    def forbidden(*_args, **_kwargs):
+    def forbidden(*_args: object, **_kwargs: object) -> Never:
         calls.append("forbidden")
         raise AssertionError("ordinary model schema/credential call")
 
     monkeypatch.setattr(model_access, "resolve_model_context_window", forbidden)
 
-    def prepare(**_kwargs):
+    def prepare(**_kwargs: object) -> PreparedAgentToolDeclarations:
         return PreparedAgentToolDeclarations(None, None, ())
 
     from services.dify_builder.native_testing.agent_tool_declarations import AgentToolDeclarationService
@@ -514,12 +598,14 @@ def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(mon
         },
     )
     assert request.execution_mode == "builder_test"
+    assert PARENT is not None
+    assert request.native_parent_node is not None
     assert request.native_parent_node.execution_id == PARENT.execution_id
     assert request.session_snapshot is None
     assert not calls
-    config = request.model_dump(mode="json", include={"composition", "session_snapshot"})
+    config: dict[str, JsonValue] = request.model_dump(mode="json", include={"composition", "session_snapshot"})
     assert state.NativeExecutionStateStore._agent_executable_config(config, PARENT) == config
-    raw = {
+    raw: dict[str, JsonValue] = {
         "composition": {
             "layers": [
                 {
@@ -535,7 +621,9 @@ def test_inert_composer_uses_real_layer_dtos_without_model_schema_or_session(mon
 
 
 @pytest.mark.parametrize("kind", ["valid", "duplicate", "lost-ack", "changed-run", "during-backend"])
-def test_callback_idempotency_and_mutation_recheck(kind, monkeypatch, operations_service):
+def test_callback_idempotency_and_mutation_recheck(
+    kind: str, monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService
+) -> None:
     from dify_agent.protocol.native_testing import (
         AgentPrepareRunPayload,
         AgentRuntimeIdentity,
@@ -554,21 +642,20 @@ def test_callback_idempotency_and_mutation_recheck(kind, monkeypatch, operations
         config_digest=canonical_digest(CONFIG),
         config=CONFIG,
     )
-    rows = []
-    loads = []
-    mutated = []
+    rows: list[AgentNodeAssociation] = []
+    loads: list[dict[str, object]] = []
+    mutated: list[bool] = []
 
-    def load_context(**_kwargs):
+    def load_context(**_kwargs: object) -> ResolvedNativeTestContext:
         return resolved_context()
 
-    def load_prepared_config(**_kwargs):
+    def load_prepared_config(**_kwargs: object) -> AgentPreparedConfig:
         loads.append(_kwargs)
         if mutated:
             return config.model_copy(update={"config_digest": "d" * 64})
         return config
 
-    def bind_agent_run(**_kwargs):
-        association = _kwargs["association"]
+    def bind_agent_run(*, association: AgentNodeAssociation, **_kwargs: object) -> str:
         if rows and rows[0] != association:
             raise BuilderExecutionPolicyError("native_payload_conflict")
         if not rows:
@@ -580,7 +667,7 @@ def test_callback_idempotency_and_mutation_recheck(kind, monkeypatch, operations
     monkeypatch.setattr(store, "load_prepared_config", load_prepared_config)
     monkeypatch.setattr(store, "bind_agent_run", bind_agent_run)
 
-    def read_run_identity_sync(run_id, selection):
+    def read_run_identity_sync(run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity:
         if kind == "during-backend":
             mutated.append(True)
         return AgentRuntimeIdentity(
@@ -620,10 +707,11 @@ def test_callback_idempotency_and_mutation_recheck(kind, monkeypatch, operations
 
 @pytest.mark.parametrize("mutation", ["none", "input", "context", "bound-node", "config"])
 def test_initial_preparation_uses_bound_uuid_typed_inputs_and_rechecks_every_io(
-    mutation,
-    monkeypatch,
-    operations_service,
-):
+    mutation: str,
+    monkeypatch: pytest.MonkeyPatch,
+    operations_service: AgentOperationService,
+    agent_backend: Client,
+) -> None:
 
     from dify_agent.protocol.schemas import CreateRunRequest
 
@@ -653,10 +741,10 @@ def test_initial_preparation_uses_bound_uuid_typed_inputs_and_rechecks_every_io(
 
     context = resolved_context(graph=graph)
     definition = NativeAgentDefinition("node", "agent", "pin", AgentSoulConfig(), WorkflowNodeJobConfig(), "s")
-    values = {"query": False, "values": {"start.rows": [1, True, "1"]}}
-    current = []
-    claims = []
-    stored = []
+    values: dict[str, JsonValue] = {"query": False, "values": {"start.rows": [1, True, "1"]}}
+    current: list[str] = []
+    claims: list[dict[str, object]] = []
+    stored: list[dict[str, object]] = []
     association = node_association(monkeypatch, operations_service, context, data)
     monkeypatch.setattr(
         association,
@@ -673,18 +761,18 @@ def test_initial_preparation_uses_bound_uuid_typed_inputs_and_rechecks_every_io(
         builder, "typed_inputs", lambda **_kwargs: {"query": "changed", "values": {}} if "input" in current else values
     )
 
-    def compose(**kwargs):
+    def compose(*, parent_node: AgentParentNodeRef, **_kwargs: object) -> CreateRunRequest:
         return CreateRunRequest(
             composition={"layers": []},
             execution_mode="builder_test",
             native_test_ref=REF.model_dump(mode="json"),
-            native_parent_node=kwargs["parent_node"].model_dump(mode="json"),
+            native_parent_node=parent_node.model_dump(mode="json"),
             native_test_protocol_version=1,
         )
 
     monkeypatch.setattr(builder, "compose", compose)
 
-    def prepare(**_kwargs):
+    def prepare(**_kwargs: object) -> AgentTestWorkspaceRef:
         current.append(mutation)
         if mutation == "bound-node":
             association.bound_node.node_data.agent_task = "mutated"
@@ -698,7 +786,7 @@ def test_initial_preparation_uses_bound_uuid_typed_inputs_and_rechecks_every_io(
         "claim_agent_create",
         lambda **kwargs: claims.append(kwargs) or AgentCreateInserted("cfg", canonical_digest(CONFIG)),
     )
-    service = AgentPreparationService(store, None, workspace, builder)
+    service = AgentPreparationService(store, agent_backend, workspace, builder)
     if mutation == "none":
         result = service.prepare_initial(association=association)
         assert result.parent_node.execution_id == PARENT.execution_id
@@ -719,15 +807,15 @@ def test_initial_preparation_uses_bound_uuid_typed_inputs_and_rechecks_every_io(
     ["none", "parent", "workspace", "run", "owner", "config-ref", "resource"],
 )
 def test_private_config_read_rechecks_exact_stored_owner_and_resource_relations(
-    monkeypatch,
-    mutation,
-    operations_service,
-    preparation_sql,
-):
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+    operations_service: AgentOperationService,
+    preparation_sql: Session,
+) -> None:
     sql, _owned, _scope = preparation_session(monkeypatch, operations_service, preparation_sql)
     store = operations_service.state_store
     prep = prepared_state()
-    value = {
+    value: dict[str, JsonValue] = {
         "schema": "agent-config-v2",
         "parent_node": PARENT.model_dump(mode="json"),
         "workflow_native_run_id": "workflow",
@@ -759,11 +847,11 @@ def test_private_config_read_rechecks_exact_stored_owner_and_resource_relations(
     monkeypatch.setattr(store.loader, "session_factory", lambda: sql)
     monkeypatch.setattr(store, "_agent_prepare", lambda **_kwargs: prep)
     monkeypatch.setattr(store, "_agent_refresh_access", lambda *_args: None)
-    checked = []
+    checked: list[bool] = []
     monkeypatch.setattr(store, "_agent_recheck", lambda *_args, **_kwargs: checked.append(True))
-    limits = []
+    limits: list[int | None] = []
 
-    def read(_receipt, *, max_bytes=None):
+    def read(_receipt: object, *, max_bytes: int | None = None) -> JsonValue:
         limits.append(max_bytes)
         return value
 
@@ -785,7 +873,9 @@ def test_private_config_read_rechecks_exact_stored_owner_and_resource_relations(
 
 
 @pytest.mark.parametrize(("payload", "expected"), [(b" " * 4097, 413), (b'{"approved":true}', 400)])
-def test_actual_flask_control_caps_and_validation_before_factory(monkeypatch, payload, expected):
+def test_actual_flask_control_caps_and_validation_before_factory(
+    monkeypatch: pytest.MonkeyPatch, payload: bytes, expected: int
+) -> None:
     from dify_agent.protocol.native_testing import AgentRunTransportSelection
 
     import controllers.inner_api.agent.native_testing as controller
@@ -795,7 +885,7 @@ def test_actual_flask_control_caps_and_validation_before_factory(monkeypatch, pa
         encoded,
     )
 
-    calls = []
+    calls: list[object] = []
     monkeypatch.setattr(controller, "agent_preparation_for_ref", lambda ref: calls.append(ref))
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -826,9 +916,9 @@ def test_actual_flask_control_caps_and_validation_before_factory(monkeypatch, pa
 
 
 def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_and_conflict_safe(
-    monkeypatch,
-    operations_service,
-):
+    monkeypatch: pytest.MonkeyPatch,
+    operations_service: AgentOperationService,
+) -> None:
     """Real Flask→HTTPX SDK wire with explicit identity and storage method ports."""
     import httpx
     from dify_agent.client import Client
@@ -856,20 +946,20 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
         config_digest=canonical_digest(CONFIG),
         config=CONFIG,
     )
-    bindings = []
-    reads = []
+    bindings: list[AgentNodeAssociation] = []
+    reads: list[Request] = []
 
-    def load_context(**_kwargs):
+    def load_context(**_kwargs: object) -> ResolvedNativeTestContext:
         return resolved_context()
 
-    def load_prepared_config(**_kwargs):
+    def load_prepared_config(**_kwargs: object) -> AgentPreparedConfig:
         return owned
 
-    def discover_agent_run(**_kwargs):
+    def discover_agent_run(**_kwargs: object) -> AgentNodeAssociation | None:
         return bindings[0] if bindings else None
 
-    def bind_agent_run(**_kwargs):
-        selected = _kwargs["association"]
+    def bind_agent_run(*, association: AgentNodeAssociation, **_kwargs: object) -> str:
+        selected = association
         if bindings and selected != bindings[0]:
             raise BuilderExecutionPolicyError("private-canary")
         if not bindings:
@@ -882,7 +972,7 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
     monkeypatch.setattr(store, "discover_agent_run", discover_agent_run)
     monkeypatch.setattr(store, "bind_agent_run", bind_agent_run)
 
-    def handle(request):
+    def handle(request: Request) -> Response:
         reads.append(request)
         assert request.headers["Authorization"] == "Bearer synthetic-backend"
         run_id = request.url.path.split("/")[2]
@@ -975,19 +1065,22 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
     assert first.headers["Cache-Control"] == "no-store"
     assert conflicting.status_code == 409
     assert "private-canary" not in conflicting.get_data(as_text=True)
+    assert config.json is not None
     assert config.json["config"] == CONFIG
     assert config.json["parent_node"] == PARENT.model_dump(mode="json")
     assert len(bindings) == 1
     assert len(reads) == 5
 
 
-def test_config_creation_readback_cap_precedes_decryption_and_sql(monkeypatch, operations_service):
+def test_config_creation_readback_cap_precedes_decryption_and_sql(
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService
+) -> None:
     import inspect
 
     assert "max_bytes" in inspect.signature(state.NativeExecutionStateStore.prepare_object).parameters, (
         "S1 protected config creation readback cap missing"
     )
-    calls = []
+    calls: list[object] = []
     monkeypatch.setattr(state.encrypter, "encrypt_token", lambda _tenant, _raw: "small-cipher")
     monkeypatch.setattr(state.storage, "save", lambda *_args: None)
     monkeypatch.setattr(state.storage, "load", lambda *_args: b"x" * (4096 + 1))
@@ -1005,7 +1098,9 @@ def test_config_creation_readback_cap_precedes_decryption_and_sql(monkeypatch, o
 
 
 @pytest.mark.parametrize("mutation", ["none", "outputs", "routes", "binding-kind"])
-def test_current_published_binding_must_match_graph_outputs_and_routes(monkeypatch, mutation, operations_service):
+def test_current_published_binding_must_match_graph_outputs_and_routes(
+    monkeypatch: pytest.MonkeyPatch, mutation: str, operations_service: AgentOperationService
+) -> None:
     """Real definition loader, graph renderer, ORM rows and Session query boundaries."""
     import services.dify_builder.native_testing.agent_runtime_config as config_module
     from models.agent import (
@@ -1083,8 +1178,14 @@ def test_current_published_binding_must_match_graph_outputs_and_routes(monkeypat
     ],
 )
 def test_composer_to_claim_shell_env_is_reference_only(
-    monkeypatch, owner, kind, field, value, operations_service, preparation_sql
-):
+    monkeypatch: pytest.MonkeyPatch,
+    owner: str,
+    kind: str,
+    field: str,
+    value: str | bool,
+    operations_service: AgentOperationService,
+    preparation_sql: Session,
+) -> None:
     """Actual composer + claim owner; only SQL/storage and declaration I/O are doubles."""
     from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
     from services.dify_builder.native_testing.agent_runtime_config import (
@@ -1095,9 +1196,9 @@ def test_composer_to_claim_shell_env_is_reference_only(
         PreparedAgentToolDeclarations,
     )
 
-    calls = []
+    calls: list[object] = []
 
-    def prepare(**_kwargs):
+    def prepare(**_kwargs: object) -> PreparedAgentToolDeclarations:
         calls.append("declarations")
         return PreparedAgentToolDeclarations(None, None, ())
 
@@ -1129,15 +1230,15 @@ def test_composer_to_claim_shell_env_is_reference_only(
     context = resolved_context()
     store, sql = claim_store(monkeypatch, operations_service, preparation_sql)
     original = store.prepare_object
-    persisted = []
+    persisted: list[JsonValue] = []
 
-    def save(**kwargs):
+    def save(**kwargs: Unpack[PrepareObjectArgs]) -> ObjectReceipt:
         persisted.append(kwargs["payload"])
         return original(**kwargs)
 
     monkeypatch.setattr(store, "prepare_object", save)
 
-    def prepare():
+    def prepare() -> AgentCreateClaim:
         request = builder.compose(
             context=context,
             definition=definition,
@@ -1183,8 +1284,13 @@ def test_composer_to_claim_shell_env_is_reference_only(
     ],
 )
 def test_composed_definition_receipt_survives_initial_claim_io(
-    monkeypatch, resource, boundary, operations_service, preparation_sql
-):
+    monkeypatch: pytest.MonkeyPatch,
+    resource: str,
+    boundary: str,
+    operations_service: AgentOperationService,
+    preparation_sql: Session,
+    agent_backend: Client,
+) -> None:
     """Actual initial service/composer/claim/resource checks; SQL/access/storage are doubles.
 
     Removing the composition-owned receipt comparison must admit config A after
@@ -1325,9 +1431,9 @@ def test_composed_definition_receipt_survives_initial_claim_io(
         ),
         state.WorkflowAgentNodeBinding: published,
     }
-    changed = []
+    changed: list[str] = []
 
-    def mutate(stage):
+    def mutate(stage: str) -> None:
         if stage != boundary or changed:
             return
         changed.append(stage)
@@ -1350,7 +1456,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(
     original_scalar = sql.scalar
     monkeypatch.setattr(sql, "get", lambda model, _key: rows[model])
 
-    def scalar(query):
+    def scalar(query: Select[tuple[object]]) -> object | None:
         model = query.column_descriptions[0]["entity"]
         return original_scalar(query) if model is state.NativePayloadObject else rows[model]
 
@@ -1361,7 +1467,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(
     monkeypatch.setattr(loader, "_load", lambda *_args, **_kwargs: (owned, scope_row))
     store = operations_service.state_store
 
-    def private_read(*_args):
+    def private_read(*_args: object) -> PrivateReadOwner:
         mutate("claim-rbac")
         return read_authority()
 
@@ -1369,22 +1475,22 @@ def test_composed_definition_receipt_survives_initial_claim_io(
     monkeypatch.setattr(store, "_validate_node_inputs_owner", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(store, "_agent_single_parent", lambda *_args, **_kwargs: None)
 
-    def load_context(**_kwargs):
+    def load_context(**_kwargs: object) -> ResolvedNativeTestContext:
         mutate("claim-context")
         return context
 
     monkeypatch.setattr(store, "load_context", load_context)
     monkeypatch.setattr(store, "store_node_inputs", lambda **_kwargs: "input")
-    inputs = {"query": "Review", "values": {}, "route_names": {}}
+    inputs: dict[str, JsonValue] = {"query": "Review", "values": {}, "route_names": {}}
 
-    def read_input(*_args, **_kwargs):
+    def read_input(*_args: object, **_kwargs: object) -> tuple[None, dict[str, JsonValue]]:
         mutate("claim-private-input")
         return (None, inputs)
 
     monkeypatch.setattr(store, "_agent_object", read_input)
-    persisted = []
+    persisted: list[JsonValue] = []
 
-    def prepare_object(**kwargs):
+    def prepare_object(**kwargs: Unpack[PrepareObjectArgs]) -> ObjectReceipt:
         assert not sql.info["locked"]
         persisted.append(kwargs["payload"])
         mutate("crypto-storage")
@@ -1402,7 +1508,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(
 
     monkeypatch.setattr(store, "prepare_object", prepare_object)
 
-    def refresh(_prepared):
+    def refresh(_prepared: object) -> None:
         mutate("final-access")
 
     monkeypatch.setattr(store, "_agent_refresh_access", refresh)
@@ -1419,7 +1525,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(
     monkeypatch.setattr(AgentBindingService, "recheck_access", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(access_service, "require_builder_agent_access", lambda **_kwargs: None)
 
-    def prepare(**_kwargs):
+    def prepare(**_kwargs: object) -> PreparedAgentToolDeclarations:
         return PreparedAgentToolDeclarations(None, None, ())
 
     from services.dify_builder.native_testing.agent_tool_declarations import AgentToolDeclarationService
@@ -1433,7 +1539,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(
         monkeypatch, operations_service, context, DifyAgentNodeData.model_validate(graph["nodes"][0]["data"])
     )
     workspace_owner = workspace_service(monkeypatch, operations_service, lambda **_kwargs: workspace)
-    service = AgentPreparationService(store, None, workspace_owner, builder)
+    service = AgentPreparationService(store, agent_backend, workspace_owner, builder)
     if boundary == "none":
         result = service.prepare_initial(association=association)
         assert result.claim.kind == "inserted"

@@ -1,5 +1,8 @@
 """Only explicit server injection selects the confirmed Workflow Agent profile."""
 
+from collections.abc import Generator
+from typing import Never
+
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -14,12 +17,14 @@ from tests.unit_tests.services.dify_builder.native_testing.test_agent_context im
 
 
 @pytest.mark.parametrize("case", ["celery", "published", "advanced_chat", "end_user", "restricted", "agent_mode"])
-def test_confirmed_agent_refuses_unsupported_entry_before_guardrails(monkeypatch, case):
+def test_confirmed_agent_refuses_unsupported_entry_before_guardrails(
+    monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
     calls = []
 
-    def guardrails(**_kwargs):
+    def guardrails(**_kwargs: object) -> Never:
         calls.append("dispatch")
         raise AssertionError("refuse before dispatch")
 
@@ -44,7 +49,9 @@ def test_confirmed_agent_refuses_unsupported_entry_before_guardrails(monkeypatch
 
 
 @pytest.mark.parametrize("server_context", [False, True])
-def test_confirmed_agent_server_context_and_preallocated_run_reach_workflow(monkeypatch, server_context):
+def test_confirmed_agent_server_context_and_preallocated_run_reach_workflow(
+    monkeypatch: pytest.MonkeyPatch, server_context: bool
+) -> None:
     app = App(id="app", tenant_id="tenant", mode=AppMode.WORKFLOW)
     monkeypatch.setattr(app, "is_agent_with_session", lambda **_: False)
     monkeypatch.setattr(
@@ -60,7 +67,7 @@ def test_confirmed_agent_server_context_and_preallocated_run_reach_workflow(monk
     )
     captured = {}
 
-    def generate(**kwargs):
+    def generate(**kwargs: object) -> Generator[object]:
         captured.update(kwargs)
         yield from ()
 
@@ -80,16 +87,17 @@ def test_confirmed_agent_server_context_and_preallocated_run_reach_workflow(monk
         )
     assert captured["builder_agent_execution"] == context
     if server_context:
+        assert context is not None
         assert captured["workflow_run_id"] == context.native_run_id
     assert captured["pause_state_config"] is not None
 
 
-def test_effective_agent_mode_cannot_drop_context(monkeypatch):
+def test_effective_agent_mode_cannot_drop_context(monkeypatch: pytest.MonkeyPatch) -> None:
     app = App(id="app", tenant_id="tenant", mode=AppMode.WORKFLOW)
     monkeypatch.setattr(app, "is_agent_with_session", lambda **_: True)
     calls = []
 
-    def generator(*_args, **_kwargs):
+    def generator(*_args: object, **_kwargs: object) -> Never:
         calls.append("generate")
         raise AssertionError("AgentChat must not lose the marker")
 

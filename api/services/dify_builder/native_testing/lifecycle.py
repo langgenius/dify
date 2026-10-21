@@ -792,10 +792,10 @@ class NativeTestLifecycleService:
             request_id=dispatch.request_id, generation=dispatch.generation, dispatch_id=dispatch.id, status=status
         )
 
-    def publish_pending(self, *, publish: Callable[..., None], limit: int = 100) -> int:
+    def publish_pending(self, *, publish: Callable[..., None], limit: int = 100, request_id: str | None = None) -> int:
         """Every unclaimed outbox remains retryable, including lost broker acknowledgements."""
         with self.loader.session_factory() as session:
-            rows = session.execute(
+            query = (
                 select(NativeDispatch, DifyBuilderExecutionRequest.context_digest)
                 .join(DifyBuilderExecutionRequest, DifyBuilderExecutionRequest.id == NativeDispatch.request_id)
                 .where(
@@ -804,8 +804,10 @@ class NativeTestLifecycleService:
                     NativeDispatch.state.in_(("queued", "published")),
                 )
                 .order_by(NativeDispatch.id)
-                .limit(limit)
-            ).all()
+            )
+            if request_id is not None:
+                query = query.where(NativeDispatch.request_id == request_id)
+            rows = session.execute(query.limit(limit)).all()
         published = 0
         for dispatch, digest in rows:
             ref = NativeTestContextRef(
@@ -1331,9 +1333,9 @@ class NativeTestLifecycleService:
 
     _subtree = staticmethod(invocation_subtree)
 
-    def reconcile(self, *, limit: int = 100) -> int:
+    def reconcile(self, *, limit: int = 100, request_id: str | None = None) -> int:
         with self.loader.session_factory() as session:
-            rows = session.execute(
+            query = (
                 select(NativeDispatch, DifyBuilderExecutionRequest.context_digest)
                 .join(DifyBuilderExecutionRequest, DifyBuilderExecutionRequest.id == NativeDispatch.request_id)
                 .where(
@@ -1342,8 +1344,10 @@ class NativeTestLifecycleService:
                     NativeDispatch.state == "claimed",
                     NativeDispatch.claim_expires_at <= self.clock(),
                 )
-                .limit(limit)
-            ).all()
+            )
+            if request_id is not None:
+                query = query.where(NativeDispatch.request_id == request_id)
+            rows = session.execute(query.limit(limit)).all()
         for row, digest in rows:
             self._mark_unknown(
                 ref=NativeTestContextRef(
@@ -1352,7 +1356,7 @@ class NativeTestLifecycleService:
                 dispatch_id=row.id,
             )
         with self.loader.session_factory() as session:
-            cancelled = session.scalars(
+            cancellation_query = (
                 select(NativeInvocationState.request_id)
                 .join(DifyBuilderExecutionRequest, DifyBuilderExecutionRequest.id == NativeInvocationState.request_id)
                 .where(
@@ -1362,8 +1366,10 @@ class NativeTestLifecycleService:
                     NativeInvocationState.cleanup_complete.is_(False),
                 )
                 .distinct()
-                .limit(limit)
-            ).all()
+            )
+            if request_id is not None:
+                cancellation_query = cancellation_query.where(NativeInvocationState.request_id == request_id)
+            cancelled = session.scalars(cancellation_query.limit(limit)).all()
         for request_id in cancelled:
             self.cancel(actor=self.loader.actor, request_id=request_id, idempotency_key="cleanup-reconcile")
         return len(rows) + len(cancelled)

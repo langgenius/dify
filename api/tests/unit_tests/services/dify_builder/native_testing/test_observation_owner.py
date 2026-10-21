@@ -1,20 +1,21 @@
 """Actual C03/loader/HTTP owners over SQL, permission and encrypted-object boundary doubles."""
 
-import importlib
 import importlib.util
 import json
 import traceback
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from typing import NoReturn, Protocol, cast
 
 import pytest
 from sqlalchemy import inspect
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.models import Actor
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
 from models.dify_builder_native_tests import (
     NativeInvocationState,
@@ -33,10 +34,14 @@ from services.dify_builder.native_testing.http_binding import (
     describe_http_resource,
 )
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
+from services.dify_builder.native_testing.observation_owner import create_http_observation_guard
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, native_workflow_revision
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
-from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import SENTINEL
+from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import (
+    SENTINEL,
+    graph_data,
+)
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context as sample_context
 
 
@@ -49,13 +54,13 @@ class ObservationOwnerCase:
     request: DifyBuilderExecutionRequest
     local: NativeInvocationState
     workflow: Workflow
-    rows: dict[type, list]
+    rows: dict[type[object], list[object]]
     events: list[str]
     reads: int = 0
     on_read: Callable[[int], None] | None = None
     notices: list[str] = field(default_factory=list)
 
-    def rebind(self):
+    def rebind(self) -> None:
         ref = self.context.ref.model_copy(update={"context_digest": canonical_digest(self.request.context)})
         self.request.context_digest = ref.context_digest
         self.context = self.context.model_copy(update={"ref": ref}, deep=True)
@@ -68,33 +73,42 @@ class PretendExecutionState:
     loader: OwnedNativeTestLoader
     context: ResolvedNativeTestContext
 
-    def load_context(self, **_kwargs):
+    def load_context(self, **_kwargs: object) -> ResolvedNativeTestContext:
         return self.context
 
 
-def owner_rows_snapshot(rows):
+def owner_rows_snapshot(rows: dict[type[object], list[object]]) -> dict[type[object], list[tuple[object, ...]]]:
     """Compare all actual mapped owner values before and after the observation read."""
-    return deepcopy(
-        {
-            model: [
-                tuple(inspect(row).attrs[column.key].value for column in inspect(model).column_attrs) for row in values
-            ]
-            for model, values in rows.items()
-        }
-    )
+    snapshot: dict[type[object], list[tuple[object, ...]]] = {}
+    for model, values in rows.items():
+        mapper = inspect(model)
+        assert mapper is not None
+        records = []
+        for row in values:
+            state = inspect(row)
+            assert state is not None
+            records.append(tuple(state.attrs[column.key].value for column in mapper.column_attrs))
+        snapshot[model] = records
+    return deepcopy(snapshot)
 
 
-def owner():
+class GuardFactory(Protocol):
+    def __call__(
+        self, *, state: NativeExecutionStateStore, context: ResolvedNativeTestContext, on_failure: Callable[[], None]
+    ) -> NativeObservationGuard: ...
+
+
+def owner() -> GuardFactory:
     name = "services.dify_builder.native_testing.observation_owner"
     assert importlib.util.find_spec(name) is not None, "trusted observation owner is missing"
-    return importlib.import_module(name).create_http_observation_guard
+    return create_http_observation_guard
 
 
 @pytest.fixture
-def case(monkeypatch, request):
+def case(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> ObservationOwnerCase:
     """No database/crypto/RPC claim: real methods read explicitly modeled owner rows."""
     source = sample_context()
-    graph, inputs = deepcopy(source.graph), deepcopy(source.inputs)
+    graph, inputs = deepcopy(graph_data(source)), deepcopy(source.inputs)
     try:
         shape = request.param
     except AttributeError:
@@ -102,7 +116,7 @@ def case(monkeypatch, request):
     if shape == "start_end":
         graph.pop("viewport")
         graph["nodes"] = [n for n in graph["nodes"] if n["data"]["type"] != "http-request"]
-        graph["nodes"][-1]["data"]["outputs"] = []
+        graph["nodes"][-1]["data"]["outputs"] = list[object]()
         graph["nodes"][-1]["data"]["title"] = SENTINEL
         graph["edges"] = [{"id": "e1", "source": "start", "target": "end", "sourceHandle": "source"}]
     workflow = Workflow(
@@ -150,7 +164,7 @@ def case(monkeypatch, request):
     context = source.model_copy(
         update={"ref": ref, "graph": graph, "graph_revision": revision, "resource_manifest": manifest}, deep=True
     )
-    request = DifyBuilderExecutionRequest(
+    builder_request = DifyBuilderExecutionRequest(
         id="request",
         tenant_id="tenant",
         actor_id="actor",
@@ -180,10 +194,10 @@ def case(monkeypatch, request):
     account.id = "actor"
     tenant = Tenant(name="Test", status=TenantStatus.NORMAL)
     tenant.id = "tenant"
-    rows = {
+    rows: dict[type[object], list[object]] = {
         Account: [account],
         Tenant: [tenant],
-        TenantAccountJoin: [TenantAccountJoin(tenant_id="tenant", account_id="actor", role="owner")],
+        TenantAccountJoin: [TenantAccountJoin(tenant_id="tenant", account_id="actor", role=TenantAccountRole.OWNER)],
         App: [App(id="app", tenant_id="tenant", status="normal")],
         Workflow: [workflow],
         DifyBuilderSession: [
@@ -201,7 +215,7 @@ def case(monkeypatch, request):
                 id="input", session_id="session", inputs=inputs, start_schema_hash="schema", source="mock"
             )
         ],
-        DifyBuilderExecutionRequest: [request],
+        DifyBuilderExecutionRequest: [builder_request],
         NativeInvocationState: [state],
         NativeTestScope: [
             NativeTestScope(
@@ -238,12 +252,12 @@ def case(monkeypatch, request):
             )
         ],
     }
-    events = []
+    events: list[str] = []
     sql = SQL(rows, events)
     depth = 0
 
     @contextmanager
-    def factory():
+    def factory() -> Generator[SQL]:
         nonlocal depth
         depth += 1
         try:
@@ -251,10 +265,10 @@ def case(monkeypatch, request):
         finally:
             depth -= 1
 
-    def forbidden(*_, **__):
+    def forbidden(*_: object, **__: object) -> NoReturn:
         raise AssertionError("writer/provider/credential I/O forbidden")
 
-    factory.begin = forbidden
+    monkeypatch.setattr(factory, "begin", forbidden, raising=False)
     # Protected C03 object readback is the labeled boundary below. Any extra
     # decryption/storage access or real HTTP transport must remain unreachable.
     for path in (
@@ -265,7 +279,7 @@ def case(monkeypatch, request):
     ):
         monkeypatch.setattr(path, forbidden)
 
-    def permission(actor, app_id, sessions):
+    def permission(actor: Actor, app_id: str, sessions: object) -> None:
         assert depth == 0
         assert actor == Actor(tenant_id="tenant", account_id="actor")
         assert app_id == "app"
@@ -279,7 +293,9 @@ def case(monkeypatch, request):
     ]:
         monkeypatch.setattr(path, permission)
     loader = OwnedNativeTestLoader(
-        factory, actor=Actor(tenant_id="tenant", account_id="actor"), resolver=NativeHttpBindingResolver()
+        cast(sessionmaker[Session], factory),
+        actor=Actor(tenant_id="tenant", account_id="actor"),
+        resolver=NativeHttpBindingResolver(),
     )
     store = NativeExecutionStateStore(loader)
     c = ObservationOwnerCase(
@@ -287,7 +303,7 @@ def case(monkeypatch, request):
         shape=shape,
         loader=loader,
         context=context,
-        request=request,
+        request=builder_request,
         local=state,
         workflow=workflow,
         rows=rows,
@@ -297,7 +313,7 @@ def case(monkeypatch, request):
         notices=[],
     )
 
-    def protected_object(row):
+    def protected_object(row: NativePayloadObject) -> dict[str, object]:
         assert depth == 0
         assert row.id == "context"
         c.reads += 1
@@ -311,7 +327,7 @@ def case(monkeypatch, request):
     return c
 
 
-def test_actual_stored_profile_builds_existing_guard_without_writes_or_effects(case):
+def test_actual_stored_profile_builds_existing_guard_without_writes_or_effects(case: ObservationOwnerCase) -> None:
     c = case
     before = owner_rows_snapshot(c.rows)
     guard = owner()(state=c.store, context=c.context, on_failure=lambda: c.notices.append("unknown"))
@@ -326,11 +342,19 @@ def test_actual_stored_profile_builds_existing_guard_without_writes_or_effects(c
     assert c.notices == ["unknown"]
 
 
-def _refuses(c, **overrides):
-    kwargs = {"state": c.store, "context": c.context, "on_failure": lambda: c.notices.append("unexpected")}
+def _refuses(c: ObservationOwnerCase, **overrides: object) -> None:
+    kwargs: dict[str, object] = {
+        "state": c.store,
+        "context": c.context,
+        "on_failure": lambda: c.notices.append("unexpected"),
+    }
     kwargs.update(overrides)
     with pytest.raises(NativeObservationError) as error:
-        owner()(**kwargs)
+        owner()(
+            state=cast(NativeExecutionStateStore, kwargs["state"]),
+            context=cast(ResolvedNativeTestContext, kwargs["context"]),
+            on_failure=cast(Callable[[], None], kwargs["on_failure"]),
+        )
     assert str(error.value) == "native_observation_failed"
     assert c.notices == []
 
@@ -338,7 +362,9 @@ def _refuses(c, **overrides):
 @pytest.mark.parametrize(
     "fault", ["missing_profile", "unsupported_profile", "profile_limits", "manifest", "stored_identity"]
 )
-def test_persisted_server_metadata_must_qualify_without_profile_fallback(case, fault):
+def test_persisted_server_metadata_must_qualify_without_profile_fallback(
+    case: ObservationOwnerCase, fault: str
+) -> None:
     c = case
     if fault == "missing_profile":
         c.request.context.pop("profile")
@@ -358,7 +384,9 @@ def test_persisted_server_metadata_must_qualify_without_profile_fallback(case, f
     ("field", "value"),
     [("generation", 1), ("native_run_id", "other-run"), ("resource_manifest", ()), ("inputs", {"forged": True})],
 )
-def test_caller_context_cannot_replace_actual_protected_snapshot(case, field, value):
+def test_caller_context_cannot_replace_actual_protected_snapshot(
+    case: ObservationOwnerCase, field: str, value: dict[str, object] | int | str | tuple[()]
+) -> None:
     _refuses(case, context=case.context.model_copy(update={field: value}, deep=True))
 
 
@@ -366,19 +394,21 @@ def test_caller_context_cannot_replace_actual_protected_snapshot(case, field, va
     "fault",
     ["fake_state", "fake_loader", "missing_context", "membership", "input_owner", "revision", "local_generation"],
 )
-def test_actual_c03_full_current_owner_chain_is_required(case, fault):
+def test_actual_c03_full_current_owner_chain_is_required(case: ObservationOwnerCase, fault: str) -> None:
     c = case
     if fault == "fake_state":
         _refuses(c, state=PretendExecutionState(c.loader, c.context))
         return
     if fault == "fake_loader":
-        c.store.loader = object()
+        c.store.loader = cast(OwnedNativeTestLoader, object())
     elif fault == "missing_context":
         c.rows[NativePayloadObject] = []
     elif fault == "membership":
         c.rows[TenantAccountJoin] = []
     elif fault == "input_owner":
-        c.rows[DifyBuilderTestInput][0].session_id = "foreign"
+        test_input = c.rows[DifyBuilderTestInput][0]
+        assert isinstance(test_input, DifyBuilderTestInput)
+        test_input.session_id = "foreign"
     elif fault == "revision":
         c.workflow._features = '{"changed":true}'
     else:
@@ -389,10 +419,12 @@ def test_actual_c03_full_current_owner_chain_is_required(case, fault):
 @pytest.mark.parametrize(
     "fault", ["profile_first_read", "generation_first_read", "revision_first_read", "input_final_read"]
 )
-def test_private_read_boundaries_recheck_current_server_metadata_before_return(case, fault):
+def test_private_read_boundaries_recheck_current_server_metadata_before_return(
+    case: ObservationOwnerCase, fault: str
+) -> None:
     c = case
 
-    def mutate(count):
+    def mutate(count: int) -> None:
         if count == 1 and fault == "profile_first_read":
             c.request.context["profile"]["limits"]["calls"] = 1
         elif count == 1 and fault == "generation_first_read":
@@ -400,22 +432,26 @@ def test_private_read_boundaries_recheck_current_server_metadata_before_return(c
         elif count == 1 and fault == "revision_first_read":
             c.workflow._features = '{"changed":true}'
         elif count == 2 and fault == "input_final_read":
-            c.rows[DifyBuilderTestInput][0].inputs = {"changed": True}
+            test_input = c.rows[DifyBuilderTestInput][0]
+            assert isinstance(test_input, DifyBuilderTestInput)
+            test_input.inputs = {"changed": True}
 
     c.on_read = mutate
     _refuses(c)
 
 
-def test_safe_refusal_never_formats_unknown_payload_or_underlying_error(case, monkeypatch, capsys):
+def test_safe_refusal_never_formats_unknown_payload_or_underlying_error(
+    case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     c = case
 
     class Private:
-        def __repr__(self):
+        def __repr__(self) -> NoReturn:
             raise AssertionError("private repr invoked")
 
     _refuses(c, context=c.context.model_copy(update={"graph": {"private": Private()}}))
 
-    def denied(*_, **__):
+    def denied(*_: object, **__: object) -> NoReturn:
         raise RuntimeError(SENTINEL)
 
     monkeypatch.setattr("services.dify_builder.execution_policy_service.check_execution_permission", denied)
@@ -425,12 +461,12 @@ def test_safe_refusal_never_formats_unknown_payload_or_underlying_error(case, mo
     assert SENTINEL not in capsys.readouterr().err
 
 
-def test_callback_validation_is_owned_by_existing_guard(case):
+def test_callback_validation_is_owned_by_existing_guard(case: ObservationOwnerCase) -> None:
     _refuses(case, on_failure=True)
 
 
 @pytest.mark.parametrize("case", ["start_end", "literal_http"], indirect=True)
-def test_initial_current_profile_observation_preserves_private_snapshot(case):
+def test_initial_current_profile_observation_preserves_private_snapshot(case: ObservationOwnerCase) -> None:
     """Real owners over labeled SQL/object doubles; no run, claim or effect."""
     c = case
     # Match actual protected JSON reconstruction, rather than an unchecked DTO copy.
@@ -440,7 +476,7 @@ def test_initial_current_profile_observation_preserves_private_snapshot(case):
     assert bool(context.resource_manifest) == (c.shape == "literal_http")
     if c.shape == "start_end":
         assert set(context.graph) == {"nodes", "edges"}
-        assert [set(node["data"]) for node in context.graph["nodes"]] == [
+        assert [set(node["data"]) for node in graph_data(context)["nodes"]] == [
             {"title", "type", "variables"},
             {"title", "type", "outputs"},
         ]
@@ -459,14 +495,20 @@ def test_initial_current_profile_observation_preserves_private_snapshot(case):
 
 @pytest.mark.parametrize("case", ["start_end", "literal_http"], indirect=True)
 @pytest.mark.parametrize("fault", ["membership", "cancelled", "inactive", "terminal", "profile", "manifest"])
-def test_initial_current_profile_keeps_owner_active_and_descriptor_guards(case, fault):
+def test_initial_current_profile_keeps_owner_active_and_descriptor_guards(
+    case: ObservationOwnerCase, fault: str
+) -> None:
     c = case
     if fault == "membership":
         c.rows[TenantAccountJoin] = []
     elif fault == "cancelled":
-        c.rows[NativeTestScope][0].cancelled = True
+        scope = c.rows[NativeTestScope][0]
+        assert isinstance(scope, NativeTestScope)
+        scope.cancelled = True
     elif fault == "inactive":
-        c.rows[NativeTestInvocation][0].active = False
+        invocation = c.rows[NativeTestInvocation][0]
+        assert isinstance(invocation, NativeTestInvocation)
+        invocation.active = False
     elif fault == "terminal":
         c.request.state = "cancelled"
     elif fault == "profile":
@@ -477,7 +519,7 @@ def test_initial_current_profile_keeps_owner_active_and_descriptor_guards(case, 
     _refuses(c)
 
 
-def test_code_stored_profile_requires_current_exact_qualification_owner(case):
+def test_code_stored_profile_requires_current_exact_qualification_owner(case: ObservationOwnerCase) -> None:
     from services.dify_builder.native_testing.sandbox.qualification import (
         NativeCodeBindingResolver,
         describe_code_resource,
@@ -489,9 +531,9 @@ def test_code_stored_profile_requires_current_exact_qualification_owner(case):
 
     c = case
     q, _ = qualification()
-    graph = deepcopy(c.context.graph)
+    graph = deepcopy(graph_data(c.context))
     target = next(n for n in graph["nodes"] if n["data"]["type"] == "http-request")
-    target["data"] = raw_code()
+    target["data"] = dict(raw_code())
     c.workflow.graph = json.dumps(graph)
     revision = native_workflow_revision(c.workflow)
     descriptor = describe_code_resource(

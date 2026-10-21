@@ -37,17 +37,17 @@ def _migration(revision: str) -> ModuleType:
 
 
 @pytest.fixture(params=["postgresql", "mysql"])
-def migrated_connection(request: pytest.FixtureRequest) -> Iterator[Connection]:
+def migrated_connection(request: pytest.FixtureRequest, free_tcp_port: int) -> Iterator[Connection]:
     container = (
         PostgresContainer("postgres:14-alpine")
         if request.param == "postgresql"
         else MySqlContainer("mysql:8.0", dialect="pymysql", username="root", password="test")
     )
     # Docker accepts host-IP tuples; testcontainers annotates only scalar ports.
-    # Explicit loopback publication also avoids Docker Desktop's dual-stack proxy
-    # closing connections to these disposable local test databases.
-    bind = cast(Callable[[int, tuple[str, None]], object], container.with_bind_ports)
-    bind(container.port, ("127.0.0.1", None))
+    # Use an OS-assigned unused port: Docker's empty HostPort allocation collided
+    # on the Linux CI daemon. Loopback also avoids Docker Desktop proxy resets.
+    bind = cast(Callable[[int, tuple[str, int]], object], container.with_bind_ports)
+    bind(container.port, ("127.0.0.1", free_tcp_port))
     probe = (
         'PGPASSWORD="$POSTGRES_PASSWORD" psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" '
         '--host 127.0.0.1 -tAc "SELECT 1"'

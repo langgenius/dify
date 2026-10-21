@@ -21,10 +21,8 @@ class ImpactAgent(StubAgent):
         self.impact_calls: list[tuple[str, Graph]] = []
 
     @override
-    def analyze_impact(
-        self, _goal_text: str, _graph: Graph, *, reply_language=None
-    ) -> dict[str, list[object] | dict[str, str]]:
-        self.impact_calls.append((_goal_text, _graph))
+    def analyze_impact(self, goal_text: str, graph: Graph, *, reply_language: object = None) -> dict[str, object]:
+        self.impact_calls.append((goal_text, graph))
         return {
             "fields": [{"key": "tone", "label": "Tone", "type": "text"}],
             "values": {"tone": "formal"},

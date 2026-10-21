@@ -36,6 +36,8 @@ watchdog thread inherited from pytest which does not survive fork. Pytest's pare
 continues unchanged.
 """
 
+from __future__ import annotations
+
 import faulthandler
 import hashlib
 import json
@@ -498,7 +500,7 @@ class RunFacts:
     text: str
 
     @classmethod
-    def of(cls, run: Run) -> "RunFacts":
+    def of(cls, run: Run) -> RunFacts:
         evidence = run.verification.execution_evidence if run.verification is not None else None
         return cls(
             dify_run_id=run.dify_run_id,
@@ -520,7 +522,7 @@ class RunFacts:
         }
 
     @classmethod
-    def reported(cls, item: object) -> "RunFacts":
+    def reported(cls, item: object) -> RunFacts:
         assert isinstance(item, dict), item
         # Secret/content absence is checked on the whole representation only.
         assert item["text_truncated"] is False, "a host Run representation exceeded the report bound"
@@ -746,7 +748,7 @@ def _supervise_host(target: Callable[[int], None], *, name: str, seconds: float 
     return HostTransfer(status=status, report=report, exitcode=exitcode, elapsed=monotonic() - started)
 
 
-def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, name: str) -> dict[str, object]:
+def run_in_host(gmail: Gmail, scenario: Callable[[], dict[str, object]], *, name: str) -> dict[str, object]:
     """Run ``scenario`` in a forked, killable test host and return its bounded, truthful report.
 
     The host drops the inherited SQL pool without closing the parent's sockets, uses a fresh
@@ -794,7 +796,7 @@ def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, na
     return {**result, "observed": observed}
 
 
-def _prime_tenant_key(gmail: "Gmail") -> None:
+def _prime_tenant_key(gmail: Gmail) -> None:
     """Load the real private key in the parent, before forking the initialized OpenDAL runtime.
 
     The native RSA owner still reads this real key from its ordinary Redis cache and performs
@@ -1362,7 +1364,7 @@ ClaimBody = Callable[[BuilderRealCallConsentService, ConfirmedToolExecutionConte
 class HeldNativeClaim:
     """A real prepared/confirmed/reserved grant whose native worker can be held at its Tool ``get_runtime``."""
 
-    gmail: "Gmail"
+    gmail: Gmail
     reserved: ConsentReceipt
 
     def spend_while_held(self, body: ClaimBody) -> dict[str, object]:
@@ -1391,7 +1393,7 @@ def native_claim_candidate(gmail: Gmail) -> HeldNativeClaim:
     return HeldNativeClaim(gmail=gmail, reserved=gmail.reserved())
 
 
-def _held_claim_host(gmail: "Gmail", reserved: ConsentReceipt, body: ClaimBody) -> dict[str, object]:
+def _held_claim_host(gmail: Gmail, reserved: ConsentReceipt, body: ClaimBody) -> dict[str, object]:
     _require_host("the held native claim")
     assert reserved.execution_request_id is not None
     request_id = reserved.execution_request_id

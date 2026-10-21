@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
@@ -19,6 +19,7 @@ from runtime_contracts.builder.native.contracts import (
     EffectDecision,
     EffectIntent,
     EffectReceipt,
+    JsonValue,
     NativeTestContextRef,
     OperationKey,
     PolicyStop,
@@ -29,9 +30,9 @@ from runtime_contracts.builder.native.contracts import (
     operation_digest,
 )
 
-REF = {"request_id": "req-1", "invocation_id": "inv-1", "context_digest": "a" * 64}
-KEY = {"invocation_id": "inv-1", "occurrence_path": ("iteration-1", "0", "tool-1"), "cursor": 0}
-INTENT = {
+REF: dict[str, JsonValue] = {"request_id": "req-1", "invocation_id": "inv-1", "context_digest": "a" * 64}
+KEY: dict[str, object] = {"invocation_id": "inv-1", "occurrence_path": ("iteration-1", "0", "tool-1"), "cursor": 0}
+INTENT: dict[str, object] = {
     "key": KEY,
     "kind": "tool",
     "resource_ref": "resource-1",
@@ -44,19 +45,19 @@ INTENT = {
 }
 
 
-def test_operation_identity_survives_json_roundtrip_and_distinguishes_occurrences():
-    key = OperationKey(**KEY)
+def test_operation_identity_survives_json_roundtrip_and_distinguishes_occurrences() -> None:
+    key = OperationKey.model_validate(KEY)
     assert operation_digest(key) == operation_digest(OperationKey.model_validate_json(key.model_dump_json()))
     for changes in ({"cursor": 1}, {"invocation_id": "inv-2"}, {"occurrence_path": ("iteration-1", "1", "tool-1")}):
-        assert operation_digest(key) != operation_digest(OperationKey(**{**KEY, **changes}))
+        assert operation_digest(key) != operation_digest(OperationKey.model_validate({**KEY, **changes}))
 
 
 @pytest.mark.parametrize(
     ("typed", "string"), [(True, "true"), ([1, 2], "[1,2]"), ({"file": {"id": "f"}}, '{"file":{"id":"f"}}')]
 )
-def test_effect_parameters_preserve_json_types(typed, string):
-    actual = EffectIntent(**{**INTENT, "parameters": typed})
-    text = EffectIntent(**{**INTENT, "parameters": string})
+def test_effect_parameters_preserve_json_types(typed: JsonValue, string: str) -> None:
+    actual = EffectIntent.model_validate({**INTENT, "parameters": typed})
+    text = EffectIntent.model_validate({**INTENT, "parameters": string})
     assert canonical_digest(actual.model_dump(mode="json")) != canonical_digest(text.model_dump(mode="json"))
     assert EffectIntent.model_validate_json(actual.model_dump_json()).parameters == typed
 
@@ -65,15 +66,15 @@ def test_effect_parameters_preserve_json_types(typed, string):
 @pytest.mark.parametrize(
     "bad", [float("nan"), float("inf"), float("-inf"), {"nested": [float("nan")]}, {"x": "\ud800"}, (1, 2), {1: "key"}]
 )
-def test_effect_rejects_non_json_or_non_finite_values(field, bad):
+def test_effect_rejects_non_json_or_non_finite_values(field: str, bad: object) -> None:
     with pytest.raises(ValidationError):
-        EffectIntent(**{**INTENT, field: bad})
+        EffectIntent.model_validate({**INTENT, field: bad})
 
 
 @pytest.mark.parametrize("bad", [True, -1, 1.0, "1", 2**63])
-def test_operation_cursor_rejects_coercion_and_out_of_range(bad):
+def test_operation_cursor_rejects_coercion_and_out_of_range(bad: object) -> None:
     with pytest.raises(ValidationError):
-        OperationKey(**{**KEY, "cursor": bad})
+        OperationKey.model_validate({**KEY, "cursor": bad})
 
 
 @pytest.mark.parametrize(
@@ -89,12 +90,12 @@ def test_operation_cursor_rejects_coercion_and_out_of_range(bad):
         {"occurrence_path": ("x",) * 129},
     ],
 )
-def test_operation_rejects_unbounded_or_invalid_identity(changes):
+def test_operation_rejects_unbounded_or_invalid_identity(changes: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
-        OperationKey(**{**KEY, **changes})
+        OperationKey.model_validate({**KEY, **changes})
 
 
-def test_native_decode_only_structurally_validates_reference():
+def test_native_decode_only_structurally_validates_reference() -> None:
     decoded = decode_native_ref(REF)
     assert decoded.model_dump(mode="json") == {"policy_version": "builder-native-test-v1", **REF}
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_execution_context"):
@@ -115,20 +116,20 @@ def test_native_decode_only_structurally_validates_reference():
         {"request_id": "\ud800"},
     ],
 )
-def test_decode_rejects_invalid_ref_and_client_authority(changes):
+def test_decode_rejects_invalid_ref_and_client_authority(changes: dict[str, JsonValue]) -> None:
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_native_test_ref") as error:
         decode_native_ref({**REF, **changes})
     assert "sensitive-value" not in str(error.value)
 
 
 @pytest.mark.parametrize("raw", [None, [], "ref", 1, True])
-def test_decode_rejects_non_object(raw):
+def test_decode_rejects_non_object(raw: JsonValue) -> None:
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_native_test_ref"):
         decode_native_ref(raw)
 
 
 @pytest.mark.parametrize("timestamp", ["2026-10-14T10:00:00Z", "2026-10-14T10:00:00.123456+00:00"])
-def test_dispatch_utc_timestamp_roundtrips(timestamp):
+def test_dispatch_utc_timestamp_roundtrips(timestamp: str) -> None:
     permit = DispatchPermit(permit_id="p", attempt_id="a", operation_id="o", expires_at=timestamp)
     assert DispatchPermit.model_validate_json(permit.model_dump_json()).expires_at == timestamp
 
@@ -136,9 +137,9 @@ def test_dispatch_utc_timestamp_roundtrips(timestamp):
 @pytest.mark.parametrize(
     "bad", ["2026-10-14T10:00:00", "2026-10-14", "2026-10-14T10:00:00+01:00", "2026-02-30T10:00:00Z", 1234]
 )
-def test_dispatch_rejects_non_utc_or_invalid_time(bad):
+def test_dispatch_rejects_non_utc_or_invalid_time(bad: object) -> None:
     with pytest.raises(ValidationError):
-        DispatchPermit(permit_id="p", attempt_id="a", operation_id="o", expires_at=bad)
+        DispatchPermit.model_validate({"permit_id": "p", "attempt_id": "a", "operation_id": "o", "expires_at": bad})
 
 
 @pytest.mark.parametrize(
@@ -150,7 +151,7 @@ def test_dispatch_rejects_non_utc_or_invalid_time(bad):
         PolicyStop(reason_code="budget_exhausted"),
     ],
 )
-def test_decisions_decode_by_tag_without_losing_variant(decision):
+def test_decisions_decode_by_tag_without_losing_variant(decision: EffectDecision) -> None:
     adapter = TypeAdapter(EffectDecision)
     assert adapter.validate_json(decision.model_dump_json()) == decision
     with pytest.raises(ValidationError):
@@ -167,19 +168,19 @@ def test_decisions_decode_by_tag_without_losing_variant(decision):
         (EffectReceipt, {"operation_id": "o", "attempt_id": "a", "outcome": "unknown", "result_ref": None}),
     ],
 )
-def test_domain_dtos_reject_secret_fields(model, raw):
+def test_domain_dtos_reject_secret_fields(model: type[BaseModel], raw: dict[str, object]) -> None:
     with pytest.raises(ValidationError) as error:
         model.model_validate({**raw, "secret": "sensitive-value"})
     assert "sensitive-value" not in str(error.value)
 
 
 @pytest.mark.parametrize("bad", [True, -1, "1", 2**63])
-def test_lifecycle_generation_is_strict_nonnegative(bad):
+def test_lifecycle_generation_is_strict_nonnegative(bad: object) -> None:
     with pytest.raises(ValidationError):
-        ResumeReceipt(request_id="r", generation=bad, dispatch_id="d", status="queued")
+        ResumeReceipt.model_validate({"request_id": "r", "generation": bad, "dispatch_id": "d", "status": "queued"})
 
 
-def test_lifecycle_receipts_preserve_wait_and_cancellation_outcomes():
+def test_lifecycle_receipts_preserve_wait_and_cancellation_outcomes() -> None:
     wait = WaitingReceipt(
         request_id="r",
         invocation_id="i",
@@ -197,7 +198,7 @@ def test_lifecycle_receipts_preserve_wait_and_cancellation_outcomes():
         CancellationReceipt(request_id="r", generation=1, status="cancelled", operation_states={"": "completed"})
 
 
-def test_saved_legacy_contexts_still_roundtrip_and_are_not_native_refs():
+def test_saved_legacy_contexts_still_roundtrip_and_are_not_native_refs() -> None:
     path = (
         Path(__file__).resolve().parents[4] / "fixtures/workflow/builder_restricted/pre_extraction_context_goldens.json"
     )

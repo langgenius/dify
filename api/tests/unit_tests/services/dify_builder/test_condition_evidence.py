@@ -5,13 +5,16 @@ from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Never, override
+from typing import Never, cast, override
 from unittest.mock import MagicMock, patch
 
 import pytest
+import pytest_mock
+import sqlalchemy
 
 from core.dify_builder.errors import NotFoundError
 from core.dify_builder.models import Actor, ApplyResult, Diagnosis, Graph, MutationIntent, NodeOutput, Risk, Run
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.enums import ExecutionOffLoadType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowRun
 from services.dify_builder.agent import fix
@@ -36,11 +39,17 @@ from tests.unit_tests.services.dify_builder.test_fix_cognition import _Recording
 
 
 @pytest.fixture
-def mock_session(sqlite_engine, mocker) -> Iterator[TrackedPortSession]:
+def mock_session(sqlite_engine: sqlalchemy.Engine, mocker: pytest_mock.MockerFixture) -> Iterator[TrackedPortSession]:
     with TrackedPortSession(sqlite_engine, expire_on_commit=False) as session:
         for name in ("get", "refresh", "commit"):
             mocker.spy(session, name)
         yield session
+
+
+def stored_outputs(row: WorkflowNodeExecutionModel) -> dict[str, object]:
+    outputs = row.outputs_dict
+    assert outputs is not None
+    return outputs
 
 
 def evidence_graph(operator: str = "is") -> Graph:
@@ -289,7 +298,9 @@ def native_row(node_id: str, *, value: object = 0.69) -> WorkflowNodeExecutionMo
 
 
 @pytest.fixture
-def native_adapter(mock_session, sqlite_engine, monkeypatch) -> Iterator[NativeEvidenceCase]:
+def native_adapter(
+    mock_session: TrackedPortSession, sqlite_engine: sqlalchemy.Engine, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[NativeEvidenceCase]:
     session = mock_session
     monkeypatch.setattr("services.dify_builder.dify_port.db", PortDatabase(sqlite_engine))
     monkeypatch.setattr("services.dify_builder.dify_port._session_factory", lambda: lambda: session)
@@ -355,7 +366,7 @@ def test_adapter_denies_mismatched_run_before_reading_any_execution(
 def test_adapter_denies_row_identity_before_ephemeral_raw_handling(
     native_adapter: NativeEvidenceCase, field: str
 ) -> None:
-    def poisoned_outputs(_row) -> Never:
+    def poisoned_outputs(_row: object) -> Never:
         raise AssertionError("unauthorized outputs were accessed")
 
     setattr(native_adapter.rows[1], field, "someone-else")
@@ -436,7 +447,8 @@ def test_real_model_boundary_diagnosis_and_proposal_share_sanitized_types(native
     from services.dify_builder.condition_evidence import diagnose_failure, propose_failure
 
     secret = "upstream-bearer-sealed-value"
-    native_adapter.rows[0].outputs = json.dumps({**native_adapter.rows[0].outputs_dict, "token": secret})
+    native_adapter.rows[0].outputs = json.dumps({**stored_outputs(native_adapter.rows[0]), "token": secret})
+    assert native_adapter.rows[1].error is not None
     native_adapter.rows[1].error += " " + secret
     history = native_adapter.run.graph_dict
     history["nodes"][0]["data"]["password"] = secret
@@ -889,9 +901,10 @@ def test_runtime_handler_write_reloads_trusted_failed_run_and_refuses_value_only
 
 
 def test_runtime_non_if_fix_keeps_existing_native_write_behavior(native_adapter: NativeEvidenceCase) -> None:
-    native_adapter.rows[0].status = "failed"
+    native_adapter.rows[0].status = WorkflowNodeExecutionStatus.FAILED
     native_adapter.rows[0].error = "NameError: missing_variable"
-    native_adapter.rows[1].status = "skipped"
+    # Deliberately malformed persisted status must not authorize a failed-node repair.
+    native_adapter.rows[1].status = cast(WorkflowNodeExecutionStatus, "skipped")
     intent = MutationIntent(
         op="set_node_config", args={"node_id": "producer", "path": "code", "value": "def main(): return {}"}
     )
@@ -956,7 +969,7 @@ def test_review_r1_handled_exception_cannot_hide_terminal_failed_if(
     producer["default_value"] = [{"key": "structured_output", "type": "object", "value": {"confidence": "unknown"}}]
     native_adapter.run.graph = json.dumps(native_adapter.graph)
     native_adapter.workflow.graph = json.dumps(native_adapter.graph)
-    native_adapter.rows[0].status = "exception"
+    native_adapter.rows[0].status = WorkflowNodeExecutionStatus.EXCEPTION
     native_adapter.rows[0].execution_metadata = json.dumps({"error_strategy": "default-value"})
     assert preflight_errors(native_adapter.graph) == []
     if boundary == "write":
@@ -994,10 +1007,11 @@ def test_review_r1_r2_unknown_failure_identity_cannot_authorize_producer_rewrite
     native_adapter: NativeEvidenceCase, kind: str, boundary: str
 ) -> None:
     if kind == "two-terminal-failures":
-        native_adapter.rows[0].status = "failed"
+        native_adapter.rows[0].status = WorkflowNodeExecutionStatus.FAILED
     elif kind == "only-handled-exception":
-        native_adapter.rows[0].status = "exception"
-        native_adapter.rows[1].status = "skipped"
+        native_adapter.rows[0].status = WorkflowNodeExecutionStatus.EXCEPTION
+        # Deliberately malformed persisted status must not authorize a failed-node repair.
+        native_adapter.rows[1].status = cast(WorkflowNodeExecutionStatus, "skipped")
     elif kind == "missing-run":
         repository = native_adapter.repositories.create_api_workflow_run_repository.return_value
         repository.get_workflow_run_by_id.return_value = None
@@ -1090,7 +1104,9 @@ def test_review_r4_normalized_explicit_credentials_never_reach_prompts_or_eviden
     if source == "native-error":
         native_adapter.run.error = spelling + '="' + secret + '"'
     elif source == "upstream-string":
-        native_adapter.rows[0].outputs = json.dumps({**native_adapter.rows[0].outputs_dict, "annotation": assignment})
+        native_adapter.rows[0].outputs = json.dumps(
+            {**stored_outputs(native_adapter.rows[0]), "annotation": assignment}
+        )
     diagnosis_reply = json.dumps({"culprit_node_id": "branch", "root_cause": "mismatch " + secret, "severity": "high"})
     diagnosis, _, _, model = _real_context_proposal(
         native_adapter, [diagnosis_reply, _producer_rewrite_payload(), _producer_rewrite_payload()]
@@ -1106,8 +1122,9 @@ def test_review_r4_normalized_explicit_credentials_never_reach_prompts_or_eviden
 def test_review_r2_missing_history_cannot_use_current_non_if_type(
     native_adapter: NativeEvidenceCase, boundary: str
 ) -> None:
-    native_adapter.rows[0].status = "failed"
-    native_adapter.rows[1].status = "skipped"
+    native_adapter.rows[0].status = WorkflowNodeExecutionStatus.FAILED
+    # Deliberately malformed persisted status must not authorize a failed-node repair.
+    native_adapter.rows[1].status = cast(WorkflowNodeExecutionStatus, "skipped")
     native_adapter.run.graph = json.dumps({})
     if boundary == "proposal":
         _, intents, _, _ = _real_context_proposal(native_adapter)
@@ -1187,9 +1204,10 @@ def test_review_r2_unavailable_context_rejects_schema_and_routing(
 
 
 def test_review_r2_successful_run_cannot_authorize_a_terminal_non_if_repair(native_adapter: NativeEvidenceCase) -> None:
-    native_adapter.run.status = "succeeded"
-    native_adapter.rows[0].status = "failed"
-    native_adapter.rows[1].status = "skipped"
+    native_adapter.run.status = WorkflowExecutionStatus.SUCCEEDED
+    native_adapter.rows[0].status = WorkflowNodeExecutionStatus.FAILED
+    # Deliberately malformed persisted status must not authorize a failed-node repair.
+    native_adapter.rows[1].status = cast(WorkflowNodeExecutionStatus, "skipped")
     with pytest.raises(PreflightError):
         apply_native(
             native_adapter,
@@ -1246,7 +1264,7 @@ def test_review_r4_non_sensitive_wrapper_cannot_hide_explicit_inner_credential(
     if source == "native-error":
         native_adapter.run.error = wrapper
     else:
-        native_adapter.rows[0].outputs = json.dumps({**native_adapter.rows[0].outputs_dict, "annotation": wrapper})
+        native_adapter.rows[0].outputs = json.dumps({**stored_outputs(native_adapter.rows[0]), "annotation": wrapper})
     diagnosis, _, _, model = _real_context_proposal(native_adapter)
     assert secret not in json.dumps(diagnosis.condition_evidence)
     assert all(secret not in " ".join(message.content for message in call["prompt_messages"]) for call in model.calls)

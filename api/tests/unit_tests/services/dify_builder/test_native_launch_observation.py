@@ -1,7 +1,7 @@
 from services.dify_builder.native_launch_observation import NativeLaunchObservation, begin_preparation, mark_dispatched
 
 
-def test_only_instrumented_preparation_proves_no_worker_dispatch():
+def test_only_instrumented_preparation_proves_no_worker_dispatch() -> None:
     observation = NativeLaunchObservation()
     assert not observation.failed_before_dispatch
     with observation.track():
@@ -14,7 +14,7 @@ def test_only_instrumented_preparation_proves_no_worker_dispatch():
     assert observation.dispatched
 
 
-def test_nested_launch_observations_do_not_replace_parent():
+def test_nested_launch_observations_do_not_replace_parent() -> None:
     outer, inner = NativeLaunchObservation(), NativeLaunchObservation()
     with outer.track():
         begin_preparation()
@@ -27,7 +27,7 @@ def test_nested_launch_observations_do_not_replace_parent():
     assert inner.dispatched
 
 
-def test_handled_metadata_failure_cannot_label_an_unrelated_later_error():
+def test_handled_metadata_failure_cannot_label_an_unrelated_later_error() -> None:
     from services.dify_builder.native_launch_observation import observe_resource
 
     observation = NativeLaunchObservation()

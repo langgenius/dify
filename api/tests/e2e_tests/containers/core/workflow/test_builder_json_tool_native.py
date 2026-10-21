@@ -4,12 +4,14 @@ Only installed daemon metadata and the daemon invoke transport are controlled.
 These tests establish Builder ownership and wiring, not installed parser semantics.
 """
 
+from __future__ import annotations
+
 import json
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import NotRequired, TypedDict
+from typing import NotRequired, Protocol, TypedDict, cast
 from uuid import uuid4
 
 import pytest
@@ -55,6 +57,10 @@ class _JsonSealCapture(TypedDict):
 FIXTURE = Path(__file__).parents[3] / "fixtures/workflow/builder_restricted/json_parse.yml"
 
 
+class ThreadTarget(Protocol):
+    _target: Callable[..., object] | None
+
+
 def _configure(
     owner: NativeOwner, *, ensure_ascii: bool, wrapped: bool, echo_start: bool = False, editor_metadata: bool = False
 ) -> dict[str, str]:
@@ -98,7 +104,7 @@ def test_json_caller_explicit_read_session_closes_before_native_spawn(
     def capture_spawn(thread: threading.Thread) -> None:
         from types import FunctionType, MethodType
 
-        target = thread._target
+        target = cast(ThreadTarget, thread)._target
         if isinstance(target, (FunctionType, MethodType)) and target.__name__ == "_generate_worker":
             assert caller_session is not None
             at_spawn.append(caller_session.in_transaction())

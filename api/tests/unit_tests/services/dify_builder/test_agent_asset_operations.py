@@ -1,16 +1,23 @@
 """Confirmed published assets retain config and one durable shell authority."""
 
+from collections.abc import Generator
+
 import pytest
 from dify_agent.protocol.native_testing import AgentNativeTestRef
+from pydantic import JsonValue
+from sqlalchemy.orm import Session
 
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.dify_builder_native_tests import NativeTestScope
 from runtime_contracts.builder.native.agent_contracts import AgentPreparedConfig
 from services.dify_builder.native_testing.agent_lineage import NativeAgentEndpointContext
+from services.dify_builder.native_testing.agent_operations import AgentOperationService
 from services.dify_builder.native_testing.agent_runtime_config import (
     NativeAgentDefinition,
     NativeAgentRuntimeConfigBuilder,
 )
 from services.dify_builder.native_testing.agent_tool_declarations import PreparedAgentToolDeclarations
+from services.dify_builder.native_testing.repository import OwnedNativeTest
 from tests.unit_tests.services.dify_builder import native_owner_fixtures
 from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import (
     PARENT,
@@ -24,7 +31,17 @@ operations_service = native_owner_fixtures.operations_service
 preparation_sql = native_owner_fixtures.preparation_sql
 
 
-def protected_config(config=None):
+def json_object(value: JsonValue) -> dict[str, JsonValue]:
+    assert isinstance(value, dict)
+    return value
+
+
+def json_array(value: JsonValue) -> list[JsonValue]:
+    assert isinstance(value, list)
+    return value
+
+
+def protected_config(config: JsonValue = None) -> AgentPreparedConfig:
     return AgentPreparedConfig(
         parent_node=PARENT,
         workflow_native_run_id="workflow",
@@ -35,7 +52,7 @@ def protected_config(config=None):
     )
 
 
-def endpoint_context(config):
+def endpoint_context(config: AgentPreparedConfig) -> NativeAgentEndpointContext:
     return NativeAgentEndpointContext(
         ref=AgentNativeTestRef.model_validate(PARENT.ref.model_dump(mode="json")),
         config=config,
@@ -44,7 +61,7 @@ def endpoint_context(config):
     )
 
 
-def definition():
+def definition() -> NativeAgentDefinition:
     return NativeAgentDefinition("node", "agent", "snapshot", AgentSoulConfig(), WorkflowNodeJobConfig(), "s")
 
 
@@ -57,7 +74,9 @@ def definition():
         {"tools": {"cli_tools": [{"name": "jq", "install_commands": ["command -v jq"]}]}},
     ],
 )
-def test_confirmed_composer_keeps_published_config_and_shell(assets, monkeypatch, operations_service):
+def test_confirmed_composer_keeps_published_config_and_shell(
+    assets: dict[str, JsonValue], monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService
+) -> None:
     soul = AgentSoulConfig.model_validate(
         {"model": {"plugin_id": "langgenius/openai", "model_provider": "openai", "model": "test"}, **assets}
     )
@@ -82,35 +101,35 @@ def test_confirmed_composer_keeps_published_config_and_shell(assets, monkeypatch
     if "config_note" in assets:
         assert layers["config"]["note"] == "Follow the configured review instructions."
     if "config_skills" in assets:
-        assert layers["config"]["skills"][0]["name"] == "review"
+        assert json_object(json_array(layers["config"]["skills"])[0])["name"] == "review"
     if "config_files" in assets:
-        assert layers["config"]["files"][0]["name"] == "reference.txt"
+        assert json_object(json_array(layers["config"]["files"])[0])["name"] == "reference.txt"
     if "tools" in assets:
-        assert layers["shell"]["cli_tools"][0]["install_commands"] == ["command -v jq"]
+        assert json_object(json_array(layers["shell"]["cli_tools"])[0])["install_commands"] == ["command -v jq"]
 
 
 @pytest.mark.parametrize(
     "mutation", ["none", "binding", "shell", "runtime", "kind", "asset", "composition", "prepared"]
 )
 def test_shell_intent_uses_exact_protected_composition_and_current_workspace(
-    monkeypatch, mutation, operations_service, preparation_sql
-):
+    monkeypatch: pytest.MonkeyPatch, mutation: str, operations_service: AgentOperationService, preparation_sql: Session
+) -> None:
     from contextlib import contextmanager
 
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from services.dify_builder.native_testing import agent_confirmed_workspace
 
-    layers = [
+    layers: JsonValue = [
         {"name": "shell", "config": {"runtime": "runtime"}},
         {"name": "runtime", "config": {"backend_binding_ref": "scope"}},
         {"name": "config", "config": {"mentioned_file_names": ["reference.txt"]}},
     ]
     prepared = protected_config({"composition": {"layers": layers}})
     # The protected DTO detaches nested JSON; mutate its actual protected composition.
-    layers = prepared.config["composition"]["layers"]
+    layers = json_array(json_object(json_object(prepared.config)["composition"])["layers"])
     endpoint = endpoint_context(prepared)
     if mutation == "binding":
-        layers[1]["config"]["backend_binding_ref"] = "foreign"
+        json_object(json_object(layers[1])["config"])["backend_binding_ref"] = "foreign"
     if mutation == "composition":
         layers.append(layers[0])
     boundary = "bootstrap" if mutation == "runtime" else "config_pull"
@@ -122,7 +141,7 @@ def test_shell_intent_uses_exact_protected_composition_and_current_workspace(
     if mutation == "kind":
         target["kind"] = "foreign"
     if mutation == "asset":
-        layers[2]["config"]["mentioned_file_names"] = []
+        json_object(json_object(layers[2])["config"])["mentioned_file_names"] = []
 
     from dataclasses import replace
 
@@ -130,7 +149,7 @@ def test_shell_intent_uses_exact_protected_composition_and_current_workspace(
     owned = replace(owned, bindings={agent_confirmed_workspace.ALLOCATION: {}})
 
     @contextmanager
-    def locked(**_kwargs):
+    def locked(**_kwargs: object) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
         yield sql, owned, scope
 
     service = operations_service
@@ -162,8 +181,12 @@ def test_shell_intent_uses_exact_protected_composition_and_current_workspace(
     [(False, None, False), (True, "unknown", False), (True, "completed", False), (True, None, True)],
 )
 def test_stub_read_requires_claimed_unsettled_shell_operation(
-    monkeypatch, claimed, outcome, allowed, operations_service
-):
+    monkeypatch: pytest.MonkeyPatch,
+    claimed: bool,
+    outcome: None | str,
+    allowed: bool,
+    operations_service: AgentOperationService,
+) -> None:
 
     from models.dify_builder_native_tests import NativeEffectDispatchClaim
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
@@ -218,8 +241,8 @@ def test_stub_read_requires_claimed_unsettled_shell_operation(
 
 @pytest.mark.parametrize(("destructive", "changed"), [(False, False), (True, False), (False, True)])
 def test_shell_revalidation_refuses_destructive_or_changed_intent_before_claim(
-    monkeypatch, destructive, changed, operations_service
-):
+    monkeypatch: pytest.MonkeyPatch, destructive: bool, changed: bool, operations_service: AgentOperationService
+) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from runtime_contracts.builder.native.contracts import operation_digest
     from services.dify_builder.native_testing.agent_bridge import api_intent, api_ref
@@ -274,12 +297,14 @@ def test_shell_revalidation_refuses_destructive_or_changed_intent_before_claim(
         assert service.revalidate(ref=api_ref(wire.ref), intent=effect) is None
 
 
-def test_runtime_shell_result_commits_before_return_and_preserves_exact_key(monkeypatch, operations_service):
+def test_runtime_shell_result_commits_before_return_and_preserves_exact_key(
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService
+) -> None:
     from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
 
     wire = envelope()
     wire = wire.model_copy(update={"intent": wire.intent.model_copy(update={"kind": "shell"})})
-    events = []
+    events: list[str | tuple[str, object] | tuple[str, object, object]] = []
     service = operations_service
     monkeypatch.setattr(
         service.state_store,
@@ -300,8 +325,8 @@ def test_runtime_shell_result_commits_before_return_and_preserves_exact_key(monk
 
 
 def test_saved_shell_operation_revalidates_for_public_approval_without_runtime_request(
-    monkeypatch, operations_service, preparation_sql
-):
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService, preparation_sql: Session
+) -> None:
     from contextlib import contextmanager
 
     from runtime_contracts.builder.native.agent_contracts import AgentPreparedConfig
@@ -330,7 +355,7 @@ def test_saved_shell_operation_revalidates_for_public_approval_without_runtime_r
     owned = replace(owned, bindings={agent_confirmed_workspace.ALLOCATION: {}})
 
     @contextmanager
-    def locked(**_kwargs):
+    def locked(**_kwargs: object) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
         yield sql, owned, scope
 
     service = operations_service

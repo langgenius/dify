@@ -2,6 +2,8 @@
 
 from datetime import datetime
 
+import pytest
+
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -21,9 +23,9 @@ from services.dify_builder.service import _internal_action_allowed
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
 
-def setup_task(intent="test"):
+def setup_task(intent: str = "test") -> tuple[Env, InMemoryRepository, Session]:
     class Agent(StubAgent):
-        def continuation_intent(self, _context, _graph, _text):
+        def continuation_intent(self, _context: object, _graph: object, _text: object) -> str:
             return intent
 
     repo = InMemoryRepository()
@@ -62,7 +64,7 @@ def setup_task(intent="test"):
     return env, repo, session
 
 
-def continue_task(env, session):
+def continue_task(env: Env, session: Session) -> Session:
     return Runner(env, build_registry() | edit_registry()).advance(
         session.id,
         Turn(
@@ -76,13 +78,13 @@ def continue_task(env, session):
     )
 
 
-def test_terminal_message_is_admitted_without_reopening_failed_or_paused_task():
+def test_terminal_message_is_admitted_without_reopening_failed_or_paused_task() -> None:
     assert _internal_action_allowed(PcState.BUILD_COMPLETE, DifyBuilderContext(), "message")
     assert not _internal_action_allowed(PcState.FAILED, DifyBuilderContext(), "message")
     assert not _internal_action_allowed(PcState.BUILD_COMPLETE, DifyBuilderContext(paused=True), "message")
 
 
-def test_request_test_retains_history_inputs_and_opens_fresh_confirmation():
+def test_request_test_retains_history_inputs_and_opens_fresh_confirmation() -> None:
     env, repo, session = setup_task()
     ti = TestInput(session_id=session.id, inputs={"order_id": "A123"}, source="user")
     repo.save_test_input(ti)
@@ -105,7 +107,7 @@ def test_request_test_retains_history_inputs_and_opens_fresh_confirmation():
     assert not repo._runs
 
 
-def test_edit_followup_enters_existing_plan_flow_in_same_session():
+def test_edit_followup_enters_existing_plan_flow_in_same_session() -> None:
     env, repo, session = setup_task("edit")
     out = continue_task(env, session)
     assert out.id == session.id
@@ -117,7 +119,7 @@ def test_edit_followup_enters_existing_plan_flow_in_same_session():
     assert not repo._runs
 
 
-def test_unknown_run_is_not_discarded_or_retested_by_followup():
+def test_unknown_run_is_not_discarded_or_retested_by_followup() -> None:
     env, repo, session = setup_task()
     run = Run(session_id=session.id, status="unknown", kind="verify")
     repo.save_run(session.id, run)
@@ -133,14 +135,14 @@ def test_unknown_run_is_not_discarded_or_retested_by_followup():
     assert len(repo._runs) == 1
 
 
-def test_real_agent_classifies_only_preparation_intent(monkeypatch):
+def test_real_agent_classifies_only_preparation_intent(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import chat
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
     seen = []
 
-    def invoke(_model, **kwargs):
-        seen.append(kwargs)
+    def invoke(_model: object, *, user: str, **kwargs: object) -> dict[str, str]:
+        seen.append({**kwargs, "user": user})
         return {"intent": "test"}
 
     monkeypatch.setattr(chat.llm, "invoke_json", invoke)
@@ -150,13 +152,15 @@ def test_real_agent_classifies_only_preparation_intent(monkeypatch):
         agent.continuation_intent(DifyBuilderContext(goal_text="Original workflow"), {"nodes": []}, "测试当前工作流")
         == "test"
     )
-    assert "Original workflow" in seen[0]["user"]
-    assert "测试当前工作流" in seen[0]["user"]
+    user = seen[0]["user"]
+    assert isinstance(user, str)
+    assert "Original workflow" in user
+    assert "测试当前工作流" in user
     monkeypatch.setattr(chat.llm, "invoke_json", lambda *_a, **_k: {"intent": "run", "approved": True})
     assert agent.continuation_intent(DifyBuilderContext(), {}, "run") == "chat"
 
 
-def test_changed_start_schema_drops_removed_inputs_from_new_form():
+def test_changed_start_schema_drops_removed_inputs_from_new_form() -> None:
     env, repo, session = setup_task()
     ti = TestInput(session_id=session.id, inputs={"removed_field": "old", "order_id": "keep"}, source="user")
     repo.save_test_input(ti)
@@ -170,7 +174,7 @@ def test_changed_start_schema_drops_removed_inputs_from_new_form():
     assert not repo._runs
 
 
-def test_continuation_mode_survives_context_reload():
+def test_continuation_mode_survives_context_reload() -> None:
     from services.dify_builder.conversation_tasks import active_entry_mode
     from services.dify_builder.serde import context_from_dict, context_to_dict
 
@@ -181,16 +185,17 @@ def test_continuation_mode_survives_context_reload():
     assert session.entry_mode == EntryMode.BUILD
 
 
-def test_completed_task_test_form_rebases_current_read_without_running():
+def test_completed_task_test_form_rebases_current_read_without_running() -> None:
     env, repo, session = setup_task()
     out = continue_task(env, session)
     _, context = repo.get_session(session.id)
+    assert isinstance(env.dify, FakeDifyPort)
     assert context.last_snapshot_hash == env.dify.hash
     assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
     assert not repo._runs
 
 
-def test_known_failed_run_allows_fresh_form_without_reusing_consent():
+def test_known_failed_run_allows_fresh_form_without_reusing_consent() -> None:
     from core.dify_builder.models import RunVerification
     from runtime_contracts.builder.execution import ExecutionEvidenceSummary
 
@@ -232,7 +237,7 @@ def test_known_failed_run_allows_fresh_form_without_reusing_consent():
     assert len(repo._runs) == 1
 
 
-def test_retained_inputs_are_prefill_only_after_edit_invalidates_active_input():
+def test_retained_inputs_are_prefill_only_after_edit_invalidates_active_input() -> None:
     env, repo, session = setup_task()
     ti = TestInput(
         session_id=session.id, source="user", inputs={"order_id": "A123", "removed": "old", "count": "not-a-number"}
@@ -242,6 +247,7 @@ def test_retained_inputs_are_prefill_only_after_edit_invalidates_active_input():
     context.retained_test_input_ref = ti.id
     repo.compare_and_advance(session.id, session.version, session.current_state, context, [])
     session, _ = repo.get_session(session.id)
+    assert isinstance(env.dify, FakeDifyPort)
     env.dify.graph["nodes"][0]["data"]["variables"].append({"variable": "count", "type": "number", "required": True})
     continue_task(env, session)
     _, stored = repo.get_session(session.id)

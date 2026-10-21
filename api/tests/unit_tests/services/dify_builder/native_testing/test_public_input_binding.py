@@ -1,23 +1,30 @@
 """Public binding exposes only the current saved input, never retained or raw data."""
 
+from typing import NoReturn
+
 import pytest
+from sqlalchemy.orm import Session
 
 from core.dify_builder.input_schema import schema_hash, start_schema
-from models.dify_builder import DifyBuilderSessionCommit, DifyBuilderTestInput
+from core.dify_builder.models import Actor
+from models.dify_builder import DifyBuilderSession, DifyBuilderSessionCommit, DifyBuilderTestInput
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.context_binding import NativeAdmissionCompilation
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 
 
 class RejectUnexpectedNativeLaunch:
-    def launch(self, *, ref):
+    def launch(self, *, ref: NativeTestContextRef) -> NoReturn:
         del ref
         pytest.fail("invalid current input reached native launch")
 
 
-def prepare(owned):
+def prepare(owned: Owned) -> None:
     factory, _actor, _app, workflow, sid, tid = owned
     with factory.begin() as session:
-        session.get(DifyBuilderTestInput, tid).start_schema_hash = schema_hash(start_schema(workflow.graph_dict))
+        required_input(session, tid).start_schema_hash = schema_hash(start_schema(dict(workflow.graph_dict)))
         session.add(
             DifyBuilderSessionCommit(
                 session_id=sid,
@@ -29,7 +36,7 @@ def prepare(owned):
         )
 
 
-def test_current_input_public_binding_is_owned_and_has_no_values(owned):
+def test_current_input_public_binding_is_owned_and_has_no_values(owned: Owned) -> None:
     from services.dify_builder.native_testing.input_binding import current_input_binding
 
     prepare(owned)
@@ -46,7 +53,7 @@ def test_current_input_public_binding_is_owned_and_has_no_values(owned):
 
 
 @pytest.mark.parametrize("change", ["current", "schema", "version", "owner"])
-def test_binding_rejects_stale_or_foreign_input(owned, change):
+def test_binding_rejects_stale_or_foreign_input(owned: Owned, change: str) -> None:
     from dataclasses import replace
 
     from services.dify_builder.native_testing.input_binding import current_input_binding
@@ -58,7 +65,7 @@ def test_binding_rejects_stale_or_foreign_input(owned, change):
         if change == "current":
             commit.context = {"retained_test_input_ref": tid}
         elif change == "schema":
-            session.get(DifyBuilderTestInput, tid).start_schema_hash = "old"
+            required_input(session, tid).start_schema_hash = "old"
         elif change == "version":
             commit.version = 0
         else:
@@ -67,7 +74,9 @@ def test_binding_rejects_stale_or_foreign_input(owned, change):
         current_input_binding(session=session, actor=actor, session_id=sid)
 
 
-def test_standalone_start_refuses_noncurrent_same_session_input_before_compilation(owned, monkeypatch):
+def test_standalone_start_refuses_noncurrent_same_session_input_before_compilation(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from uuid import uuid4
 
     from services.dify_builder.native_testing.api_service import NativeAdmissionDependencies, NativeTestApiService
@@ -104,7 +113,9 @@ def test_standalone_start_refuses_noncurrent_same_session_input_before_compilati
         )
 
 
-def test_start_rechecks_current_input_under_admission_lock_before_insert(owned, monkeypatch):
+def test_start_rechecks_current_input_under_admission_lock_before_insert(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from sqlalchemy import func, select
 
     from models.dify_builder import DifyBuilderExecutionRequest
@@ -116,9 +127,10 @@ def test_start_rechecks_current_input_under_admission_lock_before_insert(owned, 
     compiler = NativeAdmissionCompiler(session_factory=factory, resources=lambda **_kwargs: ())
     original = compiler.recheck_local
 
-    def replace_current(**kwargs):
-        original(**kwargs)
-        commit = kwargs["session"].scalar(select(DifyBuilderSessionCommit))
+    def replace_current(*, session: Session, actor: Actor, compilation: NativeAdmissionCompilation) -> None:
+        original(session=session, actor=actor, compilation=compilation)
+        commit = session.scalar(select(DifyBuilderSessionCommit))
+        assert commit is not None
         commit.context = {"retained_test_input_ref": tid}
 
     monkeypatch.setattr(compiler, "recheck_local", replace_current)
@@ -149,17 +161,17 @@ def test_start_rechecks_current_input_under_admission_lock_before_insert(owned, 
 
 
 @pytest.mark.parametrize("busy", ["working", "active_request"])
-def test_binding_never_offers_start_while_same_input_is_running(owned, busy):
+def test_binding_never_offers_start_while_same_input_is_running(owned: Owned, busy: str) -> None:
     from uuid import uuid4
 
-    from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession
+    from models.dify_builder import DifyBuilderExecutionRequest
     from services.dify_builder.native_testing.input_binding import current_input_binding
 
     prepare(owned)
     factory, actor, app, workflow, sid, tid = owned
     with factory.begin() as session:
         if busy == "working":
-            session.get(DifyBuilderSession, sid).current_state = "build.test_and_repair"
+            required_builder_session(session, sid).current_state = "build.test_and_repair"
         else:
             session.add(
                 DifyBuilderExecutionRequest(
@@ -178,3 +190,15 @@ def test_binding_never_offers_start_while_same_input_is_running(owned, busy):
             )
     with factory() as session, pytest.raises(BuilderExecutionPolicyError, match="native_session_busy"):
         current_input_binding(session=session, actor=actor, session_id=sid)
+
+
+def required_input(session: Session, identity: str) -> DifyBuilderTestInput:
+    result = session.get(DifyBuilderTestInput, identity)
+    assert result is not None
+    return result
+
+
+def required_builder_session(session: Session, identity: str) -> DifyBuilderSession:
+    result = session.get(DifyBuilderSession, identity)
+    assert result is not None
+    return result

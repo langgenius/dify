@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+from core.dify_builder.models import Graph
 from services.dify_builder.effect_disclosure import (
     CONFIRM_FIELD_PREFIX,
     confirm_field_key,
@@ -8,11 +9,11 @@ from services.dify_builder.effect_disclosure import (
 )
 
 
-def _node(node_id: str, **data):
+def _node(node_id: str, **data: object) -> Graph:
     return {"id": node_id, "data": {"title": node_id.title(), **data}}
 
 
-def _tool(node_id: str, tool_name: str, provider_type: str = "builtin", **extra):
+def _tool(node_id: str, tool_name: str, provider_type: str = "builtin", **extra: object) -> Graph:
     return _node(
         node_id,
         type="tool",
@@ -54,7 +55,7 @@ GRAPH = {
 }
 
 
-def test_tiers_follow_the_prd_mock_and_confirm_rules():
+def test_tiers_follow_the_prd_mock_and_confirm_rules() -> None:
     tiers = {item.node_id: item.tier for item in disclose(GRAPH).items}
 
     assert tiers == {
@@ -75,7 +76,7 @@ def test_tiers_follow_the_prd_mock_and_confirm_rules():
     }
 
 
-def test_targets_and_objects_name_what_is_touched_without_secrets():
+def test_targets_and_objects_name_what_is_touched_without_secrets() -> None:
     items = {item.node_id: item for item in disclose(GRAPH, {"slack": "Team bot"}).items}
 
     assert items["llm"].target == "openai / gpt-4o"
@@ -179,13 +180,13 @@ def test_legacy_agent_disclosure_keeps_its_model_target() -> None:
     assert item.object == ""
 
 
-def test_default_is_mock_for_every_side_effect_and_destructive_node():
+def test_default_is_mock_for_every_side_effect_and_destructive_node() -> None:
     disclosure = disclose(GRAPH)
 
     assert disclosure.mocked_node_ids(None) == {"code", "hook", "purge", "slack", "notion", "mystery", "child", "agent"}
 
 
-def test_confirmation_runs_only_confirmed_side_effects_never_destructive():
+def test_confirmation_runs_only_confirmed_side_effects_never_destructive() -> None:
     disclosure = disclose(GRAPH)
     confirmation = disclosure.confirmation(["slack", "notion", "llm", "absent"])
 
@@ -193,7 +194,7 @@ def test_confirmation_runs_only_confirmed_side_effects_never_destructive():
     assert disclosure.mocked_node_ids(confirmation) == {"code", "hook", "purge", "notion", "mystery", "child", "agent"}
 
 
-def test_changing_a_confirmed_target_drops_only_that_confirmation():
+def test_changing_a_confirmed_target_drops_only_that_confirmation() -> None:
     confirmation = disclose(GRAPH).confirmation(["slack", "hook"])
     changed = {
         "nodes": [
@@ -209,7 +210,7 @@ def test_changing_a_confirmed_target_drops_only_that_confirmation():
     assert "hook" not in mocked
 
 
-def test_split_confirmations_keeps_inputs_and_true_checkboxes_only():
+def test_split_confirmations_keeps_inputs_and_true_checkboxes_only() -> None:
     inputs, confirmed = split_confirmations(
         {"query": "hi", confirm_field_key("slack"): True, confirm_field_key("hook"): False, "flag": True}
     )
@@ -219,33 +220,33 @@ def test_split_confirmations_keeps_inputs_and_true_checkboxes_only():
     assert confirm_field_key("x").startswith(CONFIRM_FIELD_PREFIX)
 
 
-def test_malformed_graph_has_nothing_to_disclose():
+def test_malformed_graph_has_nothing_to_disclose() -> None:
     assert disclose({}).items == ()
     assert disclose({"nodes": [None, {"id": "x"}, {"id": "", "data": {"type": "llm"}}]}).items == ()
 
 
-def test_changing_http_headers_invalidates_confirmation():
+def test_changing_http_headers_invalidates_confirmation() -> None:
     original = {"nodes": [_node("hook", type="http-request", method="post", url="https://x.io", headers="X-Tenant: a")]}
     changed = {"nodes": [_node("hook", type="http-request", method="post", url="https://x.io", headers="X-Tenant: b")]}
 
     assert disclose(changed).mocked_node_ids(disclose(original).confirmation(["hook"])) == {"hook"}
 
 
-def test_changing_tool_runtime_configuration_invalidates_confirmation():
+def test_changing_tool_runtime_configuration_invalidates_confirmation() -> None:
     original = {"nodes": [_tool("slack", "send_message", tool_configurations={"channel": "#ops"})]}
     changed = {"nodes": [_tool("slack", "send_message", tool_configurations={"channel": "#general"})]}
 
     assert disclose(changed).mocked_node_ids(disclose(original).confirmation(["slack"])) == {"slack"}
 
 
-def test_changing_resolved_account_invalidates_confirmation_even_if_display_names_match():
+def test_changing_resolved_account_invalidates_confirmation_even_if_display_names_match() -> None:
     original = disclose(GRAPH, {"slack": "Team bot"}, account_bindings={"slack": "credential-a"})
     changed = disclose(GRAPH, {"slack": "Team bot"}, account_bindings={"slack": "credential-b"})
 
     assert "slack" in changed.mocked_node_ids(original.confirmation(["slack"]))
 
 
-def test_direct_start_target_inputs_are_bound_and_displayed():
+def test_direct_start_target_inputs_are_bound_and_displayed() -> None:
     graph = {
         "nodes": [
             _node("start", type="start"),
@@ -267,7 +268,7 @@ def test_direct_start_target_inputs_are_bound_and_displayed():
     assert unrelated.mocked_node_ids(original.confirmation(["hook", "slack"])) == set()
 
 
-def test_upstream_config_change_invalidates_dynamic_effect_but_keeps_fixed_target():
+def test_upstream_config_change_invalidates_dynamic_effect_but_keeps_fixed_target() -> None:
     graph = {
         "nodes": [
             _node("start", type="start"),
@@ -283,7 +284,7 @@ def test_upstream_config_change_invalidates_dynamic_effect_but_keeps_fixed_targe
     assert disclose(changed).mocked_node_ids(confirmation) == {"code", "dynamic"}
 
 
-def test_dynamic_effect_binds_start_inputs_used_by_its_upstream_node():
+def test_dynamic_effect_binds_start_inputs_used_by_its_upstream_node() -> None:
     graph = {
         "nodes": [
             _node("start", type="start"),
@@ -296,7 +297,7 @@ def test_dynamic_effect_binds_start_inputs_used_by_its_upstream_node():
     assert disclose(graph, inputs={"host": "b.example.com"}).mocked_node_ids(confirmation) == {"code", "hook"}
 
 
-def test_advanced_chat_system_query_is_bound_for_templates_and_variable_selectors():
+def test_advanced_chat_system_query_is_bound_for_templates_and_variable_selectors() -> None:
     graph = {
         "nodes": [
             _node("start", type="start"),
@@ -314,7 +315,7 @@ def test_advanced_chat_system_query_is_bound_for_templates_and_variable_selector
     assert changed.mocked_node_ids(original.confirmation(["hook", "slack"])) == {"hook", "slack"}
 
 
-def test_changed_environment_or_conversation_binding_invalidates_confirmation_without_showing_values():
+def test_changed_environment_or_conversation_binding_invalidates_confirmation_without_showing_values() -> None:
     graph = {
         "nodes": [
             _node("hook", type="http-request", method="post", url="https://{{#env.host#}}/{{#conversation.path#}}")
@@ -329,7 +330,7 @@ def test_changed_environment_or_conversation_binding_invalidates_confirmation_wi
     assert "digest-after" not in str(changed.items)
 
 
-def test_changing_a_referenced_start_default_invalidates_confirmation():
+def test_changing_a_referenced_start_default_invalidates_confirmation() -> None:
     graph = {
         "nodes": [
             _node(
@@ -347,7 +348,7 @@ def test_changing_a_referenced_start_default_invalidates_confirmation():
     assert disclose(changed, inputs={}).mocked_node_ids(confirmation) == {"hook"}
 
 
-def test_nested_start_object_selectors_bind_the_root_input_and_show_nested_values():
+def test_nested_start_object_selectors_bind_the_root_input_and_show_nested_values() -> None:
     graph = {
         "nodes": [
             _node("start", type="start"),
@@ -367,7 +368,7 @@ def test_nested_start_object_selectors_bind_the_root_input_and_show_nested_value
     assert changed.mocked_node_ids(original.confirmation(["hook", "slack"])) == {"hook", "slack"}
 
 
-def test_nested_start_selector_binds_changed_optional_object_defaults():
+def test_nested_start_selector_binds_changed_optional_object_defaults() -> None:
     graph = {
         "nodes": [
             _node(

@@ -3,16 +3,16 @@
 import httpx
 import pytest
 from dify_agent.client import Client
+from dify_agent.protocol.native_continuation import ReadNativeCheckpointRequest
+from httpx import Request, Response
+from pytest_mock import MockerFixture
 
 from clients.agent_backend.client import DifyAgentBackendRunClient
 from clients.agent_backend.errors import AgentBackendHTTPError, AgentBackendTransportError
 
 
-@pytest.mark.parametrize("failure", ["http", "timeout"])
-def test_native_wrapper_normalizes_real_http_client_errors(failure):
-    from dify_agent.protocol.native_continuation import ReadNativeCheckpointRequest
-
-    selection = ReadNativeCheckpointRequest.model_validate(
+def checkpoint_request() -> ReadNativeCheckpointRequest:
+    return ReadNativeCheckpointRequest.model_validate(
         {
             "ref": {
                 "policy_version": "builder-native-test-v1",
@@ -26,9 +26,14 @@ def test_native_wrapper_normalizes_real_http_client_errors(failure):
             "config_digest": "b" * 64,
         }
     )
-    attempts = []
 
-    def handler(request):
+
+@pytest.mark.parametrize("failure", ["http", "timeout"])
+def test_native_wrapper_normalizes_real_http_client_errors(failure: str) -> None:
+    selection = checkpoint_request()
+    attempts: list[Request] = []
+
+    def handler(request: Request) -> Response:
         attempts.append(request)
         if failure == "timeout":
             raise httpx.ReadTimeout("sensitive-canary", request=request)
@@ -43,16 +48,19 @@ def test_native_wrapper_normalizes_real_http_client_errors(failure):
     assert len(attempts) == 1
 
 
-def test_private_wrapper_redacts_validation_details_from_adapter_errors():
+def test_private_wrapper_redacts_validation_details_from_adapter_errors(mocker: MockerFixture) -> None:
     from dify_agent.client import DifyAgentValidationError
 
     from clients.agent_backend.errors import AgentBackendValidationError
 
-    class InvalidAdapter:
-        def read_native_checkpoint_sync(self, run_id, request):
-            del run_id, request
-            raise DifyAgentValidationError({"input": "private-canary"})
-
-    with pytest.raises(AgentBackendValidationError) as caught:
-        DifyAgentBackendRunClient(InvalidAdapter()).read_native_checkpoint("run-1", None)
+    with Client(base_url="http://synthetic.invalid") as sdk:
+        read = mocker.patch.object(
+            sdk,
+            "read_native_checkpoint_sync",
+            side_effect=DifyAgentValidationError({"input": "private-canary"}),
+        )
+        request = checkpoint_request()
+        with pytest.raises(AgentBackendValidationError) as caught:
+            DifyAgentBackendRunClient(sdk).read_native_checkpoint("run-1", request)
+        read.assert_called_once_with("run-1", request)
     assert "private-canary" not in str(caught.value.detail)

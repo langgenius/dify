@@ -8,35 +8,55 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+from collections.abc import Generator, Mapping
 from inspect import GEN_SUSPENDED, getgeneratorstate
 from threading import Event, Thread, current_thread
 from time import monotonic
-from typing import cast
+from typing import Self, cast
 
 import pytest
+from sqlalchemy import Select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.models import Actor
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowRun
-from runtime_contracts.builder.native.contracts import ApprovalWait, CheckpointRef, PolicyStop, WaitingReceipt
-from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
+from runtime_contracts.builder.native.contracts import (
+    ApprovalWait,
+    CheckpointRef,
+    NativeTestContextRef,
+    PolicyStop,
+    WaitingReceipt,
+)
+from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, NativeWorkflowOutcome
 from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
 from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from services.dify_builder.native_testing.stream_runtime import DifyNativeStreamOwner
 from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase, native_entry
 
 
-def stream_class():
+def stream_class() -> type[DifyNativeStreamOwner]:
     name = "services.dify_builder.native_testing.stream_runtime"
     assert importlib.util.find_spec(name) is not None, "actual stream coordinator is missing"
     return importlib.import_module(name).DifyNativeStreamOwner
 
 
 class StreamCase:
-    def __init__(self, monkeypatch, *, waiting=False, failed=False, partial=False, stopped=False, baseline=(1, 1, 1)):
+    def __init__(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        waiting: bool = False,
+        failed: bool = False,
+        partial: bool = False,
+        stopped: bool = False,
+        baseline: tuple[float, float, float] = (1, 1, 1),
+    ) -> None:
         self.case = case = LaunchCase(baseline=baseline)
         from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import (
             bind_component_observation,
@@ -92,7 +112,7 @@ class StreamCase:
             else "succeeded",
         )
 
-        def read(statement):
+        def read(statement: Select[tuple[WorkflowRun]]) -> WorkflowRun | None:
             self.events.append("read-run")
             # The real SQL statement must constrain every native Run owner.
             params = set(statement.compile().params.values())
@@ -109,24 +129,24 @@ class StreamCase:
             return self.row
 
         class SessionPort:
-            def __enter__(self):
+            def __enter__(self) -> Self:
                 return self
 
-            def __exit__(self, *_args):
+            def __exit__(self, *_args: object) -> None:
                 pass
 
             scalar = staticmethod(read)
 
         self.sessions = SessionPort
         loader = OwnedNativeTestLoader(
-            self.sessions,
+            cast(sessionmaker[Session], self.sessions),
             actor=Actor(tenant_id=context.tenant_id, account_id=context.actor_id),
             resolver=NativeHttpBindingResolver(),
         )
-        lifecycle = NativeTestLifecycleService(loader, state_store=case.state)
+        lifecycle = NativeTestLifecycleService(loader, state_store=cast(NativeExecutionStateStore, case.state))
         monkeypatch.setattr(lifecycle, "pause", self.pause)
         monkeypatch.setattr(lifecycle, "_mark_unknown", lambda **_kwargs: self.events.append("quarantine"))
-        self.capacity = NativeHostCapacity(cast(NativeTestLifecycleService, lifecycle), cleanup_verifier=case.lifetime)
+        self.capacity = NativeHostCapacity(lifecycle, cleanup_verifier=case.lifetime)
         monkeypatch.setattr(self.capacity, "record_cleanup", self.cleanup)
         self.checkpoints = case.host._checkpoints
         assert self.checkpoints is not None
@@ -134,7 +154,7 @@ class StreamCase:
         monkeypatch.setattr(case.state, "commit_checkpoint", self.commit)
         case.host.bind_release(release=lambda: self.events.append("release"))
 
-    def commit(self, *, ref, generation, payload):
+    def commit(self, *, ref: NativeTestContextRef, generation: int, payload: NativeCheckpointPayload) -> CheckpointRef:
         assert ref == self.case.lifetime.ref
         assert generation == self.case.lifetime.generation
         assert self.case.lifetime.context is self.case.state.context
@@ -144,7 +164,14 @@ class StreamCase:
         self.saved = payload
         return CheckpointRef(checkpoint_id="checkpoint", payload_digest="c" * 64)
 
-    def pause(self, *, ref, checkpoint, pending_operation_ids, expected_generation):
+    def pause(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        checkpoint: CheckpointRef,
+        pending_operation_ids: tuple[str, ...],
+        expected_generation: int,
+    ) -> WaitingReceipt:
         self.events.append("pause")
         return WaitingReceipt(
             request_id=ref.request_id,
@@ -155,20 +182,20 @@ class StreamCase:
             wait_reason="approval",
         )
 
-    def cleanup(self, *, ref, generation, dispatch_id):
+    def cleanup(self, *, ref: NativeTestContextRef, generation: int, dispatch_id: str) -> None:
         self.events.append("cleanup")
         if self.cleanup_error:
             raise self.cleanup_error
         self.case.lifetime.consume_cleanup(ref=ref, generation=generation, dispatch_id=dispatch_id)
 
-    def worker(self):
+    def worker(self) -> None:
         try:
             list(self.entry.run())
         finally:
             self.case.host.worker_finished(worker=current_thread(), exit_kind="returned")
             self.done.set()
 
-    def source(self):
+    def source(self) -> Generator[str]:
         try:
             import logging
 
@@ -188,23 +215,24 @@ class StreamCase:
             self.source_closed.append(current_thread())
             self.source_finished.set()
 
-    def owner(self):
+    def owner(self) -> DifyNativeStreamOwner:
+        assert self.checkpoints is not None
         return stream_class()(
             host=self.case.host,
             capacity=self.capacity,
-            session_factory=self.sessions,
+            session_factory=cast(sessionmaker[Session], self.sessions),
             state=self.case.state,
             authorization=self.case.authorization,
             journal=self.case.journal,
             checkpoints=self.checkpoints,
         )
 
-    def start(self):
+    def start(self) -> Thread:
         worker = Thread(target=self.worker)
         self.case.host.start_worker(worker=worker)
         return worker
 
-    def consume(self, stream=None):
+    def consume(self, stream: HostOwnedNativeGeneratorStream | None = None) -> NativeWorkflowOutcome:
         self.callbacks = []
         return self.owner().consume(
             context=self.case.state.context,
@@ -214,7 +242,9 @@ class StreamCase:
 
 
 @pytest.mark.parametrize("failed", [False, True])
-def test_actual_root_business_terminal_survives_raw_sse_without_payload_callback(monkeypatch, failed):
+def test_actual_root_business_terminal_survives_raw_sse_without_payload_callback(
+    monkeypatch: pytest.MonkeyPatch, failed: bool
+) -> None:
     fixture = StreamCase(monkeypatch, failed=failed)
     worker = fixture.start()
     outcome = fixture.consume()
@@ -227,7 +257,9 @@ def test_actual_root_business_terminal_survives_raw_sse_without_payload_callback
     assert all("canary" not in str(event) for event in fixture.callbacks)
 
 
-def test_close_before_consume_commits_actual_snapshot_then_cleanup_and_public_wait(monkeypatch):
+def test_close_before_consume_commits_actual_snapshot_then_cleanup_and_public_wait(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fixture = StreamCase(monkeypatch, waiting=True)
     worker = fixture.start()
     assert fixture.done.wait(2)  # Typed control closed admission before reader exists.
@@ -235,6 +267,7 @@ def test_close_before_consume_commits_actual_snapshot_then_cleanup_and_public_wa
     worker.join(1)
     assert outcome.status == "waiting"
     assert outcome.wait_reason == "approval"
+    assert outcome.checkpoint_ref is not None
     assert outcome.checkpoint_ref.checkpoint_id == "checkpoint"
     assert fixture.events == ["read-run", "checkpoint", "pause", "cleanup", "release"]
     payload = fixture.saved
@@ -249,7 +282,7 @@ def test_close_before_consume_commits_actual_snapshot_then_cleanup_and_public_wa
 
 
 @pytest.mark.parametrize("failure", ["checkpoint_error", "cleanup_error", "read_error", "source_error"])
-def test_real_owner_failure_never_publishes_wait_and_quarantines(monkeypatch, failure):
+def test_real_owner_failure_never_publishes_wait_and_quarantines(monkeypatch: pytest.MonkeyPatch, failure: str) -> None:
     fixture = StreamCase(monkeypatch, waiting=True)
     setattr(fixture, failure, RuntimeError("private-failure-canary"))
     fixture.start()
@@ -260,7 +293,9 @@ def test_real_owner_failure_never_publishes_wait_and_quarantines(monkeypatch, fa
     assert "release" not in fixture.events
 
 
-def test_blocked_reader_returns_unknown_at_first_deadline_and_retains_for_late_cleanup(monkeypatch):
+def test_blocked_reader_returns_unknown_at_first_deadline_and_retains_for_late_cleanup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fixture = StreamCase(monkeypatch, waiting=True, baseline=(0.04, 0.04, 0.04))
     fixture.source_release.clear()
     worker = fixture.start()
@@ -286,7 +321,7 @@ def test_blocked_reader_returns_unknown_at_first_deadline_and_retains_for_late_c
     assert fixture.case.lifetime.unknown
 
 
-def test_root_pause_with_late_native_error_is_unknown_before_checkpoint(monkeypatch):
+def test_root_pause_with_late_native_error_is_unknown_before_checkpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     fixture = StreamCase(monkeypatch, waiting=True)
     worker = fixture.start()
     assert fixture.done.wait(2)
@@ -298,7 +333,7 @@ def test_root_pause_with_late_native_error_is_unknown_before_checkpoint(monkeypa
     assert fixture.callbacks == []
 
 
-def test_persisted_run_status_disagreement_or_missing_run_cannot_complete(monkeypatch):
+def test_persisted_run_status_disagreement_or_missing_run_cannot_complete(monkeypatch: pytest.MonkeyPatch) -> None:
     fixture = StreamCase(monkeypatch)
     fixture.row = None
     fixture.start()
@@ -306,7 +341,7 @@ def test_persisted_run_status_disagreement_or_missing_run_cannot_complete(monkey
     assert fixture.events == ["read-run", "quarantine"]
 
 
-def test_external_close_is_not_natural_drain_or_wait(monkeypatch):
+def test_external_close_is_not_natural_drain_or_wait(monkeypatch: pytest.MonkeyPatch) -> None:
     fixture = StreamCase(monkeypatch, waiting=True)
     fixture.start()
     assert fixture.done.wait(2)
@@ -316,7 +351,7 @@ def test_external_close_is_not_natural_drain_or_wait(monkeypatch):
     assert fixture.callbacks == []
 
 
-def test_foreign_stream_and_repeated_consume_refuse_without_new_reader(monkeypatch):
+def test_foreign_stream_and_repeated_consume_refuse_without_new_reader(monkeypatch: pytest.MonkeyPatch) -> None:
     fixture = StreamCase(monkeypatch)
     other = LaunchCase()
     stream = HostOwnedNativeGeneratorStream(source=fixture.source(), host=other.host)
@@ -336,7 +371,7 @@ def test_foreign_stream_and_repeated_consume_refuse_without_new_reader(monkeypat
     assert owner._reader is reader
 
 
-def test_actual_persistence_status_disagreement_is_unknown_before_checkpoint(monkeypatch):
+def test_actual_persistence_status_disagreement_is_unknown_before_checkpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     fixture = StreamCase(monkeypatch, waiting=True)
     assert fixture.row is not None
     fixture.row.status = WorkflowExecutionStatus.SUCCEEDED
@@ -345,11 +380,11 @@ def test_actual_persistence_status_disagreement_is_unknown_before_checkpoint(mon
     assert "checkpoint" not in fixture.events
 
 
-def test_failed_capacity_ack_after_physical_consumption_does_not_publish_wait(monkeypatch):
+def test_failed_capacity_ack_after_physical_consumption_does_not_publish_wait(monkeypatch: pytest.MonkeyPatch) -> None:
     fixture = StreamCase(monkeypatch, waiting=True)
 
-    def lost_ack(**kwargs):
-        fixture.cleanup(**kwargs)
+    def lost_ack(*, ref: NativeTestContextRef, generation: int, dispatch_id: str) -> None:
+        fixture.cleanup(ref=ref, generation=generation, dispatch_id=dispatch_id)
         raise RuntimeError("private-lost-capacity-ack")
 
     monkeypatch.setattr(fixture.capacity, "record_cleanup", lost_ack)
@@ -360,7 +395,7 @@ def test_failed_capacity_ack_after_physical_consumption_does_not_publish_wait(mo
     assert "release" not in fixture.events
 
 
-def test_existing_workflow_owner_finally_close_after_retirement_is_inert(monkeypatch):
+def test_existing_workflow_owner_finally_close_after_retirement_is_inert(monkeypatch: pytest.MonkeyPatch) -> None:
     fixture = StreamCase(monkeypatch)
     fixture.start()
     stream = HostOwnedNativeGeneratorStream(source=fixture.source(), host=fixture.case.host)
@@ -370,11 +405,13 @@ def test_existing_workflow_owner_finally_close_after_retirement_is_inert(monkeyp
     assert fixture.events.count("release") == 1
 
 
-def test_automatic_next_close_failure_then_reader_finalizer_never_allows_cleanup(monkeypatch):
+def test_automatic_next_close_failure_then_reader_finalizer_never_allows_cleanup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fixture = StreamCase(monkeypatch)
     attempts = []
 
-    def source():
+    def source() -> Generator[Mapping[str, object] | str]:
         assert fixture.done.wait(2)
         try:
             # The real converter serializes while this real source is suspended.
@@ -413,7 +450,7 @@ def test_automatic_next_close_failure_then_reader_finalizer_never_allows_cleanup
             actual_source.throw(RuntimeError("fixture-teardown"))
 
 
-def test_real_native_partial_business_outcome_and_typed_stop_preserve_routes(monkeypatch):
+def test_real_native_partial_business_outcome_and_typed_stop_preserve_routes(monkeypatch: pytest.MonkeyPatch) -> None:
     partial = StreamCase(monkeypatch, failed=True, partial=True)
     partial.start()
     outcome = partial.consume()
@@ -426,15 +463,15 @@ def test_real_native_partial_business_outcome_and_typed_stop_preserve_routes(mon
     assert outcome.reason_code == "effect_denied"
 
 
-def test_slow_native_work_before_first_control_has_no_host_run_timeout(monkeypatch):
+def test_slow_native_work_before_first_control_has_no_host_run_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     fixture = StreamCase(monkeypatch, baseline=(0.01, 0.01, 0.01))
     entered, release = Event(), Event()
     original = fixture.factory.effects.render
 
-    def slow(*args):
+    def slow(template: str, variables: Mapping[str, object], node_id: str) -> str:
         entered.set()
         assert release.wait(2)
-        return original(*args)
+        return original(template, variables, node_id)
 
     monkeypatch.setattr(fixture.factory.effects, "render", slow)
     fixture.start()
@@ -452,7 +489,7 @@ def test_slow_native_work_before_first_control_has_no_host_run_timeout(monkeypat
     assert results[0].status == "completed"
 
 
-def test_blocked_admission_fence_does_not_block_coordinator_quarantine(monkeypatch):
+def test_blocked_admission_fence_does_not_block_coordinator_quarantine(monkeypatch: pytest.MonkeyPatch) -> None:
     fixture = StreamCase(monkeypatch, waiting=True, baseline=(0.04, 0.04, 0.04))
     fixture.case.ports.entered, fixture.case.ports.release = Event(), Event()
     worker = fixture.start()
@@ -466,18 +503,24 @@ def test_blocked_admission_fence_does_not_block_coordinator_quarantine(monkeypat
     finally:
         fixture.case.ports.release.set()
         worker.join(2)
-    fixture.case.lifetime.settle()
+        assert not worker.is_alive()
+        assert fixture.source_finished.wait(2)
+        assert len(fixture.source_closed) == 1
+        reader = fixture.source_closed[0]
+        reader.join(2)
+        assert not reader.is_alive()
+    assert fixture.case.lifetime.settle() == "unknown"
     fixture.cleanup(ref=fixture.case.lifetime.ref, generation=0, dispatch_id="dispatch")
     fixture.case.host.retire()
 
 
-def test_dispatcher_logging_release_failure_precedes_capacity_ack(monkeypatch):
+def test_dispatcher_logging_release_failure_precedes_capacity_ack(monkeypatch: pytest.MonkeyPatch) -> None:
     from libs.sensitive_http_telemetry import SensitiveThreadLogLease
 
     fixture = StreamCase(monkeypatch)
     actual_release = SensitiveThreadLogLease.release_after_exit
 
-    def failed_release(self):
+    def failed_release(self: SensitiveThreadLogLease) -> None:
         del self
         raise ValueError("synthetic lease cleanup failure")
 

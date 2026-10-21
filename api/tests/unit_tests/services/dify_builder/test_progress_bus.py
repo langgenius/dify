@@ -2,10 +2,10 @@
 
 import json
 import threading
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from typing import Self, override
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from redis import Redis
@@ -18,7 +18,9 @@ SESSION_ID = "11111111-1111-1111-1111-111111111111"
 
 
 @contextmanager
-def channel_for(subscriber=None):
+def channel_for(
+    subscriber: "_LazySubscriber | _PreparedSubscriber | None" = None,
+) -> Generator[tuple[BroadcastChannel, Topic, MagicMock, MagicMock]]:
     with Redis() as client, patch.object(client, "publish"):
         channel = BroadcastChannel(client)
         topic = Topic(client, f"dify_builder:{SESSION_ID}")

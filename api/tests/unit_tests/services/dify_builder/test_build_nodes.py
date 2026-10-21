@@ -1905,7 +1905,7 @@ def test_full_build_completeness_accepts_complete_parallel_fanout_only() -> None
     assert "'b'" in problems[0]
 
 
-def test_build_nodes_passes_confirmed_failure_policy_to_generator():
+def test_build_nodes_passes_confirmed_failure_policy_to_generator() -> None:
     """A concise approved plan cannot erase authoritative failure/HTTP constraints."""
     requirements = {"error_status_value": 0, "continue_on_post_failure": False, "health_success_status": 404}
     trusted_text = "ORIGINAL GOAL:\nPOST then fetch health\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements)

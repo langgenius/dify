@@ -9,6 +9,8 @@ from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import pytest
+import pytest_mock
+import sqlalchemy
 from sqlalchemy.orm import Session
 
 from core.dify_builder.models import ApplyResult, Graph, MutationIntent
@@ -29,7 +31,7 @@ from tests.unit_tests.services.dify_builder.test_native_http_output_contract imp
 
 
 @pytest.fixture
-def mock_session(sqlite_engine, mocker) -> Iterator[TrackedPortSession]:
+def mock_session(sqlite_engine: sqlalchemy.Engine, mocker: pytest_mock.MockerFixture) -> Iterator[TrackedPortSession]:
     with TrackedPortSession(sqlite_engine, expire_on_commit=False) as session:
         for name in ("get", "refresh", "commit"):
             mocker.spy(session, name)
@@ -57,14 +59,14 @@ _BROKEN_IF_ELSE_CONFIG = {
 
 
 @pytest.fixture(autouse=True)
-def _mock_db(sqlite_engine, monkeypatch) -> Iterator[None]:
+def _mock_db(sqlite_engine: sqlalchemy.Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr("services.dify_builder.dify_port.db", PortDatabase(sqlite_engine))
     with patch("services.dify_builder.dify_port.set_login_user"):
         yield
 
 
 @pytest.fixture(autouse=True)
-def _mock_sessionmaker(mock_session: Session, monkeypatch) -> None:
+def _mock_sessionmaker(mock_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("services.dify_builder.dify_port._session_factory", lambda: lambda: mock_session)
 
 

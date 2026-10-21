@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from time import monotonic
+from typing import NotRequired, Unpack, cast
 from uuid import uuid4
 
 import pytest
+import pytest_mock
+import sqlalchemy.orm
 from pydantic import ValidationError
-from sqlalchemy import create_engine, event, inspect
+from sqlalchemy import Select, create_engine, event, inspect
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor
 from models.dify_builder_native_code import NativeCodePhysicalOperation
@@ -27,27 +32,48 @@ from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
     canonical_digest,
 )
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.contracts import DispatchPermit, EffectIntent, NativeTestContextRef, OperationKey
 from services.dify_builder.native_testing.api_service import NativeTestApiService
-from services.dify_builder.native_testing.repository import OwnedNativeTest
+from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 from services.dify_builder.native_testing.sandbox.contracts import (
     CodeAcquisitionRef,
     CodePhysicalRef,
+    CodeScopeSpec,
 )
 from services.dify_builder.native_testing.sandbox.repository import NativeCodePhysicalRepository
+from tests.unit_tests.installed_spies import installed_mock
 
 
-def fixed_transaction_deadline():
+class ReservationArguments(TypedDict, closed=True):
+    ref: NativeTestContextRef
+    key: OperationKey
+    permit: DispatchPermit
+    acquisition: CodeAcquisitionRef
+    spec: CodeScopeSpec
+    intent: EffectIntent
+    payload_digest: str
+    profile_digest: str
+    physical_deadline: datetime
+
+
+class TransactionArguments(TypedDict, closed=True):
+    ref: NativeTestContextRef
+    acquisition: CodeAcquisitionRef
+    settlement: bool
+    deadline: NotRequired[datetime | None]
+
+
+def fixed_transaction_deadline() -> Callable[[bool], float]:
     """Synthetic fixed budget; does not attest a retained host acquisition."""
     deadline = monotonic() + 60
     return lambda _settlement: deadline
 
 
-def uid():
+def uid() -> str:
     return str(uuid4())
 
 
-def physical():
+def physical() -> CodePhysicalRef:
     ref = NativeTestContextRef(request_id=uid(), invocation_id="root", context_digest="a" * 64)
     acquisition = CodeAcquisitionRef(ref=ref, root_dispatch_id=uid(), generation=0, acquisition_id=uid())
     return CodePhysicalRef(
@@ -89,13 +115,15 @@ class TransitionCase:
     row: NativeCodePhysicalOperation
     current: Current
     committed: list[dict[str, object]]
-    calls: list[dict[str, object]]
+    calls: list[TransactionArguments]
+    intent: EffectIntent
+    permit: DispatchPermit
 
 
 @dataclass
 class PhysicalOwnerCase:
     repo: NativeCodePhysicalRepository
-    args: dict[str, object]
+    args: ReservationArguments
     stored: list[NativeCodePhysicalOperation]
     rows: dict[type, object]
     operation: NativeEffectOperation
@@ -110,7 +138,9 @@ class PhysicalOwnerCase:
     scope: NativeTestScope
 
 
-def _loader(factory=None):
+def _loader(
+    factory: sessionmaker[Session] | None = None,
+) -> OwnedNativeTestLoader:
     return NativeTestApiService(
         session_factory=factory or sessionmaker(),
         actor=Actor(account_id="actor", tenant_id="tenant"),
@@ -122,7 +152,7 @@ def _loader(factory=None):
     ).loader
 
 
-def _scope(p, *, expires_at=None):
+def _scope(p: CodePhysicalRef, *, expires_at: datetime | None = None) -> NativeTestScope:
     return NativeTestScope(
         tenant_id=p.tenant_id,
         request_id=p.ref.request_id,
@@ -139,7 +169,7 @@ def _scope(p, *, expires_at=None):
     )
 
 
-def _owned(p):
+def _owned(p: CodePhysicalRef) -> OwnedNativeTest:
     return OwnedNativeTest(
         ref=p.ref,
         tenant_id=p.tenant_id,
@@ -156,7 +186,7 @@ def _owned(p):
     )
 
 
-def _row_snapshot(row):
+def _row_snapshot(row: NativeCodePhysicalOperation) -> dict[str, object]:
     return {column.key: inspect(row).attrs[column.key].value for column in inspect(type(row)).column_attrs}
 
 
@@ -173,7 +203,7 @@ def _row_snapshot(row):
         ("payload_digest", "z" * 64),
     ],
 )
-def test_reference_rejects_invalid_authority_shape(field, value):
+def test_reference_rejects_invalid_authority_shape(field: str, value: object) -> None:
     values = physical().model_dump(mode="python")
     values[field] = value
     with pytest.raises(ValidationError):
@@ -181,18 +211,26 @@ def test_reference_rejects_invalid_authority_shape(field, value):
 
 
 class Current:
-    def __init__(self):
+    def __init__(self) -> None:
         self.calls = 0
-        self.fail_at = None
+        self.fail_at: int | None = None
 
-    def check_current(self, acquisition):
+    def check_current(self, acquisition: CodeAcquisitionRef) -> None:
         del acquisition
         self.calls += 1
         if self.calls == self.fail_at:
             raise BuilderExecutionPolicyError("stale_acquisition")
 
 
-def _timeout_loader(mocker, p, *, events, execute, expires_at, record_begin=False):
+def _timeout_loader(
+    mocker: pytest_mock.MockerFixture,
+    p: CodePhysicalRef,
+    *,
+    events: list[str],
+    execute: object,
+    expires_at: datetime,
+    record_begin: bool = False,
+) -> OwnedNativeTestLoader:
     """Real PostgreSQL dialect and Session transaction; timeout transport is the seam."""
 
     class TimeoutSession(Session):
@@ -204,14 +242,14 @@ def _timeout_loader(mocker, p, *, events, execute, expires_at, record_begin=Fals
         event.listen(TimeoutSession, "after_transaction_create", lambda *_: events.append("begin"))
     event.listen(TimeoutSession, "after_commit", lambda *_: events.append("commit"))
     mocker.patch.object(TimeoutSession, "execute", side_effect=execute)
-    loader = _loader(factory)
+    loader = _loader(cast(sessionmaker[Session], factory))
     mocker.patch.object(loader, "load", return_value=None)
     mocker.patch.object(loader, "_load", return_value=(_owned(p), _scope(p, expires_at=expires_at)))
     return loader
 
 
 @pytest.fixture
-def transition(monkeypatch, sqlite_session):
+def transition(monkeypatch: pytest.MonkeyPatch, sqlite_session: sqlalchemy.orm.Session) -> TransitionCase:
     from services.dify_builder.native_testing.sandbox.repository import (
         NativeCodePhysicalRepository,
     )
@@ -240,7 +278,9 @@ def transition(monkeypatch, sqlite_session):
     calls = []
 
     @contextmanager
-    def transaction(**kwargs):
+    def transaction(
+        **kwargs: Unpack[TransactionArguments],
+    ) -> Generator[tuple[Session, OwnedNativeTest | None, NativeTestScope | None]]:
         calls.append(kwargs)
         if sqlite_session.in_transaction() or sqlite_session.dirty:
             sqlite_session.commit()
@@ -263,10 +303,27 @@ def transition(monkeypatch, sqlite_session):
         current=current,
         committed=committed,
         calls=calls,
+        intent=EffectIntent(
+            key=OperationKey(invocation_id=p.ref.invocation_id, occurrence_path=(p.native_execution_id,), cursor=0),
+            kind="code",
+            resource_ref="code",
+            implementation_revision="1",
+            account_ref=None,
+            target={},
+            parameters={},
+            input_digest="a" * 64,
+            capability_digest="b" * 64,
+        ),
+        permit=DispatchPermit(
+            permit_id="transition-permit",
+            operation_id=p.operation_id,
+            attempt_id=p.attempt_id,
+            expires_at=p.scope_expires_at.isoformat(),
+        ),
     )
 
 
-def test_scope_ack_is_exact_and_cannot_be_reused(transition):
+def test_scope_ack_is_exact_and_cannot_be_reused(transition: TransitionCase) -> None:
     t = transition
     with pytest.raises(BuilderExecutionPolicyError):
         t.repo.ack_scope(physical=t.physical, scope_id="code_" + uuid4().hex, generation=1)
@@ -277,7 +334,7 @@ def test_scope_ack_is_exact_and_cannot_be_reused(transition):
         t.repo.ack_scope(physical=t.physical, scope_id=t.physical.scope_id, generation=1)
 
 
-def test_offset_compare_and_swap_never_regresses_or_changes_job(transition):
+def test_offset_compare_and_swap_never_regresses_or_changes_job(transition: TransitionCase) -> None:
     t = transition
     t.row.job_id = "job1"
     t.row.job_reserved = True
@@ -295,7 +352,7 @@ def test_offset_compare_and_swap_never_regresses_or_changes_job(transition):
     assert t.row.observed_output_offset == 9
 
 
-def test_unknown_and_exact_destruction_are_settlement_after_cancel(transition):
+def test_unknown_and_exact_destruction_are_settlement_after_cancel(transition: TransitionCase) -> None:
     t = transition
     t.repo.mark_unknown(physical=t.physical)
     t.repo.ack_destroyed(physical=t.physical)
@@ -306,13 +363,13 @@ def test_unknown_and_exact_destruction_are_settlement_after_cancel(transition):
         t.repo.ack_scope(physical=t.physical, scope_id=t.physical.scope_id, generation=1)
 
 
-def test_job_reservation_is_single_use_and_input_fence_precedes_return(transition):
+def test_job_reservation_is_single_use_and_input_fence_precedes_return(transition: TransitionCase) -> None:
     t = transition
     t.row.scope_create_acked = True
     t.repo.reserve_dispatch(
         physical=t.physical,
-        intent=None,
-        permit=None,
+        intent=t.intent,
+        permit=t.permit,
         payload_digest=t.physical.payload_digest,
         profile_digest=t.physical.profile_digest,
     )
@@ -320,25 +377,27 @@ def test_job_reservation_is_single_use_and_input_fence_precedes_return(transitio
     with pytest.raises(BuilderExecutionPolicyError):
         t.repo.reserve_dispatch(
             physical=t.physical,
-            intent=None,
-            permit=None,
+            intent=t.intent,
+            permit=t.permit,
             payload_digest=t.physical.payload_digest,
             profile_digest=t.physical.profile_digest,
         )
-    t.repo.associate_job(physical=t.physical, intent=None, permit=None, job_id="job1")
+    t.repo.associate_job(physical=t.physical, intent=t.intent, permit=t.permit, job_id="job1")
     assert t.committed[-1]["job_id"] == "job1"
     assert t.committed[-1]["input_may_have_been_sent"]
     with pytest.raises(BuilderExecutionPolicyError):
-        t.repo.associate_job(physical=t.physical, intent=None, permit=None, job_id="job1")
+        t.repo.associate_job(physical=t.physical, intent=t.intent, permit=t.permit, job_id="job1")
 
 
-def test_lost_commit_response_never_makes_a_second_job_reservation(transition, monkeypatch):
+def test_lost_commit_response_never_makes_a_second_job_reservation(
+    transition: TransitionCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     t = transition
     t.row.scope_create_acked = True
     original = t.repo._transaction
 
     @contextmanager
-    def lost(**kwargs):
+    def lost(**kwargs: Unpack[TransactionArguments]) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
         with original(**kwargs) as values:
             yield values
         raise ConnectionError("commit response lost")
@@ -347,8 +406,8 @@ def test_lost_commit_response_never_makes_a_second_job_reservation(transition, m
     with pytest.raises(ConnectionError):
         t.repo.reserve_dispatch(
             physical=t.physical,
-            intent=None,
-            permit=None,
+            intent=t.intent,
+            permit=t.permit,
             payload_digest=t.physical.payload_digest,
             profile_digest=t.physical.profile_digest,
         )
@@ -356,8 +415,8 @@ def test_lost_commit_response_never_makes_a_second_job_reservation(transition, m
     with pytest.raises(BuilderExecutionPolicyError):
         t.repo.reserve_dispatch(
             physical=t.physical,
-            intent=None,
-            permit=None,
+            intent=t.intent,
+            permit=t.permit,
             payload_digest=t.physical.payload_digest,
             profile_digest=t.physical.profile_digest,
         )
@@ -365,7 +424,7 @@ def test_lost_commit_response_never_makes_a_second_job_reservation(transition, m
 
 
 @pytest.fixture
-def owner_case(monkeypatch, sqlite_session):
+def owner_case(monkeypatch: pytest.MonkeyPatch, sqlite_session: sqlalchemy.orm.Session) -> PhysicalOwnerCase:
     from shellctl.shared.schemas import NativeScopeLimits, NativeScopeSpec
 
     from models.dify_builder_native_code import NativeCodePhysicalOperation
@@ -443,13 +502,10 @@ def owner_case(monkeypatch, sqlite_session):
         attempt_id=p.attempt_id,
         expires_at=(now + timedelta(seconds=30)).isoformat(),
     )
-    owner = {
-        "tenant_id": p.tenant_id,
-        "request_id": p.ref.request_id,
-        "invocation_id": p.ref.invocation_id,
-    }
     operation = NativeEffectOperation(
-        **owner,
+        tenant_id=p.tenant_id,
+        request_id=p.ref.request_id,
+        invocation_id=p.ref.invocation_id,
         id=p.operation_id,
         operation_digest=operation_digest(key),
         intent_digest=canonical_digest(intent.model_dump(mode="json")),
@@ -457,7 +513,9 @@ def owner_case(monkeypatch, sqlite_session):
         scope_digest="a" * 64,
     )
     attempt = NativeEffectAttempt(
-        **owner,
+        tenant_id=p.tenant_id,
+        request_id=p.ref.request_id,
+        invocation_id=p.ref.invocation_id,
         id=p.attempt_id,
         operation_id=p.operation_id,
         execution_id=p.native_execution_id,
@@ -472,14 +530,18 @@ def owner_case(monkeypatch, sqlite_session):
         profile={},
     )
     claim = NativeEffectDispatchClaim(
-        **owner,
+        tenant_id=p.tenant_id,
+        request_id=p.ref.request_id,
+        invocation_id=p.ref.invocation_id,
         id=p.effect_claim_id,
         operation_id=p.operation_id,
         attempt_id=p.attempt_id,
         claimed_at=now,
     )
     root = NativeDispatch(
-        **owner,
+        tenant_id=p.tenant_id,
+        request_id=p.ref.request_id,
+        invocation_id=p.ref.invocation_id,
         id=p.acquisition.root_dispatch_id,
         generation=0,
         state="claimed",
@@ -487,7 +549,9 @@ def owner_case(monkeypatch, sqlite_session):
         idempotency_digest="c" * 64,
     )
     state = NativeInvocationState(
-        **owner,
+        tenant_id=p.tenant_id,
+        request_id=p.ref.request_id,
+        invocation_id=p.ref.invocation_id,
         generation=0,
         parent_invocation_id=None,
         cleanup_complete=False,
@@ -496,7 +560,7 @@ def owner_case(monkeypatch, sqlite_session):
         pending_ids=[],
         resolution=[],
     )
-    rows = {
+    rows: dict[type, object] = {
         NativeEffectOperation: operation,
         NativeEffectAttempt: attempt,
         NativeEffectDispatchClaim: claim,
@@ -504,14 +568,14 @@ def owner_case(monkeypatch, sqlite_session):
         NativeInvocationState: state,
     }
     stored = []
-    events = []
+    events: list[str] = []
 
     session = sqlite_session
     session.add_all([operation, attempt, claim, root, state])
     session.commit()
     from sqlalchemy import event
 
-    def added(_session, instance):
+    def added(_session: object, instance: object) -> None:
         if isinstance(instance, NativeCodePhysicalOperation):
             stored.append(instance)
 
@@ -527,7 +591,9 @@ def owner_case(monkeypatch, sqlite_session):
     scope = _scope(p)
 
     @contextmanager
-    def transaction(**kwargs):
+    def transaction(
+        **kwargs: Unpack[TransactionArguments],
+    ) -> Generator[tuple[Session, OwnedNativeTest | None, NativeTestScope | None]]:
         current.check_current(kwargs["acquisition"])
         if session.in_transaction() or session.dirty:
             session.commit()
@@ -539,7 +605,7 @@ def owner_case(monkeypatch, sqlite_session):
 
     monkeypatch.setattr(repo, "_transaction", transaction)
 
-    def validator(**kwargs):
+    def validator(**kwargs: object) -> NativeEffectAttempt:
         assert kwargs["intent"] == intent
         assert kwargs["permit"] == permit
         events.append("validated")
@@ -547,12 +613,12 @@ def owner_case(monkeypatch, sqlite_session):
 
     monkeypatch.setattr(repo.authorization, "_validate_dispatch_locked", validator)
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: object, **kwargs: object) -> None:
         del args, kwargs
         raise AssertionError("independent permit transaction forbidden")
 
     monkeypatch.setattr(repo.authorization, "_permit_ref", forbidden)
-    args = {
+    args: ReservationArguments = {
         "ref": p.ref,
         "key": key,
         "permit": permit,
@@ -582,8 +648,8 @@ def owner_case(monkeypatch, sqlite_session):
 
 
 def test_scope_reservation_rechecks_real_intent_without_nested_permit_transaction(
-    owner_case,
-):
+    owner_case: PhysicalOwnerCase,
+) -> None:
     t = owner_case
     p = t.repo.reserve_scope(**t.args)
     assert len(t.stored) == 1
@@ -608,7 +674,7 @@ def test_scope_reservation_rechecks_real_intent_without_nested_permit_transactio
         ("state", "parent_invocation_id"),
     ],
 )
-def test_disconnected_owner_chain_cannot_reserve_scope(owner_case, row, field):
+def test_disconnected_owner_chain_cannot_reserve_scope(owner_case: PhysicalOwnerCase, row: str, field: str) -> None:
     t = owner_case
     setattr(
         {"operation": t.operation, "attempt": t.attempt, "claim": t.claim, "root": t.root, "state": t.state}[row],
@@ -620,7 +686,7 @@ def test_disconnected_owner_chain_cannot_reserve_scope(owner_case, row, field):
     assert t.stored == []
 
 
-def test_stale_acquisition_and_changed_spec_refuse_before_scope_insert(owner_case):
+def test_stale_acquisition_and_changed_spec_refuse_before_scope_insert(owner_case: PhysicalOwnerCase) -> None:
     t = owner_case
     t.current.fail_at = 1
     with pytest.raises(BuilderExecutionPolicyError):
@@ -633,7 +699,7 @@ def test_stale_acquisition_and_changed_spec_refuse_before_scope_insert(owner_cas
     assert t.stored == []
 
 
-def test_acquisition_loss_after_commit_never_returns_io_permission(owner_case):
+def test_acquisition_loss_after_commit_never_returns_io_permission(owner_case: PhysicalOwnerCase) -> None:
     t = owner_case
     t.current.fail_at = 3
     with pytest.raises(BuilderExecutionPolicyError):
@@ -645,12 +711,14 @@ def test_acquisition_loss_after_commit_never_returns_io_permission(owner_case):
     assert len(t.stored) == 1
 
 
-def test_aborted_scope_reservation_cannot_retry_same_delivery(owner_case, monkeypatch):
+def test_aborted_scope_reservation_cannot_retry_same_delivery(
+    owner_case: PhysicalOwnerCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     t = owner_case
     original = t.repo._transaction
 
     @contextmanager
-    def rollback(**kwargs):
+    def rollback(**kwargs: Unpack[TransactionArguments]) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
         with original(**kwargs) as values:
             yield values
             t.stored.clear()
@@ -665,18 +733,20 @@ def test_aborted_scope_reservation_cannot_retry_same_delivery(owner_case, monkey
     assert t.stored == []
 
 
-def test_initial_lock_timeout_precedes_ownership_read_and_current_fences_commit(mocker):
+def test_initial_lock_timeout_precedes_ownership_read_and_current_fences_commit(
+    mocker: pytest_mock.MockerFixture,
+) -> None:
     from services.dify_builder.native_testing.sandbox.repository import NativeCodePhysicalRepository
 
     p = physical()
-    events = []
+    events: list[str] = []
 
     class Owner:
-        def check_current(self, acquisition):
+        def check_current(self, acquisition: CodeAcquisitionRef) -> None:
             assert acquisition == p.acquisition
             events.append("current")
 
-    def timeout(statement, params):
+    def timeout(statement: object, params: dict[str, str]) -> None:
         assert "set_config" in str(statement)
         assert 0 < int(params["limit"][:-2]) <= 1000
         events.append("timeout")
@@ -690,14 +760,14 @@ def test_initial_lock_timeout_precedes_ownership_read_and_current_fences_commit(
         record_begin=True,
     )
 
-    def load(session, **kwargs):
+    def load(session: Session, **kwargs: object) -> tuple[OwnedNativeTest, NativeTestScope]:
         assert isinstance(session, Session)
         assert events[-1] == "timeout"
         assert kwargs["lock"] is True
         events.append("load")
         return _owned(p), _scope(p)
 
-    loader._load.side_effect = load
+    installed_mock(loader._load).side_effect = load
     repo = NativeCodePhysicalRepository(
         loader, acquisition_owner=Owner(), transaction_deadline=fixed_transaction_deadline()
     )
@@ -706,11 +776,13 @@ def test_initial_lock_timeout_precedes_ownership_read_and_current_fences_commit(
     assert events == ["current", "begin", "timeout", "load", "mutation", "current", "commit", "current"]
 
 
-def test_admission_expiring_during_writer_rolls_back_before_commit(mocker, monkeypatch):
+def test_admission_expiring_during_writer_rolls_back_before_commit(
+    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.native_testing.sandbox import repository as module
 
     p = physical()
-    events = []
+    events: list[str] = []
     deadline = datetime.now(UTC) + timedelta(seconds=1)
 
     loader = _timeout_loader(mocker, p, events=events, execute=lambda *_args, **_kwargs: None, expires_at=deadline)
@@ -728,22 +800,25 @@ def test_admission_expiring_during_writer_rolls_back_before_commit(mocker, monke
 
 
 @pytest.mark.parametrize("settlement", [False, True])
-def test_transaction_uses_exact_operation_budget_and_refuses_expiry_before_commit(mocker, monkeypatch, settlement):
+def test_transaction_uses_exact_operation_budget_and_refuses_expiry_before_commit(
+    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, settlement: bool
+) -> None:
     from services.dify_builder.native_testing.sandbox import repository as module
 
     p = physical()
-    events, limits = [], []
+    events: list[str] = []
+    limits: list[int] = []
     clock = [10.0]
     monkeypatch.setattr(module, "monotonic", lambda: clock[0], raising=False)
 
-    def timeout(_statement, params):
+    def timeout(_statement: object, params: dict[str, str]) -> None:
         limits.append(int(params["limit"][:-2]))
 
     loader = _timeout_loader(
         mocker, p, events=events, execute=timeout, expires_at=datetime.now(UTC) + timedelta(seconds=30)
     )
 
-    def transaction_deadline(is_settlement):
+    def transaction_deadline(is_settlement: bool) -> float:
         assert is_settlement is settlement
         return 10.05 if is_settlement else 10.03
 
@@ -751,7 +826,7 @@ def test_transaction_uses_exact_operation_budget_and_refuses_expiry_before_commi
         loader, acquisition_owner=Current(), transaction_deadline=transaction_deadline
     )
 
-    def expire_during_transaction():
+    def expire_during_transaction() -> None:
         with repo._transaction(
             ref=p.ref,
             acquisition=p.acquisition,
@@ -768,7 +843,9 @@ def test_transaction_uses_exact_operation_budget_and_refuses_expiry_before_commi
 
 
 @pytest.mark.parametrize("deadline", [float("nan"), float("inf"), True, None, "later", -1.0])
-def test_invalid_or_expired_transaction_deadline_never_opens_writer(mocker, deadline):
+def test_invalid_or_expired_transaction_deadline_never_opens_writer(
+    mocker: pytest_mock.MockerFixture, deadline: object
+) -> None:
     from services.dify_builder.native_testing.sandbox.repository import (
         NativeCodePhysicalRepository,
     )
@@ -778,7 +855,9 @@ def test_invalid_or_expired_transaction_deadline_never_opens_writer(mocker, dead
     factory = sessionmaker()
     begin = mocker.patch.object(factory, "begin", side_effect=AssertionError("invalid budget opened SQL writer"))
     loader = _loader(factory)
-    repo = NativeCodePhysicalRepository(loader, acquisition_owner=Current(), transaction_deadline=lambda _: deadline)
+    repo = NativeCodePhysicalRepository(
+        loader, acquisition_owner=Current(), transaction_deadline=lambda _: cast(float, deadline)
+    )
     with (
         pytest.raises(BuilderExecutionPolicyError),
         repo._transaction(ref=p.ref, acquisition=p.acquisition, settlement=True),
@@ -788,7 +867,9 @@ def test_invalid_or_expired_transaction_deadline_never_opens_writer(mocker, dead
 
 
 @pytest.mark.parametrize("cap", ["candidate", "logical", "attempt", "scope", "root"])
-def test_admission_persists_once_bounded_wire_spec_separate_from_logical_intent(owner_case, cap):
+def test_admission_persists_once_bounded_wire_spec_separate_from_logical_intent(
+    owner_case: PhysicalOwnerCase, cap: str
+) -> None:
     from runtime_contracts.builder.execution import canonical_digest
 
     t = owner_case
@@ -811,13 +892,15 @@ def test_admission_persists_once_bounded_wire_spec_separate_from_logical_intent(
     assert physical.scope_spec_digest == canonical_digest(wire.model_dump(mode="json"))
     assert t.args["intent"].model_dump(mode="json") == original_intent
     with pytest.raises(BuilderExecutionPolicyError):
-        t.repo.reserve_scope(**{**t.args, "physical_deadline": deadline + timedelta(seconds=1)})
+        t.repo.reserve_scope(
+            **cast(ReservationArguments, {**t.args, "physical_deadline": deadline + timedelta(seconds=1)})
+        )
     assert len(t.stored) == 1
     assert t.stored[0].scope_expires_at == deadline
 
 
 @pytest.mark.parametrize("seconds", [-1, 31])
-def test_expired_or_unbounded_physical_candidate_never_reserves(owner_case, seconds):
+def test_expired_or_unbounded_physical_candidate_never_reserves(owner_case: PhysicalOwnerCase, seconds: float) -> None:
     t = owner_case
     t.args["physical_deadline"] = datetime.now(UTC) + timedelta(seconds=seconds)
     with pytest.raises(BuilderExecutionPolicyError):
@@ -825,7 +908,7 @@ def test_expired_or_unbounded_physical_candidate_never_reserves(owner_case, seco
     assert not t.stored
 
 
-def test_expired_root_refuses_reservation_even_with_live_effect_permit(owner_case):
+def test_expired_root_refuses_reservation_even_with_live_effect_permit(owner_case: PhysicalOwnerCase) -> None:
     t = owner_case
     t.root.claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
     with pytest.raises(BuilderExecutionPolicyError):
@@ -833,7 +916,9 @@ def test_expired_root_refuses_reservation_even_with_live_effect_permit(owner_cas
     assert not t.stored
 
 
-def test_settlement_reloads_exact_persisted_deadline_after_expiry_without_recreate(owner_case, monkeypatch):
+def test_settlement_reloads_exact_persisted_deadline_after_expiry_without_recreate(
+    owner_case: PhysicalOwnerCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from models.dify_builder_native_code import NativeCodePhysicalOperation
     from services.dify_builder.native_testing.sandbox import repository as module
 
@@ -842,9 +927,9 @@ def test_settlement_reloads_exact_persisted_deadline_after_expiry_without_recrea
     original_expiry = t.root.claim_expires_at
     scalar = t.session.scalar
 
-    def row_read(query):
+    def row_read[T](query: Select[tuple[T]]) -> T | None:
         if query.column_descriptions[0]["entity"] is NativeCodePhysicalOperation:
-            return t.stored[0]
+            return cast(T, t.stored[0])
         return scalar(query)
 
     monkeypatch.setattr(t.session, "scalar", row_read)
@@ -861,9 +946,12 @@ def test_settlement_reloads_exact_persisted_deadline_after_expiry_without_recrea
     assert loaded.destroyed_at is None
     with pytest.raises(BuilderExecutionPolicyError):
         t.repo.reserve_scope(
-            **{
-                **t.args,
-                "physical_deadline": physical.scope_expires_at + timedelta(seconds=10),
-            }
+            **cast(
+                ReservationArguments,
+                {
+                    **t.args,
+                    "physical_deadline": physical.scope_expires_at + timedelta(seconds=10),
+                },
+            )
         )
     assert len(t.stored) == 1

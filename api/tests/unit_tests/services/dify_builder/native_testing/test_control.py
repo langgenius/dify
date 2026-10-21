@@ -23,6 +23,7 @@ from graphon.engine_events.node import NodeRunPauseRequestedEvent, NodeRunStarte
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.entities.pause_reason import SchedulingPause
+from graphon.enums import NodeExecutionType
 from graphon.graph.graph import Graph
 from graphon.nodes.base.node import Node
 from graphon.nodes.code.code_node import CodeNode
@@ -243,11 +244,11 @@ class Factory:
     children: list[RuntimeState] = field(default_factory=list)
     run_context: Mapping[str, object] = field(default_factory=dict)
 
-    def with_runtime_state(self, graph_runtime_state: RuntimeState) -> Factory:
-        self.children.append(graph_runtime_state)
+    def with_runtime_state(self, runtime_state: RuntimeState) -> Factory:
+        self.children.append(runtime_state)
         return Factory(
             self.config,
-            graph_runtime_state,
+            runtime_state,
             self.owner,
             self.sink,
             self.effects,
@@ -261,19 +262,19 @@ class Factory:
 
         return replace(self, config=cast(RawGraphConfig, graph_config))
 
-    def validate_node(self, node_config: NodeConfigDict):
+    def validate_node(self, node_config: NodeConfigDict) -> NodeExecutionType:
         raw = node_config["data"].model_dump(mode="python", exclude_unset=True)
         original = next(cls for cls in ORIGINALS if cls.node_type == raw["type"])
         original.validate_node_data(raw)
         return original.execution_type
 
     def create_node(self, node_config: NodeConfigDict) -> Node[BaseNodeData]:
-        node_config = {**node_config, "data": node_config["data"].model_dump(mode="python", exclude_unset=True)}
-        original = next(cls for cls in ORIGINALS if cls.node_type == node_config["data"]["type"])
+        raw_data = node_config["data"].model_dump(mode="python", exclude_unset=True)
+        original = next(cls for cls in ORIGINALS if cls.node_type == raw_data["type"])
         cls = native_control.marked_native_node_class(original, marked=self.marked)
         kwargs: dict[str, object] = {
             "node_id": node_config["id"],
-            "data": cls.validate_node_data(node_config["data"]),
+            "data": cls.validate_node_data(raw_data),
             "init_params": InitParams(
                 workflow_id=self.runtime.graph_execution.workflow_id,
                 graph_config=self.config,
@@ -578,7 +579,11 @@ def test_actual_iteration_child_restore_and_container_resume_forward_native_algo
     from threading import Barrier
 
     arrived = Barrier(2)
-    first.sink.before_accept = lambda _record: arrived.wait(timeout=3)
+
+    def before_accept(_record: NativeControlRecord) -> None:
+        arrived.wait(timeout=3)
+
+    first.sink.before_accept = before_accept
     assert isinstance(list(native.run())[-1], GraphRunPausedEvent)
     assert first.children
     assert first.effects.dispatches == 0
@@ -679,7 +684,7 @@ class ObservedNode(AbstractContextManager[None]):
     """Witness exact native instance and callback lifetime, never host completion."""
 
     observations: Observations
-    node: Node
+    node: Node[BaseNodeData]
     phase: Literal["run", "resume_container"]
     thread: Thread = field(default_factory=current_thread)
     execution_id: str = field(init=False)
@@ -720,7 +725,9 @@ class Observations:
     suppress: bool = False
     before_exit: Callable[[ObservedNode], None] | None = None
 
-    def node_scope(self, *, node: Node, phase: Literal["run", "resume_container"]) -> AbstractContextManager[None]:
+    def node_scope(
+        self, *, node: Node[BaseNodeData], phase: Literal["run", "resume_container"]
+    ) -> AbstractContextManager[None]:
         if self.factory_error is not None:
             raise self.factory_error
         return ObservedNode(self, node, phase)

@@ -5,13 +5,15 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import json
+from collections.abc import Callable, Sequence
 from copy import deepcopy
 from datetime import UTC, datetime
 from importlib.metadata import version
 from types import SimpleNamespace
-from typing import cast, override
+from typing import NoReturn, cast, override
 
 import pytest
+from typing_extensions import TypedDict
 
 from graphon.engine.layer import ExecutionLimitsLayer, Layer
 from graphon.engine_events import (
@@ -41,6 +43,7 @@ from graphon.engine_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from graphon.engine_events.base import NodeEvent
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.entities.workflow_start_reason import WorkflowStartReason
 from graphon.enums import WorkflowNodeExecutionMetadataKey as Metadata
@@ -58,18 +61,25 @@ from services.dify_builder.native_testing.http_binding import (
     build_native_http_profile,
     describe_http_resource,
 )
+from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
 
 SENTINEL = "PRIVATE_LITERAL_SENTINEL_7c91"
 NOW = datetime(2026, 10, 16, tzinfo=UTC)
 
 
-def owner():
+def owner() -> type[NativeHttpObservationPolicy]:
     module = "services.dify_builder.native_testing.observation_privacy"
     assert importlib.util.find_spec(module) is not None, "pure native observation policy is missing"
     return importlib.import_module(module).NativeHttpObservationPolicy
 
 
-def context():
+def project_event[T: EngineEvent](policy: NativeHttpObservationPolicy, event: T) -> T:
+    projected = policy.event(event)
+    assert type(projected) is type(event)
+    return cast(T, projected)
+
+
+def context() -> ResolvedNativeTestContext:
     raw = {
         "type": "http-request",
         "version": "1",
@@ -88,7 +98,7 @@ def context():
         "nodes": [
             {
                 "id": "start",
-                "data": {"type": "start", "variables": [], "title": SENTINEL},
+                "data": {"type": "start", "variables": list[object](), "title": SENTINEL},
             },
             {"id": "http", "data": raw},
             {
@@ -140,17 +150,27 @@ def context():
 
 
 @pytest.fixture
-def policy():
+def policy() -> NativeHttpObservationPolicy:
     assert version("graphon") == "0.8.0"
     return owner().qualify(context=context(), profile=build_native_http_profile())
 
 
-def graph_data(ctx: ResolvedNativeTestContext) -> dict:
+class FixtureNode(TypedDict, extra_items=object):
+    id: str
+    data: dict[str, object]
+
+
+class FixtureGraph(TypedDict, extra_items=object):
+    nodes: list[FixtureNode]
+    edges: list[dict[str, str]]
+
+
+def graph_data(ctx: ResolvedNativeTestContext) -> FixtureGraph:
     """Mutable JSON fixture boundary; production revalidates before projection."""
-    return cast(dict, ctx.graph)
+    return cast(FixtureGraph, ctx.graph)
 
 
-def result():
+def result() -> NodeRunResult:
     return NodeRunResult(
         status=Status.FAILED,
         inputs={SENTINEL: [True, None, 3, 1.5, SENTINEL]},
@@ -188,7 +208,7 @@ def result():
     )
 
 
-def test_qualification_and_graph_copy_do_not_modify_protected_context():
+def test_qualification_and_graph_copy_do_not_modify_protected_context() -> None:
     policy = owner().qualify(context=context(), profile=build_native_http_profile())
     original = context()
     before = original.model_dump(mode="json")
@@ -207,8 +227,8 @@ def test_qualification_and_graph_copy_do_not_modify_protected_context():
 
 
 def test_real_result_echo_and_retry_history_are_redacted_with_independent_observers(
-    policy,
-):
+    policy: NativeHttpObservationPolicy,
+) -> None:
     original = NodeRunFailedEvent(
         id="execution",
         node_id="http",
@@ -220,7 +240,7 @@ def test_real_result_echo_and_retry_history_are_redacted_with_independent_observ
         finished_at=NOW,
     )
     before = original.model_dump(mode="json")
-    left, right = policy.event(original), policy.event(original)
+    left, right = project_event(policy, original), project_event(policy, original)
     assert type(left) is NodeRunFailedEvent
     assert SENTINEL not in left.model_dump_json()
     assert left.id == "execution"
@@ -240,7 +260,7 @@ def test_real_result_echo_and_retry_history_are_redacted_with_independent_observ
         attempt["created_at"],
         attempt["finished_at"],
     ) == (1, 0.25, 1, 2)
-    cast(dict, left.node_run_result.inputs)["redacted"] = False
+    cast(dict[str, object], left.node_run_result.inputs)["redacted"] = False
     attempt["inputs"]["redacted"] = False
     assert right.node_run_result.inputs["redacted"] is True
     assert right.node_run_result.process_data["__dify_retry_history"][0]["inputs"]["redacted"] is True
@@ -273,17 +293,22 @@ def test_real_result_echo_and_retry_history_are_redacted_with_independent_observ
         ),
     ],
 )
-def test_graph_events_retain_types_counts_and_safe_correlations(policy, event):
+def test_graph_events_retain_types_counts_and_safe_correlations(
+    policy: NativeHttpObservationPolicy, event: EngineEvent
+) -> None:
     before = event.model_dump(mode="json")
-    projected = policy.event(event)
+    projected = project_event(policy, event)
     assert type(projected) is type(event)
     assert projected is not event
     assert SENTINEL not in projected.model_dump_json()
-    if hasattr(event, "exceptions_count"):
+    if isinstance(event, (GraphRunPartialSucceededEvent, GraphRunFailedEvent)):
+        assert isinstance(projected, (GraphRunPartialSucceededEvent, GraphRunFailedEvent))
         assert projected.exceptions_count == event.exceptions_count
     if isinstance(event, GraphRunStartedEvent):
+        assert isinstance(projected, GraphRunStartedEvent)
         assert projected.reason is WorkflowStartReason.RESUMPTION
     if isinstance(event, GraphEdgeTakenEvent | GraphEdgeSkippedEvent):
+        assert isinstance(projected, GraphEdgeTakenEvent | GraphEdgeSkippedEvent)
         assert projected.edge_id == event.edge_id
         assert projected.source_node_id == event.source_node_id
     assert event.model_dump(mode="json") == before
@@ -318,31 +343,31 @@ def test_graph_events_retain_types_counts_and_safe_correlations(policy, event):
         (NodeRunPauseRequestedEvent, {"reason": SchedulingPause(message=SENTINEL)}),
     ],
 )
-def test_node_event_content_never_survives_projection(policy, cls, extra):
-    event = cls(
-        id="execution",
-        node_id="http",
-        node_type="http-request",
-        node_run_result=result(),
-        **extra,
+def test_node_event_content_never_survives_projection(
+    policy: NativeHttpObservationPolicy, cls: type[NodeEvent], extra: dict[str, object]
+) -> None:
+    event = cls.model_validate(
+        {"id": "execution", "node_id": "http", "node_type": "http-request", "node_run_result": result(), **extra}
     )
-    projected = policy.event(event)
+    projected = project_event(policy, event)
     assert type(projected) is cls
     assert SENTINEL not in projected.model_dump_json()
     assert projected.id == "execution"
     assert projected.node_type == "http-request"
     if "retry_index" in extra:
+        assert isinstance(projected, NodeRunRetryEvent)
         assert projected.retry_index == 2
     if "is_final" in extra:
+        assert isinstance(projected, NodeRunStreamChunkEvent)
         assert projected.is_final is True
 
 
-def container_context(kind):
+def container_context(kind: str) -> ResolvedNativeTestContext:
     ctx = context()
     graph = deepcopy(graph_data(ctx))
-    body = {"id": "body-start", "data": {"type": f"{kind}-start", "title": SENTINEL}}
+    body: FixtureNode = {"id": "body-start", "data": {"type": f"{kind}-start", "title": SENTINEL}}
     if kind == "iteration":
-        data = {
+        data: dict[str, object] = {
             "type": kind,
             "start_node_id": "body-start",
             "iterator_selector": ["start", "items"],
@@ -354,7 +379,7 @@ def container_context(kind):
             "type": kind,
             "start_node_id": "body-start",
             "loop_count": 2,
-            "break_conditions": [],
+            "break_conditions": list[object](),
             "logical_operator": "and",
         }
         body["data"]["loop_id"] = "container"
@@ -386,10 +411,12 @@ def container_context(kind):
         ),
     ],
 )
-def test_real_container_events_keep_iteration_steps_and_independent_content(kind, classes):
+def test_real_container_events_keep_iteration_steps_and_independent_content(
+    kind: str, classes: Sequence[type[NodeEvent]]
+) -> None:
     policy = owner().qualify(context=container_context(kind), profile=build_native_http_profile())
     for cls in classes:
-        fields = {
+        fields: dict[str, object] = {
             "id": "container-execution",
             "node_id": "container",
             "node_type": kind,
@@ -403,18 +430,28 @@ def test_real_container_events_keep_iteration_steps_and_independent_content(kind
             fields.update(index=1, **{f"pre_{kind}_output": {SENTINEL: SENTINEL}})
         if "error" in cls.model_fields:
             fields["error"] = SENTINEL
-        original = cls(**fields)
-        projected = policy.event(original)
+        original = cls.model_validate(fields)
+        projected = project_event(policy, original)
         assert type(projected) is cls
         assert projected.id == "container-execution"
         assert SENTINEL not in projected.model_dump_json()
         if "steps" in fields:
+            assert isinstance(
+                projected,
+                (
+                    NodeRunIterationSucceededEvent,
+                    NodeRunIterationFailedEvent,
+                    NodeRunLoopSucceededEvent,
+                    NodeRunLoopFailedEvent,
+                ),
+            )
             assert projected.steps == 2
         if "index" in fields:
+            assert isinstance(projected, (NodeRunIterationNextEvent, NodeRunLoopNextEvent))
             assert projected.index == 1
 
 
-def test_values_preserve_typed_shape_only_and_none(policy):
+def test_values_preserve_typed_shape_only_and_none(policy: NativeHttpObservationPolicy) -> None:
     original = {SENTINEL: [True, None, 2, 1.25, SENTINEL]}
     projected = policy.values(original)
     assert projected["redacted"] is True
@@ -434,32 +471,34 @@ def test_values_preserve_typed_shape_only_and_none(policy):
 
 
 class Hostile:
-    def __str__(self):
+    def __str__(self) -> NoReturn:
         raise AssertionError("unclassified str was invoked")
 
-    def __repr__(self):
+    def __repr__(self) -> NoReturn:
         raise AssertionError("unclassified repr was invoked")
 
 
 @pytest.mark.parametrize("value", [Hostile(), float("nan"), float("inf"), {1: SENTINEL}, b"private"])
-def test_unsupported_values_refuse_without_rendering_contents(policy, value):
+def test_unsupported_values_refuse_without_rendering_contents(
+    policy: NativeHttpObservationPolicy, value: object
+) -> None:
     with pytest.raises(BuilderExecutionPolicyError) as caught:
         policy.values({"payload": value})
     assert str(caught.value) == "Builder execution policy refused: native_observation_unsupported"
     assert caught.value.__cause__ is None
 
 
-def test_deep_or_cyclic_values_refuse_safely(policy):
+def test_deep_or_cyclic_values_refuse_safely(policy: NativeHttpObservationPolicy) -> None:
     cyclic = {}
     cyclic["self"] = cyclic
     with pytest.raises(BuilderExecutionPolicyError, match="native_observation_unsupported"):
         policy.values(cyclic)
 
 
-def test_errors_never_render_exceptions_and_only_keep_finite_known_kinds(policy):
+def test_errors_never_render_exceptions_and_only_keep_finite_known_kinds(policy: NativeHttpObservationPolicy) -> None:
     class HostileError(Exception):
         @override
-        def __str__(self):
+        def __str__(self) -> NoReturn:
             raise AssertionError("exception content was rendered")
 
     assert policy.error(HostileError(SENTINEL)) == "native_execution_error"
@@ -483,12 +522,13 @@ def test_errors_never_render_exceptions_and_only_keep_finite_known_kinds(policy)
         "features",
     ],
 )
-def test_invalid_contexts_and_descriptor_drift_refuse_without_content(mutation):
+def test_invalid_contexts_and_descriptor_drift_refuse_without_content(mutation: str) -> None:
     ctx = context()
     if mutation == "manifest":
-        cast(dict, ctx.resource_manifest[0])["policy"]["cost_units"] = 99
+        cast(dict[str, object], ctx.resource_manifest[0]["policy"])["cost_units"] = 99
     elif mutation == "node":
-        graph_data(ctx)["nodes"][1]["data"]["url"] += "/changed"
+        raw_data = graph_data(ctx)["nodes"][1]["data"]
+        raw_data["url"] = cast(str, raw_data["url"]) + "/changed"
     elif mutation == "revision":
         ctx = ctx.model_copy(update={"graph_revision": "c" * 64})
     elif mutation == "owner":
@@ -510,24 +550,25 @@ def test_invalid_contexts_and_descriptor_drift_refuse_without_content(mutation):
     assert SENTINEL not in str(caught.value)
 
 
-def test_actual_server_profile_is_required_and_drift_refuses():
+def test_actual_server_profile_is_required_and_drift_refuses() -> None:
     profile = build_native_http_profile()
     profile.limits["calls"] = 99
     with pytest.raises(BuilderExecutionPolicyError):
         owner().qualify(context=context(), profile=profile)
     with pytest.raises(TypeError):
-        owner().qualify(context=context())
+        cast(Callable[..., NativeHttpObservationPolicy], owner().qualify)(context=context())
 
 
-def test_policy_snapshots_context_against_later_mutation():
+def test_policy_snapshots_context_against_later_mutation() -> None:
     ctx = context()
     pinned = owner().qualify(context=ctx, profile=build_native_http_profile())
-    graph_data(ctx)["nodes"][1]["data"]["url"] += "/changed"
+    raw_data = graph_data(ctx)["nodes"][1]["data"]
+    raw_data["url"] = cast(str, raw_data["url"]) + "/changed"
     with pytest.raises(BuilderExecutionPolicyError):
         pinned.graph(ctx.graph)
 
 
-def test_unknown_event_subclass_or_unowned_identity_refuses(policy):
+def test_unknown_event_subclass_or_unowned_identity_refuses(policy: NativeHttpObservationPolicy) -> None:
     class NewEvent(EngineEvent):
         private: str = SENTINEL
 
@@ -545,14 +586,16 @@ def test_unknown_event_subclass_or_unowned_identity_refuses(policy):
         policy.event(event)
 
 
-def test_human_input_is_not_reported_as_a_qualified_native_wait(policy):
+def test_human_input_is_not_reported_as_a_qualified_native_wait(policy: NativeHttpObservationPolicy) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
         policy.event(
             GraphRunPausedEvent(reasons=[HitlRequired(session_id=SENTINEL, node_id="http", node_title=SENTINEL)])
         )
 
 
-def test_only_explicit_native_execution_limits_layer_is_structurally_qualified(policy):
+def test_only_explicit_native_execution_limits_layer_is_structurally_qualified(
+    policy: NativeHttpObservationPolicy,
+) -> None:
     policy.require_layers([])
     policy.require_layers([ExecutionLimitsLayer(max_steps=10, max_time=10)])
 
@@ -565,11 +608,11 @@ def test_only_explicit_native_execution_limits_layer_is_structurally_qualified(p
         Hostile(),
     ):
         with pytest.raises(BuilderExecutionPolicyError) as caught:
-            policy.require_layers([layer])
+            policy.require_layers(cast(Sequence[Layer], [layer]))
         assert SENTINEL not in str(caught.value)
 
 
-def test_native_edge_identity_is_distinct_from_editor_identity_and_missing_editor_ids():
+def test_native_edge_identity_is_distinct_from_editor_identity_and_missing_editor_ids() -> None:
     ctx = context()
     for edge in graph_data(ctx)["edges"]:
         edge.pop("id")
@@ -588,7 +631,7 @@ def test_native_edge_identity_is_distinct_from_editor_identity_and_missing_edito
         target_node_id="http",
         source_handle="source",
     )
-    assert policy.event(event).edge_id == "edge_0"
+    assert project_event(policy, event).edge_id == "edge_0"
 
 
 @pytest.mark.parametrize(
@@ -600,7 +643,9 @@ def test_native_edge_identity_is_distinct_from_editor_identity_and_missing_edito
         ("node_type", Hostile()),
     ],
 )
-def test_unchecked_native_event_shapes_refuse_with_fixed_reason(policy, field, value):
+def test_unchecked_native_event_shapes_refuse_with_fixed_reason(
+    policy: NativeHttpObservationPolicy, field: str, value: object
+) -> None:
     event = NodeRunSucceededEvent(id="execution", node_id="http", node_type="http-request", start_at=NOW)
     malformed = event.model_copy(update={field: value})
     with pytest.raises(BuilderExecutionPolicyError, match="native_observation_unsupported"):
@@ -608,8 +653,8 @@ def test_unchecked_native_event_shapes_refuse_with_fixed_reason(policy, field, v
 
 
 def test_original_runtime_outputs_and_variable_selection_survive_diagnostic_mutation(
-    policy,
-):
+    policy: NativeHttpObservationPolicy,
+) -> None:
     from graphon.runtime import RuntimeState, VariablePool
 
     pool = VariablePool()
@@ -623,8 +668,9 @@ def test_original_runtime_outputs_and_variable_selection_survive_diagnostic_muta
         start_at=NOW,
         node_run_result=NodeRunResult(status=Status.SUCCEEDED, outputs=runtime.outputs),
     )
-    first = policy.event(native)
-    second = policy.event(native)
+    first = project_event(policy, native)
+    second = project_event(policy, native)
+    assert isinstance(first.node_run_result.outputs, dict)
     first.node_run_result.outputs["redacted"] = False
     assert runtime.outputs == {"answer": {"body": SENTINEL}}
     selected = pool.get(["http", "body"])
@@ -634,19 +680,19 @@ def test_original_runtime_outputs_and_variable_selection_survive_diagnostic_muta
     assert second.node_run_result.outputs["redacted"] is True
 
 
-def test_unsupported_value_after_display_cutoff_is_still_refused(policy):
+def test_unsupported_value_after_display_cutoff_is_still_refused(policy: NativeHttpObservationPolicy) -> None:
     payload = [SENTINEL] * 8 + [Hostile()]
     with pytest.raises(BuilderExecutionPolicyError, match="native_observation_unsupported"):
         policy.values({"payload": payload})
 
 
-def test_large_private_content_projects_to_bounded_shape(policy):
+def test_large_private_content_projects_to_bounded_shape(policy: NativeHttpObservationPolicy) -> None:
     view = policy.values({SENTINEL: SENTINEL * 100_000})
     assert len(json.dumps(view)) < 200
     assert SENTINEL not in json.dumps(view)
 
 
-def test_missing_nonempty_file_or_unknown_metadata_objects_do_not_pass(policy):
+def test_missing_nonempty_file_or_unknown_metadata_objects_do_not_pass(policy: NativeHttpObservationPolicy) -> None:
     native = NodeRunSucceededEvent(id="execution", node_id="http", node_type="http-request", start_at=NOW)
     for poisoned in (
         NodeRunResult().model_copy(update={"outputs": {"files": ArrayFileSegment.model_construct(value=[Hostile()])}}),
@@ -660,7 +706,9 @@ def test_missing_nonempty_file_or_unknown_metadata_objects_do_not_pass(policy):
     "field",
     ["inputs", "outputs", "process_data", "error", "error_type", "edge_source_handle"],
 )
-def test_unchecked_result_field_types_refuse_before_native_validation(policy, field):
+def test_unchecked_result_field_types_refuse_before_native_validation(
+    policy: NativeHttpObservationPolicy, field: str
+) -> None:
     original = NodeRunSucceededEvent(id="execution", node_id="http", node_type="http-request", start_at=NOW)
     bad = NodeRunResult().model_copy(update={field: None})
     with pytest.raises(BuilderExecutionPolicyError, match="native_observation_unsupported"):
@@ -696,13 +744,17 @@ def test_unchecked_result_field_types_refuse_before_native_validation(policy, fi
         ),
     ],
 )
-def test_unchecked_event_scalar_types_cannot_be_hidden_as_valid_evidence(policy, event, change):
+def test_unchecked_event_scalar_types_cannot_be_hidden_as_valid_evidence(
+    policy: NativeHttpObservationPolicy, event: EngineEvent, change: dict[str, object]
+) -> None:
     with pytest.raises(BuilderExecutionPolicyError, match="native_observation_unsupported"):
         policy.event(event.model_copy(update=change))
 
 
 @pytest.mark.parametrize("target", ["profile", "context"])
-def test_unchecked_context_and_profile_refuse_without_serialization_warnings(target, recwarn):
+def test_unchecked_context_and_profile_refuse_without_serialization_warnings(
+    target: str, recwarn: pytest.WarningsRecorder
+) -> None:
     ctx, profile = context(), build_native_http_profile()
     if target == "profile":
         profile = profile.model_copy(update={"limits": {"calls": SENTINEL}})
@@ -713,15 +765,15 @@ def test_unchecked_context_and_profile_refuse_without_serialization_warnings(tar
     assert not recwarn.list, "qualification serialized protected unchecked fields before refusing"
 
 
-def test_qualification_never_renders_unknown_context_objects():
-    calls = []
+def test_qualification_never_renders_unknown_context_objects() -> None:
+    calls: list[str] = []
 
     class Unclassified:
-        def __repr__(self):
+        def __repr__(self) -> str:
             calls.append("repr")
             return SENTINEL
 
-        def __str__(self):
+        def __str__(self) -> str:
             calls.append("str")
             return SENTINEL
 
@@ -732,7 +784,7 @@ def test_qualification_never_renders_unknown_context_objects():
 
 
 @pytest.mark.parametrize("value", [16.0, True])
-def test_unchecked_profile_limits_require_actual_strict_integer_counters(value):
+def test_unchecked_profile_limits_require_actual_strict_integer_counters(value: bool | float) -> None:
     profile = build_native_http_profile().model_copy(
         update={"limits": {"calls": value, "dispatches": 16, "cost_units": 16}}
     )
@@ -748,7 +800,7 @@ def test_unchecked_profile_limits_require_actual_strict_integer_counters(value):
         ("loop", "body-end", "loop-end"),
     ],
 )
-def test_container_internal_node_identity_is_preserved(kind, node_id, node_type):
+def test_container_internal_node_identity_is_preserved(kind: str, node_id: str, node_type: str) -> None:
     policy = owner().qualify(context=container_context(kind), profile=build_native_http_profile())
     event = NodeRunStartedEvent(
         id="internal-execution",
@@ -757,14 +809,14 @@ def test_container_internal_node_identity_is_preserved(kind, node_id, node_type)
         node_title=SENTINEL,
         start_at=NOW,
     )
-    projected = policy.event(event)
+    projected = project_event(policy, event)
     assert projected.node_id == node_id
     assert projected.id == "internal-execution"
     assert projected.node_type == node_type
     assert SENTINEL not in projected.model_dump_json()
 
 
-def fix1_metadata():
+def fix1_metadata() -> dict[str, object]:
     return {
         "iteration_id": "iteration-occurrence",
         "loop_id": "loop-occurrence",
@@ -779,7 +831,7 @@ def fix1_metadata():
     }
 
 
-def fix1_retry_event(metadata):
+def fix1_retry_event(metadata: dict[str, object]) -> NodeRunRetryEvent:
     from core.app.workflow.retry_history import WorkflowNodeRetryAttempt
 
     attempt = WorkflowNodeRetryAttempt(
@@ -812,10 +864,10 @@ def fix1_retry_event(metadata):
     )
 
 
-def test_fix1_retry_metadata_retains_native_correlation_counts_and_secrecy(policy):
+def test_fix1_retry_metadata_retains_native_correlation_counts_and_secrecy(policy: NativeHttpObservationPolicy) -> None:
     original = fix1_retry_event(fix1_metadata())
     before = original.model_dump(mode="json")
-    left, right = policy.event(original), policy.event(original)
+    left, right = project_event(policy, original), project_event(policy, original)
     left_metadata = left.node_run_result.process_data["__dify_retry_history"][0]["execution_metadata"]
     right_metadata = right.node_run_result.process_data["__dify_retry_history"][0]["execution_metadata"]
     assert left_metadata == {
@@ -847,11 +899,13 @@ def test_fix1_retry_metadata_retains_native_correlation_counts_and_secrecy(polic
         ("loop", NodeRunLoopFailedEvent),
     ],
 )
-def test_fix1_container_metadata_retains_native_length_correlation_and_independence(kind, cls):
+def test_fix1_container_metadata_retains_native_length_correlation_and_independence(
+    kind: str, cls: type[NodeEvent]
+) -> None:
     policy = owner().qualify(context=container_context(kind), profile=build_native_http_profile())
     metadata = fix1_metadata()
     metadata[f"{kind}_length"] = 3
-    fields = {
+    fields: dict[str, object] = {
         "id": "container-execution",
         "node_id": "container",
         "node_type": kind,
@@ -861,9 +915,31 @@ def test_fix1_container_metadata_retains_native_length_correlation_and_independe
     }
     if "error" in cls.model_fields:
         fields["error"] = SENTINEL
-    original = cls(**fields)
+    original = cls.model_validate(fields)
     before = original.model_dump(mode="json")
-    left, right = policy.event(original), policy.event(original)
+    left, right = project_event(policy, original), project_event(policy, original)
+    assert isinstance(
+        left,
+        (
+            NodeRunIterationStartedEvent,
+            NodeRunLoopStartedEvent,
+            NodeRunIterationSucceededEvent,
+            NodeRunLoopSucceededEvent,
+            NodeRunIterationFailedEvent,
+            NodeRunLoopFailedEvent,
+        ),
+    )
+    assert isinstance(
+        right,
+        (
+            NodeRunIterationStartedEvent,
+            NodeRunLoopStartedEvent,
+            NodeRunIterationSucceededEvent,
+            NodeRunLoopSucceededEvent,
+            NodeRunIterationFailedEvent,
+            NodeRunLoopFailedEvent,
+        ),
+    )
     assert left.metadata == {
         "iteration_id": "iteration-occurrence",
         "loop_id": "loop-occurrence",
@@ -876,6 +952,7 @@ def test_fix1_container_metadata_retains_native_length_correlation_and_independe
         f"{kind}_length": 3,
     }
     assert SENTINEL not in left.model_dump_json()
+    assert isinstance(left.metadata, dict)
     left.metadata[f"{kind}_length"] = 99
     left.metadata["loop_id"] = "changed"
     assert right.metadata[f"{kind}_length"] == 3
@@ -897,7 +974,9 @@ def test_fix1_container_metadata_retains_native_length_correlation_and_independe
         ("parallel_mode_run_id", None),
     ],
 )
-def test_fix1_retry_safe_metadata_fields_reject_malformed_types_and_bounds(policy, key, value):
+def test_fix1_retry_safe_metadata_fields_reject_malformed_types_and_bounds(
+    policy: NativeHttpObservationPolicy, key: str, value: None | bool | float | int | str
+) -> None:
     metadata = fix1_metadata()
     metadata[key] = value
     with pytest.raises(BuilderExecutionPolicyError, match="native_observation_unsupported"):
@@ -906,7 +985,7 @@ def test_fix1_retry_safe_metadata_fields_reject_malformed_types_and_bounds(polic
 
 @pytest.mark.parametrize("kind", ["iteration", "loop"])
 @pytest.mark.parametrize("value", [True, SENTINEL, -1, 2**63, 1.5])
-def test_fix1_container_lengths_reject_malformed_counters(kind, value):
+def test_fix1_container_lengths_reject_malformed_counters(kind: str, value: object) -> None:
     policy = owner().qualify(context=container_context(kind), profile=build_native_http_profile())
     cls = NodeRunIterationStartedEvent if kind == "iteration" else NodeRunLoopStartedEvent
     metadata = fix1_metadata()
@@ -924,7 +1003,7 @@ def test_fix1_container_lengths_reject_malformed_counters(kind, value):
 
 
 @pytest.mark.parametrize(("key", "value"), [("iteration_id", ""), ("loop_index", True)])
-def test_fix1_container_approved_metadata_uses_same_finite_validation(key, value):
+def test_fix1_container_approved_metadata_uses_same_finite_validation(key: str, value: bool | str) -> None:
     policy = owner().qualify(context=container_context("iteration"), profile=build_native_http_profile())
     metadata = fix1_metadata()
     metadata.update(iteration_length=3)
@@ -942,7 +1021,7 @@ def test_fix1_container_approved_metadata_uses_same_finite_validation(key, value
 
 
 @pytest.mark.parametrize("value", [0, 2**63 - 1])
-def test_fix1_official_iteration_length_zero_and_finite_counter_boundary(value):
+def test_fix1_official_iteration_length_zero_and_finite_counter_boundary(value: int) -> None:
     policy = owner().qualify(context=container_context("iteration"), profile=build_native_http_profile())
     event = NodeRunIterationStartedEvent(
         id="container-execution",
@@ -952,18 +1031,18 @@ def test_fix1_official_iteration_length_zero_and_finite_counter_boundary(value):
         start_at=NOW,
         metadata={"iteration_length": value, SENTINEL: SENTINEL},
     )
-    projected = policy.event(event)
+    projected = project_event(policy, event)
     assert projected.metadata == {"iteration_length": value}
     assert SENTINEL not in projected.model_dump_json()
 
 
 @pytest.mark.parametrize("kind", ["loop", "iteration"])
-def test_existing_scalar_control_schemas_accept_exact_empty_http_manifest(kind):
+def test_existing_scalar_control_schemas_accept_exact_empty_http_manifest(kind: str) -> None:
     """Structural qualification only; native factory still owns executability."""
     ctx = container_context(kind)
     graph = deepcopy(graph_data(ctx))
     graph["nodes"] = [n for n in graph["nodes"] if n["id"] != "http"]
-    next(n for n in graph["nodes"] if n["id"] == "end")["data"]["outputs"] = []
+    next(n for n in graph["nodes"] if n["id"] == "end")["data"]["outputs"] = list[object]()
     if kind == "iteration":
         next(n for n in graph["nodes"] if n["id"] == "container")["data"]["output_selector"] = ["body-start", "index"]
     graph["edges"] = [{"source": "start", "target": "container"}, {"source": "container", "target": "end"}]
@@ -993,12 +1072,12 @@ def test_existing_scalar_control_schemas_accept_exact_empty_http_manifest(kind):
         "hostile",
     ],
 )
-def test_empty_http_manifest_keeps_schema_owner_and_privacy_refusals(fault):
+def test_empty_http_manifest_keeps_schema_owner_and_privacy_refusals(fault: str) -> None:
     ctx = context()
     graph = deepcopy(graph_data(ctx))
     graph.pop("viewport")
     graph["nodes"] = [n for n in graph["nodes"] if n["id"] != "http"]
-    graph["nodes"][-1]["data"]["outputs"] = []
+    graph["nodes"][-1]["data"]["outputs"] = list[object]()
     graph["edges"] = [{"source": "start", "target": "end"}]
     ctx = ctx.model_copy(update={"graph": graph, "resource_manifest": ()})
     if fault == "manifest":
@@ -1033,7 +1112,7 @@ def test_empty_http_manifest_keeps_schema_owner_and_privacy_refusals(fault):
 
 
 @pytest.mark.parametrize("kind", ["code", "template-transform"])
-def test_code_profile_redacts_source_template_values_and_retry_history(kind):
+def test_code_profile_redacts_source_template_values_and_retry_history(kind: str) -> None:
     from services.dify_builder.native_testing.sandbox.qualification import (
         describe_code_resource,
     )
@@ -1048,7 +1127,7 @@ def test_code_profile_redacts_source_template_values_and_retry_history(kind):
     raw = (
         raw_code(code=SENTINEL)
         if kind == "code"
-        else {"type": kind, "title": SENTINEL, "variables": [], "template": SENTINEL}
+        else {"type": kind, "title": SENTINEL, "variables": list[object](), "template": SENTINEL}
     )
     nodes = cast(list[dict[str, object]], graph["nodes"])
     nodes[1]["data"] = raw

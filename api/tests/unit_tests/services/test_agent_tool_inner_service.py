@@ -4,25 +4,28 @@ import json
 import sqlite3
 from collections.abc import Generator
 from dataclasses import dataclass, field
+from typing import Literal
 from unittest.mock import patch
 
 import pytest
+import sqlalchemy.orm
+from pydantic import JsonValue
 from sqlalchemy import Connection, Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.db.session_factory as session_factory_module
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.entities.tool_entities import ToolInvokeFrom, ToolInvokeMessage, ToolProviderType
+from core.tools.entities.tool_entities import ToolInvokeFrom, ToolInvokeMessage, ToolParameter, ToolProviderType
 from core.tools.errors import (
     ToolInvokeError,
     ToolParameterValidationError,
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
+from core.tools.plugin_tool.tool import PluginTool
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference, resolve_file_record_id
 from graphon.file import File, FileTransferMethod, FileType
-from models import ToolFile
 from models.model import App, AppMode
 from models.tools import ToolFile
 from services.agent_tool_inner_service import AgentToolInnerService
@@ -417,7 +420,7 @@ TENANT_ID = "11111111-1111-1111-1111-111111111111"
 USER_ID = "33333333-3333-3333-3333-333333333333"
 
 
-def _ordinary_plugin(parameters, runtime_parameters):
+def _ordinary_plugin(parameters: list[ToolParameter], runtime_parameters: dict[str, JsonValue]) -> PluginTool:
     from core.app.entities.app_invoke_entities import InvokeFrom
     from core.tools.__base.tool_runtime import ToolRuntime
     from core.tools.entities.common_entities import I18nObject
@@ -446,13 +449,13 @@ def _ordinary_plugin(parameters, runtime_parameters):
     )
 
 
-def _parameter(name, kind, **kwargs):
+def _parameter(name: str, kind: str, **kwargs: object) -> ToolParameter:
     from core.tools.entities.tool_entities import ToolParameter
 
-    return ToolParameter(name=name, label={"en_US": name}, type=kind, form="llm", **kwargs)
+    return ToolParameter.model_validate({"name": name, "label": {"en_US": name}, "type": kind, "form": "llm", **kwargs})
 
 
-DAEMON_FILE = {
+DAEMON_FILE: dict[str, JsonValue] = {
     "dify_model_identity": "__dify__file__",
     "type": "document",
     "url": "https://files.example.test/signed",
@@ -474,13 +477,17 @@ DAEMON_FILE = {
     ],
 )
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_actual_plugin_cast_frontend_and_converter_preserve_file_wire(kind, value, expected, sqlite_session):
+def test_actual_plugin_cast_frontend_and_converter_preserve_file_wire(
+    kind: str, value: JsonValue, expected: JsonValue, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     parameter = _parameter("input", kind)
     assert parameter.type.cast_value(value) == expected
     assert parameter.init_frontend_parameter(value) == expected
     tool = _ordinary_plugin([parameter], {})
     with patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=_messages()) as dispatch:
-        assert list(tool.invoke(sqlite_session, USER_ID, {"input": value}))[0].message.text == "ok"
+        message = list(tool.invoke(sqlite_session, USER_ID, {"input": value}))[0].message
+        assert isinstance(message, ToolInvokeMessage.TextMessage)
+        assert message.text == "ok"
     assert dispatch.call_args.kwargs["tool_parameters"] == {"input": expected}
 
 
@@ -489,11 +496,13 @@ APP_ID = "44444444-4444-4444-4444-444444444444"
 
 @pytest.mark.parametrize("provider_type", ["plugin", "builtin"])
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
-def test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runtime(provider_type, sqlite_session):
+def test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runtime(
+    provider_type: Literal["plugin", "builtin"], sqlite_session: sqlalchemy.orm.Session
+) -> None:
     from copy import deepcopy
 
     _persist_app(sqlite_session)
-    configured = {"input": "/sandbox/configured.txt", "query": "configured", "hidden": "stored"}
+    configured: dict[str, JsonValue] = {"input": "/sandbox/configured.txt", "query": "configured", "hidden": "stored"}
     tool = _ordinary_plugin(
         [
             _parameter("input", "file"),
@@ -537,7 +546,9 @@ def test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runti
 
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
-def test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration(sqlite_session):
+def test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration(
+    sqlite_session: sqlalchemy.orm.Session,
+) -> None:
     _persist_app(sqlite_session)
     parameter = _parameter("selection", "select", multiple=True, options=[{"value": "a", "label": {"en_US": "A"}}])
     tool = _ordinary_plugin([parameter], {})
@@ -557,7 +568,9 @@ def test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration(sq
 
 @pytest.mark.parametrize("multiple", [False, True])
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_api_multiple_metadata_exposes_existing_agent_select_wire_gap(multiple, sqlite_session):
+def test_api_multiple_metadata_exposes_existing_agent_select_wire_gap(
+    multiple: bool, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     parameter = _parameter("selection", "select", multiple=multiple, options=[{"value": "a", "label": {"en_US": "A"}}])
     tool = _ordinary_plugin([parameter], {})
     with patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=_messages()) as dispatch:
@@ -574,18 +587,28 @@ def test_api_multiple_metadata_exposes_existing_agent_select_wire_gap(multiple, 
 
 @pytest.mark.parametrize("provider_type", ["builtin", "api", "workflow", "mcp"])
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
-def test_non_plugin_runtime_keeps_existing_configured_precedence(provider_type, sqlite_session):
+def test_non_plugin_runtime_keeps_existing_configured_precedence(
+    provider_type: Literal["plugin", "builtin"], sqlite_session: sqlalchemy.orm.Session
+) -> None:
     from core.tools.__base.tool import Tool
 
     class OrdinaryTool(Tool):
-        def tool_provider_type(self):
+        def tool_provider_type(self) -> ToolProviderType:
             return ToolProviderType.value_of(provider_type)
 
-        def _invoke(self, session, user_id, tool_parameters, conversation_id=None, app_id=None, message_id=None):
+        def _invoke(
+            self,
+            session: object,
+            user_id: object,
+            tool_parameters: dict[str, JsonValue],
+            conversation_id: object = None,
+            app_id: object = None,
+            message_id: object = None,
+        ) -> Generator[ToolInvokeMessage]:
             del session, user_id, conversation_id, app_id, message_id
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.TEXT,
-                message=ToolInvokeMessage.TextMessage(text=tool_parameters["query"]),
+                message=ToolInvokeMessage.TextMessage.model_validate({"text": tool_parameters["query"]}),
             )
 
     _persist_app(sqlite_session)
@@ -612,8 +635,8 @@ def test_non_plugin_runtime_keeps_existing_configured_precedence(provider_type, 
 )
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_api_output_observation_and_file_messages_use_existing_owners(
-    output_kind, expected_type, observation, sqlite_session
-):
+    output_kind: str, expected_type: str | None, observation: str, sqlite_session: sqlalchemy.orm.Session
+) -> None:
 
     from core.workflow.file_reference import build_file_reference
     from graphon.file import File, FileTransferMethod, FileType
@@ -682,6 +705,8 @@ def test_api_output_observation_and_file_messages_use_existing_owners(
         assert call.kwargs["user_id"] == USER_ID
         assert call.kwargs["conversation_id"] == "conversation-1"
     if output_kind in {"image", "blob", "file"}:
-        assert response.messages[0]["meta"]["tool_file_id"] == "output-id"
+        meta = response.messages[0]["meta"]
+        assert isinstance(meta, dict)
+        assert meta["tool_file_id"] == "output-id"
     if output_kind == "file_mapping":
         assert response.observation == ""  # A raw JSON file meta mapping is not an API graphon File.

@@ -1,5 +1,6 @@
 import pytest
 
+from runtime_contracts.builder.presentation import BuilderCopy
 from services.dify_builder.execution_messages import execution_refusal_message
 
 
@@ -15,17 +16,20 @@ from services.dify_builder.execution_messages import execution_refusal_message
         ("installed_tool_unavailable", "resources.catalogueUnavailable"),
     ],
 )
-def test_known_recovery_reason_is_not_generic_safety(reason, copy_id):
-    assert execution_refusal_message(reason).id == copy_id
+def test_known_recovery_reason_is_not_generic_safety(reason: str, copy_id: str) -> None:
+    message = execution_refusal_message(reason)
+    assert isinstance(message, BuilderCopy)
+    assert message.id == copy_id
 
 
-def test_known_model_failure_does_not_ask_user_to_change_requirements():
+def test_known_model_failure_does_not_ask_user_to_change_requirements() -> None:
     from services.dify_builder.execution_messages import cognition_failure_message
 
     message = cognition_failure_message(
         [{"code": "provider_invocation_failed", "reason": "connection_refused", "message": "private secret"}],
         "change the goal",
     )
+    assert isinstance(message, BuilderCopy)
     assert message.id == "operation.modelFailed"
     assert message.params == {"reason": "connection_refused"}
     assert cognition_failure_message([], "fallback") == "fallback"

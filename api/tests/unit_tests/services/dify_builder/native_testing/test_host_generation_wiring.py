@@ -8,27 +8,32 @@ from __future__ import annotations
 
 import contextvars
 import json
+from collections.abc import Generator, Sequence
 from contextlib import nullcontext
-from threading import Event, current_thread
+from threading import Event, Thread, current_thread
 from time import monotonic
-from typing import cast, override
+from typing import Literal, NoReturn, cast, override
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from graphon.engine.command import InMemoryChannel
+from graphon.engine.command import CommandChannel, InMemoryChannel
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.engine.layer import Layer
+from graphon.engine_events.base import EngineEvent
+from graphon.entities.base_node_data import BaseNodeData
 from graphon.graph import Graph
+from graphon.nodes.base.node import Node
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.account import Account
 from models.model import App
 from models.workflow import Workflow
+from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
 from services.dify_builder.native_testing.runtime_bridge import NativePreparedInputs, NativeRuntimeBridge
@@ -43,7 +48,7 @@ from tests.unit_tests.services.dify_builder.native_testing.test_host_execution i
 
 
 def runtime_for(case: LaunchCase) -> NativeRuntimeBridge:
-    def unused(**kwargs):
+    def unused(**kwargs: object) -> NoReturn:
         del kwargs
         raise AssertionError("no effect preparation is exercised by wiring fixtures")
 
@@ -71,7 +76,9 @@ class _GenerateArguments(TypedDict, closed=True):
     native_runtime: NativeRuntimeBridge | None
 
 
-def generate_fixture(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
+def generate_fixture(
+    case: LaunchCase, monkeypatch: pytest.MonkeyPatch
+) -> tuple[WorkflowAppGenerator, _GenerateArguments]:
     from services.workflow_runtime import workflow_generator as module
     from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import (
         bind_component_observation,
@@ -80,7 +87,7 @@ def generate_fixture(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
     bind_component_observation(case, monkeypatch)
     entity, _, response_filter, workflow_repo, node_repo = generation_objects(case, monkeypatch)
 
-    def bind_repository_port(*, repository, context, guard):
+    def bind_repository_port(*, repository: object, context: ResolvedNativeTestContext, guard: object) -> None:
         assert repository is workflow_repo or repository is node_repo
         # Structural launch fixture only. No history SQL/cache is exercised;
         # real bound repository provenance is covered by owned history tests.
@@ -112,7 +119,7 @@ def generate_fixture(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
     return generator, arguments
 
 
-def iter_response():
+def iter_response() -> Generator[dict[str, str]]:
     yield {"fixture": "response"}
 
 
@@ -137,7 +144,7 @@ def test_generation_bound_before_actual_thread_and_stream_never_joins_it(monkeyp
     entered, release = Event(), Event()
     workers = []
 
-    def worker(**kwargs):
+    def worker(**kwargs: object) -> None:
         workers.append(current_thread())
         assert case.host.generation_bindings.entity is kwargs["application_generate_entity"]
         assert case.host.generation_bindings.response_filter is kwargs["response_stream_filter"]
@@ -188,10 +195,10 @@ def test_owned_worker_preserves_bound_entity_and_reports_finally_on_actual_threa
     seen = []
 
     class RunnerPort:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: object) -> None:
             seen.append(kwargs)
 
-        def run(self):
+        def run(self) -> None:
             import logging
 
             from flask import current_app
@@ -209,7 +216,7 @@ def test_owned_worker_preserves_bound_entity_and_reports_finally_on_actual_threa
     finished = []
     original = case.host.worker_finished
 
-    def finished_port(*, worker, exit_kind):
+    def finished_port(*, worker: Thread, exit_kind: Literal["returned", "policy_refused", "stopped", "failed"]) -> None:
         finished.append((worker, exit_kind, worker.is_alive()))
         original(worker=worker, exit_kind=exit_kind)
 
@@ -217,7 +224,9 @@ def test_owned_worker_preserves_bound_entity_and_reports_finally_on_actual_threa
     from threading import Thread
 
     worker = Thread(
-        target=WorkflowAppGenerator(execution_driver=lambda runner, *_args: runner.run())._generate_worker,
+        target=WorkflowAppGenerator(
+            execution_driver=lambda runner, *_args: cast(RunnerPort, runner).run()
+        )._generate_worker,
         kwargs={
             "flask_app": Flask(__name__),
             "application_generate_entity": entity,
@@ -332,7 +341,7 @@ def test_native_stream_close_requests_host_without_concurrent_source_close() -> 
     entered, release, finished = Event(), Event(), Event()
     source_closed = []
 
-    def source():
+    def source() -> Generator[dict[str, object] | str]:
         try:
             entered.set()
             assert release.wait(3)
@@ -343,7 +352,7 @@ def test_native_stream_close_requests_host_without_concurrent_source_close() -> 
     stream = generation_wiring.HostOwnedNativeGeneratorStream(source=source(), host=case.host)
     readers = []
 
-    def read():
+    def read() -> None:
         readers.append(current_thread())
         try:
             next(stream)
@@ -368,13 +377,13 @@ def test_native_stream_close_requests_host_without_concurrent_source_close() -> 
 
 
 @pytest.mark.parametrize("automatic", [False, True])
-def test_owned_reader_finalizer_keeps_failed_close_unacknowledged_without_retry(automatic):
+def test_owned_reader_finalizer_keeps_failed_close_unacknowledged_without_retry(automatic: bool) -> None:
     from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
 
     case = LaunchCase()
     attempts = []
 
-    def source():
+    def source() -> Generator[dict[str, object] | str]:
         try:
             yield {"unserializable": object()} if automatic else "source-value"
         finally:
@@ -398,13 +407,13 @@ def test_owned_reader_finalizer_keeps_failed_close_unacknowledged_without_retry(
     assert attempts == [current_thread()]
 
 
-def test_owned_reader_successful_finalization_is_idempotent():
+def test_owned_reader_successful_finalization_is_idempotent() -> None:
     from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
 
     case = LaunchCase()
     closed = []
 
-    def source():
+    def source() -> Generator[dict[str, object] | str]:
         try:
             yield "source-value"
         finally:
@@ -429,7 +438,7 @@ def test_native_guardrails_bind_actual_release_without_ordinary_early_exit(
 
     class RatePort(_DummyRateLimit):
         @override
-        def exit(self, request_id):
+        def exit(self, request_id: str) -> None:
             exits.append(request_id)
 
     monkeypatch.setattr(module, "RateLimit", RatePort)
@@ -447,7 +456,7 @@ def test_native_guardrails_bind_actual_release_without_ordinary_early_exit(
     )
     workers = []
 
-    def action(rate_limit, request_id):
+    def action(rate_limit: object, request_id: str) -> str:
         del rate_limit, request_id
         if fails:
             raise RuntimeError("fixture setup failure")
@@ -535,36 +544,39 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
     combined = []
 
     class LayerPort(Layer):
-        def on_graph_start(self):
-            pass
-
-        def on_graph_end(self, error):
-            pass
-
-        def on_event(self, event):
+        @override
+        def on_graph_start(self) -> None:
             pass
 
         @override
-        def on_node_run_start(self, node):
+        def on_graph_end(self, error: Exception | None) -> None:
+            pass
+
+        @override
+        def on_event(self, event: EngineEvent) -> None:
+            pass
+
+        @override
+        def on_node_run_start(self, node: Node[BaseNodeData]) -> None:
             if node.id == "guard":
                 entered.set()
                 release.wait(3)
 
-    def build_graph(**kwargs):
+    def build_graph(**kwargs: object) -> Graph:
         from core.app.entities.app_invoke_entities import build_dify_run_context
 
         run_context = build_dify_run_context(
             tenant_id=context.tenant_id,
             app_id=context.app_id,
             user_id=context.actor_id,
-            user_from=kwargs["user_from"],
-            invoke_from=kwargs["invoke_from"],
+            user_from=cast(UserFrom, kwargs["user_from"]),
+            invoke_from=cast(InvokeFrom, kwargs["invoke_from"]),
             native_test_required=True,
             native_test_ref=context.ref,
         )
         factory = Factory(
             config=config,
-            runtime=kwargs["graph_runtime_state"],
+            runtime=cast(RuntimeState, kwargs["graph_runtime_state"]),
             run_context=run_context,
             owner=case.host.boundary_owner,
             sink=cast(Sink, case.host.control_sink),
@@ -573,7 +585,7 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
         factories.append(factory)
         return Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
 
-    def build_channel(channels):
+    def build_channel(channels: Sequence[CommandChannel]) -> CombinedCommandChannel:
         channel = CombinedCommandChannel(channels)
         combined.append(channel)
         return channel
@@ -588,13 +600,15 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
     from services import workflow_run_agg as aggregate_module
 
     class PersistencePort(LayerPort):
-        def set_node_run_indices(self, indices):
+        def set_node_run_indices(self, indices: object) -> None:
             pass
 
-        def set_node_execution_history(self, histories):
+        def set_node_execution_history(self, histories: object) -> None:
             pass
 
-    def persistence(**kwargs):
+    def persistence(
+        **kwargs: object,
+    ) -> PersistencePort:
         assert kwargs["native_observation"] is guard
         return PersistencePort()
 
@@ -623,7 +637,7 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
     monkeypatch.setattr(runner, "handle_event", lambda *_args, **_kwargs: None)
     errors = []
 
-    def run():
+    def run() -> None:
         try:
             with case.host.observation_scope():
                 aggregate_module.WorkflowRunAgg.run(runner, None, workflow_repo, node_repo)

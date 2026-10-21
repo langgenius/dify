@@ -6,7 +6,8 @@ These are regression checks, not native runtime/remote cleanup acceptance.
 """
 
 import json
-from typing import cast
+from collections.abc import Iterator
+from typing import Never, cast
 from uuid import uuid4
 
 import httpx
@@ -22,6 +23,7 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from httpx import Request, Response
 from sqlalchemy import select
 
 from clients.agent_backend import DifyAgentBackendRunClient
@@ -35,7 +37,9 @@ from services.dify_builder import dify_port
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.effect_disclosure import disclose
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeSessionStore, _node
+from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder import test_confirmed_full_run as full_run_tests
+from tests.unit_tests.services.dify_builder.test_confirmed_full_run import FullRunCase
 
 harness = full_run_tests.harness
 _bind_native_result = WorkflowServiceDifyPort._bind_run
@@ -63,7 +67,7 @@ AGENT_GRAPH = {
 
 
 @pytest.fixture(autouse=True)
-def _no_model_metadata_io(monkeypatch):
+def _no_model_metadata_io(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window", lambda **_kwargs: None
     )
@@ -72,14 +76,14 @@ def _no_model_metadata_io(monkeypatch):
 class ChildHTTP:
     """Replace transport only; never infer cleanup from a cancellation response."""
 
-    def __init__(self, terminal="succeeded", *, cancel_timeout=False):
+    def __init__(self, terminal: str = "succeeded", *, cancel_timeout: bool = False) -> None:
         self.terminal = terminal
         self.cancel_timeout = cancel_timeout
-        self.created = []
-        self.cancel_requests = []
+        self.created: list[dict[str, object]] = []
+        self.cancel_requests: list[dict[str, object]] = []
         self.cancel_terminal_read = False
 
-    def __call__(self, request):
+    def __call__(self, request: Request) -> Response:
         if request.method == "POST" and request.url.path == "/runs":
             self.created.append(json.loads(request.content))
             return httpx.Response(200, json={"run_id": "child-1", "status": "running"})
@@ -116,14 +120,16 @@ class ChildHTTP:
         raise AssertionError(f"Unexpected child request: {request.method} {request.url.path}")
 
 
-def _client(http):
+def _client(http: httpx.Client) -> DifyAgentBackendRunClient:
     return DifyAgentBackendRunClient(
         Client(base_url="https://agent.invalid", sync_http_client=http), stream_max_reconnects=0
     )
 
 
 @pytest.mark.parametrize("status", ["succeeded", "failed", "running"])
-def test_agent_acknowledged_attempt_recovers_parent_without_second_child(harness, monkeypatch, status):
+def test_agent_acknowledged_attempt_recovers_parent_without_second_child(
+    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch, status: str
+) -> None:
     """Removing the reservation recovery branch would create a second child."""
     native_id, workflow_id = str(uuid4()), str(uuid4())
     # This test's generator explicitly runs an ordinary child. Admission itself
@@ -137,7 +143,8 @@ def test_agent_acknowledged_attempt_recovers_parent_without_second_child(harness
     monkeypatch.setattr(
         WorkflowServiceDifyPort, "_prepare_confirmed_agent_execution", staticmethod(lambda **_kwargs: marker)
     )
-    dify_port._load_draft_workflow_or_raise.return_value.graph = json.dumps(AGENT_GRAPH)
+    _installed_spy_1 = installed_mock(dify_port._load_draft_workflow_or_raise)
+    _installed_spy_1.return_value.graph = json.dumps(AGENT_GRAPH)
     monkeypatch.setattr(WorkflowServiceDifyPort, "_finish_run", harness.native_finish)
     monkeypatch.setattr(WorkflowServiceDifyPort, "_bind_run", _bind_native_result)
     transport = ChildHTTP(terminal="failed" if status == "failed" else "succeeded")
@@ -149,7 +156,7 @@ def test_agent_acknowledged_attempt_recovers_parent_without_second_child(harness
     with httpx.Client(transport=httpx.MockTransport(transport)) as http:
         child = _node(agent_backend_client=_client(http))
 
-        def generate(**kwargs):
+        def generate(**kwargs: object) -> Iterator[dict[str, str | dict[str, str]]]:
             parent_dispatches.append(kwargs)
             result = cast(StreamCompletedEvent, list(child._run())[-1]).node_run_result
             assert result.status.value == ("failed" if status == "failed" else "succeeded")
@@ -195,7 +202,7 @@ def test_agent_acknowledged_attempt_recovers_parent_without_second_child(harness
                 )
             return iter([{"event": "workflow_started", "workflow_run_id": native_id, "data": {"id": native_id}}])
 
-        def interrupt(_event):
+        def interrupt(_event: object) -> Never:
             raise Interrupted()
 
         harness.generate.side_effect = generate
@@ -205,6 +212,8 @@ def test_agent_acknowledged_attempt_recovers_parent_without_second_child(harness
         recovered = full_run_tests._run(harness, confirmation={"agent-node": signature})
         assert recovered.dify_run_id == native_id
         assert recovered.status == status
+        assert recovered.verification is not None
+        assert recovered.verification.execution_evidence is not None
         assert recovered.verification.execution_evidence.sealed is (status != "running")
         assert recovered.per_node[0].node_id == "agent-node"
         if status == "failed":
@@ -225,7 +234,7 @@ def test_agent_acknowledged_attempt_recovers_parent_without_second_child(harness
 
 
 @pytest.mark.parametrize("cancel_timeout", [False, True])
-def test_graph_abort_waits_for_child_terminal_or_preserves_cleanup_uncertainty(cancel_timeout):
+def test_graph_abort_waits_for_child_terminal_or_preserves_cleanup_uncertainty(cancel_timeout: bool) -> None:
     """An abort must call cancellation; a timeout must not become proof of cleanup."""
     transport = ChildHTTP(cancel_timeout=cancel_timeout)
     store = FakeSessionStore()

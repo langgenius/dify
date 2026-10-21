@@ -31,7 +31,8 @@ class PlanningAgent(PlaceholderAgent):
     def propose_plan_v1(self, requirements: dict[str, object], *, goal_text: str) -> WorkflowPlan:
         return self.plan
 
-    def propose_edit_plan(self, _edit_rules, _graph, **_kwargs):
+    @override
+    def propose_edit_plan(self, edit_rules: object, graph: object, **_kwargs: object) -> WorkflowPlan:
         return self.plan
 
     @override

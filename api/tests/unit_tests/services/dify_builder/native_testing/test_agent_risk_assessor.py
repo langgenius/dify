@@ -1,13 +1,16 @@
+from collections.abc import Callable
+
 import pytest
 
 from core.tools.entities.tool_entities import ToolEntity
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from services.dify_builder.native_testing.agent_operations import AgentResolvedTool
+from runtime_contracts.builder.native.contracts import JsonValue
+from services.dify_builder.native_testing.agent_operations import AgentCallAssessment, AgentResolvedTool
 from services.dify_builder.native_testing.agent_risk_assessor import assess_call
 from services.dify_builder.native_testing.agent_tool_declarations import AgentToolMetadata
 
 
-def call(reason):
+def call(reason: Callable[[dict[str, JsonValue]], object]) -> AgentCallAssessment:
     return assess_call(
         goal="Summarize one test message",
         tool=AgentResolvedTool(
@@ -42,21 +45,24 @@ def call(reason):
     )
 
 
-def test_reasoning_sees_exact_business_arguments_without_secret_fields():
-    seen = []
+def test_reasoning_sees_exact_business_arguments_without_secret_fields() -> None:
+    seen: list[dict[str, JsonValue]] = []
     result = call(
         lambda data: seen.append(data) or {"risk_notice": "Reads the selected message.", "destructive": False}
     )
     assert "private-value" not in str(seen)
-    assert seen[0]["parameters"]["message_id"] == "message-1"
+    parameters = seen[0]["parameters"]
+    assert isinstance(parameters, dict)
+    assert parameters["message_id"] == "message-1"
     assert seen[0]["declared_capability"] == "Read one message by ID"
     assert result.target_summary == {"mailbox": "test"}
+    assert isinstance(result.parameters_summary, dict)
     assert result.parameters_summary["token"] != "private-value"
     assert result.account_label == "Test mailbox"
 
 
-def test_model_failure_refuses_without_disclosing_provider_error_or_inventing_risk():
-    def unavailable(_data):
+def test_model_failure_refuses_without_disclosing_provider_error_or_inventing_risk() -> None:
+    def unavailable(_data: object) -> None:
         raise RuntimeError("private provider failure")
 
     with pytest.raises(BuilderExecutionPolicyError, match="native_agent_risk_assessment_unavailable") as error:
@@ -64,7 +70,7 @@ def test_model_failure_refuses_without_disclosing_provider_error_or_inventing_ri
     assert "private provider failure" not in str(error.value)
 
 
-def test_model_cannot_replace_displayed_target_or_grant_permission():
+def test_model_cannot_replace_displayed_target_or_grant_permission() -> None:
     with pytest.raises(BuilderExecutionPolicyError, match="native_agent_risk_assessment_unavailable"):
         call(
             lambda _data: {
@@ -76,10 +82,10 @@ def test_model_cannot_replace_displayed_target_or_grant_permission():
         )
 
 
-def test_shell_assessment_uses_configured_assets_and_actual_script():
+def test_shell_assessment_uses_configured_assets_and_actual_script() -> None:
     from services.dify_builder.native_testing.agent_operations import AgentShellCapability
 
-    seen = []
+    seen: list[dict[str, JsonValue]] = []
     result = assess_call(
         goal="Read the configured Local proof assets",
         tool=AgentShellCapability("config_pull", "workspace-shell", "Declared skill proof and file proof.json"),

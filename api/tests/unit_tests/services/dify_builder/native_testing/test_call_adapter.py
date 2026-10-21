@@ -4,25 +4,31 @@ No SQL service, transport, credential owner or production binding is qualified
 by these synthetic values. Counters expose each physical callback attempt.
 """
 
-import importlib
 import importlib.util
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from copy import deepcopy
+from typing import NoReturn, cast
 
 import pytest
 
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import (
     ApprovalWait,
+    CheckpointRef,
     DispatchPermit,
+    EffectDecision,
     EffectIntent,
     EffectReceipt,
     JsonValue,
     NativeTestContextRef,
+    OperationKey,
+    Outcome,
     PolicyStop,
     RecordedResult,
+    WaitReason,
 )
-from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, ResolvedNativeTestContext
+from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
 from services.dify_builder.native_testing.control import NativeApprovalWait, NativePolicyStop
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 
@@ -31,16 +37,16 @@ PATH = ("root", "http:write")
 INPUT: dict[str, JsonValue] = {"history": [True, 1, "1"]}
 
 
-def adapter_class():
+def adapter_class() -> type[NativeCallAdapter]:
     module = "services.dify_builder.native_testing.call_adapter"
     assert importlib.util.find_spec(module) is not None, "scalar call adapter is not implemented"
-    return importlib.import_module(module).NativeCallAdapter
+    return NativeCallAdapter
 
 
 class State:
     """Protected storage stand-in; real encrypted/SQL owners remain CI-owned."""
 
-    def __init__(self, events):
+    def __init__(self, events: list[tuple[object, ...]]) -> None:
         self.events = events
         self.values: dict[str, JsonValue] = {"inputs": deepcopy(INPUT)}
         self.context = ResolvedNativeTestContext(
@@ -63,24 +69,26 @@ class State:
             cancellation_ref="cancellation",
             execution_mode="native",
         )
-        self.store_error = None
-        self.read_error = None
-        self.store_hook = None
+        self.store_error: BaseException | None = None
+        self.read_error: BaseException | None = None
+        self.store_hook: Callable[[], None] | None = None
 
-    def load_context(self, *, ref):
+    def load_context(self, *, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
         if ref != REF:
             raise BuilderExecutionPolicyError("native_owner_mismatch")
         return self.context
 
-    def commit_checkpoint(self, *, ref, generation, payload):
+    def commit_checkpoint(
+        self, *, ref: NativeTestContextRef, generation: int, payload: NativeCheckpointPayload
+    ) -> NoReturn:
         del ref, generation, payload
         raise AssertionError("scalar units do not commit checkpoints")
 
-    def read_checkpoint(self, *, ref, checkpoint):
+    def read_checkpoint(self, *, ref: NativeTestContextRef, checkpoint: CheckpointRef) -> NativeCheckpointPayload:
         del ref, checkpoint
         raise AssertionError("scalar units do not read checkpoints")
 
-    def store_result(self, *, ref, key, result):
+    def store_result(self, *, ref: NativeTestContextRef, key: OperationKey, result: JsonValue) -> str:
         assert ref == REF
         assert key.invocation_id == REF.invocation_id
         self.events.append(("store", deepcopy(result)))
@@ -94,7 +102,7 @@ class State:
         self.values[result_ref] = deepcopy(result)
         return result_ref
 
-    def load_result(self, *, ref, result_ref):
+    def load_result(self, *, ref: NativeTestContextRef, result_ref: str) -> JsonValue:
         assert ref == REF
         self.events.append(("read", result_ref))
         if self.read_error and result_ref != "inputs":
@@ -105,20 +113,20 @@ class State:
 class Authorization:
     """One-shot and immutable C02 stand-in, never an SQL qualification."""
 
-    def __init__(self, events):
+    def __init__(self, events: list[tuple[object, ...]]) -> None:
         self.events = events
-        self.decisions = {}
-        self.permits = {}
-        self.claimed = set()
-        self.outcomes = {}
-        self.claim_error = None
-        self.claim_hook = None
-        self.before_hook = None
-        self.settlement_error = None
+        self.decisions: dict[int, EffectDecision] = {}
+        self.permits: dict[int, DispatchPermit] = {}
+        self.claimed: set[int] = set()
+        self.outcomes: dict[int, tuple[Outcome, str | None]] = {}
+        self.claim_error: BaseException | None = None
+        self.claim_hook: Callable[[], None] | None = None
+        self.before_hook: Callable[[], None] | None = None
+        self.settlement_error: BaseException | None = None
         self.settlement_commits = False
-        self.settlement_hook = None
+        self.settlement_hook: Callable[[], None] | None = None
 
-    def before_call(self, *, ref, intent):
+    def before_call(self, *, ref: NativeTestContextRef, intent: EffectIntent) -> EffectDecision:
         assert ref == REF
         self.events.append(("authorize", intent.key.cursor))
         if self.before_hook:
@@ -129,6 +137,7 @@ class Authorization:
         if index in self.outcomes:
             outcome, result_ref = self.outcomes[index]
             if outcome == "completed":
+                assert result_ref is not None
                 return RecordedResult(operation_id=f"operation-{index}", result_ref=result_ref)
             return PolicyStop(reason_code="outcome_unknown")
         if index in self.claimed:
@@ -143,7 +152,7 @@ class Authorization:
             ),
         )
 
-    def claim_dispatch(self, *, ref, intent, permit):
+    def claim_dispatch(self, *, ref: NativeTestContextRef, intent: EffectIntent, permit: DispatchPermit) -> None:
         assert ref == REF
         assert permit is self.permits[intent.key.cursor]
         self.events.append(("claim", intent.key.cursor))
@@ -155,7 +164,7 @@ class Authorization:
             raise BuilderExecutionPolicyError("dispatch_already_consumed")
         self.claimed.add(intent.key.cursor)
 
-    def record_outcome(self, *, permit, outcome, result_ref):
+    def record_outcome(self, *, permit: DispatchPermit, outcome: Outcome, result_ref: str | None) -> EffectReceipt:
         index = int(permit.operation_id.rsplit("-", 1)[1])
         self.events.append(("settle", outcome, result_ref))
         if self.settlement_hook:
@@ -171,23 +180,25 @@ class Authorization:
 
 
 class Case:
-    def __init__(self, **adapter_options):
-        self.events = []
+    def __init__(self, *, max_result_bytes: object = 4096) -> None:
+        self.events: list[tuple[object, ...]] = []
         self.state = State(self.events)
         self.authorization = Authorization(self.events)
         self.journal = NodeOperationJournal(state=self.state, authorization=self.authorization)
         self.cursor = self.journal.open(ref=REF, occurrence_path=PATH)
         self.cursor.bind_input(input_result_ref="inputs", inputs=INPUT)
-        adapter_options.setdefault("max_result_bytes", 4096)
         self.adapter = adapter_class()(
-            state=self.state, authorization=self.authorization, journal=self.journal, **adapter_options
+            state=self.state,
+            authorization=self.authorization,
+            journal=self.journal,
+            max_result_bytes=cast(int, max_result_bytes),
         )
         self.calls = 0
         self.value: object = {"typed": [False, 2, "2", None]}
-        self.dispatch_hook = None
-        self.dispatch_error = None
+        self.dispatch_hook: Callable[[], None] | None = None
+        self.dispatch_error: BaseException | None = None
 
-    def intent(self, **changes):
+    def intent(self, **changes: JsonValue) -> EffectIntent:
         return EffectIntent(
             key=self.cursor.next_key(),
             kind="http",
@@ -200,7 +211,7 @@ class Case:
             capability_digest="c" * 64,
         )
 
-    def dispatch(self, permit):
+    def dispatch(self, permit: DispatchPermit) -> JsonValue:
         assert permit is self.authorization.permits[self.cursor.snapshot().operation_keys[-1].cursor]
         assert self.events[-1][0] == "claim"
         self.events.append(("dispatch", permit.operation_id))
@@ -209,13 +220,13 @@ class Case:
             self.dispatch_hook()
         if self.dispatch_error:
             raise self.dispatch_error
-        return self.value
+        return cast(JsonValue, self.value)
 
-    def call(self, intent=None, **kwargs):
-        return self.adapter.call(ref=REF, intent=intent or self.intent(), dispatch=self.dispatch, **kwargs)
+    def call(self, intent: EffectIntent | None = None) -> JsonValue:
+        return self.adapter.call(ref=REF, intent=intent or self.intent(), dispatch=self.dispatch)
 
 
-def assert_unknown(case):
+def assert_unknown(case: Case) -> None:
     with pytest.raises(NativePolicyStop) as raised:
         case.call()
     assert raised.value.ref == REF
@@ -226,7 +237,7 @@ def assert_unknown(case):
 
 
 @pytest.mark.parametrize("reason", ["approval", "configuration", "interaction"])
-def test_wait_preserves_category_and_never_claims_dispatches_or_settles(reason):
+def test_wait_preserves_category_and_never_claims_dispatches_or_settles(reason: WaitReason) -> None:
     case = Case()
     case.authorization.decisions[0] = ApprovalWait(pending_operation_id="pending", wait_reason=reason)
     with pytest.raises(NativeApprovalWait) as raised:
@@ -237,7 +248,7 @@ def test_wait_preserves_category_and_never_claims_dispatches_or_settles(reason):
 
 
 @pytest.mark.parametrize("reason", ["effect_denied", "outcome_unknown", "dispatch_in_progress"])
-def test_stop_never_claims_dispatches_or_settles(reason):
+def test_stop_never_claims_dispatches_or_settles(reason: str) -> None:
     case = Case()
     case.authorization.decisions[0] = PolicyStop(reason_code=reason)
     with pytest.raises(NativePolicyStop) as raised:
@@ -248,7 +259,7 @@ def test_stop_never_claims_dispatches_or_settles(reason):
 
 
 @pytest.mark.parametrize("value", [None, False, True, 0, 1.5, "1", [], [True, 1, "1"], {"file": {"id": "file-1"}}])
-def test_complete_scalar_stores_before_settlement_then_replays_current_authority(value):
+def test_complete_scalar_stores_before_settlement_then_replays_current_authority(value: JsonValue) -> None:
     case = Case()
     case.value = value
     assert case.call() == value
@@ -271,7 +282,7 @@ def test_complete_scalar_stores_before_settlement_then_replays_current_authority
     case.cursor.finish()
 
 
-def test_two_operations_complete_in_order_and_replay_null_without_fabricated_prefix():
+def test_two_operations_complete_in_order_and_replay_null_without_fabricated_prefix() -> None:
     case = Case()
     case.value = None
     assert case.call() is None
@@ -287,7 +298,7 @@ def test_two_operations_complete_in_order_and_replay_null_without_fabricated_pre
 
 
 @pytest.mark.parametrize("reason", ["dispatch_already_consumed", "invalid_dispatch_permit", "native_revision_drift"])
-def test_known_claim_refusal_preserves_reason_without_io_or_settlement(reason):
+def test_known_claim_refusal_preserves_reason_without_io_or_settlement(reason: str) -> None:
     case = Case()
     case.authorization.claim_error = BuilderExecutionPolicyError(reason)
     with pytest.raises(NativePolicyStop) as raised:
@@ -298,7 +309,7 @@ def test_known_claim_refusal_preserves_reason_without_io_or_settlement(reason):
     assert [event[0] for event in case.events] == ["read", "authorize", "claim"]
 
 
-def test_claim_ack_ambiguity_never_retries_claim_or_dispatches_or_settles():
+def test_claim_ack_ambiguity_never_retries_claim_or_dispatches_or_settles() -> None:
     case = Case()
     case.authorization.claim_error = OSError("claim commit acknowledgement lost")
     assert_unknown(case)
@@ -308,7 +319,7 @@ def test_claim_ack_ambiguity_never_retries_claim_or_dispatches_or_settles():
 
 
 @pytest.mark.parametrize("error", [OSError("provider timeout"), RuntimeError("partial response"), KeyboardInterrupt()])
-def test_callback_failure_records_unknown_once_and_never_replays(error):
+def test_callback_failure_records_unknown_once_and_never_replays(error: BaseException) -> None:
     case = Case()
     case.dispatch_error = error
     assert_unknown(case)
@@ -322,7 +333,7 @@ def test_callback_failure_records_unknown_once_and_never_replays(error):
 
 
 @pytest.mark.parametrize("value", [float("inf"), float("nan"), (1, 2), {1: "wrong-key"}, b"bytes", object()])
-def test_non_json_or_non_finite_callback_result_is_unknown_and_never_stored(value):
+def test_non_json_or_non_finite_callback_result_is_unknown_and_never_stored(value: object) -> None:
     case = Case()
     case.value = value
     assert_unknown(case)
@@ -331,11 +342,11 @@ def test_non_json_or_non_finite_callback_result_is_unknown_and_never_stored(valu
     assert case.authorization.outcomes == {0: ("unknown", None)}
 
 
-def test_generator_is_not_consumed_or_treated_as_scalar_completion():
+def test_generator_is_not_consumed_or_treated_as_scalar_completion() -> None:
     case = Case()
-    consumed = []
+    consumed: list[bool] = []
 
-    def stream():
+    def stream() -> Iterator[str]:
         consumed.append(True)
         yield "prefix"
 
@@ -347,14 +358,14 @@ def test_generator_is_not_consumed_or_treated_as_scalar_completion():
     assert case.authorization.outcomes == {0: ("unknown", None)}
 
 
-def test_utf8_result_size_bound_is_enforced_before_storage():
+def test_utf8_result_size_bound_is_enforced_before_storage() -> None:
     case = Case(max_result_bytes=4)
     case.value = "éé"  # six encoded JSON bytes, despite two Python characters.
     assert_unknown(case)
     assert not any(event[0] == "store" for event in case.events)
 
 
-def test_store_failure_after_dispatch_records_unknown_once_without_retry():
+def test_store_failure_after_dispatch_records_unknown_once_without_retry() -> None:
     case = Case()
     case.state.store_error = OSError("storage readback or SQL ack failed")
     assert_unknown(case)
@@ -364,7 +375,7 @@ def test_store_failure_after_dispatch_records_unknown_once_without_retry():
 
 
 @pytest.mark.parametrize("commits", [False, True])
-def test_completion_ack_failure_never_attempts_contradictory_unknown_settlement(commits):
+def test_completion_ack_failure_never_attempts_contradictory_unknown_settlement(commits: bool) -> None:
     case = Case()
     case.authorization.settlement_error = OSError("completion ack lost")
     case.authorization.settlement_commits = commits
@@ -374,7 +385,7 @@ def test_completion_ack_failure_never_attempts_contradictory_unknown_settlement(
     assert case.authorization.outcomes == ({0: ("completed", "result-0")} if commits else {})
 
 
-def test_unknown_settlement_failure_is_contained_without_second_settlement():
+def test_unknown_settlement_failure_is_contained_without_second_settlement() -> None:
     case = Case()
     case.dispatch_error = OSError("dispatched response lost")
     case.authorization.settlement_error = OSError("unknown acknowledgement lost")
@@ -383,7 +394,7 @@ def test_unknown_settlement_failure_is_contained_without_second_settlement():
     assert [event for event in case.events if event[0] == "settle"] == [("settle", "unknown", None)]
 
 
-def test_current_recorded_result_private_read_failure_never_dispatches():
+def test_current_recorded_result_private_read_failure_never_dispatches() -> None:
     case = Case()
     case.authorization.decisions[0] = RecordedResult(operation_id="operation-0", result_ref="private-result")
     case.state.read_error = BuilderExecutionPolicyError("native_result_owner_mismatch")
@@ -393,10 +404,10 @@ def test_current_recorded_result_private_read_failure_never_dispatches():
 
 
 @pytest.mark.parametrize("boundary", ["before", "claim", "dispatch", "store", "settlement"])
-def test_generation_change_across_owner_boundaries_never_returns_success(boundary):
+def test_generation_change_across_owner_boundaries_never_returns_success(boundary: str) -> None:
     case = Case()
 
-    def drift():
+    def drift() -> None:
         case.state.context = case.state.context.model_copy(update={"generation": 1})
 
     if boundary == "before":
@@ -417,7 +428,7 @@ def test_generation_change_across_owner_boundaries_never_returns_success(boundar
         assert [event for event in case.events if event[0] == "settle"] == [("settle", "completed", "result-0")]
 
 
-def test_foreign_ref_is_refused_before_authorization_and_dispatch():
+def test_foreign_ref_is_refused_before_authorization_and_dispatch() -> None:
     case = Case()
     foreign = REF.model_copy(update={"invocation_id": "other"})
     with pytest.raises(NativePolicyStop):
@@ -426,7 +437,7 @@ def test_foreign_ref_is_refused_before_authorization_and_dispatch():
     assert not any(event[0] == "authorize" for event in case.events)
 
 
-def test_unbound_or_missing_occurrence_never_opens_or_mints_input():
+def test_unbound_or_missing_occurrence_never_opens_or_mints_input() -> None:
     case = Case()
     case.cursor = case.journal.open(ref=REF, occurrence_path=("root", "other"))
     with pytest.raises(NativePolicyStop):
@@ -435,7 +446,7 @@ def test_unbound_or_missing_occurrence_never_opens_or_mints_input():
     assert not any(event[0] == "authorize" for event in case.events)
 
 
-def test_changed_ordered_intent_is_refused_without_repeated_dispatch():
+def test_changed_ordered_intent_is_refused_without_repeated_dispatch() -> None:
     case = Case()
     case.call()
     case.cursor.rewind()
@@ -444,7 +455,7 @@ def test_changed_ordered_intent_is_refused_without_repeated_dispatch():
     assert case.calls == 1
 
 
-def test_duplicate_delivery_while_claimed_never_issues_another_physical_call():
+def test_duplicate_delivery_while_claimed_never_issues_another_physical_call() -> None:
     case = Case()
     case.dispatch_error = RuntimeError("uncertain physical response")
     assert_unknown(case)
@@ -458,12 +469,12 @@ def test_duplicate_delivery_while_claimed_never_issues_another_physical_call():
 
 
 @pytest.mark.parametrize("limit", [0, -1, True, 1.5, "4096", None])
-def test_invalid_result_budget_is_refused_before_any_effect(limit):
+def test_invalid_result_budget_is_refused_before_any_effect(limit: object) -> None:
     with pytest.raises(ValueError, match="^native_call_result_budget_required$"):
         Case(max_result_bytes=limit)
 
 
-def test_generation_drift_after_claim_is_truthfully_not_dispatched():
+def test_generation_drift_after_claim_is_truthfully_not_dispatched() -> None:
     case = Case()
     case.authorization.claim_hook = lambda: setattr(
         case.state, "context", case.state.context.model_copy(update={"generation": 1})
@@ -475,10 +486,10 @@ def test_generation_drift_after_claim_is_truthfully_not_dispatched():
     assert case.authorization.outcomes == {0: ("not_dispatched", None)}
 
 
-def test_same_occurrence_cursor_replacement_during_callback_is_not_completion_authority():
+def test_same_occurrence_cursor_replacement_during_callback_is_not_completion_authority() -> None:
     case = Case()
 
-    def replace():
+    def replace() -> None:
         replacement = case.journal.open(ref=REF, occurrence_path=PATH)
         replacement.bind_input(input_result_ref="inputs", inputs=INPUT)
         replacement.next_key()
@@ -489,7 +500,7 @@ def test_same_occurrence_cursor_replacement_during_callback_is_not_completion_au
     assert case.authorization.outcomes == {0: ("unknown", None)}
 
 
-def test_owner_drift_during_storage_stops_without_completion():
+def test_owner_drift_during_storage_stops_without_completion() -> None:
     case = Case()
     case.state.store_hook = lambda: setattr(
         case.state,
@@ -501,7 +512,7 @@ def test_owner_drift_during_storage_stops_without_completion():
     assert case.authorization.outcomes == {0: ("unknown", None)}
 
 
-def test_forced_duplicate_permit_is_refused_by_one_shot_claim_without_settlement():
+def test_forced_duplicate_permit_is_refused_by_one_shot_claim_without_settlement() -> None:
     case = Case()
     current = case.intent()
     permit = case.authorization.before_call(ref=REF, intent=current)
@@ -514,7 +525,7 @@ def test_forced_duplicate_permit_is_refused_by_one_shot_claim_without_settlement
     assert not case.authorization.outcomes
 
 
-def test_saved_result_reference_never_overrides_current_denial():
+def test_saved_result_reference_never_overrides_current_denial() -> None:
     case = Case()
     case.call()
     case.cursor.rewind()
@@ -528,7 +539,7 @@ def test_saved_result_reference_never_overrides_current_denial():
         case.cursor.finish()
 
 
-def test_late_completed_receipt_survives_conflicting_unknown_attempt():
+def test_late_completed_receipt_survives_conflicting_unknown_attempt() -> None:
     case = Case()
     case.dispatch_error = OSError("response lost")
     case.authorization.settlement_hook = lambda: case.authorization.outcomes.update({0: ("completed", "late-result")})
@@ -538,7 +549,7 @@ def test_late_completed_receipt_survives_conflicting_unknown_attempt():
     assert [event for event in case.events if event[0] == "settle"] == [("settle", "unknown", None)]
 
 
-def test_lost_completion_ack_can_only_replay_after_current_c02_and_protected_read():
+def test_lost_completion_ack_can_only_replay_after_current_c02_and_protected_read() -> None:
     case = Case()
     case.authorization.settlement_error = OSError("ack lost")
     case.authorization.settlement_commits = True
@@ -559,7 +570,9 @@ def test_lost_completion_ack_can_only_replay_after_current_c02_and_protected_rea
         ApprovalWait(pending_operation_id="later-pending", wait_reason="interaction"),
     ],
 )
-def test_completion_recheck_cannot_emit_new_wait_or_success_without_recorded_authority(decision):
+def test_completion_recheck_cannot_emit_new_wait_or_success_without_recorded_authority(
+    decision: EffectDecision,
+) -> None:
     case = Case()
     case.authorization.settlement_hook = lambda: case.authorization.decisions.update({0: decision})
     assert_unknown(case)
@@ -567,7 +580,7 @@ def test_completion_recheck_cannot_emit_new_wait_or_success_without_recorded_aut
     assert [event for event in case.events if event[0] == "settle"] == [("settle", "completed", "result-0")]
 
 
-def test_postcompletion_protected_read_failure_never_overwrites_completed_outcome():
+def test_postcompletion_protected_read_failure_never_overwrites_completed_outcome() -> None:
     case = Case()
     case.authorization.settlement_hook = lambda: setattr(case.state, "read_error", OSError("readback failed"))
     assert_unknown(case)
@@ -576,7 +589,7 @@ def test_postcompletion_protected_read_failure_never_overwrites_completed_outcom
     assert [event for event in case.events if event[0] == "settle"] == [("settle", "completed", "result-0")]
 
 
-def test_result_at_exact_utf8_byte_budget_completes():
+def test_result_at_exact_utf8_byte_budget_completes() -> None:
     case = Case(max_result_bytes=4)
     case.value = "é"  # two quotes plus two UTF-8 bytes.
     assert case.call() == "é"
@@ -584,17 +597,20 @@ def test_result_at_exact_utf8_byte_budget_completes():
     assert case.calls == 1
 
 
-def test_replay_returns_isolated_mutable_value_from_protected_storage():
+def test_replay_returns_isolated_mutable_value_from_protected_storage() -> None:
     case = Case()
     result = case.call()
     assert result == {"typed": [False, 2, "2", None]}
-    result["typed"].append("local-only")
+    assert isinstance(result, dict)
+    typed = result["typed"]
+    assert isinstance(typed, list)
+    typed.append("local-only")
     case.cursor.rewind()
     assert case.call() == {"typed": [False, 2, "2", None]}
     assert case.calls == 1
 
 
-def test_claim_commit_lost_ack_retains_spent_claim_without_io_or_settlement():
+def test_claim_commit_lost_ack_retains_spent_claim_without_io_or_settlement() -> None:
     case = Case()
     case.authorization.claim_hook = lambda: case.authorization.claimed.add(0)
     case.authorization.claim_error = OSError("commit ack lost")

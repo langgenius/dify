@@ -1,12 +1,16 @@
 """Actual lifecycle metadata port with SQL/authority doubles, not storage or DB qualification."""
 
+from collections.abc import Generator
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import NoReturn, cast
 
 import pytest
 from sqlalchemy import inspect
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm.state import InstanceState
 
 from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest
@@ -20,9 +24,11 @@ from models.dify_builder_native_tests import (
 )
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTestContextRef
+from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
 
 NOW = datetime(2026, 10, 16, tzinfo=UTC)
@@ -45,26 +51,24 @@ class ClaimedCheckpointCase:
     ref: NativeTestContextRef
 
 
-def checkpoint_metadata_snapshot(session: SQL):
+def checkpoint_metadata_snapshot(session: SQL) -> dict[type, list[tuple[object, ...]]]:
     """Snapshot actual ORM values to prove metadata selection never mutates rows."""
-    return deepcopy(
-        {
-            model: [tuple(inspect(row).attrs[column.key].value for column in inspect(model).columns) for row in rows]
-            for model, rows in session.rows.items()
-        }
-    )
-
-
-class NoPrivateIO:
-    def __getattr__(self, name):
-        raise AssertionError("metadata handoff must not use private store: " + name)
+    snapshot: dict[type, list[tuple[object, ...]]] = {}
+    for model, rows in session.rows.items():
+        values: list[tuple[object, ...]] = []
+        for row in rows:
+            state = inspect(row, raiseerr=False)
+            assert isinstance(state, InstanceState)
+            values.append(tuple(state.attrs[column.key].value for column in state.mapper.columns))
+        snapshot[model] = values
+    return deepcopy(snapshot)
 
 
 @pytest.fixture
-def metadata_case(monkeypatch):
-    events = []
+def metadata_case(monkeypatch: pytest.MonkeyPatch) -> ClaimedCheckpointCase:
+    events: list[str] = []
     state = NativeInvocationState(
-        resolution={},
+        resolution=[],
         tenant_id="tenant",
         request_id="request",
         invocation_id="root",
@@ -151,11 +155,13 @@ def metadata_case(monkeypatch):
     session = SQL(rows, events)
 
     @contextmanager
-    def factory():
+    def factory() -> Generator[SQL]:
         events.append("read-session")
         yield session
 
-    def load(_session, *, ref, lock, settlement=False):
+    def load(
+        _session: object, *, ref: NativeTestContextRef, lock: bool, settlement: bool = False
+    ) -> tuple[OwnedNativeTest, NativeTestScope]:
         assert ref == REF
         assert lock is False
         assert settlement is False
@@ -177,7 +183,11 @@ def metadata_case(monkeypatch):
             state=request.state,
         ), scope
 
-    loader = OwnedNativeTestLoader(factory, actor=Actor(tenant_id="tenant", account_id="actor"), resolver=object())
+    loader = OwnedNativeTestLoader(
+        cast(sessionmaker[Session], factory),
+        actor=Actor(tenant_id="tenant", account_id="actor"),
+        resolver=NativeHttpBindingResolver(),
+    )
     monkeypatch.setattr(loader, "_load", load)
     authority = PrivateReadOwner(
         tenant_id="tenant",
@@ -196,14 +206,24 @@ def metadata_case(monkeypatch):
         request_state="running",
     )
 
-    def private_authority(actual_loader, ref):
+    def private_authority(actual_loader: OwnedNativeTestLoader, ref: NativeTestContextRef) -> PrivateReadOwner:
         assert actual_loader is loader
         assert ref == REF
         events.append("current-permission")
         return authority
 
     monkeypatch.setattr("services.dify_builder.native_testing.lifecycle.validate_private_read", private_authority)
-    service = NativeTestLifecycleService(loader, state_store=NoPrivateIO(), clock=lambda: NOW)
+    store = NativeExecutionStateStore(loader)
+
+    def forbidden_private_read(*args: object, **kwargs: object) -> NoReturn:
+        del args, kwargs
+        raise AssertionError("metadata handoff must not use private store")
+
+    monkeypatch.setattr(store, "load_context", forbidden_private_read)
+    monkeypatch.setattr(store, "read_checkpoint", forbidden_private_read)
+    monkeypatch.setattr(store, "load_result", forbidden_private_read)
+    monkeypatch.setattr(store, "_read_object", forbidden_private_read)
+    service = NativeTestLifecycleService(loader, state_store=store, clock=lambda: NOW)
     return ClaimedCheckpointCase(
         service=service,
         session=session,
@@ -220,7 +240,9 @@ def metadata_case(monkeypatch):
     )
 
 
-def test_returns_actual_claimed_checkpoint_metadata_without_io_or_mutation(metadata_case):
+def test_returns_actual_claimed_checkpoint_metadata_without_io_or_mutation(
+    metadata_case: ClaimedCheckpointCase,
+) -> None:
     c = metadata_case
     before = checkpoint_metadata_snapshot(c.session)
     actual = c.service.claimed_resume_checkpoint(ref=c.ref, generation=1, dispatch_id="dispatch")
@@ -230,7 +252,9 @@ def test_returns_actual_claimed_checkpoint_metadata_without_io_or_mutation(metad
     assert "normal-owner" in c.events
 
 
-def test_local_generation_can_lag_shared_scope_and_skip_checkpoint_generation(metadata_case, monkeypatch):
+def test_local_generation_can_lag_shared_scope_and_skip_checkpoint_generation(
+    metadata_case: ClaimedCheckpointCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     c = metadata_case
     c.state.generation = c.dispatch.generation = 4
     c.continuation.generation = 1
@@ -246,14 +270,14 @@ def test_local_generation_can_lag_shared_scope_and_skip_checkpoint_generation(me
 
 
 @pytest.mark.parametrize("generation", [0, -1, True, 1.0])
-def test_refuses_initial_or_untyped_generation(metadata_case, generation):
+def test_refuses_initial_or_untyped_generation(metadata_case: ClaimedCheckpointCase, generation: object) -> None:
     c = metadata_case
     with pytest.raises(BuilderExecutionPolicyError):
-        c.service.claimed_resume_checkpoint(ref=c.ref, generation=generation, dispatch_id="dispatch")
+        c.service.claimed_resume_checkpoint(ref=c.ref, generation=cast(int, generation), dispatch_id="dispatch")
 
 
 @pytest.mark.parametrize("status", ["queued", "published", "unknown", "completed", "cancelled"])
-def test_only_current_claimed_dispatch_can_supply_checkpoint(metadata_case, status):
+def test_only_current_claimed_dispatch_can_supply_checkpoint(metadata_case: ClaimedCheckpointCase, status: str) -> None:
     c = metadata_case
     c.dispatch.state = status
     with pytest.raises(BuilderExecutionPolicyError):
@@ -261,7 +285,7 @@ def test_only_current_claimed_dispatch_can_supply_checkpoint(metadata_case, stat
 
 
 @pytest.mark.parametrize("model", [NativeDispatch, NativeInvocationState, NativeContinuation, NativePayloadObject])
-def test_missing_acknowledged_owner_metadata_refuses(metadata_case, model):
+def test_missing_acknowledged_owner_metadata_refuses(metadata_case: ClaimedCheckpointCase, model: type) -> None:
     c = metadata_case
     c.session.rows[model] = []
     with pytest.raises(BuilderExecutionPolicyError):
@@ -272,7 +296,9 @@ def test_missing_acknowledged_owner_metadata_refuses(metadata_case, model):
 @pytest.mark.parametrize(
     ("field", "value"), [("tenant_id", "foreign"), ("request_id", "foreign"), ("invocation_id", "foreign")]
 )
-def test_foreign_metadata_cannot_supply_claimed_checkpoint(metadata_case, row_name, field, value):
+def test_foreign_metadata_cannot_supply_claimed_checkpoint(
+    metadata_case: ClaimedCheckpointCase, row_name: str, field: str, value: str
+) -> None:
     c = metadata_case
     setattr(
         {"dispatch": c.dispatch, "state": c.state, "continuation": c.continuation, "obj": c.obj}[row_name], field, value
@@ -296,7 +322,7 @@ def test_foreign_metadata_cannot_supply_claimed_checkpoint(metadata_case, row_na
         "scope_expired",
     ],
 )
-def test_current_execution_drift_refuses_without_mutation(metadata_case, fault):
+def test_current_execution_drift_refuses_without_mutation(metadata_case: ClaimedCheckpointCase, fault: str) -> None:
     c = metadata_case
     if fault == "dispatch_generation":
         c.dispatch.generation = 2
@@ -338,7 +364,7 @@ def test_current_execution_drift_refuses_without_mutation(metadata_case, fault):
         "wrong_logical_key",
     ],
 )
-def test_corrupt_checkpoint_metadata_never_mints_reference(metadata_case, fault):
+def test_corrupt_checkpoint_metadata_never_mints_reference(metadata_case: ClaimedCheckpointCase, fault: str) -> None:
     c = metadata_case
     if fault == "equal_generation":
         c.continuation.generation = 1
@@ -372,20 +398,39 @@ def test_corrupt_checkpoint_metadata_never_mints_reference(metadata_case, fault)
         ("root_revision_matches", False),
     ],
 )
-def test_private_authority_snapshot_must_match_current_local_owner(metadata_case, monkeypatch, field, value):
+def test_private_authority_snapshot_must_match_current_local_owner(
+    metadata_case: ClaimedCheckpointCase, monkeypatch: pytest.MonkeyPatch, field: str, value: object
+) -> None:
     from dataclasses import replace
 
     c = metadata_case
-    authority = replace(c.authority, **{field: value})
+    if field == "generation":
+        assert isinstance(value, int)
+        authority = replace(c.authority, generation=value)
+    elif field == "context_object_id":
+        assert isinstance(value, str)
+        authority = replace(c.authority, context_object_id=value)
+    elif field == "app_id":
+        assert isinstance(value, str)
+        authority = replace(c.authority, app_id=value)
+    elif field == "active":
+        assert isinstance(value, bool)
+        authority = replace(c.authority, active=value)
+    else:
+        assert field == "root_revision_matches"
+        assert isinstance(value, bool)
+        authority = replace(c.authority, root_revision_matches=value)
     monkeypatch.setattr("services.dify_builder.native_testing.lifecycle.validate_private_read", lambda *_: authority)
     with pytest.raises(BuilderExecutionPolicyError):
         c.service.claimed_resume_checkpoint(ref=c.ref, generation=1, dispatch_id="dispatch")
 
 
-def test_actual_permission_port_refusal_precedes_checkpoint_selection(metadata_case, monkeypatch):
+def test_actual_permission_port_refusal_precedes_checkpoint_selection(
+    metadata_case: ClaimedCheckpointCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     c = metadata_case
 
-    def denied(*_):
+    def denied(*_: object) -> None:
         raise BuilderExecutionPolicyError("native_permission_denied")
 
     monkeypatch.setattr("services.dify_builder.native_testing.lifecycle.validate_private_read", denied)

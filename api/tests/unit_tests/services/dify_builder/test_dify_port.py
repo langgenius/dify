@@ -27,10 +27,15 @@ import json
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from unittest.mock import patch
+from types import TracebackType
+from typing import override
+from unittest.mock import MagicMock, patch
 
 import pytest
+import pytest_mock
+import sqlalchemy
 from sqlalchemy import Engine, update
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -45,6 +50,7 @@ from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializedError
 from services.dify_builder.revision import execution_revision
 from services.errors.app import WorkflowHashNotEqualError
+from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder.workflow_stream_fixtures import (
     native_chatflow_payloads,
     native_workflow_payloads,
@@ -69,7 +75,8 @@ def _workflow(
         session.add(row)
         session.flush()
         session.commit()
-        session.commit.reset_mock()
+        _installed_spy_13 = installed_mock(session.commit)
+        _installed_spy_13.reset_mock()
     return row
 
 
@@ -167,15 +174,18 @@ def _published_workflow(*, id: str, marked_name: str, version_number: int = 1) -
 
 @dataclass
 class PortDatabase:
-    engine: Engine
+    engine: Engine | Connection
 
 
 class TrackedPortSession(Session):
     exits: int = 0
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    @override
+    def __exit__(
+        self, type_: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+    ) -> None:
         self.exits += 1
-        super().__exit__(exc_type, exc_value, traceback)
+        super().__exit__(type_, value, traceback)
 
 
 def _actor() -> Actor:
@@ -190,13 +200,16 @@ def _configure_session_get(session: Session, *, account: Account | None = None, 
             else:
                 session.merge(row)
     session.commit()
-    session.get.reset_mock()
-    session.refresh.reset_mock()
-    session.commit.reset_mock()
+    _installed_spy_1 = installed_mock(session.get)
+    _installed_spy_1.reset_mock()
+    _installed_spy_2 = installed_mock(session.refresh)
+    _installed_spy_2.reset_mock()
+    _installed_spy_3 = installed_mock(session.commit)
+    _installed_spy_3.reset_mock()
 
 
 @pytest.fixture
-def mock_session(sqlite_engine, mocker) -> Iterator[TrackedPortSession]:
+def mock_session(sqlite_engine: sqlalchemy.Engine, mocker: pytest_mock.MockerFixture) -> Iterator[TrackedPortSession]:
     with TrackedPortSession(sqlite_engine, expire_on_commit=False) as session:
         for name in ("get", "refresh", "commit"):
             mocker.spy(session, name)
@@ -204,7 +217,7 @@ def mock_session(sqlite_engine, mocker) -> Iterator[TrackedPortSession]:
 
 
 @pytest.fixture(autouse=True)
-def _mock_db(sqlite_engine, monkeypatch) -> Iterator[None]:
+def _mock_db(sqlite_engine: sqlalchemy.Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr("services.dify_builder.dify_port.db", PortDatabase(sqlite_engine))
     with patch("services.dify_builder.dify_port.set_login_user"):
         yield
@@ -222,7 +235,7 @@ def _skip_preflight() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
-def _mock_sessionmaker(mock_session: TrackedPortSession, monkeypatch) -> None:
+def _mock_sessionmaker(mock_session: TrackedPortSession, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("services.dify_builder.dify_port._session_factory", lambda: lambda: mock_session)
 
 
@@ -610,7 +623,8 @@ def test_apply_repair_invokes_on_canvas_once_per_applied_intent(mock_session: Tr
         events.append(event)
 
     def preflight_before_lock(*_args: object) -> list[str]:
-        mock_session.refresh.assert_not_called()
+        _installed_spy_14 = installed_mock(mock_session.refresh)
+        _installed_spy_14.assert_not_called()
         return []
 
     with (
@@ -820,7 +834,8 @@ def test_mutations_recheck_execution_revision_after_locking(mock_session: Tracke
             writer.execute(update(Workflow).where(Workflow.id == workflow.id).values(graph=workflow.graph))
         Session.refresh(mock_session, _workflow, with_for_update=with_for_update)
 
-    mock_session.refresh.side_effect = concurrent_edit
+    _installed_spy_4 = installed_mock(mock_session.refresh)
+    _installed_spy_4.side_effect = concurrent_edit
     events = []
     with patch("services.dify_builder.dify_port.WorkflowService") as service:
         service.return_value.get_draft_workflow.side_effect = lambda _app, *, session: session.get(
@@ -882,7 +897,8 @@ def test_repair_preserves_layout_committed_while_builder_was_planning(mock_sessi
             writer.execute(update(Workflow).where(Workflow.id == workflow.id).values(graph=workflow.graph))
         Session.refresh(mock_session, _workflow, with_for_update=with_for_update)
 
-    mock_session.refresh.side_effect = move_node
+    _installed_spy_5 = installed_mock(mock_session.refresh)
+    _installed_spy_5.side_effect = move_node
     with (
         patch("services.dify_builder.dify_port.WorkflowService") as service,
         patch("services.dify_builder.dify_port.notify_workflow_draft_changed") as notify,
@@ -1300,7 +1316,7 @@ def test_run_draft_closes_the_stream_when_the_callback_raises(mock_session: Trac
 
     closed = []
 
-    def response_stream():
+    def response_stream() -> Iterator[str]:
         try:
             yield _sse({"event": "node_started", "data": {"node_id": "n1", "title": "S"}})
         finally:
@@ -1354,7 +1370,8 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
         )
         draft.id = "locked-draft"
         mock_session.commit()
-        mock_session.commit.reset_mock()
+        _installed_spy_15 = installed_mock(mock_session.commit)
+        _installed_spy_15.reset_mock()
         mock_ws_cls.return_value.get_draft_workflow.side_effect = lambda _app, *, session: session.get(
             Workflow, draft.id
         )
@@ -1372,15 +1389,19 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
     assert publish.call_args.kwargs["account"].id == account.id
     assert publish.call_args.kwargs["expected_draft_id"] == draft.id
     stored_app = mock_session.get(App, app.id)
+    assert stored_app is not None
     assert stored_app.workflow_id == "new-wf-id"
     # Publish must also advance the app's audit fields -- mirrors the console idiom at
     # controllers/console/app/workflow.py (~1315) so publishing via the dify_builder leaves the
     # same trail as publishing via the console UI.
+    assert stored_app is not None
     assert stored_app.updated_by == "acc-1"
+    assert stored_app is not None
     assert stored_app.updated_at == datetime(2026, 10, 20, 12)
     assert result.version_name == "# 2"
     assert result.status == "live"
-    mock_session.commit.assert_called_once()
+    _installed_spy_6 = installed_mock(mock_session.commit)
+    _installed_spy_6.assert_called_once()
 
 
 # ---- Protocol conformance --------------------------------------------------
@@ -1484,7 +1505,7 @@ ESQ1_302_ERROR_FRAME = {
 
 def _run_stream(
     chunks: Sequence[str | Graph], *, node_execs: list[object] | None = None, run_row: object | None = None
-) -> tuple[Run, list[Mapping[str, object]], TrackedPortSession]:
+) -> tuple[Run, list[Mapping[str, object]], MagicMock]:
     """Exercise the legacy presentation mapper only; no native/sealed execution proof."""
     forwarded = [value for chunk in chunks if (value := run_mapping.stream_chunk_as_mapping(chunk)) is not None]
     final, run_id, error = dict[str, object](), "", None
@@ -1689,7 +1710,7 @@ def test_verification_binds_actual_native_graph(
         session=mock_session, graph_dict={"nodes": [{"id": "a", "data": {"type": "start"}}], "edges": []}
     )
     native = (
-        workflow.graph_dict
+        dict(workflow.graph_dict)
         if native_graph == "same"
         else {"nodes": [{"id": "b", "data": {"type": "start"}}], "edges": list[object]()}
         if native_graph
@@ -1743,7 +1764,8 @@ def test_publish_verification_locked_guard(mock_session: TrackedPortSession, sta
     )
     draft.id = "locked-draft"
     mock_session.commit()
-    mock_session.commit.reset_mock()
+    _installed_spy_7 = installed_mock(mock_session.commit)
+    _installed_spy_7.reset_mock()
     expected = execution_revision(draft)
     expected_graph = executable_graph_revision(dict(draft.graph_dict))
 
@@ -1753,11 +1775,14 @@ def test_publish_verification_locked_guard(mock_session: TrackedPortSession, sta
         if stale:
             with Session(mock_session.get_bind()) as writer, writer.begin():
                 writer.execute(
-                    update(Workflow).where(Workflow.id == draft.id).values(_features=json.dumps({"changed": True}))
+                    update(Workflow)
+                    .where(Workflow.id == draft.id)
+                    .values({Workflow._features: json.dumps({"changed": True})})
                 )
         Session.refresh(mock_session, row, with_for_update=with_for_update)
 
-    mock_session.refresh.side_effect = refresh
+    _installed_spy_8 = installed_mock(mock_session.refresh)
+    _installed_spy_8.side_effect = refresh
     with patch("services.dify_builder.dify_port.WorkflowService") as ws:
         ws.return_value.get_draft_workflow.side_effect = lambda _app, *, session: session.get(Workflow, draft.id)
         ws.return_value.publish_workflow.return_value = _published_workflow(id="published", marked_name="v1")
@@ -1767,18 +1792,25 @@ def test_publish_verification_locked_guard(mock_session: TrackedPortSession, sta
                     "app-1", _actor(), expected_revision=expected, expected_graph_revision=expected_graph
                 )
             ws.return_value.publish_workflow.assert_not_called()
-            mock_session.commit.assert_not_called()
+            _installed_spy_16 = installed_mock(mock_session.commit)
+            _installed_spy_16.assert_not_called()
             assert app.workflow_id == "old"
         else:
             WorkflowServiceDifyPort().publish(
                 "app-1", _actor(), expected_revision=expected, expected_graph_revision=expected_graph
             )
             assert ws.return_value.publish_workflow.call_args.kwargs["expected_draft_id"] == "locked-draft"
-            assert mock_session.get(App, app.id).workflow_id == "published"
-            mock_session.commit.assert_called_once()
-    assert mock_session.refresh.call_count == 1
-    assert mock_session.refresh.call_args.args[0].id == draft.id
-    assert mock_session.refresh.call_args.kwargs == {"with_for_update": True}
+            published_app = mock_session.get(App, app.id)
+            assert published_app is not None
+            assert published_app.workflow_id == "published"
+            _installed_spy_17 = installed_mock(mock_session.commit)
+            _installed_spy_17.assert_called_once()
+    _installed_spy_9 = installed_mock(mock_session.refresh)
+    assert _installed_spy_9.call_count == 1
+    _installed_spy_10 = installed_mock(mock_session.refresh)
+    assert _installed_spy_10.call_args.args[0].id == draft.id
+    _installed_spy_11 = installed_mock(mock_session.refresh)
+    assert _installed_spy_11.call_args.kwargs == {"with_for_update": True}
 
 
 @pytest.mark.parametrize(
@@ -1799,7 +1831,8 @@ def test_confirmed_run_requires_both_server_reserved_identifiers_together(
             command_id=command_id,
         )
     generate.assert_not_called()
-    mock_session.get.assert_not_called()
+    _installed_spy_12 = installed_mock(mock_session.get)
+    _installed_spy_12.assert_not_called()
     assert run.status == "failed"
     assert run.execution_refusal is not None
     assert run.execution_refusal.reason_code == "confirmed_launch_incomplete"

@@ -12,6 +12,8 @@ and consent tables in that same database through their actual migrations, so
 every race below runs against migration-built constraints, not model metadata.
 """
 
+from __future__ import annotations
+
 import importlib.util
 import json
 import multiprocessing

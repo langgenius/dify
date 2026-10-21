@@ -30,7 +30,7 @@ def test_failed_replanning_preserves_snapshot_and_recovers_on_retry(
     new_plan = WorkflowPlan("New title", "New input", "New output", ["New step", "Return answer"])
     proposals = iter([None, new_plan])
 
-    def propose_edit_plan(*_, reply_language=None):
+    def propose_edit_plan(*_: object, reply_language: str | None = None) -> WorkflowPlan | None:
         assert reply_language == "zh-Hans"
         return next(proposals)
 

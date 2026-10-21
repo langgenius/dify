@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from dataclasses import dataclass
-from typing import cast
+from typing import Never, cast
 
 import pytest
+import pytest_mock
+from _pytest.monkeypatch import MonkeyPatch
 from flask import Flask
-from sqlalchemy import Engine, Select
+from sqlalchemy import Connection, Engine, Select
 from sqlalchemy.orm import Session
 from werkzeug.local import LocalProxy
 
@@ -19,30 +21,38 @@ from core.app.entities.app_invoke_entities import (
     UserFrom,
     WorkflowAppGenerateEntity,
 )
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.graph.graph import Graph
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.model import Account, App
 from models.workflow import Workflow
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from runtime_contracts.builder.execution import JsonToolExecutionContext
 from services.dify_builder.application.execution_policy import BuilderExecutionContext, BuilderExecutionPolicyError
+from services.dify_builder.dify_port import _BuilderExecutionLaunch
+from services.dify_builder.execution_policy_service import ServiceExecutionRecorder
+from services.workflow_runtime.base_runner import WorkflowBasedAppRunner
 from services.workflow_runtime.node_factory import DifyNodeFactory
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, _Account
+from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned, prepare_inputs
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 
 
 @dataclass(frozen=True)
 class _AdmissionDatabase:
-    engine: Engine
+    engine: Engine | Connection
 
 
-def _forbidden_driver(*_args, **_kwargs):
+def _forbidden_driver(*_args: object, **_kwargs: object) -> Never:
     raise AssertionError("execution driver must not run before admission")
 
 
 @pytest.fixture
-def admission(owned, mocker):
+def admission(owned: Owned, mocker: pytest_mock.MockerFixture) -> _BuilderExecutionLaunch:
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 
@@ -53,14 +63,16 @@ def admission(owned, mocker):
 
 
 @pytest.fixture
-def recorder(owned):
+def recorder(owned: Owned) -> ServiceExecutionRecorder:
     from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService, ServiceExecutionRecorder
 
     return ServiceExecutionRecorder(BuilderExecutionPolicyService(owned[0]), context(), "run", "task")
 
 
 @pytest.fixture
-def workflow_repositories(owned):
+def workflow_repositories(
+    owned: Owned,
+) -> tuple[SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository]:
     from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
     from core.repositories.sqlalchemy_workflow_node_execution_repository import (
         SQLAlchemyWorkflowNodeExecutionRepository,
@@ -70,18 +82,25 @@ def workflow_repositories(owned):
     with factory() as session:
         user = session.get(Account, actor.account_id)
         assert user is not None
-    args = {
-        "session_factory": factory,
-        "tenant_id": actor.tenant_id,
-        "user": user,
-        "app_id": app.id,
-        "triggered_from": None,
-    }
-    return SQLAlchemyWorkflowExecutionRepository(**args), SQLAlchemyWorkflowNodeExecutionRepository(**args)
+    execution_repository = SQLAlchemyWorkflowExecutionRepository(
+        session_factory=factory,
+        tenant_id=actor.tenant_id,
+        user=user,
+        app_id=app.id,
+        triggered_from=None,
+    )
+    node_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=factory,
+        tenant_id=actor.tenant_id,
+        user=user,
+        app_id=app.id,
+        triggered_from=None,
+    )
+    return execution_repository, node_repository
 
 
 @pytest.fixture
-def workflow_queue(mocker):
+def workflow_queue(mocker: pytest_mock.MockerFixture) -> WorkflowAppQueueManager:
     import core.app.apps.base_app_queue_manager as queue_module
     from core.app.apps.execution_coordinator import AppExecutionCoordinator
     from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
@@ -95,13 +114,19 @@ def workflow_queue(mocker):
     return queue
 
 
-def _install_paused_marker(module, owned, entity, mocker, monkeypatch):
+def _install_paused_marker(
+    owned: Owned,
+    entity: AppGenerateEntity,
+    mocker: pytest_mock.MockerFixture,
+    monkeypatch: MonkeyPatch,
+) -> DifyAPISQLAlchemyWorkflowRunRepository:
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
     from models.workflow import WorkflowPause
     from repositories.sqlalchemy_api_workflow_run_repository import (
         DifyAPISQLAlchemyWorkflowRunRepository,
         _PrivateWorkflowPauseEntity,
     )
+    from tasks.app_generate import workflow_execute_task as module
 
     factory = owned[0]
     with factory() as db_session:
@@ -222,7 +247,7 @@ def test_json_marker_round_trips_existing_native_carriers(carrier: str) -> None:
 
 
 def test_json_celery_refuses_before_logging_or_runner(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
     import tasks.app_generate.workflow_execute_task as module
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
@@ -246,7 +271,9 @@ def test_json_celery_refuses_before_logging_or_runner(
 
 
 @pytest.mark.parametrize("transport", ["celery", "files"])
-def test_json_generate_refuses_unsupported_transport_before_workflow_read(admission, mocker, transport: str) -> None:
+def test_json_generate_refuses_unsupported_transport_before_workflow_read(
+    admission: _BuilderExecutionLaunch, mocker: pytest_mock.MockerFixture, transport: str
+) -> None:
     from services.app_generate_service import AppGenerateService
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
 
@@ -269,11 +296,14 @@ def test_json_generate_refuses_unsupported_transport_before_workflow_read(admiss
             builder_execution_admit=admit,
         )
     read.assert_not_called()
-    admit.on_refusal.assert_called_once()
+    _installed_spy_1 = installed_mock(admit.on_refusal)
+    _installed_spy_1.assert_called_once()
 
 
 @pytest.mark.parametrize("transport", ["missing_issuer", "files", "depth"])
-def test_json_workflow_generator_refuses_before_file_or_graph_effect(admission, mocker, transport: str) -> None:
+def test_json_workflow_generator_refuses_before_file_or_graph_effect(
+    admission: _BuilderExecutionLaunch, mocker: pytest_mock.MockerFixture, transport: str
+) -> None:
     from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
 
@@ -297,13 +327,15 @@ def test_json_workflow_generator_refuses_before_file_or_graph_effect(admission, 
             builder_execution_admit=None if transport == "missing_issuer" else admit,
         )
     file_scope.assert_not_called()
-    admit.admit_raw.assert_not_called()
+    _installed_spy_2 = installed_mock(admit.admit_raw)
+    _installed_spy_2.assert_not_called()
     if transport != "missing_issuer":
-        admit.on_refusal.assert_called_once()
+        _installed_spy_9 = installed_mock(admit.on_refusal)
+        _installed_spy_9.assert_called_once()
 
 
 def test_json_resume_refuses_before_trace_or_graph_restore(
-    workflow_repositories,
+    workflow_repositories: tuple[SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository],
 ) -> None:
     from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
@@ -322,8 +354,8 @@ def test_json_resume_refuses_before_trace_or_graph_restore(
 
 
 def test_json_factory_refuses_nonissued_recorder_before_ordinary_setup(
-    mocker,
-    recorder,
+    mocker: pytest_mock.MockerFixture,
+    recorder: ServiceExecutionRecorder,
 ) -> None:
     import time
 
@@ -357,7 +389,9 @@ def test_json_factory_refuses_nonissued_recorder_before_ordinary_setup(
     ordinary.assert_not_called()
 
 
-def test_json_task_resume_refuses_before_snapshot_restore(mocker, owned, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_json_task_resume_refuses_before_snapshot_restore(
+    mocker: pytest_mock.MockerFixture, owned: Owned, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import tasks.app_generate.workflow_execute_task as module
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
 
@@ -371,16 +405,17 @@ def test_json_task_resume_refuses_before_snapshot_restore(mocker, owned, monkeyp
         invoke_from=InvokeFrom.DEBUGGER,
         builder_execution=marker,
     )
-    repository = _install_paused_marker(module, owned, entity, mocker, monkeypatch)
+    repository = _install_paused_marker(owned, entity, mocker, monkeypatch)
     restore = mocker.patch.object(module.RuntimeState, "from_snapshot", side_effect=AssertionError("restore forbidden"))
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
         module._resume_app_execution({"workflow_run_id": "run"})
     restore.assert_not_called()
-    repository.resume_workflow_pause.assert_not_called()
+    _installed_spy_3 = installed_mock(repository.resume_workflow_pause)
+    _installed_spy_3.assert_not_called()
 
 
 def test_celery_refuses_marker_before_logging_or_initialization(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
     import tasks.app_generate.workflow_execute_task as module
 
@@ -404,7 +439,11 @@ def test_celery_refuses_marker_before_logging_or_initialization(
 @pytest.mark.parametrize("entry", ["constructor", "classmethod", "runner"])
 @pytest.mark.parametrize("has_recorder", [True, False])
 def test_factory_composes_restricted_without_live_adapters(
-    mocker, recorder, workflow_queue, entry: str, has_recorder: bool
+    mocker: pytest_mock.MockerFixture,
+    recorder: ServiceExecutionRecorder,
+    workflow_queue: WorkflowAppQueueManager,
+    entry: str,
+    has_recorder: bool,
 ) -> None:
     import time
 
@@ -484,7 +523,11 @@ def test_factory_composes_restricted_without_live_adapters(
     "change", ["code", "tool", "environment", "features", "tenant", "inputs", "fixture", "membership", "tracing"]
 )
 def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(
-    mocker, workflow_repositories, owned: Owned, monkeypatch: pytest.MonkeyPatch, change: str
+    mocker: pytest_mock.MockerFixture,
+    workflow_repositories: tuple[SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository],
+    owned: Owned,
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
 ) -> None:
     import contextvars
     import json
@@ -608,8 +651,10 @@ def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(
         proceed.set()
         worker.join(timeout=2)
     assert not worker.is_alive()
-    queue.publish_error.assert_called_once()
-    assert isinstance(queue.publish_error.call_args.args[0], BuilderExecutionPolicyError)
+    _installed_spy_4 = installed_mock(queue.publish_error)
+    _installed_spy_4.assert_called_once()
+    _installed_spy_5 = installed_mock(queue.publish_error)
+    assert isinstance(_installed_spy_5.call_args.args[0], BuilderExecutionPolicyError)
     assert queue.execution_state == AppExecutionState.TERMINAL
     messages = list(queue.listen())
     assert len(messages) == 1
@@ -619,7 +664,8 @@ def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(
     trace.assert_not_called()
     secret.assert_not_called()
     assert launch.recorder is None
-    assert launch.refusal is queue.publish_error.call_args.args[0]
+    _installed_spy_6 = installed_mock(queue.publish_error)
+    assert launch.refusal is _installed_spy_6.call_args.args[0]
     completion = launch.finish(response_completed=True)
     assert completion.worker_finished
     assert completion.worker_exit == "policy_refused"
@@ -628,7 +674,11 @@ def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(
 
 
 def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(
-    mocker, workflow_queue, workflow_repositories, owned: Owned, monkeypatch: pytest.MonkeyPatch
+    mocker: pytest_mock.MockerFixture,
+    workflow_queue: WorkflowAppQueueManager,
+    workflow_repositories: tuple[SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository],
+    owned: Owned,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import contextvars
     from contextlib import nullcontext
@@ -662,7 +712,7 @@ def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(
     launch = _BuilderExecutionLaunch(service, marker)
     runners = []
 
-    def record_driver(runner, *_args):
+    def record_driver(runner: WorkflowBasedAppRunner, *_args: object) -> None:
         runners.append(runner)
 
     queue = workflow_queue
@@ -676,7 +726,9 @@ def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(
         workflow_node_execution_repository=workflow_repositories[1],
         builder_execution_admit=launch,
     )
-    queue.publish_error.assert_not_called()
+    _installed_spy_7 = installed_mock(queue.publish_error)
+    _installed_spy_7.assert_not_called()
+    assert isinstance(runners[0], module.WorkflowAppRunner)
     assert runners[0]._execution_recorder is launch.recorder
     with factory() as db:
         row = db.get(DifyBuilderExecutionRequest, marker.request_id)
@@ -684,6 +736,7 @@ def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(
         assert (row.state, row.native_run_id, row.task_id) == ("running", "allocated-run", "task")
     with pytest.raises(BuilderExecutionPolicyError, match="execution_already_claimed"):
         launch(workflow, app, entity, "start", False)
+    assert isinstance(runners[0], module.WorkflowAppRunner)
     assert runners[0]._execution_recorder is launch.recorder
     # An append failure latches the very recorder that the port completion receives.
     from services.dify_builder.application.execution_policy import BuilderExecutionObservation
@@ -709,7 +762,7 @@ def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(
 
 
 def test_resume_marker_refused_before_restore_trace_or_cancellation_reset(
-    mocker, owned, monkeypatch: pytest.MonkeyPatch
+    mocker: pytest_mock.MockerFixture, owned: Owned, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import tasks.app_generate.workflow_execute_task as module
 
@@ -722,7 +775,7 @@ def test_resume_marker_refused_before_restore_trace_or_cancellation_reset(
         invoke_from=InvokeFrom.DEBUGGER,
         builder_execution=context(),
     )
-    repo = _install_paused_marker(module, owned, entity, mocker, monkeypatch)
+    repo = _install_paused_marker(owned, entity, mocker, monkeypatch)
     restore = mocker.patch.object(module.RuntimeState, "from_snapshot", side_effect=AssertionError("restore forbidden"))
     reset = mocker.patch.object(
         module, "clear_app_task_cancellation_signals", side_effect=AssertionError("reset forbidden")
@@ -731,11 +784,15 @@ def test_resume_marker_refused_before_restore_trace_or_cancellation_reset(
         module._resume_app_execution({"workflow_run_id": "run"})
     restore.assert_not_called()
     reset.assert_not_called()
-    repo.resume_workflow_pause.assert_not_called()
+    _installed_spy_8 = installed_mock(repo.resume_workflow_pause)
+    _installed_spy_8.assert_not_called()
 
 
 def test_native_worker_outer_finally_acknowledges_context_entry_failure(
-    workflow_queue, workflow_repositories, owned: Owned, monkeypatch: pytest.MonkeyPatch
+    workflow_queue: WorkflowAppQueueManager,
+    workflow_repositories: tuple[SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository],
+    owned: Owned,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import contextvars
     import threading

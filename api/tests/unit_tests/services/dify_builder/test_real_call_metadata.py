@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
+import pytest_mock
 
 from core.plugin.entities.plugin import PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
@@ -131,7 +132,7 @@ class FakeMetadata:
 
 
 @pytest.fixture(autouse=True)
-def forbidden_effects(mocker) -> Iterator[None]:
+def forbidden_effects(mocker: pytest_mock.MockerFixture) -> Iterator[None]:
     """Metadata reads only: invoke/validate/runtime/OAuth/decrypt/DB sessions fail the test."""
     from sqlalchemy.orm import Session
 

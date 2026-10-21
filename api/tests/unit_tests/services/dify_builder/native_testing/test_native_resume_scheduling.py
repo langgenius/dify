@@ -6,21 +6,40 @@ transport are real. Only authority/storage ports and physical HTTP send are test
 boundaries. Removing the restored task must fail the physical-call assertion.
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
 from datetime import UTC, datetime
 from threading import Thread, current_thread
 from time import monotonic
+from typing import cast, override
 
 import httpx
 import pytest
+from httpx._models import Response
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from graphon.engine.command import InMemoryChannel
-from graphon.engine_events import GraphRunPausedEvent, GraphRunSucceededEvent, NodeRunStartedEvent
+from graphon.engine_events import EngineEvent, GraphRunPausedEvent, GraphRunSucceededEvent, NodeRunStartedEvent
 from graphon.graph import Graph
-from graphon.runtime import VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from runtime_contracts.builder.native.contracts import ApprovalWait, CheckpointRef, PolicyStop, operation_digest
+from runtime_contracts.builder.native.contracts import (
+    ApprovalWait,
+    CheckpointRef,
+    DispatchPermit,
+    EffectDecision,
+    EffectIntent,
+    EffectReceipt,
+    JsonValue,
+    NativeTestContextRef,
+    OperationKey,
+    Outcome,
+    PolicyStop,
+    operation_digest,
+)
+from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
+from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.context_runtime import NativeGraphRuntimeState, native_observation_scope
 from services.dify_builder.native_testing.host_execution import NativeHostLaunch
@@ -42,6 +61,7 @@ from services.dify_builder.native_testing.runtime import (
     DifyNativeRuntime,
     build_delivery_bridge,
 )
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from services.workflow_runtime.entry import WorkflowEntry
 from services.workflow_runtime.node_factory import DifyGraphInitContext, DifyNodeFactory
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import REF, Authorization, State
@@ -53,14 +73,18 @@ from tests.unit_tests.services.dify_builder.native_testing.test_host_execution i
 from tests.unit_tests.services.dify_builder.native_testing.test_http_adapter import (
     protected_application_logs as protected_application_logs,  # noqa: PLC0414 - real logging fixture
 )
-from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context
+from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context, graph_data
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_bridge import _api
 
 
 class SchedulingState(State):
+    payload: NativeCheckpointPayload
+
     """C03 stand-in retains exact typed inputs/results across host generations."""
 
-    def store_node_inputs(self, *, ref, generation, native_execution_id, inputs):
+    def store_node_inputs(
+        self, *, ref: NativeTestContextRef, generation: int, native_execution_id: str, inputs: JsonValue
+    ) -> str:
         assert ref == REF
         assert generation == self.context.generation
         result_ref = "inputs-" + native_execution_id
@@ -69,13 +93,15 @@ class SchedulingState(State):
         self.values[result_ref] = deepcopy(inputs)
         return result_ref
 
-    def store_result(self, *, ref, key, result):
+    @override
+    def store_result(self, *, ref: NativeTestContextRef, key: OperationKey, result: JsonValue) -> str:
         assert ref == REF
         result_ref = "result-" + operation_digest(key)
         self.values[result_ref] = deepcopy(result)
         return result_ref
 
-    def read_checkpoint(self, *, ref, checkpoint):
+    @override
+    def read_checkpoint(self, *, ref: NativeTestContextRef, checkpoint: CheckpointRef) -> NativeCheckpointPayload:
         assert ref == REF
         assert checkpoint == CheckpointRef(checkpoint_id="checkpoint", payload_digest="b" * 64)
         return self.payload
@@ -84,13 +110,13 @@ class SchedulingState(State):
 class SchedulingAuthorization:
     """C02 stand-in approves exact waiting intents, never a new occurrence."""
 
-    def __init__(self, events):
+    def __init__(self, events: list[tuple[object, ...]]) -> None:
         self.events = events
-        self.ledgers = {}
-        self.waiting = {}
-        self.approved = set()
+        self.ledgers: dict[str, Authorization] = {}
+        self.waiting: dict[str, EffectIntent] = {}
+        self.approved: set[str] = set()
 
-    def before_call(self, *, ref, intent):
+    def before_call(self, *, ref: NativeTestContextRef, intent: EffectIntent) -> EffectDecision:
         key = operation_digest(intent.key)
         ledger = self.ledgers.setdefault(key, Authorization(self.events))
         if key not in self.approved:
@@ -100,10 +126,10 @@ class SchedulingAuthorization:
             return PolicyStop(reason_code="native_intent_conflict")
         return ledger.before_call(ref=ref, intent=intent)
 
-    def claim_dispatch(self, *, ref, intent, permit):
+    def claim_dispatch(self, *, ref: NativeTestContextRef, intent: EffectIntent, permit: DispatchPermit) -> None:
         self.ledgers[operation_digest(intent.key)].claim_dispatch(ref=ref, intent=intent, permit=permit)
 
-    def record_outcome(self, *, permit, outcome, result_ref):
+    def record_outcome(self, *, permit: DispatchPermit, outcome: Outcome, result_ref: str | None) -> EffectReceipt:
         ledger = next(item for item in self.ledgers.values() if item.permits.get(0) is permit)
         return ledger.record_outcome(permit=permit, outcome=outcome, result_ref=result_ref)
 
@@ -111,24 +137,24 @@ class SchedulingAuthorization:
 class SchedulingHostCase:
     """Objects for one real Graphon scheduling generation and its host ports."""
 
-    runtime: NativeGraphRuntimeState
+    runtime: RuntimeState
     entry: WorkflowEntry
     journal: NodeOperationJournal
 
     def __init__(
         self,
         *,
-        state,
+        state: SchedulingState,
         host: NativeHostLaunch,
         lifetime: NativeHostLifetime,
         registry: NativeHostLifetimeRegistry,
         ports: DurablePorts,
-    ):
+    ) -> None:
         self.state, self.host, self.lifetime = state, host, lifetime
         self.registry, self.ports = registry, ports
 
 
-def scheduling_owner(state):
+def scheduling_owner(state: SchedulingState) -> OwnedNativeTest:
     context = state.context
     return OwnedNativeTest(
         ref=context.ref,
@@ -146,7 +172,13 @@ def scheduling_owner(state):
     )
 
 
-def make_host(state, authorization, monkeypatch, *, snapshot=None):
+def make_host(
+    state: SchedulingState,
+    authorization: SchedulingAuthorization,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    snapshot: NativeCheckpointPayload | None = None,
+) -> SchedulingHostCase:
     journal = NodeOperationJournal(state=state, authorization=authorization)
     if snapshot is not None:
         state.payload = snapshot
@@ -157,6 +189,9 @@ def make_host(state, authorization, monkeypatch, *, snapshot=None):
     registry.activate(lifetime=lifetime)
     ports = DurablePorts()
     timeout = native_http_config().default_timeout()
+    assert timeout.connect is not None
+    assert timeout.read is not None
+    assert timeout.write is not None
     host = NativeHostLaunch(
         context=state.context,
         dispatch_id=dispatch_id,
@@ -190,7 +225,9 @@ def make_host(state, authorization, monkeypatch, *, snapshot=None):
         api = _api()
         monkeypatch.setattr(api.loader, "load", lambda **_: scheduling_owner(state))
         lifecycle = NativeTestLifecycleService(
-            api.loader, state_store=state, resume_settlement=DifyNativeResumeSettlement()
+            api.loader,
+            state_store=cast(NativeExecutionStateStore, state),
+            resume_settlement=DifyNativeResumeSettlement(),
         )
         delivery_runtime = DifyNativeRuntime(
             delivery=NativeDispatchRef(REF, state.context.generation, dispatch_id),
@@ -198,7 +235,7 @@ def make_host(state, authorization, monkeypatch, *, snapshot=None):
             registry=registry,
         )
         delivery_runtime.host = host
-        delivery_runtime.authorization = authorization
+        delivery_runtime.authorization = cast(EffectAuthorizationService, authorization)
         delivery_runtime._journal = journal
         bridge = build_delivery_bridge(runtime=delivery_runtime)
         run_context = DifyRunContext(
@@ -236,10 +273,11 @@ def make_host(state, authorization, monkeypatch, *, snapshot=None):
     return case
 
 
-def run_host(case):
-    events, errors = [], []
+def run_host(case: SchedulingHostCase) -> list[EngineEvent]:
+    events: list[EngineEvent] = []
+    errors: list[str] = []
 
-    def worker():
+    def worker() -> None:
         try:
             events.extend(case.entry.run())
         except BaseException as error:
@@ -258,12 +296,14 @@ def run_host(case):
 
 
 @pytest.mark.parametrize("kind", ["root", "loop", "iteration"])
-def test_actual_http_pause_restore_dispatches_same_waiting_intent_once(monkeypatch, kind):
-    events = []
+def test_actual_http_pause_restore_dispatches_same_waiting_intent_once(
+    monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    events: list[tuple[object, ...]] = []
     state, authorization = SchedulingState(events), SchedulingAuthorization(events)
     state.context = context()
     if kind != "root":
-        graph = deepcopy(state.context.graph)
+        graph = deepcopy(graph_data(state.context))
         http = next(node for node in graph["nodes"] if node["id"] == "http")
         http["data"][kind + "_id"] = "container"
         graph["nodes"] = [
@@ -282,13 +322,13 @@ def test_actual_http_pause_restore_dispatches_same_waiting_intent_once(monkeypat
                             "flatten_output": True,
                         }
                         if kind == "iteration"
-                        else {"loop_count": 1, "break_conditions": [], "logical_operator": "and"}
+                        else {"loop_count": 1, "break_conditions": list[object](), "logical_operator": "and"}
                     ),
                 },
             },
             {"id": "body-start", "data": {"type": kind + "-start", kind + "_id": "container"}},
             http,
-            {"id": "end", "data": {"type": "end", "outputs": []}},
+            {"id": "end", "data": {"type": "end", "outputs": list[object]()}},
         ]
         graph["edges"] = [
             {"source": "start", "target": "container"},
@@ -309,9 +349,9 @@ def test_actual_http_pause_restore_dispatches_same_waiting_intent_once(monkeypat
                 ),
             }
         )
-    sends = []
+    sends: list[httpx.Request] = []
 
-    def send(client, request, **kwargs):
+    def send(client: httpx.Client, request: httpx.Request, **kwargs: object) -> Response:
         del client, kwargs
         sends.append(request)
         return httpx.Response(
@@ -379,9 +419,13 @@ def test_actual_http_pause_restore_dispatches_same_waiting_intent_once(monkeypat
         assert restored.cursor == 1
         assert len(restored.result_refs) == 1
     if kind == "root":
-        assert resumed.runtime.variable_pool.get(("http", "body")).value == "restored-response"
+        body = resumed.runtime.variable_pool.get(("http", "body"))
+        assert body is not None
+        assert body.value == "restored-response"
     if kind == "iteration":
-        assert resumed.runtime.variable_pool.get(("container", "output")).value == [
+        output = resumed.runtime.variable_pool.get(("container", "output"))
+        assert output is not None
+        assert output.value == [
             "restored-response",
             "restored-response",
         ]

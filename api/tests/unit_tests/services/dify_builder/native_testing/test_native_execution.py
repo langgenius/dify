@@ -1,11 +1,16 @@
 """Worker orchestration uses only current protected state and a native owner."""
 
+from collections.abc import Callable, Generator, Iterator, Mapping
 from dataclasses import dataclass
+from typing import NoReturn, Protocol, cast, runtime_checkable
+from unittest.mock import MagicMock
 
 import pytest
+import pytest_mock
 from redis import Redis
 from sqlalchemy import Engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor
 from graphon.runtime import RuntimeState, VariablePool
@@ -13,14 +18,23 @@ from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.account import Account
 from models.model import App
 from models.workflow import Workflow
+from runtime_contracts.builder.native.contracts import JsonValue
 from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome, ResolvedNativeTestContext
 from services.dify_builder.native_testing.api_service import NativeTestApiService
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
-from services.dify_builder.native_testing.native_execution import DifyNativeWorkflowOwner
-from services.dify_builder.native_testing.runtime_bridge import NativePreparedInputs
+from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+from services.dify_builder.native_testing.native_execution import (
+    ClosableNativeEventStream,
+    DifyNativeWorkflowOwner,
+    NativeWorkflowExecutionService,
+)
+from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
+from services.dify_builder.native_testing.runtime_bridge import NativePreparedInputs, NativeRuntimeBridge
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
-from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned, owned
 
 __all__ = ["owned"]
 
@@ -32,38 +46,50 @@ class _NativeDatabase:
 
 @dataclass
 class _HostObservationCase:
-    host: object
+    host: NativeHostLaunch
 
 
-class _ObservedSessionFactory(sessionmaker):
+class _ObservedSessionFactory(sessionmaker[Session]):
     """Real Session creation with an entry witness for refusal-before-SQL checks."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.opens = 0
 
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs: object) -> Session:
         self.opens += 1
         return super().__call__(**kwargs)
+
+
+@runtime_checkable
+class _ReaderCompletingStream(Protocol):
+    def finish_reader(self) -> None: ...
 
 
 class _StreamResultPort:
     """The stream boundary closes the actual reader and returns its typed outcome."""
 
-    def consume(self, *, context, stream, on_event):
+    def consume(
+        self,
+        *,
+        context: ResolvedNativeTestContext,
+        stream: ClosableNativeEventStream,
+        on_event: Callable[[Mapping[str, JsonValue]], None],
+    ) -> NativeWorkflowOutcome:
         assert callable(on_event)
         try:
             list(stream)
         finally:
+            assert isinstance(stream, _ReaderCompletingStream)
             stream.finish_reader()
         return _outcome(context)
 
-    def resume(self, *, context, generation):
+    def resume(self, *, context: ResolvedNativeTestContext, generation: int) -> NativeWorkflowOutcome:
         assert generation == context.generation
         return _outcome(context)
 
 
-def _outcome(context):
+def _outcome(context: ResolvedNativeTestContext) -> NativeWorkflowOutcome:
     return NativeWorkflowOutcome(
         status="completed",
         ref=context.ref,
@@ -77,7 +103,7 @@ def _outcome(context):
     )
 
 
-def _api():
+def _api() -> NativeTestApiService:
     return NativeTestApiService(
         session_factory=sessionmaker(),
         actor=Actor(account_id="actor-1", tenant_id="tenant-1"),
@@ -90,34 +116,36 @@ def _api():
 
 
 class _InitialInputPreparation:
-    def prepare(self, *, context):
+    def prepare(self, *, context: ResolvedNativeTestContext) -> NativePreparedInputs:
         return NativePreparedInputs(inputs=context.inputs, files=(), environment_variables=())
 
 
-def _unexpected_collaborators(**_kwargs):
+def _unexpected_collaborators(**_kwargs: object) -> NoReturn:
     raise AssertionError("the service boundary must not resolve a node")
 
 
-def _node_arguments(**_kwargs):
+def _node_arguments(**_kwargs: object) -> Mapping[str, object]:
     return {}
 
 
-def _on_event(_event):
+def _on_event(_event: Mapping[str, JsonValue]) -> NoReturn:
     raise AssertionError("this boundary must not emit an event")
 
 
-def _account():
+def _account() -> Account:
     return Account(name="Owner", email="owner@example.invalid")
 
 
 @pytest.mark.parametrize("failed_owner", ["source", "conversion"])
-def test_native_stream_failed_close_never_acknowledges_or_retries(failed_owner, monkeypatch):
+def test_native_stream_failed_close_never_acknowledges_or_retries(
+    failed_owner: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.native_testing.native_execution import NativeGeneratorStream
     from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
-    attempts = []
+    attempts: list[str] = []
 
-    def source():
+    def source() -> Generator[str]:
         try:
             yield "source-value"
         finally:
@@ -127,7 +155,7 @@ def test_native_stream_failed_close_never_acknowledges_or_retries(failed_owner, 
 
     actual_source = source()
 
-    def conversion(actual):
+    def conversion(actual: Iterator[str]) -> Generator[str]:
         try:
             yield next(actual)
         finally:
@@ -148,12 +176,12 @@ def test_native_stream_failed_close_never_acknowledges_or_retries(failed_owner, 
     assert attempts == ["conversion", "source"]
 
 
-def test_native_stream_successful_close_is_acknowledged_once():
+def test_native_stream_successful_close_is_acknowledged_once() -> None:
     from services.dify_builder.native_testing.native_execution import NativeGeneratorStream
 
-    attempts = []
+    attempts: list[str] = []
 
-    def source():
+    def source() -> Generator[str]:
         try:
             yield "source-value"
         finally:
@@ -168,7 +196,9 @@ def test_native_stream_successful_close_is_acknowledged_once():
         next(stream)
 
 
-def native_host_fixture(context, mocker):
+def native_host_fixture(
+    context: ResolvedNativeTestContext, mocker: pytest_mock.MockerFixture
+) -> tuple[NativeHostLaunch, NativeRuntimeBridge, NativeExecutionStateStore, MagicMock]:
     """Actual host/bridge with labeled protected-state and C02/C03 unit ports.
 
     Local registry activation is test setup, not a durable SQL claim or launch
@@ -219,7 +249,11 @@ def native_host_fixture(context, mocker):
     return host, runtime, state, prepare
 
 
-def service_fixture(mocker):
+def service_fixture(
+    mocker: pytest_mock.MockerFixture,
+) -> tuple[
+    ResolvedNativeTestContext, NativeExecutionStateStore, DifyNativeWorkflowOwner, NativeWorkflowExecutionService
+]:
     from services.dify_builder.native_testing.native_execution import NativeWorkflowExecutionService
 
     context = ResolvedNativeTestContext.model_validate(CONTEXT)
@@ -235,40 +269,42 @@ def service_fixture(mocker):
     return context, state, owner, NativeWorkflowExecutionService(state=state, native_owner=owner)
 
 
-def test_run_uses_reloaded_typed_snapshot_and_exact_native_run_id(mocker):
+def test_run_uses_reloaded_typed_snapshot_and_exact_native_run_id(mocker: pytest_mock.MockerFixture) -> None:
     context, state, owner, service = service_fixture(mocker)
     callback = _on_event
     result = service.run(ref=context.ref, on_event=callback)
     assert result.native_status == "failed"
-    assert owner.run.call_args.kwargs["context"] == context
-    assert owner.run.call_args.kwargs["on_event"] is callback
-    state.load_context.assert_called_once_with(ref=context.ref)
+    assert installed_mock(owner.run).call_args.kwargs["context"] == context
+    assert installed_mock(owner.run).call_args.kwargs["on_event"] is callback
+    installed_mock(state.load_context).assert_called_once_with(ref=context.ref)
 
 
-def test_resume_checks_generation_before_native_owner(mocker):
+def test_resume_checks_generation_before_native_owner(mocker: pytest_mock.MockerFixture) -> None:
     context, _, owner, service = service_fixture(mocker)
     with pytest.raises(NativeContextUnavailable, match="native_generation_conflict"):
         service.resume_worker(ref=context.ref, generation=1)
-    owner.resume.assert_not_called()
+    installed_mock(owner.resume).assert_not_called()
 
 
-def test_resume_reloads_state_each_time(mocker):
+def test_resume_reloads_state_each_time(mocker: pytest_mock.MockerFixture) -> None:
     context, state, owner, service = service_fixture(mocker)
     service.resume_worker(ref=context.ref, generation=0)
-    state.load_context.side_effect = ValueError("private credential value")
+    installed_mock(state.load_context).side_effect = ValueError("private credential value")
     with pytest.raises(NativeContextUnavailable, match="^native_context_unavailable$"):
         service.resume_worker(ref=context.ref, generation=0)
-    assert owner.resume.call_count == 1
+    assert installed_mock(owner.resume).call_count == 1
 
 
-def test_owner_cannot_replace_reserved_run_identity(mocker):
+def test_owner_cannot_replace_reserved_run_identity(mocker: pytest_mock.MockerFixture) -> None:
     context, _, owner, service = service_fixture(mocker)
-    owner.run.return_value = owner.run.return_value.model_copy(update={"native_run_id": "other-run"})
+    installed_mock(owner.run).return_value = installed_mock(owner.run).return_value.model_copy(
+        update={"native_run_id": "other-run"}
+    )
     with pytest.raises(NativeContextUnavailable, match="native_run_identity_mismatch"):
         service.run(ref=context.ref, on_event=_on_event)
 
 
-def test_generator_refuses_missing_native_scope_before_file_or_config_work(mocker):
+def test_generator_refuses_missing_native_scope_before_file_or_config_work(mocker: pytest_mock.MockerFixture) -> None:
     from services.workflow_run_agg import WorkflowRunAgg
     from services.workflow_runtime import workflow_generator as app_generator
 
@@ -290,7 +326,7 @@ def test_generator_refuses_missing_native_scope_before_file_or_config_work(mocke
     effect.assert_not_called()
 
 
-def test_worker_rejects_marker_before_payload_logger_or_ordinary_runner(mocker):
+def test_worker_rejects_marker_before_payload_logger_or_ordinary_runner(mocker: pytest_mock.MockerFixture) -> None:
     from tasks.app_generate import workflow_execute_task as module
 
     context, _, _, _ = service_fixture(mocker)
@@ -310,10 +346,12 @@ def test_worker_rejects_marker_before_payload_logger_or_ordinary_runner(mocker):
     with pytest.raises(NativeContextUnavailable, match="native_runtime_unavailable"):
         module.workflow_based_app_execution_task(params.model_dump_json())
     ordinary.assert_not_called()
-    logger.info.assert_not_called()
+    installed_mock(logger.info).assert_not_called()
 
 
-def test_native_owner_calls_existing_generator_with_reserved_id_and_server_actor(mocker, owned):
+def test_native_owner_calls_existing_generator_with_reserved_id_and_server_actor(
+    mocker: pytest_mock.MockerFixture, owned: Owned
+) -> None:
     from services.dify_builder.native_testing.native_execution import DifyNativeWorkflowOwner
     from services.dify_builder.native_testing.repository import native_workflow_revision
     from services.workflow_runtime import workflow_generator as app_generator
@@ -348,11 +386,11 @@ def test_native_owner_calls_existing_generator_with_reserved_id_and_server_actor
     assert kwargs["native_test_ref"] == context.ref
     assert kwargs["native_runtime"] is runtime
     assert kwargs["native_host"] is host
-    assert result_owner.consume.call_args.kwargs["context"] == context
+    assert installed_mock(result_owner.consume).call_args.kwargs["context"] == context
     assert host.settlement_deadline is not None
 
 
-def test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity(mocker):
+def test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity(mocker: pytest_mock.MockerFixture) -> None:
     from services.workflow_runtime import workflow_generator as app_generator
 
     trace = mocker.patch(
@@ -371,7 +409,7 @@ def test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity(mocker):
     workflow_repo = SQLAlchemyWorkflowExecutionRepository(sessionmaker(), "tenant", _account(), "app", None)
     node_repo = SQLAlchemyWorkflowNodeExecutionRepository(sessionmaker(), "tenant", _account(), "app", None)
 
-    def resume():
+    def resume() -> None:
         app_generator.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).resume(
             app_model=App(id="app", tenant_id="tenant", mode="workflow"),
             workflow=Workflow(),
@@ -388,7 +426,9 @@ def test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity(mocker):
 
 
 @pytest.mark.parametrize("ending", ["complete", "close", "error", "startup_error"])
-def test_admitted_native_gateway_retains_rate_release_until_host_cleanup(mocker, owned, monkeypatch, ending):
+def test_admitted_native_gateway_retains_rate_release_until_host_cleanup(
+    mocker: pytest_mock.MockerFixture, owned: Owned, monkeypatch: pytest.MonkeyPatch, ending: str
+) -> None:
     from core.app.features.rate_limiting.rate_limit import RateLimit
     from services import app_generate_service as module
     from services.dify_builder.native_testing.repository import native_workflow_revision
@@ -406,14 +446,14 @@ def test_admitted_native_gateway_retains_rate_release_until_host_cleanup(mocker,
             "graph_revision": native_workflow_revision(workflow),
         }
     )
-    exits = []
-    closed = []
+    exits: list[str] = []
+    closed: list[bool] = []
 
     limiter = RateLimit(app.id, 0)
     mocker.patch.object(limiter, "enter", return_value="native-request")
     mocker.patch.object(limiter, "exit", side_effect=exits.append)
 
-    def source():
+    def source() -> Generator[dict[str, str]]:
         try:
             yield {"event": "workflow_started"}
             if ending == "error":
@@ -434,6 +474,7 @@ def test_admitted_native_gateway_retains_rate_release_until_host_cleanup(mocker,
         from models.account import Account
 
         account = session.get(Account, actor.account_id)
+        assert account is not None
     if ending == "startup_error":
         with pytest.raises(RuntimeError, match="startup"):
             module.AppGenerateService.generate_admitted_native(
@@ -465,11 +506,20 @@ def test_admitted_native_gateway_retains_rate_release_until_host_cleanup(mocker,
 
 
 @pytest.mark.parametrize("refusal", ["reload", "inputs"])
-def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setup(mocker, owned, monkeypatch, refusal):
+def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setup(
+    mocker: pytest_mock.MockerFixture, owned: Owned, monkeypatch: pytest.MonkeyPatch, refusal: str
+) -> None:
     _worker_refusal_case(owned, monkeypatch, mocker, refusal=refusal, redis_failure=False)
 
 
-def _worker_refusal_case(owned, monkeypatch, mocker, *, refusal, redis_failure):
+def _worker_refusal_case(
+    owned: Owned,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: pytest_mock.MockerFixture,
+    *,
+    refusal: str,
+    redis_failure: bool,
+) -> None:
     import contextvars
 
     from flask import Flask
@@ -484,6 +534,7 @@ def _worker_refusal_case(owned, monkeypatch, mocker, *, refusal, redis_failure):
     factory, actor, app, workflow, _, _ = owned
     with factory() as sql:
         account = sql.get(Account, actor.account_id)
+        assert account is not None
         sql.expunge(account)
     context = ResolvedNativeTestContext.model_validate(
         {
@@ -506,7 +557,7 @@ def _worker_refusal_case(owned, monkeypatch, mocker, *, refusal, redis_failure):
     # HTTP profile, SQL claim, transport or production qualification proof.
     guard = bind_component_observation(_HostObservationCase(host=host), monkeypatch)
     output = protect_logs(monkeypatch)
-    state.load_context.reset_mock()
+    installed_mock(state.load_context).reset_mock()
     from services.workflow_run_agg import WorkflowRunAgg
 
     generator = app_generator.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
@@ -527,11 +578,11 @@ def _worker_refusal_case(owned, monkeypatch, mocker, *, refusal, redis_failure):
         native_host=host,
     )
     entity = launch.call_args.kwargs["application_generate_entity"]
-    assert state.load_context.call_count >= 2
+    assert installed_mock(state.load_context).call_count >= 2
     assert prepare.call_count == 1
     if refusal == "reload":
         # Revoke before actual worker scope entry, including its current-owner read.
-        state.load_context.side_effect = RuntimeError("private revoked credential")
+        installed_mock(state.load_context).side_effect = RuntimeError("private revoked credential")
         reason = "native_context_unavailable"
     else:
         prepare.side_effect = NativeContextUnavailable("native_input_adapter_unavailable")
@@ -573,7 +624,21 @@ def _worker_refusal_case(owned, monkeypatch, mocker, *, refusal, redis_failure):
     )
     from threading import Thread
 
-    worker_arguments = {
+    from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+    from graphon.variable_loader import VariableLoader
+
+    class WorkerArguments(TypedDict, closed=True):
+        flask_app: Flask
+        application_generate_entity: WorkflowAppGenerateEntity
+        queue_manager: WorkflowAppQueueManager
+        context: contextvars.Context
+        variable_loader: VariableLoader
+        workflow_execution_repository: SQLAlchemyWorkflowExecutionRepository
+        workflow_node_execution_repository: SQLAlchemyWorkflowNodeExecutionRepository
+        native_runtime: NativeRuntimeBridge
+        native_host: NativeHostLaunch
+
+    worker_arguments: WorkerArguments = {
         "flask_app": Flask(__name__),
         "application_generate_entity": entity,
         "queue_manager": queue,
@@ -584,9 +649,9 @@ def _worker_refusal_case(owned, monkeypatch, mocker, *, refusal, redis_failure):
         "native_runtime": bridge,
         "native_host": host,
     }
-    restored_context = []
+    restored_context: list[tuple[bool, NativeObservationGuard | None]] = []
 
-    def run_worker():
+    def run_worker() -> None:
         import logging
 
         from libs.sensitive_http_telemetry import _sensitive_http
@@ -617,8 +682,8 @@ def _worker_refusal_case(owned, monkeypatch, mocker, *, refusal, redis_failure):
         assert len(messages) == 1
         assert isinstance(messages[0].event, QueueErrorEvent)
         assert isinstance(messages[0].event.error, str)
-        assert str(messages[0].event.error) == guard.error(NativeContextUnavailable(reason))
-        assert "private revoked credential" not in str(messages[0].event.error)
+        assert messages[0].event.error == guard.error(NativeContextUnavailable(reason))
+        assert "private revoked credential" not in messages[0].event.error
     assert restored_context == [(False, None)]
     assert "ordinary-after-native-worker" in output.getvalue()
     assert "private revoked credential" not in output.getvalue()
@@ -629,12 +694,14 @@ def _worker_refusal_case(owned, monkeypatch, mocker, *, refusal, redis_failure):
     runner.assert_not_called()
 
 
-def test_early_worker_revocation_redis_cleanup_cannot_log_private_payload(mocker, owned, monkeypatch):
+def test_early_worker_revocation_redis_cleanup_cannot_log_private_payload(
+    mocker: pytest_mock.MockerFixture, owned: Owned, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _worker_refusal_case(owned, monkeypatch, mocker, refusal="reload", redis_failure=True)
 
 
 @pytest.mark.parametrize("invalid_host", [None, object()])
-def test_native_owner_requires_explicit_actual_host(mocker, invalid_host):
+def test_native_owner_requires_explicit_actual_host(mocker: pytest_mock.MockerFixture, invalid_host: object) -> None:
     from services.dify_builder.native_testing.native_execution import DifyNativeWorkflowOwner
 
     with pytest.raises(NativeContextUnavailable, match="native_host_unavailable"):
@@ -642,11 +709,11 @@ def test_native_owner_requires_explicit_actual_host(mocker, invalid_host):
             session_factory=sessionmaker(),
             runtime=native_host_fixture(ResolvedNativeTestContext.model_validate(CONTEXT), mocker)[1],
             stream_owner=_StreamResultPort(),
-            native_host=invalid_host,
+            native_host=cast(NativeHostLaunch, invalid_host),
         )
 
 
-def test_native_owner_rejects_foreign_host_before_sql_or_generator(mocker):
+def test_native_owner_rejects_foreign_host_before_sql_or_generator(mocker: pytest_mock.MockerFixture) -> None:
     from services.dify_builder.native_testing.native_execution import DifyNativeWorkflowOwner
 
     context = ResolvedNativeTestContext.model_validate(CONTEXT)
@@ -662,7 +729,7 @@ def test_native_owner_rejects_foreign_host_before_sql_or_generator(mocker):
     with pytest.raises(NativeContextUnavailable, match="native_host_identity_mismatch"):
         owner.run(context=context, on_event=_on_event)
     assert sessions.opens == 0
-    stream_owner.consume.assert_not_called()
+    installed_mock(stream_owner.consume).assert_not_called()
     with pytest.raises(NativeContextUnavailable, match="native_host_identity_mismatch"):
         owner.resume(context=context, generation=context.generation)
-    stream_owner.resume.assert_not_called()
+    installed_mock(stream_owner.resume).assert_not_called()

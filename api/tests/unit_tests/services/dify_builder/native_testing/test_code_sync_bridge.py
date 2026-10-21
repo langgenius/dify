@@ -8,24 +8,19 @@ from typing import override
 
 import pytest
 
-
-def bridge_module():
-    from services.dify_builder.native_testing.sandbox import sync_bridge
-
-    return sync_bridge
+from services.dify_builder.native_testing.sandbox import sync_bridge as module
 
 
-def test_owned_loop_runs_on_distinct_native_thread_and_origin_services_mailbox():
-    module = bridge_module()
+def test_owned_loop_runs_on_distinct_native_thread_and_origin_services_mailbox() -> None:
     origin = get_ident()
-    seen = []
+    seen: list[int] = []
     bridge = module.NativeCodeLoopBridge(
         deadline=monotonic() + 1,
         close_deadline=monotonic() + 2,
         service=lambda _kind, payload: seen.append(get_ident()) or payload,
     )
 
-    async def operation():
+    async def operation() -> str:
         assert get_ident() != origin
         assert bridge.call("check", "value") == "value"
         assert await bridge.request("check", "async") == "async"
@@ -39,16 +34,15 @@ def test_owned_loop_runs_on_distinct_native_thread_and_origin_services_mailbox()
         bridge.run(operation)
 
 
-def test_cancel_is_sticky_and_joins_same_cleanup_task():
-    module = bridge_module()
+def test_cancel_is_sticky_and_joins_same_cleanup_task() -> None:
     bridge = module.NativeCodeLoopBridge(
         deadline=monotonic() + 0.03,
         close_deadline=monotonic() + 0.5,
         service=lambda _kind, _payload: None,
     )
-    finished = []
+    finished: list[str] = []
 
-    async def operation():
+    async def operation() -> str:
         try:
             await asyncio.sleep(5)
         finally:
@@ -64,16 +58,15 @@ def test_cancel_is_sticky_and_joins_same_cleanup_task():
     assert bridge.cancelled
 
 
-def test_expired_mailbox_never_services_late_admission():
-    module = bridge_module()
-    seen = []
+def test_expired_mailbox_never_services_late_admission() -> None:
+    seen: list[str] = []
     bridge = module.NativeCodeLoopBridge(
         deadline=monotonic() - 1,
         close_deadline=monotonic() + 0.1,
         service=lambda kind, _payload: seen.append(kind),
     )
 
-    async def operation():
+    async def operation() -> str:
         bridge.call("check", None)
         return "bad"
 
@@ -82,11 +75,10 @@ def test_expired_mailbox_never_services_late_admission():
     assert not seen
 
 
-def test_late_native_exit_is_retained_after_bounded_handoff():
+def test_late_native_exit_is_retained_after_bounded_handoff() -> None:
     from threading import Event
     from time import sleep
 
-    module = bridge_module()
     release = Event()
     bridge = module.NativeCodeLoopBridge(
         deadline=monotonic() + 0.02,
@@ -94,7 +86,7 @@ def test_late_native_exit_is_retained_after_bounded_handoff():
         service=lambda _kind, _payload: None,
     )
 
-    async def operation():
+    async def operation() -> str:
         release.wait(1)  # Deliberately noncooperative native work.
         return "late"
 
@@ -115,13 +107,12 @@ def test_late_native_exit_is_retained_after_bounded_handoff():
         release.set()
 
 
-def test_settlement_mailbox_survives_cancelled_inflight_admission():
+def test_settlement_mailbox_survives_cancelled_inflight_admission() -> None:
     from time import sleep
 
-    module = bridge_module()
-    seen = []
+    seen: list[str] = []
 
-    def service(kind, payload):
+    def service(kind: str, payload: object) -> None:
         del payload
         seen.append(kind)
         if kind == "http":
@@ -129,7 +120,7 @@ def test_settlement_mailbox_survives_cancelled_inflight_admission():
 
     bridge = module.NativeCodeLoopBridge(deadline=monotonic() + 0.02, close_deadline=monotonic() + 0.5, service=service)
 
-    async def operation():
+    async def operation() -> str:
         try:
             await bridge.request("http", None)
         finally:
@@ -149,9 +140,8 @@ def test_settlement_mailbox_survives_cancelled_inflight_admission():
 
 
 def test_phase_deadlines_shorten_without_stealing_execution_or_extending_cleanup(
-    monkeypatch,
-):
-    module = bridge_module()
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     clock = [100.0]
     monkeypatch.setattr(module, "monotonic", lambda: clock[0])
     bridge = module.NativeCodeLoopBridge(
@@ -182,9 +172,8 @@ def test_phase_deadlines_shorten_without_stealing_execution_or_extending_cleanup
 
 
 def test_late_scope_ack_refuses_execution_and_root_close_reserves_actual_join(
-    monkeypatch,
-):
-    module = bridge_module()
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     clock = [106.0]
     monkeypatch.setattr(module, "monotonic", lambda: clock[0])
     bridge = module.NativeCodeLoopBridge(
@@ -208,18 +197,17 @@ def test_late_scope_ack_refuses_execution_and_root_close_reserves_actual_join(
 
 
 def test_loop_close_stall_retains_actual_handle_after_distinct_join_allowance(
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from threading import Event
     from time import sleep
 
-    module = bridge_module()
     release = Event()
     original = module._Loop
 
     class ClosingLoop(original):
         @override
-        def close(self):
+        def close(self) -> None:
             release.wait(1)
             super().close()
 
@@ -236,7 +224,7 @@ def test_loop_close_stall_retains_actual_handle_after_distinct_join_allowance(
         settlement_seconds=0.1,
     )
 
-    async def operation():
+    async def operation() -> str:
         return "done"
 
     try:

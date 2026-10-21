@@ -3,9 +3,38 @@
 The callback is a test-owned business effect; no provider/model/OAuth is called.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from pydantic import JsonValue
+from typing_extensions import TypedDict
+
+from core.dify_builder.models import Actor
+from runtime_contracts.builder.native.contracts import DispatchPermit
+from runtime_contracts.builder.native.runtime_contracts import NodeJournalState
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.pending_intents import ResolvedPendingIntent
+
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_continuation as _fixture_types_0,
+    )
+    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_1
+
+
 # Imported aliases register shared pytest fixtures in this module.
 # ruff: noqa: PLC0414
-
 from uuid import uuid4
 
 import pytest
@@ -16,11 +45,12 @@ from sqlalchemy import func, select
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession
 from models.dify_builder_native_tests import NativeEffectDispatchClaim, NativeEffectOperation, NativeTestScope
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit, RecordedResult
+from runtime_contracts.builder.native.contracts import ApprovalWait, RecordedResult
 from services.dify_builder.native_testing.agent_operations import (
     AgentToolDispatchOwner,
     admit_confirmed_agent_execution,
 )
+from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,
 )
@@ -38,7 +68,7 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_c
 )
 
 
-def payload(case, permit):
+def payload(case: ContinuationCase, permit: DispatchPermit) -> AgentPhysicalDispatchPayload:
     return AgentPhysicalDispatchPayload(
         ref=AgentNativeTestRef.model_validate(case.ref.model_dump(mode="json")),
         intent=AgentEffectIntent.model_validate(case.ledger.intent.model_dump(mode="json")),
@@ -46,9 +76,11 @@ def payload(case, permit):
     )
 
 
-def test_actual_sql_approval_dispatch_and_result_replay_once(continuation_case):
+def test_actual_sql_approval_dispatch_and_result_replay_once(
+    continuation_case: _fixture_types_0.ContinuationCase,
+) -> None:
     case = continuation_case
-    calls = []
+    calls: list[str] = []
     guard = case.ledger.guard
     assert isinstance(guard.before_call(ref=case.ref, intent=case.ledger.intent), ApprovalWait)
     assert calls == []
@@ -77,16 +109,18 @@ def test_actual_sql_approval_dispatch_and_result_replay_once(continuation_case):
         )
 
 
-def test_physical_timeout_is_unknown_and_cannot_dispatch_again(continuation_case):
+def test_physical_timeout_is_unknown_and_cannot_dispatch_again(
+    continuation_case: _fixture_types_0.ContinuationCase,
+) -> None:
     case = continuation_case
-    calls = []
+    calls: list[str] = []
     case.ledger.confirm()
     guard = case.ledger.guard
     permit = guard.before_call(ref=case.ref, intent=case.ledger.intent)
     assert isinstance(permit, DispatchPermit)
     owner = AgentToolDispatchOwner(authorization=guard, state_store=case.store, revalidate=lambda **_kwargs: None)
 
-    def lost_response():
+    def lost_response() -> None:
         calls.append("dispatch")
         raise TimeoutError("test response lost")
 
@@ -104,13 +138,15 @@ def test_physical_timeout_is_unknown_and_cannot_dispatch_again(continuation_case
     assert calls == ["dispatch"]
 
 
-def test_confirmed_admission_uses_original_key_and_preallocated_parent_run(continuation_case, native_owner):
+def test_confirmed_admission_uses_original_key_and_preallocated_parent_run(
+    continuation_case: _fixture_types_0.ContinuationCase, native_owner: _fixture_types_1.NativeOwner
+) -> None:
     del continuation_case  # Preserve admission setup before using its native owner.
     factory, actor, _app, _workflow, session_id, test_input_id = native_owner
     with factory() as session:
-        version = session.get(DifyBuilderSession, session_id).version
+        version = require_instance(session.get(DifyBuilderSession, session_id), DifyBuilderSession).version
     run_id = str(uuid4())
-    kwargs = {
+    kwargs: AgentAdmissionArguments = {
         "actor": actor,
         "session_id": session_id,
         "test_input_id": test_input_id,
@@ -126,17 +162,22 @@ def test_confirmed_admission_uses_original_key_and_preallocated_parent_run(conti
     with factory() as session:
         row = session.get(DifyBuilderExecutionRequest, first.ref.request_id)
         scope = session.get(NativeTestScope, first.ref.request_id)
-        assert row.context["profile"]["profile_id"] == "builder-agent-confirmed-v1"
-        assert scope.task_approved is True
-        assert scope.spent_calls == 0
+        assert (
+            require_instance(row, DifyBuilderExecutionRequest).context["profile"]["profile_id"]
+            == "builder-agent-confirmed-v1"
+        )
+        assert require_instance(scope, NativeTestScope).task_approved is True
+        assert require_instance(scope, NativeTestScope).spent_calls == 0
+    conflicting = kwargs.copy()
+    conflicting["native_run_id"] = str(uuid4())
     with pytest.raises(BuilderExecutionPolicyError, match="native_idempotency_conflict"):
-        admit_confirmed_agent_execution(**{**kwargs, "native_run_id": str(uuid4())})
+        admit_confirmed_agent_execution(**conflicting)
 
 
 @pytest.mark.parametrize("canvas_save", [False, True])
 def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
-    continuation_case, native_owner, canvas_save
-):
+    continuation_case: _fixture_types_0.ContinuationCase, native_owner: _fixture_types_1.NativeOwner, canvas_save: bool
+) -> None:
     """SQL owners are real; current tool metadata is the explicit no-I/O fixture."""
     from datetime import UTC, datetime, timedelta
 
@@ -149,7 +190,7 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
     from runtime_contracts.builder.execution import canonical_digest
     from runtime_contracts.builder.native.approval_contracts import NativeApprovalProposal, NativeApprovalTerms
     from runtime_contracts.builder.native.contracts import OperationKey, operation_digest
-    from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, NodeJournalState
+    from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
     from services.dify_builder.native_testing.api_service import NativeTestApiService
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
     from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
@@ -160,7 +201,7 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
     case = continuation_case
     factory, actor, _app, _workflow, session_id, test_input_id = native_owner
     with factory() as session:
-        version = session.get(DifyBuilderSession, session_id).version
+        version = require_instance(session.get(DifyBuilderSession, session_id), DifyBuilderSession).version
     context = admit_confirmed_agent_execution(
         actor=actor,
         session_id=session_id,
@@ -171,7 +212,7 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
         limits={"calls": 4, "dispatches": 4, "cost_units": 4},
     )
     ref, execution_id = context.ref, str(uuid4())
-    typed_inputs = {"synthetic": True}
+    typed_inputs: dict[str, JsonValue] = {"synthetic": True}
     effects = tuple(
         case.ledger.intent.model_copy(
             update={
@@ -186,7 +227,8 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
         )
         for index in (1, 2)
     )
-    bindings, descriptors = {}, {}
+    bindings: dict[str, dict[str, JsonValue]] = {}
+    descriptors: dict[str, dict[str, JsonValue]] = {}
     for effect in effects:
         identity = operation_digest(effect.key)
         bindings[identity] = NativeBinding(
@@ -219,7 +261,7 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
         invocation = session.scalar(
             select(NativeTestInvocation).where(NativeTestInvocation.request_id == ref.request_id)
         )
-        invocation.bindings = {**bindings, "_agent_operations_v1": descriptors}
+        require_instance(invocation, NativeTestInvocation).bindings = {**bindings, "_agent_operations_v1": descriptors}
     loader = OwnedNativeTestLoader(factory, actor=actor, resolver=case.ledger.metadata)
     guard, store = EffectAuthorizationService(loader), NativeExecutionStateStore(loader)
     lifecycle = NativeTestLifecycleService(loader, state_store=store)
@@ -249,7 +291,7 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
             invocation = session.scalar(
                 select(NativeTestInvocation).where(NativeTestInvocation.request_id == ref.request_id)
             )
-            raw = dict(invocation.bindings)
+            raw = dict(require_instance(invocation, NativeTestInvocation).bindings)
             raw[identity] = {
                 **bindings[operation_digest(effects[1].key)],
                 "intent_digest": canonical_digest(foreign.model_dump(mode="json")),
@@ -260,7 +302,7 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
                 **raw["_agent_operations_v1"],
                 identity: {**descriptors[operation_digest(effects[1].key)], "snapshot_id": foreign_snapshot},
             }
-            invocation.bindings = raw
+            require_instance(invocation, NativeTestInvocation).bindings = raw
         assert guard.before_call(ref=ref, intent=foreign) == first
     with factory() as session:
         assert (
@@ -271,7 +313,7 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
             )
             == 0
         )
-        assert session.get(NativeTestScope, ref.request_id).spent_calls == 0
+        assert require_instance(session.get(NativeTestScope, ref.request_id), NativeTestScope).spent_calls == 0
         pending = session.scalars(
             select(NativePendingAction).where(NativePendingAction.request_id == ref.request_id)
         ).all()
@@ -286,7 +328,7 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
     )
     checkpoint_payload = NativeCheckpointPayload(
         schema_version="1",
-        native_run_id=context.native_run_id,
+        native_run_id=require_instance(context.native_run_id, str),
         generation=0,
         generate_entity_json="{}",
         graph_runtime_state_json="{}",
@@ -322,16 +364,16 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
 
         with factory.begin() as session:
             workflow = session.get(Workflow, context.workflow_id)
-            graph = json.loads(workflow.graph)
+            graph = json.loads(require_instance(workflow, Workflow).graph)
             graph["viewport"] = {"x": 8, "y": 21, "zoom": 0.7}
             graph["nodes"][0]["positionAbsolute"] = {"x": 8, "y": 21}
-            workflow.graph = json.dumps(graph, separators=(",", ":"))
+            require_instance(workflow, Workflow).graph = json.dumps(graph, separators=(",", ":"))
     selected = store.read_checkpoint(ref=ref, checkpoint=paused.checkpoint)
     assert tuple(intent for journal in selected.node_journals for intent in journal.intents) == effects
     assert tuple(proposal.key for proposal in selected.approval_proposals) == tuple(effect.key for effect in effects)
 
     class FixtureDisclosure:
-        def describe(self, *, actor, resolved):
+        def describe(self, *, actor: Actor, resolved: ResolvedPendingIntent) -> PendingActionDisclosure:
             assert actor == loader.actor
             with factory() as session:
                 operation = session.scalar(
@@ -341,13 +383,15 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
                     )
                 )
                 pending = session.scalar(
-                    select(NativePendingAction).where(NativePendingAction.operation_id == operation.id)
+                    select(NativePendingAction).where(
+                        NativePendingAction.operation_id == require_instance(operation, NativeEffectOperation).id
+                    )
                 )
                 return PendingActionDisclosure(
-                    pending_operation_id=pending.id,
+                    pending_operation_id=require_instance(pending, NativePendingAction).id,
                     wait_reason="approval",
                     version=1,
-                    scope_digest=pending.owner_version,
+                    scope_digest=require_instance(pending, NativePendingAction).owner_version,
                     account_label="inert fixture account",
                     action="fixture tool",
                     target=None,
@@ -375,7 +419,7 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
             request_id=ref.request_id,
             pending_operation_id=item.pending_operation_id,
             decision="confirm",
-            scope_digest=item.scope_digest,
+            scope_digest=require_instance(item.scope_digest, str),
             expected_version=receipt.version,
             idempotency_key="decision-" + item.pending_operation_id,
         )
@@ -396,3 +440,13 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
             )
             == 0
         )
+
+
+class AgentAdmissionArguments(TypedDict, closed=True):
+    actor: Actor
+    session_id: str
+    test_input_id: str
+    expected_version: int
+    native_run_id: str
+    idempotency_key: str
+    limits: dict[str, int]
