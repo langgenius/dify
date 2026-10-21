@@ -145,6 +145,13 @@ it('prefers workspace branding over the custom web app logo in both previews', (
   expectPreviewLogo('https://example.com/workspace.png')
 })
 
+it('exposes only named actions while preserving the branding preview', () => {
+  renderBrand()
+  for (const button of screen.getAllByRole('button')) expect(button).toHaveAccessibleName()
+  expect(screen.getByRole('button', { name: 'Execute' })).toBeDisabled()
+  expectPreviewLogo('https://example.com/logo.png')
+})
+
 it.each([
   { reason: 'plan restriction', canReplace: false, canManage: true },
   { reason: 'missing permission', canReplace: true, canManage: false },
