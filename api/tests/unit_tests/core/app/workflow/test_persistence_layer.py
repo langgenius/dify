@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from queue import Queue
 from threading import Event, Lock
 from types import SimpleNamespace
+from typing import override
 
 import pytest
 from sqlalchemy import event as sqlalchemy_event
@@ -31,7 +33,7 @@ from graphon.engine.event.stream import EventStream
 from graphon.engine.frame import ExecutionFrame, FrameRegistry
 from graphon.engine.scheduler import Scheduler
 from graphon.engine.worker import NodeEventTask
-from graphon.engine.worker.worker import Worker
+from graphon.engine.worker.worker import DispatchTask, Worker
 from graphon.engine_events import (
     EngineEvent,
     GraphRunAbortedEvent,
@@ -64,6 +66,7 @@ from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.runtime.execution import ROOT_FRAME_ID
+from graphon.runtime.ready_queue import InMemoryReadyQueue
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
@@ -707,7 +710,7 @@ def _make_caller_agent(
 
 @pytest.mark.parametrize("dispatch_immediately", [False, True])
 @pytest.mark.parametrize("fail_commit", [False, True])
-def test_worker_commits_caller_before_agent_body(dispatch_immediately, fail_commit):
+def test_worker_commits_caller_before_agent_body(dispatch_immediately: bool, fail_commit: bool) -> None:
     """Exercise Graphon's real worker with both dispatcher schedules and hook failure."""
     layer, _, repo, state = _make_layer()
     index = WorkflowRunIndex(())
@@ -717,19 +720,24 @@ def test_worker_commits_caller_before_agent_body(dispatch_immediately, fail_comm
 
     class ProbeAgent(StartNode):
         node_type = BuiltinNodeTypes.AGENT
-        persistence_error = None
+        persistence_error: Exception | None = None
 
         @classmethod
-        def version(cls):
+        @override
+        def version(cls) -> str:
             return "2"
 
-        def record_caller_persistence_result(self, *, error=None):
+        def record_caller_persistence_result(self, *, error: Exception | None = None) -> None:
             self.persistence_error = error
 
-        def _run(self):
+        @override
+        def _run(self) -> NodeRunResult:
             if self.persistence_error is not None:
                 raise self.persistence_error
-            assert [row.node_execution_id for row in repo.synchronously_saved] == [self.execution_id]
+            assert len(repo.synchronously_saved) == 1
+            row = repo.synchronously_saved[0]
+            assert isinstance(row, WorkflowNodeExecution)
+            assert row.node_execution_id == self.execution_id
             entered.append(True)
             return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={})
 
@@ -742,23 +750,25 @@ def test_worker_commits_caller_before_agent_body(dispatch_immediately, fail_comm
     node.bind_execution_id("agent-exec")
     if fail_commit:
 
-        def fail(_execution):
+        def fail(entity: object) -> None:
             raise RuntimeError("caller commit failed")
 
         repo.save_synchronously = fail
 
-    class DispatchQueue(Queue):
-        def put(self, task, *args, **kwargs):
-            super().put(task, *args, **kwargs)
+    class DispatchQueue(Queue[DispatchTask]):
+        @override
+        def put(self, item: DispatchTask, block: bool = True, timeout: float | None = None) -> None:
+            super().put(item, block, timeout)
             if dispatch_immediately:
                 # Like EventStream, an observer error must not stop the worker.
-                EventStream([layer]).notify_layers(task.event)
+                assert isinstance(item, NodeEventTask)
+                EventStream([layer]).notify_layers(item.event)
 
     queue = DispatchQueue()
     worker = Worker(
-        ready_queue=None,
+        ready_queue=InMemoryReadyQueue(),
         dispatch_queue=queue,
-        frame_registry=None,
+        frame_registry=FrameRegistry(),
         layers=[index, layer],
         task_acquisition_lock=Lock(),
         task_acquisition_enabled=Event(),
@@ -767,7 +777,9 @@ def test_worker_commits_caller_before_agent_body(dispatch_immediately, fail_comm
     assert entered == ([] if fail_commit else [True])
     events = []
     while not queue.empty():
-        events.append(queue.get_nowait().event)
+        task = queue.get_nowait()
+        assert isinstance(task, NodeEventTask)
+        events.append(task.event)
     if fail_commit:
         assert isinstance(events[-1], NodeRunFailedEvent)
         assert "caller commit failed" in events[-1].error
@@ -782,8 +794,11 @@ def test_worker_commits_caller_before_agent_body(dispatch_immediately, fail_comm
 @pytest.mark.parametrize("source_workflow_id", ["source-workflow", "workflow-id"])
 @pytest.mark.parametrize("source_app_id", ["source-app", "caller-app"])
 def test_worker_caller_uses_workflow_tool_source_owner(
-    sqlite_session_factory, source_workflow_id, source_app_id, config_overrides
-):
+    sqlite_session_factory: sessionmaker[Session],
+    source_workflow_id: str,
+    source_app_id: str,
+    config_overrides: Callable[..., None],
+) -> None:
     config_overrides(AGENT_BACKEND_USE_FAKE=True)
     source = replace(_tool_source(), app_id=source_app_id, workflow_id=source_workflow_id)
     layer = _make_sql_layer(sqlite_session_factory, node_run_indices={"agent-exec": 1})
@@ -805,6 +820,7 @@ def test_worker_caller_uses_workflow_tool_source_owner(
             source_workflow_id,
             "run-id",
         )
+        assert row.process_data_dict is not None
         assert row.process_data_dict[WORKFLOW_TOOL_ROOT_APP_ID_KEY] == "caller-app"
     listen(
         NodeRunStartedEvent(
@@ -823,7 +839,9 @@ def test_worker_caller_uses_workflow_tool_source_owner(
     assert "agent-exec" not in layer._node_execution_cache
 
 
-def test_caller_persistence_retries_failed_commit_and_reuses_restored_identity(config_overrides):
+def test_caller_persistence_retries_failed_commit_and_reuses_restored_identity(
+    config_overrides: Callable[..., None],
+) -> None:
     config_overrides(AGENT_BACKEND_USE_FAKE=True)
     layer, _, repo, state = _make_layer(node_run_indices={"agent-exec": 7})
     layer.on_event(GraphRunStartedEvent())
@@ -831,7 +849,7 @@ def test_caller_persistence_retries_failed_commit_and_reuses_restored_identity(c
     save = repo.save_synchronously
     failure = RuntimeError("commit failed")
 
-    def fail(_execution):
+    def fail(entity: object) -> None:
         raise failure
 
     repo.save_synchronously = fail
@@ -844,6 +862,7 @@ def test_caller_persistence_retries_failed_commit_and_reuses_restored_identity(c
     assert node._caller_persistence_error is None
     assert len(repo.synchronously_saved) == 1
     previous = repo.synchronously_saved[0]
+    assert isinstance(previous, WorkflowNodeExecution)
     previous.id = "durable-row-id"
     previous.process_data = {"workflow_agent_binding_id": "binding-id"}
 
@@ -1100,14 +1119,19 @@ class TestWorkflowPersistenceLayer:
         layer.on_event(retry_event)
         assert node_repo.saved_exec_data
 
-    def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(self, config_overrides):
+    def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(
+        self, config_overrides: Callable[..., None]
+    ) -> None:
         config_overrides(AGENT_BACKEND_USE_FAKE=True)
         layer, _, node_repo, state = _make_layer(node_run_indices={"agent-exec": 1})
         layer.on_event(GraphRunStartedEvent())
         node = _make_caller_agent(state)
         layer.on_node_run_start(node)
         layer.on_node_run_start(node)
-        assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
+        assert len(node_repo.synchronously_saved) == 1
+        caller = node_repo.synchronously_saved[0]
+        assert isinstance(caller, WorkflowNodeExecution)
+        assert caller.id == "agent-exec"
         assert node_repo.saved == []
         assert node._caller_persistence_error is None
 
@@ -1122,8 +1146,11 @@ class TestWorkflowPersistenceLayer:
             )
         )
 
-        assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
-        assert [execution.id for execution in node_repo.saved] == ["agent-exec"]
+        assert node_repo.synchronously_saved == [caller]
+        assert len(node_repo.saved) == 1
+        saved_caller = node_repo.saved[0]
+        assert isinstance(saved_caller, WorkflowNodeExecution)
+        assert saved_caller.id == "agent-exec"
 
     def test_retry_history_is_preserved_after_node_succeeds(self):
         layer, _, node_repo, _ = _make_layer(node_run_indices={"exec": 1})
