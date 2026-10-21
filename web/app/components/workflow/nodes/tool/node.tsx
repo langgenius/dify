@@ -84,7 +84,10 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
                     const varRef = tool_configurations[key].value as string[]
                     const refNodeId = varRef[0]
                     const refVarName = varRef.slice(1).join('.')
-                    const refNode = nodes.find((n) => n.id === refNodeId)
+                    const refNode =
+                      tool_configurations[key].type === 'variable'
+                        ? nodes.find((n) => n.id === refNodeId)
+                        : undefined
                     const display = refNode
                       ? `${refNode.data.title} / ${refVarName}`
                       : varRef.join(', ')
