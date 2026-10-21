@@ -40,7 +40,7 @@ def _recording_model_client(
 ]:
     """Use a real client with isolated provider I/O and exact invocation records."""
     client = PluginModelClient()
-    results: dict[str, object] = {}
+    results: dict[str, object] = {"fetch_model_providers": [_build_plugin_model_provider(tenant_id="tenant")]}
     calls: dict[str, list[tuple[tuple[object, ...], dict[str, object]]]] = defaultdict(list)
 
     def recorder(method: Callable[..., object]) -> Callable[..., object]:
@@ -118,7 +118,7 @@ def _build_plugin_model_provider(*, tenant_id: str, provider: str = "openai") ->
         updated_at=datetime.datetime.now(),
         provider=provider,
         tenant_id=tenant_id,
-        plugin_unique_identifier=f"langgenius/{provider}/{provider}",
+        plugin_unique_identifier=f"langgenius/{provider}:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         plugin_id=f"langgenius/{provider}",
         installation_source=PluginInstallationSource.Marketplace,
         declaration=ProviderEntity(
@@ -142,7 +142,7 @@ class TestPluginModelRuntime:
                 updated_at=datetime.datetime.now(),
                 provider="openai",
                 tenant_id="tenant",
-                plugin_unique_identifier="langgenius/openai/openai",
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 plugin_id="langgenius/openai",
                 installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
@@ -190,7 +190,7 @@ class TestPluginModelRuntime:
                 updated_at=datetime.datetime.now(),
                 provider="openai",
                 tenant_id="tenant",
-                plugin_unique_identifier="langgenius/openai/openai",
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 plugin_id="langgenius/openai",
                 installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
@@ -242,6 +242,7 @@ class TestPluginModelRuntime:
         client, client_results, client_calls = _recording_model_client(monkeypatch)
         client_results["validate_provider_credentials"] = True
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         runtime.validate_provider_credentials(
             provider="langgenius/openai/openai",
@@ -255,6 +256,7 @@ class TestPluginModelRuntime:
                 plugin_id="langgenius/openai",
                 provider="openai",
                 credentials={"api_key": "secret"},
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
 
@@ -286,6 +288,7 @@ class TestPluginModelRuntime:
             ]
         )
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_llm(
             provider="langgenius/openai/openai",
@@ -316,6 +319,7 @@ class TestPluginModelRuntime:
                 tools=None,
                 stop=None,
                 stream=False,
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
 
@@ -323,6 +327,7 @@ class TestPluginModelRuntime:
         client, client_results, client_calls = _recording_model_client(monkeypatch)
         client_results["invoke_llm"] = iter([])
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_llm(
             provider="langgenius/openai/openai",
@@ -351,6 +356,7 @@ class TestPluginModelRuntime:
                 stop=None,
                 stream=True,
                 app_id="app-1",
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
 
@@ -379,6 +385,7 @@ class TestPluginModelRuntime:
         stream_result = iter([])
         client_results["invoke_llm"] = stream_result
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_llm(
             provider="langgenius/openai/openai",
@@ -405,6 +412,7 @@ class TestPluginModelRuntime:
                 tools=None,
                 stop=["END"],
                 stream=True,
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
 
@@ -417,6 +425,7 @@ class TestPluginModelRuntime:
         )
         client_results["start_llm_polling"] = polling_result
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.start_llm_polling(
             provider="langgenius/openai/openai",
@@ -443,6 +452,7 @@ class TestPluginModelRuntime:
                 tools=None,
                 stop=["END"],
                 json_schema={"type": "object"},
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
 
@@ -459,6 +469,7 @@ class TestPluginModelRuntime:
         )
         client_results["check_llm_polling"] = polling_result
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.check_llm_polling(
             provider="langgenius/openai/openai",
@@ -477,6 +488,7 @@ class TestPluginModelRuntime:
                 model="gpt-4o-mini",
                 credentials={"api_key": "secret"},
                 plugin_state={"task_id": "poll-1"},
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
 
@@ -506,6 +518,7 @@ class TestPluginModelRuntime:
         client, client_results, client_calls = _recording_model_client(monkeypatch)
         client_results["invoke_tts"] = iter([b"chunk"])
         runtime = PluginModelRuntime(tenant_id="tenant", user_id=None, client=client, plugin_service=PluginService)
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_tts(
             provider="langgenius/openai/openai",
@@ -526,6 +539,7 @@ class TestPluginModelRuntime:
                 credentials={"api_key": "secret"},
                 content_text="hello",
                 voice="alloy",
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
 
@@ -844,6 +858,7 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(
     monkeypatch.setattr(model_runtime_module, "redis_client", redis)
     client_results["get_model_schema"] = schema
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+    runtime.fetch_model_providers()
 
     result = runtime.get_model_schema(
         provider="langgenius/openai/openai",
@@ -863,6 +878,7 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(
             model_type=ModelType.LLM.value,
             model="gpt-4o-mini",
             credentials={"api_key": "secret"},
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         )
     ]
     assert writes == [(deleted[0], 300, schema.model_dump_json())]
@@ -899,7 +915,7 @@ def test_get_provider_icon_reads_requested_variant_and_detects_svg_mime(monkeypa
             updated_at=datetime.datetime.now(),
             provider="openai",
             tenant_id="tenant",
-            plugin_unique_identifier="langgenius/openai/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             plugin_id="langgenius/openai",
             installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
@@ -941,7 +957,7 @@ def test_get_provider_icon_rejects_unsupported_types_and_missing_variants(monkey
             updated_at=datetime.datetime.now(),
             provider="openai",
             tenant_id="tenant",
-            plugin_unique_identifier="langgenius/openai/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             plugin_id="langgenius/openai",
             installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
@@ -1074,7 +1090,7 @@ def test_get_provider_schema_supports_short_alias_and_rejects_invalid_provider(m
             updated_at=datetime.datetime.now(),
             provider="openai",
             tenant_id="tenant",
-            plugin_unique_identifier="langgenius/openai/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             plugin_id="langgenius/openai",
             installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(

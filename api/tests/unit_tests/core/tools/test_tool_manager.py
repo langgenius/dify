@@ -26,6 +26,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     ToolInvokeFrom,
     ToolParameter,
+    ToolProviderEntityWithPlugin,
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
@@ -34,6 +35,7 @@ from core.tools.tool_manager import ToolManager
 from graphon.runtime import VariablePool
 from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 
 class _CallableSessionProxy:
@@ -411,10 +413,12 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
 @patch("core.plugin.impl.oauth.OAuthHandler")
 @patch(
     "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
-    return_value={"client_id": "id"},
+    return_value=PluginOAuthClientConfig("langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "id"}),
 )
 @patch("core.tools.tool_manager.time.time", return_value=1000)
 @patch("core.helper.credential_utils.check_credential_policy_compliance")
+@pytest.mark.parametrize("client_credentials", [None, {}, {"client_id": "id"}])
+@pytest.mark.parametrize("plugin_provider", [False, True])
 def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     mock_check,
     mock_time,
@@ -423,6 +427,8 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     mock_create_provider_encrypter,
     monkeypatch: pytest.MonkeyPatch,
     tool_database: _ToolDatabase,
+    client_credentials: dict[str, str] | None,
+    plugin_provider: bool,
 ):
     tool = Mock()
     tool.fork_tool_runtime.return_value = "runtime-tool"
@@ -432,6 +438,29 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
         get_credentials_schema_by_type=Mock(return_value=[]),
     )
     tenant_id = "00000000-0000-0000-0000-000000000001"
+    identifier = "langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    mock_get_oauth_client.return_value = (
+        PluginOAuthClientConfig(identifier, client_credentials) if client_credentials is not None else None
+    )
+    if plugin_provider:
+        controller = PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin.model_validate(
+                {
+                    "identity": {
+                        "author": "langgenius",
+                        "name": "time",
+                        "description": {"en_US": "Time"},
+                        "icon": "icon.svg",
+                        "label": {"en_US": "Time"},
+                    },
+                    "credentials_schema": [{"name": "api_key", "type": "secret-input", "label": {"en_US": "API key"}}],
+                }
+            ),
+            plugin_id="langgenius/time",
+            plugin_unique_identifier=identifier,
+            tenant_id=tenant_id,
+        )
+        monkeypatch.setattr(controller, "get_tool", lambda _tool_name: tool)
     provider_id = "00000000-0000-0000-0000-000000000002"
     builtin_provider = _builtin_provider(
         provider_id=provider_id,
@@ -457,6 +486,7 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
             provider_id="time",
             tool_name="weekday",
             tenant_id=tenant_id,
+            credential_id=provider_id if plugin_provider else None,
         )
 
     assert result == "runtime-tool"
@@ -468,6 +498,11 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     assert persisted.expires_at == refreshed.expires_at
     assert persisted.encrypted_credentials == json.dumps({"token": "encrypted"})
     cache.delete.assert_called_once()
+    refresh = mock_oauth_handler_cls.return_value.refresh_credentials
+    refresh.assert_called_once()
+    assert refresh.call_args.kwargs["system_credentials"] == (client_credentials or {})
+    expected_identifier = identifier if plugin_provider or client_credentials is not None else None
+    assert refresh.call_args.kwargs["plugin_unique_identifier"] == expected_identifier
 
 
 def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error(
@@ -498,7 +533,9 @@ def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error
         patch("core.tools.tool_manager.time.time", return_value=1000),
         patch(
             "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
-            return_value={"client_id": "id"},
+            return_value=PluginOAuthClientConfig(
+                "langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "id"}
+            ),
         ),
         patch("core.plugin.impl.oauth.OAuthHandler") as oauth_handler_cls,
     ):

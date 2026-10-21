@@ -11,6 +11,7 @@ from core.tools.errors import ToolProviderCredentialValidationError
 class DatasourcePluginProviderController(ABC):
     entity: DatasourceProviderEntityWithPlugin
     tenant_id: str
+    plugin_unique_identifier: str
 
     def __init__(self, entity: DatasourceProviderEntityWithPlugin, tenant_id: str) -> None:
         self.entity = entity
@@ -29,7 +30,7 @@ class DatasourcePluginProviderController(ABC):
         """
         validate the credentials of the provider
         """
-        manager = PluginToolManager()
+        manager = PluginToolManager(plugin_unique_identifier=self.plugin_unique_identifier)
         if not manager.validate_datasource_credentials(
             tenant_id=self.tenant_id,
             user_id=user_id,

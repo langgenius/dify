@@ -18,6 +18,7 @@ from core.plugin.entities.plugin_daemon import (
 from core.plugin.impl.base import BasePluginClient
 from core.schemas.resolver import resolve_dify_schema_refs
 from models.provider_ids import DatasourceProviderID, GenericProviderID
+from services.plugin.dispatch_identity import plugin_dispatch_headers
 from services.tools.tools_transform_service import ToolTransformService
 
 
@@ -314,7 +315,14 @@ class PluginDatasourceManager(BasePluginClient):
         yield from response
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str, provider: str, plugin_id: str, credentials: dict[str, Any]
+        self,
+        tenant_id: str,
+        user_id: str,
+        provider: str,
+        plugin_id: str,
+        credentials: dict[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> bool:
         """
         validate the credentials of the provider
@@ -332,10 +340,7 @@ class PluginDatasourceManager(BasePluginClient):
                     "credentials": credentials,
                 },
             },
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
