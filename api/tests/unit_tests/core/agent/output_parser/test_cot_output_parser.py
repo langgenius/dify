@@ -7,6 +7,7 @@ core.agent.output_parser.cot_output_parser.CotAgentOutputParser.
 """
 
 import json
+import logging
 
 import pytest
 
@@ -154,13 +155,18 @@ class TestCotAgentOutputParser:
         assert not any(isinstance(item, AgentScratchpadUnit.Action) for item in result)
         assert isinstance(result, list)
 
-    def test_code_block_invalid_json(self, make_chunk, usage_dict) -> None:
+    def test_code_block_invalid_json(self, make_chunk, usage_dict, caplog) -> None:
         content = """```json
 {invalid}
 ```"""
         chunks = [make_chunk(content)]
-        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        with caplog.at_level(logging.WARNING, logger="core.agent.output_parser.cot_output_parser"):
+            result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+
         assert result
+        assert "Failed to parse JSON from code block" in caplog.text
+        assert "Expecting property name enclosed in double quotes" in caplog.text
+        assert content not in caplog.text
 
     def test_unclosed_code_block(self, make_chunk, usage_dict) -> None:
         chunks = [make_chunk('```json {"a":1}')]
