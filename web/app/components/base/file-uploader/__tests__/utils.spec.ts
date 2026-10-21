@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { FileEntity } from '../types'
 import type { FileResponse } from '@/types/workflow'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { upload } from '@/service/base'
 import { createHttpError } from '@/service/http-error'
@@ -325,6 +326,30 @@ describe('file-uploader utils', () => {
 
     it('should return file type when isCustom is false', () => {
       expect(getSupportFileType('file.txt', 'text/plain')).toBe(SupportUploadFileTypes.document)
+    })
+
+    it.each(FILE_EXTS.document!)(
+      'should prefer document for %s when document and custom are both allowed',
+      (extension) => {
+        expect(getSupportFileType(`file.${extension.toLowerCase()}`, '', true, true)).toBe(
+          SupportUploadFileTypes.document,
+        )
+      },
+    )
+
+    it('should keep document files custom when document is not allowed', () => {
+      expect(getSupportFileType('file.pdf', 'application/pdf', true, false)).toBe(
+        SupportUploadFileTypes.custom,
+      )
+    })
+
+    it.each([
+      ['file.xyz', ''],
+      ['photo.png', 'image/png'],
+      ['voice.mp3', 'audio/mpeg'],
+      ['movie.mp4', 'video/mp4'],
+    ])('should retain custom fallback for %s', (name, mimeType) => {
+      expect(getSupportFileType(name, mimeType, true, true)).toBe(SupportUploadFileTypes.custom)
     })
   })
 
