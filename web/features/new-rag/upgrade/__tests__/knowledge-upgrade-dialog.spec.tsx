@@ -18,6 +18,10 @@ const discoverUpgradeMock = vi.hoisted(() =>
   ),
 )
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.test${path}`,
+}))
+
 vi.mock('@/service/console', () => ({
   consoleQuery: {
     datasets: {
@@ -85,7 +89,10 @@ describe('KnowledgeUpgradeDialog', () => {
     expect(screen.getByText('knowledgeUpgrade.upgrade.dialogDuration')).toBeVisible()
     expect(screen.getByText('knowledgeUpgrade.upgrade.dialogLinkedApps')).toBeVisible()
     const learnMore = screen.getByRole('link', { name: 'knowledgeSpace.learnMore' })
-    expect(learnMore).toHaveAttribute('href', 'https://docs.dify.ai/en/guides/knowledge-base')
+    expect(learnMore).toHaveAttribute(
+      'href',
+      'https://docs.example.test/cloud/use-dify/knowledge-base/upgrade-from-classic',
+    )
     expect(learnMore).toHaveAttribute('target', '_blank')
     expect(screen.getByText(/knowledgeUpgrade\.upgrade\.summary/)).toBeVisible()
     expect(

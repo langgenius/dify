@@ -16,6 +16,7 @@ import {
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useId, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import { ModelCostNotice } from '@/features/new-rag/components/model-cost-notice'
 import { createRequestId } from '@/features/new-rag/request-id'
 import { consoleQuery } from '@/service/console'
@@ -33,6 +34,7 @@ export function KnowledgeUpgradeDialog({
 }) {
   const { t } = useTranslation(['knowledgeUpgrade', 'knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
+  const docLink = useDocLink()
   const cancelRef = useRef<HTMLButtonElement>(null)
   const modelCostNoticeId = useId()
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
@@ -119,7 +121,10 @@ export function KnowledgeUpgradeDialog({
               </li>
             </ul>
             <a
-              href="https://docs.dify.ai/en/guides/knowledge-base"
+              href={docLink(
+                // @ts-expect-error Cloud-only page not yet in the generated doc paths.
+                '/cloud/use-dify/knowledge-base/upgrade-from-classic',
+              )}
               target="_blank"
               rel="noreferrer"
               className="mt-3 inline-block text-text-accent underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
