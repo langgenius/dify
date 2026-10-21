@@ -96,10 +96,12 @@ export async function uploadAgentConfigFileToDraft(
   client: ConsoleClient,
   {
     agentId,
+    draftType = 'draft',
     fileName,
     filePath,
   }: {
     agentId: string
+    draftType?: 'debug_build' | 'draft'
     fileName: string
     filePath: string
   },
@@ -110,6 +112,7 @@ export async function uploadAgentConfigFileToDraft(
   const body: AgentConfigFileUploadResponse = await client.agent.byAgentId.config.files.post({
     body: { upload_file_id: uploadedFile.id },
     params: { agent_id: agentId },
+    query: { draft_type: draftType },
   })
   const file = body.file
   if (!file.file_id) throw new Error(`Agent v2 config file ${fileName} did not return a file_id.`)
@@ -128,10 +131,12 @@ export async function uploadAgentConfigSkillToDraft(
   client: ConsoleClient,
   {
     agentId,
+    draftType = 'draft',
     fileName,
     filePath,
   }: {
     agentId: string
+    draftType?: 'debug_build' | 'draft'
     fileName: string
     filePath: string
   },
@@ -141,6 +146,7 @@ export async function uploadAgentConfigSkillToDraft(
     await client.agent.byAgentId.config.skills.upload.post({
       body: { file: createUploadFile(upload.buffer, upload.name, 'application/zip') },
       params: { agent_id: agentId },
+      query: { draft_type: draftType },
     })
   const skill = body.skill
   if (!skill.file_id) throw new Error(`Agent v2 config skill ${fileName} did not return a file_id.`)

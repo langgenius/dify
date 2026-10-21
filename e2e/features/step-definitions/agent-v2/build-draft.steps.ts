@@ -65,17 +65,6 @@ const saveSupportedBuildDraft = async (
 ) => {
   const agentId = getCurrentAgentId(world)
   const client = world.getConsoleClient()
-  const configFile = await uploadAgentConfigFileToDraft(client, {
-    agentId,
-    fileName: agentBuilderTestMaterials.smallFile,
-    filePath: getAgentBuilderTestMaterialPath('smallFile'),
-  })
-  const skill = await uploadSummaryConfigSkillForBuildDraft(world)
-
-  if (!configFile.file_id)
-    throw new Error('Agent v2 build draft config file fixture did not return a file_id.')
-  world.createdAgentConfigFiles.push({ agentId, name: configFile.name })
-
   const stableModel = world.agentBuilder.fixtures.stableModel
   const normalConfig = stableModel
     ? createAgentSoulConfigWithModel(normalAgentSoulConfig, stableModel)
@@ -83,16 +72,46 @@ const saveSupportedBuildDraft = async (
   const updatedConfig = stableModel
     ? createAgentSoulConfigWithModel(updatedAgentSoulConfig, stableModel)
     : updatedAgentSoulConfig
-  const configSkills = [skill]
 
-  await saveAgentComposerDraft(client, agentId, {
-    ...normalConfig,
-    ...(retainSkillInNormalDraft ? { config_skills: configSkills } : {}),
+  await saveAgentComposerDraft(client, agentId, normalConfig)
+  const retainedSkill = retainSkillInNormalDraft
+    ? await uploadSummaryConfigSkillForBuildDraft(world)
+    : undefined
+  const retainedConfigSkills = retainedSkill ? [retainedSkill] : []
+
+  await saveAgentBuildDraft(client, agentId, {
+    ...updatedConfig,
+    config_skills: retainedConfigSkills,
+    env: {
+      secret_refs: [],
+      variables: [
+        {
+          id: agentBuilderFixedInputs.envPlainKey,
+          key: agentBuilderFixedInputs.envPlainKey,
+          name: agentBuilderFixedInputs.envPlainKey,
+          value: agentBuilderFixedInputs.envPlainValue,
+          variable: agentBuilderFixedInputs.envPlainKey,
+        },
+      ],
+    },
   })
+
+  const configFile = await uploadAgentConfigFileToDraft(client, {
+    agentId,
+    draftType: 'debug_build',
+    fileName: agentBuilderTestMaterials.smallFile,
+    filePath: getAgentBuilderTestMaterialPath('smallFile'),
+  })
+  const skill = retainedSkill ?? (await uploadSummaryConfigSkillForBuildDraft(world, 'debug_build'))
+
+  if (!configFile.file_id)
+    throw new Error('Agent v2 build draft config file fixture did not return a file_id.')
+  world.createdAgentConfigFiles.push({ agentId, name: configFile.name })
+
   await saveAgentBuildDraft(client, agentId, {
     ...updatedConfig,
     config_files: [configFile],
-    config_skills: configSkills,
+    config_skills: [skill],
     env: {
       secret_refs: [],
       variables: [
