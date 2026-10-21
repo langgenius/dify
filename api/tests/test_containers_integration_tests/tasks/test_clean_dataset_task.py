@@ -248,12 +248,14 @@ class TestCleanDatasetTask:
             UploadFile: Created upload file instance
         """
         fake = Faker()
+        upload_file_id = str(uuid.uuid4())
+        file_name = fake.file_name()
 
         upload_file = UploadFile(
             tenant_id=tenant.id,
             storage_type=StorageType.LOCAL,
-            key=f"test_files/{fake.file_name()}",
-            name=fake.file_name(),
+            key=f"test_files/{upload_file_id}/{file_name}",
+            name=file_name,
             size=1024,
             extension=".txt",
             mime_type="text/plain",
@@ -262,6 +264,7 @@ class TestCleanDatasetTask:
             created_at=datetime.now(),
             used=False,
         )
+        upload_file.id = upload_file_id
 
         db_session_with_containers.add(upload_file)
         db_session_with_containers.commit()
