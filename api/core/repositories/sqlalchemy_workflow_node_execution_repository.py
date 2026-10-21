@@ -393,7 +393,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
     @override
     def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
-        """Upsert a cleanup batch in one transaction, preserving existing offloads."""
+        """Upsert a cleanup batch in one transaction, preserving workspace bindings and existing offloads."""
         if not executions:
             return
         db_models = [self._to_db_model(execution) for execution in executions]
@@ -431,6 +431,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 if existing is None:
                     session.add(db_model)
                     continue
+                # The workspace service owns this binding, independently of engine snapshots.
+                db_model.agent_workspace_binding_id = existing.agent_workspace_binding_id
                 process_data = keep_agent_and_tool_ids(existing.process_data_dict, db_model.process_data_dict)
                 db_model.process_data = _deterministic_json_dump(process_data) if process_data is not None else None
                 if db_model.triggered_from_workflow_id is None:
@@ -478,6 +480,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
             if existing:
+                # Preserve the workspace binding when merging a new engine snapshot.
+                db_model.agent_workspace_binding_id = existing.agent_workspace_binding_id
                 merged_process_data = keep_agent_and_tool_ids(
                     existing.process_data_dict,
                     db_model.process_data_dict,
