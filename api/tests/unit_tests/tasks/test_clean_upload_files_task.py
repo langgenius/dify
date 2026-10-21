@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 from celery.exceptions import Reject
-from sqlalchemy import event, insert
+from sqlalchemy import Table, event, insert
 from sqlalchemy.orm import Session
 
 import tasks.clean_upload_files_task as task_module
@@ -271,7 +271,7 @@ def test_file_cleanup_retry_releases_claim_after_unindexed_reference_commit(
 
         # This row models a reference committed by a legacy writer that predates
         # mapper fences. Core insertion deliberately bypasses ORM writer events.
-        sqlite_session.execute(insert(Document.__table__).values(**legacy_document_values))
+        sqlite_session.execute(insert(cast(Table, Document.__table__)).values(**legacy_document_values))
         sqlite_session.commit()
 
     recorder = RecordingStorage()
