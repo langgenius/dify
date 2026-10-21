@@ -5,6 +5,7 @@ import type { TracingResource } from './resource'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -27,7 +28,6 @@ type ProviderPanelProps = {
   isChosen: boolean
   config: TraceAppConfigResponse['tracing_config']
   configError?: ProviderConfigError
-  onChoose: () => void
 }
 
 export function ProviderPanel({
@@ -38,7 +38,6 @@ export function ProviderPanel({
   isChosen,
   config,
   configError,
-  onChoose,
 }: ProviderPanelProps) {
   const { t } = useTranslation(['app', 'common'])
   const { data: agentTracingEnabled } = useQuery({
@@ -60,15 +59,13 @@ export function ProviderPanel({
       aria-label={t(($) => $[`${I18N_PREFIX}.${type}.title`], { ns: 'app' })}
     >
       {hasConfigured && !configError && !readOnly && (
-        <button
-          type="button"
+        <RadioItem<ConfigurableTracingProvider>
+          nativeButton
+          value={type}
           disabled={pending}
           aria-label={t(($) => $[`${I18N_PREFIX}.${type}.title`], { ns: 'app' })}
-          aria-pressed={isChosen}
-          className="absolute inset-0 cursor-pointer rounded-xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          onClick={() => {
-            if (!isChosen) onChoose()
-          }}
+          render={<Button variant="ghost" />}
+          className="absolute inset-0 h-auto w-full cursor-pointer rounded-xl p-0 hover:bg-transparent"
         />
       )}
       <div className="flex items-center justify-between space-x-1">
