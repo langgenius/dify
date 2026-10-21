@@ -228,6 +228,7 @@ def test_concurrent_last_reference_deletes_produce_one_cleanup_claim(
     )
     db_session_with_containers.add(upload)
     db_session_with_containers.flush()
+    candidate = UploadFileCleanup(id=upload.id, key=upload.key)
     for document_id in document_ids:
         replace_document_upload_file_references(
             db_session_with_containers,
@@ -254,7 +255,7 @@ def test_concurrent_last_reference_deletes_produce_one_cleanup_claim(
             return claim_orphan_upload_files(
                 session,
                 tenant_id=tenant_id,
-                files=(UploadFileCleanup(id=upload.id, key=upload.key),),
+                files=(candidate,),
             )
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -262,11 +263,11 @@ def test_concurrent_last_reference_deletes_produce_one_cleanup_claim(
         claims = [future.result(timeout=30) for future in futures]
 
     claimed = [file for claim in claims for file in claim]
-    assert claimed == [UploadFileCleanup(id=upload.id, key=upload.key)]
+    assert claimed == [candidate]
     with sessions.begin() as session:
         delete_orphan_upload_files(session, tenant_id=tenant_id, files=claimed)
     db_session_with_containers.expire_all()
-    assert db_session_with_containers.get(UploadFile, upload.id) is None
+    assert db_session_with_containers.get(UploadFile, candidate.id) is None
 
 
 def test_local_message_reference_waits_for_cleanup_claim_and_rejects_pending_file(

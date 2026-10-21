@@ -107,20 +107,22 @@ def test_delete_document_persists_cleanup_manifest(db_session_with_containers: S
         data_source_info={"upload_file_id": upload_file.id},
     )
     ref = DatasetRef(dataset.tenant_id, dataset.id).document(document.id)
+    document_id = document.id
+    upload_snapshot = (upload_file.id, upload_file.key)
 
     assert _repository(db_session_with_containers).delete_document(ref) is True
 
     db_session_with_containers.expire_all()
-    assert db_session_with_containers.get(Document, document.id) is None
+    assert db_session_with_containers.get(Document, document_id) is None
     intent = db_session_with_containers.scalar(
         select(KnowledgeTaskOutbox).where(
             KnowledgeTaskOutbox.task_kind == "document_cleanup",
-            KnowledgeTaskOutbox.document_id == document.id,
+            KnowledgeTaskOutbox.document_id == document_id,
         )
     )
     assert intent is not None
     assert intent.payload["cleanup_manifest"] == {
-        "document_files": [{"id": upload_file.id, "key": upload_file.key}],
+        "document_files": [{"id": upload_snapshot[0], "key": upload_snapshot[1]}],
         "image_files": [],
         "segment_attachments": [],
     }
@@ -148,6 +150,10 @@ def test_delete_document_waits_for_writer_and_snapshots_committed_children(
     document_id = document.id
     dataset_id = dataset.id
     tenant_id = dataset.tenant_id
+    created_by = document.created_by
+    committed_source_snapshot = (committed_source.id, committed_source.key)
+    image_snapshot = (image.id, image.key)
+    attachment_snapshot = (attachment.id, attachment.key)
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
     writer_locked = Event()
     delete_lock_requested = Event()
@@ -173,16 +179,16 @@ def test_delete_document_waits_for_writer_and_snapshots_committed_children(
             writer_locked.set()
             assert delete_lock_requested.wait(timeout=10)
             locked_document.doc_form = IndexStructureType.QA_INDEX
-            locked_document.data_source_info = json.dumps({"upload_file_id": committed_source.id})
+            locked_document.data_source_info = json.dumps({"upload_file_id": committed_source_snapshot[0]})
             segment = DocumentSegment(
                 tenant_id=tenant_id,
                 dataset_id=dataset_id,
                 document_id=document_id,
                 position=1,
-                content=f"![image](https://example.test/files/{image.id}/image-preview)",
+                content=f"![image](https://example.test/files/{image_snapshot[0]}/image-preview)",
                 word_count=1,
                 tokens=1,
-                created_by=document.created_by,
+                created_by=created_by,
                 index_node_id=str(uuid4()),
             )
             binding = SegmentAttachmentBinding(
@@ -190,7 +196,7 @@ def test_delete_document_waits_for_writer_and_snapshots_committed_children(
                 dataset_id=dataset_id,
                 document_id=document_id,
                 segment_id=segment.id,
-                attachment_id=attachment.id,
+                attachment_id=attachment_snapshot[0],
             )
             session.add_all([segment, binding])
             session.flush()
@@ -226,14 +232,14 @@ def test_delete_document_waits_for_writer_and_snapshots_committed_children(
     )
     assert intent is not None
     assert intent.payload["doc_form"] == IndexStructureType.QA_INDEX
-    assert intent.payload["file_id"] == committed_source.id
+    assert intent.payload["file_id"] == committed_source_snapshot[0]
     manifest_payload = intent.payload["cleanup_manifest"]
     assert isinstance(manifest_payload, Mapping)
     manifest = DocumentCleanupManifest.from_payload(cast(Mapping[str, object], manifest_payload))
-    assert [(file.id, file.key) for file in manifest.document_files] == [(committed_source.id, committed_source.key)]
-    assert [(file.id, file.key) for file in manifest.image_files] == [(image.id, image.key)]
+    assert [(file.id, file.key) for file in manifest.document_files] == [committed_source_snapshot]
+    assert [(file.id, file.key) for file in manifest.image_files] == [image_snapshot]
     assert [(item.binding_id, item.attachment_id, item.key) for item in manifest.segment_attachments] == [
-        (binding_id, attachment.id, attachment.key)
+        (binding_id, attachment_snapshot[0], attachment_snapshot[1])
     ]
 
 
@@ -258,11 +264,13 @@ def test_batch_delete_is_idempotent_and_persists_one_manifest(db_session_with_co
         )
         for position, upload in enumerate(uploads, start=1)
     ]
+    document_ids = tuple(document.id for document in documents)
+    upload_ids = {upload.id for upload in uploads}
 
-    assert repository.delete_documents(ref, [document.id for document in documents]) == 2
+    assert repository.delete_documents(ref, document_ids) == 2
 
     db_session_with_containers.expire_all()
-    assert all(db_session_with_containers.get(Document, document.id) is None for document in documents)
+    assert all(db_session_with_containers.get(Document, document_id) is None for document_id in document_ids)
     intent = db_session_with_containers.scalar(
         select(KnowledgeTaskOutbox).where(
             KnowledgeTaskOutbox.task_kind == "document_batch_cleanup",
@@ -273,8 +281,8 @@ def test_batch_delete_is_idempotent_and_persists_one_manifest(db_session_with_co
     document_ids_payload = intent.payload["document_ids"]
     assert isinstance(document_ids_payload, list)
     assert all(isinstance(document_id, str) for document_id in document_ids_payload)
-    assert set(cast(list[str], document_ids_payload)) == {document.id for document in documents}
+    assert set(cast(list[str], document_ids_payload)) == set(document_ids)
     manifest_payload = intent.payload["cleanup_manifest"]
     assert isinstance(manifest_payload, Mapping)
     manifest = DocumentCleanupManifest.from_payload(cast(Mapping[str, object], manifest_payload))
-    assert {file.id for file in manifest.document_files} == {upload.id for upload in uploads}
+    assert {file.id for file in manifest.document_files} == upload_ids
