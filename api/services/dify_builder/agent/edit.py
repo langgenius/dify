@@ -180,7 +180,7 @@ def analyze_impact(
         "for an addition choose an unused new node ID and use that same ID in the later plan. "
         "Never use an existing neighbour's ID for the added resource. "
         "Use [] when no resource identity changes. "
-    ) + llm.json_language_instruction("field labels and values")
+    ) + llm.json_language_instruction("field labels and values", reply_language=reply_language)
     if reply_language:
         system += (
             f"\nSESSION REPLY LANGUAGE (BCP-47): {reply_language}. "
@@ -237,7 +237,9 @@ def propose_edit_plan(
         "Assign each resource only to its node in __builder_resource_node_targets, and respect "
         "the declared mode/features in __builder_resource_model_contracts; unknown capabilities are not verified. "
         + PLAN_PRESENTATION_INSTRUCTION
-        + llm.json_language_instruction("the plan title, input and output summaries, and plan steps")
+        + llm.json_language_instruction(
+            "the plan title, input and output summaries, and plan steps", reply_language=reply_language
+        )
     )
     source = (
         f"EDIT RULES:\n{json.dumps(edit_rules, ensure_ascii=False)}\n\nGRAPH:\n{_graph_context(graph)}"
