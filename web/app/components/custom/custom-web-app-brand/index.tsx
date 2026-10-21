@@ -13,6 +13,7 @@ const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 const CustomWebAppBrand = () => {
   const brandSwitchId = useId()
   const logoInputId = useId()
+  const uploadLabelId = useId()
   const logoInputRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation(['appOverview', 'common', 'custom'])
   const {
@@ -73,32 +74,31 @@ const CustomWebAppBrand = () => {
               <div className="h-5 w-px shrink-0 bg-divider-regular"></div>
             </>
           )}
-          {!uploading && (
-            <>
-              <Button disabled={uploadDisabled} onClick={() => logoInputRef.current?.click()}>
-                <span aria-hidden="true" className="i-ri-image-add-line size-4" />
-                {webappLogo || fileId
+          <Button
+            aria-labelledby={uploadLabelId}
+            disabled={uploadDisabled}
+            loading={uploading}
+            onClick={() => logoInputRef.current?.click()}
+          >
+            {!uploading && <span aria-hidden="true" className="i-ri-image-add-line size-4" />}
+            <span id={uploadLabelId} role="status" aria-atomic="true">
+              {uploading
+                ? t(($) => $.uploading, { ns: 'custom' })
+                : webappLogo || fileId
                   ? t(($) => $.change, { ns: 'custom' })
                   : t(($) => $.upload, { ns: 'custom' })}
-              </Button>
-              <input
-                ref={logoInputRef}
-                id={logoInputId}
-                hidden
-                onClick={(e) => ((e.target as HTMLInputElement).value = '')}
-                type="file"
-                accept={ALLOW_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(',')}
-                onChange={handleChange}
-                disabled={uploadDisabled}
-              />
-            </>
-          )}
-          {uploading && (
-            <Button className="relative" disabled={true}>
-              <span className="i-ri-loader-2-line size-4 animate-spin" />
-              {t(($) => $.uploading, { ns: 'custom' })}
-            </Button>
-          )}
+            </span>
+          </Button>
+          <input
+            ref={logoInputRef}
+            id={logoInputId}
+            hidden
+            onClick={(e) => ((e.target as HTMLInputElement).value = '')}
+            type="file"
+            accept={ALLOW_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(',')}
+            onChange={handleChange}
+            disabled={uploadDisabled || uploading}
+          />
           {fileId && (
             <>
               <Button onClick={handleCancel} disabled={webappBrandRemoved || !canManageCustomBrand}>

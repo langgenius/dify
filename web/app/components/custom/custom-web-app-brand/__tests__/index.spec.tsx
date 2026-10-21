@@ -205,23 +205,37 @@ it('rejects an oversized logo before sending an upload', async () => {
   expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
 })
 
-it('shows upload progress and waits for a successful upload before offering Apply', async () => {
-  const request = createDeferred<Awaited<ReturnType<typeof upload>>>()
-  upload.mockImplementation((options) => {
-    options.onprogress?.call(
-      options.xhr,
-      new ProgressEvent('progress', { lengthComputable: true, loaded: 50, total: 100 }),
-    )
-    return request.promise
-  })
-  const { user } = renderBrand()
-  await user.upload(uploadInput(), logoFile())
-  expect(screen.getByRole('button', { name: 'custom.uploading' })).toBeDisabled()
-  expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
-  await act(async () => request.resolve({ id: 'new-logo' }))
-  expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
-  expect(screen.queryByRole('button', { name: 'custom.uploading' })).not.toBeInTheDocument()
-})
+it.each([0, 100])(
+  'announces uploading and waits for the response at %s percent',
+  async (loaded) => {
+    const request = createDeferred<Awaited<ReturnType<typeof upload>>>()
+    upload.mockImplementation((options) => {
+      options.onprogress?.call(
+        options.xhr,
+        new ProgressEvent('progress', { lengthComputable: true, loaded, total: 100 }),
+      )
+      return request.promise
+    })
+    const { user } = renderBrand()
+    const changeButton = screen.getByRole('button', { name: 'custom.change' })
+    await user.click(changeButton)
+    await user.upload(uploadInput(), logoFile())
+    const pendingButton = screen.getByRole('button', { name: 'custom.uploading' })
+    expect(pendingButton).toBe(changeButton)
+    expect(pendingButton).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('status')).toHaveTextContent('custom.uploading')
+    expect(uploadInput()).toBeDisabled()
+    await user.click(pendingButton)
+    expect(upload).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
+    await act(async () => request.resolve({ id: 'new-logo' }))
+    expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
+    expect(changeButton).not.toHaveAttribute('aria-disabled', 'true')
+    expect(uploadInput()).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent('custom.change')
+    expect(screen.queryByRole('button', { name: 'custom.uploading' })).not.toBeInTheDocument()
+  },
+)
 
 it.each([
   {
