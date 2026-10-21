@@ -34,10 +34,10 @@ def test_workflow_features_with_image():
         type="chat",
         version="1.0",
         graph="{}",
-        features=json.dumps(features),
+        _features=json.dumps(features),
         created_by="user-1",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
 
     # Get the converted features through the property

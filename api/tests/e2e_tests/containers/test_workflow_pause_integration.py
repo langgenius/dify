@@ -219,10 +219,10 @@ class TestWorkflowPauseIntegration:
             type="workflow",
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=self.test_user_id,
-            created_at=naive_utc_now(),
         )
+        self.test_workflow.created_at = naive_utc_now()
 
         # Store session instance
         self.session = db_session_with_containers
@@ -277,8 +277,8 @@ class TestWorkflowPauseIntegration:
             status=status,
             created_by=self.test_user_id,
             created_by_role="account",
-            created_at=naive_utc_now(),
         )
+        workflow_run.created_at = naive_utc_now()
         self.session.add(workflow_run)
         self.session.commit()
         return workflow_run
@@ -727,10 +727,10 @@ class TestWorkflowPauseIntegration:
             type="workflow",
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=account2.id,
-            created_at=naive_utc_now(),
         )
+        workflow2.created_at = naive_utc_now()
         self.session.add(workflow2)
         self.session.commit()
 
@@ -747,8 +747,8 @@ class TestWorkflowPauseIntegration:
             status=WorkflowExecutionStatus.RUNNING,
             created_by=account2.id,
             created_by_role="account",
-            created_at=naive_utc_now(),
         )
+        workflow_run2.created_at = naive_utc_now()
         self.session.add(workflow_run2)
         self.session.commit()
 

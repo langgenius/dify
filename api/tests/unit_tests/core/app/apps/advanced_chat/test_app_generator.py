@@ -100,7 +100,7 @@ def _app_generator_make_workflow(
         type=WorkflowType.CHAT,
         version=_app_generator_Workflow.VERSION_DRAFT,
         graph="{}",
-        features=json.dumps(features or {}),
+        _features=json.dumps(features or {}),
         created_by="user",
     )
 
