@@ -41,11 +41,6 @@ class ConnectionConflictError(ConnectionError):
         super().__init__("Connection changed during the operation.")
 
 
-class ConnectionInvalidCredentialsError(ConnectionError):
-    def __init__(self) -> None:
-        super().__init__("The provider rejected the credentials.")
-
-
 class ConnectionCheckUnavailableError(ConnectionError):
     def __init__(self) -> None:
         super().__init__("Credential validation is temporarily unavailable.")

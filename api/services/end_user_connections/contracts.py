@@ -179,7 +179,7 @@ class ConnectionManagement(Protocol):
     def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
         """Validate schema and target, check credentials, encrypt, then persist.
 
-        Definite invalidity raises ConnectionInvalidCredentialsError; transient
+        Definite invalidity rejects creation without storing credentials; transient
         checks raise ConnectionCheckUnavailableError. Unsupported checking is not
         invalidity. No remote I/O in a write transaction. Creation never selects
         the Connection for a Session or changes App defaults.
