@@ -144,11 +144,13 @@ class TestWorkflowEntryRun:
         assert events == [sentinel.filtered_event]
         from_engine.assert_called_once_with(graph_engine)
         response_stream_filter_cls.assert_called_once_with()
-        filter_engine_events.assert_called_once_with(
-            graph_engine.run.return_value,
-            context=sentinel.filter_context,
-            filters=[sentinel.human_input_filter, sentinel.response_stream_filter],
-        )
+        filter_engine_events.assert_called_once()
+        assert filter_engine_events.call_args.args == (graph_engine.run.return_value,)
+        assert filter_engine_events.call_args.kwargs["context"] is sentinel.filter_context
+        filters = filter_engine_events.call_args.kwargs["filters"]
+        assert filters[0] is sentinel.human_input_filter
+        assert isinstance(filters[1], workflow_entry._SkippedEdgeAwareResponseStreamFilter)
+        assert filters[1]._response_stream_filter is sentinel.response_stream_filter
 
     def test_run_delegates_to_dify_event_iterator(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
