@@ -174,6 +174,7 @@ const MemberDetailsModal = ({
               <Button
                 variant="ghost"
                 size="small"
+                className="ms-auto shrink-0"
                 disabled={isSaving}
                 onClick={() => setAssignOpen(true)}
               >
