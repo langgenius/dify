@@ -7,7 +7,7 @@ from typing import cast
 
 import pytest
 from sqlalchemy import delete, event, insert, select, update
-from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.sql import Select
@@ -1714,6 +1714,49 @@ def test_account_avatar_uses_creator_chain_after_workspace_membership_ends(sqlit
             )
             == ()
         )
+
+
+def test_account_avatar_orphan_fence_compiles_portably_for_uuid_upload_ids(sqlite_session: Session) -> None:
+    account = make_account(account_id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    avatar = make_upload_file(
+        file_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        tenant_id="cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        created_by=account.id,
+    )
+    sqlite_session.add_all([account, avatar])
+    sqlite_session.commit()
+    account.avatar = avatar.id
+    sqlite_session.commit()
+    statements: list[tuple[str, str]] = []
+
+    def capture_account_avatar_read(execute_state: ORMExecuteState) -> None:
+        statement = cast(Select[tuple[object]], execute_state.statement)
+        postgres_sql = str(statement.compile(dialect=postgresql.dialect()))
+        if "FROM accounts" not in postgres_sql:
+            return
+        statements.append((postgres_sql, str(statement.compile(dialect=mysql.dialect()))))
+
+    event.listen(sqlite_session, "do_orm_execute", capture_account_avatar_read)
+    try:
+        assert (
+            find_orphan_upload_files(
+                sqlite_session,
+                tenant_id=avatar.tenant_id,
+                files=(UploadFileCleanup(id=avatar.id, key=avatar.key),),
+            )
+            == ()
+        )
+    finally:
+        event.remove(sqlite_session, "do_orm_execute", capture_account_avatar_read)
+
+    assert len(statements) == 1
+    postgres_sql, mysql_sql = statements[0]
+    assert "CAST(upload_files.id AS VARCHAR) = accounts.avatar" in postgres_sql
+    assert "upload_files.id IN" in postgres_sql
+    assert "FOR UPDATE OF accounts NOWAIT" in postgres_sql
+    assert "CAST(upload_files.id AS CHAR) = accounts.avatar" in mysql_sql
+    assert "upload_files.id IN" in mysql_sql
+    assert "FOR UPDATE NOWAIT" in mysql_sql
 
 
 def test_account_avatar_change_rejects_pending_or_unowned_upload(sqlite_session: Session) -> None:

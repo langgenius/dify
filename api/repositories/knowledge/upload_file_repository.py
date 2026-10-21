@@ -3409,13 +3409,14 @@ def find_orphan_upload_files(
         select(Account.avatar)
         .join(
             UploadFile,
-            (UploadFile.id == Account.avatar)
+            (cast(UploadFile.id, String) == Account.avatar)
             & (UploadFile.tenant_id == tenant_id)
             & (UploadFile.created_by_role == CreatorUserRole.ACCOUNT)
             & (UploadFile.created_by == Account.id),
         )
         .where(
             Account.avatar.in_(candidate_ids),
+            UploadFile.id.in_(candidate_ids),
         )
         .with_for_update(of=Account, nowait=True)
     ).all()

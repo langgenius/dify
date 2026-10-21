@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.elements import ColumnElement, TextClause
 
 from graphon.file import FileTransferMethod, FileType
+from models.account import Account
 from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentKind, AgentScope, AgentSource
 from models.agent_config_entities import AgentConfigFileRefConfig, AgentSoulConfig
 from models.dataset import Dataset, Document, DocumentSegment
@@ -29,6 +30,7 @@ from repositories.knowledge.upload_file_repository import (
     claim_orphan_agent_config_tool_files,
     claim_orphan_upload_files,
     delete_orphan_upload_files,
+    find_orphan_upload_files,
     register_upload_file_reference_guards,
     remove_document_upload_file_references,
     remove_segment_upload_file_references,
@@ -36,6 +38,7 @@ from repositories.knowledge.upload_file_repository import (
 )
 from services.knowledge.indexing.cleanup import UploadFileCleanup, UploadFilePendingDeletionError
 from tests.unit_tests.model_factories import (
+    make_account,
     make_app,
     make_conversation,
     make_dataset,
@@ -182,6 +185,34 @@ def _set_finite_lock_timeout(session: Session) -> None:
         session.execute(text("SET LOCAL lock_timeout = '5s'"))
     else:
         session.execute(text("SET SESSION innodb_lock_wait_timeout = 5"))
+
+
+def test_account_avatar_owner_check_supports_uuid_upload_ids(
+    icon_lifecycle_sessions: sessionmaker[Session],
+) -> None:
+    tenant_id = str(uuid4())
+    account = make_account(account_id=str(uuid4()))
+    avatar = make_upload_file(
+        tenant_id=tenant_id,
+        key=f"avatars/{uuid4()}.png",
+        extension="png",
+        mime_type="image/png",
+        created_by=account.id,
+    )
+    with icon_lifecycle_sessions.begin() as session:
+        session.add_all([account, avatar])
+    with icon_lifecycle_sessions.begin() as session:
+        stored_account = session.get_one(Account, account.id)
+        stored_account.avatar = avatar.id
+    with icon_lifecycle_sessions.begin() as session:
+        assert (
+            find_orphan_upload_files(
+                session,
+                tenant_id=tenant_id,
+                files=(UploadFileCleanup(id=avatar.id, key=avatar.key),),
+            )
+            == ()
+        )
 
 
 def test_concurrent_last_reference_deletes_produce_one_cleanup_claim(
