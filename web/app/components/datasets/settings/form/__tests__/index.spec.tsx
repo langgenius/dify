@@ -139,16 +139,33 @@ describe('Dataset settings form', () => {
     expect(save).toBeEnabled()
   })
 
-  it('rejects a blank name without submitting', async () => {
-    const user = userEvent.setup()
-    const { updateDatasetSetting } = await import('@/service/datasets')
-    render(<Form />)
-    await user.clear(screen.getByDisplayValue('Test Dataset'))
-    await user.type(screen.getByRole('textbox', { name: 'datasetSettings.form.name' }), '   ')
-    await user.click(screen.getByRole('button', { name: /form.save/ }))
-    expect(mockToastError).toHaveBeenCalledWith('datasetSettings.form.nameError')
-    expect(updateDatasetSetting).not.toHaveBeenCalled()
-  })
+  it.each(['', '   '])(
+    'shows a field error for a blank name (%j) and saves after correction',
+    async (blankName) => {
+      const user = userEvent.setup()
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      render(<Form />)
+      await user.clear(screen.getByDisplayValue('Test Dataset'))
+      const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+      if (blankName) await user.type(name, blankName)
+      await user.click(screen.getByRole('button', { name: /form.save/ }))
+      expect(name).toHaveAttribute('aria-invalid', 'true')
+      expect(name).toHaveAccessibleDescription('datasetSettings.form.nameError')
+      expect(screen.getByRole('alert')).toHaveTextContent('datasetSettings.form.nameError')
+      expect(mockToastError).not.toHaveBeenCalled()
+      expect(updateDatasetSetting).not.toHaveBeenCalled()
+      await user.clear(name)
+      await user.type(name, 'Corrected Dataset')
+      expect(name).not.toHaveAttribute('aria-invalid', 'true')
+      expect(screen.queryByText('datasetSettings.form.nameError')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /form.save/ }))
+      await waitFor(() => expect(mockMutateDatasets).toHaveBeenCalledTimes(1))
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({ name: 'Corrected Dataset' }),
+      })
+    },
+  )
 
   it('keeps edits after a failed save and allows retrying', async () => {
     const user = userEvent.setup()
