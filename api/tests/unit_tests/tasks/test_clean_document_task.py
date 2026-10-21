@@ -1,6 +1,7 @@
 """Durable cleanup tests for deleted knowledge documents."""
 
 import json
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol, cast
@@ -8,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 from celery.exceptions import Reject
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 import tasks.clean_document_task as task_module
@@ -28,8 +29,10 @@ from models.knowledge_task import KnowledgeTaskOutbox
 from models.model import KnowledgeUploadFileReference, UploadFile
 from repositories.knowledge.upload_file_repository import (
     build_document_cleanup_manifest,
+    guard_knowledge_owner_upload_references,
     replace_document_upload_file_references,
     replace_segment_image_upload_file_references,
+    sync_knowledge_owner_upload_references,
 )
 from services.knowledge.task_outbox.contracts import (
     KnowledgeTaskDeliveryHandledError,
@@ -60,6 +63,30 @@ pytestmark = pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect
 @pytest.fixture(autouse=True)
 def _enable_physical_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
+
+
+@pytest.fixture(autouse=True)
+def _registered_knowledge_owner_upload_reference_guards() -> Generator[None]:
+    listeners = (
+        ("before_insert", guard_knowledge_owner_upload_references),
+        ("before_update", guard_knowledge_owner_upload_references),
+        ("after_insert", sync_knowledge_owner_upload_references),
+        ("after_update", sync_knowledge_owner_upload_references),
+    )
+    initial_state = {
+        (model, operation, listener): event.contains(model, operation, listener)
+        for model in (Document, DocumentSegment)
+        for operation, listener in listeners
+    }
+    for model in (Document, DocumentSegment):
+        for operation, listener in listeners:
+            if not initial_state[(model, operation, listener)]:
+                event.listen(model, operation, listener)
+    yield
+    for model in (Document, DocumentSegment):
+        for operation, listener in listeners:
+            if not initial_state[(model, operation, listener)]:
+                event.remove(model, operation, listener)
 
 
 class CleanupTaskConfig(Protocol):
@@ -156,6 +183,23 @@ def _segment(*, document: Document, created_by: str, position: int = 1) -> Docum
     )
 
 
+def _persist_knowledge_graph(
+    session: Session,
+    *,
+    dataset: Dataset,
+    uploads: tuple[UploadFile, ...] = (),
+    documents: tuple[Document, ...] = (),
+    segments: tuple[DocumentSegment, ...] = (),
+    dependents: tuple[object, ...] = (),
+) -> None:
+    session.add_all([dataset, *uploads])
+    session.flush()
+    for owners in (documents, segments, dependents):
+        if owners:
+            session.add_all(owners)
+            session.flush()
+
+
 @pytest.fixture
 def _bound_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     engine = sqlite_session.get_bind()
@@ -192,7 +236,14 @@ def test_uses_persisted_file_snapshot_after_dataset_was_deleted(
         document_id=document.id,
         created_by=created_by,
     )
-    sqlite_session.add_all([dataset, document, segment, upload, binding])
+    _persist_knowledge_graph(
+        sqlite_session,
+        dataset=dataset,
+        uploads=(upload,),
+        documents=(document,),
+        segments=(segment,),
+        dependents=(binding,),
+    )
     sqlite_session.commit()
     manifest = build_document_cleanup_manifest(
         sqlite_session,
@@ -269,8 +320,13 @@ def test_detaches_one_binding_without_deleting_a_shared_attachment(
         segment_id=survivor_segment.id,
         attachment_id=attachment.id,
     )
-    sqlite_session.add_all(
-        [dataset, target, survivor, target_segment, survivor_segment, attachment, target_binding, survivor_binding]
+    _persist_knowledge_graph(
+        sqlite_session,
+        dataset=dataset,
+        uploads=(attachment,),
+        documents=(target, survivor),
+        segments=(target_segment, survivor_segment),
+        dependents=(target_binding, survivor_binding),
     )
     sqlite_session.commit()
     manifest = build_document_cleanup_manifest(
@@ -331,8 +387,13 @@ def test_preserves_upload_file_referenced_by_another_document(
     upload = _upload_file(tenant_id=tenant_id, created_by=created_by, key="documents/shared.txt")
     target.data_source_info = json.dumps({"upload_file_id": upload.id})
     survivor.data_source_info = json.dumps({"upload_file_id": upload.id})
-    sqlite_session.add_all([dataset, target, survivor, segment, upload])
-    sqlite_session.flush()
+    _persist_knowledge_graph(
+        sqlite_session,
+        dataset=dataset,
+        uploads=(upload,),
+        documents=(target, survivor),
+        segments=(segment,),
+    )
     for document in (target, survivor):
         replace_document_upload_file_references(
             sqlite_session,
@@ -405,8 +466,13 @@ def test_preserves_image_file_referenced_by_another_segment(
     target_segment.status = SegmentStatus.COMPLETED
     survivor_segment.enabled = True
     survivor_segment.status = SegmentStatus.COMPLETED
-    sqlite_session.add_all([dataset, target, survivor, target_segment, survivor_segment, image])
-    sqlite_session.flush()
+    _persist_knowledge_graph(
+        sqlite_session,
+        dataset=dataset,
+        uploads=(image,),
+        documents=(target, survivor),
+        segments=(target_segment, survivor_segment),
+    )
     for document, segment in ((target, target_segment), (survivor, survivor_segment)):
         replace_segment_image_upload_file_references(
             sqlite_session,
@@ -484,7 +550,14 @@ def test_storage_failure_keeps_file_row_and_manifest_can_be_replayed(
         segment_id=segment.id,
         attachment_id=attachment.id,
     )
-    sqlite_session.add_all([dataset, document, segment, attachment, binding])
+    _persist_knowledge_graph(
+        sqlite_session,
+        dataset=dataset,
+        uploads=(attachment,),
+        documents=(document,),
+        segments=(segment,),
+        dependents=(binding,),
+    )
     sqlite_session.commit()
     manifest = build_document_cleanup_manifest(
         sqlite_session,
@@ -552,7 +625,13 @@ def test_replay_treats_already_deleted_storage_key_as_success(
     image = _upload_file(tenant_id=tenant_id, created_by=created_by, key="images/retry.png")
     segment = _segment(document=document, created_by=created_by)
     segment.content = f"![image](https://example.test/files/{image.id}/image-preview)"
-    sqlite_session.add_all([dataset, document, segment, source, image])
+    _persist_knowledge_graph(
+        sqlite_session,
+        dataset=dataset,
+        uploads=(source, image),
+        documents=(document,),
+        segments=(segment,),
+    )
     sqlite_session.commit()
     manifest = build_document_cleanup_manifest(
         sqlite_session,
@@ -622,7 +701,12 @@ def test_index_cleanup_is_persisted_without_blocking_relational_cleanup(
     )
     document = _document(tenant_id=tenant_id, dataset_id=dataset_id, created_by=created_by)
     segment = _segment(document=document, created_by=created_by)
-    sqlite_session.add_all([dataset, document, segment])
+    _persist_knowledge_graph(
+        sqlite_session,
+        dataset=dataset,
+        documents=(document,),
+        segments=(segment,),
+    )
     sqlite_session.commit()
     segment_id = segment.id
     document_id = document.id
