@@ -104,7 +104,6 @@ export const zBillingModel = z.object({
  * Effective feature availability and limits for the current workspace.
  */
 export const zFeatureModel = z.object({
-  agent_tracing_api_collection_enabled: z.boolean().default(false),
   annotation_quota_limit: zLimitationModel.default({ limit: 10, size: 0 }),
   api_rate_limit: zQuota.default({
     limit: 5000,

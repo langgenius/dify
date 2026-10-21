@@ -152,11 +152,6 @@ class FeatureModel(FeatureResponseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     enable_skill: bool = True
-    agent_tracing_api_collection_enabled: bool = Field(
-        default=False,
-        description="Deployment-level API gate for Agent trace collection, independent of provider configuration. "
-        "Does not indicate Agent runtime, worker, or provider health or confirm trace delivery.",
-    )
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     # Indexing tasks still consume this internally; Console queries vector usage separately.
@@ -187,6 +182,10 @@ class SystemFeatureModel(FeatureResponseModel):
     """Non-sensitive bootstrap snapshot exposed before Console or Web authentication."""
 
     deployment_edition: DeploymentEdition
+    agent_tracing_api_collection_enabled: bool = Field(
+        description="Deployment-level API gate for Agent trace collection, independent of workspace and provider "
+        "configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery.",
+    )
     enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: SSOProtocol | None = None

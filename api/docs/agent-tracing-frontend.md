@@ -43,13 +43,13 @@ https://agent.dify.dev/console/api/agent/{agent_id}/trace
 
 - `packages/contracts/generated/api/console/agent/{types,zod,orpc}.gen.ts`
 - `packages/contracts/generated/api/console/apps/{types,zod,orpc}.gen.ts`
-- `packages/contracts/generated/api/console/features/{types,zod,orpc}.gen.ts`
+- `packages/contracts/generated/api/console/system-features/{types,zod,orpc}.gen.ts`
 
 稳定的调用树如下；内部自动生成的 `get29`、`post20` 等序号不是业务调用入口。
 
 | 能力 | `consoleQuery` / `consoleClient` 后缀 |
 | --- | --- |
-| 登录后的全局 API 采集 gate | `features.get` |
+| 全局 API 采集 gate（公开部署配置） | `systemFeatures.get` |
 | Agent 开关及采集策略 | `agent.byAgentId.trace.get` / `.post` |
 | Agent provider 配置 | `agent.byAgentId.traceConfig.get` / `.post` / `.patch` / `.delete` |
 | Agent provider 能力 | `agent.byAgentId.traceCapabilities.get` |
@@ -65,13 +65,13 @@ https://agent.dify.dev/console/api/agent/{agent_id}/trace
 
 ```ts
 import { useQuery } from '@tanstack/react-query'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 
-const apiCollection = useQuery(
-  consoleQuery.features.get.queryOptions({
-    select: (features) => features.agent_tracing_api_collection_enabled,
-  }),
-)
+const apiCollection = useQuery({
+  ...systemFeaturesQueryOptions(),
+  select: (features) => features.agent_tracing_api_collection_enabled,
+})
 
 const tracing = useQuery(
   consoleQuery.agent.byAgentId.trace.get.queryOptions({
@@ -97,7 +97,7 @@ const execution = useQuery(
 
 本轮复用已注册的 Agent 权限，没有引入新的 `agent.acl.tracing_config`。
 
-全局 `GET /features` 沿用登录账号与当前 workspace 的 bootstrap 鉴权，不依赖 Agent/App ID、provider 或其 Monitor/Edit 权限；它不返回凭据，也不放宽下表中的应用权限。
+全局 `GET /system-features` 是无需登录的部署配置接口，不依赖 workspace、Agent/App ID、provider 或其 Monitor/Edit 权限。Console 与 Web 的对应接口返回同一非敏感 boolean；它不返回凭据，也不放宽下表中的应用权限。`GET /features` 保留 workspace 功能和权益，不再返回此部署开关。
 
 | 操作 | Agent 权限 | 普通 App / Workflow 权限 |
 | --- | --- | --- |
@@ -120,7 +120,7 @@ Agent 自定义角色的 Edit、Monitor、LogManage 可独立授权。界面不�
 
 | 方法 | 相对路径 | 请求 | 成功响应 |
 | --- | --- | --- | --- |
-| GET | `/features` | 无 app/provider 参数、无 body | 200，已有 features 响应增加 `agent_tracing_api_collection_enabled: boolean` |
+| GET | `/system-features` | 无 workspace/app/provider 参数、无 body；无需登录 | 200，已有 system-features 响应增加必填 `agent_tracing_api_collection_enabled: boolean` |
 | GET | `{owner}/trace` | 无 body | 200，采集策略 |
 | POST | `{owner}/trace` | 完整采集策略 | Agent：200 策略；App：200 `{"result":"success"}` |
 | GET | `{owner}/trace-config` | query `tracing_provider` | 200，脱敏配置或 `has_not_configured=true` |
@@ -178,23 +178,23 @@ Agent 成功响应为以上完整策略；普通 App 成功响应为：
 
 新链路还要求 API/worker 的 `OPS_AGENT_TRACE_ENABLED=true` 及 Agent runtime 的 `DIFY_AGENT_APPLICATION_TRACING_ENABLED=true`，两者部署默认均为 false。`capture_agent=true` 不会越过部署开关，也不会开启基础设施 OTel 或部署级 trajectory 导出。
 
-main/生产配置的默认 false 保持不变。dev 的显式启用应写入常规部署实际加载的持久 override 或环境配置，覆盖 API、相关 workers/beat 与 Agent runtime；一次性镜像 overlay 或临时容器环境不能保证 CI 重部署后仍生效。部署后核对实际运行配置和登录后的 feature 响应，不能仅凭旧验收镜像或本地分支判断开关。
+main/生产配置的默认 false 保持不变。dev 的显式启用应写入常规部署实际加载的持久 override 或环境配置，覆盖 API、相关 workers/beat 与 Agent runtime；一次性镜像 overlay 或临时容器环境不能保证 CI 重部署后仍生效。部署后核对实际运行配置和公开 system-features 响应，不能仅凭旧验收镜像或本地分支判断开关。
 
 升级时先保持两个 gate 关闭，完成数据库迁移、新 Agent runtime、API 与 workers 的部署，再开启两个 gate 并执行验证。旧 runtime 的 execution context 使用 `extra=forbid`，即使 `tracing:null` 也会被拒绝；本次 API 已在没有 tracing context 时完全省略该字段，因此关闭 gate 的普通请求可兼容旧 runtime。不能在新 runtime 部署完成前向它发送非空 tracing context。回滚先关闭两个 gate，停止新增采集，再按发布步骤回滚服务；应用配置中的 `enabled=false` 不能代替部署 gate。
 
 后台恢复任务由 `ENABLE_APPLICATION_TRACE_RECONCILE_TASK` 控制，默认 true，并且仅在 `OPS_AGENT_TRACE_ENABLED=true` 时注册。部署验收应确认 Celery beat 正常运行、worker 消费 `ops_trace` 队列且该恢复任务未被关闭，否则丢失排队通知后的终态恢复、重试扫描和过期清理不能按设计运行。这个部署任务开关不属于前端应用策略。
 
-登录后的 `GET /features` 始终返回顶层 boolean `agent_tracing_api_collection_enabled`，表示当前 API 的 `OPS_AGENT_TRACE_ENABLED`，无需先配置或选择 provider。它是部署级值，各 workspace 相同；保留在已认证 Console API 中，不加入公开 `/system-features`。以下仅展示完整 features 响应中的相关字段：
+现有 `GET /console/api/system-features` 与 `GET /api/system-features` 均返回顶层必填 boolean `agent_tracing_api_collection_enabled`，表示当前 API 的 `OPS_AGENT_TRACE_ENABLED`，无需登录、选择 workspace 或先配置 provider。它是部署级值，各 workspace 相同；`GET /features` 不再返回此字段，没有新增接口。以下仅展示完整 system-features 响应中的相关字段：
 
 ```json
 {"agent_tracing_api_collection_enabled": false}
 ```
 
-前端复用已由登录布局预取的 `consoleQuery.features.get`，独立读取部署状态。查询未完成、失败或尚无数据是未知状态，不等同于明确的 false，也不能当作已确认可用。false 时提示“部署尚未开启应用级 Agent 采集”；true 仍不证明 Agent runtime gate/健康、provider 凭据有效、已投递或平台可查询。
+前端复用根布局已有的 `systemFeaturesQueryOptions()` / `consoleQuery.systemFeatures.get`，独立读取部署状态。保留现有 system-features 缓存语义：客户端 `staleTime: Infinity`，SSR 查询缓存仅在当前请求内复用；部署变化后刷新页面获取新快照。首次加载或失败且没有成功数据时是未知状态，不等同于明确的 false；刷新失败但已有成功数据时保留上次成功值。新字段无 schema 默认值，旧响应缺字段不能被补成 false。false 时提示“部署尚未开启应用级 Agent 采集”；true 仍不证明 Agent runtime gate/健康、provider 凭据有效、已投递或平台可查询。
 
 原 `{owner}/trace-capabilities` 的 `api_collection_enabled` 保留兼容，但新前端不应依赖选中 provider、应用 enabled 或 app Monitor 权限来探测全局 gate，也不要填默认 provider 发起能力查询。provider 能力、应用持久化策略和部署状态分别展示；部署关闭不自动改写应用策略或关闭普通 App legacy tracing。
 
-dev 曾复现：没有 provider、未运行模型的新 Agent 没有部署关闭提示，已配置 provider 的面板才显示不可用提示。最新 dev 前端已改为读取全局 features；空配置、关闭策略、加载/错误、权限和 provider 切换的完整验收仍由 [DIFY-2995](https://linear.app/dify/issue/DIFY-2995) 跟踪，不以成功配置某个 provider 代替该矩阵。
+dev 曾复现：没有 provider、未运行模型的新 Agent 没有部署关闭提示，已配置 provider 的面板才显示不可用提示。此次契约调整将该部署开关从 workspace features 迁到公开 system-features；前后端应配套发布，已加载旧前端的标签页需要刷新。历史回归及未覆盖条件见 [DIFY-2995](https://linear.app/dify/issue/DIFY-2995)，不能以成功配置某个 provider 代替权限与部署关闭等验证。
 
 前端不能用 `agent_spans=true` 推断部署已经开启，也不能仅凭 `not_collected` 区分应用关闭、旧历史记录或未进入采集。部署联调需确认 runtime 配置，并通过运行状态验证投递。运行记录内的 `capabilities` 是 provider 支持声明，不含当前 API gate；不要把当前 gate 的变化反推为历史运行状态。
 
@@ -360,7 +360,7 @@ GET /agent/{agent_id}/trace-capabilities?tracing_provider=langfuse
 | `native_cost` | 可映射原生费用字段；没有支持时仍可能在 metadata 中保留 Dify 费用 |
 | `trace_url` / `span_url` | adapter 能提供相应深链；显示前还需检查本次响应 URL 非空 |
 | `export_ack` | 仅能确认 ingestion 接受；不承诺平台已经可以查询 |
-| `api_collection_enabled` | 能力接口保留的兼容 API gate；新前端使用 `GET /features` 的 `agent_tracing_api_collection_enabled` 独立读取，不证明 runtime gate 或投递成功 |
+| `api_collection_enabled` | 能力接口保留的兼容 API gate；新前端使用 `GET /system-features` 的 `agent_tracing_api_collection_enabled` 独立读取，不证明 runtime gate 或投递成功 |
 
 当前代码中的能力表如下，界面运行时仍以接口返回为准：
 
