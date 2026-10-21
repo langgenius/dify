@@ -1417,14 +1417,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/list/dataset-card/components/operations-dropdown.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/metadata/edit-metadata-batch/input-combined.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
@@ -3357,16 +3349,6 @@
   "web/features/new-rag/documents/bulk/toolbar.tsx": {
     "shadcn/no-restyle": {
       "count": 4
-    }
-  },
-  "web/features/new-rag/documents/metadata/drawer.tsx": {
-    "shadcn/no-restyle": {
-      "count": 14
-    }
-  },
-  "web/features/new-rag/list/knowledge-space-actions.tsx": {
-    "shadcn/no-restyle": {
-      "count": 5
     }
   },
   "web/features/new-rag/quality/golden-question-dialog.tsx": {

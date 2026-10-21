@@ -17,7 +17,6 @@
   "crawlStopped": "抓取已停止",
   "crawling": "正在抓取…",
   "crawlingPages": "正在抓取 {{host}}… 已找到 {{count}} 个页面",
-  "deleteSuccess": "Agent 知识库已删除",
   "detailErrorDescription": "无法加载此 Agent 知识库，请重试。",
   "detailErrorTitle": "出现错误",
   "disableSource": "禁用",

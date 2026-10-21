@@ -17,7 +17,6 @@
   "crawlStopped": "Crawl gestoppt",
   "crawling": "Wird gecrawlt…",
   "crawlingPages": "{{host}} wird gecrawlt… {{count}} Seiten gefunden",
-  "deleteSuccess": "Agent-Wissensdatenbank gelöscht.",
   "detailErrorDescription": "Diese Agent-Wissensdatenbank konnte nicht geladen werden. Versuchen Sie es erneut.",
   "detailErrorTitle": "Etwas ist schief gelaufen",
   "disableSource": "Deaktivieren",

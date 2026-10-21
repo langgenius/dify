@@ -17,7 +17,6 @@
   "crawlStopped": "Exploration arrêtée",
   "crawling": "Exploration en cours…",
   "crawlingPages": "Exploration de {{host}}… {{count}} pages trouvées",
-  "deleteSuccess": "Base de connaissances Agent supprimée.",
   "detailErrorDescription": "Nous n'avons pas pu charger cette base de connaissances Agent. Essayer à nouveau.",
   "detailErrorTitle": "Quelque chose s'est mal passé",
   "disableSource": "Désactiver",

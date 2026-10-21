@@ -95,7 +95,6 @@ const OperationsDropdown = ({
           ? 'pointer-events-auto opacity-100'
           : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100',
       )}
-      onClick={(e) => e.stopPropagation()}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
@@ -107,13 +106,9 @@ const OperationsDropdown = ({
             'focus-visible:bg-state-base-hover',
             'data-popup-open:bg-state-base-hover',
           )}
-          aria-label="Dataset operations"
-          onClick={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-          }}
+          aria-label={t(($) => $['operation.more'], { ns: 'common' })}
         >
-          <span className="i-ri-more-fill size-5 text-text-tertiary" />
+          <span aria-hidden className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"

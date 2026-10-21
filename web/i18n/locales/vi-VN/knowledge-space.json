@@ -17,7 +17,6 @@
   "crawlStopped": "Đã dừng thu thập",
   "crawling": "Đang thu thập…",
   "crawlingPages": "Đang thu thập {{host}}… đã tìm thấy {{count}} trang",
-  "deleteSuccess": "Đã xóa cơ sở tri thức Agent.",
   "detailErrorDescription": "Chúng tôi không thể tải cơ sở tri thức Agent này. Hãy thử lại.",
   "detailErrorTitle": "Đã xảy ra lỗi",
   "disableSource": "Tắt",

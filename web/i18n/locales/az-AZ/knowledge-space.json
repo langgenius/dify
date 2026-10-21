@@ -17,7 +17,6 @@
   "crawlStopped": "Skan dayandırıldı",
   "crawling": "Skan edilir…",
   "crawlingPages": "{{host}} skan edilir… {{count}} səhifə tapıldı",
-  "deleteSuccess": "Agent Knowledge Base deleted.",
   "detailErrorDescription": "Bu bilik bazasını yükləyə bilmədik. Yenidən cəhd edin.",
   "detailErrorTitle": "Xəta baş verdi",
   "disableSource": "Söndür",

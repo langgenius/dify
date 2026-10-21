@@ -17,7 +17,6 @@
   "crawlStopped": "Scansione interrotta",
   "crawling": "Scansione in corso…",
   "crawlingPages": "Scansione di {{host}}… {{count}} pagine trovate",
-  "deleteSuccess": "Base di conoscenza Agent eliminata.",
   "detailErrorDescription": "Impossibile caricare questa base di conoscenza Agent. Riprova.",
   "detailErrorTitle": "Qualcosa è andato storto",
   "disableSource": "Disabilita",

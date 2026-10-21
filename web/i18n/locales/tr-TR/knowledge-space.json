@@ -17,7 +17,6 @@
   "crawlStopped": "Tarama durduruldu",
   "crawling": "Taranıyor…",
   "crawlingPages": "{{host}} taranıyor… {{count}} sayfa bulundu",
-  "deleteSuccess": "Agent bilgi tabanı silindi.",
   "detailErrorDescription": "Bu Agent bilgi tabanını yükleyemedik. Tekrar deneyin.",
   "detailErrorTitle": "Bir şeyler ters gitti",
   "disableSource": "Devre Dışı Bırak",

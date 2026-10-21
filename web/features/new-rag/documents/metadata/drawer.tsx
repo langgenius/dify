@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type { DocumentMetadataField, DocumentMetadataType } from './editor-model'
 import {
   AlertDialog,
@@ -9,11 +8,19 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import {
   Drawer,
   DrawerBackdrop,
@@ -24,11 +31,11 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useHover } from 'ahooks'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -46,14 +53,8 @@ const metadataTypeIconClass: Record<DocumentMetadataType, string> = {
   string: 'i-ri-text-snippet',
   time: 'i-ri-time-line',
 }
-function Field({ children, label }: { children: ReactNode; label: string }) {
-  return (
-    <div>
-      <div className="py-1 system-sm-semibold text-text-secondary">{label}</div>
-      <div className="mt-1">{children}</div>
-    </div>
-  )
-}
+// Requests report failures once through useMetadataFieldMutation, including server messages.
+const silentRequest = { context: { silent: true } }
 
 function useMetadataFields() {
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
@@ -90,7 +91,12 @@ function useMetadataFieldMutation() {
         return true
       } catch (error) {
         if (getHttpErrorStatus(error) === 403) denyWrite()
-        else toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
+        else
+          toast.error(
+            getHttpErrorStatus(error) !== undefined && error instanceof Error
+              ? error.message
+              : t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
+          )
         return false
       }
     },
@@ -109,19 +115,17 @@ function CreateMetadataPopover() {
     metadataFieldsQuery.isPending || metadataFieldsQuery.isFetching || metadataFieldsQuery.error,
   )
   const { canWrite, knowledgeSpaceId, mutate, pending } = useMetadataFieldMutation()
-  const createMetadata = async (name: string, type: DocumentMetadataType) => {
-    const error = documentMetadataNameError(name, fields)
-    if (error) {
-      toast.error(t(($) => $[`metadata.checkName.${error}`], { max: 255, ns: 'dataset' }))
-      return false
-    }
-    return mutate(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
-        body: { name, type },
-        params: { control_space_id: knowledgeSpaceId },
-      }),
+  // DocumentMetadataCreateForm validates the name against the same fields before submitting.
+  const createMetadata = (name: string, type: DocumentMetadataType) =>
+    mutate(() =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post(
+        {
+          body: { name, type },
+          params: { control_space_id: knowledgeSpaceId },
+        },
+        silentRequest,
+      ),
     )
-  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -165,37 +169,42 @@ function MetadataItem({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
   const [name, setName] = useState(field.name)
-  const deleteButtonRef = useRef<HTMLButtonElement>(null)
-  const isDeleteHovering = useHover(deleteButtonRef)
+  const [nameSubmitted, setNameSubmitted] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const { canWrite: canEdit, knowledgeSpaceId, mutate, pending: busy } = useMetadataFieldMutation()
+  const nameErrorKind = documentMetadataNameError(name.trim(), fields, field.name)
+  const nameError =
+    nameSubmitted && nameErrorKind
+      ? t(($) => $[`metadata.checkName.${nameErrorKind}`], { max: 255, ns: 'dataset' })
+      : undefined
   const renameMetadata = async (nextName: string) => {
-    const error = documentMetadataNameError(nextName, fields, field.name)
-    if (error) {
-      toast.error(t(($) => $[`metadata.checkName.${error}`], { max: 255, ns: 'dataset' }))
-      return false
-    }
     if (nextName === field.name) return true
     return mutate(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.patch({
-        body: { expectedRowVersion: field.rowVersion, name: nextName },
-        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
-      }),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.patch(
+        {
+          body: { expectedRowVersion: field.rowVersion, name: nextName },
+          params: { control_space_id: knowledgeSpaceId, field_id: field.id },
+        },
+        silentRequest,
+      ),
     )
   }
   const deleteMetadata = () =>
     mutate(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.delete({
-        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
-        query: { expectedRowVersion: field.rowVersion },
-      }),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.delete(
+        {
+          params: { control_space_id: knowledgeSpaceId, field_id: field.id },
+          query: { expectedRowVersion: field.rowVersion },
+        },
+        silentRequest,
+      ),
     )
 
   return (
     <div
       className={cn(
         canEdit && 'hover:shadow-xs',
-        'rounded-md border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg',
-        isDeleteHovering && 'border border-state-destructive-border bg-state-destructive-hover',
+        'rounded-md border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg has-[[data-metadata-delete]:hover]:border-state-destructive-border has-[[data-metadata-delete]:hover]:bg-state-destructive-hover',
       )}
     >
       <div className="flex h-8 items-center justify-between px-2">
@@ -217,85 +226,98 @@ function MetadataItem({
         </div>
         {canEdit && (
           <div className="ml-2 flex shrink-0 items-center space-x-1 text-text-tertiary">
-            <button
-              type="button"
+            <IconButton
+              size="md"
               aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
-              className="cursor-pointer rounded-md border-none bg-transparent p-0.5 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={() => {
                 setName(field.name)
+                setNameSubmitted(false)
                 setRenameOpen(true)
               }}
             >
               <span className="i-ri-edit-line size-4" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              ref={deleteButtonRef}
+            </IconButton>
+            <IconButton
+              size="md"
+              tone="destructive"
+              data-metadata-delete=""
               aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
-              className="cursor-pointer rounded-md border-none bg-transparent p-0.5 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
               onClick={() => setDeleteOpen(true)}
             >
               <span className="i-ri-delete-bin-line size-4" aria-hidden="true" />
-            </button>
+            </IconButton>
           </div>
         )}
       </div>
 
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="overflow-hidden! border-none text-left align-middle">
+      <Dialog open={renameOpen} onOpenChange={(open) => !busy && setRenameOpen(open)}>
+        <DialogContent>
           <form
+            className="contents"
             onSubmit={async (event) => {
               event.preventDefault()
-              if (!name.trim() || busy) return
+              if (busy) return
+              setNameSubmitted(true)
+              if (nameErrorKind) {
+                nameInputRef.current?.focus()
+                return
+              }
               if (await renameMetadata(name.trim())) setRenameOpen(false)
             }}
           >
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['metadata.datasetMetadata.rename'], { ns: 'dataset' })}
-            </DialogTitle>
-            <div className="mt-4">
-              <Field label={t(($) => $['metadata.datasetMetadata.name'], { ns: 'dataset' })}>
+            <DialogHeader>
+              <DialogTitle>
+                {t(($) => $['metadata.datasetMetadata.rename'], { ns: 'dataset' })}
+              </DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <Field name="name" disabled={busy} invalid={Boolean(nameError)}>
+                <FieldLabel className="py-1 system-sm-semibold text-text-secondary">
+                  {t(($) => $['metadata.datasetMetadata.name'], { ns: 'dataset' })}
+                </FieldLabel>
                 <Input
-                  aria-label={t(($) => $['metadata.datasetMetadata.name'], { ns: 'dataset' })}
+                  ref={nameInputRef}
+                  autoComplete="off"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   placeholder={t(($) => $['metadata.datasetMetadata.namePlaceholder'], {
                     ns: 'dataset',
                   })}
                 />
+                {nameError && <FieldError match>{nameError}</FieldError>}
               </Field>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button className="mr-2" onClick={() => setRenameOpen(false)}>
+            </DialogBody>
+            <DialogFooter>
+              <Button disabled={busy} onClick={() => setRenameOpen(false)}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
-              <Button disabled={!name.trim()} loading={busy} type="submit" variant="primary">
+              <Button loading={busy} type="submit" variant="primary">
                 {t(($) => $['operation.save'], { ns: 'common' })}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <AlertDialog open={deleteOpen} onOpenChange={(open) => !busy && setDeleteOpen(open)}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['metadata.datasetMetadata.deleteTitle'], { ns: 'dataset' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['metadata.datasetMetadata.deleteContent'], {
                 ns: 'dataset',
                 name: field.name,
               })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={busy}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              disabled={busy}
+              loading={busy}
               onClick={async () => {
                 if (await deleteMetadata()) setDeleteOpen(false)
               }}

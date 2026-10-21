@@ -101,9 +101,8 @@ describe('KnowledgeSpaceCardTags', () => {
     await user.click(screen.getByRole('option', { name: 'Public docs' }))
     await user.click(trigger())
 
-    await waitFor(() =>
-      expect(api.toast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully'),
-    )
+    await waitFor(() => expect(api.putTags).toHaveBeenCalled())
+    expect(api.toast.success).not.toHaveBeenCalled()
     expect(api.putTags).toHaveBeenCalledWith({
       body: { tag_ids: ['tag-2', 'tag-3'] },
       params: { control_space_id: 'space-1' },

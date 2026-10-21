@@ -39,14 +39,16 @@ export function KnowledgeSpaceCardTags({
     }))
   }, [knowledgeSpace.tags, submittedTagIds])
   const { mutateAsync: replaceTags } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.tags.put.mutationOptions(),
+    // The tag trigger stays in place, so a failed replacement needs its own message.
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.tags.put.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
   const runReplacements = async (tagIds: string[]) => {
     const queue = replacementQueueRef.current
     queue.running = true
     let nextTagIds: string[] | undefined = tagIds
-    let succeeded = false
     while (nextTagIds) {
       const currentTagIds: string[] = nextTagIds
       queue.next = undefined
@@ -55,14 +57,11 @@ export function KnowledgeSpaceCardTags({
           params: { control_space_id: knowledgeSpace.control_space_id },
           body: { tag_ids: currentTagIds },
         })
-        succeeded = true
       } catch {
-        succeeded = false
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       }
       nextTagIds = queue.next
     }
-    if (succeeded) toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
@@ -104,7 +103,6 @@ export function KnowledgeSpaceCardTags({
       showProvidedTagNames
       onOpenTagManagement={onOpenTagManagement}
       onApplyTags={applyTags}
-      className="relative z-1 mx-3 w-auto"
     />
   )
 }

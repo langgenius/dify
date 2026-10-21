@@ -1431,10 +1431,10 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(createMetadataField).toHaveBeenCalledOnce()
-    expect(createMetadataField).toHaveBeenCalledWith({
-      body: { name: 'category', type: 'string' },
-      params: { control_space_id: 'space-1' },
-    })
+    expect(createMetadataField).toHaveBeenCalledWith(
+      { body: { name: 'category', type: 'string' }, params: { control_space_id: 'space-1' } },
+      { context: { silent: true } },
+    )
     expect(listLogicalDocuments).not.toHaveBeenCalled()
     expect(renameDocumentMutation).not.toHaveBeenCalled()
     await waitFor(() =>
@@ -1535,38 +1535,35 @@ describe('DocumentsPage', () => {
     })
     const createDialog = nameInput.closest<HTMLElement>('[role="dialog"]')!
     const save = within(createDialog).getByRole('button', { name: 'common.operation.save' })
-    expect(save).toBeDisabled()
+    expect(nameInput).toHaveFocus()
 
-    await user.type(nameInput, '11')
+    await user.click(save)
+    expect(createMetadataField).not.toHaveBeenCalled()
     expect(nameInput).toHaveAttribute('aria-invalid', 'true')
-    expect(within(createDialog).getByRole('alert')).toHaveTextContent(
-      'dataset.metadata.checkName.invalid',
-    )
-    expect(save).toBeDisabled()
+    expect(nameInput).toHaveAccessibleDescription(/dataset.metadata.checkName.empty/)
+    expect(nameInput).toHaveFocus()
+
+    const cases = [
+      ['11', 'invalid'],
+      ['existing_field', 'duplicate'],
+      ['a'.repeat(256), 'tooLong'],
+      ['displayName', 'invalid'],
+    ] as const
+    for (const [name, error] of cases) {
+      await user.clear(nameInput)
+      await user.type(nameInput, name)
+      expect(nameInput).toHaveAccessibleDescription(
+        new RegExp(`dataset.metadata.checkName.${error}`),
+      )
+    }
 
     await user.clear(nameInput)
-    await user.type(nameInput, 'existing_field')
-    expect(within(createDialog).getByRole('alert')).toHaveTextContent(
-      'dataset.metadata.checkName.duplicate',
-    )
-
-    await user.clear(nameInput)
-    await user.type(nameInput, 'a'.repeat(256))
-    expect(within(createDialog).getByRole('alert')).toHaveTextContent(
-      'dataset.metadata.checkName.tooLong',
-    )
-
-    await user.clear(nameInput)
-    await user.type(nameInput, 'displayName')
-    expect(within(createDialog).getByRole('alert')).toHaveTextContent(
-      'dataset.metadata.checkName.invalid',
-    )
-
-    await user.clear(nameInput)
-    await user.type(nameInput, 'priority_1')
+    await user.type(nameInput, 'priority_1{Enter}')
     expect(nameInput).not.toHaveAttribute('aria-invalid')
-    expect(within(createDialog).queryByRole('alert')).not.toBeInTheDocument()
-    expect(save).toBeEnabled()
+    expect(createMetadataField).toHaveBeenCalledWith(
+      { body: { name: 'priority_1', type: 'string' }, params: { control_space_id: 'space-1' } },
+      { context: { silent: true } },
+    )
   })
 
   it('renames metadata through the field catalog endpoint', async () => {
@@ -1597,10 +1594,13 @@ describe('DocumentsPage', () => {
     await user.type(nameInput, 'topic')
     await user.keyboard('{Enter}')
 
-    expect(renameMetadataField).toHaveBeenCalledWith({
-      body: { expectedRowVersion: 0, name: 'topic' },
-      params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
-    })
+    expect(renameMetadataField).toHaveBeenCalledWith(
+      {
+        body: { expectedRowVersion: 0, name: 'topic' },
+        params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
+      },
+      { context: { silent: true } },
+    )
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 
@@ -1649,10 +1649,13 @@ describe('DocumentsPage', () => {
     await user.click(await screen.findByRole('button', { name: 'common.operation.remove' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(deleteMetadataField).toHaveBeenCalledWith({
-      params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
-      query: { expectedRowVersion: 0 },
-    })
+    expect(deleteMetadataField).toHaveBeenCalledWith(
+      {
+        params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
+        query: { expectedRowVersion: 0 },
+      },
+      { context: { silent: true } },
+    )
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 

@@ -74,7 +74,7 @@ describe('OperationsDropdown', () => {
       const user = userEvent.setup()
       render(<OperationsDropdown {...defaultProps} />)
 
-      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(screen.getByLabelText('common.operation.more'))
 
       expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
     })
@@ -86,7 +86,7 @@ describe('OperationsDropdown', () => {
       })
       render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
 
-      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(screen.getByLabelText('common.operation.more'))
 
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
@@ -96,7 +96,7 @@ describe('OperationsDropdown', () => {
       const dataset = createMockDataset({ runtime_mode: 'rag_pipeline' })
       render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
 
-      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(screen.getByLabelText('common.operation.more'))
 
       expect(screen.getByText('datasetPipeline.operations.exportPipeline')).toBeInTheDocument()
     })
@@ -106,7 +106,7 @@ describe('OperationsDropdown', () => {
       const dataset = createMockDataset({ runtime_mode: 'general' })
       render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
 
-      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(screen.getByLabelText('common.operation.more'))
 
       expect(
         screen.queryByText('datasetPipeline.operations.exportPipeline'),
@@ -120,7 +120,7 @@ describe('OperationsDropdown', () => {
       })
       render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
 
-      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(screen.getByLabelText('common.operation.more'))
 
       expect(screen.getByText('navigation.settings.resourceAccess')).toBeInTheDocument()
     })
@@ -133,7 +133,7 @@ describe('OperationsDropdown', () => {
       })
       render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
 
-      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(screen.getByLabelText('common.operation.more'))
 
       expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
       expect(screen.queryByText('navigation.settings.resourceAccess')).not.toBeInTheDocument()
@@ -150,7 +150,7 @@ describe('OperationsDropdown', () => {
         </KnowledgeUpgradeProvider>,
       )
 
-      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(screen.getByLabelText('common.operation.more'))
       const upgradeItem = await screen.findByRole('menuitem', {
         name: 'knowledgeUpgrade.upgrade.menuLabel',
       })
@@ -182,7 +182,7 @@ describe('OperationsDropdown', () => {
         </KnowledgeUpgradeProvider>,
       )
 
-      const operationsTrigger = screen.getByLabelText('Dataset operations')
+      const operationsTrigger = screen.getByLabelText('common.operation.more')
       await user.click(operationsTrigger)
       await user.click(
         await screen.findByRole('menuitem', { name: 'knowledgeUpgrade.upgrade.menuLabel' }),
@@ -221,7 +221,7 @@ describe('OperationsDropdown', () => {
           />
         </KnowledgeUpgradeProvider>,
       )
-      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(screen.getByLabelText('common.operation.more'))
 
       expect(
         screen.queryByRole('menuitem', { name: 'knowledgeUpgrade.upgrade.menuLabel' }),
@@ -241,7 +241,7 @@ describe('OperationsDropdown', () => {
         </div>,
       )
 
-      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(screen.getByLabelText('common.operation.more'))
       await user.click(screen.getByRole('button', { name: 'Outside action' }))
 
       expect(onOutsideClick).toHaveBeenCalledTimes(1)

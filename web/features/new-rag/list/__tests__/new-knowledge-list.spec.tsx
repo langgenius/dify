@@ -241,7 +241,9 @@ describe('NewKnowledgeList', () => {
       const support = await screen.findByRole('link', { name: 'Support knowledge' })
       const supportItem = support.closest('li')!
       expect(support).toHaveAttribute('href', '/datasets/new/space-1')
-      expect(support).toHaveAccessibleDescription('knowledgeOverview.overview.linkedApps: 3')
+      expect(support).toHaveAccessibleDescription(
+        'Answers for customer support knowledgeOverview.overview.linkedApps: 3',
+      )
       expect(within(support).getByTitle('camera')).toBeInTheDocument()
       expect(within(supportItem).getByText('Answers for customer support')).toBeInTheDocument()
       expect(within(supportItem).getByText('12')).toBeInTheDocument()
@@ -345,9 +347,11 @@ describe('NewKnowledgeList', () => {
       expect(cardLink).not.toContainElement(actions)
 
       await user.click(actions)
-      await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
 
-      expect(api.push).toHaveBeenCalledWith('/datasets/new/space-1/settings')
+      expect(screen.getByRole('menuitem', { name: 'common.operation.edit' })).toHaveAttribute(
+        'href',
+        '/datasets/new/space-1/settings',
+      )
     })
 
     it('deletes after the exact name is confirmed and refreshes the collection', async () => {
@@ -380,7 +384,31 @@ describe('NewKnowledgeList', () => {
         expect(screen.queryByRole('link', { name: 'Support knowledge' })).not.toBeInTheDocument(),
       )
       expect(api.deleteSpace).toHaveBeenCalledWith({ params: { control_space_id: 'space-1' } })
-      expect(api.toast.success).toHaveBeenCalledWith('knowledgeSpace.deleteSuccess')
+    })
+
+    it('keeps the confirmation open with the failure when deletion fails', async () => {
+      const user = userEvent.setup()
+      api.spaces.mockResolvedValue(
+        spacesPage([
+          space('space-1', 'Support knowledge', {
+            permission_keys: ['knowledge_space_delete', 'knowledge_space_read'],
+          }),
+        ]),
+      )
+      api.deleteSpace.mockRejectedValueOnce(new Error('network down'))
+      setup()
+
+      await user.click(await screen.findByRole('button', { name: 'common.operation.more' }))
+      await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+      const dialog = await screen.findByRole('alertdialog')
+      const confirmation = within(dialog).getByRole('textbox')
+      await user.type(confirmation, 'Support knowledge{Enter}')
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+      expect(confirmation).toHaveValue('Support knowledge')
+      expect(
+        screen.getByRole('link', { name: 'Support knowledge', hidden: true }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -418,7 +446,7 @@ describe('NewKnowledgeList', () => {
         }),
       )
       expect(
-        screen.getByRole('button', { name: 'dataset.creatorFilter.creators: 1' }),
+        screen.getByRole('combobox', { name: 'dataset.creatorFilter.creators: 1' }),
       ).toBeInTheDocument()
     })
 
@@ -441,11 +469,11 @@ describe('NewKnowledgeList', () => {
       const user = userEvent.setup()
       const { onUrlUpdate } = setup()
 
-      await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
-      await user.click(await screen.findByRole('checkbox', { name: /Alice/ }))
-      await user.click(screen.getByRole('checkbox', { name: /Bob/ }))
+      await user.click(screen.getByRole('combobox', { name: 'dataset.creatorFilter.creators' }))
+      await user.click(await screen.findByRole('option', { name: /Alice/ }))
+      await user.click(screen.getByRole('option', { name: /Bob/ }))
 
-      expect(screen.queryByRole('checkbox', { name: /Pending member/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: /Pending member/ })).not.toBeInTheDocument()
       await waitFor(() =>
         expect(lastSearchParams(onUrlUpdate)?.get('creator_ids')).toBe('account-1;account-2'),
       )
@@ -472,9 +500,11 @@ describe('NewKnowledgeList', () => {
       api.members.mockResolvedValue({ accounts })
       setup({ searchParams: `?creator_ids=${accounts.map((account) => account.id).join(';')}` })
 
-      await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators: 100' }))
+      await user.click(
+        screen.getByRole('combobox', { name: 'dataset.creatorFilter.creators: 100' }),
+      )
 
-      const unselected = await screen.findByRole('checkbox', { name: /Member 101/ })
+      const unselected = await screen.findByRole('option', { name: /Member 101/ })
       expect(unselected).toHaveAttribute('aria-disabled', 'true')
       expect(unselected).toHaveAccessibleDescription('dataset.creatorFilter.maxCreators: 100')
       expect(lastSpacesQuery()?.creator_ids).toHaveLength(100)
@@ -483,14 +513,14 @@ describe('NewKnowledgeList', () => {
     it('retries a failed members request while keeping cached creators', async () => {
       const user = userEvent.setup()
       const { refresh } = setup()
-      await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
-      await screen.findByRole('checkbox', { name: /Alice/ })
+      await user.click(screen.getByRole('combobox', { name: 'dataset.creatorFilter.creators' }))
+      await screen.findByRole('option', { name: /Alice/ })
 
       api.members.mockRejectedValueOnce(new Error('request failed'))
       await refresh(consoleQuery.workspaces.current.members.get.key())
 
       expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
-      expect(screen.getByRole('checkbox', { name: /Alice/ })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /Alice/ })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
       await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
     })

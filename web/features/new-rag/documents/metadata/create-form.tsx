@@ -3,9 +3,11 @@
 import type { SubmitEvent } from 'react'
 import type { DocumentMetadataField, DocumentMetadataType } from './editor-model'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
-import { useId, useMemo, useState } from 'react'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { documentMetadataNameError } from './editor-model'
 
@@ -29,7 +31,7 @@ export function DocumentMetadataCreateForm({
   const [name, setName] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
   const [type, setType] = useState<DocumentMetadataType>('string')
-  const nameErrorId = useId()
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const nameErrorKind = useMemo(
     () => documentMetadataNameError(name, fields, allowedExistingName),
     [allowedExistingName, fields, name],
@@ -49,7 +51,10 @@ export function DocumentMetadataCreateForm({
   const create = async () => {
     if (pending) return
     setNameTouched(true)
-    if (nameError) return
+    if (nameError) {
+      nameInputRef.current?.focus()
+      return
+    }
     try {
       if (await onCreate(name.trim(), type)) close()
     } catch {
@@ -67,80 +72,67 @@ export function DocumentMetadataCreateForm({
         void create()
       }}
     >
-      <button
-        type="button"
-        className="relative -left-1 mb-1 flex cursor-pointer items-center gap-1 border-0 bg-transparent px-0 py-1 text-text-accent"
-        onClick={close}
-      >
+      <Button variant="ghost-accent" size="small" className="mb-1 -ml-2" onClick={close}>
         <span aria-hidden className="i-ri-arrow-left-line size-4" />
         <span className="system-xs-semibold-uppercase">
           {t(($) => $['metadata.createMetadata.back'], { ns: 'dataset' })}
         </span>
-      </button>
+      </Button>
       <h3 className="mb-1 flex h-6 items-center system-xl-semibold text-text-primary">
         {t(($) => $['metadata.createMetadata.title'], { ns: 'dataset' })}
       </h3>
       <div className="mt-2 space-y-3">
-        <fieldset>
-          <legend className="py-1 system-sm-semibold text-text-secondary">
-            {t(($) => $['metadata.createMetadata.type'], { ns: 'dataset' })}
-          </legend>
-          <div className="mt-1 grid grid-cols-3 gap-2">
+        <Field name="type" disabled={pending}>
+          <Fieldset
+            render={
+              <RadioGroup<DocumentMetadataType>
+                className="mt-1 grid grid-cols-3 gap-2"
+                value={type}
+                onValueChange={setType}
+              />
+            }
+          >
+            <FieldsetLegend className="py-1 system-sm-semibold text-text-secondary">
+              {t(($) => $['metadata.createMetadata.type'], { ns: 'dataset' })}
+            </FieldsetLegend>
             {metadataTypes.map((candidate) => (
-              <button
+              <RadioItem<DocumentMetadataType>
                 key={candidate}
-                type="button"
-                aria-pressed={type === candidate}
-                className={cn(
-                  'h-8 cursor-pointer rounded-md border px-2 system-sm-regular text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-                  type === candidate
-                    ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs'
-                    : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-                )}
-                onClick={() => setType(candidate)}
+                value={candidate}
+                className="flex h-8 cursor-pointer items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary outline-hidden hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:system-sm-medium data-checked:shadow-xs data-disabled:cursor-not-allowed"
               >
                 {t(($) => $[`metadata.type.${candidate}`], { ns: 'dataset' })}
-              </button>
+              </RadioItem>
             ))}
-          </div>
-        </fieldset>
-        <label className="block">
-          <span className="block py-1 system-sm-semibold text-text-secondary">
+          </Fieldset>
+        </Field>
+        <Field name="name" disabled={pending} invalid={nameTouched && Boolean(nameError)}>
+          <FieldLabel className="py-1 system-sm-semibold text-text-secondary">
             {t(($) => $['metadata.createMetadata.name'], { ns: 'dataset' })}
-          </span>
-          <div className="mt-1">
-            <Input
-              aria-label={t(($) => $['metadata.createMetadata.name'], { ns: 'dataset' })}
-              aria-describedby={nameTouched && nameError ? nameErrorId : undefined}
-              aria-invalid={nameTouched && Boolean(nameError) ? true : undefined}
-              disabled={pending}
-              onBlur={() => setNameTouched(true)}
-              onChange={(event) => {
-                setName(event.target.value)
-                setNameTouched(true)
-              }}
-              placeholder={t(($) => $['metadata.createMetadata.namePlaceholder'], {
-                ns: 'dataset',
-              })}
-              value={name}
-            />
-          </div>
-          {nameTouched && nameError && (
-            <span
-              id={nameErrorId}
-              role="alert"
-              className="mt-1 block system-xs-regular text-text-destructive"
-            >
-              {nameError}
-            </span>
-          )}
-        </label>
+          </FieldLabel>
+          <Input
+            ref={nameInputRef}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- The form replaces the focused picker view or opens from an explicit create action.
+            autoFocus
+            autoComplete="off"
+            onBlur={() => setNameTouched(true)}
+            onChange={(event) => {
+              setName(event.target.value)
+              setNameTouched(true)
+            }}
+            placeholder={t(($) => $['metadata.createMetadata.namePlaceholder'], {
+              ns: 'dataset',
+            })}
+            value={name}
+          />
+          {nameTouched && nameError && <FieldError match>{nameError}</FieldError>}
+        </Field>
       </div>
       <div className="mt-4 flex justify-end">
         <Button className="mr-2" disabled={pending} onClick={close}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
-        <Button disabled={Boolean(nameError)} loading={pending} type="submit" variant="primary">
+        <Button loading={pending} type="submit" variant="primary">
           {tCommon(($) => $['operation.save'])}
         </Button>
       </div>

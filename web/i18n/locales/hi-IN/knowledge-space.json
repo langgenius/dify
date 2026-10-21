@@ -17,7 +17,6 @@
   "crawlStopped": "क्रॉल रोक दिया गया",
   "crawling": "क्रॉल किया जा रहा है…",
   "crawlingPages": "{{host}} को क्रॉल किया जा रहा है… {{count}} पेज मिले",
-  "deleteSuccess": "Agent ज्ञान आधार हटा दिया गया।",
   "detailErrorDescription": "हम इस Agent ज्ञान आधार को लोड नहीं कर सके. पुनः प्रयास करें।",
   "detailErrorTitle": "कुछ ग़लत हो गया",
   "disableSource": "अक्षम करें",

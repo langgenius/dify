@@ -6,7 +6,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
-  ComboboxClear,
   ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
@@ -15,7 +14,7 @@ import {
   ComboboxList,
   ComboboxSeparator,
 } from '@langgenius/dify-ui/combobox'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DocumentMetadataCreateForm } from './create-form'
@@ -69,18 +68,12 @@ export function DocumentMetadataPicker({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-label={t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
-            className="flex h-6 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-components-button-tertiary-bg px-2 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-tertiary-bg"
-            disabled={disabled}
-          >
-            <span aria-hidden className="mr-1 i-ri-add-line size-3.5" />
-            <span className="truncate system-xs-medium">
+          <Button variant="tertiary" size="small" className="w-full" disabled={disabled}>
+            <span aria-hidden className="i-ri-add-line size-3.5" />
+            <span className="truncate">
               {t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
             </span>
-          </button>
+          </Button>
         }
       />
       <PopoverContent
@@ -89,6 +82,11 @@ export function DocumentMetadataPicker({
         className="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"
         sideOffset={-38}
       >
+        <PopoverTitle className="sr-only">
+          {view === 'select'
+            ? t(($) => $['metadata.addMetadata'], { ns: 'dataset' })
+            : t(($) => $['metadata.createMetadata.title'], { ns: 'dataset' })}
+        </PopoverTitle>
         {view === 'select' ? (
           <Combobox<DocumentMetadataField>
             filter={(field, input) => field.name.toLowerCase().includes(input.toLowerCase())}
@@ -112,11 +110,12 @@ export function DocumentMetadataPicker({
               <ComboboxInputGroup>
                 <span aria-hidden className="ml-2 i-ri-search-line size-4 text-text-tertiary" />
                 <ComboboxInput
+                  // oxlint-disable-next-line jsx-a11y/no-autofocus -- Returning from the create view replaces the focused control in an open popover.
+                  autoFocus
                   aria-label={t(($) => $['metadata.selectMetadata.search'], { ns: 'dataset' })}
                   className="pl-2"
                   placeholder={t(($) => $['metadata.selectMetadata.search'], { ns: 'dataset' })}
                 />
-                {query && <ComboboxClear aria-label={tCommon(($) => $['operation.clear'])} />}
               </ComboboxInputGroup>
             </div>
             {!loading && !error && (
@@ -156,39 +155,37 @@ export function DocumentMetadataPicker({
             {!loading && !error && <ComboboxEmpty>{tCommon(($) => $.noData)}</ComboboxEmpty>}
             <ComboboxSeparator />
             <div className="flex items-center justify-between p-1">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                className="min-w-0 px-2"
                 disabled={loading || error}
-                className="flex h-8 min-w-0 cursor-pointer items-center gap-1 rounded-lg border-0 bg-transparent px-2 text-text-secondary hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent"
                 onClick={() => {
                   setView('create')
                   setQuery('')
                 }}
               >
                 <span aria-hidden className="i-ri-add-line size-4 text-text-tertiary" />
-                <span className="truncate system-sm-medium">
+                <span className="truncate">
                   {t(($) => $['metadata.selectMetadata.newAction'], { ns: 'dataset' })}
                 </span>
-              </button>
+              </Button>
               <div className="flex h-8 shrink-0 items-center">
                 <div className="mx-1 h-3 w-px bg-divider-regular" />
-                <button
-                  type="button"
-                  className="flex h-8 cursor-pointer items-center gap-1 rounded-lg border-0 bg-transparent px-2 text-text-secondary hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                <Button
+                  variant="ghost"
+                  className="px-2"
                   onClick={() => {
                     setOpen(false)
                     reset()
                     onManage()
                   }}
                 >
-                  <span className="system-sm-medium">
-                    {t(($) => $['metadata.selectMetadata.manageAction'], { ns: 'dataset' })}
-                  </span>
+                  {t(($) => $['metadata.selectMetadata.manageAction'], { ns: 'dataset' })}
                   <span
                     aria-hidden
                     className="i-ri-arrow-right-up-line size-4 text-text-tertiary"
                   />
-                </button>
+                </Button>
               </div>
             </div>
           </Combobox>

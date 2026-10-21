@@ -17,7 +17,6 @@
   "crawlStopped": "크롤링이 중지됨",
   "crawling": "크롤링 중…",
   "crawlingPages": "{{host}} 크롤링 중… {{count}}개 페이지 발견",
-  "deleteSuccess": "Agent 지식 베이스가 삭제되었습니다.",
   "detailErrorDescription": "이 Agent 지식 베이스를 로드할 수 없습니다. 다시 시도해 보세요.",
   "detailErrorTitle": "문제가 발생했습니다.",
   "disableSource": "비활성화",

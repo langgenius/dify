@@ -17,7 +17,6 @@
   "crawlStopped": "پیمایش متوقف شد",
   "crawling": "در حال پیمایش…",
   "crawlingPages": "در حال پیمایش {{host}}… {{count}} صفحه پیدا شد",
-  "deleteSuccess": "پایگاه دانش Agent حذف شد.",
   "detailErrorDescription": "ما نتوانستیم این پایگاه دانش Agent را بارگیری کنیم. دوباره امتحان کنید.",
   "detailErrorTitle": "مشکلی پیش آمد",
   "disableSource": "غیر فعال کردن",

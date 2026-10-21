@@ -3600,7 +3600,6 @@ export default interface Resources {
     crawlStopped: 'Crawl stopped'
     crawling: 'Crawling…'
     crawlingPages: 'Crawling {{host}}… {{count}} pages found'
-    deleteSuccess: 'Agent Knowledge Base deleted.'
     detailErrorDescription: "We couldn't load this Agent Knowledge Base. Try again."
     detailErrorTitle: 'Something went wrong'
     disableSource: 'Disable'

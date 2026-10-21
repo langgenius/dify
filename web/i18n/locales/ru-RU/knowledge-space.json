@@ -17,7 +17,6 @@
   "crawlStopped": "Сканирование остановлено",
   "crawling": "Сканирование…",
   "crawlingPages": "Сканирование {{host}}… найдено страниц: {{count}}",
-  "deleteSuccess": "База знаний Agent удалена.",
   "detailErrorDescription": "Нам не удалось загрузить эту базу знаний Agent. Попробуйте еще раз.",
   "detailErrorTitle": "Что-то пошло не так",
   "disableSource": "Отключить",

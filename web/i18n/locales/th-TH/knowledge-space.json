@@ -17,7 +17,6 @@
   "crawlStopped": "หยุดการรวบรวมข้อมูลแล้ว",
   "crawling": "กำลังรวบรวมข้อมูล…",
   "crawlingPages": "กำลังรวบรวมข้อมูล {{host}}… พบ {{count}} หน้า",
-  "deleteSuccess": "ลบฐานความรู้ Agent แล้ว",
   "detailErrorDescription": "เราไม่สามารถโหลดฐานความรู้ Agent นี้ได้ ลองอีกครั้ง",
   "detailErrorTitle": "มีบางอย่างผิดพลาด",
   "disableSource": "ปิดการใช้งาน",

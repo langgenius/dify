@@ -17,7 +17,6 @@
   "crawlStopped": "تم إيقاف الزحف",
   "crawling": "جارٍ الزحف…",
   "crawlingPages": "جارٍ الزحف إلى {{host}}… تم العثور على {{count}} صفحة",
-  "deleteSuccess": "تم حذف قاعدة معرفة Agent.",
   "detailErrorDescription": "لم نتمكن من تحميل قاعدة معرفة Agent هذه. حاول ثانية.",
   "detailErrorTitle": "حدث خطأ ما",
   "disableSource": "تعطيل",

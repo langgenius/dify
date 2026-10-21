@@ -17,7 +17,6 @@
   "crawlStopped": "Crawl gestopt",
   "crawling": "Bezig met crawlen…",
   "crawlingPages": "{{host}} wordt gecrawld… {{count}} pagina’s gevonden",
-  "deleteSuccess": "Agent-kennisbank verwijderd.",
   "detailErrorDescription": "We kunnen deze Agent-kennisbank niet laden. Probeer het opnieuw.",
   "detailErrorTitle": "Er is iets misgegaan",
   "disableSource": "Uitschakelen",

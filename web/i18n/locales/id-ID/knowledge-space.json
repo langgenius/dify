@@ -17,7 +17,6 @@
   "crawlStopped": "Perayapan dihentikan",
   "crawling": "Merayapi…",
   "crawlingPages": "Merayapi {{host}}… {{count}} halaman ditemukan",
-  "deleteSuccess": "Basis pengetahuan Agent dihapus.",
   "detailErrorDescription": "Kami tidak dapat memuat basis pengetahuan Agent ini. Coba lagi.",
   "detailErrorTitle": "Ada yang tidak beres",
   "disableSource": "Nonaktifkan",

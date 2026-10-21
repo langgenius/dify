@@ -17,7 +17,6 @@
   "crawlStopped": "ການລວບລວມຂໍ້ມູນຢຸດ",
   "crawling": "ກຳລັງລວບລວມຂໍ້ມູນ...",
   "crawlingPages": "ກຳລັງລວບລວມຂໍ້ມູນໜ້າ {{host}}… {{count}} ໜ້າ",
-  "deleteSuccess": "ລຶບຖານຄວາມຮູ້ Agent ແລ້ວ.",
   "detailErrorDescription": "ພວກເຮົາບໍ່ສາມາດໂຫຼດຖານຄວາມຮູ້ Agent ນີ້ໄດ້. ລອງໃໝ່ອີກຄັ້ງ.",
   "detailErrorTitle": "ມີບາງຢ່າງຜິດພາດ",
   "disableSource": "ປິດໃຊ້ງານ",

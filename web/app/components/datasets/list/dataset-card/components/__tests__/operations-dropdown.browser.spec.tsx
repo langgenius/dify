@@ -85,7 +85,7 @@ it('keeps operations visible on keyboard focus without covering the unavailable 
   await userEvent.keyboard('{Tab}')
   await expect.element(screen.getByRole('button', { name: '0 dataset.appCount' })).toHaveFocus()
   await userEvent.keyboard('{Tab}')
-  const trigger = screen.getByRole('button', { name: 'Dataset operations' })
+  const trigger = screen.getByRole('button', { name: 'common.operation.more' })
   await expect.element(trigger).toHaveFocus()
   await expect.element(trigger).toBeVisible()
   await userEvent.keyboard('{Enter}')
@@ -148,7 +148,7 @@ it.each([true, false])(
     )
 
     const before = screen.getByRole('button', { name: 'Before dataset' })
-    const trigger = screen.getByRole('button', { name: 'Dataset operations' })
+    const trigger = screen.getByRole('button', { name: 'common.operation.more' })
     const isTriggerVisible = () => trigger.element().checkVisibility({ opacityProperty: true })
     await userEvent.hover(before)
     before.element().focus()

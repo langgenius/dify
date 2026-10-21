@@ -308,9 +308,18 @@ describe('DocumentMetadataCard', () => {
     await user.click(
       screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
     )
+    expect(
+      screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+    ).toHaveFocus()
+    const typeGroup = screen.getByRole('radiogroup', {
+      name: 'dataset.metadata.createMetadata.type',
+    })
     for (const type of ['string', 'number', 'time'])
       expect(
-        screen.getByRole('button', { name: `dataset.metadata.type.${type}` }),
+        within(typeGroup).getByRole('radio', { name: `dataset.metadata.type.${type}` }),
       ).toBeInTheDocument()
+    expect(
+      within(typeGroup).getByRole('radio', { name: 'dataset.metadata.type.string' }),
+    ).toBeChecked()
   })
 })

@@ -17,7 +17,6 @@
   "crawlStopped": "Skanowanie zatrzymane",
   "crawling": "Skanowanie…",
   "crawlingPages": "Skanowanie {{host}}… znaleziono {{count}} stron",
-  "deleteSuccess": "Usunięto bazę wiedzy Agent.",
   "detailErrorDescription": "Nie mogliśmy załadować tej bazy wiedzy Agent. Spróbuj ponownie.",
   "detailErrorTitle": "Coś poszło nie tak",
   "disableSource": "Wyłącz",

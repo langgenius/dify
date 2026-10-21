@@ -17,7 +17,6 @@
   "crawlStopped": "抓取已停止",
   "crawling": "正在抓取…",
   "crawlingPages": "正在抓取 {{host}}… 已找到 {{count}} 個頁面",
-  "deleteSuccess": "Agent 知識庫已刪除",
   "detailErrorDescription": "無法載入此 Agent 知識庫，請再試一次。",
   "detailErrorTitle": "發生錯誤",
   "disableSource": "停用",

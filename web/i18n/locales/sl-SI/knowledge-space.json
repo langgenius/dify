@@ -17,7 +17,6 @@
   "crawlStopped": "Preiskovanje ustavljeno",
   "crawling": "Preiskovanje…",
   "crawlingPages": "Preiskovanje {{host}}… najdenih strani: {{count}}",
-  "deleteSuccess": "Zbirka znanja Agent je izbrisana.",
   "detailErrorDescription": "Te zbirke znanja Agent nismo mogli naložiti. Poskusite znova.",
   "detailErrorTitle": "Nekaj je šlo narobe",
   "disableSource": "Onemogoči",

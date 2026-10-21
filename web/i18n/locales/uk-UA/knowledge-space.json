@@ -17,7 +17,6 @@
   "crawlStopped": "Сканування зупинено",
   "crawling": "Сканування…",
   "crawlingPages": "Сканування {{host}}… знайдено сторінок: {{count}}",
-  "deleteSuccess": "Базу знань Agent видалено.",
   "detailErrorDescription": "Нам не вдалося завантажити цю базу знань Agent. Спробуйте знову.",
   "detailErrorTitle": "Щось пішло не так",
   "disableSource": "Вимкнути",

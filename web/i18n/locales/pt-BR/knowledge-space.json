@@ -17,7 +17,6 @@
   "crawlStopped": "Rastreamento interrompido",
   "crawling": "Rastreando…",
   "crawlingPages": "Rastreando {{host}}… {{count}} páginas encontradas",
-  "deleteSuccess": "Base de conhecimento Agent excluída.",
   "detailErrorDescription": "Não foi possível carregar esta base de conhecimento Agent. Tente novamente.",
   "detailErrorTitle": "Algo deu errado",
   "disableSource": "Desativar",

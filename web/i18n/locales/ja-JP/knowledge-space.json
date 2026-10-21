@@ -17,7 +17,6 @@
   "crawlStopped": "クロールを停止しました",
   "crawling": "クロール中…",
   "crawlingPages": "{{host}} をクロール中… {{count}}ページが見つかりました",
-  "deleteSuccess": "Agent ナレッジベースを削除しました。",
   "detailErrorDescription": "この Agent ナレッジベースをロードできませんでした。もう一度やり直してください。",
   "detailErrorTitle": "何か問題が発生しました",
   "disableSource": "無効にする",

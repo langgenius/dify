@@ -387,6 +387,9 @@ export function NewKnowledgeList({
               </div>
             )}
             <ul
+              // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
+              // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
+              role="list"
               className={KNOWLEDGE_SPACE_GRID_CLASS_NAME}
               aria-label={t(($) => $.knowledge, { ns: 'dataset' })}
             >
