@@ -2,7 +2,7 @@ import json
 from datetime import UTC, datetime
 from typing import Any, override
 
-from azure.core.exceptions import AzureError
+from azure.core.exceptions import AzureError, ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.keys import (
     KeyClient,
@@ -108,6 +108,15 @@ class AzureKeyVaultKeyProvider(BaseKeyProvider):
                 ),
             )
         return key_name
+
+    @override
+    def delete_key_pair(self, tenant_id: str) -> None:
+        key_name = self._key_name(tenant_id)
+        try:
+            self._key_client.begin_delete_key(key_name).result()
+        except ResourceNotFoundError:
+            # Compensation can be retried after an ambiguous response.
+            return
 
     @override
     def encrypt(self, tenant_id: str, text: str) -> bytes:

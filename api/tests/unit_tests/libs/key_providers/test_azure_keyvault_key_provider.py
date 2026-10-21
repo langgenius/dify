@@ -13,7 +13,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from azure.core.exceptions import HttpResponseError
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from azure.keyvault.keys import KeyRotationPolicy
 
 from libs.key_providers.azure_keyvault_key_provider import AzureKeyVaultKeyProvider
@@ -57,6 +57,14 @@ class FakeCryptographyClient:
         return SimpleNamespace(key=wrapped[len(prefix) :])
 
 
+class FakeDeleteOperation:
+    def __init__(self) -> None:
+        self.completed = False
+
+    def result(self) -> None:
+        self.completed = True
+
+
 class FakeKeyClient:
     """Stands in for azure.keyvault.keys.KeyClient."""
 
@@ -66,6 +74,8 @@ class FakeKeyClient:
         self.current_version = "v1"
         self.rotation_policies: dict[str, KeyRotationPolicy] = {}
         self.created_keys: dict[str, int] = {}
+        self.deleted_keys: list[str] = []
+        self.delete_operations: list[FakeDeleteOperation] = []
         # version -> created_on, in creation order; mirrors what list_properties_of_key_versions
         # reports in real Key Vault, which the provider now relies on (instead of GetKey) to
         # resolve "the current version" without ever fetching key material.
@@ -98,6 +108,14 @@ class FakeKeyClient:
         assert name in self.created_keys, f"key {name} was never created"
         key_id = f"{self.vault_url}/keys/{name}/{key_version}"
         return FakeCryptographyClient(key_id, credential=self.credential)
+
+    def begin_delete_key(self, name: str) -> FakeDeleteOperation:
+        if name in self.deleted_keys:
+            raise ResourceNotFoundError(message="key already deleted")
+        self.deleted_keys.append(name)
+        operation = FakeDeleteOperation()
+        self.delete_operations.append(operation)
+        return operation
 
 
 @pytest.fixture
@@ -196,6 +214,18 @@ def test_generate_key_pair_with_rotation_interval_sets_time_after_create_only(
     (action,) = policy.lifetime_actions
     assert action.time_after_create == "P30D"
     assert action.time_before_expiry is None
+
+
+def test_delete_key_pair_waits_for_deletion_and_is_idempotent(fake_key_client: FakeKeyClient) -> None:
+    provider = AzureKeyVaultKeyProvider()
+    provider.generate_key_pair("tenant-1")
+
+    provider.delete_key_pair("tenant-1")
+    provider.delete_key_pair("tenant-1")
+
+    assert fake_key_client.deleted_keys == ["dify-tenant-tenant-1"]
+    assert len(fake_key_client.delete_operations) == 1
+    assert fake_key_client.delete_operations[0].completed
 
 
 @pytest.mark.usefixtures("fake_key_client")

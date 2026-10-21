@@ -62,6 +62,18 @@ export const zEmailDomainSuspendedError = zErrorResponse.and(
 )
 
 /**
+ * LimitExceededError
+ *
+ * Unable to add member because the maximum workspace's member limit was exceeded
+ */
+export const zLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('limit_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AlreadyActivateError
  *
  * Auth Token is invalid or account already activated, please check again.

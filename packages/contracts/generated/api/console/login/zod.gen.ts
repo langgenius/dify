@@ -111,7 +111,7 @@ export const zInvalidEmailError = zErrorResponse.and(
 /**
  * LimitExceededError
  *
- * Unable to create account because the licensed seats limit was exceeded
+ * Unable to add member because the maximum workspace's member limit was exceeded
  */
 export const zLimitExceededError = zErrorResponse.and(
   z.object({

@@ -35,6 +35,7 @@ from controllers.console.error import (
     InvalidAccountPasswordRequestError,
     NotAllowedCreateWorkspace,
     SeatsLimitExceeded,
+    WorkspaceMembersLimitExceeded,
     WorkspacesLimitExceeded,
 )
 from enums import DeploymentEdition
@@ -264,6 +265,38 @@ def test_email_code_login_decodes_code_and_serializes_tokens(
     ]
 
 
+@pytest.mark.parametrize(
+    ("application_error", "request_error"),
+    [
+        (account_errors.LoginSeatLimitError(), SeatsLimitExceeded),
+        (account_errors.LoginWorkspaceLimitError(), WorkspacesLimitExceeded),
+    ],
+)
+def test_email_code_login_exposes_existing_quota_http_contract(
+    app: Flask,
+    service: FakeAuthenticationService,
+    application_error: account_errors.AccountApplicationError,
+    request_error: type[SeatsLimitExceeded | WorkspacesLimitExceeded],
+) -> None:
+    service.error = application_error
+    with (
+        app.test_request_context(
+            "/email-code-login/validity",
+            method="POST",
+            json={
+                "email": "user@example.com",
+                "code": _encode("123456"),
+                "token": TEST_TOKEN,
+            },
+        ),
+        pytest.raises(request_error) as raised,
+    ):
+        login.EmailCodeLoginApi().post()
+
+    assert raised.value.code == 400
+    assert raised.value.error_code == "limit_exceeded"
+
+
 def test_logout_uses_optional_current_account(
     app: Flask,
     service: FakeAuthenticationService,
@@ -372,6 +405,16 @@ def test_refresh_does_not_require_completed_setup(
         ),
         (login._raise_password_login_error, account_errors.InvalidLoginInvitationEmailError(), InvalidEmailError),
         (login._raise_password_login_error, account_errors.LoginWorkspaceLimitError(), WorkspacesLimitExceeded),
+        (
+            login._raise_password_login_error,
+            account_errors.LoginInvitationQuotaError(seats=False),
+            WorkspaceMembersLimitExceeded,
+        ),
+        (
+            login._raise_password_login_error,
+            account_errors.LoginInvitationQuotaError(seats=True),
+            SeatsLimitExceeded,
+        ),
         (login._raise_password_login_error, account_errors.AccountNotFoundError(), AccountNotFound),
         (
             login._raise_reset_password_email_error,

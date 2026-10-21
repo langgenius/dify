@@ -144,7 +144,7 @@ export const zInvalidRoleError = zErrorResponse.and(
 /**
  * LimitExceededError
  *
- * Unable to create account because the licensed seats limit was exceeded
+ * Unable to add member because the maximum workspace's member limit was exceeded
  */
 export const zLimitExceededError = zErrorResponse.and(
   z.object({
@@ -341,6 +341,18 @@ export const zMemberNotInTenantError = zErrorResponse.and(
   z.object({
     code: z.literal('member_not_in_tenant'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * OwnerTransferInProgressError
+ *
+ * Workspace ownership transfer is already in progress.
+ */
+export const zOwnerTransferInProgressError = zErrorResponse.and(
+  z.object({
+    code: z.literal('owner_transfer_in_progress'),
+    status: z.literal(409),
   }),
 )
 

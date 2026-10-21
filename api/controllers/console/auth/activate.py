@@ -6,7 +6,12 @@ from constants.languages import supported_language
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
+from controllers.console.error import (
+    AccountInFreezeError,
+    AlreadyActivateError,
+    EmailDomainSuspendedError,
+    WorkspaceMembersLimitExceeded,
+)
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
@@ -16,6 +21,7 @@ from libs.token import extract_access_token
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
 from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
 from services.entities.account_activation_entities import ActivationCommand, InvitationLookup
+from services.errors.workspace import WorkspaceInvitationQuotaError
 
 
 class ActivateCheckQuery(BaseModel):
@@ -102,7 +108,11 @@ class ActivateCheckApi(Resource):
 @console_ns.route("/activate")
 class ActivateApi(Resource):
     @error_responses(
-        AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError, InvitationAccountMismatchHTTPError
+        AccountInFreezeError,
+        AlreadyActivateError,
+        EmailDomainSuspendedError,
+        InvitationAccountMismatchHTTPError,
+        WorkspaceMembersLimitExceeded,
     )
     @console_ns.doc("activate_account")
     @console_ns.doc(description="Activate account with invitation token")
@@ -147,5 +157,7 @@ class ActivateApi(Resource):
             raise EmailDomainSuspendedError() from None
         except FrozenAccountError:
             raise AccountInFreezeError() from None
+        except WorkspaceInvitationQuotaError:
+            raise WorkspaceMembersLimitExceeded() from None
 
         return dump_response(ActivationResponse, {"result": "success"})

@@ -1,6 +1,6 @@
 from libs.key_providers.base import BaseKeyProvider
 
-__all__ = ["BaseKeyProvider", "generate_key_pair"]
+__all__ = ["BaseKeyProvider", "delete_key_pair", "generate_key_pair"]
 
 
 def generate_key_pair(tenant_id: str) -> str:
@@ -12,3 +12,10 @@ def generate_key_pair(tenant_id: str) -> str:
     from extensions.ext_key_provider import key_provider_manager
 
     return key_provider_manager.provider.generate_key_pair(tenant_id)
+
+
+def delete_key_pair(tenant_id: str) -> None:
+    """Delete a tenant key that was prepared for an aggregate which did not commit."""
+    from extensions.ext_key_provider import key_provider_manager
+
+    key_provider_manager.provider.delete_key_pair(tenant_id)

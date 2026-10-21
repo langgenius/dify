@@ -22,6 +22,7 @@ import {
   zMemberNotInTenantError,
   zNoFileUploadedError,
   zNotOwnerError,
+  zOwnerTransferInProgressError,
   zOwnerTransferLimitError,
   zOwnerTransferRateLimitExceededError,
   zPluginError,
@@ -1223,6 +1224,7 @@ export const post15 = oc
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
     member_not_in_tenant: { status: 400, data: zMemberNotInTenantError },
     not_owner: { status: 400, data: zNotOwnerError },
+    owner_transfer_in_progress: { status: 409, data: zOwnerTransferInProgressError },
   })
 
 export const ownerTransfer = {
@@ -1249,6 +1251,7 @@ export const put2 = oc
     forbidden: { status: 403, data: zForbiddenError },
     invalid_role: { status: 400, data: zInvalidRoleError },
     member_not_found: { status: 404, data: zMemberNotFoundError },
+    owner_transfer_in_progress: { status: 409, data: zOwnerTransferInProgressError },
     role_already_assigned: { status: 400, data: zRoleAlreadyAssignedError },
   })
 

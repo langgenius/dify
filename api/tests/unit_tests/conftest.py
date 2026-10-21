@@ -309,6 +309,7 @@ def account_domain(
 
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
     monkeypatch.setattr(gateways, "generate_key_pair", lambda _workspace_id: "public-key")
+    monkeypatch.setattr(gateways, "delete_key_pair", lambda _workspace_id: None)
     monkeypatch.setattr(gateways, "tenant_was_created", Signal())
     return build_account_domain(sqlite_session_factory)
 

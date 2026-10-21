@@ -37,6 +37,7 @@ from controllers.console.error import (
     InvalidAccountPasswordRequestError,
     NotAllowedCreateWorkspace,
     SeatsLimitExceeded,
+    WorkspaceMembersLimitExceeded,
     WorkspacesLimitExceeded,
 )
 from controllers.console.wraps import (
@@ -127,6 +128,8 @@ class LoginApi(Resource):
         EmailPasswordLoginLimitError,
         InvalidAccountPasswordRequestError,
         InvalidEmailError,
+        SeatsLimitExceeded,
+        WorkspaceMembersLimitExceeded,
         WorkspacesLimitExceeded,
     )
     @setup_required
@@ -324,6 +327,10 @@ def _raise_password_login_error(error: account_errors.AccountApplicationError) -
         raise InvalidEmailError() from error
     if isinstance(error, account_errors.LoginWorkspaceLimitError):
         raise WorkspacesLimitExceeded() from error
+    if isinstance(error, account_errors.LoginInvitationQuotaError):
+        if error.seats:
+            raise SeatsLimitExceeded() from error
+        raise WorkspaceMembersLimitExceeded() from error
     if isinstance(error, account_errors.AccountNotFoundError):
         raise AccountNotFound() from error
     _raise_account_state_error(error)

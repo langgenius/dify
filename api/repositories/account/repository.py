@@ -14,8 +14,11 @@ from models.account import (
     InvitationCodeStatus,
     Tenant,
     TenantAccountJoin,
+    TenantAccountRole,
     TenantStatus,
 )
+from repositories.workspace.deployment_quota_repository import check_deployment_quota, lock_deployment_quota
+from repositories.workspace.member_quota_repository import lock_workspace_membership
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthAccountRepository
 from services.account_email import normalize_email
@@ -38,6 +41,8 @@ from services.entities.account_login_entities import (
     LoginAccountSnapshot,
     PasswordLoginCompletion,
 )
+from services.workspace.contracts import WorkspaceMemberWrite
+from services.workspace.quota import DeploymentQuotaSnapshot, WorkspaceMemberQuotaSnapshot
 
 
 class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepository):
@@ -53,6 +58,28 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
         """Load a detached identity for framework adapters that require Account."""
         with self._session_factory() as session:
             return session.get(Account, account_id)
+
+    def get_workspace_identity(self, account_id: str, workspace_id: str) -> Account | None:
+        """Materialize an active workspace owner's identity without changing active membership."""
+        with self._session_factory() as session:
+            account = session.scalar(
+                select(Account)
+                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+                .where(
+                    Account.id == account_id,
+                    Tenant.id == workspace_id,
+                    Tenant.status == TenantStatus.NORMAL,
+                    TenantAccountJoin.role == TenantAccountRole.OWNER,
+                )
+                .limit(1)
+            )
+            if account is None:
+                return None
+            account.set_tenant_id_with_session(workspace_id, session=session)
+            if account.current_tenant_id != workspace_id or account.role != TenantAccountRole.OWNER:
+                return None
+            return account
 
     def find_identity(self, email: str, *, case_fallback: bool = False) -> Account | None:
         """Prefer an exact email match, then the oldest normalized match when requested.
@@ -143,9 +170,46 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
                 is not None
             )
 
-    def create(self, creation: AccountCreation) -> AccountSnapshot:
+    def create(self, creation: AccountCreation, quota: DeploymentQuotaSnapshot) -> AccountSnapshot:
         with self._session_factory.begin() as session:
+            check_deployment_quota(session, quota, seats_delta=1)
             return self._to_snapshot(self.add(creation, session=session))
+
+    def create_workspace_member(
+        self,
+        creation: AccountCreation,
+        *,
+        workspace_id: str,
+        role: TenantAccountRole,
+        deployment_quota: DeploymentQuotaSnapshot,
+        member_quota: WorkspaceMemberQuotaSnapshot,
+    ) -> tuple[AccountSnapshot, WorkspaceMemberWrite]:
+        """Create an invited account and its initial membership as one local aggregate."""
+        with self._session_factory.begin() as session:
+            deployment_guard = lock_deployment_quota(session, deployment_quota, seats_delta=1)
+            membership_guard = lock_workspace_membership(
+                session,
+                workspace_id=workspace_id,
+                quota=member_quota,
+            )
+            deployment_guard.check()
+            membership_guard.check_delta(1)
+            account = self.add(creation, session=session)
+            membership = TenantAccountJoin(
+                tenant_id=workspace_id,
+                account_id=account.id,
+                role=role,
+                current=True,
+            )
+            session.add(membership)
+            session.flush()
+            return self._to_snapshot(account), WorkspaceMemberWrite(
+                workspace_id=workspace_id,
+                account_id=account.id,
+                role=role.value,
+                account_status=account.status.value,
+                created=True,
+            )
 
     @staticmethod
     def add(creation: AccountCreation, *, session: Session) -> Account:

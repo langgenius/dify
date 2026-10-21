@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import StrEnum
 from typing import Literal, NamedTuple
 
 from enums import CloudPlan
@@ -46,6 +47,45 @@ class WorkspaceMemberRemoval:
     account_id: str
     email: str
     account_deleted: bool
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceOwnerTransfer:
+    workspace_id: str
+    old_owner_account_id: str
+    new_owner_account_id: str
+    operation_id: str = ""
+    status: str = "pending"
+    possible_owner_account_ids: tuple[str, ...] = ()
+    execution_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceOwnerTransferNotificationDetails:
+    """Immutable email payload captured before an owner transfer starts."""
+
+    old_owner_email: str
+    old_owner_language: str
+    new_owner_email: str
+    new_owner_language: str
+    workspace_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceOwnerTransferNotification:
+    """One leased owner-transfer notification recipient."""
+
+    notification_id: str
+    operation_id: str
+    workspace_id: str
+    old_owner_account_id: str
+    new_owner_account_id: str
+    recipient_type: Literal["old_owner", "new_owner"]
+    recipient_email: str
+    recipient_language: str
+    workspace_name: str
+    new_owner_email: str
+    claim_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -211,3 +251,44 @@ class WorkspaceCreation:
     trial_credits: int
     plugin_upgrade_time: int
     plugin_upgrade_settings: Mapping[str, str]
+
+
+class WorkspaceProvisioningCommitOutcome(StrEnum):
+    """What the workspace repository can prove about its aggregate commit."""
+
+    COMMITTED = "committed"
+    ROLLED_BACK_BEFORE_COMMIT = "rolled_back_before_commit"
+    COMMIT_UNKNOWN = "commit_unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspacePreparation:
+    """Persistent identity and lease for one workspace provisioning attempt."""
+
+    workspace_id: str
+    lease_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceProvisioningResult:
+    """Explicit aggregate commit result returned after the transaction ends."""
+
+    outcome: WorkspaceProvisioningCommitOutcome
+    workspace: CreatedWorkspace | None = None
+    error: Exception | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceCancellationResult:
+    """Commit result for setup-scoped deletion of a newly created workspace."""
+
+    outcome: WorkspaceProvisioningCommitOutcome
+    error: Exception | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceCompensation:
+    """External resource locators for one isolated compensation attempt."""
+
+    workspace_id: str
+    owner_id: str | None

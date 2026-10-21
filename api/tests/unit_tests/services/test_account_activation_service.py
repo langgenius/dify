@@ -25,7 +25,17 @@ from services.entities.account_activation_entities import (
     InvitationLookup,
     InvitationToken,
 )
+from services.errors.workspace import WorkspaceInvitationQuotaError
+from services.workspace.quota import WorkspaceMemberQuotaSnapshot
 from tests.unit_tests.model_factories import make_account, make_tenant
+
+_UNLIMITED_MEMBER_QUOTA = WorkspaceMemberQuotaSnapshot(None, 0, None, 0)
+
+
+class UnlimitedMemberQuotaGateway:
+    def snapshot(self, workspace_id: str) -> WorkspaceMemberQuotaSnapshot:
+        del workspace_id
+        return _UNLIMITED_MEMBER_QUOTA
 
 
 def _lookup(email: str | None = "invitee@example.com") -> InvitationLookup:
@@ -62,6 +72,7 @@ def service(
         eligibility=BillingAccountActivationEligibility(enabled=True),
         membership_cache=BillingWorkspaceMembershipCache(enabled=True),
         member_access_sync=RBACWorkspaceMemberAccessSync(enabled=True),
+        member_quotas=UnlimitedMemberQuotaGateway(),
     )
 
 
@@ -189,6 +200,31 @@ class TestActivateInvitation:
         boundaries["activate"].assert_not_called()
         boundaries["sync"].assert_not_called()
 
+    def test_capacity_race_keeps_first_use_invitation_retryable(
+        self,
+        service: AccountActivationService,
+        boundaries: dict[str, MagicMock],
+        mocker: MockerFixture,
+    ) -> None:
+        mocker.patch.object(
+            service._member_quotas, "snapshot", return_value=WorkspaceMemberQuotaSnapshot(0, 0, None, 0)
+        )
+
+        with pytest.raises(WorkspaceInvitationQuotaError):
+            service.activate(
+                ActivationCommand(
+                    invitation=_lookup(),
+                    name="John Doe",
+                    interface_language="en-US",
+                    timezone="UTC",
+                ),
+                authenticated_account_id=None,
+            )
+
+        boundaries["revoke"].assert_not_called()
+        boundaries["cache"].assert_not_called()
+        boundaries["sync"].assert_not_called()
+
     @pytest.mark.parametrize("role", [None, "owner"])
     def test_activates_anonymous_invitation_and_invalidates_new_membership_cache(
         self,
@@ -220,6 +256,7 @@ class TestActivateInvitation:
             _invitation(role=role, requires_setup=True if role == "owner" else None),
             role="normal",
             setup=AccountSetup(name="John Doe", interface_language="en-US", timezone="UTC"),
+            quota=_UNLIMITED_MEMBER_QUOTA,
             create_membership=True,
         )
         boundaries["cache"].assert_called_once_with("workspace-1")
@@ -268,6 +305,7 @@ class TestActivateInvitation:
             _invitation(account_status="active", role="editor", requires_setup=False),
             role="editor",
             setup=None,
+            quota=_UNLIMITED_MEMBER_QUOTA,
             create_membership=True,
         )
         boundaries["cache"].assert_not_called()
@@ -297,6 +335,53 @@ class TestEnsureMembership:
         boundaries["activate"].assert_not_called()
         boundaries["cache"].assert_not_called()
         boundaries["sync"].assert_not_called()
+
+    def test_quota_failure_releases_membership_claim_for_retry(
+        self,
+        service: AccountActivationService,
+        sqlite_session_factory: sessionmaker[Session],
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
+        mocker: MockerFixture,
+    ) -> None:
+        with sqlite_session_factory.begin() as session:
+            account = session.get(Account, "account-1")
+            assert account is not None
+            account.status = AccountStatus.ACTIVE
+        redis_transport[
+            1
+        ].return_value = b'{"account_id":"account-1","email":"invitee@example.com","workspace_id":"workspace-1"}'
+        claimed = False
+
+        def claim_membership(_lookup: InvitationLookup) -> str | None:
+            nonlocal claimed
+            if claimed:
+                return None
+            claimed = True
+            return "claim-1"
+
+        def release_membership(_lookup: InvitationLookup, claim_id: str) -> None:
+            nonlocal claimed
+            assert claim_id == "claim-1"
+            claimed = False
+
+        mocker.patch.object(service._tokens, "claim_membership", side_effect=claim_membership)
+        release = mocker.patch.object(service._tokens, "release_membership", side_effect=release_membership)
+        mocker.patch.object(
+            service._member_quotas,
+            "snapshot",
+            side_effect=[WorkspaceInvitationQuotaError(), _UNLIMITED_MEMBER_QUOTA],
+        )
+        mocker.patch(
+            "tasks.initialize_created_app_rbac_access_task.sync_joined_workspace_member_rbac_access_task.delay"
+        )
+
+        with pytest.raises(WorkspaceInvitationQuotaError):
+            service.ensure_membership(account_id="account-1", email="invitee@example.com", token="token-1")
+
+        release.assert_called_once()
+        assert service.ensure_membership(account_id="account-1", email="invitee@example.com", token="token-1") is True
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(TenantAccountJoin)) is not None
 
     @pytest.mark.parametrize(
         ("role", "stored_role"),
@@ -338,7 +423,7 @@ class TestEnsureMembership:
                 used.add(key)
                 return b"OK"
             if command == "GET" and str(key).endswith(":membership_used"):
-                return b"1" if key in used else None
+                return b"claim:used" if key in used else None
             return redis_transport[1].return_value
 
         redis_transport[1].side_effect = execute
@@ -350,6 +435,7 @@ class TestEnsureMembership:
             _invitation(account_status="active", role=role, requires_setup=False),
             role=stored_role,
             setup=None,
+            quota=_UNLIMITED_MEMBER_QUOTA,
         )
         boundaries["cache"].assert_called_once_with("workspace-1")
         boundaries["sync"].assert_called_once_with("workspace-1", "account-1", operator_account_id=None)
@@ -385,6 +471,7 @@ class TestEnsureMembership:
             _invitation(account_status="active", role=role, requires_setup=False),
             role=stored_role,
             setup=None,
+            quota=_UNLIMITED_MEMBER_QUOTA,
             create_membership=False,
         )
         with sqlite_session_factory() as session:
@@ -414,7 +501,7 @@ class TestEnsureMembership:
                 used.add(key)
                 return b"OK"
             if command == "GET" and str(key).endswith(":membership_used"):
-                return b"1" if key in used else None
+                return b"claim:used" if key in used else None
             return redis_transport[1].return_value
 
         redis_transport[1].side_effect = execute

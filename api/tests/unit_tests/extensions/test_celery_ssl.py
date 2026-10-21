@@ -2,6 +2,7 @@
 
 import ssl
 from collections.abc import Iterator
+from datetime import timedelta
 from importlib import import_module
 from unittest.mock import MagicMock, patch
 
@@ -262,6 +263,28 @@ class TestCelerySSLConfiguration:
         assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
         assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
         assert "tasks.workflow_run_archive_deletion_tasks" in celery_app.conf["imports"]
+        assert "tasks.workspace_provisioning_recovery_task" in celery_app.conf["imports"]
+        assert "tasks.workspace_owner_transfer_recovery_task" in celery_app.conf["imports"]
+        import_module("tasks.workspace_provisioning_recovery_task")
+        workspace_provisioning_recovery_task = (
+            "tasks.workspace_provisioning_recovery_task.recover_workspace_provisioning_operations"
+        )
+        assert celery_app.tasks[workspace_provisioning_recovery_task].queue == "schedule_executor"
+        assert celery_app.conf["beat_schedule"]["workspace_provisioning_recovery"] == {
+            "task": workspace_provisioning_recovery_task,
+            "schedule": timedelta(minutes=1),
+            "options": {"queue": "schedule_executor"},
+        }
+        import_module("tasks.workspace_owner_transfer_recovery_task")
+        workspace_owner_transfer_recovery_task = (
+            "tasks.workspace_owner_transfer_recovery_task.recover_workspace_owner_transfer_operations"
+        )
+        assert celery_app.tasks[workspace_owner_transfer_recovery_task].queue == "schedule_executor"
+        assert celery_app.conf["beat_schedule"]["workspace_owner_transfer_recovery"] == {
+            "task": workspace_owner_transfer_recovery_task,
+            "schedule": timedelta(minutes=1),
+            "options": {"queue": "schedule_executor"},
+        }
         import_module("tasks.workflow_run_archive_deletion_tasks")
         task_name = "tasks.workflow_run_archive_deletion_tasks.delete_workflow_run_archive_task"
         archive_deletion = celery_app.tasks[task_name]

@@ -20,6 +20,10 @@ class RSAKeyProvider(BaseKeyProvider):
         return rsa.generate_key_pair(tenant_id)
 
     @override
+    def delete_key_pair(self, tenant_id: str) -> None:
+        rsa.delete_key_pair(tenant_id)
+
+    @override
     def encrypt(self, tenant_id: str, text: str) -> bytes:
         from models.account import Tenant
         from models.engine import db

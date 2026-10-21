@@ -292,6 +292,11 @@ export type MemberNotInTenantError = ErrorResponse & {
   status: 400
 }
 
+export type OwnerTransferInProgressError = ErrorResponse & {
+  code: 'owner_transfer_in_progress'
+  status: 409
+}
+
 export type MemberRoleUpdatePayload = {
   role: string
 }
@@ -3905,6 +3910,7 @@ export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferErrors = {
     | MemberNotInTenantError
     | NotOwnerError
     | ErrorResponse
+  409: OwnerTransferInProgressError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3931,6 +3937,7 @@ export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleErrors = {
   400: CannotOperateSelfError | InvalidRoleError | RoleAlreadyAssignedError | ErrorResponse
   403: ForbiddenError | ErrorResponse
   404: MemberNotFoundError | ErrorResponse
+  409: OwnerTransferInProgressError | ErrorResponse
   default: ErrorResponse
 }
 

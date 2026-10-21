@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Protocol
 from unittest.mock import Mock, create_autospec
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -18,7 +19,16 @@ from services.workspace.member_service import (
     WorkspaceMemberAccessGateway,
     WorkspaceMemberService,
 )
-from services.workspace.provisioning_service import WorkspaceProvisioningService
+from services.workspace.provisioning_service import WorkspaceCreationPolicy, WorkspaceProvisioningService
+from services.workspace.quota import (
+    DeploymentQuotaSnapshot,
+    WorkspaceMemberQuotaGateway,
+    WorkspaceMemberQuotaSnapshot,
+)
+
+
+class AccountWorkspacePolicy(AccountLifecyclePolicy, WorkspaceCreationPolicy, Protocol):
+    pass
 
 
 @dataclass
@@ -32,6 +42,7 @@ class AccountDomain:
     policy: Mock
     access: Mock
     delivery: Mock
+    member_quotas: Mock
     sessions: Mock
     security: Mock
 
@@ -39,18 +50,29 @@ class AccountDomain:
 def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomain:
     repository = SQLAlchemyAccountRepository(session_factory)
     workspaces = WorkspaceRepository(session_factory)
-    policy = create_autospec(AccountLifecyclePolicy, instance=True)
+    policy = create_autospec(AccountWorkspacePolicy, instance=True)
     policy.is_registration_allowed.return_value = True
-    policy.has_account_capacity.return_value = True
     policy.is_workspace_creation_allowed.return_value = True
-    policy.has_workspace_capacity.return_value = True
+    policy.quota_snapshot.return_value = DeploymentQuotaSnapshot(
+        seat_limit=None,
+        seat_usage=0,
+        workspace_limit=None,
+        workspace_usage=0,
+    )
     policy.get_email_freeze_type.return_value = None
     policy.validate_timezone.side_effect = lambda timezone: timezone
     access = create_autospec(WorkspaceMemberAccessGateway, instance=True)
     access.rbac_enabled = False
     access.permission_keys.return_value = {"workspace.member.manage", "workspace.role.manage"}
     access.is_owner.return_value = False
-    members = WorkspaceMemberService(workspaces=workspaces, accounts=repository, access=access)
+    member_quotas = create_autospec(WorkspaceMemberQuotaGateway, instance=True)
+    member_quotas.snapshot.return_value = WorkspaceMemberQuotaSnapshot(None, 0, None, 0)
+    members = WorkspaceMemberService(
+        workspaces=workspaces,
+        accounts=repository,
+        access=access,
+        quotas=member_quotas,
+    )
     provisioning = WorkspaceProvisioningService(
         owners=repository,
         provisioning=workspaces,
@@ -86,6 +108,7 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
         policy,
         access,
         delivery,
+        member_quotas,
         sessions,
         security,
     )

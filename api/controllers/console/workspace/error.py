@@ -89,3 +89,9 @@ class MemberRoleAlreadyAssignedError(BaseHTTPException):
     error_code = "role_already_assigned"
     description = "Role already assigned."
     code = 400
+
+
+class OwnerTransferInProgressError(BaseHTTPException):
+    error_code = "owner_transfer_in_progress"
+    description = "Workspace ownership transfer is already in progress."
+    code = 409

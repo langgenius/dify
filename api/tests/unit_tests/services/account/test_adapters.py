@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from hashlib import sha256
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call, create_autospec, patch
 
 import pytest
 
@@ -91,11 +91,14 @@ def test_invitation_token_store_marks_membership_use_with_token_ttl(
     commands.side_effect = [1200, b"OK"]
     lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
 
-    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is True
+    claim_id = RedisInvitationTokenStore(redis=redis).claim_membership(lookup)
+
+    assert claim_id is not None
 
     assert commands.call_args_list[0].args == ("PTTL", "member_invite:token:token-1")
     set_args = commands.call_args_list[1].args
-    assert set_args[:3] == ("SET", "member_invite:token:token-1:membership_used", "1")
+    assert set_args[:2] == ("SET", "member_invite:token:token-1:membership_used")
+    assert set_args[2] == claim_id
     assert "NX" in set_args
     assert set_args[set_args.index("PX") + 1] == 1200
 
@@ -108,13 +111,16 @@ def test_invitation_token_store_refuses_membership_use_without_live_token(
     commands.return_value = ttl
     lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
 
-    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is False
+    assert RedisInvitationTokenStore(redis=redis).claim_membership(lookup) is None
 
     assert commands.call_count == 1
     assert commands.call_args.args == ("PTTL", "member_invite:token:token-1")
 
 
-@pytest.mark.parametrize(("stored", "expected"), [(b"1", True), (None, False)])
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [(b"claim:claim-1", True), (b"1", True), (None, False)],
+)
 def test_invitation_token_store_reports_membership_use(
     redis_transport: tuple[RedisClientWrapper, MagicMock], stored: bytes | None, expected: bool
 ) -> None:
@@ -128,6 +134,19 @@ def test_invitation_token_store_reports_membership_use(
         "GET",
         "member_invite:token:token-1:membership_used",
         keys=["member_invite:token:token-1:membership_used"],
+    )
+
+
+def test_invitation_token_store_releases_only_its_membership_claim() -> None:
+    redis = create_autospec(RedisClientWrapper, instance=True)
+    script = redis.register_script.return_value
+    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
+
+    RedisInvitationTokenStore(redis=redis).release_membership(lookup, "claim-1")
+
+    script.assert_called_once_with(
+        keys=["member_invite:token:token-1:membership_used"],
+        args=["claim-1"],
     )
 
 

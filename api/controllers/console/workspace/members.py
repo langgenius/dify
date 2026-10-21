@@ -36,6 +36,7 @@ from controllers.console.workspace.error import (
     MemberCannotOperateSelfError,
     MemberNotFoundError,
     MemberRoleAlreadyAssignedError,
+    OwnerTransferInProgressError,
 )
 from controllers.console.workspace.rbac.schemas import _AccessControlLanguageQuery
 from enums.account import TenantAccountRole
@@ -266,6 +267,7 @@ class MemberUpdateRoleApi(Resource):
         MemberCannotOperateSelfError,
         MemberNotFoundError,
         MemberRoleAlreadyAssignedError,
+        OwnerTransferInProgressError,
     )
     @console_ns.expect(console_ns.models[MemberRoleUpdatePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
@@ -337,7 +339,12 @@ class OwnerTransferCheckApi(Resource):
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
     @error_responses(
-        CannotTransferOwnerToSelfError, InvalidEmailError, InvalidTokenError, MemberNotInTenantError, NotOwnerError
+        CannotTransferOwnerToSelfError,
+        InvalidEmailError,
+        InvalidTokenError,
+        MemberNotInTenantError,
+        NotOwnerError,
+        OwnerTransferInProgressError,
     )
     @console_ns.expect(console_ns.models[OwnerTransferPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
@@ -368,6 +375,8 @@ def _raise_member_mutation_error(
         raise MemberNotFoundError(str(error)) from error
     if isinstance(error, workspace_errors.RoleAlreadyAssignedError):
         raise MemberRoleAlreadyAssignedError(str(error)) from error
+    if isinstance(error, workspace_errors.WorkspaceOwnerTransferInProgressError):
+        raise OwnerTransferInProgressError(str(error)) from error
     raise error
 
 
@@ -394,4 +403,6 @@ def _raise_owner_transfer_error(
         raise CannotTransferOwnerToSelfError() from error
     if isinstance(error, workspace_errors.MemberNotInTenantError):
         raise MemberNotInTenantError() from error
+    if isinstance(error, workspace_errors.WorkspaceOwnerTransferInProgressError):
+        raise OwnerTransferInProgressError(str(error)) from error
     raise error

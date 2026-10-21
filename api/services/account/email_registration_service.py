@@ -1,5 +1,7 @@
 """Application service for the account email-registration use case."""
 
+import logging
+from dataclasses import dataclass
 from typing import Protocol
 
 from constants.languages import get_valid_language, languages
@@ -23,6 +25,14 @@ from services.entities.account_entities import (
     AccountSessionTokens,
 )
 
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class EmailRegistrationTokenClaim:
+    token_data: AccountEmailRegistrationToken
+    claim_id: str
+
 
 class EmailRegistrationTokenGateway(Protocol):
     def get(self, token: str) -> AccountEmailRegistrationToken | None: ...
@@ -30,6 +40,12 @@ class EmailRegistrationTokenGateway(Protocol):
     def issue(self, token_data: AccountEmailRegistrationToken) -> str: ...
 
     def revoke(self, token: str) -> None: ...
+
+    def claim(self, token: str) -> EmailRegistrationTokenClaim | None: ...
+
+    def consume(self, token: str, claim_id: str) -> None: ...
+
+    def release(self, token: str, claim_id: str) -> None: ...
 
 
 class EmailRegistrationCodeGenerator(Protocol):
@@ -179,25 +195,40 @@ class AccountEmailRegistrationService:
         if new_password != password_confirm:
             raise EmailRegistrationPasswordMismatchError
 
-        token_data = self._tokens.get(token)
-        if token_data is None or token_data.phase != AccountEmailRegistrationPhase.REGISTER:
+        claim = self._tokens.claim(token)
+        if claim is None:
             raise InvalidEmailRegistrationTokenError
-        self._tokens.revoke(token)
+        token_data = claim.token_data
+        if token_data.phase != AccountEmailRegistrationPhase.REGISTER:
+            self._release_registration_claim(token, claim.claim_id)
+            raise InvalidEmailRegistrationTokenError
 
         normalized_email = token_data.email.lower()
         if self._accounts.find_by_email(token_data.email) is not None:
+            self._tokens.consume(token, claim.claim_id)
             raise AccountEmailAlreadyInUseError
 
-        account_id = self._registration.create(
-            email=normalized_email,
-            password=password_confirm,
-            interface_language=get_valid_language(language),
-            timezone=timezone,
-            ip_address=remote_ip,
-        )
+        try:
+            account_id = self._registration.create(
+                email=normalized_email,
+                password=password_confirm,
+                interface_language=get_valid_language(language),
+                timezone=timezone,
+                ip_address=remote_ip,
+            )
+        except BaseException:
+            self._release_registration_claim(token, claim.claim_id)
+            raise
+        self._tokens.consume(token, claim.claim_id)
         tokens = self._registration.login(account_id, ip_address=remote_ip)
         self._security.reset_login_failures(normalized_email)
         return tokens
+
+    def _release_registration_claim(self, token: str, claim_id: str) -> None:
+        try:
+            self._tokens.release(token, claim_id)
+        except Exception:
+            logger.exception("Failed to release email registration token claim")
 
     def _ensure_email_allowed(self, email: str) -> None:
         freeze_type = self._account_policy.get_freeze_type(email)

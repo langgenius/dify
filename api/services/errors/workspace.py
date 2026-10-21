@@ -85,6 +85,10 @@ class InvalidOwnerTransferCodeError(WorkspaceApplicationError):
     """The verification code does not match the ownership-transfer token."""
 
 
+class WorkspaceOwnerTransferInProgressError(WorkspaceApplicationError):
+    """Another worker is already reconciling the same ownership intent."""
+
+
 class WorkspaceInvitationQuotaError(WorkspaceApplicationError):
     def __init__(self, *, seats: bool = False) -> None:
         super().__init__("Workspace invitation quota exceeded")

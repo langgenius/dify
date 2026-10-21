@@ -11,11 +11,12 @@ from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.account import Account
-from services.account.email_registration_service import AccountEmailRegistrationService
+from services.account.email_registration_service import AccountEmailRegistrationService, EmailRegistrationTokenClaim
 from services.account_errors import (
     AccountEmailAlreadyInUseError,
     AccountEmailDomainSuspendedError,
     EmailRegistrationPasswordMismatchError,
+    EmailRegistrationWorkspaceLimitError,
     InvalidEmailRegistrationCodeError,
     InvalidEmailRegistrationTokenError,
 )
@@ -47,8 +48,16 @@ def boundaries(service: AccountEmailRegistrationService, mocker: MockerFixture) 
     mocker.patch("services.account.email_registration_adapters.send_email_register_mail_task.delay")
     mocker.patch("services.account.email_registration_adapters.send_email_register_mail_task_when_account_exist.delay")
     mocker.patch("services.account.email_registration_adapters.TokenManager.revoke_token")
+    read_token = mocker.patch("services.account.email_registration_adapters.TokenManager.get_token_data")
+
+    def claim_token(_token: str) -> EmailRegistrationTokenClaim | None:
+        token_data = service._tokens.get(_token)
+        if token_data is None:
+            return None
+        return EmailRegistrationTokenClaim(token_data=token_data, claim_id="claim-1")
+
     return {
-        "read_token": mocker.patch("services.account.email_registration_adapters.TokenManager.get_token_data"),
+        "read_token": read_token,
         "generate_token": mocker.patch(
             "services.account.email_registration_adapters.TokenManager.generate_token", return_value="token-1"
         ),
@@ -57,6 +66,9 @@ def boundaries(service: AccountEmailRegistrationService, mocker: MockerFixture) 
         ),
         "issue": mocker.spy(service._tokens, "issue"),
         "revoke": mocker.spy(service._tokens, "revoke"),
+        "claim": mocker.patch.object(service._tokens, "claim", side_effect=claim_token),
+        "consume": mocker.patch.object(service._tokens, "consume"),
+        "release": mocker.patch.object(service._tokens, "release"),
         "find_by_email": mocker.spy(service._accounts, "find_by_email"),
         "send_code": mocker.spy(service._notifications, "send_code"),
         "send_account_exists": mocker.spy(service._notifications, "send_account_exists"),
@@ -242,7 +254,7 @@ def test_register_creates_account_and_logs_it_in(
             "Asia/Shanghai",
         )
     login.assert_called_once_with("account-1", ip_address="127.0.0.1")
-    boundaries["revoke"].assert_called_once_with("verified-token")
+    boundaries["consume"].assert_called_once_with("verified-token", "claim-1")
     boundaries["find_by_email"].assert_called_once_with("New@Example.com")
     boundaries["create"].assert_called_once_with(
         email="new@example.com",
@@ -293,7 +305,7 @@ def test_register_requires_verified_registration_phase(
             timezone=None,
         )
 
-    boundaries["revoke"].assert_not_called()
+    boundaries["release"].assert_called_once_with("pending-token", "claim-1")
 
 
 def test_register_consumes_token_before_rejecting_existing_account(
@@ -321,5 +333,52 @@ def test_register_consumes_token_before_rejecting_existing_account(
             timezone=None,
         )
 
-    boundaries["revoke"].assert_called_once_with("verified-token")
+    boundaries["consume"].assert_called_once_with("verified-token", "claim-1")
     boundaries["create"].assert_not_called()
+
+
+def test_register_releases_claim_after_workspace_limit_and_allows_retry(
+    service: AccountEmailRegistrationService,
+    boundaries: dict[str, MagicMock],
+    mocker: MockerFixture,
+) -> None:
+    boundaries["read_token"].return_value = asdict(
+        AccountEmailRegistrationToken(
+            email="new@example.com",
+            code="123456",
+            phase=AccountEmailRegistrationPhase.REGISTER,
+        )
+    )
+    expected_tokens = AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
+    create = mocker.patch.object(
+        service._registration,
+        "create",
+        side_effect=[EmailRegistrationWorkspaceLimitError(), "account-1"],
+    )
+    mocker.patch.object(service._registration, "login", return_value=expected_tokens)
+
+    with pytest.raises(EmailRegistrationWorkspaceLimitError):
+        service.register(
+            remote_ip="127.0.0.1",
+            token="verified-token",
+            new_password="ValidPass123!",
+            password_confirm="ValidPass123!",
+            language=None,
+            timezone=None,
+        )
+
+    boundaries["release"].assert_called_once_with("verified-token", "claim-1")
+
+    assert (
+        service.register(
+            remote_ip="127.0.0.1",
+            token="verified-token",
+            new_password="ValidPass123!",
+            password_confirm="ValidPass123!",
+            language=None,
+            timezone=None,
+        )
+        == expected_tokens
+    )
+    assert create.call_count == 2
+    boundaries["consume"].assert_called_once_with("verified-token", "claim-1")

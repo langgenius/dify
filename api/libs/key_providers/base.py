@@ -18,6 +18,11 @@ class BaseKeyProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def delete_key_pair(self, tenant_id: str) -> None:
+        """Delete credentials provisioned for a tenant; repeated calls must be safe."""
+        raise NotImplementedError
+
+    @abstractmethod
     def encrypt(self, tenant_id: str, text: str) -> bytes:
         raise NotImplementedError
 

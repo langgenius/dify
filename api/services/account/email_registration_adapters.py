@@ -1,6 +1,7 @@
 """Infrastructure adapters for account email registration."""
 
 import secrets
+import uuid
 from typing import override
 
 from configs import dify_config
@@ -13,6 +14,7 @@ from services.account.email_registration_service import (
     EmailRegistrationNotificationGateway,
     EmailRegistrationSecurityGateway,
     EmailRegistrationSendLimiter,
+    EmailRegistrationTokenClaim,
     EmailRegistrationTokenGateway,
 )
 from services.account.login_service import ConsoleAuthSecurityGateway
@@ -23,6 +25,7 @@ from services.account_errors import (
     AccountNormalizedEmailAlreadyInUseError,
     AccountRegisterError,
     EmailRegistrationSeatsLimitError,
+    EmailRegistrationWorkspaceLimitError,
     SeatsLimitExceededError,
 )
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
@@ -32,10 +35,14 @@ from services.entities.account_entities import (
     AccountEmailRegistrationToken,
     AccountSessionTokens,
 )
+from services.errors.workspace import WorkspacesLimitExceededError
 from tasks.mail_register_task import send_email_register_mail_task, send_email_register_mail_task_when_account_exist
 
 
 class TokenManagerEmailRegistrationTokenGateway(EmailRegistrationTokenGateway):
+    def __init__(self, *, redis: RedisClientWrapper) -> None:
+        self._redis = redis
+
     @override
     def get(self, token: str) -> AccountEmailRegistrationToken | None:
         payload = TokenManager.get_token_data(token, "email_register")
@@ -69,6 +76,47 @@ class TokenManagerEmailRegistrationTokenGateway(EmailRegistrationTokenGateway):
     @override
     def revoke(self, token: str) -> None:
         TokenManager.revoke_token(token, "email_register")
+
+    @override
+    def claim(self, token: str) -> EmailRegistrationTokenClaim | None:
+        token_data = self.get(token)
+        if token_data is None:
+            return None
+        token_key = self._token_key(token)
+        ttl = self._redis.pttl(token_key)
+        if ttl <= 0:
+            return None
+        claim_id = str(uuid.uuid4())
+        if not self._redis.set(self._claim_key(token), claim_id, nx=True, px=ttl):
+            return None
+        # The durable used marker serializes all attempts until the source token expires.
+        # A released claim is the only state that permits a retry.
+        return EmailRegistrationTokenClaim(token_data=token_data, claim_id=claim_id)
+
+    @override
+    def consume(self, token: str, claim_id: str) -> None:
+        stored_claim = self._redis.get(self._claim_key(token))
+        if isinstance(stored_claim, bytes):
+            stored_claim = stored_claim.decode("utf-8")
+        if stored_claim != claim_id:
+            raise RuntimeError("Email registration token claim is no longer owned")
+        TokenManager.revoke_token(token, "email_register")
+
+    @override
+    def release(self, token: str, claim_id: str) -> None:
+        script = self._redis.register_script("""
+            if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+            return redis.call('DEL', KEYS[1])
+        """)
+        script(keys=[self._claim_key(token)], args=[claim_id])
+
+    @staticmethod
+    def _token_key(token: str) -> str:
+        return f"email_register:token:{token}"
+
+    @classmethod
+    def _claim_key(cls, token: str) -> str:
+        return f"{cls._token_key(token)}:registration_claim"
 
 
 class SecureEmailRegistrationCodeGenerator(EmailRegistrationCodeGenerator):
@@ -163,6 +211,8 @@ class AccountLifecycleRegistrationGateway(AccountRegistrationGateway):
             )
         except SeatsLimitExceededError as exc:
             raise EmailRegistrationSeatsLimitError from exc
+        except WorkspacesLimitExceededError as exc:
+            raise EmailRegistrationWorkspaceLimitError from exc
         except (AccountEmailDomainSuspendedError, AccountNormalizedEmailAlreadyInUseError):
             raise
         except AccountRegisterError as exc:

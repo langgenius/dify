@@ -1,11 +1,13 @@
 """Workspace membership, invitation and ownership use cases with application-owned ports."""
 
+import logging
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager
 from typing import Protocol
 
 from enums.account import TenantAccountRole
 from machinery.context import RequestContext
+from services.account_email import normalize_email
 from services.account_errors import AccountNotFoundError
 from services.account_ports import AccountSnapshotQuery
 from services.entities.account_activation_entities import InvitationToken
@@ -25,6 +27,7 @@ from services.errors.workspace import (
     RoleAlreadyAssignedError,
     WorkspaceAlreadyHasOwnerError,
     WorkspaceNotFoundError,
+    WorkspaceOwnerTransferInProgressError,
 )
 from services.workspace.contracts import (
     OwnerTransferToken,
@@ -38,8 +41,14 @@ from services.workspace.contracts import (
     WorkspaceMembership,
     WorkspaceMemberSummary,
     WorkspaceMemberWrite,
+    WorkspaceOwnerTransfer,
+    WorkspaceOwnerTransferNotification,
+    WorkspaceOwnerTransferNotificationDetails,
     WorkspaceSnapshot,
 )
+from services.workspace.quota import WorkspaceMemberQuotaGateway, WorkspaceMemberQuotaSnapshot
+
+logger = logging.getLogger(__name__)
 
 
 class WorkspaceMemberQuery(Protocol):
@@ -118,11 +127,65 @@ class WorkspaceMemberStore(Protocol):
 
     def owner_id(self, workspace_id: str) -> str | None: ...
 
-    def upsert_member(self, *, workspace_id: str, account_id: str, role: TenantAccountRole) -> WorkspaceMemberWrite: ...
+    def upsert_member(
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        role: TenantAccountRole,
+        quota: WorkspaceMemberQuotaSnapshot,
+    ) -> WorkspaceMemberWrite: ...
 
     def remove_member(self, *, workspace_id: str, account_id: str, owner_id: str) -> WorkspaceMemberRemoval: ...
 
-    def update_member_role(self, *, workspace_id: str, account_id: str, role: TenantAccountRole) -> None: ...
+    def update_member_role(
+        self,
+        *,
+        workspace_id: str,
+        actor_account_id: str,
+        account_id: str,
+        role: TenantAccountRole,
+    ) -> None: ...
+
+    def get_pending_owner_transfer(self, workspace_id: str) -> WorkspaceOwnerTransfer | None: ...
+
+    def prepare_owner_transfer(
+        self,
+        *,
+        workspace_id: str,
+        actor_account_id: str,
+        account_id: str,
+        notification: WorkspaceOwnerTransferNotificationDetails | None = None,
+    ) -> WorkspaceOwnerTransfer: ...
+
+    def complete_owner_transfer(self, transfer: WorkspaceOwnerTransfer) -> bool: ...
+
+    def claim_owner_transfer_execution(self, transfer: WorkspaceOwnerTransfer) -> WorkspaceOwnerTransfer | None: ...
+
+    def record_owner_transfer_error(self, transfer: WorkspaceOwnerTransfer, *, error: str) -> None: ...
+
+    def list_pending_owner_transfers(self, *, limit: int = 100) -> tuple[WorkspaceOwnerTransfer, ...]: ...
+
+    def list_pending_owner_transfer_notifications(
+        self,
+        *,
+        operation_id: str | None = None,
+        limit: int = 100,
+    ) -> tuple[WorkspaceOwnerTransferNotification, ...]: ...
+
+    def claim_owner_transfer_notification(
+        self,
+        notification: WorkspaceOwnerTransferNotification,
+    ) -> WorkspaceOwnerTransferNotification | None: ...
+
+    def complete_owner_transfer_notification(self, notification: WorkspaceOwnerTransferNotification) -> bool: ...
+
+    def record_owner_transfer_notification_error(
+        self,
+        notification: WorkspaceOwnerTransferNotification,
+        *,
+        error: str,
+    ) -> None: ...
 
 
 class WorkspaceMemberAccessGateway(Protocol):
@@ -143,6 +206,15 @@ class WorkspaceMemberAccessGateway(Protocol):
 
     def transfer_owner(self, workspace_id: str, actor_id: str, member_id: str) -> None: ...
 
+    def reconcile_owner(
+        self,
+        workspace_id: str,
+        old_owner_id: str,
+        new_owner_id: str,
+        *,
+        actor_id: str | None,
+    ) -> None: ...
+
     def membership_changed(self, membership: WorkspaceMemberWrite, operator_account_id: str | None) -> None: ...
 
     def member_removed(self, workspace_id: str, removal: WorkspaceMemberRemoval) -> None: ...
@@ -150,11 +222,17 @@ class WorkspaceMemberAccessGateway(Protocol):
 
 class WorkspaceMemberService:
     def __init__(
-        self, *, workspaces: WorkspaceMemberStore, accounts: AccountSnapshotQuery, access: WorkspaceMemberAccessGateway
+        self,
+        *,
+        workspaces: WorkspaceMemberStore,
+        accounts: AccountSnapshotQuery,
+        access: WorkspaceMemberAccessGateway,
+        quotas: WorkspaceMemberQuotaGateway,
     ) -> None:
         self._workspaces = workspaces
         self._accounts = accounts
         self._access = access
+        self._quotas = quotas
 
     @property
     def rbac_enabled(self) -> bool:
@@ -211,9 +289,27 @@ class WorkspaceMemberService:
             raise AccountNotFoundError()
         if role == TenantAccountRole.OWNER and self._workspaces.owner_id(workspace_id) is not None:
             raise WorkspaceAlreadyHasOwnerError("Tenant already has an owner.")
-        membership = self._workspaces.upsert_member(workspace_id=workspace_id, account_id=account_id, role=role)
-        self._access.membership_changed(membership, operator_account_id)
+        quota = self.quota_snapshot(workspace_id)
+        membership = self._workspaces.upsert_member(
+            workspace_id=workspace_id,
+            account_id=account_id,
+            role=role,
+            quota=quota,
+        )
+        self.membership_changed(membership, operator_account_id=operator_account_id)
         return WorkspaceMembership(workspace_id, account_id, role.value)
+
+    def quota_snapshot(self, workspace_id: str) -> WorkspaceMemberQuotaSnapshot:
+        return self._quotas.snapshot(workspace_id)
+
+    def membership_changed(
+        self,
+        membership: WorkspaceMemberWrite,
+        *,
+        operator_account_id: str | None,
+    ) -> None:
+        """Publish post-commit access changes for a persisted membership."""
+        self._access.membership_changed(membership, operator_account_id)
 
     def assign_role(self, workspace_id: str, operator_id: str, member_id: str, role_id: str) -> None:
         self._access.assign_role(workspace_id, operator_id, member_id, role_id)
@@ -244,13 +340,67 @@ class WorkspaceMemberService:
         self._access.member_removed(workspace_id, removal)
 
     def update_role(self, workspace_id: str, member_id: str, new_role: str, operator_id: str) -> None:
+        self._update_role(
+            workspace_id,
+            member_id,
+            new_role,
+            operator_id,
+            notification=None,
+        )
+
+    def transfer_owner(
+        self,
+        workspace_id: str,
+        member_id: str,
+        operator_id: str,
+        *,
+        notification: WorkspaceOwnerTransferNotificationDetails,
+    ) -> WorkspaceOwnerTransfer:
+        """Transfer ownership while durably binding the later notifications."""
+        transfer = self._update_role(
+            workspace_id,
+            member_id,
+            TenantAccountRole.OWNER.value,
+            operator_id,
+            notification=notification,
+        )
+        if transfer is None:
+            raise RuntimeError("Owner transfer did not create a durable operation.")
+        return transfer
+
+    def _update_role(
+        self,
+        workspace_id: str,
+        member_id: str,
+        new_role: str,
+        operator_id: str,
+        *,
+        notification: WorkspaceOwnerTransferNotificationDetails | None,
+    ) -> WorkspaceOwnerTransfer | None:
         if not TenantAccountRole.is_valid_role(new_role):
             raise InvalidWorkspaceMemberRoleError()
         self._access.ensure_role_enabled(new_role)
         if self._accounts.get(member_id) is None:
             raise AccountNotFoundError()
-        self.check_permission(workspace_id, operator_id, member_id, "update")
         role = TenantAccountRole(new_role)
+        durable_owner_transfer = role == TenantAccountRole.OWNER and (
+            self._access.rbac_enabled or notification is not None
+        )
+        if durable_owner_transfer:
+            pending = self._workspaces.get_pending_owner_transfer(workspace_id)
+            if pending is not None:
+                if pending.old_owner_account_id != operator_id or pending.new_owner_account_id != member_id:
+                    raise NoPermissionError("Another ownership transfer is already in progress.")
+                if notification is not None:
+                    pending = self._workspaces.prepare_owner_transfer(
+                        workspace_id=workspace_id,
+                        actor_account_id=operator_id,
+                        account_id=member_id,
+                        notification=notification,
+                    )
+                self._finish_owner_transfer(pending, actor_id=None)
+                return pending
+        self.check_permission(workspace_id, operator_id, member_id, "update")
         previous = self.get_role(workspace_id, member_id)
         if previous is None:
             raise MemberNotInTenantError("Member not in tenant.")
@@ -266,12 +416,164 @@ class WorkspaceMemberService:
             raise NoPermissionError("No permission to update member.")
         if previous == role:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
+        if durable_owner_transfer:
+            transfer = self._workspaces.prepare_owner_transfer(
+                workspace_id=workspace_id,
+                actor_account_id=operator_id,
+                account_id=member_id,
+                notification=notification,
+            )
+            self._finish_owner_transfer(transfer, actor_id=operator_id)
+            return transfer
         if self._access.rbac_enabled:
-            if role == TenantAccountRole.OWNER:
-                self._access.transfer_owner(workspace_id, operator_id, member_id)
-            else:
-                self._access.change_role(workspace_id, operator_id, member_id, role)
-        self._workspaces.update_member_role(workspace_id=workspace_id, account_id=member_id, role=role)
+            self._access.change_role(workspace_id, operator_id, member_id, role)
+        self._workspaces.update_member_role(
+            workspace_id=workspace_id,
+            actor_account_id=operator_id,
+            account_id=member_id,
+            role=role,
+        )
+        return None
+
+    def _finish_owner_transfer(self, transfer: WorkspaceOwnerTransfer, *, actor_id: str | None) -> None:
+        claimed = self._workspaces.claim_owner_transfer_execution(transfer)
+        if claimed is None:
+            raise WorkspaceOwnerTransferInProgressError("Workspace ownership transfer is already in progress.")
+        try:
+            if self._access.rbac_enabled:
+                self._reconcile_owner_candidates(claimed, actor_id=actor_id)
+            if not self._workspaces.complete_owner_transfer(claimed):
+                raise RuntimeError("Workspace ownership transfer operation is no longer pending.")
+        except Exception as error:
+            self._record_owner_transfer_error(claimed, error)
+            raise
+
+    def _reconcile_owner_candidates(self, transfer: WorkspaceOwnerTransfer, *, actor_id: str | None) -> None:
+        possible_owner_ids = transfer.possible_owner_account_ids or (transfer.old_owner_account_id,)
+        for old_owner_id in sorted(set(possible_owner_ids) - {transfer.new_owner_account_id}):
+            self._access.reconcile_owner(
+                transfer.workspace_id,
+                old_owner_id,
+                transfer.new_owner_account_id,
+                actor_id=actor_id,
+            )
+
+    def _record_owner_transfer_error(self, transfer: WorkspaceOwnerTransfer, error: Exception) -> None:
+        try:
+            self._workspaces.record_owner_transfer_error(transfer, error=str(error))
+        except Exception:
+            logger.exception(
+                "Failed to record workspace ownership transfer error: workspace_id=%s",
+                transfer.workspace_id,
+            )
+
+
+class OwnerTransferNotificationGateway(Protocol):
+    def notify(self, notification: WorkspaceOwnerTransferNotification) -> None: ...
+
+
+class WorkspaceOwnerTransferNotificationService:
+    """Dispatch durable per-recipient notifications outside database transactions."""
+
+    def __init__(self, *, workspaces: WorkspaceMemberStore, gateway: OwnerTransferNotificationGateway) -> None:
+        self._workspaces = workspaces
+        self._gateway = gateway
+
+    def deliver_operation(self, operation_id: str) -> int:
+        return self._deliver(operation_id=operation_id, limit=2, raise_on_error=True)
+
+    def recover(self, *, limit: int = 100) -> int:
+        return self._deliver(operation_id=None, limit=limit, raise_on_error=False)
+
+    def _deliver(self, *, operation_id: str | None, limit: int, raise_on_error: bool) -> int:
+        delivered = 0
+        first_error: Exception | None = None
+        notifications = self._workspaces.list_pending_owner_transfer_notifications(
+            operation_id=operation_id,
+            limit=limit,
+        )
+        for notification in notifications:
+            claimed = self._workspaces.claim_owner_transfer_notification(notification)
+            if claimed is None:
+                continue
+            try:
+                self._gateway.notify(claimed)
+            except Exception as error:
+                try:
+                    self._workspaces.record_owner_transfer_notification_error(claimed, error=str(error))
+                except Exception:
+                    logger.exception(
+                        "Failed to persist workspace ownership notification error: notification_id=%s",
+                        claimed.notification_id,
+                    )
+                if raise_on_error:
+                    first_error = first_error or error
+                else:
+                    logger.warning(
+                        "Workspace ownership notification delivery failed: notification_id=%s",
+                        claimed.notification_id,
+                        exc_info=True,
+                    )
+                continue
+            if self._workspaces.complete_owner_transfer_notification(claimed):
+                delivered += 1
+        if first_error is not None:
+            raise first_error
+        return delivered
+
+
+class WorkspaceOwnerTransferRecoveryService:
+    """Converge external RBAC and local membership for durable transfers."""
+
+    def __init__(
+        self,
+        *,
+        workspaces: WorkspaceMemberStore,
+        access: WorkspaceMemberAccessGateway,
+        notifications: WorkspaceOwnerTransferNotificationService,
+    ) -> None:
+        self._workspaces = workspaces
+        self._access = access
+        self._notifications = notifications
+
+    def recover(self, *, limit: int = 100) -> int:
+        recovered = 0
+        for transfer in self._workspaces.list_pending_owner_transfers(limit=limit):
+            if not self._access.rbac_enabled and transfer.status == "watch":
+                continue
+            claimed = self._workspaces.claim_owner_transfer_execution(transfer)
+            if claimed is None:
+                continue
+            try:
+                if self._access.rbac_enabled:
+                    self._reconcile_owner_candidates(claimed)
+                if self._workspaces.complete_owner_transfer(claimed):
+                    recovered += 1
+            except Exception as error:
+                logger.warning(
+                    "Workspace ownership transfer recovery failed: workspace_id=%s",
+                    claimed.workspace_id,
+                    exc_info=True,
+                )
+                try:
+                    self._workspaces.record_owner_transfer_error(claimed, error=str(error))
+                except Exception:
+                    logger.exception(
+                        "Failed to persist workspace ownership transfer recovery error: workspace_id=%s",
+                        claimed.workspace_id,
+                    )
+        self._notifications.recover(limit=limit)
+        return recovered
+
+    def _reconcile_owner_candidates(self, transfer: WorkspaceOwnerTransfer) -> None:
+        possible_owner_ids = transfer.possible_owner_account_ids or (transfer.old_owner_account_id,)
+        for old_owner_id in sorted(set(possible_owner_ids) - {transfer.new_owner_account_id}):
+            self._access.reconcile_owner(
+                transfer.workspace_id,
+                old_owner_id,
+                transfer.new_owner_account_id,
+                actor_id=None,
+            )
 
 
 class InvitedAccountRegistration(Protocol):
@@ -288,7 +590,22 @@ class InvitedAccountRegistration(Protocol):
         status: str,
         is_setup: bool,
         check_normalized_email: bool,
+        create_workspace_required: bool,
     ) -> AccountSnapshot: ...
+
+    def register_workspace_member(
+        self,
+        *,
+        email: str,
+        name: str,
+        language: str | None,
+        status: str,
+        is_setup: bool,
+        check_normalized_email: bool,
+        workspace_id: str,
+        role: TenantAccountRole,
+        member_quota: WorkspaceMemberQuotaSnapshot,
+    ) -> tuple[AccountSnapshot, WorkspaceMemberWrite]: ...
 
 
 class InvitationWorkspaceStore(Protocol):
@@ -345,8 +662,14 @@ class WorkspaceInvitationService:
         self._invitations.ensure_role_enabled(role)
         workspace_id = context.active_workspace_id
         self._invitations.ensure_allowed(workspace_id)
+        emails_by_identity: dict[str, str] = {}
+        for email in emails:
+            lowered_email = email.lower()
+            emails_by_identity.setdefault(normalize_email(lowered_email), lowered_email)
+        emails = tuple(emails_by_identity.values())
         results: list[WorkspaceInvitationResult] = []
         with self._invitations.acquire(workspace_id):
+            new_accounts = 0
             if self._invitations.requires_capacity_check:
                 new_members, new_accounts = 0, 0
                 for email in emails:
@@ -372,6 +695,8 @@ class WorkspaceInvitationService:
                         WorkspaceInvitationResult(email, "already_member", message="Account already in workspace.")
                     )
                 except Exception as error:
+                    # Each invitation commits independently. A quota race must
+                    # retain the results of invitations already delivered.
                     results.append(WorkspaceInvitationResult(email, "failed", message=str(error)))
         return tuple(results)
 
@@ -397,22 +722,18 @@ class WorkspaceInvitationService:
         requires_setup = False
         if account is None:
             self._members.check_permission(workspace_id, inviter_id, None, "add")
-            account = self._accounts.register(
+            account, membership = self._accounts.register_workspace_member(
                 email=normalized_email,
                 name=normalized_email.split("@")[0],
                 language=language,
                 status="pending",
                 is_setup=True,
                 check_normalized_email=True,
-            )
-            self._members.join_member(
                 workspace_id=workspace_id,
-                account_id=account.id,
-                email=account.email,
                 role=join_role,
-                operator_account_id=inviter_id,
+                member_quota=self._members.quota_snapshot(workspace_id),
             )
-            self._workspaces.switch(account_id=account.id, workspace_id=workspace_id)
+            self._members.membership_changed(membership, operator_account_id=inviter_id)
             requires_setup = True
         else:
             self._members.check_permission(workspace_id, inviter_id, account.id, "add")
@@ -444,7 +765,7 @@ class WorkspaceInvitationService:
         return WorkspaceInvitation(workspace_id, account.id, normalized_email, role, token)
 
 
-class OwnerTransferGateway(Protocol):
+class OwnerTransferGateway(OwnerTransferNotificationGateway, Protocol):
     def is_ip_limited(self, ip_address: str) -> bool: ...
 
     def is_verification_limited(self, email: str) -> bool: ...
@@ -461,8 +782,6 @@ class OwnerTransferGateway(Protocol):
 
     def revoke_token(self, token: str) -> None: ...
 
-    def notify(self, *, old_owner: AccountSnapshot, new_owner: AccountSnapshot, workspace_name: str) -> None: ...
-
 
 class WorkspaceOwnerTransferService:
     def __init__(
@@ -477,6 +796,10 @@ class WorkspaceOwnerTransferService:
         self._workspaces = workspaces
         self._members = members
         self._challenges = challenges
+        self._notifications = WorkspaceOwnerTransferNotificationService(
+            workspaces=workspaces,
+            gateway=challenges,
+        )
 
     def _owner(self, context: RequestContext) -> AccountSnapshot:
         if self._members.get_role(context.active_workspace_id, context.account_id) != TenantAccountRole.OWNER:
@@ -532,5 +855,16 @@ class WorkspaceOwnerTransferService:
         workspace = self._workspaces.get(context.active_workspace_id)
         if workspace is None:
             raise WorkspaceNotFoundError()
-        self._members.update_role(workspace.id, member.id, "owner", owner.id)
-        self._challenges.notify(old_owner=owner, new_owner=member, workspace_name=workspace.name)
+        transfer = self._members.transfer_owner(
+            workspace.id,
+            member.id,
+            owner.id,
+            notification=WorkspaceOwnerTransferNotificationDetails(
+                old_owner_email=owner.email,
+                old_owner_language=owner.interface_language or "en-US",
+                new_owner_email=member.email,
+                new_owner_language=member.interface_language or "en-US",
+                workspace_name=workspace.name,
+            ),
+        )
+        self._notifications.deliver_operation(transfer.operation_id)

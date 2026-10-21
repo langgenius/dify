@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -56,10 +56,10 @@ def test_create_stores_only_one_per_email_v2_challenge(
     challenge_redis.delete.assert_not_called()
 
 
-def test_verify_current_challenge_decrements_budget_without_refreshing_ttl(challenge_redis: MagicMock) -> None:
+def test_claim_current_challenge_decrements_budget_without_refreshing_ttl(challenge_redis: MagicMock) -> None:
     challenge_redis.eval.return_value = [3, 4]
 
-    result = EmailCodeLoginChallengeStore.verify(
+    result = EmailCodeLoginChallengeStore.claim(
         email="User@Example.com",
         code="654321",
         token=TOKEN,
@@ -70,7 +70,7 @@ def test_verify_current_challenge_decrements_budget_without_refreshing_ttl(chall
     eval_args = challenge_redis.eval.call_args.args
     assert eval_args[1] == 1
     assert eval_args[2] == EmailCodeLoginChallengeStore._challenge_key("user@example.com")
-    assert eval_args[-5:] == ("email_code_login", TOKEN, "user@example.com", "654321", 2)
+    assert eval_args[-6:-1] == ("email_code_login", TOKEN, "user@example.com", "654321", 2)
     challenge_redis.set.assert_not_called()
     challenge_redis.expire.assert_not_called()
 
@@ -85,20 +85,21 @@ def test_verify_current_challenge_decrements_budget_without_refreshing_ttl(chall
         ([8, -1], EmailCodeLoginChallengeStatus.INVALID_TOKEN),
     ],
 )
-def test_verify_maps_v2_lua_result(
+def test_claim_maps_v2_lua_result(
     challenge_redis: MagicMock,
     lua_response: list[int],
     expected_status: EmailCodeLoginChallengeStatus,
 ) -> None:
     challenge_redis.eval.return_value = lua_response
 
-    result = EmailCodeLoginChallengeStore.verify(
+    result = EmailCodeLoginChallengeStore.claim(
         email="user@example.com",
         code="123456",
         token=TOKEN,
     )
 
     assert result.status is expected_status
+    assert (result.claim_id is not None) is (expected_status is EmailCodeLoginChallengeStatus.VERIFIED)
     challenge_redis.eval.assert_called_once()
 
 
@@ -106,7 +107,7 @@ def test_terminal_v2_challenge_blocks_pre_rollout_legacy_token_fallback(challeng
     legacy_token = "00000000-0000-4000-8000-000000000002"
     challenge_redis.eval.return_value = [8, -1]
 
-    result = EmailCodeLoginChallengeStore.verify(
+    result = EmailCodeLoginChallengeStore.claim(
         email="user@example.com",
         code="111111",
         token=legacy_token,
@@ -120,7 +121,7 @@ def test_terminal_v2_challenge_blocks_pre_rollout_legacy_token_fallback(challeng
 def test_verify_supports_unversioned_token_created_before_rollout(challenge_redis: MagicMock) -> None:
     challenge_redis.eval.side_effect = [[0, -1], [4, -1]]
 
-    result = EmailCodeLoginChallengeStore.verify(
+    result = EmailCodeLoginChallengeStore.claim(
         email="user@example.com",
         code="123456",
         token=TOKEN,
@@ -130,13 +131,13 @@ def test_verify_supports_unversioned_token_created_before_rollout(challenge_redi
     assert challenge_redis.eval.call_count == 2
     legacy_args = challenge_redis.eval.call_args_list[1].args
     assert legacy_args[2] == f"email_code_login:token:{TOKEN}"
-    assert legacy_args[-4:] == ("email_code_login", "user@example.com", "123456", 5)
+    assert legacy_args[-5:-1] == ("email_code_login", "user@example.com", "123456", 5)
 
 
 def test_verify_rejects_versioned_payload_in_legacy_fallback(challenge_redis: MagicMock) -> None:
     challenge_redis.eval.side_effect = [[0, -1], [7, -1]]
 
-    result = EmailCodeLoginChallengeStore.verify(
+    result = EmailCodeLoginChallengeStore.claim(
         email="user@example.com",
         code="123456",
         token=TOKEN,
@@ -156,23 +157,65 @@ def test_create_fails_closed_on_redis_error(challenge_redis: MagicMock) -> None:
         )
 
 
-def test_verify_fails_closed_on_redis_error(challenge_redis: MagicMock) -> None:
+def test_claim_fails_closed_on_redis_error(challenge_redis: MagicMock) -> None:
     challenge_redis.eval.side_effect = ConnectionError("redis unavailable")
 
     with pytest.raises(EmailCodeLoginChallengeUnavailableError):
-        EmailCodeLoginChallengeStore.verify(
+        EmailCodeLoginChallengeStore.claim(
             email="user@example.com",
             code="123456",
             token=TOKEN,
         )
 
 
-def test_verify_fails_closed_on_unexpected_lua_response(challenge_redis: MagicMock) -> None:
+def test_claim_fails_closed_on_unexpected_lua_response(challenge_redis: MagicMock) -> None:
     challenge_redis.eval.return_value = None
 
     with pytest.raises(EmailCodeLoginChallengeUnavailableError):
-        EmailCodeLoginChallengeStore.verify(
+        EmailCodeLoginChallengeStore.claim(
             email="user@example.com",
             code="123456",
             token=TOKEN,
         )
+
+
+@pytest.mark.parametrize(
+    ("action", "transition"),
+    [
+        ("release", EmailCodeLoginChallengeStore.release),
+        ("consume", EmailCodeLoginChallengeStore.consume),
+    ],
+)
+def test_claim_transition_uses_owned_v2_challenge_without_legacy_fallback(
+    challenge_redis: MagicMock,
+    action: str,
+    transition: Callable[..., None],
+) -> None:
+    challenge_redis.eval.return_value = 1
+
+    transition(email="User@Example.com", token=TOKEN, claim_id="claim-1")
+
+    assert challenge_redis.eval.call_count == 1
+    args = challenge_redis.eval.call_args.args
+    assert args[2] == EmailCodeLoginChallengeStore._challenge_key("user@example.com")
+    assert args[-6:] == ("email_code_login", TOKEN, "user@example.com", "claim-1", 2, action)
+
+
+def test_claim_release_falls_back_to_an_owned_legacy_challenge(challenge_redis: MagicMock) -> None:
+    challenge_redis.eval.side_effect = [0, 1]
+
+    EmailCodeLoginChallengeStore.release(email="user@example.com", token=TOKEN, claim_id="claim-1")
+
+    assert challenge_redis.eval.call_count == 2
+    args = challenge_redis.eval.call_args_list[1].args
+    assert args[2] == EmailCodeLoginChallengeStore._legacy_token_key(TOKEN)
+    assert args[-4:] == ("email_code_login", "user@example.com", "claim-1", "release")
+
+
+def test_claim_transition_fails_closed_when_claim_is_not_owned(challenge_redis: MagicMock) -> None:
+    challenge_redis.eval.return_value = 2
+
+    with pytest.raises(EmailCodeLoginChallengeUnavailableError):
+        EmailCodeLoginChallengeStore.consume(email="user@example.com", token=TOKEN, claim_id="other-claim")
+
+    challenge_redis.eval.assert_called_once()
