@@ -8,6 +8,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { AgentLogDetailPanel } from '../components/log-detail-panel'
 
 const { request } = vi.hoisted(() => ({
+  // oxlint-disable-next-line typescript/no-deprecated -- Observe the existing transport boundary without mocking the tracing UI.
   request: vi.fn<typeof import('@/service/base').request>(),
 }))
 vi.mock('@/service/base', async (importOriginal) => ({

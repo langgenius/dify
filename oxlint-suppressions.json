@@ -3319,11 +3319,6 @@
       "count": 1
     }
   },
-  "web/features/agent-v2/agent-detail/configure/components/preview/__tests__/chat.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
