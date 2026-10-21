@@ -69,6 +69,7 @@ def test_remote_image_endpoint_returns_only_sniffed_bounded_image_bytes(
     ("error", "expected_status"),
     [
         (KnowledgeFSRemoteImageError("REMOTE_IMAGE_BLOCKED", "blocked", retryable=False), 403),
+        (KnowledgeFSRemoteImageError("REMOTE_IMAGE_HOST_NOT_FOUND", "unresolvable", retryable=False), 404),
         (KnowledgeFSRemoteImageError("REMOTE_IMAGE_NOT_FOUND", "missing", retryable=False), 404),
         (KnowledgeFSRemoteImageError("REMOTE_IMAGE_TOO_LARGE", "large", retryable=False), 413),
         (

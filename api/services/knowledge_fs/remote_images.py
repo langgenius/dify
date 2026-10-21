@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import socket
 import urllib.parse
 from dataclasses import dataclass
 
@@ -15,6 +16,9 @@ from core.tools.errors import ToolSSRFError
 KNOWLEDGE_FS_REMOTE_IMAGE_MAX_BYTES = 10 * 1024 * 1024
 KNOWLEDGE_FS_REMOTE_IMAGE_MAX_URL_CHARS = 8_192
 _REMOTE_IMAGE_ACCEPT = "image/webp,image/png,image/jpeg,image/gif;q=0.9,*/*;q=0.1"
+_PERMANENT_DNS_ERROR_CODES = frozenset(
+    int(code) for name in ("EAI_NONAME", "EAI_NODATA", "EAI_FAIL") if (code := getattr(socket, name, None)) is not None
+)
 
 
 class KnowledgeFSRemoteImageError(ValueError):
@@ -57,6 +61,12 @@ def load_remote_image(url: str) -> KnowledgeFSResolvedRemoteImage:
             retryable=False,
         ) from exc
     except (httpx.TimeoutException, httpx.RequestError, ssrf_proxy.MaxRetriesExceededError) as exc:
+        if _is_permanent_dns_failure(exc):
+            raise KnowledgeFSRemoteImageError(
+                "REMOTE_IMAGE_HOST_NOT_FOUND",
+                "Remote image host could not be resolved.",
+                retryable=False,
+            ) from exc
         raise KnowledgeFSRemoteImageError(
             "REMOTE_IMAGE_UPSTREAM_UNAVAILABLE",
             "Remote image service is temporarily unavailable.",
@@ -130,6 +140,27 @@ def _validate_remote_image_url(url: str) -> str:
             retryable=False,
         )
     return normalized
+
+
+def _is_permanent_dns_failure(error: BaseException) -> bool:
+    """Return whether an exception chain contains a non-recoverable DNS lookup result."""
+
+    current: BaseException | None = error
+    seen: set[int] = set()
+    while current is not None:
+        identity = id(current)
+        if identity in seen:
+            break
+        seen.add(identity)
+        if isinstance(current, httpx.ProxyError):
+            return False
+        if isinstance(current, socket.gaierror) and current.errno in _PERMANENT_DNS_ERROR_CODES:
+            return True
+        next_error = current.__cause__
+        if next_error is None and not current.__suppress_context__:
+            next_error = current.__context__
+        current = next_error
+    return False
 
 
 def _assert_remote_status(status_code: int) -> None:
