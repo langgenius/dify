@@ -56,6 +56,7 @@ from models.workflow import (
     WorkflowVersionCounter,
     is_system_variable_editable,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 
 
 class TestConversationVariableCases:
@@ -109,7 +110,7 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+        type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
         _features="{}",
@@ -140,7 +141,7 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+        type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
         _features="{}",
@@ -169,7 +170,7 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+        type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
         _features="{}",
@@ -222,7 +223,7 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+        type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
         _features="{}",
@@ -263,7 +264,7 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+        type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
         _features="{}",
@@ -284,7 +285,7 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+        type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
         _features="{}",

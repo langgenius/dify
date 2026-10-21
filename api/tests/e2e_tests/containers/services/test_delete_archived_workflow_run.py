@@ -16,6 +16,7 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorage
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME, ARCHIVE_SCHEMA_VERSION
 from services.retention.workflow_run.delete_archived_workflow_run import ArchivedWorkflowRunDeletion
 
@@ -54,7 +55,7 @@ class TestArchivedWorkflowRunDeletion:
             tenant_id=tenant_id,
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
             version="1.0.0",
             graph="{}",

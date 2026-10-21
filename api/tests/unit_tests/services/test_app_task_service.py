@@ -43,6 +43,7 @@ from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from models.workflow import WorkflowType as _legacy_workflow_task_recovery_WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.app_task_service import AppTaskControlService, AppTaskService
 
 """Injected workflow cancellation preserves both transport mechanisms."""
@@ -292,7 +293,7 @@ class TestAppTaskServiceCases:
             app_id="app-1",
             workflow_id="workflow-1",
             task_id="11111111-1111-1111-1111-111111111111",
-            type="workflow",
+        type=ModelWorkflowType("workflow"),
             version="1",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             status=WorkflowExecutionStatus.RUNNING,
@@ -592,7 +593,7 @@ class TestAppTaskServiceCases:
             app_id="app-1",
             workflow_id="workflow-1",
             task_id=task_id,
-            type="workflow",
+        type=ModelWorkflowType("workflow"),
             version="1",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             status=WorkflowExecutionStatus.RUNNING,

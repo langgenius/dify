@@ -2,6 +2,7 @@ import json
 
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from models.workflow import Workflow
+from models.workflow import WorkflowType as ModelWorkflowType
 
 
 def test_file_to_dict():
@@ -31,7 +32,7 @@ def test_workflow_features_with_image():
     workflow = Workflow(
         tenant_id="tenant-1",
         app_id="app-1",
-        type="chat",
+        type=ModelWorkflowType("chat"),
         version="1.0",
         graph="{}",
         _features=json.dumps(features),

@@ -30,6 +30,7 @@ from models.human_input import (
     RecipientType,
 )
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
@@ -71,7 +72,7 @@ def _create_workflow_run(
         tenant_id=scope.tenant_id,
         app_id=scope.app_id,
         workflow_id=scope.workflow_id,
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         version="draft",
         graph="{}",
