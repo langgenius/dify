@@ -29,6 +29,7 @@ from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     edit_permission_required,
+    evaluation_edition_required,
     rbac_permission_required,
     setup_required,
 )
@@ -69,6 +70,10 @@ P = ParamSpec("P")
 R = TypeVar("R")
 EvaluationTarget = App | CustomizedSnippet | Agent
 XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+class EvaluationEditionResource(Resource):
+    method_decorators = [evaluation_edition_required]
 
 
 class EvaluationConfigPayload(EvaluationConfigData):
@@ -612,7 +617,7 @@ def _xlsx_response(content: bytes, filename: str) -> Response:
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/dataset-template/download")
-class EvaluationDatasetTemplateDownloadApi(Resource):
+class EvaluationDatasetTemplateDownloadApi(EvaluationEditionResource):
     @console_ns.expect(console_ns.models[EvaluationConfigPayload.__name__])
     @console_ns.doc(
         produces=[XLSX_MIME_TYPE],
@@ -642,7 +647,7 @@ class EvaluationDatasetTemplateDownloadApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation")
-class EvaluationDetailApi(Resource):
+class EvaluationDetailApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation configuration", console_ns.models[EvaluationConfigResponse.__name__])
     @setup_required
     @login_required
@@ -683,7 +688,7 @@ class EvaluationDetailApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/template-columns")
-class EvaluationTemplateColumnsApi(Resource):
+class EvaluationTemplateColumnsApi(EvaluationEditionResource):
     @console_ns.expect(console_ns.models[EvaluationConfigPayload.__name__])
     @console_ns.response(
         200,
@@ -705,7 +710,7 @@ class EvaluationTemplateColumnsApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/logs")
-class EvaluationLogsApi(Resource):
+class EvaluationLogsApi(EvaluationEditionResource):
     @console_ns.doc(params=query_params_from_model(EvaluationRunListQuery))
     @console_ns.response(200, "Evaluation runs", console_ns.models[EvaluationRunPaginationResponse.__name__])
     @setup_required
@@ -731,7 +736,7 @@ class EvaluationLogsApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run")
-class EvaluationRunApi(Resource):
+class EvaluationRunApi(EvaluationEditionResource):
     @console_ns.expect(console_ns.models[EvaluationRunPayload.__name__])
     @console_ns.response(200, "Evaluation run started", console_ns.models[EvaluationRunResponse.__name__])
     @setup_required
@@ -758,7 +763,7 @@ class EvaluationRunApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>")
-class EvaluationRunDetailApi(Resource):
+class EvaluationRunDetailApi(EvaluationEditionResource):
     @console_ns.doc(params=query_params_from_model(EvaluationRunDetailQuery))
     @console_ns.response(200, "Evaluation run detail", console_ns.models[EvaluationRunDetailResponse.__name__])
     @setup_required
@@ -786,7 +791,7 @@ class EvaluationRunDetailApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>/cancel")
-class EvaluationRunCancelApi(Resource):
+class EvaluationRunCancelApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation run cancelled", console_ns.models[EvaluationRunResponse.__name__])
     @setup_required
     @login_required
@@ -815,7 +820,7 @@ class EvaluationRunCancelApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>/retry")
-class EvaluationRunRetryApi(Resource):
+class EvaluationRunRetryApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation run retry scheduled", console_ns.models[EvaluationRunResponse.__name__])
     @setup_required
     @login_required
@@ -844,7 +849,7 @@ class EvaluationRunRetryApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/metrics")
-class EvaluationMetricsApi(Resource):
+class EvaluationMetricsApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation metrics", console_ns.models[EvaluationMetricsResponse.__name__])
     @setup_required
     @login_required
@@ -860,7 +865,7 @@ class EvaluationMetricsApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/default-metrics")
-class EvaluationDefaultMetricsApi(Resource):
+class EvaluationDefaultMetricsApi(EvaluationEditionResource):
     @console_ns.response(200, "Default metrics", console_ns.models[EvaluationDefaultMetricsResponse.__name__])
     @setup_required
     @login_required
@@ -880,7 +885,7 @@ class EvaluationDefaultMetricsApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/node-info")
-class EvaluationNodeInfoApi(Resource):
+class EvaluationNodeInfoApi(EvaluationEditionResource):
     @console_ns.expect(console_ns.models[EvaluationNodeInfoPayload.__name__])
     @console_ns.response(200, "Evaluation node info", console_ns.models[EvaluationNodeInfoResponse.__name__])
     @setup_required
@@ -900,7 +905,7 @@ class EvaluationNodeInfoApi(Resource):
 
 
 @console_ns.route("/evaluation/available-metrics")
-class EvaluationAvailableMetricsApi(Resource):
+class EvaluationAvailableMetricsApi(EvaluationEditionResource):
     @console_ns.response(
         200,
         "Available evaluation metrics",
@@ -917,7 +922,7 @@ class EvaluationAvailableMetricsApi(Resource):
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/files/<uuid:file_id>")
-class EvaluationFileDownloadApi(Resource):
+class EvaluationFileDownloadApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation file", console_ns.models[EvaluationFileResponse.__name__])
     @setup_required
     @login_required
@@ -942,7 +947,7 @@ class EvaluationFileDownloadApi(Resource):
 
 
 @console_ns.route("/workspaces/current/available-evaluation-workflows")
-class AvailableEvaluationWorkflowsApi(Resource):
+class AvailableEvaluationWorkflowsApi(EvaluationEditionResource):
     @console_ns.doc(params=query_params_from_model(AvailableEvaluationWorkflowQuery))
     @console_ns.response(
         200,
@@ -1000,7 +1005,7 @@ class AvailableEvaluationWorkflowsApi(Resource):
 
 
 @console_ns.route("/workspaces/current/evaluation-workflows/<uuid:workflow_id>/associated-targets")
-class EvaluationWorkflowAssociatedTargetsApi(Resource):
+class EvaluationWorkflowAssociatedTargetsApi(EvaluationEditionResource):
     @console_ns.response(
         200,
         "Associated evaluation targets",
@@ -1070,7 +1075,7 @@ class EvaluationWorkflowAssociatedTargetsApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/template/download")
-class DatasetEvaluationTemplateDownloadApi(Resource):
+class DatasetEvaluationTemplateDownloadApi(EvaluationEditionResource):
     @console_ns.doc(
         produces=[XLSX_MIME_TYPE],
         vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: [XLSX_MIME_TYPE]},
@@ -1093,7 +1098,7 @@ class DatasetEvaluationTemplateDownloadApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation")
-class DatasetEvaluationDetailApi(Resource):
+class DatasetEvaluationDetailApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation configuration", console_ns.models[EvaluationConfigResponse.__name__])
     @setup_required
     @login_required
@@ -1138,7 +1143,7 @@ class DatasetEvaluationDetailApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/run")
-class DatasetEvaluationRunApi(Resource):
+class DatasetEvaluationRunApi(EvaluationEditionResource):
     @console_ns.expect(console_ns.models[EvaluationRunPayload.__name__])
     @console_ns.response(200, "Evaluation run started", console_ns.models[EvaluationRunResponse.__name__])
     @setup_required
@@ -1163,7 +1168,7 @@ class DatasetEvaluationRunApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/logs")
-class DatasetEvaluationLogsApi(Resource):
+class DatasetEvaluationLogsApi(EvaluationEditionResource):
     @console_ns.doc(params=query_params_from_model(EvaluationRunListQuery))
     @console_ns.response(200, "Evaluation runs", console_ns.models[EvaluationRunPaginationResponse.__name__])
     @setup_required
@@ -1190,7 +1195,7 @@ class DatasetEvaluationLogsApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/runs/<uuid:run_id>")
-class DatasetEvaluationRunDetailApi(Resource):
+class DatasetEvaluationRunDetailApi(EvaluationEditionResource):
     @console_ns.doc(params=query_params_from_model(EvaluationRunDetailQuery))
     @console_ns.response(200, "Evaluation run detail", console_ns.models[EvaluationRunDetailResponse.__name__])
     @setup_required
@@ -1213,7 +1218,7 @@ class DatasetEvaluationRunDetailApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/runs/<uuid:run_id>/cancel")
-class DatasetEvaluationRunCancelApi(Resource):
+class DatasetEvaluationRunCancelApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation run cancelled", console_ns.models[EvaluationRunResponse.__name__])
     @setup_required
     @login_required
@@ -1234,7 +1239,7 @@ class DatasetEvaluationRunCancelApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/runs/<uuid:run_id>/retry")
-class DatasetEvaluationRunRetryApi(Resource):
+class DatasetEvaluationRunRetryApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation run retry scheduled", console_ns.models[EvaluationRunResponse.__name__])
     @setup_required
     @login_required
@@ -1255,7 +1260,7 @@ class DatasetEvaluationRunRetryApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/metrics")
-class DatasetEvaluationMetricsApi(Resource):
+class DatasetEvaluationMetricsApi(EvaluationEditionResource):
     @console_ns.response(200, "Retrieval evaluation metrics", console_ns.models[EvaluationMetricsResponse.__name__])
     @setup_required
     @login_required
@@ -1272,7 +1277,7 @@ class DatasetEvaluationMetricsApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/files/<uuid:file_id>")
-class DatasetEvaluationFileDownloadApi(Resource):
+class DatasetEvaluationFileDownloadApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation file", console_ns.models[EvaluationFileResponse.__name__])
     @setup_required
     @login_required

@@ -13,13 +13,29 @@ describe('SnippetAndEvaluationPlanGuard', () => {
     vi.clearAllMocks()
   })
 
-  it('allows community deployments without loading subscription data', () => {
+  it('redirects community deployments without loading subscription data', async () => {
     renderWithConsoleQuery(
       <SnippetAndEvaluationPlanGuard fallbackHref="/apps">
         <div>Evaluation content</div>
       </SnippetAndEvaluationPlanGuard>,
       {
         systemFeatures: { deployment_edition: 'COMMUNITY' },
+      },
+    )
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
+    })
+    expect(screen.queryByText('Evaluation content')).not.toBeInTheDocument()
+  })
+
+  it('allows enterprise deployments without loading subscription data', () => {
+    renderWithConsoleQuery(
+      <SnippetAndEvaluationPlanGuard fallbackHref="/apps">
+        <div>Evaluation content</div>
+      </SnippetAndEvaluationPlanGuard>,
+      {
+        systemFeatures: { deployment_edition: 'ENTERPRISE' },
       },
     )
 

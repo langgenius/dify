@@ -43,6 +43,7 @@ from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     edit_permission_required,
+    evaluation_edition_required,
     model_validate,
     rbac_permission_required,
     setup_required,
@@ -1398,6 +1399,7 @@ class EvaluationPublishedWorkflowApi(Resource):
         "Evaluation workflow published successfully",
         console_ns.models[WorkflowPublishResponse.__name__],
     )
+    @evaluation_edition_required
     @setup_required
     @login_required
     @account_initialization_required
@@ -1442,6 +1444,7 @@ class WorkflowKindConvertApi(Resource):
         "Workflow kind converted successfully",
         console_ns.models[WorkflowKindConvertResponse.__name__],
     )
+    @evaluation_edition_required
     @setup_required
     @login_required
     @account_initialization_required
