@@ -8,6 +8,7 @@ Degrades to an honest result on model-None / provider-error / parse-fail."""
 
 import json
 from collections.abc import Callable, Sequence
+from dataclasses import asdict
 from typing import Any, TypedDict
 
 import json_repair
@@ -17,6 +18,8 @@ from core.dify_builder.models import MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
 from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
 from graphon.enums import BUILT_IN_NODE_TYPES
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text
 from services.dify_builder import credentials, graph_ops, preflight
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import form_schema, graph_prompt, llm
@@ -174,11 +177,15 @@ def analyze_impact(
         f"change touches. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
         'Reply with ONLY JSON: {"fields": [{"key","label","type","options"}], '
         '"values": {...}, "target_node_ids": ["<existing id>", ...], '
-        '"resource_requests": [{"kind": "model|tool", "node_id": "<target id>", "query": "<requested resource>"}]}.'
+        '"resource_requests": [{"kind": "model|tool", "node_id": "<target id>", '
+        '"query": "<requested resource>", "binding_required": true}]}.'
         "For every requested model/tool replacement or addition, include a resource_request using the user's "
         "resource description, not a guessed canonical ID. For a replacement use the resource node's existing ID; "
         "for an addition choose an unused new node ID and use that same ID in the later plan. "
         "Never use an existing neighbour's ID for the added resource. "
+        "For an explicitly requested new, unconfigured and disconnected Tool canvas draft, use an empty query "
+        "and binding_required=false; it selects no plugin/action and is not an executable or verified Tool. "
+        "Do not use this exception for a named tool/plugin or any model replacement. "
         "Use [] when no resource identity changes. "
     ) + llm.json_language_instruction("field labels and values", reply_language=reply_language)
     if reply_language:
@@ -203,6 +210,19 @@ def analyze_impact(
     targets = [str(t) for t in raw_targets if str(t) in ids] if isinstance(raw_targets, list) else []
     fields = data.get("fields") if isinstance(data.get("fields"), list) else []
     values = data.get("values") if isinstance(data.get("values"), dict) else {}
+    # Planning receives the confirmed form, not goal_text. A title-only impact
+    # must not silently discard the requested topology/configuration boundaries.
+    fields = [field for field in fields if not isinstance(field, dict) or field.get("key") != "change"]
+    fields.insert(
+        0,
+        {
+            "key": "change",
+            "label_copy": asdict(copy_text(BuilderCopyId.FORMS_GOAL)),
+            "type": "textarea",
+            "required": True,
+        },
+    )
+    values = {"change": goal_text, **{key: value for key, value in values.items() if key != "change"}}
     return {
         "fields": form_schema.reconcile_form_fields(fields, values),
         "values": values,
@@ -230,7 +250,8 @@ def propose_edit_plan(
         "You are a Dify workflow edit planner. Propose the requested changes to the current graph. "
         "Use the server-confirmed __builder_resource_bindings in EDIT RULES as the only identities for "
         "resource changes. Never compose, reorder or guess provider/model/tool IDs. "
-        "Preserve their exact source spelling. "
+        "Preserve their exact source spelling. An explicitly requested unconfigured, disconnected Tool draft "
+        "claims no resource identity: keep provider_id/tool_name blank, do not select a tool or promise execution. "
         "Respect __builder_resource_parameter_contracts for parameter names, form and required inputs. "
         "For create_node and insert_between, pass the confirmed new target as args.node_id explicitly; "
         "a title or an ID inside config does not assign the node ID. "
@@ -326,6 +347,12 @@ def build_edit_intents(
         "by this batch. Use only the listed node types. For create_node and insert_between, pass the confirmed "
         "new target from __builder_resource_node_targets as args.node_id explicitly; a title or an ID inside "
         "config does not assign the node ID. "
+        "An explicitly requested unconfigured Tool canvas draft must use create_node with blank provider_id/tool_name "
+        "and no edges. Do not pick a plugin or invent parameters for that draft, and do not report it as tested. "
+        "Its native config still requires all metadata keys: "
+        '{"provider_id":"","provider_type":"builtin","provider_name":"","tool_name":"","tool_label":"",'
+        '"tool_parameters":{},"tool_configurations":{}} plus the requested title. '
+        "These empty identity fields are canvas placeholders, not a selected built-in plugin. "
         "Resource replacements must copy the exact canonical provider/model/tool identity from "
         "__builder_resource_bindings in EDIT RULES. Keep unrelated prompt/parameters unchanged; do not invent IDs. "
         "When the selected action schema requires a parameter change, follow __builder_resource_parameter_contracts "
