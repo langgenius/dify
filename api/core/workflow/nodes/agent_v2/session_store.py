@@ -307,6 +307,10 @@ class WorkflowAgentWorkspaceStore:
             if execution is not None:
                 return execution
             if attempt < _CALLER_VISIBILITY_ATTEMPTS - 1:
+                # MySQL's default REPEATABLE READ keeps the first SELECT's snapshot
+                # for the whole transaction. End this read-only lookup transaction so
+                # the next retry can see a caller row committed in the meantime.
+                session.rollback()
                 time.sleep(_CALLER_VISIBILITY_INTERVAL_SECONDS)
 
         raise AgentWorkspaceNotFoundError("Workflow node execution caller is unavailable")
