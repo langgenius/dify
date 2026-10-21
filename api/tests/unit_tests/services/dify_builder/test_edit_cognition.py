@@ -88,15 +88,23 @@ def test_analyze_impact_returns_fields_values_targets() -> None:
         [
             json.dumps(
                 {
-                    "fields": [{"key": "tone", "label": "Tone", "type": "text"}],
-                    "values": {"tone": "formal"},
+                    "fields": [
+                        {"key": "tone", "label": "Tone", "type": "text"},
+                        {"key": "change", "type": "select", "options": ["model summary"]},
+                        {"key": "change", "type": "text"},
+                    ],
+                    "values": {"tone": "formal", "change": "model summary"},
                     "target_node_ids": ["llm", "ghost"],
                 }
             )
         ]
     )
     out = edit.analyze_impact(m, "make formal", _GRAPH)
-    assert out["values"] == {"tone": "formal"}
+    assert out["values"] == {"change": "make formal", "tone": "formal"}
+    assert out["fields"][0]["key"] == "change"
+    assert out["fields"][0]["required"] is True
+    assert out["fields"][0]["type"] == "textarea"
+    assert sum(field["key"] == "change" for field in out["fields"]) == 1
     assert out["target_node_ids"] == ["llm"]  # unknown id dropped
 
 
@@ -115,7 +123,7 @@ def test_analyze_impact_reconciles_boolean_value_with_field_type() -> None:
 
     out = edit.analyze_impact(m, "clear the canvas", _GRAPH)
 
-    assert out["fields"][0]["type"] == "bool"
+    assert next(field for field in out["fields"] if field["key"] == "confirm_clear")["type"] == "bool"
     assert out["values"]["confirm_clear"] is True
 
 

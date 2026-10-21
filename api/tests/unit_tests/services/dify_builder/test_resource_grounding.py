@@ -321,7 +321,8 @@ def test_real_edit_agent_discovers_actor_scoped_resource_choices(monkeypatch: py
     agent = LlmBuilderAgent("tenant", account_id="actor")
     monkeypatch.setattr(agent, "model_or_none", lambda: object())
     impact = agent.analyze_impact("换成 fable 5.1", model_graph())
-    assert impact["fields"][0]["options"] == ["model:" + ref.id]
+    choice = next(field for field in impact["fields"] if field["key"].startswith("__builder_resource__"))
+    assert choice["options"] == ["model:" + ref.id]
     assert calls == [("tenant", "actor")]
     selected = agent.resolve_edit_bindings(impact["fields"], impact["values"], model_graph())
     assert selected["resource_ids"] == ["model:" + ref.id]
@@ -755,3 +756,140 @@ def test_selected_tool_binding_contains_native_required_public_fields() -> None:
     assert node.provider_name == "langgenius/json_process/json_process"
     assert node.tool_label == "JSON Parse"
     assert node.tool_name == "parse"
+
+
+def test_explicit_unbound_tool_draft_does_not_offer_a_concrete_resource() -> None:
+    from services.dify_builder.resource_grounding import ground_edit_impact, resolve_edit_choices
+
+    directory = resources.TenantResources(models=[], tools=[], datasets=[])
+    impact = ground_edit_impact(
+        {
+            "fields": [],
+            "values": {"node_title": "Configure later"},
+            "resource_requests": [{"kind": "tool", "node_id": "draft", "query": "", "binding_required": False}],
+        },
+        directory,
+    )
+    assert impact["fields"] == []
+    selected = resolve_edit_choices(impact["fields"], impact["values"], directory)
+    assert selected["resource_ids"] == []
+    assert selected["bindings"] == {}
+
+
+@pytest.mark.parametrize(("kind", "query"), [("model", ""), ("tool", "JSON Process")])
+def test_unbound_draft_flag_cannot_skip_a_requested_concrete_resource(kind: str, query: str) -> None:
+    from services.dify_builder.resource_grounding import ResourceBindingError, ground_edit_impact, resolve_edit_choices
+
+    directory = resources.TenantResources(models=[], tools=[], datasets=[])
+    impact = ground_edit_impact(
+        {
+            "fields": [],
+            "values": {},
+            "resource_requests": [{"kind": kind, "node_id": "draft", "query": query, "binding_required": False}],
+        },
+        directory,
+    )
+    assert impact["fields"]
+    with pytest.raises(ResourceBindingError, match="resource_selection_required"):
+        resolve_edit_choices(impact["fields"], impact["values"], directory)
+
+
+def test_unbound_tool_draft_cannot_be_newly_connected_without_configuration() -> None:
+    from services.dify_builder.resource_grounding import ResourceBindingError, validate_changed_resources
+
+    before = {"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}
+    after = {
+        "nodes": [*before["nodes"], {"id": "draft", "data": {"type": "tool", "provider_id": "", "tool_name": ""}}],
+        "edges": [],
+    }
+    directory = resources.TenantResources(models=[], tools=[], datasets=[])
+    validate_changed_resources(before, after, directory, confirmed_ids=[])
+    after["edges"].append({"source": "start", "target": "draft"})
+    with pytest.raises(ResourceBindingError, match="resource_selection_required"):
+        validate_changed_resources(before, after, directory, confirmed_ids=[])
+
+
+@pytest.mark.parametrize("change", ["change_type", "connect_upstream", "clear_identity", "add_edge"])
+def test_unbound_tool_draft_preserves_only_unchanged_historical_nodes(change: str) -> None:
+    from copy import deepcopy
+
+    from services.dify_builder.resource_grounding import ResourceBindingError, validate_changed_resources
+
+    before = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start"}},
+            {"id": "upstream", "data": {"type": "code"}},
+            {"id": "draft", "data": {"type": "tool"}},
+        ],
+        "edges": [{"source": "upstream", "target": "draft"}],
+    }
+    directory = resources.TenantResources(models=[], tools=[], datasets=[])
+    validate_changed_resources(before, deepcopy(before), directory, confirmed_ids=[])
+    after = deepcopy(before)
+    if change == "change_type":
+        before["nodes"][2]["data"]["type"] = "code"
+    elif change == "connect_upstream":
+        after["edges"].append({"source": "start", "target": "upstream"})
+    elif change == "clear_identity":
+        before["nodes"][2]["data"].update(provider_id="real/provider", tool_name="parse")
+    else:
+        after["edges"].append({"source": "start", "target": "draft"})
+    with pytest.raises(ResourceBindingError, match="resource_selection_required"):
+        validate_changed_resources(before, after, directory, confirmed_ids=[])
+
+
+def test_configuration_failure_keeps_selected_resource_and_requests_a_plan_change(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, Session
+    from core.dify_builder.progress import ProgressReporter
+    from core.dify_builder.state import PcState
+    from services.dify_builder.resource_grounding import ResourceBindingError, selection_failure_step
+    from tests.unit_tests.core.dify_builder.test_runner import _new_env
+    from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
+
+    env, _ = _new_env()
+    monkeypatch.setattr(
+        env.agent,
+        "refresh_edit_bindings",
+        lambda *_a, **_k: pytest.fail("configuration is not a catalogue refresh"),
+        raising=False,
+    )
+    session = Session(
+        id="s",
+        app_id="app",
+        tenant_id="t",
+        owner_account_id="u",
+        entry_mode=EntryMode.EDIT,
+        current_state=PcState.EDIT_PLAN_APPROVAL,
+    )
+    context = DifyBuilderContext(
+        reply_language="zh-Hans",
+        form_fields=[{"key": "choice", "type": "select"}],
+        edit_rules={"choice": "tool:real/parse"},
+    )
+    progress = ProgressReporter.for_session(
+        emit=None,
+        operation_id="operation",
+        session=session,
+        reply_language="zh-Hans",
+        stage_id=str(session.current_state),
+        steps=[("apply", "Apply")],
+    )
+    progress.activate("apply")
+    result = selection_failure_step(
+        env,
+        session,
+        context,
+        Actor(account_id="u", tenant_id="t"),
+        {},
+        progress,
+        ResourceBindingError("resource_configuration_incompatible", "draft", "tool"),
+        failed_step="apply",
+    )
+    assert result.next == PcState.EDIT_IMPACT_ANALYSIS
+    assert context.edit_rules["choice"] == "tool:real/parse"
+    form = next(item for item in result.items if item.kind == "form")
+    assert "配置" in english_text(form.payload["description"])
+    assert "计划" in english_text(form.payload["description"])
+    assert not env.fake_dify.applied

@@ -360,16 +360,7 @@ def test_continue_adjusting_still_reaches_resource_discovery() -> None:
 
 
 def test_continue_adjusting_reaches_resources_without_find_resources_action() -> None:
-    """End-to-end regression for the fix that made build.initial_plan a
-    working/pass-through state (state.py) instead of a waiting one: before
-    that fix, continue_adjusting landed a session on build.initial_plan with
-    NO projected UI action (task 2) AND a handler that still gated on
-    find_resources (task 2's original state) -- a dead end the loop-back
-    could never escape. Drive the Runner from build.review with ONLY
-    continue_adjusting (resolved to re_fix); it must fall straight through
-    build.initial_plan's unconditional discovery, in the SAME advance() call,
-    and settle at build.resource_recommendation with a resource_select card
-    -- no find_resources action is ever sent."""
+    """Collect a fresh request, then discover resources without a separate find action."""
     from services.dify_builder.application.handlers_build import build_registry
 
     env, repo = _new_env()
@@ -384,9 +375,21 @@ def test_continue_adjusting_reaches_resources_without_find_resources_action() ->
     re_fix_turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
     out = runner.advance(s.id, re_fix_turn)
 
-    # Settled straight at the resource gate -- never stopped at (or needed an
-    # action to leave) build.initial_plan.
+    assert out.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert "resource_select" not in [i.kind for i in repo.list_conversation(s.id)]
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(
+                kind="submit_requirements",
+                payload={"__builder_adjustment_request": "Use EUR instead"},
+                base_version=out.version,
+            ),
+            actor=_actor(),
+        ),
+    )
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert repo.get_session(s.id)[1].requirements["__builder_adjustment_request"] == "Use EUR instead"
     kinds = [i.kind for i in repo.list_conversation(s.id)]
     assert "resource_select" in kinds
 
@@ -1154,23 +1157,55 @@ def test_review_keep_draft_completes_without_publish() -> None:
     assert "Kept as a draft" in english_text(assistant.payload["reply_text"])
 
 
-def test_review_continue_adjusting_returns_to_initial_plan_with_fresh_plan() -> None:
-    """The plan is drafted internally but NOT shown as
-    a card here: build.initial_plan (next) falls straight through to
-    build.resource_recommendation, which shows the ONE plan card for this
-    pass (v1, resources bound). Showing it here too would be the same
-    duplicate-card task 2 already removed from the straight-through path."""
+def test_review_continue_adjusting_collects_a_fresh_request_before_planning(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application.handlers_build import handle_review
 
     env, repo = _new_env()
-    s = _seed_build_session(repo, PcState.BUILD_REVIEW, requirements={"currency": "USD"}, built_node_ids=["start"])
-    re_fix_turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
-    res = handle_review(env, re_fix_turn, *repo.get_session(s.id))
-    assert res.next == PcState.BUILD_INITIAL_PLAN
+    monkeypatch.setattr(env.agent, "propose_plan_v1", lambda *_a, **_k: pytest.fail("must collect changes first"))
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_REVIEW,
+        requirements={"currency": "USD", "__builder_adjustment_request": "old"},
+        built_node_ids=["start"],
+        plan_items=["Prior approved plan"],
+    )
+    res = handle_review(
+        env, Turn(action=Action(kind="re_fix", base_version=1), actor=_actor()), *repo.get_session(s.id)
+    )
+    assert res.next == PcState.BUILD_GOAL_ANALYSIS
     assert res.context is not None
-    assert res.context.plan_items  # drafted internally
-    assert not any(i.kind == "plan" for i in res.items)  # not shown yet
-    assert any(i.kind == "decision" for i in res.items)
+    assert res.context.plan_items == ["Prior approved plan"]
+    assert res.context.requirements["currency"] == "USD"
+    assert res.context.requirements["__builder_adjustment_request"] == ""
+    form = next(i for i in res.items if i.kind == "form")
+    field = next(f for f in form.payload["fields"] if f["key"] == "__builder_adjustment_request")
+    assert field["required"] is True
+    assert not form.payload["frozen"]
+    assert not any(i.kind in {"plan", "resource_select"} for i in res.items)
+
+
+@pytest.mark.parametrize("payload", [{}, {"__builder_adjustment_request": "  "}, {"__builder_adjustment_request": 42}])
+def test_adjustment_submission_requires_new_text(payload: dict, monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.dify_builder.application.handlers_build import handle_goal_analysis
+
+    env, repo = _new_env()
+    monkeypatch.setattr(env.agent, "propose_plan_v1", lambda *_a, **_k: pytest.fail("blank request must not plan"))
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_GOAL_ANALYSIS,
+        form_fields=[{"key": "__builder_adjustment_request", "type": "text", "required": True}],
+        requirements={"currency": "USD", "__builder_adjustment_request": ""},
+        plan_items=["Prior approved plan"],
+    )
+    res = handle_goal_analysis(
+        env,
+        Turn(action=Action(kind="submit_requirements", payload=payload, base_version=1), actor=_actor()),
+        *repo.get_session(s.id),
+    )
+    assert res.next == PcState.BUILD_GOAL_ANALYSIS
+    assert res.context is not None
+    assert res.context.plan_items == ["Prior approved plan"]
+    assert res.context.requirements == {"currency": "USD", "__builder_adjustment_request": ""}
 
 
 def test_review_revert_records_intent_only() -> None:
@@ -1458,17 +1493,7 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish() -> None:
 
 
 def test_review_continue_adjusting_then_reapprove_is_idempotent() -> None:
-    """Final-review fix (Important #1): looping back from build.review via
-    continue_adjusting (resolved re_fix) — which now falls straight through
-    build.initial_plan's unconditional resource discovery to
-    build.resource_recommendation in the SAME advance() call, since
-    build.initial_plan is a working/pass-through state (state.py) — and
-    re-walking confirm_resources -> approve_plan must NOT crash on the second
-    build. build_nodes() always emits create_node with the SAME fixed node
-    ids (start/knowledge_retrieval/llm/end); without idempotency the second
-    apply_repair raises ValueError on the colliding node id and the session
-    dead-ends at build.plan_approval. handle_plan_approval must filter out
-    intents that already exist in the current draft graph before applying."""
+    """A fresh adjustment request and re-approval must preserve graph idempotence."""
     from services.dify_builder.application.handlers_build import build_registry
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -1505,22 +1530,33 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent() -> None:
     )
     assert out.current_state == PcState.BUILD_REVIEW
 
-    # loop back: continue_adjusting (-> re_fix) -> build.initial_plan (re-plan)
-    # -> falls straight through (working/pass-through, no action needed) to
-    # build.resource_recommendation, all within this one advance() call.
+    # Continue adjusting collects new requirements before resource discovery.
     plan_cards_before_loop_back = sum(1 for i in repo.list_conversation(s.id) if i.kind == "plan")
     out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert len(dify.graph["nodes"]) == 4
+    assert len(dify.graph["edges"]) == 3
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(
+                kind="submit_requirements",
+                payload={"__builder_adjustment_request": "Keep topology; improve the summary"},
+                base_version=out.version,
+            ),
+            actor=_actor(),
+        ),
+    )
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
-    # re_fix must NOT show the plan card a second time -- it drafts fc.plan_items
-    # but defers display to confirm_resources below, exactly like the
-    # straight-through path (task 2's duplicate-card removal).
+    # The adjustment form and its submitted requirements must not duplicate
+    # the plan card; resource confirmation below displays it once.
     assert sum(1 for i in repo.list_conversation(s.id) if i.kind == "plan") == plan_cards_before_loop_back
 
     # confirm_resources -> approve_plan
     confirm_action_2 = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action_2, actor=_actor()))
     assert out.current_state == PcState.BUILD_PLAN_APPROVAL
-    # exactly ONE plan card for this whole loop-back pass (re_fix + discovery
+    # exactly ONE plan card for this whole loop-back pass (new input + discovery
     # + confirm_resources): the same "v1, resources bound" card the
     # straight-through path shows, not two under different version tags.
     plan_cards_after_confirm = [i for i in repo.list_conversation(s.id) if i.kind == "plan"]
