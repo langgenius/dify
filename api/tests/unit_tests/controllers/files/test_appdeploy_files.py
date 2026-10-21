@@ -553,16 +553,21 @@ def one_megabyte_image_limit(config_overrides: Callable[..., None]) -> int:
 def test_produced_accepts_a_file_of_exactly_the_per_extension_limit(
     app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway, one_megabyte_image_limit: int
 ) -> None:
+    produced_file = ToolFile(
+        user_id=end_user.id,
+        tenant_id=TENANT_ID,
+        conversation_id=None,
+        file_key="tools/chart.png",
+        name="chart.png",
+        size=one_megabyte_image_limit,
+        mimetype="image/png",
+    )
+    produced_file.id = "88888888-8888-4888-8888-888888888888"
     with (
         patch.object(
             file_gateway._tool_files,
             "create_file_by_raw",
-            return_value=SimpleNamespace(
-                id="88888888-8888-4888-8888-888888888888",
-                name="chart.png",
-                size=one_megabyte_image_limit,
-                mimetype="image/png",
-            ),
+            return_value=produced_file,
         ) as create_file,
         app.test_request_context(
             "/files/appdeploy/produced",
