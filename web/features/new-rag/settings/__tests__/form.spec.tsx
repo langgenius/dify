@@ -587,10 +587,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.clear(nameInput)
     await user.tab()
 
-    const nameError = screen.getByRole('alert')
-    expect(nameError).toHaveTextContent('knowledgeSettings.settings.nameRequired')
     expect(nameInput).toHaveAttribute('aria-invalid', 'true')
-    expect(nameInput).toHaveAttribute('aria-describedby', nameError.id)
+    expect(nameInput).toHaveAccessibleDescription('knowledgeSettings.settings.nameRequired')
     expect(
       screen.getByRole('button', {
         name: 'knowledgeSettings.settings.saveChanges',

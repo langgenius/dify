@@ -175,8 +175,12 @@ export function KnowledgeSpaceShell({
     pathname === retrievalTestPath || pathname.startsWith(`${retrievalTestPath}/`)
   const qualityActive = pathname === qualityPath || pathname.startsWith(`${qualityPath}/`)
   const settingsActive = pathname === settingsPath || pathname.startsWith(`${settingsPath}/`)
-  const navItemClassName =
-    'flex h-8 shrink-0 items-center gap-2 rounded-lg pr-1 pl-3 system-sm-medium outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+  const navItemLayoutClassName =
+    'flex h-8 shrink-0 items-center gap-2 rounded-lg pr-1 pl-3 system-sm-medium'
+  const navItemClassName = cn(
+    navItemLayoutClassName,
+    'outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+  )
   const navIcon = (className: string) => (
     <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
       <span className={cn('size-4.5', className)} />
@@ -381,7 +385,7 @@ export function KnowledgeSpaceShell({
               aria-label={t(($) => $.apiAgentAccess)}
               variant="ghost"
               className={cn(
-                navItemClassName,
+                navItemLayoutClassName,
                 'w-full border-[0.5px] border-components-panel-border text-text-secondary',
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
               )}

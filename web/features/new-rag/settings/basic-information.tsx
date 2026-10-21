@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useQuery } from '@tanstack/react-query'
@@ -22,9 +22,6 @@ import {
 } from './state/draft'
 import { knowledgeSettingsSpaceAtom } from './state/queries'
 import { knowledgeSettingsInteractionLockedAtom } from './state/workflow'
-
-const NAME_ERROR_ID = 'knowledge-name-error'
-const DESCRIPTION_ERROR_ID = 'knowledge-description-error'
 
 function BasicInformationSkeleton() {
   const { t } = useTranslation(['knowledgeSettings'])
@@ -123,32 +120,30 @@ export function BasicInformationSection() {
             <IconPickerContent enableImageUpload={false} />
           </IconPicker>
           <div className="min-w-0 flex-1">
-            <Input
-              aria-label={tSettings(($) => $['form.name'])}
-              aria-describedby={nameTouched && nameInvalid ? NAME_ERROR_ID : undefined}
-              aria-invalid={nameTouched && nameInvalid}
-              autoComplete="off"
+            <Field
               name="knowledge-name"
-              value={current.name}
-              maxLength={KNOWLEDGE_NAME_MAX_LENGTH}
+              invalid={nameTouched && nameInvalid}
               disabled={fieldsDisabled}
-              className={cn(nameTouched && nameInvalid && 'ring-1 ring-text-destructive')}
-              onBlur={() => setNameTouched(true)}
-              onChange={(event) =>
-                updateEditableDraft({
-                  name: event.target.value.slice(0, KNOWLEDGE_NAME_MAX_LENGTH),
-                })
-              }
-            />
-            {nameTouched && nameInvalid && (
-              <p
-                id={NAME_ERROR_ID}
-                className="mt-1 system-xs-regular text-text-destructive"
-                role="alert"
-              >
-                {t(($) => $['settings.nameRequired'], { ns: 'knowledgeSettings' })}
-              </p>
-            )}
+              className="gap-0"
+            >
+              <Input
+                aria-label={tSettings(($) => $['form.name'])}
+                autoComplete="off"
+                value={current.name}
+                maxLength={KNOWLEDGE_NAME_MAX_LENGTH}
+                onBlur={() => setNameTouched(true)}
+                onChange={(event) =>
+                  updateEditableDraft({
+                    name: event.target.value.slice(0, KNOWLEDGE_NAME_MAX_LENGTH),
+                  })
+                }
+              />
+              {nameTouched && nameInvalid && (
+                <FieldError match className="mt-1">
+                  {t(($) => $['settings.nameRequired'], { ns: 'knowledgeSettings' })}
+                </FieldError>
+              )}
+            </Field>
             {current.name.length >= KNOWLEDGE_NAME_MAX_LENGTH * 0.9 && (
               <p className="mt-1 text-right system-xs-medium text-text-warning-secondary">
                 {current.name.length} / {KNOWLEDGE_NAME_MAX_LENGTH}
@@ -159,36 +154,30 @@ export function BasicInformationSection() {
       </SettingsFieldRow>
 
       <SettingsFieldRow label={tSettings(($) => $['form.desc'])}>
-        <div>
+        <Field
+          name="knowledge-description"
+          invalid={descriptionInvalid}
+          disabled={fieldsDisabled}
+          className="gap-0"
+        >
           <Textarea
             aria-label={tSettings(($) => $['form.desc'])}
-            aria-describedby={descriptionInvalid ? DESCRIPTION_ERROR_ID : undefined}
-            aria-invalid={descriptionInvalid}
             autoComplete="off"
-            name="knowledge-description"
             value={current.description}
-            disabled={fieldsDisabled}
             placeholder={t(($) => $['settings.descriptionPlaceholder'], {
               ns: 'knowledgeSettings',
             })}
-            className={cn(
-              'min-h-20 resize-none',
-              descriptionInvalid && 'ring-1 ring-text-destructive',
-            )}
+            className="min-h-20 resize-none"
             onValueChange={(description) => updateEditableDraft({ description })}
           />
           {descriptionInvalid && (
-            <p
-              id={DESCRIPTION_ERROR_ID}
-              className="mt-1 system-xs-regular text-text-destructive"
-              role="alert"
-            >
+            <FieldError match className="mt-1">
               {tWorkflow(($) => $['chatVariable.modal.descriptionTooLong'], {
                 maxLength: KNOWLEDGE_DESCRIPTION_MAX_LENGTH,
               })}
-            </p>
+            </FieldError>
           )}
-        </div>
+        </Field>
       </SettingsFieldRow>
 
       <SettingsFieldRow label={tSettings(($) => $['form.permissions'])}>
