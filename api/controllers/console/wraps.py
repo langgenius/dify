@@ -159,6 +159,17 @@ def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
+def evaluation_edition_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        if not SystemFeatureService.is_evaluation_enabled():
+            abort(404)
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
 def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
     """Return whether a Cloud workspace has a paid subscription.
 

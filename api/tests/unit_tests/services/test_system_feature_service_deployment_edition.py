@@ -50,6 +50,21 @@ def test_get_system_features_uses_configured_deployment_edition(
 
 
 @pytest.mark.parametrize(
+    ("edition", "expected"),
+    [
+        (DeploymentEdition.COMMUNITY, False),
+        (DeploymentEdition.ENTERPRISE, True),
+        (DeploymentEdition.CLOUD, True),
+    ],
+)
+def test_evaluation_policy_is_limited_to_enterprise_and_cloud(
+    edition: DeploymentEdition,
+    expected: bool,
+) -> None:
+    assert SystemFeatureService.is_evaluation_enabled(deployment_edition=edition) is expected
+
+
+@pytest.mark.parametrize(
     ("edition", "feature_enabled", "expected"),
     [
         (DeploymentEdition.CLOUD, True, True),

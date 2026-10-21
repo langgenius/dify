@@ -34,6 +34,7 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { isEvaluationEdition } from '@/features/system-features/utils'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import {
@@ -69,6 +70,7 @@ const FeaturesTrigger = () => {
       select: (features) => features.billing.subscription.plan,
     }),
   )
+  const evaluationEnabled = isEvaluationEdition(deploymentEdition)
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
   const toolPublished = useStore((s) => s.toolPublished)
@@ -370,8 +372,8 @@ const FeaturesTrigger = () => {
           outputs: endVariables,
           onRefreshData: handleToolConfigureUpdate,
           onPublish,
-          onPublishEvaluation,
-          onConvertWorkflowKind,
+          onPublishEvaluation: evaluationEnabled ? onPublishEvaluation : undefined,
+          onConvertWorkflowKind: evaluationEnabled ? onConvertWorkflowKind : undefined,
           onToggle: onPublisherToggle,
           workflowKindChangePending,
           workflowToolAvailable: lastPublishedHasUserInput,

@@ -106,6 +106,7 @@ describe('SnippetSidebarContent', () => {
         snippet={snippet}
         fields={fields}
         readonly={false}
+        evaluationEnabled
         onFieldsChange={onFieldsChange}
       />,
     )
@@ -122,6 +123,7 @@ describe('SnippetSidebarContent', () => {
         snippet={snippet}
         fields={fields}
         readonly={false}
+        evaluationEnabled
         onFieldsChange={onFieldsChange}
       />,
     )
@@ -143,7 +145,13 @@ describe('SnippetSidebarContent', () => {
 
   it('should hide input field operations when readonly', () => {
     render(
-      <SnippetSidebarContent snippet={snippet} fields={fields} readonly onFieldsChange={vi.fn()} />,
+      <SnippetSidebarContent
+        snippet={snippet}
+        fields={fields}
+        readonly
+        evaluationEnabled
+        onFieldsChange={vi.fn()}
+      />,
     )
 
     expect(screen.queryByRole('link', { name: /snippet\.management/i })).not.toBeInTheDocument()
@@ -164,6 +172,7 @@ describe('SnippetSidebarContent', () => {
         snippet={snippet}
         fields={fields}
         readonly={false}
+        evaluationEnabled
         onFieldsChange={vi.fn()}
       />,
     )
@@ -180,6 +189,7 @@ describe('SnippetSidebarContent', () => {
         snippet={snippet}
         fields={fields}
         readonly={false}
+        evaluationEnabled
         onFieldsChange={vi.fn()}
       />,
     )
@@ -196,6 +206,7 @@ describe('SnippetSidebarContent', () => {
         snippet={{ ...snippet, is_published: false }}
         fields={fields}
         readonly={false}
+        evaluationEnabled
         onFieldsChange={vi.fn()}
       />,
     )
@@ -206,7 +217,13 @@ describe('SnippetSidebarContent', () => {
 
   it('should hide the input editor on the evaluation section', () => {
     render(
-      <SnippetSidebarContent snippet={snippet} section="evaluation" fields={fields} readonly />,
+      <SnippetSidebarContent
+        snippet={snippet}
+        section="evaluation"
+        fields={fields}
+        readonly
+        evaluationEnabled
+      />,
     )
 
     expect(screen.queryByTestId('var-list')).not.toBeInTheDocument()
@@ -220,6 +237,7 @@ describe('SnippetSidebarContent', () => {
         snippet={snippet}
         fields={fields}
         readonly={false}
+        evaluationEnabled
         onFieldsChange={onFieldsChange}
       />,
     )
@@ -249,6 +267,7 @@ describe('SnippetSidebarContent', () => {
         snippet={snippet}
         fields={fields}
         readonly={false}
+        evaluationEnabled
         onFieldsChange={onFieldsChange}
       />,
     )
@@ -270,5 +289,18 @@ describe('SnippetSidebarContent', () => {
     expect(onFieldsChange).not.toHaveBeenCalled()
     expect(toast.error).toHaveBeenCalledTimes(2)
     expect(screen.getByRole('dialog', { name: 'config-var-modal' })).toBeInTheDocument()
+  })
+
+  it('should hide evaluation navigation when Evaluation is unavailable', () => {
+    render(
+      <SnippetSidebarContent
+        snippet={snippet}
+        fields={fields}
+        readonly
+        evaluationEnabled={false}
+      />,
+    )
+
+    expect(screen.queryByText('evaluation.title')).not.toBeInTheDocument()
   })
 })

@@ -11,6 +11,7 @@ import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { isEvaluationEdition } from '@/features/system-features/utils'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -91,7 +92,9 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
             },
           ]
         : []),
-      ...(appDetail.mode === 'workflow' && appACLCapabilities.canViewLayout
+      ...(appDetail.mode === 'workflow' &&
+      appACLCapabilities.canViewLayout &&
+      isEvaluationEdition(systemFeatures.deployment_edition)
         ? [
             {
               name: t(($) => $.title, { ns: 'evaluation' }),

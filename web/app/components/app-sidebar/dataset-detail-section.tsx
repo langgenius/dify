@@ -11,6 +11,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { isEvaluationEdition } from '@/features/system-features/utils'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -111,13 +112,15 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
-      baseNavigation.unshift({
-        name: t(($) => $.title, { ns: 'evaluation' }),
-        href: `/datasets/${datasetId}/evaluation`,
-        icon: 'i-ri-flask-line',
-        selectedIcon: 'i-ri-flask-fill',
-        disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canPipelineTest,
-      })
+      if (isEvaluationEdition(systemFeatures.deployment_edition)) {
+        baseNavigation.unshift({
+          name: t(($) => $.title, { ns: 'evaluation' }),
+          href: `/datasets/${datasetId}/evaluation`,
+          icon: 'i-ri-flask-line',
+          selectedIcon: 'i-ri-flask-fill',
+          disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canPipelineTest,
+        })
+      }
       baseNavigation.unshift({
         name: t(($) => $['datasetMenus.pipeline'], { ns: 'common' }),
         href: `/datasets/${datasetId}/pipeline`,
@@ -135,7 +138,14 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities])
+  }, [
+    t,
+    datasetId,
+    isButtonDisabledWithPipeline,
+    datasetRes?.provider,
+    datasetACLCapabilities,
+    systemFeatures.deployment_edition,
+  ])
 
   if (!datasetRes) return null
 

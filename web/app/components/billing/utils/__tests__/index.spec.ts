@@ -44,10 +44,18 @@ describe('billing utils', () => {
   })
 
   describe('snippet and evaluation plan access', () => {
-    it('allows every self-hosted edition', () => {
+    it('blocks the community edition', () => {
       expect(
         canAccessSnippetsAndEvaluation({
           deploymentEdition: 'COMMUNITY',
+        }),
+      ).toBe(false)
+    })
+
+    it('allows the enterprise edition', () => {
+      expect(
+        canAccessSnippetsAndEvaluation({
+          deploymentEdition: 'ENTERPRISE',
         }),
       ).toBe(true)
     })

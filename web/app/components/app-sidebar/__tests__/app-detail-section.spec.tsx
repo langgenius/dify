@@ -1,4 +1,5 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -11,6 +12,7 @@ let mockPathname = '/app/app-1/logs'
 let mockAppPermissionKeys: string[] = []
 let mockIsRbacEnabled = true
 let mockHasPublishedWorkflow = true
+let mockDeploymentEdition: DeploymentEdition = 'ENTERPRISE'
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
@@ -43,6 +45,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   return renderWithConsoleQuery(ui, {
     queryClient,
     systemFeatures: {
+      deployment_edition: mockDeploymentEdition,
       rbac_enabled: mockIsRbacEnabled,
       enable_app_deploy: false,
     },
@@ -78,6 +81,7 @@ describe('AppDetailSection', () => {
     mockAppPermissionKeys = [AppACLPermission.Monitor]
     mockIsRbacEnabled = true
     mockHasPublishedWorkflow = true
+    mockDeploymentEdition = 'ENTERPRISE'
   })
 
   // Rendering behavior for app detail navigation entries.
@@ -215,6 +219,16 @@ describe('AppDetailSection', () => {
     it('should hide evaluation for non-workflow apps', () => {
       mockAppMode = 'advanced-chat'
       mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+
+      render(<AppDetailSection />)
+
+      expect(screen.queryByText('evaluation.title')).not.toBeInTheDocument()
+    })
+
+    it('should hide evaluation in the community edition', () => {
+      mockAppMode = 'workflow'
+      mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+      mockDeploymentEdition = 'COMMUNITY'
 
       render(<AppDetailSection />)
 

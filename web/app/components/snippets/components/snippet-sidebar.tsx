@@ -21,6 +21,7 @@ type SnippetSidebarProps = {
   section?: SnippetSection
   fields: PipelineInputVar[]
   readonly: boolean
+  evaluationEnabled: boolean
   onFieldsChange?: (fields: PipelineInputVar[]) => void
 }
 
@@ -44,6 +45,7 @@ export const SnippetSidebarContent = ({
   section = 'orchestrate',
   fields,
   readonly,
+  evaluationEnabled,
   onFieldsChange,
   className,
 }: SnippetSidebarContentProps) => {
@@ -142,14 +144,16 @@ export const SnippetSidebarContent = ({
           active={section === 'orchestrate'}
           iconMap={{ selected: 'i-ri-node-tree', normal: 'i-ri-node-tree' }}
         />
-        <NavLink
-          mode="expand"
-          name={t(($) => $.title, { ns: 'evaluation' })}
-          href={`/snippets/${snippet.id}/evaluation`}
-          active={section === 'evaluation'}
-          disabled={!snippet.is_published}
-          iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
-        />
+        {evaluationEnabled && (
+          <NavLink
+            mode="expand"
+            name={t(($) => $.title, { ns: 'evaluation' })}
+            href={`/snippets/${snippet.id}/evaluation`}
+            active={section === 'evaluation'}
+            disabled={!snippet.is_published}
+            iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
+          />
+        )}
       </nav>
 
       {section === 'orchestrate' && (
