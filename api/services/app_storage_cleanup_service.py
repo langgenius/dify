@@ -7,7 +7,7 @@ deliberately retained rather than deleting another resource's data.
 
 import logging
 
-from sqlalchemy import delete, exists, or_, select
+from sqlalchemy import and_, delete, exists, or_, select
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.selectable import Exists
 
@@ -20,6 +20,7 @@ from models.tools import ToolFile
 from models.workflow import (
     Workflow,
     WorkflowDraftVariableFile,
+    WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowPause,
     WorkflowPauseReason,
@@ -85,6 +86,19 @@ def _cleanup_pauses(tenant_id: str, app_id: str) -> None:
 
 
 def _cleanup_node_offloads(tenant_id: str, app_id: str) -> None:
+    nested_execution_ids = select(WorkflowNodeExecutionModel.id).where(
+        WorkflowNodeExecutionModel.workflow_tool_owned_by_app(tenant_id=tenant_id, app_id=app_id)
+    )
+    owned_offloads = and_(
+        WorkflowNodeExecutionOffload.tenant_id == tenant_id,
+        or_(
+            WorkflowNodeExecutionOffload.app_id == app_id,
+            and_(
+                WorkflowNodeExecutionOffload.node_execution_id.is_not(None),
+                WorkflowNodeExecutionOffload.node_execution_id.in_(nested_execution_ids),
+            ),
+        ),
+    )
     while True:
         with session_factory.create_session() as session:
             rows = session.execute(
@@ -93,10 +107,7 @@ def _cleanup_node_offloads(tenant_id: str, app_id: str) -> None:
                     UploadFile,
                     (UploadFile.id == WorkflowNodeExecutionOffload.file_id) & (UploadFile.tenant_id == tenant_id),
                 )
-                .where(
-                    WorkflowNodeExecutionOffload.tenant_id == tenant_id,
-                    WorkflowNodeExecutionOffload.app_id == app_id,
-                )
+                .where(owned_offloads)
                 .limit(_BATCH_SIZE)
             ).all()
             file_ids = [row.file_id for row in rows]
@@ -104,10 +115,7 @@ def _cleanup_node_offloads(tenant_id: str, app_id: str) -> None:
                 session.scalars(
                     select(WorkflowNodeExecutionOffload.file_id).where(
                         WorkflowNodeExecutionOffload.file_id.in_(file_ids),
-                        or_(
-                            WorkflowNodeExecutionOffload.tenant_id != tenant_id,
-                            WorkflowNodeExecutionOffload.app_id != app_id,
-                        ),
+                        ~owned_offloads,
                     )
                 )
             )
@@ -120,8 +128,7 @@ def _cleanup_node_offloads(tenant_id: str, app_id: str) -> None:
             session.execute(
                 delete(WorkflowNodeExecutionOffload).where(
                     WorkflowNodeExecutionOffload.id.in_([row.id for row in rows]),
-                    WorkflowNodeExecutionOffload.tenant_id == tenant_id,
-                    WorkflowNodeExecutionOffload.app_id == app_id,
+                    owned_offloads,
                 )
             )
             session.execute(

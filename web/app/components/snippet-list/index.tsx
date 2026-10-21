@@ -1,6 +1,6 @@
 'use client'
 
-import type { SnippetPublishStatus } from './components/snippet-publish-status-filter'
+import type { SnippetPublishStatus } from './query-params'
 import type { SnippetListItem } from '@/types/snippet'
 import {
   Breadcrumb,
@@ -20,9 +20,10 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { useStudioListHref } from '@/features/studio-list-navigation'
+import { StudioListLink, StudioListNavigation } from '@/features/studio-list-navigation/navigation'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
-import Link from '@/next/link'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreatorsFilter from '../apps/creators-filter'
 import Empty from '../apps/empty'
@@ -33,6 +34,7 @@ import SnippetCreateButton from './components/snippet-create-button'
 import SnippetPublishStatusFilter from './components/snippet-publish-status-filter'
 import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useSnippetsQueryState } from './hooks/use-snippets-query-state'
+import { serializeSnippetListQuery } from './query-params'
 
 const TagManagementModal = dynamic(
   () =>
@@ -73,18 +75,15 @@ const SnippetList = () => {
   const { t } = useTranslation(['common', 'workflow', 'navigation'])
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
-  const {
-    query: { tagIDs, keywords, creatorIDs },
-    setKeywords,
-    setTagIDs,
-    setCreatorIDs,
-  } = useSnippetsQueryState()
+  // oxlint-disable-next-line eslint-react/use-state -- the URL query hook returns named filter commands rather than a React state tuple
+  const { query, setKeywords, setTagIDs, setCreatorIDs, setPublishStatus, flush } =
+    useSnippetsQueryState()
+  const { tagIDs, keywords, creatorIDs, publishStatus } = query
+  const appsHref = useStudioListHref('/apps')
   const debouncedKeywords = useDebounce(keywords, { wait: SNIPPET_LIST_SEARCH_DEBOUNCE_MS })
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
-  const [publishStatus, setPublishStatus] = useState<SnippetPublishStatus>('all')
 
   useDocumentTitle(t(($) => $['tabs.snippets'], { ns: 'workflow' }))
 
@@ -182,97 +181,106 @@ const SnippetList = () => {
           : t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })
 
   return (
-    <div
-      ref={containerRef}
-      className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body"
+    <StudioListNavigation
+      path="/snippets"
+      href={serializeSnippetListQuery('/snippets', query)}
+      flush={flush}
     >
-      <StudioListHeader
-        title={
-          <Breadcrumb aria-label={t(($) => $['tabs.snippets'], { ns: 'workflow' })}>
-            <BreadcrumbList className="text-[18px]/[21.6px] font-semibold">
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link href="/apps" />} className="block truncate">
-                  {t(($) => $['menus.apps'], { ns: 'navigation' })}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="text-base/6 font-light text-divider-deep" />
-              <BreadcrumbItem>
-                <h1 className="min-w-0 truncate">
-                  <BreadcrumbPage>
-                    {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
-                  </BreadcrumbPage>
-                </h1>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        }
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <CreatorsFilter value={creatorIDs} onChange={setCreatorIDs} />
-            <SnippetPublishStatusFilter value={publishStatus} onChange={setPublishStatus} />
-            <TagFilter
-              type="snippet"
-              value={tagIDs}
-              onChange={setTagIDs}
-              onOpenTagManagement={() => setShowTagManagementModal(true)}
-            />
-            <SearchInput
-              name="snippet-query"
-              className="w-full sm:w-50"
-              value={keywords}
-              onValueChange={setKeywords}
-              placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
-              aria-label={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
-            />
-          </div>
-          <SnippetCreateButton />
-        </div>
-      </StudioListHeader>
-      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {listStatus}
-      </div>
       <div
-        aria-busy={isListBusy}
-        className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-4 pt-2 sm:grid-cols-[repeat(auto-fill,minmax(296px,1fr))] sm:px-8',
-          !hasAnySnippet && 'overflow-hidden',
-        )}
+        ref={containerRef}
+        className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body"
       >
-        {showSkeleton ? (
-          <SnippetCardSkeleton count={6} />
-        ) : hasInitialQueryError ? (
-          <div className="col-span-full flex min-h-55 flex-col items-center justify-center gap-3 text-center">
-            <p className="system-md-medium text-text-secondary">{initialQueryErrorMessage}</p>
-            <Button variant="secondary" loading={isFetching} onClick={() => refetch()}>
-              {t(($) => $['operation.retry'], { ns: 'common' })}
-            </Button>
+        <StudioListHeader
+          title={
+            <Breadcrumb aria-label={t(($) => $['tabs.snippets'], { ns: 'workflow' })}>
+              <BreadcrumbList className="text-[18px]/[21.6px] font-semibold">
+                <BreadcrumbItem>
+                  <BreadcrumbLink
+                    render={<StudioListLink href={appsHref} />}
+                    className="block truncate"
+                  >
+                    {t(($) => $['menus.apps'], { ns: 'navigation' })}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="text-base/6 font-light text-divider-deep" />
+                <BreadcrumbItem>
+                  <h1 className="min-w-0 truncate">
+                    <BreadcrumbPage>
+                      {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
+                    </BreadcrumbPage>
+                  </h1>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          }
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <CreatorsFilter value={creatorIDs} onChange={setCreatorIDs} />
+              <SnippetPublishStatusFilter value={publishStatus} onChange={setPublishStatus} />
+              <TagFilter
+                type="snippet"
+                value={tagIDs}
+                onChange={setTagIDs}
+                onOpenTagManagement={() => setShowTagManagementModal(true)}
+              />
+              <SearchInput
+                name="snippet-query"
+                className="w-full sm:w-50"
+                value={keywords}
+                onValueChange={setKeywords}
+                placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+                aria-label={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+              />
+            </div>
+            <SnippetCreateButton />
           </div>
-        ) : hasAnySnippet ? (
-          snippets.map((snippet) => (
-            <SnippetCard
-              key={snippet.id}
-              snippet={snippet}
-              onOpenTagManagement={() => setShowTagManagementModal(true)}
-              onRefresh={refetch}
-              onTagsChange={refetch}
-            />
-          ))
-        ) : (
-          <Empty message={t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })} />
-        )}
-        {isFetchingNextPage && <SnippetCardSkeleton count={3} />}
+        </StudioListHeader>
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {listStatus}
+        </div>
+        <div
+          aria-busy={isListBusy}
+          className={cn(
+            'relative grid grow grid-cols-1 content-start gap-4 px-4 pt-2 sm:grid-cols-[repeat(auto-fill,minmax(296px,1fr))] sm:px-8',
+            !hasAnySnippet && 'overflow-hidden',
+          )}
+        >
+          {showSkeleton ? (
+            <SnippetCardSkeleton count={6} />
+          ) : hasInitialQueryError ? (
+            <div className="col-span-full flex min-h-55 flex-col items-center justify-center gap-3 text-center">
+              <p className="system-md-medium text-text-secondary">{initialQueryErrorMessage}</p>
+              <Button variant="secondary" loading={isFetching} onClick={() => refetch()}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </div>
+          ) : hasAnySnippet ? (
+            snippets.map((snippet) => (
+              <SnippetCard
+                key={snippet.id}
+                snippet={snippet}
+                onOpenTagManagement={() => setShowTagManagementModal(true)}
+                onRefresh={refetch}
+                onTagsChange={refetch}
+              />
+            ))
+          ) : (
+            <Empty message={t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })} />
+          )}
+          {isFetchingNextPage && <SnippetCardSkeleton count={3} />}
+        </div>
+        <div ref={anchorRef} className="h-0">
+          {' '}
+        </div>
+        <TagManagementModal
+          type="snippet"
+          show={showTagManagementModal}
+          onClose={() => setShowTagManagementModal(false)}
+          onTagsChange={refetch}
+        />
       </div>
-      <div ref={anchorRef} className="h-0">
-        {' '}
-      </div>
-      <TagManagementModal
-        type="snippet"
-        show={showTagManagementModal}
-        onClose={() => setShowTagManagementModal(false)}
-        onTagsChange={refetch}
-      />
-    </div>
+    </StudioListNavigation>
   )
 }
 

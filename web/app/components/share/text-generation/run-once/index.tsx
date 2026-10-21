@@ -1,4 +1,4 @@
-import type { FC, FormEvent } from 'react'
+import type { FC, SubmitEvent } from 'react'
 import type { InputValueTypes } from '../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
@@ -70,7 +70,7 @@ const RunOnce: FC<IRunOnceProps> = ({
     onInputsChange(newInputs)
   }
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const onSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     onSend()
   }

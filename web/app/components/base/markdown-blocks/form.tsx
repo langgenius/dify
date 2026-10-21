@@ -238,7 +238,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
   }, [elementChildren, formValues])
 
   const onSubmit = useCallback(
-    async (e: React.FormEvent<HTMLFormElement>) => {
+    async (e: React.SubmitEvent<HTMLFormElement>) => {
       e.preventDefault()
       e.stopPropagation()
       if (isSubmitting) return

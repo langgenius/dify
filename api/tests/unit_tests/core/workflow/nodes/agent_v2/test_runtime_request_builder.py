@@ -29,7 +29,14 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
 )
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
-from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
@@ -170,7 +177,7 @@ class FakeVariablePool:
 
 
 def _context() -> WorkflowAgentRuntimeBuildContext:
-    agent = Agent(id="agent-1", tenant_id="tenant-1", name="Agent")
+    agent = Agent(scope=AgentScope.ROSTER, source=AgentSource.ROSTER, id="agent-1", tenant_id="tenant-1", name="Agent")
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
         tenant_id="tenant-1",
@@ -187,6 +194,8 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
         ),
     )
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -409,6 +418,8 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
         ),
     )
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -977,6 +988,8 @@ def test_requires_agent_soul_model_config():
 def test_missing_previous_node_output_fails_request_build():
     context = _context()
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -1001,6 +1014,8 @@ def test_missing_previous_node_output_fails_request_build():
 def test_invalid_previous_node_output_ref_fails_request_build():
     context = _context()
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -1025,6 +1040,8 @@ def test_invalid_previous_node_output_ref_fails_request_build():
 def test_empty_declared_outputs_omits_structured_output_layer():
     context = _context()
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -1044,6 +1061,8 @@ def test_empty_declared_outputs_omits_structured_output_layer():
 def test_array_output_emits_typed_items_per_array_item():
     context = _context()
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
