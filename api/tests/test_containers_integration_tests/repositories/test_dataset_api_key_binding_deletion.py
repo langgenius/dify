@@ -17,9 +17,10 @@ from repositories.knowledge import dataset_api_key_bindings
 
 def test_concurrent_space_deletions_revoke_the_last_scoped_key(db_session_with_containers: Session) -> None:
     session = db_session_with_containers
-    tenant_id, owner_id = str(uuid4()), str(uuid4())
-    session.add(Tenant(id=tenant_id, name="KnowledgeFS key deletion test"))
+    tenant = Tenant(name="KnowledgeFS key deletion test")
+    session.add(tenant)
     session.flush()
+    tenant_id, owner_id = tenant.id, str(uuid4())
     spaces = [
         KnowledgeFSControlSpace(
             tenant_id=tenant_id,
