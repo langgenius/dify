@@ -217,6 +217,92 @@ def test_reuse_of_legacy_workspace_auth_keeps_default_credential_resolution() ->
 
 
 @pytest.mark.parametrize(
+    ("legacy_id", "canonical_id"),
+    [
+        ("google", "langgenius/google/google"),
+        ("jina", "langgenius/jina_tool/jina"),
+        ("siliconflow", "langgenius/siliconflow_tool/siliconflow"),
+        ("stepfun", "langgenius/stepfun_tool/stepfun"),
+        ("gitee_ai", "langgenius/gitee_ai_tool/gitee_ai"),
+    ],
+)
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("source", ["workspace", "end_user"])
+def test_reuse_accepts_plugin_aliases_without_rewriting_stored_nodes(
+    legacy_id: str, canonical_id: str, reverse: bool, source: str
+) -> None:
+    target = tool_node("target", provider_id=canonical_id if reverse else legacy_id)
+    if source == "workspace":
+        target["data"].update(credential_source="workspace", end_user_auth=None, credential_id="shared")
+    reuse = reuse_node("reuse", "target")
+    reuse["data"]["provider_id"] = legacy_id if reverse else canonical_id
+    graph = {"nodes": [target, reuse]}
+    original = deepcopy(graph)
+
+    assert check_graph(graph, mode=AppMode.WORKFLOW) == []
+    assert graph == original
+
+
+@pytest.mark.parametrize("provider_type", ["builtin", "plugin"])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_local_provider_names_are_not_plugin_aliases_in_builtin_mode(provider_type: str, reverse: bool) -> None:
+    target = tool_node("target", provider_type=provider_type, provider_id="langgenius/time/time" if reverse else "time")
+    reuse = reuse_node("reuse", "target")
+    reuse["data"].update(provider_type=provider_type, provider_id="time" if reverse else "langgenius/time/time")
+
+    issues = check_tool_credentials({"nodes": [target, reuse]}, complete=True)
+
+    if provider_type == "plugin":
+        assert issues == []
+    else:
+        [issue] = issues
+        assert (issue.node_id, issue.path) == ("reuse", ("reuse_node_id",))
+
+
+def test_matching_local_providers_remain_compatible() -> None:
+    target = tool_node("target", provider_id="time", credential_source="workspace", end_user_auth=None)
+    reuse = reuse_node("reuse", "target")
+    reuse["data"]["provider_id"] = "time"
+
+    assert check_tool_credentials({"nodes": [target, reuse]}, complete=True) == []
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"provider_id": "other/jina_tool/jina"},
+        {"provider_id": "langgenius/jina_tool/other"},
+        {"provider_id": "invalid/provider"},
+        {"provider_id": "langgenius/jina_tool/jina", "tool_name": "other-tool"},
+        {"provider_id": "langgenius/jina_tool/jina", "provider_type": "plugin"},
+    ],
+)
+def test_alias_compatibility_preserves_provider_and_tool_boundaries(overrides: dict[str, object]) -> None:
+    target = tool_node("target", provider_id="jina")
+    reuse = reuse_node("reuse", "target")
+    reuse["data"].update(overrides)
+
+    [issue] = check_tool_credentials({"nodes": [target, reuse]}, complete=True)
+
+    assert (issue.node_id, issue.path) == ("reuse", ("reuse_node_id",))
+
+
+def test_alias_comparison_does_not_load_remote_providers(monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import Mock
+
+    from core.tools.tool_manager import ToolManager
+
+    remote_lookup = Mock(side_effect=AssertionError("Static checks must not fetch plugin metadata"))
+    monkeypatch.setattr(ToolManager, "get_plugin_provider", remote_lookup)
+    target = tool_node("target", provider_id="jina")
+    reuse = reuse_node("reuse", "target")
+    reuse["data"]["provider_id"] = "langgenius/jina_tool/jina"
+
+    assert check_tool_credentials({"nodes": [target, reuse]}, complete=True) == []
+    remote_lookup.assert_not_called()
+
+
+@pytest.mark.parametrize(
     "overrides",
     [
         {"credential_id": "own-credential"},

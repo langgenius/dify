@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
+from models.provider_ids import ToolProviderID
 
 
 class EndUserAuthConfig(BaseModel):
@@ -54,6 +55,33 @@ class ToolCredentialIssue:
     node_id: str
     path: tuple[str | int, ...]
     message: str
+
+
+def _same_tool(data: Mapping[str, Any], target_data: Mapping[str, Any]) -> bool:
+    if any(data.get(field) != target_data.get(field) for field in ("provider_type", "tool_name")):
+        return False
+    provider = data.get("provider_id")
+    target_provider = target_data.get("provider_id")
+    if not isinstance(provider, str) or not provider or not isinstance(target_provider, str) or not target_provider:
+        return False
+    if provider == target_provider:
+        return True
+
+    if data.get("provider_type") == ToolProviderType.BUILT_IN:
+        from core.tools.tool_manager import ToolManager
+
+        # Builtin lookup gives local providers precedence over plugin aliases of the same name.
+        for reference in (provider, target_provider):
+            try:
+                ToolManager.get_hardcoded_provider(reference)
+            except KeyError:
+                continue
+            return False
+
+    try:
+        return str(ToolProviderID(provider)) == str(ToolProviderID(target_provider))
+    except ValueError:
+        return False
 
 
 def _configuration_issues(
@@ -165,8 +193,7 @@ def check_tool_credentials(graph: Mapping[str, Any], *, complete: bool) -> list[
             message = f"Reuse target {target_id!r} must configure authentication directly."
         elif target_id in invalid_nodes:
             message = f"Reuse target {target_id!r} has incomplete authentication settings."
-        # The qualified provider ID identifies both the plugin and its provider.
-        elif any(data.get(field) != target_data.get(field) for field in ("provider_type", "provider_id", "tool_name")):
+        elif not _same_tool(data, target_data):
             message = f"Reuse target {target_id!r} must use the same plugin, provider, and tool."
         else:
             continue
