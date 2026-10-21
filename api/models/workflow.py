@@ -1086,8 +1086,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     triggered_from_workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     triggered_from_node_execution_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
 
-    # WorkflowNodeExecutionOffload uses TypeBase while this model uses Base, so both the target and join
-    # must resolve lazily as class objects instead of relying on string lookup across registries.
+    # Resolve the relationship lazily because the target class is declared below.
     offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
         lambda: WorkflowNodeExecutionOffload,
         primaryjoin=lambda: (

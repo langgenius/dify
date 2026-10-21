@@ -755,8 +755,8 @@ def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
         process_data=json.dumps({"action": "approve"}),
         outputs=json.dumps({"approved_text": "approved"}),
         execution_metadata=json.dumps({"total_tokens": 7}),
-        offload_data=[],
     )
+    execution.offload_data = []
     execution.created_at = snapshot.created_at
     sqlite_session.add_all([run, execution])
     sqlite_session.commit()
