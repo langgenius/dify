@@ -85,13 +85,13 @@ def _recording_service(
     return service, recorder
 
 
-def unwrap[ReturnT](func: Callable[..., ReturnT]) -> Callable[..., ReturnT]:
-    """Keep direct controller tests compatible with the session-injected methods."""
-    unwrapped = cast(Callable[..., ReturnT], inspect_unwrap(func))
+def unwrap(func: Callable[..., object]) -> Callable:
+    """Call the raw handler before session injection and response serialization."""
+    unwrapped = cast(Callable, inspect_unwrap(func))
     parameters = list(signature(unwrapped).parameters.values())
     if len(parameters) > 1 and parameters[1].name == "session":
 
-        def invoke(*args: object, **kwargs: object) -> ReturnT:
+        def invoke(*args: object, **kwargs: object) -> object:
             with Session() as session:
                 return unwrapped(args[0], session, *args[1:], **kwargs)
 

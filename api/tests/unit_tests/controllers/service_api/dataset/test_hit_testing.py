@@ -15,6 +15,8 @@ Strategy:
 """
 
 import uuid
+from collections.abc import Callable
+from typing import Protocol, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -69,6 +71,10 @@ def hit_testing_record() -> dict[str, object]:
         "files": None,
         "score": 0.9,
     }
+
+
+class _BillingWrappedPost(Protocol):
+    __wrapped__: Callable[..., dict[str, object]]
 
 
 class TestHitTestingPayload:
@@ -171,7 +177,7 @@ class TestHitTestingApiPost:
             g._login_user = account
             api = HitTestingApi()
             # Skip billing decorator via __wrapped__
-            response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
+            response = cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
 
         assert response["query"] == {"content": "test query"}
         mock_hit_svc.retrieve.assert_called_once()
@@ -217,7 +223,7 @@ class TestHitTestingApiPost:
             # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
             g._login_user = account
             api = HitTestingApi()
-            response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
+            response = cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
 
         assert response["query"] == {"content": "complex query"}
         call_kwargs = mock_hit_svc.retrieve.call_args
@@ -274,7 +280,7 @@ class TestHitTestingApiPost:
             # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
             g._login_user = account
             api = HitTestingApi()
-            HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
+            cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
 
         passed_retrieval_model = mock_hit_svc.retrieve.call_args.kwargs.get("retrieval_model")
         assert passed_retrieval_model is not None
@@ -312,7 +318,7 @@ class TestHitTestingApiPost:
             # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
             g._login_user = account
             api = HitTestingApi()
-            response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
+            response = cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
 
         assert response["query"] == {"content": "legacy query"}
         record = response["records"][0]
@@ -345,7 +351,7 @@ class TestHitTestingApiPost:
             g._login_user = account
             api = HitTestingApi()
             with pytest.raises(NotFound):
-                HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
+                cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
@@ -371,4 +377,4 @@ class TestHitTestingApiPost:
             g._login_user = account
             api = HitTestingApi()
             with pytest.raises(Forbidden):
-                HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
+                cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)

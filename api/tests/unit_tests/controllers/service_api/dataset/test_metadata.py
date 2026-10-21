@@ -224,7 +224,7 @@ class TestDatasetMetadataCreatePost(_UsesSQLiteSession):
                 api,
                 session,
                 tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
+                dataset_id=uuid.UUID(mock_dataset.id),
             )
 
         assert status == 201
@@ -254,7 +254,7 @@ class TestDatasetMetadataCreatePost(_UsesSQLiteSession):
                     api,
                     session,
                     tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
+                    dataset_id=uuid.UUID(mock_dataset.id),
                 )
 
 
@@ -286,7 +286,7 @@ class TestDatasetMetadataCreateGet(_UsesSQLiteSession):
             api = DatasetMetadataCreateServiceApi()
             response, status = api.get(
                 tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
+                dataset_id=uuid.UUID(mock_dataset.id),
             )
 
         assert status == 200
@@ -312,7 +312,7 @@ class TestDatasetMetadataCreateGet(_UsesSQLiteSession):
         ):
             api = DatasetMetadataCreateServiceApi()
             with pytest.raises(NotFound):
-                api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+                api.get(tenant_id=mock_tenant.id, dataset_id=uuid.UUID(mock_dataset.id))
 
 
 # ---------------------------------------------------------------------------
@@ -362,7 +362,7 @@ class TestDatasetMetadataServiceApiPatch(_UsesSQLiteSession):
                 api,
                 session,
                 tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
+                dataset_id=uuid.UUID(mock_dataset.id),
                 metadata_id=metadata_id,
             )
 
@@ -399,7 +399,7 @@ class TestDatasetMetadataServiceApiPatch(_UsesSQLiteSession):
                     api,
                     session,
                     tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
+                    dataset_id=uuid.UUID(mock_dataset.id),
                     metadata_id=metadata_id,
                 )
 
@@ -441,7 +441,7 @@ class TestDatasetMetadataServiceApiDelete(_UsesSQLiteSession):
                 api,
                 session,
                 tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
+                dataset_id=uuid.UUID(mock_dataset.id),
                 metadata_id=metadata_id,
             )
 
@@ -474,7 +474,7 @@ class TestDatasetMetadataServiceApiDelete(_UsesSQLiteSession):
                     api,
                     session,
                     tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
+                    dataset_id=uuid.UUID(mock_dataset.id),
                     metadata_id=metadata_id,
                 )
 
@@ -508,7 +508,7 @@ class TestDatasetMetadataBuiltInFieldGet(_UsesSQLiteSession):
             api = DatasetMetadataBuiltInFieldServiceApi()
             response, status = api.get(
                 tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
+                dataset_id=uuid.UUID(mock_dataset.id),
             )
 
         assert status == 200
@@ -557,7 +557,7 @@ class TestDatasetMetadataBuiltInFieldAction(_UsesSQLiteSession):
                 api,
                 session,
                 tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
+                dataset_id=uuid.UUID(mock_dataset.id),
                 action="enable",
             )
 
@@ -590,7 +590,7 @@ class TestDatasetMetadataBuiltInFieldAction(_UsesSQLiteSession):
                 api,
                 session,
                 tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
+                dataset_id=uuid.UUID(mock_dataset.id),
                 action="disable",
             )
 
@@ -619,7 +619,7 @@ class TestDatasetMetadataBuiltInFieldAction(_UsesSQLiteSession):
                     api,
                     session,
                     tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
+                    dataset_id=uuid.UUID(mock_dataset.id),
                     action="enable",
                 )
 
@@ -670,7 +670,7 @@ class TestDocumentMetadataEditPost(_UsesSQLiteSession):
                 api,
                 session,
                 tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
+                dataset_id=uuid.UUID(mock_dataset.id),
             )
 
         assert status == 200
@@ -704,7 +704,7 @@ class TestDocumentMetadataEditPost(_UsesSQLiteSession):
                     api,
                     session,
                     tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
+                    dataset_id=uuid.UUID(mock_dataset.id),
                 )
 
     @patch("controllers.service_api.dataset.metadata.application_services")
@@ -732,7 +732,7 @@ class TestDocumentMetadataEditPost(_UsesSQLiteSession):
                     api,
                     self.session,
                     tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
+                    dataset_id=uuid.UUID(mock_dataset.id),
                 )
 
         assert exc_info.value.description == "Document not found."

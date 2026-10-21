@@ -64,7 +64,7 @@ def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError)
     }, status.value
 
 
-@api.errorhandler(WorkflowRunArchiveInvalidMonthError)
+@api.errorhandler(WorkflowRunArchiveInvalidMonthError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
 def _handle_workflow_run_archive_invalid_month_error(
     error: WorkflowRunArchiveInvalidMonthError,
 ) -> tuple[dict[str, str | int], int]:
@@ -73,8 +73,8 @@ def _handle_workflow_run_archive_invalid_month_error(
     return {"code": "bad_request", "message": str(error), "status": status.value}, status.value
 
 
-@api.errorhandler(WorkflowRunArchiveNotFoundError)
-@api.errorhandler(WorkflowRunArchiveDownloadTaskNotFoundError)
+@api.errorhandler(WorkflowRunArchiveNotFoundError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
+@api.errorhandler(WorkflowRunArchiveDownloadTaskNotFoundError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
 def _handle_workflow_run_archive_not_found_error(
     error: WorkflowRunArchiveNotFoundError | WorkflowRunArchiveDownloadTaskNotFoundError,
 ) -> tuple[dict[str, str | int], int]:
@@ -83,7 +83,7 @@ def _handle_workflow_run_archive_not_found_error(
     return {"code": "not_found", "message": str(error), "status": status.value}, status.value
 
 
-@api.errorhandler(WorkflowRunArchiveDownloadNotReadyError)
+@api.errorhandler(WorkflowRunArchiveDownloadNotReadyError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
 def _handle_workflow_run_archive_download_not_ready_error(
     error: WorkflowRunArchiveDownloadNotReadyError,
 ) -> tuple[dict[str, str | int], int]:
