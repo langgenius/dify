@@ -5,15 +5,13 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
+from flask import Flask
 from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
-from flask import Flask
-
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity
 from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
@@ -66,14 +64,14 @@ from graphon.runtime.execution import ROOT_FRAME_ID
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecution
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
-from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from tests.workflow_test_utils import build_test_graph_init_params
-from repositories.entities.workflow_execution import WorkflowExecution
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture(autouse=True)
