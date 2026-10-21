@@ -1,6 +1,6 @@
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, skipToken } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
@@ -71,17 +71,37 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: mocks.downloadUrl,
 }))
 
-vi.mock('@/service/console', async () => {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  const { withConsoleQueryOverrides } = await import('@/test/console/service-responses')
+  const query = withConsoleQueryOverrides(actual.consoleQuery, {
+    'agent.byAgentId.config.files.byName.preview.get': { queryOptions: mocks.previewQueryOptions },
+    'agent.byAgentId.config.files.byName.download.get': {
+      queryOptions: mocks.downloadQueryOptions,
+    },
+    'apps.byAppId.agent.config.files.byName.preview.get': {
+      queryOptions: mocks.previewQueryOptions,
+    },
+    'apps.byAppId.agent.config.files.byName.download.get': {
+      queryOptions: mocks.downloadQueryOptions,
+    },
+    'trialApps.byAppId.agent.config.files.byName.preview.get': {
+      queryOptions: mocks.previewQueryOptions,
+    },
+    'trialApps.byAppId.agent.config.files.byName.download.get': {
+      queryOptions: mocks.downloadQueryOptions,
+    },
+  })
+
   return {
     consoleQuery: {
       systemFeatures: {
         get: {
-          queryKey: () => ['console', 'systemFeatures', 'get'],
+          ...consoleOperationStub('systemFeatures.get'),
           queryOptions: (options?: Record<string, unknown>) => ({
-            queryKey: ['console', 'systemFeatures', 'get'],
+            ...consoleOperationStub('systemFeatures.get').queryOptions(options),
             queryFn: () => new Promise(() => {}),
-            ...options,
           }),
         },
       },
@@ -97,14 +117,10 @@ vi.mock('@/service/console', async () => {
                   mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
                 },
                 preview: {
-                  get: {
-                    queryOptions: mocks.previewQueryOptions,
-                  },
+                  get: query.agent.byAgentId.config.files.byName.preview.get,
                 },
                 download: {
-                  get: {
-                    queryOptions: mocks.downloadQueryOptions,
-                  },
+                  get: query.agent.byAgentId.config.files.byName.download.get,
                 },
               },
             },
@@ -124,14 +140,10 @@ vi.mock('@/service/console', async () => {
                     mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
                   },
                   preview: {
-                    get: {
-                      queryOptions: mocks.previewQueryOptions,
-                    },
+                    get: query.apps.byAppId.agent.config.files.byName.preview.get,
                   },
                   download: {
-                    get: {
-                      queryOptions: mocks.downloadQueryOptions,
-                    },
+                    get: query.apps.byAppId.agent.config.files.byName.download.get,
                   },
                 },
               },
@@ -145,8 +157,12 @@ vi.mock('@/service/console', async () => {
             config: {
               files: {
                 byName: {
-                  preview: { get: { queryOptions: mocks.previewQueryOptions } },
-                  download: { get: { queryOptions: mocks.downloadQueryOptions } },
+                  preview: {
+                    get: query.trialApps.byAppId.agent.config.files.byName.preview.get,
+                  },
+                  download: {
+                    get: query.trialApps.byAppId.agent.config.files.byName.download.get,
+                  },
                 },
               },
             },
@@ -217,7 +233,7 @@ function renderAgentFiles({
     },
   })
   queryClient.setQueryData(
-    ['console', 'systemFeatures', 'get'],
+    consoleQuery.systemFeatures.get.queryKey(),
     createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
   )
 
@@ -256,7 +272,6 @@ describe('AgentFiles', () => {
       workflow_file_upload_limit: 10,
     })
     mocks.previewQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['preview-config-file', input],
       queryFn: async () => ({
         name: input.params.name,
         binary: false,
@@ -265,7 +280,6 @@ describe('AgentFiles', () => {
       }),
     }))
     mocks.downloadQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['download-config-file', input],
       queryFn: async () => ({
         url: `https://example.com/${input.params.name}`,
       }),
@@ -528,19 +542,17 @@ describe('AgentFiles', () => {
       resolveDownload = resolve
     })
     const downloadQueryFn = vi.fn(() => downloadResponse)
-    mocks.downloadQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['download-config-file', input],
+    mocks.downloadQueryOptions.mockImplementation(() => ({
       queryFn: downloadQueryFn,
     }))
     const { queryClient } = renderAgentFiles()
     queryClient.setQueryData(
-      [
-        'download-config-file',
-        {
+      consoleQuery.agent.byAgentId.config.files.byName.download.get.queryKey({
+        input: {
           params: { agent_id: 'agent-1', name: 'diagram.png' },
           query: { draft_type: 'draft', version_id: undefined },
         },
-      ],
+      }),
       { url: 'https://example.com/expired-diagram.png' },
     )
 
@@ -563,13 +575,12 @@ describe('AgentFiles', () => {
     const user = userEvent.setup()
     const { queryClient } = renderAgentFiles()
     queryClient.setQueryData(
-      [
-        'download-config-file',
-        {
+      consoleQuery.agent.byAgentId.config.files.byName.download.get.queryKey({
+        input: {
           params: { agent_id: 'agent-1', name: 'diagram.png' },
           query: { draft_type: 'draft', version_id: undefined },
         },
-      ],
+      }),
       { url: 'https://example.com/stale-diagram.png' },
     )
 
@@ -599,7 +610,7 @@ describe('AgentFiles', () => {
 
   it('should download the selected file from the preview header action', async () => {
     const user = userEvent.setup()
-    renderAgentFiles()
+    const { queryClient } = renderAgentFiles()
 
     await user.click(screen.getByRole('button', { name: 'diagram.png' }))
     const dialog = await screen.findByRole('dialog')
@@ -626,6 +637,14 @@ describe('AgentFiles', () => {
       url: 'https://example.com/diagram.png',
       fileName: 'diagram.png',
     })
+    const trialFile = consoleQuery.trialApps.byAppId.agent.config.files.byName
+    for (const operation of [trialFile.preview.get, trialFile.download.get]) {
+      expect(queryClient.getQueryState(operation.queryKey({ input: skipToken }))).toMatchObject({
+        status: 'pending',
+        fetchStatus: 'idle',
+        error: null,
+      })
+    }
   })
 
   it('should show config note as a virtual build note file and preview its content locally', async () => {
@@ -791,10 +810,12 @@ describe('AgentFiles', () => {
 
     await user.click(within(imageDialog).getByRole('button', { name: 'common.operation.close' }))
     queryClient.setQueryData(
-      [
-        'preview-config-file',
-        { params: { app_id: 'trial-1', name: 'brief.md' }, query: { version_id: undefined } },
-      ],
+      consoleQuery.trialApps.byAppId.agent.config.files.byName.preview.get.queryKey({
+        input: {
+          params: { app_id: 'trial-1', name: 'brief.md' },
+          query: { version_id: undefined },
+        },
+      }),
       { name: 'brief.md', binary: true, truncated: false, text: null },
     )
     await user.click(screen.getByRole('button', { name: 'brief.md' }))

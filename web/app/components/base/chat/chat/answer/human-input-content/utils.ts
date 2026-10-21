@@ -2,7 +2,6 @@ import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { HumanInputFieldValue } from './field-renderer'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Locale } from '@/i18n'
-import type { HumanInputResolvedValue } from '@/types/workflow'
 import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -49,7 +48,7 @@ export const getRenderedFormInputs = (formInputs: FormInputItem[], content: stri
 
 export const initializeInputs = (
   formInputs: FormInputItem[],
-  defaultValues: Record<string, HumanInputResolvedValue> = {},
+  defaultValues: Record<string, unknown> = {},
 ) => {
   const initialInputs: Record<string, HumanInputFieldValue> = {}
   formInputs.forEach((item) => {

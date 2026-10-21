@@ -53,7 +53,7 @@ const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(
       <Textarea
         ref={textareaRef}
         className={cn(
-          'min-h-0 resize-none rounded-none border-none bg-transparent p-0 hover:border-none hover:bg-transparent focus:border-none focus:bg-transparent focus:shadow-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset disabled:bg-transparent disabled:text-text-secondary disabled:hover:bg-transparent',
+          'min-h-0 resize-none rounded-none border-none bg-transparent p-0 hover:border-none hover:bg-transparent focus:border-none focus:bg-transparent focus-visible:ring-inset disabled:bg-transparent disabled:text-text-secondary disabled:hover:bg-transparent',
           className,
         )}
         style={{
@@ -170,7 +170,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
 
   return (
     <Textarea
-      className="h-full min-h-0 w-full resize-none rounded-none border-none bg-transparent p-0 pb-6 body-md-regular tracking-[-0.07px] text-text-secondary caret-[#295EFF] hover:border-none hover:bg-transparent focus:border-none focus:bg-transparent focus:shadow-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset disabled:bg-transparent disabled:text-text-secondary disabled:hover:bg-transparent"
+      className="h-full min-h-0 w-full resize-none rounded-none border-none bg-transparent p-0 pb-6 body-md-regular tracking-[-0.07px] text-text-secondary caret-[#295EFF] hover:border-none hover:bg-transparent focus:border-none focus:bg-transparent focus-visible:ring-inset disabled:bg-transparent disabled:text-text-secondary disabled:hover:bg-transparent"
       value={question}
       aria-label={t(($) => $['segment.contentPlaceholder'], { ns: 'datasetDocuments' }) || ''}
       placeholder={t(($) => $['segment.contentPlaceholder'], { ns: 'datasetDocuments' }) || ''}

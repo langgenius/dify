@@ -22,6 +22,7 @@ from dify_agent.protocol import (
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
+from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
     AgentBackendInternalEventType,
@@ -47,7 +48,6 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentSessionScope,
     WorkflowAgentWorkspaceStore,
 )
-from graphon.entities import GraphInitParams
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -57,9 +57,17 @@ from graphon.enums import (
 )
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import InitParams, RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
-from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentWorkspaceOwnerType,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
@@ -110,7 +118,9 @@ class FakeVariablePool:
 class FakeBindingResolver(WorkflowAgentBindingResolver):
     def __init__(self):
         self.calls: list[dict[str, object]] = []
-        self.agent = Agent(id="agent-1", tenant_id="tenant-1", name="Agent")
+        self.agent = Agent(
+            scope=AgentScope.ROSTER, source=AgentSource.ROSTER, id="agent-1", tenant_id="tenant-1", name="Agent"
+        )
         self.snapshot = AgentConfigSnapshot(
             id="snapshot-1",
             tenant_id="tenant-1",
@@ -127,6 +137,8 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
             ),
         )
         self.binding = WorkflowAgentNodeBinding(
+            workflow_version="draft",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
             id="binding-1",
             tenant_id="tenant-1",
             app_id="app-1",
@@ -166,17 +178,8 @@ class FakeSessionStore:
         self.backend_binding_ref = backend_binding_ref
         self.resolved_scopes: list[WorkflowAgentSessionScope] = []
         self.existing_scope_lookups: list[dict[str, object]] = []
-        # ENG-638: set to simulate resume after a submitted/timed-out form.
         self.loaded_session: StoredWorkflowAgentSession | None = None
-        self.saved: list[
-            tuple[
-                WorkflowAgentSessionScope,
-                str,
-                SessionSnapshot | None,
-                str | None,
-                str | None,
-            ]
-        ] = []
+        self.saved: list[tuple[WorkflowAgentSessionScope, str, SessionSnapshot | None]] = []
 
     def load_existing_node_execution_scope(self, **kwargs: object) -> WorkflowAgentSessionScope | None:
         self.existing_scope_lookups.append(kwargs)
@@ -416,9 +419,10 @@ def _node(
     agent_backend_client: FakeAgentBackendRunClient | None = None,
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
+    workflow_tool_invocation_id: str | None = None,
     error_strategy: ErrorStrategy | None = None,
 ) -> DifyAgentNode:
-    graph_init_params = GraphInitParams(
+    graph_init_params = InitParams(
         workflow_id="workflow-1",
         graph_config={"nodes": [], "edges": []},
         run_context={
@@ -428,6 +432,7 @@ def _node(
                 user_id="user-1",
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
+                workflow_tool_invocation_id=workflow_tool_invocation_id,
             )
         },
         call_depth=0,
@@ -464,9 +469,9 @@ def _node(
                 else [],
             }
         ),
-        graph_init_params=graph_init_params,
-        graph_runtime_state=cast(
-            GraphRuntimeState,
+        init_params=graph_init_params,
+        runtime_state=cast(
+            RuntimeState,
             SimpleNamespace(
                 variable_pool=FakeVariablePool(),
                 graph_execution=SimpleNamespace(aborted=False),
@@ -604,6 +609,42 @@ def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(
     assert binding_resolver.calls[0]["binding_id"] == "binding-1"
     assert binding_resolver.calls[0]["snapshot_id"] == "snapshot-pinned"
     assert binding_resolver.calls[0]["conversation_id"] == "conversation-1"
+
+
+def test_agent_node_workflow_tool_does_not_resolve_outer_conversation_participant(sqlite_session: Session) -> None:
+    binding_resolver = FakeBindingResolver()
+    binding_resolver.agent.scope = AgentScope.WORKFLOW_ONLY
+    binding_resolver.agent.source = AgentSource.WORKFLOW
+    binding_resolver.binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
+    binding_resolver.binding.workflow_version = "draft"
+    sqlite_session.add_all([binding_resolver.binding, binding_resolver.agent, binding_resolver.snapshot])
+    sqlite_session.commit()
+    store = FakeSessionStore()
+    node = _node(
+        binding_resolver=binding_resolver,
+        session_store=store,
+        workflow_tool_invocation_id="tool-call-1",
+    )
+    with (
+        patch.object(binding_resolver, "resolve", wraps=WorkflowAgentBindingResolver().resolve),
+        patch.object(
+            WorkflowAgentWorkspaceStore,
+            "load_active_participant",
+            side_effect=AssertionError("Workflow Tool must not select an outer Chatflow participant"),
+        ) as load_participant,
+    ):
+        events = list(node._run())
+
+    assert cast(StreamCompletedEvent, events[0]).node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    load_participant.assert_not_called()
+    assert store.existing_scope_lookups[0]["conversation_id"] == "conversation-1"
+    assert store.existing_scope_lookups[0]["workflow_tool_invocation_id"] == "tool-call-1"
+    scope = store.resolved_scopes[0]
+    assert scope.agent_config_snapshot_id == "snapshot-1"
+    assert scope.conversation_id == "conversation-1"
+    assert scope.workflow_tool_invocation_id == "tool-call-1"
+    assert scope.workspace_owner.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN
+    assert scope.workspace_owner.owner_id == "workflow-run-1"
 
 
 def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() -> None:
@@ -955,7 +996,7 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
 def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
     client = CancelFailingStreamBackendClient()
     node = _node(agent_backend_client=client)
-    node.graph_runtime_state.graph_execution = SimpleNamespace(aborted=True)
+    node.runtime_state.graph_execution = SimpleNamespace(aborted=True)
 
     terminal, failure = _drain_event_stream(node)
 
@@ -1049,7 +1090,7 @@ def test_agent_routes_initialize_through_workflow_node_factory(
 
     config_overrides(AGENT_BACKEND_USE_FAKE=True)
     template = _node()
-    factory = DifyNodeFactory(template.graph_init_params, template.graph_runtime_state)
+    factory = DifyNodeFactory(template.init_params, template.runtime_state)
     node_data = template.node_data.model_dump(mode="python", by_alias=True)
     node_data.update(
         agent_output_routes={
@@ -1058,7 +1099,7 @@ def test_agent_routes_initialize_through_workflow_node_factory(
         },
         error_strategy=error_strategy,
     )
-    # Exercise the production factory, which serializes data before construction.
+    # Exercise the production factory's concrete node-data validation.
     node_config = {"id": "agent-node", "data": node_data}
     if expected_execution_type is None:
         with pytest.raises(ValueError, match="default-value"):
@@ -1072,13 +1113,11 @@ def test_agent_routes_initialize_through_workflow_node_factory(
 
 
 def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branches():
+    from graphon.engine.scheduler import Scheduler
+    from graphon.engine_events.traversal import GraphEdgeSkippedEvent, GraphEdgeTakenEvent
     from graphon.enums import NodeState
     from graphon.graph.edge import Edge
     from graphon.graph.graph import Graph
-    from graphon.graph_engine.graph_state_manager import GraphStateManager
-    from graphon.graph_engine.graph_traversal.edge_processor import EdgeProcessor
-    from graphon.graph_engine.graph_traversal.skip_propagator import SkipPropagator
-    from graphon.graph_events.traversal import GraphEdgeSkippedEvent, GraphEdgeTakenEvent
     from graphon.nodes.end.end_node import EndNode
     from graphon.nodes.end.entities import EndNodeData
 
@@ -1118,8 +1157,8 @@ def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branche
         target: EndNode(
             node_id=target,
             data=EndNodeData(title=target, outputs=[]),
-            graph_init_params=node.graph_init_params,
-            graph_runtime_state=node.graph_runtime_state,
+            init_params=node.init_params,
+            runtime_state=node.runtime_state,
         )
         for target in edges
     }
@@ -1130,8 +1169,7 @@ def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branche
         out_edges={"agent-node": list(edges)},
         in_edges={target: [target] for target in edges},
     )
-    state = GraphStateManager(graph, node.graph_runtime_state, "root")
-    ready, traversed = EdgeProcessor(graph, state, SkipPropagator(graph, state)).process_node_success(
+    ready, traversed = Scheduler(graph, node.runtime_state, "root").process_node_success(
         "agent-node", result.edge_source_handle
     )
     assert ready == ["b-end-1", "b-end-2"]
@@ -1186,12 +1224,13 @@ def test_agent_route_conditions_load_variables_only_when_routing_is_enabled(enab
 
 
 def test_disabled_routes_continue_through_graphon_default_values():
+    from graphon.engine.event.node_failure import NodeFailureHandler
+    from graphon.engine.scheduler import Scheduler
+    from graphon.engine_events.node import NodeRunExceptionEvent, NodeRunFailedEvent
     from graphon.graph.edge import Edge
     from graphon.graph.graph import Graph
-    from graphon.graph_engine.error_handler import ErrorHandler
-    from graphon.graph_engine.graph_traversal.edge_processor import EdgeProcessor
-    from graphon.graph_events.node import NodeRunExceptionEvent, NodeRunFailedEvent
     from graphon.node_events import NodeRunResult
+    from graphon.runtime.execution import GraphExecution
 
     node = _node(error_strategy=ErrorStrategy.DEFAULT_VALUE)
     edges = {target: Edge(id=target, tail="agent-node", head=target) for target in ["next-a", "next-b"]}
@@ -1205,10 +1244,10 @@ def test_disabled_routes_continue_through_graphon_default_values():
         error="backend failed",
         node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, error="backend failed"),
     )
-    result = ErrorHandler(graph, MagicMock()).handle_node_failure(frame_id="root", event=failure)
+    result = NodeFailureHandler(graph, GraphExecution(workflow_id="workflow-1")).handle(frame_id="root", event=failure)
     assert isinstance(result, NodeRunExceptionEvent)
     assert result.node_run_result.outputs["text"] == "fallback"
-    ready, traversed = EdgeProcessor(graph, MagicMock(), MagicMock()).process_node_success(
+    ready, traversed = Scheduler(graph, node.runtime_state, "root").process_node_success(
         "agent-node", result.node_run_result.edge_source_handle
     )
     assert ready == ["next-a", "next-b"]

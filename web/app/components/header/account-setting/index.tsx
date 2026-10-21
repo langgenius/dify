@@ -11,8 +11,9 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useRef } from 'react'
+import { Suspense, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -24,11 +25,13 @@ import {
   isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
 import { env } from '@/env'
+import { canReadNetworkAccessAtom } from '@/features/network-access/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
+import IpPoliciesPage from './ip-policies-page'
 import MembersPage from './members-page'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
@@ -36,7 +39,7 @@ import ResourceAccessTokenPage from './resource-access-token-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
 
 const iconClassName = `
-  w-4 h-4 mr-2
+  size-4 shrink-0 sm:mr-2
 `
 
 type IAccountSettingProps = {
@@ -59,7 +62,14 @@ export default function AccountSetting({
   activeTab,
   onTabChangeAction,
 }: IAccountSettingProps) {
-  const { t } = useTranslation(['appLog', 'billing', 'custom', 'navigation', 'accountSettings'])
+  const { t } = useTranslation([
+    'appLog',
+    'billing',
+    'common',
+    'custom',
+    'navigation',
+    'accountSettings',
+  ])
   const { data: enableReplaceWebAppLogo } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.can_replace_logo,
@@ -78,7 +88,10 @@ export default function AccountSetting({
     systemFeatures.deployment_edition === 'CLOUD' && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
+  const canViewIpPolicies = useAtomValue(canReadNetworkAccessAtom)
   const activeMenu = (() => {
+    if (activeTab === ACCOUNT_SETTING_TAB.IP_POLICIES && !canViewIpPolicies)
+      return ACCOUNT_SETTING_TAB.MEMBERS
     if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES
     if (activeTab === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && !canViewWorkflowLogArchives)
@@ -101,6 +114,12 @@ export default function AccountSetting({
       name: t(($) => $['settings.members'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.IP_POLICIES,
+      name: t(($) => $['settings.ipPolicies'], { ns: 'common' }),
+      icon: <span className={cn('i-ri-shield-keyhole-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-shield-keyhole-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
@@ -156,6 +175,7 @@ export default function AccountSetting({
     const visibleTabs: AccountSettingTab[] = []
 
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
+    if (canViewIpPolicies) visibleTabs.push(ACCOUNT_SETTING_TAB.IP_POLICIES)
 
     if (canManageWorkspaceRoles) {
       visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
@@ -198,8 +218,8 @@ export default function AccountSetting({
       onClose={onCancelAction}
     >
       <div className="mx-auto flex h-screen w-full max-w-270 px-4">
-        <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
-          <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
+        <div className="flex w-11 shrink-0 flex-col pr-2 sm:w-56 sm:pr-6 sm:pl-4">
+          <div className="invisible mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary sm:visible">
             {t(($) => $['settings.settings'], { ns: 'navigation' })}
           </div>
           <div className="w-full">
@@ -223,12 +243,13 @@ export default function AccountSetting({
                       type="button"
                       key={item.key}
                       className={cn(
-                        'mb-0.5 flex h-8 w-full items-center rounded-lg px-3 text-left text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                        'mb-0.5 flex h-8 w-full items-center justify-center rounded-lg px-2 text-left text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:justify-start sm:px-3',
                         activeMenu === item.key
                           ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active'
                           : 'system-sm-medium text-components-menu-item-text',
                       )}
                       aria-label={item.name}
+                      aria-current={activeMenu === item.key ? 'page' : undefined}
                       title={item.name}
                       onClick={() => {
                         onTabChangeAction(item.key)
@@ -258,29 +279,37 @@ export default function AccountSetting({
                 style={{ minWidth: 0 }}
                 className="min-h-full w-full max-w-full pb-4"
               >
-                <div className="sticky top-0 z-20 mx-8 flex min-h-15 items-end bg-components-panel-bg pt-8 pb-2">
-                  <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-                    {activeItem?.title ?? activeItem?.name}
-                    {activeItem?.description && (
-                      <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
-                        {activeItem?.description}
-                      </div>
-                    )}
+                {activeMenu !== ACCOUNT_SETTING_TAB.IP_POLICIES && (
+                  <div className="sticky top-0 z-20 mx-8 flex min-h-15 items-end bg-components-panel-bg pt-8 pb-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="title-2xl-semi-bold text-text-primary">
+                        {activeItem?.title ?? activeItem?.name}
+                      </h3>
+                      {activeItem?.description && (
+                        <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
+                          {activeItem?.description}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
-                  {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
-                  {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
-                    <PermissionsPage containerRef={scrollContainerRef} />
-                  )}
-                  {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
-                  {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && <ResourceAccessTokenPage />}
-                  {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
-                  {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
-                    <WorkflowLogArchivesPage />
-                  )}
-                  {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
-                  {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
+                  {/* First-use translations and queries must not suspend the dialog shell. */}
+                  <Suspense fallback={<LoadingPlaceholder className="py-10" />}>
+                    {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.IP_POLICIES && <IpPoliciesPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
+                      <PermissionsPage containerRef={scrollContainerRef} />
+                    )}
+                    {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && <ResourceAccessTokenPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
+                      <WorkflowLogArchivesPage />
+                    )}
+                    {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
+                  </Suspense>
                 </div>
               </ScrollAreaContent>
             </ScrollAreaViewport>

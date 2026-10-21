@@ -1,7 +1,7 @@
 import type { Zoom } from 'pele'
 import DOMPurify from 'dompurify'
 import { enableZoom, forgetTextWidths, parse, render } from 'pele'
-import { useEffect, useEffectEvent, useId, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState } from 'react'
 import { serializeDiagram } from './export-diagram'
 
 type DiagramOptions = {
@@ -18,7 +18,7 @@ export function useDiagram({ source, mode, onRendered }: DiagramOptions) {
   const id = useId()
   const [result, setResult] = useState({ ready: false, error: '' })
   const reportSource = useEffectEvent((renderedSource: string) => onRendered?.(renderedSource))
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = canvasRef.current
     const stage = stageRef.current
     if (!container || !stage) return
@@ -108,7 +108,9 @@ export function useDiagram({ source, mode, onRendered }: DiagramOptions) {
         schedule()
     })
     observer.observe(stage)
-    schedule()
+    // The preview SVG must exist before Dialog chooses its initial focus target.
+    if (mode === 'preview') draw()
+    else schedule()
     const fontsLoaded = () => {
       if (disposed) return
       forgetTextWidths()

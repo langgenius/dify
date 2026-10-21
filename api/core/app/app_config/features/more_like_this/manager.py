@@ -28,7 +28,7 @@ class MoreLikeThisConfigManager:
     def validate_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         try:
             return AppConfigModel.model_validate(config).model_dump(), ["more_like_this"]
-        except ValidationError:
+        except ValidationError as caught_error:
             raise ValueError(
                 "more_like_this must be of dict type and enabled in more_like_this must be of boolean type"
-            )
+            ) from caught_error

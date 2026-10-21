@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Якщо потрібна допомога, зверніться до адміністратора застосунку.",
+  "appNotAccessible.documentTitle": "Застосунок недоступний · Dify",
+  "appNotAccessible.ipAddress": "Ваша IP-адреса — <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Цей застосунок не існує або недоступний із вашої мережі.",
   "chat.chatFormTip": "Налаштування чату не можуть бути змінені після початку чату.",
   "chat.chatSettingsTitle": "Нове налаштування чату",
   "chat.collapse": "Згорнути",

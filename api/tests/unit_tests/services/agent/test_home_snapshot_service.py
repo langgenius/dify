@@ -64,7 +64,9 @@ def test_home_snapshot_client_outlasts_the_gateway_snapshot_budget(monkeypatch: 
 def test_validate_home_snapshot_binding_accepts_default_home_without_ledger_lookup(unbound_session: Session) -> None:
     validate_home_snapshot_binding(
         session=unbound_session,
-        agent=Agent(id="agent-1"),
+        agent=Agent(
+            tenant_id="tenant-1", name="Agent", scope=AgentScope.ROSTER, source=AgentSource.ROSTER, id="agent-1"
+        ),
         home_snapshot_id=None,
     )
 

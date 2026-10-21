@@ -172,17 +172,13 @@ export type HumanInputFormPreviewPayload = {
 }
 
 export type HumanInputFormPreviewResponse = {
-  actions?: Array<{
-    [key: string]: unknown
-  }>
+  actions?: Array<UserActionConfig>
   display_in_ui?: boolean | null
   expiration_time?: number | null
   form_content: string
   form_id: string
   form_token?: string | null
-  inputs?: Array<{
-    [key: string]: unknown
-  }>
+  inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
   resolved_default_values?: {
@@ -699,6 +695,36 @@ export type AppNamePayload = {
   name: string
 }
 
+export type AppNetworkAccessGroupResponse = {
+  app_id: string
+  available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  binding: AppNetworkAccessGroupBindingResponse | null
+  effective_enabled: boolean
+  entitled: boolean
+  tenant_id: string
+}
+
+export type AppNetworkAccessGroupUpdatePayload = {
+  access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  enabled: boolean
+  expected_version: number
+  group_id: string | null
+}
+
+export type AppNetworkAccessGroupMutationResponse = {
+  available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  binding: AppNetworkAccessGroupBindingResponse
+  effective_enabled: boolean
+}
+
+export type AppNetworkAccessGroupStatusResponse = {
+  available_count: number
+  configured: boolean
+  covered_count: number
+  enabled: boolean
+  entitled: boolean
+}
+
 export type RedirectUrlResponse = {
   redirect_url: string
 }
@@ -949,6 +975,10 @@ export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
 }
 
+export type WorkflowToolNodeExecutionListResponse = {
+  data: Array<WorkflowToolNodeExecutionResponse>
+}
+
 export type SandboxListResponse = {
   entries?: Array<SandboxFileEntryResponse>
   path: string
@@ -1091,9 +1121,7 @@ export type WorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
+export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type DefaultBlockConfigResponse = {
   [key: string]: unknown
@@ -1634,6 +1662,26 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type FormInputConfig =
+  | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+  | ({
+      type: 'select'
+    } & SelectInputConfig)
+  | ({
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
+
 export type ShallowJsonValue =
   | string
   | number
@@ -2076,6 +2124,19 @@ export type AppUserInputFormPayload =
   | AppCheckboxInputPayload
   | AppExternalDataInputPayload
 
+export type AppNetworkAccessGroupBindingResponse = {
+  access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  app_id: string
+  created_at: string
+  enabled: boolean
+  group_id?: string | null
+  id: string
+  tenant_id: string
+  updated_at: string
+  updated_by_account_id?: string | null
+  version: number
+}
+
 export type AppMcpServerStatus = 'active' | 'inactive' | 'normal'
 
 export type AverageResponseTimeStatisticItem = {
@@ -2163,6 +2224,33 @@ export type SimpleEndUser = {
   type: string
 }
 
+export type WorkflowToolNodeExecutionResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  execution_metadata?: unknown
+  extras?: unknown
+  finished_at?: number | null
+  id: string
+  index?: number | null
+  inputs?: unknown
+  inputs_truncated?: boolean | null
+  node_execution_id?: string | null
+  node_id?: string | null
+  node_type?: string | null
+  outputs?: unknown
+  outputs_truncated?: boolean | null
+  predecessor_node_id?: string | null
+  process_data?: unknown
+  process_data_truncated?: boolean | null
+  retry_index?: number | null
+  status?: string | null
+  title?: string | null
+}
+
 export type SandboxFileEntryResponse = {
   mtime?: number | null
   name: string
@@ -2241,6 +2329,13 @@ export type WorkflowDailyTerminalsStatisticItem = {
 export type WorkflowDailyTokenCostStatisticItem = {
   date: string
   token_count: number
+}
+
+export type DefaultBlockConfigItemResponse = {
+  config: {
+    [key: string]: unknown
+  }
+  type: string
 }
 
 export type WorkflowConversationVariableResponse = {
@@ -2754,6 +2849,37 @@ export type WorkflowOnlineUser = {
   avatar?: string | null
   user_id: string
   username: string
+}
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
 }
 
 export type AgentToolCallResponse = {
@@ -3500,25 +3626,17 @@ export type AppUserInputFormConfigResponse = {
   [key: string]: unknown
 }
 
-export type UserActionConfig = {
-  button_style?: ButtonStyle
-  id: string
-  title: string
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
 }
 
-export type FormInputConfig =
-  | ({
-      type: 'paragraph'
-    } & ParagraphInputConfig)
-  | ({
-      type: 'select'
-    } & SelectInputConfig)
-  | ({
-      type: 'file'
-    } & FileInputConfig)
-  | ({
-      type: 'file-list'
-    } & FileListInputConfig)
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
 
 export type AppProviderAgentToolPayload = {
   credential_id?: string | null
@@ -4053,36 +4171,7 @@ export type AppVectorSettingResponse = {
   [key: string]: unknown
 }
 
-export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
-
-export type ParagraphInputConfig = {
-  default?: StringSource | null
-  output_variable_name: string
-  type?: 'paragraph'
-}
-
-export type SelectInputConfig = {
-  option_source: StringListSource
-  output_variable_name: string
-  type?: 'select'
-}
-
-export type FileInputConfig = {
-  allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<FileType>
-  allowed_file_upload_methods?: Array<FileTransferMethod>
-  output_variable_name: string
-  type?: 'file'
-}
-
-export type FileListInputConfig = {
-  allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<FileType>
-  allowed_file_upload_methods?: Array<FileTransferMethod>
-  number_limits?: number
-  output_variable_name: string
-  type?: 'file-list'
-}
+export type ValueSourceType = 'constant' | 'variable'
 
 export type AppLegacyDatasetSelectionPayload = {
   enabled?: boolean | null
@@ -4165,18 +4254,6 @@ export type AgentSoulDifyToolCredentialRef = {
   type?: 'provider' | 'tool'
 }
 
-export type StringSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: string
-}
-
-export type StringListSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: Array<string>
-}
-
 export type AgentModerationIoConfig = {
   enabled?: boolean
   preset_response?: string | null
@@ -4214,8 +4291,6 @@ export type AgentKnowledgeWeightedScoreConfig = {
   weight_type?: string | null
   [key: string]: unknown
 }
-
-export type ValueSourceType = 'constant' | 'variable'
 
 export type AgentKnowledgeMetadataCondition = {
   comparison_operator:
@@ -6334,6 +6409,78 @@ export type PostAppsByAppIdNameResponses = {
 export type PostAppsByAppIdNameResponse =
   PostAppsByAppIdNameResponses[keyof PostAppsByAppIdNameResponses]
 
+export type GetAppsByAppIdNetworkAccessGroupData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/network-access-group'
+}
+
+export type GetAppsByAppIdNetworkAccessGroupErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdNetworkAccessGroupError =
+  GetAppsByAppIdNetworkAccessGroupErrors[keyof GetAppsByAppIdNetworkAccessGroupErrors]
+
+export type GetAppsByAppIdNetworkAccessGroupResponses = {
+  200: AppNetworkAccessGroupResponse
+}
+
+export type GetAppsByAppIdNetworkAccessGroupResponse =
+  GetAppsByAppIdNetworkAccessGroupResponses[keyof GetAppsByAppIdNetworkAccessGroupResponses]
+
+export type PutAppsByAppIdNetworkAccessGroupData = {
+  body: AppNetworkAccessGroupUpdatePayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/network-access-group'
+}
+
+export type PutAppsByAppIdNetworkAccessGroupErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdNetworkAccessGroupError =
+  PutAppsByAppIdNetworkAccessGroupErrors[keyof PutAppsByAppIdNetworkAccessGroupErrors]
+
+export type PutAppsByAppIdNetworkAccessGroupResponses = {
+  200: AppNetworkAccessGroupMutationResponse
+}
+
+export type PutAppsByAppIdNetworkAccessGroupResponse =
+  PutAppsByAppIdNetworkAccessGroupResponses[keyof PutAppsByAppIdNetworkAccessGroupResponses]
+
+export type GetAppsByAppIdNetworkAccessGroupStatusData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/network-access-group/status'
+}
+
+export type GetAppsByAppIdNetworkAccessGroupStatusErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdNetworkAccessGroupStatusError =
+  GetAppsByAppIdNetworkAccessGroupStatusErrors[keyof GetAppsByAppIdNetworkAccessGroupStatusErrors]
+
+export type GetAppsByAppIdNetworkAccessGroupStatusResponses = {
+  200: AppNetworkAccessGroupStatusResponse
+}
+
+export type GetAppsByAppIdNetworkAccessGroupStatusResponse =
+  GetAppsByAppIdNetworkAccessGroupStatusResponses[keyof GetAppsByAppIdNetworkAccessGroupStatusResponses]
+
 export type PostAppsByAppIdPublishToCreatorsPlatformData = {
   body?: never
   path: {
@@ -7246,6 +7393,32 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse =
   GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses]
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenData = {
+  body?: never
+  path: {
+    app_id: string
+    node_execution_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-runs/{run_id}/node-executions/{node_execution_id}/children'
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenError =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors]
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses = {
+  200: WorkflowToolNodeExecutionListResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponse =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses]
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesData = {
   body?: never

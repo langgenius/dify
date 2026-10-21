@@ -1,0 +1,2 @@
+export const diagramTheme =
+  '[--pele-bg:var(--color-components-panel-bg)] [--pele-fg:var(--color-text-primary)] [--pele-muted:var(--color-text-tertiary)] [--pele-line:var(--color-text-secondary)] [--pele-surface:var(--color-background-section)] [--pele-surface-alt:var(--color-background-section-burn)] [--pele-border:var(--color-text-tertiary)] [--pele-accent:var(--color-text-accent)] [--pele-critical:var(--color-text-destructive)] [--pele-error:var(--color-text-destructive)]'

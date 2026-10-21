@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -18,6 +19,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_manager import ToolManager
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolsBuilder,
@@ -69,18 +71,26 @@ class FakeRuntimeProvider:
         return self.tool
 
 
-class FakeTool(Tool):
-    def tool_provider_type(self):
+class FakeTool(PluginTool):
+    plugin_unique_identifier = "langgenius/search:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+    def __init__(self, entity: ToolEntity, runtime: ToolRuntime) -> None:
+        super().__init__(entity, runtime, runtime.tenant_id, "icon.svg", self.plugin_unique_identifier)
+
+    @override
+    def tool_provider_type(self) -> ToolProviderType:
         raise NotImplementedError
 
+    @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage]:
+    ) -> Generator[ToolInvokeMessage]:
         raise NotImplementedError
 
 

@@ -1,11 +1,10 @@
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-from graphon.entities import GraphInitParams
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.nodes.list_operator.entities import ListOperatorNodeData
 from graphon.nodes.list_operator.node import ListOperatorNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import ArrayNumberSegment, ArrayStringSegment
 
 
@@ -13,12 +12,12 @@ class TestListOperatorNode:
     """Comprehensive tests for ListOperatorNode."""
 
     @staticmethod
-    def _build_node(*, data, graph_init_params, graph_runtime_state):
+    def _build_node(*, data, init_params, runtime_state):
         return ListOperatorNode(
             node_id="test",
             data=data if isinstance(data, ListOperatorNodeData) else ListOperatorNodeData.model_validate(data),
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
 
     @staticmethod
@@ -31,12 +30,12 @@ class TestListOperatorNode:
     @pytest.fixture
     def graph_runtime_state(self):
         """Create graph state backed by the real variable pool."""
-        return GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+        return RuntimeState(workflow_id="test", variable_pool=VariablePool(), start_at=0)
 
     @pytest.fixture
     def graph_init_params(self):
-        """Create GraphInitParams fixture."""
-        return GraphInitParams(
+        """Create InitParams fixture."""
+        return InitParams(
             workflow_id="test",
             graph_config={},
             run_context={
@@ -59,8 +58,8 @@ class TestListOperatorNode:
             graph_runtime_state.variable_pool.add(config["variable"], variable)
             return self._build_node(
                 data=config,
-                graph_init_params=graph_init_params,
-                graph_runtime_state=graph_runtime_state,
+                init_params=graph_init_params,
+                runtime_state=graph_runtime_state,
             )
 
         return _create_node
@@ -98,8 +97,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -124,8 +123,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -148,8 +147,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -172,8 +171,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -199,8 +198,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -226,8 +225,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -253,8 +252,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -283,8 +282,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -304,8 +303,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -328,8 +327,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -353,8 +352,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -377,8 +376,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -401,8 +400,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -425,8 +424,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()
@@ -452,8 +451,8 @@ class TestListOperatorNode:
 
         node = self._build_node(
             data=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
         )
 
         result = node._run()

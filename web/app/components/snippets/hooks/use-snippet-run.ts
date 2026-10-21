@@ -1,6 +1,7 @@
 import type { IOtherOptions } from '@/service/base'
 import type { SnippetDraftRunPayload } from '@/types/snippet'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
@@ -12,8 +13,8 @@ import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { ssePost } from '@/service/base'
+import { consoleQuery } from '@/service/console'
 import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
-import { stopWorkflowRun } from '@/service/workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useSnippetRun = () => {
@@ -255,11 +256,15 @@ export const useSnippetRun = () => {
     ],
   )
 
+  const { mutate: stopRun } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflowRuns.tasks.byTaskId.stop.post.mutationOptions(),
+  )
+
   const handleStopRun = useCallback(
     (taskId: string) => {
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
 
-      if (taskId) stopWorkflowRun(`/snippets/${snippetId}/workflow-runs/tasks/${taskId}/stop`)
+      if (taskId) stopRun({ params: { snippet_id: snippetId, task_id: taskId } })
 
       if (abortControllerRef.current) abortControllerRef.current.abort()
 
@@ -273,7 +278,7 @@ export const useSnippetRun = () => {
         )
       }
     },
-    [snippetId, workflowStore],
+    [snippetId, stopRun, workflowStore],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
