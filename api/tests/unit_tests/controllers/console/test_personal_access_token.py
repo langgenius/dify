@@ -947,7 +947,6 @@ def test_disabling_the_holder_rejects_bearer_requests_and_browser_secret_retriev
 @pytest.mark.parametrize(
     "scope",
     [
-        {"resource_scope": {"mode": "none"}, "workspace_scope": {"mode": "none"}},
         {"resource_scope": {"mode": "selected", "resources": []}},
         {"workspace_scope": {"mode": "selected", "workspace_ids": []}},
         {
@@ -964,6 +963,22 @@ def test_invalid_scopes_never_create_a_token(client: FlaskClient, scope: dict[st
     response = client.post(BASE, json={"name": "invalid", **scope})
     assert response.status_code == 400, response.get_json()
     assert client.get(BASE).get_json()["total"] == 0
+
+
+def test_token_can_be_created_with_no_resource_or_workspace_access(client: FlaskClient) -> None:
+    response = client.post(
+        BASE,
+        json={
+            "name": "no-access",
+            "resource_scope": {"mode": "none"},
+            "workspace_scope": {"mode": "none"},
+        },
+    )
+
+    assert response.status_code == 201, response.get_json()
+    token = response.get_json()
+    assert token["resource_scope_mode"] == "none"
+    assert token["workspace_scope_mode"] == "none"
 
 
 def test_rejected_scope_update_preserves_name_and_grants(client: FlaskClient) -> None:
