@@ -12,8 +12,8 @@ const HumanInputFilledFormList = ({
   return (
     <div className="mt-2 flex flex-col gap-y-2">
       {humanInputFilledFormDataList.map((formData) => (
-        <ContentWrapper key={formData.node_id} nodeTitle={formData.node_title} showExpandIcon>
-          <SubmittedHumanInputContent key={formData.node_id} formData={formData} />
+        <ContentWrapper key={formData.form_id} nodeTitle={formData.node_title} showExpandIcon>
+          <SubmittedHumanInputContent formData={formData} />
         </ContentWrapper>
       ))}
     </div>

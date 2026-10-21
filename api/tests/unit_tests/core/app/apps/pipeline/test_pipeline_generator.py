@@ -1,5 +1,6 @@
 import contextlib
 import json
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, create_autospec
 
@@ -13,6 +14,7 @@ import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
@@ -660,7 +662,10 @@ def test_handle_response_value_error_triggers_generate_task_stopped(generator, m
         )
 
 
-def test_build_document_sets_metadata_for_builtin_fields(generator):
+def test_build_document_sets_metadata_for_builtin_fields(generator, monkeypatch):
+    created_at = datetime(2026, 10, 16, 8, 0, 0)
+    monkeypatch.setattr(module, "naive_utc_now", lambda: created_at)
+
     document = generator._build_document(
         tenant_id="tenant",
         dataset_id="ds",
@@ -675,7 +680,13 @@ def test_build_document_sets_metadata_for_builtin_fields(generator):
     )
 
     assert document.name == "file"
-    assert document.doc_metadata
+    assert document.doc_metadata == {
+        BuiltInField.document_name: "file",
+        BuiltInField.uploader: "User",
+        BuiltInField.upload_date: 1792137600,
+        BuiltInField.last_update_date: 1792137600,
+        BuiltInField.source: "file_upload",
+    }
 
 
 def test_build_document_supports_online_drive_datasource_type(generator):
