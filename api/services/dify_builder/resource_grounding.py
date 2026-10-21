@@ -60,6 +60,56 @@ def changed_resource_nodes(before: dict, after: dict) -> list[dict]:
     return changed
 
 
+def _validate_unbound_tool_drafts(before: dict, after: dict) -> None:
+    """A blank Tool is a canvas draft, never a newly wired executable resource."""
+    old_nodes = {str(node.get("id")): node for node in before.get("nodes", [])}
+
+    def reachable_nodes(graph: dict) -> set[str]:
+        pending = [
+            str(node.get("id")) for node in graph.get("nodes", []) if (node.get("data") or {}).get("type") == "start"
+        ]
+        successors: dict[str, list[str]] = {}
+        for edge in graph.get("edges", []):
+            successors.setdefault(str(edge.get("source")), []).append(str(edge.get("target")))
+        reached: set[str] = set()
+        while pending:
+            node_id = pending.pop()
+            if node_id not in reached:
+                reached.add(node_id)
+                pending.extend(successors.get(node_id, []))
+        return reached
+
+    newly_reachable = reachable_nodes(after) - reachable_nodes(before)
+
+    def incident_edges(graph: dict, node_id: str) -> set[tuple[str, str, str, str]]:
+        return {
+            (
+                str(edge.get("source")),
+                str(edge.get("target")),
+                str(edge.get("sourceHandle", "")),
+                str(edge.get("targetHandle", "")),
+            )
+            for edge in graph.get("edges", [])
+            if node_id in {str(edge.get("source")), str(edge.get("target"))}
+        }
+
+    for node in after.get("nodes", []):
+        data = node.get("data") or {}
+        if data.get("type") != "tool" or _identity(data) is not None:
+            continue
+        node_id = str(node.get("id"))
+        connected = incident_edges(after, node_id)
+        old = old_nodes.get(node_id)
+        if connected and (
+            old is None
+            or (old.get("data") or {}).get("type") != "tool"
+            or _identity(old.get("data") or {}) is not None
+            or connected != incident_edges(before, node_id)
+            or node_id in newly_reachable
+        ):
+            raise ResourceBindingError("resource_selection_required", node_id, "tool")
+
+
 def validate_changed_resources(
     before: dict,
     after: dict,
@@ -69,6 +119,7 @@ def validate_changed_resources(
     expected_fingerprints: dict[str, str] | None = None,
     expected_node_resources: dict[str, str] | None = None,
 ) -> None:
+    _validate_unbound_tool_drafts(before, after)
     indexes = {
         "model": {_ref_identity("model", ref): ref for ref in catalogue.models if ref.binding},
         "tool": {_ref_identity("tool", ref): ref for ref in catalogue.tools if ref.binding},
@@ -206,6 +257,10 @@ def ground_edit_impact(impact: dict, catalogue: TenantResources) -> dict:
             continue
         kind = request["kind"]
         query = request.get("query") if isinstance(request.get("query"), str) else ""
+        # No identity is requested for an explicitly unbound, isolated Tool
+        # draft. A named plugin/action or any model still uses normal binding.
+        if kind == "tool" and request.get("binding_required") is False and not query and request.get("node_id"):
+            continue
         candidates = {rid: ref for rid, ref in directory.items() if rid.startswith(kind + ":")}
         matches = {rid: ref for rid, ref in candidates.items() if _matches(query, ref)}
         options = sorted(matches or candidates)
@@ -330,7 +385,7 @@ def selection_failure_step(
         refresh = env.agent.refresh_edit_bindings
     except AttributeError:
         refresh = None
-    if callable(refresh):
+    if callable(refresh) and error.reason_code != "resource_configuration_incompatible":
         impact = refresh(
             context.form_fields, context.edit_rules, graph, node_id=error.node_id, kind=error.resource_kind
         )
@@ -345,6 +400,17 @@ def selection_failure_step(
             "resource_catalogue_changed": BuilderCopyId.RESOURCES_CHANGED,
         }.get(error.reason_code, BuilderCopyId.RESOURCES_SELECTION_REQUIRED)
     )
+    if error.reason_code == "resource_configuration_incompatible":
+        message = (
+            f"节点 {error.node_id} 的工具或模型配置与已选资源不兼容。尚未应用修改。"
+            "请补齐必填配置或修改计划；若只需未配置的工具占位，请明确保持未绑定且不连接。"
+            "重复选择同一资源不会补齐配置。"
+            if context.reply_language.lower().startswith("zh")
+            else f"Node {error.node_id} has configuration incompatible with the selected resource. "
+            "Nothing was applied. "
+            "Complete the required configuration or revise the plan. An unconfigured Tool draft must remain unbound "
+            "and disconnected. Selecting the same resource again does not complete its configuration."
+        )
     progress.fail_step(failed_step)
     execution = progress.finish(status="error")
     cards = [
@@ -374,6 +440,7 @@ def validate_workspace_resources(
 ) -> None:
     """Recheck explicit targets even for an otherwise idempotent/no-op edit."""
     if not expected_node_resources and not changed_resource_nodes(before, after):
+        _validate_unbound_tool_drafts(before, after)
         return
     from services.dify_builder.agent.resources import list_tenant_resources
 

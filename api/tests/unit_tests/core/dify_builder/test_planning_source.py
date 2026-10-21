@@ -99,14 +99,24 @@ def _advance(
         unknown_outcome_count=2,
         staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "existing-node", "config": {"a": 1}})],
     )
+    # Review's button now collects input; exercise its submitted adjustment at
+    # the existing requirements gate. Button routing has dedicated handler tests.
+    if state == PcState.BUILD_REVIEW:
+        session.current_state = PcState.BUILD_GOAL_ANALYSIS
+        context.form_fields.append({"key": "__builder_adjustment_request", "type": "text", "required": True})
+        context.requirements["__builder_adjustment_request"] = ""
     before = copy.deepcopy(context)
     repo.create_session(session, context, [])
     if state == PcState.BUILD_INITIAL_PLAN:
         action = None
     else:
         action = Action(
-            kind="submit_requirements" if state == PcState.BUILD_GOAL_ANALYSIS else "re_fix",
-            payload={"currency": "EUR", "junk": "discard"},
+            kind="submit_requirements" if state in {PcState.BUILD_GOAL_ANALYSIS, PcState.BUILD_REVIEW} else "re_fix",
+            payload={
+                "currency": "USD" if state == PcState.BUILD_REVIEW else "EUR",
+                "junk": "discard",
+                **({"__builder_adjustment_request": "Improve the summary"} if state == PcState.BUILD_REVIEW else {}),
+            },
             base_version=1,
         )
     out = Runner(env, build_registry()).advance(
@@ -125,6 +135,8 @@ def test_runtime_cognition_receives_full_original_goal_and_confirmed_requirement
     # any cognitive boundary, loses an action absent from the requirements.
     out, stored, _, agent, _, _, _ = _advance(state, ["A condensed plan without source details"])
     confirmed = {**REQUIREMENTS, "currency": "EUR" if state == PcState.BUILD_GOAL_ANALYSIS else "USD"}
+    if state == PcState.BUILD_REVIEW:
+        confirmed["__builder_adjustment_request"] = "Improve the summary"
     expected_calls = [] if state == PcState.BUILD_INITIAL_PLAN else [("plan", GOAL, confirmed)]
     expected_calls += [("resources", GOAL, confirmed), ("gap", GOAL, confirmed)]
     assert agent.calls == expected_calls
@@ -140,7 +152,7 @@ def test_runtime_cognition_receives_full_original_goal_and_confirmed_requirement
     ("state", "failed_step"),
     [
         (PcState.BUILD_GOAL_ANALYSIS, "build-draft-plan"),
-        (PcState.BUILD_REVIEW, "build-revise-plan"),
+        (PcState.BUILD_REVIEW, "build-draft-plan"),
         (PcState.BUILD_REVERTED, "build-restart-plan"),
     ],
 )
@@ -148,7 +160,7 @@ def test_empty_plan_preserves_context_and_stays_at_its_waiting_gate(state: PcSta
     # Accepting [] must not replace the prior plan, invalidate evidence/repair,
     # emit success cards, or begin discovery/canvas/checkpoint work.
     out, stored, before, agent, repo, canvas, progress = _advance(state, [])
-    assert out.current_state == state
+    assert out.current_state == (PcState.BUILD_GOAL_ANALYSIS if state == PcState.BUILD_REVIEW else state)
     stored_fields, before_fields = asdict(stored), asdict(before)
     for name in (
         "plan_items",
@@ -168,6 +180,8 @@ def test_empty_plan_preserves_context_and_stays_at_its_waiting_gate(state: PcSta
     ):
         assert stored_fields[name] == before_fields[name], name
     confirmed = {**REQUIREMENTS, "currency": "EUR" if state == PcState.BUILD_GOAL_ANALYSIS else "USD"}
+    if state == PcState.BUILD_REVIEW:
+        confirmed["__builder_adjustment_request"] = "Improve the summary"
     assert stored.requirements == confirmed
     assert agent.calls == [("plan", GOAL, confirmed)]
     assert canvas == []
@@ -177,7 +191,7 @@ def test_empty_plan_preserves_context_and_stays_at_its_waiting_gate(state: PcSta
     requirements_forms = [
         item for item in items if item.kind == "form" and item.payload.get("variant") == "build_requirements"
     ]
-    if state == PcState.BUILD_GOAL_ANALYSIS:
+    if state in {PcState.BUILD_GOAL_ANALYSIS, PcState.BUILD_REVIEW}:
         assert len(requirements_forms) == 1
         assert requirements_forms[0].payload["values"] == confirmed
     else:
