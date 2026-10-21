@@ -26,7 +26,7 @@ describe('InvitedModal', () => {
     deploymentEdition = 'COMMUNITY'
   })
 
-  it('should show success and failed invitation sections', async () => {
+  it('should show invitation results and failure reasons without pointer interaction', async () => {
     render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
 
     expect(await screen.findByText(/members\.invitationSent$/i)).toBeInTheDocument()
@@ -35,6 +35,7 @@ describe('InvitedModal', () => {
     expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
     expect(screen.getByText('member@example.com')).toBeInTheDocument()
     expect(screen.getByText('failed@example.com')).toBeInTheDocument()
+    expect(screen.getByText('Error msg')).toBeVisible()
   })
 
   it('should hide invitation link section when there are no successes', () => {

@@ -14,7 +14,6 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -115,26 +114,17 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
                     <div className="py-2 text-sm font-medium text-text-primary">
                       {t(($) => $['members.failedInvitationEmails'], { ns: 'workspaceMembers' })}
                     </div>
-                    <div className="flex flex-wrap justify-between gap-y-1">
+                    <ul className="flex flex-col gap-2">
                       {failedInvitationResults.map((item) => (
-                        <div
+                        <li
                           key={item.email}
-                          className="flex justify-center rounded-md border border-red-300 bg-orange-50 px-1"
+                          className="flex min-w-0 flex-col rounded-md border border-red-300 bg-orange-50 px-2 py-1 text-sm"
                         >
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <div className="flex items-center justify-center gap-1 text-sm">
-                                  {item.email}
-                                  <div className="i-ri-question-line size-4 text-red-300" />
-                                </div>
-                              }
-                            />
-                            <TooltipContent>{item.message}</TooltipContent>
-                          </Tooltip>
-                        </div>
+                          <span className="wrap-anywhere">{item.email}</span>
+                          <span className="wrap-anywhere">{item.message}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </>
                 )}
               </div>
