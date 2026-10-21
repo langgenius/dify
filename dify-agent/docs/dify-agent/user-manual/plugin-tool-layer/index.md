@@ -128,3 +128,9 @@ dependency field named `execution_context` to the composition layer named
   or derived from workflow variables.
 - Put each tool's `plugin_id` on the tool config. The shared execution-context
   layer has no package-specific identity.
+
+Each prepared tool includes `plugin_unique_identifier` (version and checksum)
+alongside `plugin_id`. The daemon receives it as `X-Plugin-Unique-Identifier`
+and executes that exact plugin package, even if the installed version changes
+during the run. Tool clients are shared only within the same complete identifier.
+Older configurations can omit the identifier and retain plugin-ID dispatch.

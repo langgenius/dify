@@ -81,6 +81,7 @@ def main() -> None:
                         #         tools=[
                         #             DifyPluginToolConfig(
                         #                 plugin_id="langgenius/search",
+                        #                 plugin_unique_identifier="langgenius/search:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                         #                 provider="search",
                         #                 tool_name="web_search",
                         #                 credential_type="api-key",

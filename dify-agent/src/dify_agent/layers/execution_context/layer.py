@@ -54,7 +54,9 @@ class DifyExecutionContextLayer(PlainLayer[NoLayerDeps, DifyExecutionContextLaye
         """Create the layer from public config plus server-only daemon settings."""
         return cls(config=config, daemon_url=daemon_url, daemon_api_key=daemon_api_key)
 
-    def create_tool_client(self, *, plugin_id: str, http_client: httpx.AsyncClient) -> DifyPluginDaemonToolClient:
+    def create_tool_client(
+        self, *, plugin_id: str, http_client: httpx.AsyncClient, plugin_unique_identifier: str | None = None
+    ) -> DifyPluginDaemonToolClient:
         """Return a plugin-daemon tool client backed by the shared HTTP client.
 
         Raises:
@@ -65,6 +67,7 @@ class DifyExecutionContextLayer(PlainLayer[NoLayerDeps, DifyExecutionContextLaye
         return DifyPluginDaemonToolClient(
             tenant_id=self.config.tenant_id,
             plugin_id=plugin_id,
+            plugin_unique_identifier=plugin_unique_identifier,
             plugin_daemon_url=self.daemon_url,
             plugin_daemon_api_key=self.daemon_api_key,
             user_id=self.config.user_id,

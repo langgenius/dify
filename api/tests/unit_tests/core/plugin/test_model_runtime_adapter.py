@@ -93,7 +93,7 @@ def _build_plugin_model_provider(*, tenant_id: str, provider: str = "openai") ->
         updated_at=datetime.datetime.now(),
         provider=provider,
         tenant_id=tenant_id,
-        plugin_unique_identifier=f"langgenius/{provider}/{provider}",
+        plugin_unique_identifier=f"langgenius/{provider}:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         plugin_id=f"langgenius/{provider}",
         installation_source=PluginInstallationSource.Marketplace,
         declaration=ProviderEntity(
@@ -117,7 +117,7 @@ class TestPluginModelRuntime:
                 updated_at=datetime.datetime.now(),
                 provider="openai",
                 tenant_id="tenant",
-                plugin_unique_identifier="langgenius/openai/openai",
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 plugin_id="langgenius/openai",
                 installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
@@ -163,7 +163,7 @@ class TestPluginModelRuntime:
                 updated_at=datetime.datetime.now(),
                 provider="openai",
                 tenant_id="tenant",
-                plugin_unique_identifier="langgenius/openai/openai",
+                plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 plugin_id="langgenius/openai",
                 installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
@@ -212,6 +212,8 @@ class TestPluginModelRuntime:
     def test_validate_provider_credentials_resolves_plugin_fields(self) -> None:
         client = Mock(spec=PluginModelClient)
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant")]
+        runtime.fetch_model_providers()
 
         runtime.validate_provider_credentials(
             provider="langgenius/openai/openai",
@@ -222,6 +224,7 @@ class TestPluginModelRuntime:
             tenant_id="tenant",
             user_id="user",
             plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             provider="openai",
             credentials={"api_key": "secret"},
         )
@@ -254,6 +257,8 @@ class TestPluginModelRuntime:
             ]
         )
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant")]
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_llm(
             provider="langgenius/openai/openai",
@@ -275,6 +280,7 @@ class TestPluginModelRuntime:
             tenant_id="tenant",
             user_id="user",
             plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             provider="openai",
             model="gpt-4o-mini",
             credentials={"api_key": "secret"},
@@ -289,6 +295,8 @@ class TestPluginModelRuntime:
         client = Mock(spec=PluginModelClient)
         client.invoke_llm.return_value = iter([])
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant")]
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_llm(
             provider="langgenius/openai/openai",
@@ -307,6 +315,7 @@ class TestPluginModelRuntime:
             tenant_id="tenant",
             user_id="user",
             plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             provider="openai",
             model="gpt-4o-mini",
             credentials={"api_key": "secret"},
@@ -343,6 +352,8 @@ class TestPluginModelRuntime:
         stream_result = iter([])
         client.invoke_llm.return_value = stream_result
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant")]
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_llm(
             provider="langgenius/openai/openai",
@@ -360,6 +371,7 @@ class TestPluginModelRuntime:
             tenant_id="tenant",
             user_id="user",
             plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             provider="openai",
             model="gpt-4o-mini",
             credentials={"api_key": "secret"},
@@ -379,6 +391,8 @@ class TestPluginModelRuntime:
         )
         client.start_llm_polling.return_value = polling_result
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant")]
+        runtime.fetch_model_providers()
 
         result = runtime.start_llm_polling(
             provider="langgenius/openai/openai",
@@ -396,6 +410,7 @@ class TestPluginModelRuntime:
             tenant_id="tenant",
             user_id="user",
             plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             provider="openai",
             model="gpt-4o-mini",
             credentials={"api_key": "secret"},
@@ -419,6 +434,8 @@ class TestPluginModelRuntime:
         )
         client.check_llm_polling.return_value = polling_result
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+        client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant")]
+        runtime.fetch_model_providers()
 
         result = runtime.check_llm_polling(
             provider="langgenius/openai/openai",
@@ -432,6 +449,7 @@ class TestPluginModelRuntime:
             tenant_id="tenant",
             user_id="user",
             plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             provider="openai",
             model="gpt-4o-mini",
             credentials={"api_key": "secret"},
@@ -464,6 +482,8 @@ class TestPluginModelRuntime:
         client = Mock(spec=PluginModelClient)
         client.invoke_tts.return_value = iter([b"chunk"])
         runtime = PluginModelRuntime(tenant_id="tenant", user_id=None, client=client, plugin_service=PluginService)
+        client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant")]
+        runtime.fetch_model_providers()
 
         result = runtime.invoke_tts(
             provider="langgenius/openai/openai",
@@ -478,6 +498,7 @@ class TestPluginModelRuntime:
             tenant_id="tenant",
             user_id=None,
             plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             provider="openai",
             model="tts-1",
             credentials={"api_key": "secret"},
@@ -782,6 +803,8 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(
     )
     client.get_model_schema.return_value = schema
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+    client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant")]
+    runtime.fetch_model_providers()
 
     result = runtime.get_model_schema(
         provider="langgenius/openai/openai",
@@ -796,6 +819,7 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(
         tenant_id="tenant",
         user_id="user",
         plugin_id="langgenius/openai",
+        plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         provider="openai",
         model_type=ModelType.LLM.value,
         model="gpt-4o-mini",
@@ -834,7 +858,7 @@ def test_get_provider_icon_reads_requested_variant_and_detects_svg_mime(monkeypa
             updated_at=datetime.datetime.now(),
             provider="openai",
             tenant_id="tenant",
-            plugin_unique_identifier="langgenius/openai/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             plugin_id="langgenius/openai",
             installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
@@ -871,7 +895,7 @@ def test_get_provider_icon_rejects_unsupported_types_and_missing_variants() -> N
             updated_at=datetime.datetime.now(),
             provider="openai",
             tenant_id="tenant",
-            plugin_unique_identifier="langgenius/openai/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             plugin_id="langgenius/openai",
             installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
@@ -1004,7 +1028,7 @@ def test_get_provider_schema_supports_short_alias_and_rejects_invalid_provider()
             updated_at=datetime.datetime.now(),
             provider="openai",
             tenant_id="tenant",
-            plugin_unique_identifier="langgenius/openai/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             plugin_id="langgenius/openai",
             installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(

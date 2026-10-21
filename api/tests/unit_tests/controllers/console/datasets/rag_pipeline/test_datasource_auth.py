@@ -29,6 +29,7 @@ from core.plugin.impl.oauth import OAuthHandler
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models.account import Account
 from services.datasource_provider_service import DatasourceProviderService
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.plugin.oauth_service import OAuthProxyService
 
 _PROVIDER_ID = "langgenius/notion_datasource/notion"
@@ -124,7 +125,9 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value=oauth_client,
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", oauth_client
+                ),
             ) as get_oauth_client,
             patch.object(
                 OAuthProxyService,
@@ -151,7 +154,10 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             plugin_id="langgenius/notion_datasource",
             provider="notion",
             credential_id="cred-1",
-            extra_data={"visibility": "only_me"},
+            extra_data={
+                "visibility": "only_me",
+                "plugin_unique_identifier": "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            },
         )
         get_authorization_url.assert_called_once()
         assert get_authorization_url.call_args.kwargs["tenant_id"] == "tenant-1"
@@ -187,7 +193,9 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
+                ),
             ),
             patch.object(
                 OAuthProxyService,
@@ -207,6 +215,30 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
 
 
 class TestDatasourceOAuthCallback:
+    def test_callback_rejects_replaced_package_before_dispatch(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        plugin_id = "langgenius/notion_datasource"
+        context = {
+            "user_id": "user-1",
+            "tenant_id": "tenant-1",
+            "plugin_id": plugin_id,
+            "provider": "notion",
+            "plugin_unique_identifier": f"{plugin_id}:1.0.0@{'a' * 64}",
+        }
+        config = PluginOAuthClientConfig(f"{plugin_id}:2.0.0@{'b' * 64}", {"client_secret": "test-secret"})
+        monkeypatch.setattr(OAuthProxyService, "use_proxy_context", lambda _context_id: context)
+        monkeypatch.setattr(DatasourceProviderService, "get_oauth_client", lambda *_args, **_kwargs: config)
+
+        def unexpected_dispatch(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("Changed packages must not receive OAuth credentials")
+
+        monkeypatch.setattr(OAuthHandler, "get_credentials", unexpected_dispatch)
+        api = DatasourceOAuthCallback()
+        with app.test_request_context("/?context_id=ctx"):
+            with pytest.raises(Forbidden, match="Plugin changed"):
+                inspect.unwrap(api.get)(api, _PROVIDER_ID)
+
     def test_callback_success_new_credential(self, app: Flask):
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
@@ -220,6 +252,8 @@ class TestDatasourceOAuthCallback:
         context = {
             "user_id": "user-1",
             "tenant_id": "tenant-1",
+            "plugin_id": "langgenius/notion_datasource",
+            "provider": "notion",
             "credential_id": None,
         }
 
@@ -233,7 +267,10 @@ class TestDatasourceOAuthCallback:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc", "client_secret": "secret"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    {"client_id": "abc", "client_secret": "secret"},
+                ),
             ),
             patch.object(
                 OAuthHandler,
@@ -324,6 +361,8 @@ class TestDatasourceOAuthCallback:
         context = {
             "user_id": "user-1",
             "tenant_id": "tenant-1",
+            "plugin_id": "langgenius/notion_datasource",
+            "provider": "notion",
             "credential_id": "cred-1",
         }
 
@@ -337,7 +376,9 @@ class TestDatasourceOAuthCallback:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
+                ),
             ),
             patch.object(
                 OAuthHandler,
@@ -371,6 +412,8 @@ class TestDatasourceOAuthCallback:
         context = {
             "user_id": "user-1",
             "tenant_id": "tenant-1",
+            "plugin_id": "langgenius/notion_datasource",
+            "provider": "notion",
             "credential_id": None,
         }
 
@@ -384,7 +427,9 @@ class TestDatasourceOAuthCallback:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
+                ),
             ),
             patch.object(
                 OAuthHandler,
@@ -397,7 +442,7 @@ class TestDatasourceOAuthCallback:
                 return_value=None,
             ),
         ):
-            response = method(api, "notion")
+            response = method(api, _PROVIDER_ID)
 
         assert response.status_code == 302
 

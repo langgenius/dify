@@ -36,7 +36,7 @@ def _build_plugin_tool(*, has_runtime_parameters: bool) -> PluginTool:
         runtime=runtime,
         tenant_id="tenant-1",
         icon="icon.svg",
-        plugin_unique_identifier="plugin-uid",
+        plugin_unique_identifier="langgenius/provider-a:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     )
 
 
@@ -60,7 +60,7 @@ def test_plugin_tool_invoke_and_fork_runtime(sqlite_session: Session):
     forked = tool.fork_tool_runtime(ToolRuntime(tenant_id="tenant-2"))
     assert isinstance(forked, PluginTool)
     assert forked.runtime.tenant_id == "tenant-2"
-    assert forked.plugin_unique_identifier == "plugin-uid"
+    assert forked.plugin_unique_identifier == tool.plugin_unique_identifier
 
 
 def test_plugin_tool_get_runtime_parameters_branches():

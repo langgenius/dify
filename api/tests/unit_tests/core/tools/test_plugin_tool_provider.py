@@ -42,7 +42,7 @@ def _build_controller() -> PluginToolProviderController:
     return PluginToolProviderController(
         entity=entity,
         plugin_id="plugin-id",
-        plugin_unique_identifier="plugin-uid",
+        plugin_unique_identifier="langgenius/provider-a:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         tenant_id="tenant-1",
     )
 

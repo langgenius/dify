@@ -118,6 +118,11 @@ def _normalize_plugin_daemon_response_for_type(json_response: Any, type_: type[o
 
 
 class BasePluginClient:
+    def __init__(self, *, plugin_unique_identifier: str | None = None) -> None:
+        if plugin_unique_identifier == "":
+            raise ValueError("Plugin unique identifier must not be empty")
+        self._plugin_unique_identifier = plugin_unique_identifier
+
     def _request(
         self,
         method: str,
@@ -179,6 +184,10 @@ class BasePluginClient:
         prepared_headers = dict(headers or {})
         prepared_headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
         prepared_headers.setdefault("Accept-Encoding", "gzip, deflate, br")
+
+        from services.plugin.dispatch_identity import prepare_dispatch_identity
+
+        prepare_dispatch_identity(path, prepared_headers, self._plugin_unique_identifier)
 
         # Inject traceparent header for distributed tracing
         self._inject_trace_headers(prepared_headers)

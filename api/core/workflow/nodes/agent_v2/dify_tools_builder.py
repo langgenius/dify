@@ -22,6 +22,7 @@ from core.plugin.provider_identity import normalize_plugin_daemon_provider_ident
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
+from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_manager import ToolManager
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from extensions.ext_database import db
@@ -392,12 +393,18 @@ class WorkflowAgentDifyToolsBuilder:
 
         provider_id = ToolProviderID(self._provider_id(tool_config))
         plugin_id, provider = normalize_plugin_daemon_provider_identity(provider_id, tool_config.plugin_id)
+        if not isinstance(tool_runtime, PluginTool) or not tool_runtime.plugin_unique_identifier:
+            raise WorkflowAgentDifyToolsBuildError(
+                "agent_tool_config_invalid",
+                f"Dify Tool {tool_config.tool_name!r} has no plugin installation identity.",
+            )
         parameters = self._prepared_parameters(tool_runtime)
         runtime_parameters = self._runtime_parameters(tool_runtime, parameters)
         description = self._description(tool_config, tool_runtime)
 
         return DifyPluginToolConfig(
             plugin_id=plugin_id,
+            plugin_unique_identifier=tool_runtime.plugin_unique_identifier,
             provider=provider,
             tool_name=exposed_name,
             credential_type=self._credential_type(tool_config, runtime.credentials),

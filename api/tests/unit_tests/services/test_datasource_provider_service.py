@@ -16,6 +16,9 @@ from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamC
 from models.provider_ids import DatasourceProviderID
 from services import datasource_provider_service as service_module
 from services.datasource_provider_service import DatasourceProviderService, get_current_user
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
+
+_PLUGIN_IDENTIFIER = f"org/plug:1.0.0@{'a' * 32}"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -115,7 +118,7 @@ class TestDatasourceProviderService:
                 "message": "ok",
                 "data": {
                     "provider": "prov",
-                    "plugin_unique_identifier": "pui",
+                    "plugin_unique_identifier": _PLUGIN_IDENTIFIER,
                     "plugin_id": "org/plug",
                     "is_authorized": False,
                     "declaration": {
@@ -138,6 +141,7 @@ class TestDatasourceProviderService:
             # Store handles for assertions
             self._enc = mock_enc
             self._redis = mock_redis
+            self._oauth = mock_oauth
             yield
 
     @pytest.fixture
@@ -302,18 +306,36 @@ class TestDatasourceProviderService:
         with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
             assert service.get_datasource_credentials("t1", "prov", "org/plug") == {}
 
-    def test_should_refresh_oauth_tokens_when_expired(self, service, sqlite_session, mock_user):
+    @pytest.mark.parametrize(
+        "oauth_client",
+        [
+            None,
+            PluginOAuthClientConfig(_PLUGIN_IDENTIFIER, {}),
+            PluginOAuthClientConfig(_PLUGIN_IDENTIFIER, {"oc": "v"}),
+        ],
+    )
+    def test_should_refresh_oauth_tokens_when_expired(self, service, sqlite_session, mock_user, oauth_client):
         """Expired OAuth credential (expires_at near zero) triggers a refresh."""
         p = make_provider(auth_type="oauth2", expires_at=0, encrypted_credentials={"tok": "x"})
         persist(sqlite_session, p)
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
-            patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
+            patch.object(
+                service,
+                "get_oauth_client",
+                return_value=oauth_client,
+            ),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
         ):
             service.get_datasource_credentials("t1", "prov", "org/plug")
         sqlite_session.expire_all()
         assert sqlite_session.get(DatasourceProvider, p.id).expires_at == 9999
+        refresh = self._oauth.return_value.refresh_credentials
+        refresh.assert_called_once()
+        assert refresh.call_args.kwargs["system_credentials"] == (
+            dict(oauth_client.credentials) if oauth_client is not None else {}
+        )
+        assert refresh.call_args.kwargs["plugin_unique_identifier"] == _PLUGIN_IDENTIFIER
 
     def test_should_include_provider_name_when_refresh_fails(self, service, sqlite_session, mock_user):
         p = make_provider(
@@ -326,7 +348,11 @@ class TestDatasourceProviderService:
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch("services.datasource_provider_service.OAuthHandler") as oauth_handler,
-            patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
+            patch.object(
+                service,
+                "get_oauth_client",
+                return_value=PluginOAuthClientConfig("org/plug:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"oc": "v"}),
+            ),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
         ):
             oauth_handler.return_value.refresh_credentials.side_effect = RuntimeError("token endpoint failed")
@@ -368,7 +394,11 @@ class TestDatasourceProviderService:
         persist(sqlite_session, p)
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
-            patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
+            patch.object(
+                service,
+                "get_oauth_client",
+                return_value=PluginOAuthClientConfig("org/plug:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"oc": "v"}),
+            ),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"t": "plain"}),
         ):
             result = service.get_all_datasource_credentials_by_provider("t1", "prov", "org/plug")
@@ -569,7 +599,8 @@ class TestDatasourceProviderService:
         )
         with patch.object(service, "get_oauth_encrypter", return_value=(self._enc, None)):
             result = service.get_oauth_client("t1", make_id())
-        assert result == {"k": "dec"}
+        assert result is not None
+        assert result.credentials == {"k": "dec"}
 
     def test_should_fallback_to_system_credentials_when_tenant_config_missing(self, service, sqlite_session):
         persist(
@@ -585,7 +616,8 @@ class TestDatasourceProviderService:
             patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=True),
         ):
             result = service.get_oauth_client("t1", make_id())
-        assert result == {"k": "sys"}
+        assert result is not None
+        assert result.credentials == {"k": "sys"}
 
     def test_should_raise_value_error_when_no_oauth_config_available(self, service, sqlite_session):
         """Neither tenant nor system credentials → raises ValueError."""

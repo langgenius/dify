@@ -195,7 +195,7 @@ class DifyPluginToolsLayer(PlainLayer[DifyPluginToolsDeps, DifyPluginToolsLayerC
         if dify_api_http_client.is_closed:
             raise RuntimeError("DifyPluginToolsLayer.get_tools() requires an open shared Dify API HTTP client.")
 
-        tool_clients: dict[str, DifyPluginDaemonToolClient] = {}
+        tool_clients: dict[tuple[str, str | None], DifyPluginDaemonToolClient] = {}
         tools: list[Tool[object]] = []
         file_client = _DifyPluginToolFileClient(
             base_url=self.inner_api_url,
@@ -209,13 +209,15 @@ class DifyPluginToolsLayer(PlainLayer[DifyPluginToolsDeps, DifyPluginToolsLayerC
         )
 
         for tool_config in self.config.tools:
-            client = tool_clients.get(tool_config.plugin_id)
+            plugin_identity = (tool_config.plugin_id, tool_config.plugin_unique_identifier)
+            client = tool_clients.get(plugin_identity)
             if client is None:
                 client = self.deps.execution_context.create_tool_client(
                     plugin_id=tool_config.plugin_id,
+                    plugin_unique_identifier=tool_config.plugin_unique_identifier,
                     http_client=http_client,
                 )
-                tool_clients[tool_config.plugin_id] = client
+                tool_clients[plugin_identity] = client
             effective_parameters = [parameter.model_copy(deep=True) for parameter in tool_config.parameters]
             _validate_required_hidden_parameters(tool_config, effective_parameters)
 

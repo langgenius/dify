@@ -3,6 +3,8 @@ import time
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
+
 if TYPE_CHECKING:
     from models.account import Account
 
@@ -14,7 +16,7 @@ from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
 from core.helper.provider_cache import NoOpProviderCredentialCache
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
 from core.plugin.plugin_service import PluginService
@@ -70,6 +72,10 @@ class DatasourceProviderService:
     ) -> tuple[dict[str, Any], int]:
         datasource_provider_id = DatasourceProviderID(f"{plugin_id}/{provider}")
         provider_name = datasource_provider_id.provider_name
+        provider_declaration = self.provider_manager.fetch_datasource_provider(
+            tenant_id=tenant_id, provider_id=str(datasource_provider_id)
+        )
+        plugin_unique_identifier = provider_declaration.plugin_unique_identifier
         credential_id = getattr(datasource_provider, "id", None)
         credential_name = getattr(datasource_provider, "name", None)
         logger.info(
@@ -89,11 +95,14 @@ class DatasourceProviderService:
             datasource_provider=datasource_provider,
             plugin_id=plugin_id,
             provider=provider,
+            provider_declaration=provider_declaration,
+        )
+        system_credentials = self.get_oauth_client(
+            tenant_id, datasource_provider_id, provider_declaration=provider_declaration
         )
         redirect_uri = (
             f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
         )
-        system_credentials = self.get_oauth_client(tenant_id, datasource_provider_id)
         try:
             refreshed_credentials = OAuthHandler().refresh_credentials(
                 tenant_id=tenant_id,
@@ -101,7 +110,8 @@ class DatasourceProviderService:
                 plugin_id=datasource_provider_id.plugin_id,
                 provider=provider_name,
                 redirect_uri=redirect_uri,
-                system_credentials=system_credentials or {},
+                system_credentials=dict(system_credentials.credentials) if system_credentials is not None else {},
+                plugin_unique_identifier=plugin_unique_identifier,
                 credentials=decrypted_credentials,
             )
         except Exception as exc:
@@ -124,6 +134,7 @@ class DatasourceProviderService:
             tenant_id=tenant_id,
             raw_credentials=refreshed_credentials.credentials,
             provider=provider,
+            provider_declaration=provider_declaration,
             plugin_id=plugin_id,
             datasource_provider=datasource_provider,
         )
@@ -160,12 +171,15 @@ class DatasourceProviderService:
         datasource_provider: DatasourceProvider,
         plugin_id: str,
         provider: str,
+        *,
+        provider_declaration: PluginDatasourceProviderEntity | None = None,
     ) -> dict[str, Any]:
         encrypted_credentials = datasource_provider.encrypted_credentials
         credential_secret_variables = self.extract_secret_variables(
             tenant_id=tenant_id,
             provider_id=f"{plugin_id}/{provider}",
             credential_type=CredentialType.of(datasource_provider.auth_type),
+            provider_declaration=provider_declaration,
         )
         decrypted_credentials = encrypted_credentials.copy()
         for key, value in decrypted_credentials.items():
@@ -180,11 +194,14 @@ class DatasourceProviderService:
         plugin_id: str,
         raw_credentials: Mapping[str, Any],
         datasource_provider: DatasourceProvider,
+        *,
+        provider_declaration: PluginDatasourceProviderEntity | None = None,
     ) -> dict[str, Any]:
         provider_credential_secret_variables = self.extract_secret_variables(
             tenant_id=tenant_id,
             provider_id=f"{plugin_id}/{provider}",
             credential_type=CredentialType.of(datasource_provider.auth_type),
+            provider_declaration=provider_declaration,
         )
         encrypted_credentials = dict(raw_credentials)
         for key, value in encrypted_credentials.items():
@@ -494,12 +511,16 @@ class DatasourceProviderService:
         return None
 
     def get_oauth_encrypter(
-        self, tenant_id: str, datasource_provider_id: DatasourceProviderID
+        self,
+        tenant_id: str,
+        datasource_provider_id: DatasourceProviderID,
+        *,
+        provider_declaration: PluginDatasourceProviderEntity | None = None,
     ) -> tuple[ProviderConfigEncrypter, ProviderConfigCache]:
         """
         get oauth encrypter
         """
-        datasource_provider = self.provider_manager.fetch_datasource_provider(
+        datasource_provider = provider_declaration or self.provider_manager.fetch_datasource_provider(
             tenant_id=tenant_id, provider_id=str(datasource_provider_id)
         )
         if not datasource_provider.declaration.oauth_schema:
@@ -512,10 +533,20 @@ class DatasourceProviderService:
             cache=NoOpProviderCredentialCache(),
         )
 
-    def get_oauth_client(self, tenant_id: str, datasource_provider_id: DatasourceProviderID) -> dict[str, Any] | None:
+    def get_oauth_client(
+        self,
+        tenant_id: str,
+        datasource_provider_id: DatasourceProviderID,
+        *,
+        provider_declaration: PluginDatasourceProviderEntity | None = None,
+    ) -> PluginOAuthClientConfig | None:
         """
         get oauth client
         """
+        provider_controller = provider_declaration or self.provider_manager.fetch_datasource_provider(
+            tenant_id=tenant_id, provider_id=str(datasource_provider_id)
+        )
+        plugin_unique_identifier = provider_controller.plugin_unique_identifier
         provider = datasource_provider_id.provider_name
         plugin_id = datasource_provider_id.plugin_id
         with Session(db.engine).no_autoflush as session:
@@ -531,12 +562,13 @@ class DatasourceProviderService:
                 .limit(1)
             )
             if tenant_oauth_client_params:
-                encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
-                return dict(encrypter.decrypt(tenant_oauth_client_params.client_params))
+                encrypter, _ = self.get_oauth_encrypter(
+                    tenant_id, datasource_provider_id, provider_declaration=provider_controller
+                )
+                return PluginOAuthClientConfig(
+                    plugin_unique_identifier, dict(encrypter.decrypt(tenant_oauth_client_params.client_params))
+                )
 
-            provider_controller = self.provider_manager.fetch_datasource_provider(
-                tenant_id=tenant_id, provider_id=str(datasource_provider_id)
-            )
             is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
             if is_verified:
                 # fallback to system oauth client params
@@ -549,7 +581,9 @@ class DatasourceProviderService:
                     .limit(1)
                 )
                 if oauth_client_params:
-                    return oauth_client_params.system_credentials
+                    return PluginOAuthClientConfig(
+                        plugin_unique_identifier, dict(oauth_client_params.system_credentials)
+                    )
 
             raise ValueError(f"Please configure oauth client params(system/tenant) for {plugin_id}/{provider}")
 
@@ -739,6 +773,9 @@ class DatasourceProviderService:
         """
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
+        provider_declaration = self.provider_manager.fetch_datasource_provider(
+            tenant_id=tenant_id, provider_id=str(provider_id)
+        )
 
         with sessionmaker(bind=db.engine).begin() as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.API_KEY}"
@@ -772,12 +809,16 @@ class DatasourceProviderService:
                         provider=provider_name,
                         plugin_id=plugin_id,
                         credentials=credentials,
+                        plugin_unique_identifier=provider_declaration.plugin_unique_identifier,
                     )
                 except Exception as e:
                     raise ValueError(f"Failed to validate credentials: {str(e)}")
 
                 provider_credential_secret_variables = self.extract_secret_variables(
-                    tenant_id=tenant_id, provider_id=f"{provider_id}", credential_type=CredentialType.API_KEY
+                    tenant_id=tenant_id,
+                    provider_id=f"{provider_id}",
+                    credential_type=CredentialType.API_KEY,
+                    provider_declaration=provider_declaration,
                 )
                 for key, value in credentials.items():
                     if key in provider_credential_secret_variables:
@@ -793,14 +834,21 @@ class DatasourceProviderService:
                 )
                 session.add(datasource_provider)
 
-    def extract_secret_variables(self, tenant_id: str, provider_id: str, credential_type: CredentialType) -> list[str]:
+    def extract_secret_variables(
+        self,
+        tenant_id: str,
+        provider_id: str,
+        credential_type: CredentialType,
+        *,
+        provider_declaration: PluginDatasourceProviderEntity | None = None,
+    ) -> list[str]:
         """
         Extract secret input form variables.
 
         :param credential_form_schemas:
         :return:
         """
-        datasource_provider = self.provider_manager.fetch_datasource_provider(
+        datasource_provider = provider_declaration or self.provider_manager.fetch_datasource_provider(
             tenant_id=tenant_id, provider_id=provider_id
         )
         credential_form_schemas = []
@@ -1092,6 +1140,11 @@ class DatasourceProviderService:
         update datasource credentials.
         """
 
+        provider_declaration = (
+            self.provider_manager.fetch_datasource_provider(tenant_id=tenant_id, provider_id=f"{plugin_id}/{provider}")
+            if credentials
+            else None
+        )
         with sessionmaker(bind=db.engine).begin() as session:
             datasource_provider = session.scalar(
                 select(DatasourceProvider)
@@ -1123,10 +1176,12 @@ class DatasourceProviderService:
 
             # update credentials
             if credentials:
+                assert provider_declaration is not None
                 secret_variables = self.extract_secret_variables(
                     tenant_id=tenant_id,
                     provider_id=f"{plugin_id}/{provider}",
                     credential_type=CredentialType.of(datasource_provider.auth_type),
+                    provider_declaration=provider_declaration,
                 )
                 original_credentials = {
                     key: value if key not in secret_variables else encrypter.decrypt_token(tenant_id, value)
@@ -1144,6 +1199,7 @@ class DatasourceProviderService:
                         provider=provider,
                         plugin_id=plugin_id,
                         credentials=new_credentials,
+                        plugin_unique_identifier=provider_declaration.plugin_unique_identifier,
                     )
                 except Exception as e:
                     raise ValueError(f"Failed to validate credentials: {str(e)}")

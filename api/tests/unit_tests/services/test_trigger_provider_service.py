@@ -16,8 +16,8 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
-from sqlalchemy.engine import Engine
+from sqlalchemy import event, func, select
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -32,6 +32,7 @@ from models.trigger import (
     TriggerSubscription,
     WorkflowPluginTrigger,
 )
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.trigger import trigger_provider_service as service_module
 from services.trigger.trigger_provider_service import TriggerProviderService
 
@@ -118,7 +119,7 @@ def provider_controller() -> Mock:
     controller.get_credential_schema_config.return_value = []
     controller.get_properties_schema.return_value = []
     controller.get_oauth_client_schema.return_value = []
-    controller.plugin_unique_identifier = "langgenius/github:0.0.1"
+    controller.plugin_unique_identifier = "langgenius/github:0.0.1@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     return controller
 
 
@@ -343,7 +344,7 @@ def test_add_duplicate_name_rolls_back_and_database_constraint_matches_precheck(
 
 
 def test_update_subscription_persists_fields_and_preserves_hidden_property(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock, sqlite_engine: Engine
 ) -> None:
     subscription = trigger_db.add_subscription(properties={"project": "old-encrypted"})
     _patch_lock(mocker)
@@ -357,16 +358,30 @@ def test_update_subscription_persists_fields_and_preserves_hidden_property(
     )
     clear_cache = mocker.patch.object(service_module, "delete_cache_for_subscription")
 
-    TriggerProviderService.update_trigger_subscription(
-        trigger_db.tenant_id,
-        subscription.id,
-        name="renamed",
-        properties={"project": HIDDEN_VALUE, "region": "us"},
-        parameters={"event": "issues"},
-        credentials={"token": "plain"},
-        credential_expires_at=100,
-        expires_at=200,
-    )
+    events: list[str] = []
+
+    def committed(_connection: Connection) -> None:
+        events.append("commit")
+
+    def invalidated(*_args: object, **_kwargs: object) -> None:
+        events.append("invalidate")
+
+    clear_cache.side_effect = invalidated
+    event.listen(sqlite_engine, "commit", committed)
+    try:
+        TriggerProviderService.update_trigger_subscription(
+            trigger_db.tenant_id,
+            subscription.id,
+            name="renamed",
+            properties={"project": HIDDEN_VALUE, "region": "us"},
+            parameters={"event": "issues"},
+            credentials={"token": "plain"},
+            credential_expires_at=100,
+            expires_at=200,
+        )
+    finally:
+        event.remove(sqlite_engine, "commit", committed)
+    assert events == ["commit", "invalidate"]
 
     persisted = trigger_db.get_subscription(subscription.id)
     assert persisted is not None
@@ -409,6 +424,12 @@ def test_get_subscription_scopes_tenant_and_decrypts(
     assert TriggerProviderService.get_subscription_by_id(trigger_db.other_tenant_id, subscription.id) is None
     result = TriggerProviderService.get_subscription_by_id(trigger_db.tenant_id, subscription.id)
     assert result is not None
+    assert (
+        TriggerProviderService.get_subscription_by_id(
+            trigger_db.tenant_id, subscription.id, provider_id=TriggerProviderID("langgenius/other/other")
+        )
+        is None
+    )
     assert result.credentials == {"token": "plain"}
     assert result.properties == {"project": "plain"}
 
@@ -436,14 +457,23 @@ def test_delete_subscription_uses_real_caller_transaction(
         unsubscribe.assert_called_once()
 
 
+@pytest.mark.parametrize("client_credentials", [None, {}, {"client": "system"}])
 def test_refresh_oauth_token_persists_credentials_after_commit(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock, client_credentials: dict[str, str] | None
 ) -> None:
     subscription = trigger_db.add_subscription(credential_type=CredentialType.OAUTH2)
     _patch_provider(mocker, provider_controller)
     encrypter = _encrypter(decrypted={"refresh": "old"}, encrypted={"access": "new"})
     mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, Mock()))
-    mocker.patch.object(TriggerProviderService, "get_oauth_client", return_value={"client": "system"})
+    mocker.patch.object(
+        TriggerProviderService,
+        "get_oauth_client",
+        return_value=(
+            PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, client_credentials)
+            if client_credentials is not None
+            else None
+        ),
+    )
     handler = Mock()
     handler.refresh_credentials.return_value = SimpleNamespace(credentials={"access": "plain"}, expires_at=1234)
     mocker.patch.object(service_module, "OAuthHandler", return_value=handler)
@@ -456,6 +486,11 @@ def test_refresh_oauth_token_persists_credentials_after_commit(
     assert persisted.credentials == {"access": "new"}  # type: ignore[union-attr]
     assert persisted.credential_expires_at == 1234  # type: ignore[union-attr]
     clear_cache.assert_called_once()
+    handler.refresh_credentials.assert_called_once()
+    assert handler.refresh_credentials.call_args.kwargs["system_credentials"] == (client_credentials or {})
+    assert handler.refresh_credentials.call_args.kwargs["plugin_unique_identifier"] == (
+        provider_controller.plugin_unique_identifier
+    )
 
 
 def test_refresh_oauth_rejects_missing_and_non_oauth(trigger_db: TriggerDatabase) -> None:
@@ -509,7 +544,9 @@ def test_oauth_client_prefers_enabled_tenant_record(
         service_module, "create_provider_encrypter", return_value=(_encrypter(decrypted={"client": "tenant"}), Mock())
     )
 
-    assert TriggerProviderService.get_oauth_client(trigger_db.tenant_id, trigger_db.provider_id) == {"client": "tenant"}
+    assert TriggerProviderService.get_oauth_client(
+        trigger_db.tenant_id, trigger_db.provider_id
+    ) == PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, {"client": "tenant"})
 
 
 def test_oauth_client_falls_back_to_verified_system_record(
@@ -527,7 +564,9 @@ def test_oauth_client_falls_back_to_verified_system_record(
     mocker.patch.object(service_module.PluginService, "is_plugin_verified", return_value=True)
     mocker.patch.object(service_module, "decrypt_system_params", return_value={"client": "system"})
 
-    assert TriggerProviderService.get_oauth_client(trigger_db.tenant_id, trigger_db.provider_id) == {"client": "system"}
+    assert TriggerProviderService.get_oauth_client(
+        trigger_db.tenant_id, trigger_db.provider_id
+    ) == PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, {"client": "system"})
     assert TriggerProviderService.is_oauth_system_client_exists(trigger_db.tenant_id, trigger_db.provider_id)
 
 

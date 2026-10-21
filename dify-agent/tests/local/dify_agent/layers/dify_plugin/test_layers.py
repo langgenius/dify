@@ -49,6 +49,7 @@ def _tools_config() -> DifyPluginToolsLayerConfig:
         tools=[
             DifyPluginToolConfig(
                 plugin_id="langgenius/tools",
+                plugin_unique_identifier="langgenius/tools:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 provider="search",
                 tool_name="web_search",
                 credential_type="api-key",
@@ -98,6 +99,57 @@ def _tools_provider() -> LayerProvider[DifyPluginToolsLayer]:
             inner_api_key="inner-secret",
         ),
     )
+
+
+@pytest.mark.parametrize("legacy_first", [False, True])
+def test_tools_with_different_package_bindings_do_not_share_a_daemon_client(legacy_first: bool) -> None:
+    async def scenario() -> None:
+        identifiers: list[str | None] = [f"langgenius/search:{version}.0.0@{'a' * 32}" for version in (1, 2)]
+        if legacy_first:
+            identifiers[0] = None
+        config = DifyPluginToolsLayerConfig(
+            tools=[
+                DifyPluginToolConfig(
+                    plugin_id="langgenius/search",
+                    plugin_unique_identifier=identifier,
+                    provider="search",
+                    tool_name="search",
+                    name=name,
+                    credential_type="unauthorized",
+                )
+                for identifier, name in zip(identifiers, ("old_search", "new_search"), strict=True)
+            ]
+        )
+        seen: list[str | None] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url.path == "/plugin/tenant-1/dispatch/tool/invoke"
+            assert request.headers["X-Plugin-ID"] == "langgenius/search"
+            seen.append(request.headers.get("X-Plugin-Unique-Identifier"))
+            return httpx.Response(
+                200,
+                text='data: {"code":0,"message":"","data":{"type":"text","message":{"text":"ok"}}}\n',
+            )
+
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+        async with (
+            httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client,
+            compositor.enter(configs={"execution_context": _execution_context_config(), "tools": config}) as run,
+        ):
+            tools = await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                http_client=client, dify_api_http_client=client
+            )
+            for tool in tools:
+                assert await tool.function_schema.call({}, None) == "ok"  # pyright: ignore[reportArgumentType]
+
+        assert seen == identifiers
+
+    asyncio.run(scenario())
 
 
 def _prepared_tool_parameters() -> list[DifyPluginToolParameter]:

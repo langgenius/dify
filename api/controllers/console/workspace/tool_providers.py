@@ -1156,7 +1156,10 @@ class ToolPluginOAuthApi(Resource):
             tenant_id=tenant_id,
             plugin_id=plugin_id,
             provider=provider_name,
-            extra_data={"visibility": requested_visibility.value},
+            extra_data={
+                "visibility": requested_visibility.value,
+                "plugin_unique_identifier": oauth_client_params.plugin_unique_identifier,
+            },
         )
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
         authorization_url_response = oauth_handler.get_authorization_url(
@@ -1165,7 +1168,8 @@ class ToolPluginOAuthApi(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_client_params,
+            system_credentials=dict(oauth_client_params.credentials),
+            plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
         )
         # response-contract:ignore cookie-bearing Flask response
         response = make_response(dump_response(PluginOAuthAuthorizationUrlResponse, authorization_url_response))
@@ -1203,6 +1207,16 @@ class ToolOAuthCallback(Resource):
         if oauth_client_params is None:
             raise Forbidden("no oauth available client config found for this tool provider")
 
+        try:
+            OAuthProxyService.validate_plugin_context(
+                context,
+                plugin_id=plugin_id,
+                provider=provider_name,
+                plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
+            )
+        except ValueError as error:
+            raise Forbidden(str(error)) from error
+
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
         credentials_response = oauth_handler.get_credentials(
             tenant_id=tenant_id,
@@ -1210,7 +1224,8 @@ class ToolOAuthCallback(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_client_params,
+            system_credentials=dict(oauth_client_params.credentials),
+            plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
             request=request,
         )
 

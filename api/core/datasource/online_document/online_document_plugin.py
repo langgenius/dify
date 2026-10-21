@@ -37,7 +37,7 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
         datasource_parameters: dict[str, Any],
         provider_type: str,
     ) -> Generator[OnlineDocumentPagesMessage, None, None]:
-        manager = PluginDatasourceManager()
+        manager = PluginDatasourceManager(plugin_unique_identifier=self.plugin_unique_identifier)
 
         return manager.get_online_document_pages(
             tenant_id=self.tenant_id,
@@ -55,7 +55,7 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
         datasource_parameters: GetOnlineDocumentPageContentRequest,
         provider_type: str,
     ) -> Generator[DatasourceMessage, None, None]:
-        manager = PluginDatasourceManager()
+        manager = PluginDatasourceManager(plugin_unique_identifier=self.plugin_unique_identifier)
 
         return manager.get_online_document_page_content(
             tenant_id=self.tenant_id,
