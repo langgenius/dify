@@ -3440,6 +3440,41 @@ def test_pptx_extraction_ignores_unreferenced_external_and_missing_slide_parts()
         pytest.param("{\\rtf1 Café 中文}".encode(), "Café 中文", id="utf8-literal-text"),
         pytest.param(b"{\\rtf1 Caf\xe9}", "Café", id="latin1-literal-text"),
         pytest.param(rb"{\rtf1\ansi caf\'e9}", "café", id="hex-literal-text"),
+        pytest.param(
+            rb"{\rtf1\ansi\ansicpg1252 \'93curly quotes\'94}",
+            "“curly quotes”",
+            id="ansi-codepage-hex-escapes",
+        ),
+        pytest.param(
+            rb"{\rtf1\ansi\ansicpg99999 caf\'e9}",
+            "café",
+            id="unsupported-ansi-codepage-falls-back",
+        ),
+        pytest.param(
+            rb"{\rtf1\ansi\ansicpg932 \'82\'a0}",
+            "あ",
+            id="ansi-codepage-multibyte-hex-escapes",
+        ),
+        pytest.param(
+            rb"{\rtf1\ansi\ansicpg932\uc1\u12354\'82\'a0X}",
+            "あX",
+            id="ansi-codepage-multibyte-unicode-fallback",
+        ),
+        pytest.param(
+            b"{\\rtf1\\ansi\\ansicpg932\\uc1\\u12354 " + bytes([0x82, 0xA0]) + b"X}",
+            "あX",
+            id="ansi-codepage-literal-multibyte-unicode-fallback",
+        ),
+        pytest.param(
+            b"{\\rtf1\\ansi\\ansicpg932 \x82\xa0}",
+            "あ",
+            id="ansi-codepage-literal-text",
+        ),
+        pytest.param(
+            rb"{\rtf1\ansi before\'zz\par after}",
+            "before\nafter",
+            id="malformed-hex-escape-preserves-following-text",
+        ),
         pytest.param(rb"{\rtf1\ansi \{notes\} \\ path}", r"{notes} \ path", id="escaped-literal-text"),
     ],
 )
