@@ -16,7 +16,7 @@ Strategy:
 
 import uuid
 from collections.abc import Callable
-from typing import Protocol, cast
+from typing import Protocol, TypedDict, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -71,6 +71,15 @@ def hit_testing_record() -> dict[str, object]:
         "files": None,
         "score": 0.9,
     }
+
+
+class _HitRecord(TypedDict):
+    segment: dict[str, object]
+    child_chunks: list[object]
+    files: list[object]
+    score: float
+    tsne_position: list[float] | None
+    summary: str | None
 
 
 class _BillingWrappedPost(Protocol):
@@ -321,7 +330,7 @@ class TestHitTestingApiPost:
             response = cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
 
         assert response["query"] == {"content": "legacy query"}
-        record = response["records"][0]
+        record = cast(list[_HitRecord], response["records"])[0]
         assert record["segment"]["id"] == "segment-1"
         assert record["segment"]["keywords"] == []
         assert record["child_chunks"] == []
