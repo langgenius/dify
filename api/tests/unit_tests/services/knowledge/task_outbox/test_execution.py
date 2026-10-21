@@ -51,6 +51,29 @@ class FailingCompletionStore(SQLAlchemyKnowledgeTaskStore):
         raise RuntimeError("database unavailable")
 
 
+class MissingRequeueStore(SQLAlchemyKnowledgeTaskStore):
+    @override
+    def requeue_task_failure(
+        self, *, intent_id: str, execution_id: str, available_at: datetime, error: str
+    ) -> KnowledgeTaskFailureDisposition:
+        del intent_id, execution_id, available_at, error
+        return KnowledgeTaskFailureDisposition.MISSING
+
+
+class RejectingCompletionStore(SQLAlchemyKnowledgeTaskStore):
+    @override
+    def mark_task_completed(self, *, intent_id: str, execution_id: str) -> bool:
+        del intent_id, execution_id
+        return False
+
+
+class RejectingFailureStore(SQLAlchemyKnowledgeTaskStore):
+    @override
+    def mark_task_failed(self, *, intent_id: str, execution_id: str, error: str) -> bool:
+        del intent_id, execution_id, error
+        return False
+
+
 @dataclass
 class RecordingPublisher:
     calls: list[str] = field(default_factory=list)
@@ -523,6 +546,133 @@ def test_active_execution_deferral_preserves_execution_budget_and_wakes_dispatch
     assert row.available_at == now + timedelta(seconds=30)
     assert row.last_error == "cleanup gate closed"
     assert wake.calls == 1
+
+
+def test_deferral_rejects_an_execution_that_lost_ownership(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    now = datetime(2026, 10, 19, 12)
+    store = SQLAlchemyKnowledgeTaskStore(session_factory=sqlite_session_factory)
+    intent = _claim_task(session=sqlite_session, store=store, now=now)
+    successor_id: str | None = None
+
+    def defer_after_takeover() -> None:
+        nonlocal successor_id
+        with knowledge_task_execution(intent.id, store=store, clock=lambda: now, wake=lambda: True) as execution:
+            assert execution is not None
+            successor_id = store.begin_task_execution(
+                intent_id=intent.id,
+                now=now + timedelta(minutes=6),
+                lease_until=now + timedelta(minutes=11),
+            )
+            assert successor_id is not None
+            execution.defer(error="stale worker", delay_seconds=30)
+
+    with pytest.raises(KnowledgeTaskExecutionLeaseLostError, match="lost while deferring"):
+        defer_after_takeover()
+
+    sqlite_session.expire_all()
+    row = sqlite_session.get(KnowledgeTaskOutbox, intent.id)
+    assert row is not None
+    assert row.status == "executing"
+    assert row.claim_id == successor_id
+    assert row.last_error is None
+
+
+def test_missing_requeue_is_reported_as_execution_lease_loss(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    now = datetime(2026, 10, 19, 12)
+    healthy_store = SQLAlchemyKnowledgeTaskStore(session_factory=sqlite_session_factory)
+    intent = _claim_task(session=sqlite_session, store=healthy_store, now=now)
+    store = MissingRequeueStore(session_factory=sqlite_session_factory)
+
+    with pytest.raises(KnowledgeTaskExecutionLeaseLostError, match="lost its execution claim") as raised:
+        with knowledge_task_execution(intent.id, store=store, clock=lambda: now, wake=lambda: True):
+            raise ValueError("provider failed")
+
+    assert isinstance(raised.value.__cause__, ValueError)
+    sqlite_session.expire_all()
+    row = sqlite_session.get(KnowledgeTaskOutbox, intent.id)
+    assert row is not None
+    assert row.status == "executing"
+
+
+def test_completion_ack_rejection_is_not_reported_as_success(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    now = datetime(2026, 10, 19, 12)
+    healthy_store = SQLAlchemyKnowledgeTaskStore(session_factory=sqlite_session_factory)
+    intent = _claim_task(session=sqlite_session, store=healthy_store, now=now)
+    store = RejectingCompletionStore(session_factory=sqlite_session_factory)
+
+    with pytest.raises(RuntimeError, match="could not be marked completed"):
+        with knowledge_task_execution(intent.id, store=store, clock=lambda: now, wake=lambda: True):
+            pass
+
+    sqlite_session.expire_all()
+    row = sqlite_session.get(KnowledgeTaskOutbox, intent.id)
+    assert row is not None
+    assert row.status == "executing"
+
+
+def test_permanent_failure_ack_rejection_is_not_reported_as_terminal(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    now = datetime(2026, 10, 19, 12)
+    healthy_store = SQLAlchemyKnowledgeTaskStore(session_factory=sqlite_session_factory)
+    intent = _claim_task(session=sqlite_session, store=healthy_store, now=now)
+    store = RejectingFailureStore(session_factory=sqlite_session_factory)
+
+    with pytest.raises(RuntimeError, match="could not be marked failed") as raised:
+        with knowledge_task_execution(intent.id, store=store, clock=lambda: now, wake=lambda: True):
+            raise KnowledgeTaskPermanentError("resource was deleted")
+
+    assert isinstance(raised.value.__cause__, KnowledgeTaskPermanentError)
+    sqlite_session.expire_all()
+    row = sqlite_session.get(KnowledgeTaskOutbox, intent.id)
+    assert row is not None
+    assert row.status == "executing"
+
+
+def test_durable_requeue_survives_dispatcher_wake_exception(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    now = datetime(2026, 10, 19, 12)
+    store = SQLAlchemyKnowledgeTaskStore(session_factory=sqlite_session_factory)
+    intent = _claim_task(session=sqlite_session, store=store, now=now)
+
+    def wake() -> bool:
+        raise ConnectionError("broker unavailable")
+
+    with pytest.raises(KnowledgeTaskRequeuedError, match="durably requeued") as raised:
+        with knowledge_task_execution(intent.id, store=store, clock=lambda: now, wake=wake):
+            raise ValueError("provider failed")
+
+    assert isinstance(raised.value.__cause__, ValueError)
+    sqlite_session.expire_all()
+    row = sqlite_session.get(KnowledgeTaskOutbox, intent.id)
+    assert row is not None
+    assert row.status == "pending"
+    assert row.last_error == "provider failed"
+
+
+def test_untracked_execution_keeps_admission_guard_without_database_claim(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    store = SQLAlchemyKnowledgeTaskStore(session_factory=sqlite_session_factory)
+    admissions: list[str] = []
+
+    with knowledge_task_execution(
+        None,
+        store=store,
+        wake=lambda: True,
+        assert_admitted=lambda: admissions.append("checked"),
+    ) as execution:
+        assert execution is not None
+        execution.assert_owned()
+
+    assert admissions == ["checked"]
 
 
 def test_broker_failures_do_not_consume_first_execution_retry_budget(
