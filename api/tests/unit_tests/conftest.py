@@ -16,7 +16,7 @@ os.environ.setdefault("STORAGE_TYPE", "opendal")
 import pytest
 from flask import Flask
 from redis import Redis
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -150,6 +150,40 @@ def reset_redis_mock(_patch_redis_clients: None) -> None:
 def reset_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure SECRET_KEY-dependent logic sees an empty config value by default."""
     apply_config_overrides(monkeypatch, SECRET_KEY="")
+
+
+@pytest.fixture(autouse=True)
+def _isolate_upload_file_reference_guard_listeners(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Remove only mapper listeners registered by an application created in this test."""
+
+    from dify_app import DifyApp
+    from extensions import ext_upload_file_reference_guards
+
+    added_listeners: list[tuple[object, str, Callable[..., object]]] = []
+    original_init_app = ext_upload_file_reference_guards.init_app
+    original_listen = event.listen
+
+    def track_listen(
+        target: object,
+        identifier: str,
+        listener: Callable[..., object],
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        was_registered = event.contains(target, identifier, listener)
+        original_listen(target, identifier, listener, *args, **kwargs)
+        if not was_registered and event.contains(target, identifier, listener):
+            added_listeners.append((target, identifier, listener))
+
+    def isolated_init_app(app: DifyApp) -> None:
+        with patch.object(event, "listen", track_listen):
+            original_init_app(app)
+
+    monkeypatch.setattr(ext_upload_file_reference_guards, "init_app", isolated_init_app)
+    yield
+    for target, identifier, listener in reversed(added_listeners):
+        if event.contains(target, identifier, listener):
+            event.remove(target, identifier, listener)
 
 
 @pytest.fixture
