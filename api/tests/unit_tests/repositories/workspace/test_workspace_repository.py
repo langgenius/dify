@@ -43,6 +43,7 @@ def seeded(sqlite_session_factory: sessionmaker[Session]) -> WorkspaceRepository
                 TenantAccountJoin(tenant_id="w2", account_id="a1", role=TenantAccountRole.EDITOR),
                 TenantAccountJoin(tenant_id="w3", account_id="a1", role=TenantAccountRole.NORMAL),
                 TenantAccountJoin(tenant_id="w2", account_id="other", role=TenantAccountRole.OWNER),
+                TenantAccountJoin(tenant_id="w3", account_id="archived-owner", role=TenantAccountRole.OWNER),
             ]
         )
         session.commit()
@@ -86,6 +87,15 @@ def test_snapshot_role_is_scoped_to_both_account_and_workspace(seeded: Workspace
     with pytest.raises(WorkspaceNotFoundError):
         seeded.get_for_account("w1", "other")
     assert seeded.get_for_account("missing", "a1") is None
+
+
+def test_active_owner_id_requires_a_normal_workspace_and_owner_role(seeded: WorkspaceRepository) -> None:
+    assert seeded.owner_id("w2") == "other"
+    assert seeded.active_owner_id("w2") == "other"
+    assert seeded.owner_id("w3") == "archived-owner"
+    assert seeded.active_owner_id("w3") is None
+    assert seeded.active_owner_id("w1") is None
+    assert seeded.active_owner_id("missing") is None
 
 
 def test_membership_role_is_scoped_to_both_account_and_workspace(seeded: WorkspaceRepository) -> None:

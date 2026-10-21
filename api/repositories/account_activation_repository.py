@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from repositories.workspace.member_quota_repository import lock_workspace_membership
 from services.account_activation_service import AccountActivationRepository
 from services.entities.account_activation_entities import (
     AccountInvitation,
@@ -14,6 +15,8 @@ from services.entities.account_activation_entities import (
     ActivationPersistenceResult,
     InvitationToken,
 )
+from services.errors.workspace import WorkspaceNotFoundError
+from services.workspace.quota import WorkspaceMemberQuotaSnapshot
 
 
 class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
@@ -58,15 +61,19 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
         *,
         role: str,
         setup: AccountSetup | None,
+        quota: WorkspaceMemberQuotaSnapshot,
         create_membership: bool = True,
     ) -> ActivationPersistenceResult | None:
         with self._session_factory.begin() as session:
-            tenant_id = session.scalar(
-                select(Tenant.id).where(
-                    Tenant.id == invitation.workspace_id,
-                    Tenant.status == TenantStatus.NORMAL,
+            try:
+                guard = lock_workspace_membership(
+                    session,
+                    workspace_id=invitation.workspace_id,
+                    quota=quota,
                 )
-            )
+            except WorkspaceNotFoundError:
+                return None
+            tenant_id = guard.workspace.id
             account = session.scalar(
                 select(Account)
                 .where(
@@ -88,6 +95,7 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                 return None
             membership_created = membership is None
             if membership is None:
+                guard.check_delta(1)
                 membership = TenantAccountJoin(
                     tenant_id=tenant_id,
                     account_id=account.id,

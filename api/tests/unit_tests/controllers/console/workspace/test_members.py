@@ -25,6 +25,7 @@ from controllers.console.auth.error import (
     MemberNotInTenantError as MemberNotInTenantRequestError,
 )
 from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
+from controllers.console.workspace.error import OwnerTransferInProgressError
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
     MemberCancelInviteApi,
@@ -52,6 +53,7 @@ from services.errors.workspace import (
     RoleAlreadyAssignedError,
     WorkspaceNotFoundError,
     WorkspaceNotLinkedError,
+    WorkspaceOwnerTransferInProgressError,
 )
 from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberSummary
 from services.workspace.member_service import WorkspaceMemberQueryService, WorkspaceMemberService
@@ -390,6 +392,20 @@ def test_owner_verification_serializes_promoted_token(app: Flask, services: Mock
         api = OwnerTransferCheckApi()
         response = unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
     assert response == {"is_valid": True, "email": "owner@example.com", "token": "promoted"}
+
+
+def test_owner_transfer_maps_an_active_execution_to_conflict(app: Flask, services: Mock) -> None:
+    error = WorkspaceOwnerTransferInProgressError("Workspace ownership transfer is already in progress.")
+    services.workspaces.owner_transfer.transfer.side_effect = error
+    api = OwnerTransfer()
+    with (
+        app.test_request_context("/", method="POST", json={"token": "verified-owner-transfer-token"}),
+        pytest.raises(OwnerTransferInProgressError) as raised,
+    ):
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"), "member")
+
+    assert raised.value.code == HTTPStatus.CONFLICT
+    assert raised.value.__cause__ is error
 
 
 @pytest.mark.parametrize(

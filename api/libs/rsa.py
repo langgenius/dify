@@ -26,6 +26,14 @@ from extensions.ext_storage import storage
 from libs import gmpy2_pkcs10aep_cipher
 
 
+def _private_key_path(tenant_id: str) -> str:
+    return f"privkeys/{tenant_id}/private.pem"
+
+
+def _private_key_cache_key(filepath: str) -> str:
+    return f"tenant_privkey:{hashlib.sha3_256(filepath.encode()).hexdigest()}"
+
+
 def generate_key_pair(tenant_id: str) -> str:
     private_key = RSA.generate(2048)
     public_key = private_key.publickey()
@@ -33,11 +41,22 @@ def generate_key_pair(tenant_id: str) -> str:
     pem_private = private_key.export_key()
     pem_public = public_key.export_key()
 
-    filepath = f"privkeys/{tenant_id}/private.pem"
+    filepath = _private_key_path(tenant_id)
 
     storage.save(filepath, pem_private)
 
     return pem_public.decode()
+
+
+def delete_key_pair(tenant_id: str) -> None:
+    """Idempotently remove a locally stored tenant private key and its cache entry."""
+    filepath = _private_key_path(tenant_id)
+    try:
+        storage.delete(filepath)
+    except FileNotFoundError:
+        pass
+    finally:
+        redis_client.delete(_private_key_cache_key(filepath))
 
 
 prefix_hybrid = b"HYBRID:"
@@ -63,9 +82,9 @@ def encrypt(text: str, public_key: str | bytes) -> bytes:
 
 
 def get_decrypt_decoding(tenant_id: str) -> tuple[RSA.RsaKey, object]:
-    filepath = f"privkeys/{tenant_id}/private.pem"
+    filepath = _private_key_path(tenant_id)
 
-    cache_key = f"tenant_privkey:{hashlib.sha3_256(filepath.encode()).hexdigest()}"
+    cache_key = _private_key_cache_key(filepath)
     private_key = redis_client.get(cache_key)
     if not private_key:
         try:

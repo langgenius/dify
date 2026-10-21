@@ -37,8 +37,14 @@ from services.billing_service import BillingService
 from services.email_code_login_challenge import EmailCodeLoginChallengeStore, EmailCodeLoginChallengeUnavailableError
 from services.entities.account_activation_entities import InvitationLookup
 from services.entities.account_entities import AccountSessionTokens
-from services.entities.account_login_entities import EmailCodeChallengeStatus, LoginInvitation, RefreshAccountStatus
+from services.entities.account_login_entities import (
+    EmailCodeChallengeClaim,
+    EmailCodeChallengeStatus,
+    LoginInvitation,
+    RefreshAccountStatus,
+)
 from services.entities.auth_audit_entities import LoginFailureReason
+from services.errors.workspace import WorkspaceInvitationQuotaError
 from services.system_feature_service import SystemFeatureService
 from services.turnstile_service import (
     EMAIL_CODE_SEND_ACTION,
@@ -47,6 +53,7 @@ from services.turnstile_service import (
     TurnstileService,
     TurnstileUpstreamError,
 )
+from services.workspace.quota import DeploymentQuotaGateway, DeploymentQuotaSnapshot
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_reset_password_task import (
     send_reset_password_mail_task,
@@ -95,12 +102,16 @@ class AccountActivationConsoleAuthInvitationGateway(ConsoleAuthInvitationGateway
 
     @override
     def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool:
-        return self._activation.ensure_membership(account_id=account_id, email=email, token=token)
+        try:
+            return self._activation.ensure_membership(account_id=account_id, email=email, token=token)
+        except WorkspaceInvitationQuotaError as error:
+            raise account_errors.LoginInvitationQuotaError(seats=error.seats) from error
 
 
 class DeploymentConsoleAuthPolicyGateway(ConsoleAuthPolicyGateway):
-    def __init__(self, *, billing_enabled: bool) -> None:
+    def __init__(self, *, billing_enabled: bool, quota: DeploymentQuotaGateway) -> None:
         self._billing_enabled = billing_enabled
+        self._quota = quota
 
     @override
     def get_email_freeze_type(self, email: str) -> str | None:
@@ -118,11 +129,14 @@ class DeploymentConsoleAuthPolicyGateway(ConsoleAuthPolicyGateway):
 
     @override
     def has_workspace_capacity(self) -> bool:
-        return SystemFeatureService.get_license().workspaces.is_available()
+        return SystemFeatureService.get_uncached_license().workspaces.is_available()
 
     @override
     def has_account_capacity(self) -> bool:
-        return SystemFeatureService.get_license().seats.is_available()
+        return SystemFeatureService.get_uncached_license().seats.is_available()
+
+    def quota_snapshot(self) -> DeploymentQuotaSnapshot:
+        return self._quota.snapshot()
 
 
 class RedisConsoleAuthSecurityGateway(RedisAccountEmailSecurityGateway, ConsoleAuthSecurityGateway):
@@ -296,13 +310,41 @@ class RedisEmailCodeGateway(EmailCodeGateway):
         return token
 
     @override
-    def verify(self, *, normalized_email: str, code: str, token: str) -> EmailCodeChallengeStatus:
+    def claim(self, *, normalized_email: str, code: str, token: str) -> EmailCodeChallengeClaim:
         try:
-            result = EmailCodeLoginChallengeStore.verify(email=normalized_email.lower(), code=code, token=token)
+            result = EmailCodeLoginChallengeStore.claim(email=normalized_email.lower(), code=code, token=token)
         except EmailCodeLoginChallengeUnavailableError as error:
-            logger.warning("Email-code challenge verification is unavailable", exc_info=True)
+            logger.warning("Email-code challenge claim is unavailable", exc_info=True)
             raise account_errors.EmailCodeLoginUnavailableError from error
-        return EmailCodeChallengeStatus(result.status.value)
+        return EmailCodeChallengeClaim(status=EmailCodeChallengeStatus(result.status.value), claim_id=result.claim_id)
+
+    @override
+    def consume(self, *, normalized_email: str, token: str, claim_id: str) -> None:
+        self._transition_claim(
+            normalized_email=normalized_email,
+            token=token,
+            claim_id=claim_id,
+            consume=True,
+        )
+
+    @override
+    def release(self, *, normalized_email: str, token: str, claim_id: str) -> None:
+        self._transition_claim(
+            normalized_email=normalized_email,
+            token=token,
+            claim_id=claim_id,
+            consume=False,
+        )
+
+    @staticmethod
+    def _transition_claim(*, normalized_email: str, token: str, claim_id: str, consume: bool) -> None:
+        try:
+            transition = EmailCodeLoginChallengeStore.consume if consume else EmailCodeLoginChallengeStore.release
+            transition(email=normalized_email.lower(), token=token, claim_id=claim_id)
+        except EmailCodeLoginChallengeUnavailableError as error:
+            action = "consumption" if consume else "release"
+            logger.warning("Email-code challenge claim %s is unavailable", action, exc_info=True)
+            raise account_errors.EmailCodeLoginUnavailableError from error
 
 
 class RedisResetPasswordEmailGateway(ResetPasswordEmailGateway):

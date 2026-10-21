@@ -1,14 +1,18 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 
-from sqlalchemy import Engine, event
+import pytest
+from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from repositories.workspace.workspace_repository import WorkspaceRepository
+from services.errors.base import NoPermissionError
+from services.errors.workspace import WorkspaceInvitationQuotaError, WorkspaceMemberLicenseQuotaError
 from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberRoleSubject
 from services.workspace.member_service import WorkspaceMemberQueryService
+from services.workspace.quota import WorkspaceMemberQuotaSnapshot
 
 
 def make_account(
@@ -213,7 +217,12 @@ def test_member_queries_observe_committed_roles_and_release_session_before_role_
     event.listen(sqlite_engine, "checkin", checkin)
     try:
         repository = WorkspaceRepository(sqlite_session_factory)
-        repository.update_member_role(workspace_id="workspace", account_id="member", role=TenantAccountRole.EDITOR)
+        repository.update_member_role(
+            workspace_id="workspace",
+            actor_account_id="actor",
+            account_id="member",
+            role=TenantAccountRole.EDITOR,
+        )
         service = WorkspaceMemberQueryService(members=repository, roles=RoleResolver())
         result = service.list_current(RequestContext("request", None, "actor", "workspace"))
         assert result[0].role == "editor"
@@ -222,6 +231,96 @@ def test_member_queries_observe_committed_roles_and_release_session_before_role_
     finally:
         event.remove(sqlite_engine, "checkout", checkout)
         event.remove(sqlite_engine, "checkin", checkin)
+
+
+@pytest.mark.parametrize(
+    ("quota", "error"),
+    [
+        (WorkspaceMemberQuotaSnapshot(2, 2, None, 0), WorkspaceInvitationQuotaError),
+        (WorkspaceMemberQuotaSnapshot(None, 0, 2, 2), WorkspaceMemberLicenseQuotaError),
+    ],
+)
+def test_new_member_is_rejected_by_lock_time_capacity_check(
+    sqlite_session_factory: sessionmaker[Session],
+    quota: WorkspaceMemberQuotaSnapshot,
+    error: type[WorkspaceInvitationQuotaError],
+) -> None:
+    created_at = datetime(2026, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        session.add(make_tenant("workspace"))
+        for account_id in ("owner", "candidate"):
+            session.add(make_account(account_id, status=AccountStatus.ACTIVE, created_at=created_at))
+        session.add(TenantAccountJoin(tenant_id="workspace", account_id="owner", role=TenantAccountRole.OWNER))
+
+    with pytest.raises(error):
+        WorkspaceRepository(sqlite_session_factory).upsert_member(
+            workspace_id="workspace",
+            account_id="candidate",
+            role=TenantAccountRole.NORMAL,
+            quota=quota,
+        )
+
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(func.count()).select_from(TenantAccountJoin)) == 1
+
+
+def test_existing_member_update_does_not_consume_capacity(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    created_at = datetime(2026, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        session.add(make_tenant("workspace"))
+        session.add(make_account("member", status=AccountStatus.ACTIVE, created_at=created_at))
+        session.add(TenantAccountJoin(tenant_id="workspace", account_id="member", role=TenantAccountRole.NORMAL))
+
+    result = WorkspaceRepository(sqlite_session_factory).upsert_member(
+        workspace_id="workspace",
+        account_id="member",
+        role=TenantAccountRole.EDITOR,
+        quota=WorkspaceMemberQuotaSnapshot(1, 1, 1, 1),
+    )
+
+    assert result.created is False
+    assert result.role == TenantAccountRole.EDITOR
+
+
+def test_owner_transfer_rechecks_the_actor_after_the_workspace_lock(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    created_at = datetime(2026, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        session.add(make_tenant("workspace"))
+        for account_id, role in (
+            ("owner", TenantAccountRole.OWNER),
+            ("first-target", TenantAccountRole.NORMAL),
+            ("second-target", TenantAccountRole.NORMAL),
+        ):
+            session.add(make_account(account_id, status=AccountStatus.ACTIVE, created_at=created_at))
+            session.add(TenantAccountJoin(tenant_id="workspace", account_id=account_id, role=role))
+
+    repository = WorkspaceRepository(sqlite_session_factory)
+    repository.update_member_role(
+        workspace_id="workspace",
+        actor_account_id="owner",
+        account_id="first-target",
+        role=TenantAccountRole.OWNER,
+    )
+    with pytest.raises(NoPermissionError, match="current workspace owner"):
+        repository.update_member_role(
+            workspace_id="workspace",
+            actor_account_id="owner",
+            account_id="second-target",
+            role=TenantAccountRole.OWNER,
+        )
+
+    with sqlite_session_factory() as session:
+        owners = session.scalars(
+            select(TenantAccountJoin.account_id).where(
+                TenantAccountJoin.tenant_id == "workspace",
+                TenantAccountJoin.role == TenantAccountRole.OWNER,
+            )
+        ).all()
+    assert owners == ["first-target"]
 
 
 def test_get_legacy_role_is_scoped_to_workspace_and_account(

@@ -1,5 +1,6 @@
 """Framework-neutral application service for Console authentication use cases."""
 
+import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Never, Protocol
@@ -10,6 +11,7 @@ from services.account_ports import AccountPasswordHasher
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
+    EmailCodeChallengeClaim,
     EmailCodeChallengeStatus,
     EmailCodeLoginCommand,
     EmailCodeSendCommand,
@@ -21,9 +23,11 @@ from services.entities.account_login_entities import (
     RefreshAccountStatus,
 )
 from services.entities.auth_audit_entities import LoginFailureReason
+from services.errors.workspace import WorkspacesLimitExceededError
 
 _BANNED_ACCOUNT_STATUS = "banned"
 _EMAIL_DOMAIN_SUSPENDED = "email_domain_suspended"
+logger = logging.getLogger(__name__)
 
 
 class ConsoleAuthAccountRepository(Protocol):
@@ -111,7 +115,11 @@ class EmailCodeGateway(Protocol):
         registration_allowed: bool,
     ) -> str: ...
 
-    def verify(self, *, normalized_email: str, code: str, token: str) -> EmailCodeChallengeStatus: ...
+    def claim(self, *, normalized_email: str, code: str, token: str) -> EmailCodeChallengeClaim: ...
+
+    def consume(self, *, normalized_email: str, token: str, claim_id: str) -> None: ...
+
+    def release(self, *, normalized_email: str, token: str, claim_id: str) -> None: ...
 
 
 class ResetPasswordEmailGateway(Protocol):
@@ -271,37 +279,56 @@ class ConsoleAuthenticationService:
                 action="signin_code_verify",
             )
 
-        status = self._email_codes.verify(normalized_email=normalized_email, code=command.code, token=command.token)
-        self._ensure_email_code_verified(status, normalized_email, command.ip_address)
+        claim = self._email_codes.claim(normalized_email=normalized_email, code=command.code, token=command.token)
+        self._ensure_email_code_verified(claim.status, normalized_email, command.ip_address)
+        assert claim.claim_id is not None
 
-        self._ensure_email_eligible(normalized_email, command.ip_address)
-        account = self._preferred_account(command.email)
-        self._ensure_account_not_banned(account, normalized_email, command.ip_address)
-        if account is not None:
-            if not self._workspaces.has_active_for_account(account.id):
-                if not self._policies.has_workspace_capacity():
-                    raise account_errors.LoginWorkspaceLimitError
+        try:
+            self._ensure_email_eligible(normalized_email, command.ip_address)
+            account = self._preferred_account(command.email)
+            self._ensure_account_not_banned(account, normalized_email, command.ip_address)
+            if account is not None:
+                if not self._workspaces.has_active_for_account(account.id):
+                    if not self._policies.has_workspace_capacity():
+                        raise account_errors.LoginWorkspaceLimitError
+                    if not self._policies.is_workspace_creation_allowed():
+                        raise account_errors.LoginWorkspaceCreationNotAllowedError
+                    self._workspace_provisioning.ensure_owner_workspace(account.id)
+                account_id = account.id
+            else:
+                if not self._policies.is_registration_allowed():
+                    raise account_errors.AccountNotFoundError
+                if not self._policies.has_account_capacity():
+                    raise account_errors.LoginSeatLimitError
                 if not self._policies.is_workspace_creation_allowed():
                     raise account_errors.LoginWorkspaceCreationNotAllowedError
-                self._workspace_provisioning.ensure_owner_workspace(account.id)
-            account_id = account.id
-        else:
-            if not self._policies.is_registration_allowed():
-                raise account_errors.AccountNotFoundError
-            if not self._policies.has_account_capacity():
-                raise account_errors.LoginSeatLimitError
-            if not self._policies.is_workspace_creation_allowed():
-                raise account_errors.LoginWorkspaceCreationNotAllowedError
-            if not self._policies.has_workspace_capacity():
-                raise account_errors.LoginWorkspaceLimitError
-            interface_language = get_valid_language(command.language)
-            account_id = self._account_provisioning.create_with_owner_workspace(
-                email=normalized_email,
-                name=normalized_email,
-                interface_language=interface_language,
-                timezone=command.timezone or language_timezone_mapping.get(interface_language, "UTC"),
-                ip_address=command.ip_address,
+                if not self._policies.has_workspace_capacity():
+                    raise account_errors.LoginWorkspaceLimitError
+                interface_language = get_valid_language(command.language)
+                account_id = self._account_provisioning.create_with_owner_workspace(
+                    email=normalized_email,
+                    name=normalized_email,
+                    interface_language=interface_language,
+                    timezone=command.timezone or language_timezone_mapping.get(interface_language, "UTC"),
+                    ip_address=command.ip_address,
+                )
+        except BaseException as error:
+            self._release_email_code_claim(
+                normalized_email=normalized_email,
+                token=command.token,
+                claim_id=claim.claim_id,
             )
+            if isinstance(error, account_errors.SeatsLimitExceededError):
+                raise account_errors.LoginSeatLimitError from error
+            if isinstance(error, WorkspacesLimitExceededError):
+                raise account_errors.LoginWorkspaceLimitError from error
+            raise
+
+        self._email_codes.consume(
+            normalized_email=normalized_email,
+            token=command.token,
+            claim_id=claim.claim_id,
+        )
 
         tokens = self._issue_session(
             account_id=account_id,
@@ -310,6 +337,16 @@ class ConsoleAuthenticationService:
         )
         self._security.reset_login_failures(normalized_email)
         return tokens
+
+    def _release_email_code_claim(self, *, normalized_email: str, token: str, claim_id: str) -> None:
+        try:
+            self._email_codes.release(
+                normalized_email=normalized_email,
+                token=token,
+                claim_id=claim_id,
+            )
+        except Exception:
+            logger.exception("Failed to release email-code login claim")
 
     def refresh(self, refresh_token: str) -> AccountSessionTokens:
         account_id = self._sessions.resolve_refresh_token(refresh_token)

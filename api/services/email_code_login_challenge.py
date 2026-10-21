@@ -18,7 +18,7 @@ _CHALLENGE_VERSION = 2
 
 # The per-email v2 challenge is the sole state for tokens created by this
 # implementation. Lua result codes must stay in sync with ``_LuaResult``.
-_VERIFY_CHALLENGE_LUA = """
+_CLAIM_CHALLENGE_LUA = """
 local raw = redis.call('GET', KEYS[1])
 if not raw then
     return {0, -1}
@@ -33,7 +33,7 @@ if data.token_type ~= ARGV[1] or tonumber(data.challenge_version) ~= tonumber(AR
     return {5, -1}
 end
 
-if data.state == 'consumed' or data.state == 'exhausted' then
+if data.state == 'claimed' or data.state == 'consumed' or data.state == 'exhausted' then
     return {8, -1}
 end
 
@@ -62,13 +62,9 @@ if not remaining or remaining <= 0 then
 end
 
 if data.code == ARGV[4] then
-    local tombstone = {
-        token_type = data.token_type,
-        challenge_version = data.challenge_version,
-        state = 'consumed',
-        remaining_attempts = 0
-    }
-    redis.call('SET', KEYS[1], cjson.encode(tombstone), 'KEEPTTL')
+    data.state = 'claimed'
+    data.claim_id = ARGV[6]
+    redis.call('SET', KEYS[1], cjson.encode(data), 'KEEPTTL')
     return {4, -1}
 end
 
@@ -92,9 +88,9 @@ return {3, remaining}
 
 # Tokens created before this deployment only have the legacy per-token key.
 # This fallback gives those in-flight tokens the same atomic attempt budget.
-# A versioned token is never accepted here, so a consumed v2 challenge cannot
-# fall back even if a stale legacy key is present unexpectedly.
-_VERIFY_LEGACY_TOKEN_LUA = """
+# A versioned token is never accepted here, so a claimed or consumed v2
+# challenge cannot fall back even if a stale legacy key is present unexpectedly.
+_CLAIM_LEGACY_TOKEN_LUA = """
 local raw = redis.call('GET', KEYS[1])
 if not raw then
     return {0, -1}
@@ -107,6 +103,10 @@ end
 
 if data.token_type ~= ARGV[1] or type(data.email) ~= 'string' or type(data.code) ~= 'string' then
     return {5, -1}
+end
+
+if data.state == 'claimed' or data.state == 'consumed' or data.state == 'exhausted' then
+    return {8, -1}
 end
 
 if string.lower(data.email) ~= ARGV[2] then
@@ -127,7 +127,9 @@ if not remaining or remaining <= 0 then
 end
 
 if data.code == ARGV[3] then
-    redis.call('DEL', KEYS[1])
+    data.state = 'claimed'
+    data.claim_id = ARGV[5]
+    redis.call('SET', KEYS[1], cjson.encode(data), 'KEEPTTL')
     return {4, -1}
 end
 
@@ -143,6 +145,73 @@ return {3, remaining}
 """
 
 
+_TRANSITION_CHALLENGE_CLAIM_LUA = """
+local raw = redis.call('GET', KEYS[1])
+if not raw then
+    return 0
+end
+
+local decoded, data = pcall(cjson.decode, raw)
+if not decoded or type(data) ~= 'table' then
+    return 2
+end
+
+if data.token_type ~= ARGV[1]
+    or tonumber(data.challenge_version) ~= tonumber(ARGV[5])
+    or data.token ~= ARGV[2]
+    or data.email ~= ARGV[3]
+    or data.state ~= 'claimed'
+    or data.claim_id ~= ARGV[4] then
+    return 2
+end
+
+if ARGV[6] == 'release' then
+    data.state = 'active'
+    data.claim_id = nil
+    redis.call('SET', KEYS[1], cjson.encode(data), 'KEEPTTL')
+else
+    local tombstone = {
+        token_type = data.token_type,
+        challenge_version = data.challenge_version,
+        state = 'consumed',
+        remaining_attempts = 0
+    }
+    redis.call('SET', KEYS[1], cjson.encode(tombstone), 'KEEPTTL')
+end
+return 1
+"""
+
+
+_TRANSITION_LEGACY_CLAIM_LUA = """
+local raw = redis.call('GET', KEYS[1])
+if not raw then
+    return 0
+end
+
+local decoded, data = pcall(cjson.decode, raw)
+if not decoded or type(data) ~= 'table' then
+    return 2
+end
+
+if data.challenge_version ~= nil
+    or data.token_type ~= ARGV[1]
+    or string.lower(data.email) ~= ARGV[2]
+    or data.state ~= 'claimed'
+    or data.claim_id ~= ARGV[3] then
+    return 2
+end
+
+if ARGV[4] == 'release' then
+    data.state = 'active'
+    data.claim_id = nil
+    redis.call('SET', KEYS[1], cjson.encode(data), 'KEEPTTL')
+else
+    redis.call('DEL', KEYS[1])
+end
+return 1
+"""
+
+
 class EmailCodeLoginChallengeStatus(StrEnum):
     VERIFIED = "verified"
     INVALID_TOKEN = "invalid_token"
@@ -155,6 +224,7 @@ class EmailCodeLoginChallengeStatus(StrEnum):
 class EmailCodeLoginChallengeResult:
     status: EmailCodeLoginChallengeStatus
     remaining_attempts: int | None = None
+    claim_id: str | None = None
 
 
 class EmailCodeLoginChallengeUnavailableError(RuntimeError):
@@ -204,36 +274,81 @@ class EmailCodeLoginChallengeStore:
         return token
 
     @classmethod
-    def verify(cls, *, email: str, code: str, token: str) -> EmailCodeLoginChallengeResult:
+    def claim(cls, *, email: str, code: str, token: str) -> EmailCodeLoginChallengeResult:
         normalized_email = email.lower()
         max_attempts = dify_config.EMAIL_CODE_LOGIN_MAX_ATTEMPTS
+        claim_id = str(uuid.uuid4())
 
         try:
             challenge_result = cls._eval(
-                _VERIFY_CHALLENGE_LUA,
+                _CLAIM_CHALLENGE_LUA,
                 cls._challenge_key(normalized_email),
                 _TOKEN_TYPE,
                 token,
                 normalized_email,
                 code,
                 _CHALLENGE_VERSION,
+                claim_id,
             )
             if challenge_result[0] is not _LuaResult.MISSING:
-                return cls._to_public_result(challenge_result)
+                return cls._to_public_result(challenge_result, claim_id=claim_id)
 
             # Only a token created before this deployment can reach the
             # legacy fallback because new tokens are never written there.
             legacy_result = cls._eval(
-                _VERIFY_LEGACY_TOKEN_LUA,
+                _CLAIM_LEGACY_TOKEN_LUA,
                 cls._legacy_token_key(token),
                 _TOKEN_TYPE,
                 normalized_email,
                 code,
                 max_attempts,
+                claim_id,
             )
-            return cls._to_public_result(legacy_result)
+            return cls._to_public_result(legacy_result, claim_id=claim_id)
         except (RedisError, TypeError, ValueError) as exc:
-            raise EmailCodeLoginChallengeUnavailableError("Could not verify email-code challenge") from exc
+            raise EmailCodeLoginChallengeUnavailableError("Could not claim email-code challenge") from exc
+
+    @classmethod
+    def consume(cls, *, email: str, token: str, claim_id: str) -> None:
+        cls._transition_claim(email=email, token=token, claim_id=claim_id, action="consume")
+
+    @classmethod
+    def release(cls, *, email: str, token: str, claim_id: str) -> None:
+        cls._transition_claim(email=email, token=token, claim_id=claim_id, action="release")
+
+    @classmethod
+    def _transition_claim(cls, *, email: str, token: str, claim_id: str, action: str) -> None:
+        normalized_email = email.lower()
+        try:
+            current_result = redis_client.eval(
+                _TRANSITION_CHALLENGE_CLAIM_LUA,
+                1,
+                serialize_redis_name(cls._challenge_key(normalized_email)),
+                _TOKEN_TYPE,
+                token,
+                normalized_email,
+                claim_id,
+                _CHALLENGE_VERSION,
+                action,
+            )
+            if int(current_result) == 1:
+                return
+            if int(current_result) != 0:
+                raise ValueError("Email-code challenge claim is no longer owned")
+
+            legacy_result = redis_client.eval(
+                _TRANSITION_LEGACY_CLAIM_LUA,
+                1,
+                serialize_redis_name(cls._legacy_token_key(token)),
+                _TOKEN_TYPE,
+                normalized_email,
+                claim_id,
+                action,
+            )
+            if int(legacy_result) != 1:
+                raise ValueError("Email-code challenge claim is no longer owned")
+        except (RedisError, TypeError, ValueError) as exc:
+            raise EmailCodeLoginChallengeUnavailableError(f"Could not {action} email-code challenge claim") from exc
 
     @staticmethod
     def _eval(script: str, key: str, *args: str | int) -> tuple[_LuaResult, int | None]:
@@ -248,7 +363,7 @@ class EmailCodeLoginChallengeStore:
         return lua_result, remaining if remaining >= 0 else None
 
     @staticmethod
-    def _to_public_result(result: tuple[_LuaResult, int | None]) -> EmailCodeLoginChallengeResult:
+    def _to_public_result(result: tuple[_LuaResult, int | None], *, claim_id: str) -> EmailCodeLoginChallengeResult:
         lua_result, remaining = result
         status = {
             _LuaResult.VERIFIED: EmailCodeLoginChallengeStatus.VERIFIED,
@@ -256,7 +371,11 @@ class EmailCodeLoginChallengeStore:
             _LuaResult.INVALID_CODE: EmailCodeLoginChallengeStatus.INVALID_CODE,
             _LuaResult.EXHAUSTED: EmailCodeLoginChallengeStatus.EXHAUSTED,
         }.get(lua_result, EmailCodeLoginChallengeStatus.INVALID_TOKEN)
-        return EmailCodeLoginChallengeResult(status=status, remaining_attempts=remaining)
+        return EmailCodeLoginChallengeResult(
+            status=status,
+            remaining_attempts=remaining,
+            claim_id=claim_id if status == EmailCodeLoginChallengeStatus.VERIFIED else None,
+        )
 
     @staticmethod
     def _challenge_key(normalized_email: str) -> str:

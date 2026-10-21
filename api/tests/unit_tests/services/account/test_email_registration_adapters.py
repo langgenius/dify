@@ -20,6 +20,7 @@ from services.account_errors import (
     AccountEmailDomainSuspendedError,
     AccountNormalizedEmailAlreadyInUseError,
     EmailRegistrationSeatsLimitError,
+    EmailRegistrationWorkspaceLimitError,
     SeatsLimitExceededError,
 )
 from services.entities.account_entities import (
@@ -27,11 +28,12 @@ from services.entities.account_entities import (
     AccountEmailRegistrationToken,
     AccountSessionTokens,
 )
+from services.errors.workspace import WorkspacesLimitExceededError
 from tests.unit_tests.account_domain import AccountDomain
 
 
 def test_token_gateway_rejects_malformed_payload() -> None:
-    gateway = TokenManagerEmailRegistrationTokenGateway()
+    gateway = TokenManagerEmailRegistrationTokenGateway(redis=create_autospec(RedisClientWrapper, instance=True))
 
     with patch(
         "services.account.email_registration_adapters.TokenManager.get_token_data",
@@ -41,7 +43,7 @@ def test_token_gateway_rejects_malformed_payload() -> None:
 
 
 def test_token_gateway_issues_verified_registration_state() -> None:
-    gateway = TokenManagerEmailRegistrationTokenGateway()
+    gateway = TokenManagerEmailRegistrationTokenGateway(redis=create_autospec(RedisClientWrapper, instance=True))
     token_data = AccountEmailRegistrationToken(
         email="user@example.com",
         code="123456",
@@ -59,6 +61,49 @@ def test_token_gateway_issues_verified_registration_state() -> None:
         token_type="email_register",
         additional_data={"code": "123456", "phase": "register"},
     )
+
+
+def test_token_gateway_claims_and_releases_registration_token() -> None:
+    redis = create_autospec(RedisClientWrapper, instance=True)
+    redis.pttl.return_value = 1200
+    redis.set.return_value = True
+    release_script = redis.register_script.return_value
+    gateway = TokenManagerEmailRegistrationTokenGateway(redis=redis)
+    token_data = AccountEmailRegistrationToken(
+        email="user@example.com",
+        code="123456",
+        phase=AccountEmailRegistrationPhase.REGISTER,
+    )
+
+    with patch.object(gateway, "get", return_value=token_data):
+        claim = gateway.claim("verified-token")
+
+    assert claim is not None
+    assert claim.token_data == token_data
+    redis.set.assert_called_once_with(
+        "email_register:token:verified-token:registration_claim",
+        claim.claim_id,
+        nx=True,
+        px=1200,
+    )
+
+    gateway.release("verified-token", claim.claim_id)
+    release_script.assert_called_once_with(
+        keys=["email_register:token:verified-token:registration_claim"],
+        args=[claim.claim_id],
+    )
+
+
+def test_token_gateway_consumes_source_token_but_retains_used_marker() -> None:
+    redis = create_autospec(RedisClientWrapper, instance=True)
+    redis.get.return_value = b"claim-1"
+    gateway = TokenManagerEmailRegistrationTokenGateway(redis=redis)
+
+    with patch("services.account.email_registration_adapters.TokenManager.revoke_token") as revoke:
+        gateway.consume("verified-token", "claim-1")
+
+    redis.get.assert_called_once_with("email_register:token:verified-token:registration_claim")
+    revoke.assert_called_once_with("verified-token", "email_register")
 
 
 @pytest.mark.parametrize(("count", "limited"), [(0, False), (1, False), (2, True)])
@@ -170,6 +215,11 @@ def test_billing_policy_is_disabled_outside_cloud() -> None:
     ("service_error", "application_error"),
     [
         pytest.param(SeatsLimitExceededError(), EmailRegistrationSeatsLimitError, id="seat-limit"),
+        pytest.param(
+            WorkspacesLimitExceededError(),
+            EmailRegistrationWorkspaceLimitError,
+            id="workspace-limit",
+        ),
         pytest.param(AccountEmailDomainSuspendedError(), AccountEmailDomainSuspendedError, id="suspended-domain"),
         pytest.param(
             AccountNormalizedEmailAlreadyInUseError(),
@@ -178,7 +228,7 @@ def test_billing_policy_is_disabled_outside_cloud() -> None:
         ),
     ],
 )
-def test_registration_gateway_preserves_domain_errors_and_translates_seat_limit(
+def test_registration_gateway_preserves_domain_errors_and_translates_quota_limits(
     service_error: Exception,
     application_error: type[Exception],
 ) -> None:

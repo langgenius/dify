@@ -206,6 +206,7 @@ from services.webapp_access_query_service import WebAppAccessQueryService, WebAp
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from services.workspace.gateways import DeploymentQuotaSnapshotGateway, DeploymentWorkspaceMemberQuotaGateway
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -427,9 +428,13 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_repository = WorkspaceRepository(session_factory=database_client)
+    deployment_quota = DeploymentQuotaSnapshotGateway()
+    workspace_member_quotas = DeploymentWorkspaceMemberQuotaGateway()
     workspace_members, workspace_provisioning = build_workspace_membership_services(
         workspaces=workspace_repository,
         accounts=accounts,
+        quota=deployment_quota,
+        member_quotas=workspace_member_quotas,
     )
     recommended_app_queries = RecommendedAppQueryService(
         catalog=recommended_app_catalog,
@@ -510,6 +515,8 @@ def build_application_services(
         passwords=passwords,
         invitation_tokens=invitation_tokens,
         activation_accounts=activation_accounts,
+        quota=deployment_quota,
+        member_quotas=workspace_member_quotas,
     )
     workspace_services = build_workspace_services(
         database_client=database_client,

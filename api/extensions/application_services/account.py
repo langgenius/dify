@@ -99,6 +99,7 @@ from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.workspace.provisioning_service import WorkspaceProvisioningService
+from services.workspace.quota import DeploymentQuotaGateway, WorkspaceMemberQuotaGateway
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,11 +187,13 @@ def build_account_services(
     passwords: DefaultAccountPasswordHasher,
     invitation_tokens: RedisInvitationTokenStore,
     activation_accounts: SQLAlchemyAccountActivationRepository,
+    quota: DeploymentQuotaGateway,
+    member_quotas: WorkspaceMemberQuotaGateway,
 ) -> AccountServices:
     lifecycle = AccountService(
         security=RedisConsoleAuthSecurityGateway(redis=redis),
         accounts=accounts,
-        policies=DeploymentAccountLifecyclePolicy(),
+        policies=DeploymentAccountLifecyclePolicy(quota=quota),
         passwords=passwords,
         workspaces=workspace_provisioning,
         sessions=RedisAccountSessionGateway(redis=redis),
@@ -209,6 +212,7 @@ def build_account_services(
         member_access_sync=RBACWorkspaceMemberAccessSync(
             enabled=dify_config.RBAC_ENABLED,
         ),
+        member_quotas=member_quotas,
     )
     return AccountServices(
         lifecycle=lifecycle,
@@ -231,6 +235,7 @@ def build_account_services(
             ),
             policies=DeploymentConsoleAuthPolicyGateway(
                 billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
+                quota=quota,
             ),
             security=RedisConsoleAuthSecurityGateway(redis=redis),
             passwords=passwords,
@@ -269,7 +274,7 @@ def build_account_services(
         ),
         email_registration=AccountEmailRegistrationService(
             accounts=accounts,
-            tokens=TokenManagerEmailRegistrationTokenGateway(),
+            tokens=TokenManagerEmailRegistrationTokenGateway(redis=redis),
             codes=SecureEmailRegistrationCodeGenerator(),
             notifications=CeleryEmailRegistrationNotificationGateway(),
             send_limits=RateLimiterEmailRegistrationSendLimiter(

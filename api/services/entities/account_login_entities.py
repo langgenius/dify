@@ -15,6 +15,16 @@ class EmailCodeChallengeStatus(StrEnum):
     EXHAUSTED = "exhausted"
 
 
+@dataclass(frozen=True, slots=True)
+class EmailCodeChallengeClaim:
+    status: EmailCodeChallengeStatus
+    claim_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if (self.status == EmailCodeChallengeStatus.VERIFIED) != (self.claim_id is not None):
+            raise ValueError("a verified email-code challenge requires an owned claim")
+
+
 class RefreshAccountStatus(StrEnum):
     READY = "ready"
     NOT_FOUND = "not_found"

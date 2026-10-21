@@ -1,6 +1,7 @@
 """Explicit RBAC transport and task fakes for exercising real application services."""
 
 from dataclasses import dataclass, field
+from unittest.mock import create_autospec
 
 import pytest
 from pydantic import JsonValue
@@ -13,6 +14,11 @@ from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.enterprise.base import EnterpriseRequest
+from services.workspace.quota import (
+    DeploymentQuotaGateway,
+    WorkspaceMemberQuotaGateway,
+    WorkspaceMemberQuotaSnapshot,
+)
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 
@@ -85,8 +91,13 @@ def build_rbac_domain(sessions: sessionmaker[Session], monkeypatch: pytest.Monke
     monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", transport.send)
     monkeypatch.setattr(initialize_created_app_rbac_access_task, "delay", tasks.delay)
     workspaces = WorkspaceRepository(sessions)
+    member_quotas = create_autospec(WorkspaceMemberQuotaGateway, instance=True)
+    member_quotas.snapshot.return_value = WorkspaceMemberQuotaSnapshot(None, 0, None, 0)
     members, _ = build_workspace_membership_services(
-        workspaces=workspaces, accounts=SQLAlchemyAccountRepository(sessions)
+        workspaces=workspaces,
+        accounts=SQLAlchemyAccountRepository(sessions),
+        quota=create_autospec(DeploymentQuotaGateway, instance=True),
+        member_quotas=member_quotas,
     )
     return RBACDomain(
         rbac=build_rbac_services(

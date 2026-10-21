@@ -32,6 +32,7 @@ from services.workspace.member_service import (
     WorkspaceOwnerTransferService,
 )
 from services.workspace.provisioning_service import WorkspaceProvisioningService
+from services.workspace.quota import DeploymentQuotaGateway, WorkspaceMemberQuotaGateway
 from services.workspace.resource_cleanup_service import WorkspaceResourceCleanupService
 from services.workspace.service import WorkspaceQueryService, WorkspaceService
 
@@ -53,18 +54,21 @@ def build_workspace_membership_services(
     *,
     workspaces: WorkspaceRepository,
     accounts: SQLAlchemyAccountRepository,
+    quota: DeploymentQuotaGateway,
+    member_quotas: WorkspaceMemberQuotaGateway,
 ) -> tuple[WorkspaceMemberService, WorkspaceProvisioningService]:
     """Build the workspace prerequisites shared by account registration and invitations."""
     members = WorkspaceMemberService(
         workspaces=workspaces,
         accounts=accounts,
         access=DeploymentWorkspaceMemberAccessGateway(),
+        quotas=member_quotas,
     )
     provisioning = WorkspaceProvisioningService(
         owners=accounts,
         provisioning=workspaces,
         effects=WorkspaceProvisioningEffectsGateway(),
-        policies=DeploymentWorkspaceCreationPolicy(),
+        policies=DeploymentWorkspaceCreationPolicy(quota=quota),
         memberships=workspaces,
         members=members,
     )

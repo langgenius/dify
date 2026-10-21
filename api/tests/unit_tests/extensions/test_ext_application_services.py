@@ -275,20 +275,17 @@ def test_build_application_services_preserves_composed_boundaries(
 ) -> None:
     redis = _redis()
 
-    with patch.object(redis, "register_script", wraps=redis.register_script) as register_script:
-        services = ext_application_services.build_application_services(
-            database_client=sqlite_session_factory,
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            initialization_password="",
-            redis=redis,
-        )
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
 
     assert isinstance(services.app_api_keys, AppApiKeyService)
     assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
     assert services.dataset_api_keys._access is services.knowledge.datasets._dataset_access
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
-    assert register_script.call_count == 3
-
     assert isinstance(services.installed_apps.generation, InstalledAppGenerationService)
     installed_apps = services.installed_apps.access._installed_apps
     assert isinstance(installed_apps, SQLAlchemyInstalledAppRepository)

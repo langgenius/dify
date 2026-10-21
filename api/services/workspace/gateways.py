@@ -5,8 +5,9 @@ import secrets
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager
 from typing import Literal, override
-from uuid import uuid4
 
+import httpx
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_fixed
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -14,7 +15,7 @@ from enums import CloudPlan, DeploymentEdition
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter, TokenManager
-from libs.key_providers import generate_key_pair
+from libs.key_providers import delete_key_pair, generate_key_pair
 from libs.workspace_permission import check_workspace_member_invite_permission
 from machinery.context import RequestContext
 from models.account import (
@@ -35,6 +36,7 @@ from services.enterprise.rbac_service import RBACService
 from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_entities import AccountSnapshot
 from services.errors.base import NoPermissionError
+from services.errors.enterprise import EnterpriseAPIError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     OwnerTransferSendRateLimitError,
@@ -56,9 +58,15 @@ from services.workspace.contracts import (
     WorkspaceMemberRole,
     WorkspaceMemberRoleSubject,
     WorkspaceMemberWrite,
+    WorkspaceOwnerTransferNotification,
     WorkspacePermission,
 )
 from services.workspace.member_service import WorkspaceMemberRoleResolver
+from services.workspace.quota import (
+    DeploymentQuotaGateway,
+    DeploymentQuotaSnapshot,
+    WorkspaceMemberQuotaSnapshot,
+)
 from services.workspace.service import WorkspaceFeatureGateway, WorkspaceLogoGateway, WorkspacePlanGateway
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_owner_transfer_task import (
@@ -68,6 +76,54 @@ from tasks.mail_owner_transfer_task import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _is_transient_rbac_error(error: BaseException) -> bool:
+    if isinstance(error, httpx.RequestError):
+        return True
+    return isinstance(error, EnterpriseAPIError) and (
+        error.status_code == 429 or error.status_code is not None and error.status_code >= 500
+    )
+
+
+class DeploymentQuotaSnapshotGateway:
+    """Read current Enterprise counters before opening a write transaction."""
+
+    def snapshot(self) -> DeploymentQuotaSnapshot:
+        license_model = SystemFeatureService.get_uncached_license()
+        seats = license_model.seats
+        workspaces = license_model.workspaces
+        return DeploymentQuotaSnapshot(
+            seat_limit=seats.limit if seats.enabled and seats.limit > 0 else None,
+            seat_usage=seats.size,
+            workspace_limit=workspaces.limit if workspaces.enabled and workspaces.limit > 0 else None,
+            workspace_usage=workspaces.size,
+        )
+
+
+class DeploymentWorkspaceMemberQuotaGateway:
+    """Fetch plan and license member counters before a membership transaction."""
+
+    def snapshot(self, workspace_id: str) -> WorkspaceMemberQuotaSnapshot:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.COMMUNITY:
+            return WorkspaceMemberQuotaSnapshot(None, 0, None, 0)
+
+        features = FeatureService.get_features(tenant_id=workspace_id, exclude_vector_space=True)
+        plan_limit = None
+        plan_usage = 0
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            plan = features.members
+            plan_limit = plan.limit if plan.limit > 0 else None
+            plan_usage = plan.size
+
+        license_quota = features.workspace_members
+        license_limit = license_quota.limit if license_quota.enabled and license_quota.limit > 0 else None
+        return WorkspaceMemberQuotaSnapshot(
+            plan_limit=plan_limit,
+            plan_usage=plan_usage,
+            license_limit=license_limit,
+            license_usage=license_quota.size,
+        )
 
 
 class WorkspaceIdentityGateway:
@@ -119,19 +175,40 @@ class WorkspaceOwnerTransferGateway(RedisAccountEmailSecurityGateway):
     def revoke_token(self, token: str) -> None:
         TokenManager.revoke_token(token, "owner_transfer")
 
-    def notify(self, *, old_owner: AccountSnapshot, new_owner: AccountSnapshot, workspace_name: str) -> None:
-        send_new_owner_transfer_notify_email_task.delay(language="en-US", to=new_owner.email, workspace=workspace_name)
-        send_old_owner_transfer_notify_email_task.delay(
-            language="en-US", to=old_owner.email, workspace=workspace_name, new_owner_email=new_owner.email
+    def notify(self, notification: WorkspaceOwnerTransferNotification) -> None:
+        """Enqueue one durably identified recipient notification."""
+        headers = {
+            "workspace_owner_transfer_operation_id": notification.operation_id,
+            "workspace_owner_transfer_recipient": notification.recipient_type,
+        }
+        kwargs = {
+            "language": notification.recipient_language,
+            "to": notification.recipient_email,
+            "workspace": notification.workspace_name,
+        }
+        if notification.recipient_type == "new_owner":
+            send_new_owner_transfer_notify_email_task.apply_async(
+                kwargs=kwargs,
+                task_id=notification.notification_id,
+                headers=headers,
+            )
+            return
+        send_old_owner_transfer_notify_email_task.apply_async(
+            kwargs={**kwargs, "new_owner_email": notification.new_owner_email},
+            task_id=notification.notification_id,
+            headers=headers,
         )
 
 
 class DeploymentWorkspaceCreationPolicy:
+    def __init__(self, *, quota: DeploymentQuotaGateway) -> None:
+        self._quota = quota
+
     def is_workspace_creation_allowed(self) -> bool:
         return SystemFeatureService.is_workspace_creation_allowed()
 
-    def has_workspace_capacity(self) -> bool:
-        return SystemFeatureService.get_license().workspaces.is_available()
+    def quota_snapshot(self) -> DeploymentQuotaSnapshot:
+        return self._quota.snapshot()
 
 
 def _ensure_role_enabled(role: str) -> None:
@@ -140,7 +217,12 @@ def _ensure_role_enabled(role: str) -> None:
 
 
 class WorkspaceInvitationGateway:
-    def __init__(self, *, tokens: RedisInvitationTokenStore, redis: RedisClientWrapper) -> None:
+    def __init__(
+        self,
+        *,
+        tokens: RedisInvitationTokenStore,
+        redis: RedisClientWrapper,
+    ) -> None:
         self._tokens = tokens
         self._redis = redis
 
@@ -175,8 +257,6 @@ class WorkspaceInvitationGateway:
             quota = features.workspace_members
             if quota.enabled and not quota.is_available(new_members):
                 raise WorkspaceMemberLicenseQuotaError()
-            if new_accounts and not SystemFeatureService.get_license().seats.is_available(new_accounts):
-                raise WorkspaceInvitationQuotaError(seats=True)
         elif 0 < features.members.limit < current_members + new_members:
             raise WorkspaceInvitationQuotaError()
 
@@ -218,7 +298,7 @@ class DeploymentWorkspaceMemberAccessGateway:
         )
 
     @staticmethod
-    def _role_id(workspace_id: str, actor_id: str, tag: str) -> str:
+    def _role_id(workspace_id: str, actor_id: str | None, tag: str) -> str:
         roles = RBACService.Roles.list(
             workspace_id, actor_id, options=ListOption(page_number=1, results_per_page=100)
         ).data
@@ -252,24 +332,38 @@ class DeploymentWorkspaceMemberAccessGateway:
         self.assign_role(workspace_id, actor_id, member_id, self._role_id(workspace_id, actor_id, role.value))
 
     def transfer_owner(self, workspace_id: str, actor_id: str, member_id: str) -> None:
-        owner_role_id = self._role_id(workspace_id, actor_id, "owner")
         old_owner_id = self.owner_id(workspace_id, actor_id)
+        self.reconcile_owner(workspace_id, old_owner_id, member_id, actor_id=actor_id)
+
+    def reconcile_owner(
+        self,
+        workspace_id: str,
+        old_owner_id: str,
+        new_owner_id: str,
+        *,
+        actor_id: str | None,
+    ) -> None:
+        """Idempotently converge RBAC ownership without a database transaction."""
+        owner_role_id = self._role_id(workspace_id, actor_id, "owner")
         no_access_id = self._role_id(workspace_id, actor_id, "no_access")
-        # Complete the remote role changes before the repository commits local ownership.
-        current = RBACService.MemberRoles.get(workspace_id, actor_id, old_owner_id).roles
-        remaining = [str(item.id) for item in current if str(item.id) != owner_role_id]
-        RBACService.MemberRoles.replace(
-            tenant_id=workspace_id,
-            account_id=actor_id,
-            member_account_id=old_owner_id,
-            role_ids=remaining or [no_access_id],
-        )
-        RBACService.MemberRoles.replace(
-            tenant_id=workspace_id,
-            account_id=actor_id,
-            member_account_id=member_id,
-            role_ids=[owner_role_id],
-        )
+        old_roles = RBACService.MemberRoles.get(workspace_id, actor_id, old_owner_id).roles
+        old_role_ids = [str(item.id) for item in old_roles]
+        if owner_role_id in old_role_ids:
+            remaining = [role_id for role_id in old_role_ids if role_id != owner_role_id]
+            RBACService.MemberRoles.replace(
+                tenant_id=workspace_id,
+                account_id=actor_id,
+                member_account_id=old_owner_id,
+                role_ids=remaining or [no_access_id],
+            )
+        new_roles = RBACService.MemberRoles.get(workspace_id, actor_id, new_owner_id).roles
+        if [str(item.id) for item in new_roles] != [owner_role_id]:
+            RBACService.MemberRoles.replace(
+                tenant_id=workspace_id,
+                account_id=actor_id,
+                member_account_id=new_owner_id,
+                role_ids=[owner_role_id],
+            )
 
     def membership_changed(self, membership: WorkspaceMemberWrite, operator_account_id: str | None) -> None:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
@@ -457,23 +551,43 @@ class DeploymentWorkspaceMemberRoleResolver(WorkspaceMemberRoleResolver):
 class WorkspaceProvisioningEffectsGateway:
     """Prepare external resources and publish committed workspace creation."""
 
-    def prepare(self, name: str) -> WorkspaceCreation:
-        workspace_id = str(uuid4())
-        return WorkspaceCreation(
-            id=workspace_id,
-            name=name,
-            encrypt_public_key=generate_key_pair(workspace_id),
-            trial_credits=dify_config.HOSTED_POOL_CREDITS,
-            plugin_upgrade_time=PluginAutoUpgradeService.default_upgrade_time_of_day(workspace_id),
-            plugin_upgrade_settings={
-                category.value: PluginAutoUpgradeService.default_strategy_setting_for_category(category).value
-                for category in TenantPluginAutoUpgradeCategory
-            },
-        )
+    def prepare(self, workspace_id: str, name: str) -> WorkspaceCreation:
+        try:
+            return WorkspaceCreation(
+                id=workspace_id,
+                name=name,
+                encrypt_public_key=generate_key_pair(workspace_id),
+                trial_credits=dify_config.HOSTED_POOL_CREDITS,
+                plugin_upgrade_time=PluginAutoUpgradeService.default_upgrade_time_of_day(workspace_id),
+                plugin_upgrade_settings={
+                    category.value: PluginAutoUpgradeService.default_strategy_setting_for_category(category).value
+                    for category in TenantPluginAutoUpgradeCategory
+                },
+            )
+        except Exception:
+            try:
+                delete_key_pair(workspace_id)
+            except Exception:
+                logger.exception("Failed to compensate partially prepared workspace key: workspace_id=%s", workspace_id)
+            raise
+
+    def discard_key(self, workspace_id: str) -> None:
+        delete_key_pair(workspace_id)
 
     def bind_owner(self, workspace_id: str, account_id: str) -> None:
         if not dify_config.RBAC_ENABLED:
             return
+        self._bind_owner(workspace_id, account_id)
+
+    @staticmethod
+    @retry(
+        retry=retry_if_exception(_is_transient_rbac_error),
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(0.1),
+        reraise=True,
+    )
+    def _bind_owner(workspace_id: str, account_id: str) -> None:
+        """Idempotently replace the owner role, retrying only transient RPC failures."""
         role_id = DeploymentWorkspaceMemberAccessGateway._role_id(workspace_id, account_id, "owner")
         RBACService.MemberRoles.replace(
             tenant_id=workspace_id,
@@ -481,6 +595,22 @@ class WorkspaceProvisioningEffectsGateway:
             member_account_id=account_id,
             role_ids=[role_id],
         )
+
+    def unbind_owner(self, workspace_id: str, account_id: str) -> None:
+        if not dify_config.RBAC_ENABLED:
+            return
+        self._unbind_owner(workspace_id, account_id)
+
+    @staticmethod
+    @retry(
+        retry=retry_if_exception(_is_transient_rbac_error),
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(0.1),
+        reraise=True,
+    )
+    def _unbind_owner(workspace_id: str, account_id: str) -> None:
+        """Idempotently delete a failed request's owner binding."""
+        RBACService.MemberRoles.delete_rbac_bindings(tenant_id=workspace_id, account_id=account_id)
 
     def created(self, workspace: CreatedWorkspace, *, owner_id: str | None) -> None:
         if owner_id is not None and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:

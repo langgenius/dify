@@ -32,7 +32,12 @@ class InstallationStateRepository:
         with self._session_factory.begin() as session:
             session.add(DifySetup(version=dify_config.project.version, instance_id=str(uuid4())))
 
-    def reset_setup(self) -> None:
+    def reset_setup(self, *, account_id: str | None) -> None:
+        """Remove only bootstrap rows created by the failed serialized attempt."""
         with self._session_factory.begin() as session:
-            for model in (DifySetup, TenantAccountJoin, Account, Tenant):
-                session.execute(delete(model))
+            session.execute(delete(DifySetup).where(DifySetup.version == dify_config.project.version))
+            if account_id is not None:
+                has_membership = exists().where(TenantAccountJoin.account_id == account_id)
+                account = session.scalar(select(Account).where(Account.id == account_id, ~has_membership))
+                if account is not None:
+                    session.delete(account)

@@ -1,5 +1,6 @@
 from typing import cast
 
+import pytest
 from sqlalchemy import event, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
@@ -8,6 +9,10 @@ from sqlalchemy.sql.elements import ClauseElement
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from services.entities.account_activation_entities import AccountInvitation, AccountSetup, InvitationToken
+from services.errors.workspace import WorkspaceInvitationQuotaError
+from services.workspace.quota import WorkspaceMemberQuotaSnapshot
+
+_UNLIMITED_MEMBER_QUOTA = WorkspaceMemberQuotaSnapshot(None, 0, None, 0)
 
 
 def _persist_invitation_state(session: Session) -> tuple[Account, Tenant]:
@@ -73,6 +78,29 @@ class TestResolveInvitation:
 
 
 class TestPersistActivation:
+    def test_rejects_new_membership_without_mutating_account_setup(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        account, _ = _persist_invitation_state(sqlite_session)
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+
+        with pytest.raises(WorkspaceInvitationQuotaError):
+            repository.activate(
+                _invitation(),
+                role="admin",
+                setup=AccountSetup(name="John Doe", interface_language="en-US", timezone="UTC"),
+                quota=WorkspaceMemberQuotaSnapshot(0, 0, None, 0),
+            )
+
+        sqlite_session.expire_all()
+        assert sqlite_session.scalar(select(TenantAccountJoin)) is None
+        persisted = sqlite_session.get(Account, account.id)
+        assert persisted is not None
+        assert persisted.status == AccountStatus.PENDING
+        assert persisted.name == "Invited"
+
     def test_locks_account_while_switching_current_workspace(
         self,
         sqlite_session: Session,
@@ -87,7 +115,7 @@ class TestPersistActivation:
 
         event.listen(sqlite_session_factory.class_, "do_orm_execute", capture_statement)
         try:
-            result = repository.activate(_invitation(), role="admin", setup=None)
+            result = repository.activate(_invitation(), role="admin", setup=None, quota=_UNLIMITED_MEMBER_QUOTA)
         finally:
             event.remove(sqlite_session_factory.class_, "do_orm_execute", capture_statement)
 
@@ -125,6 +153,7 @@ class TestPersistActivation:
             _invitation(),
             role="admin",
             setup=AccountSetup(name="John Doe", interface_language="en-US", timezone="UTC"),
+            quota=_UNLIMITED_MEMBER_QUOTA,
         )
 
         assert result is not None
@@ -167,7 +196,7 @@ class TestPersistActivation:
         sqlite_session.commit()
         repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
 
-        result = repository.activate(_invitation(), role="admin", setup=None)
+        result = repository.activate(_invitation(), role="admin", setup=None, quota=_UNLIMITED_MEMBER_QUOTA)
 
         assert result is not None
         assert result.membership_created is False
@@ -189,6 +218,7 @@ class TestPersistActivation:
             _invitation(),
             role="admin",
             setup=AccountSetup(name="Name", interface_language="en-US", timezone="UTC"),
+            quota=_UNLIMITED_MEMBER_QUOTA,
             create_membership=False,
         )
 
@@ -216,7 +246,13 @@ class TestPersistActivation:
         sqlite_session.commit()
         repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
 
-        result = repository.activate(_invitation(), role="admin", setup=None, create_membership=False)
+        result = repository.activate(
+            _invitation(),
+            role="admin",
+            setup=None,
+            quota=_UNLIMITED_MEMBER_QUOTA,
+            create_membership=False,
+        )
 
         assert result is not None
         assert result.membership_created is False

@@ -6,10 +6,15 @@ from datetime import datetime
 import pytest
 
 from services import account_errors
-from services.account.login_service import ConsoleAuthenticationService
+from services.account.login_service import (
+    AccountProvisioningGateway,
+    ConsoleAuthenticationService,
+    WorkspaceProvisioningGateway,
+)
 from services.entities.account_entities import AccountPasswordDigest, AccountSessionTokens
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
+    EmailCodeChallengeClaim,
     EmailCodeChallengeStatus,
     EmailCodeLoginCommand,
     EmailCodeSendCommand,
@@ -20,6 +25,7 @@ from services.entities.account_login_entities import (
     RefreshAccountStatus,
 )
 from services.entities.auth_audit_entities import LoginFailureReason
+from services.errors.workspace import WorkspacesLimitExceededError
 
 TOKENS = AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
 LOGIN_TIME = datetime(2026, 8, 24, 12, 0, 0)
@@ -185,6 +191,7 @@ class FakeRefreshPreparation:
 @dataclass
 class FakeAccountProvisioning:
     calls: list[dict[str, str]] = field(default_factory=list)
+    error: BaseException | None = None
 
     def create_with_owner_workspace(
         self,
@@ -204,21 +211,29 @@ class FakeAccountProvisioning:
                 "ip_address": ip_address,
             }
         )
+        if self.error is not None:
+            raise self.error
         return "new-account"
 
 
 @dataclass
 class FakeWorkspaceProvisioning:
     account_ids: list[str] = field(default_factory=list)
+    error: BaseException | None = None
 
     def ensure_owner_workspace(self, account_id: str) -> None:
         self.account_ids.append(account_id)
+        if self.error is not None:
+            raise self.error
 
 
 @dataclass
 class FakeEmailCodes:
     status: EmailCodeChallengeStatus = EmailCodeChallengeStatus.VERIFIED
     sent: list[tuple[str | None, str, str, str, bool]] = field(default_factory=list)
+    claims: list[tuple[str, str, str]] = field(default_factory=list)
+    consumed: list[tuple[str, str, str]] = field(default_factory=list)
+    released: list[tuple[str, str, str]] = field(default_factory=list)
 
     def send(
         self,
@@ -232,9 +247,18 @@ class FakeEmailCodes:
         self.sent.append((account_id, normalized_email, recipient_email, language, registration_allowed))
         return "email-token"
 
-    def verify(self, *, normalized_email: str, code: str, token: str) -> EmailCodeChallengeStatus:
-        _ = normalized_email, code, token
-        return self.status
+    def claim(self, *, normalized_email: str, code: str, token: str) -> EmailCodeChallengeClaim:
+        self.claims.append((normalized_email, code, token))
+        return EmailCodeChallengeClaim(
+            status=self.status,
+            claim_id=f"claim-{len(self.claims)}" if self.status == EmailCodeChallengeStatus.VERIFIED else None,
+        )
+
+    def consume(self, *, normalized_email: str, token: str, claim_id: str) -> None:
+        self.consumed.append((normalized_email, token, claim_id))
+
+    def release(self, *, normalized_email: str, token: str, claim_id: str) -> None:
+        self.released.append((normalized_email, token, claim_id))
 
 
 @dataclass
@@ -283,6 +307,8 @@ class Dependencies:
         *,
         turnstile_enabled: bool = False,
         turnstile_verify_required: bool = False,
+        account_provisioning: AccountProvisioningGateway | None = None,
+        workspace_provisioning: WorkspaceProvisioningGateway | None = None,
     ) -> ConsoleAuthenticationService:
         return ConsoleAuthenticationService(
             accounts=self.accounts,
@@ -294,8 +320,8 @@ class Dependencies:
             human_verification=self.human,
             sessions=self.sessions,
             refresh_preparation=self.refresh_preparation,
-            account_provisioning=self.accounts_provisioning,
-            workspace_provisioning=self.workspaces_provisioning,
+            account_provisioning=account_provisioning or self.accounts_provisioning,
+            workspace_provisioning=workspace_provisioning or self.workspaces_provisioning,
             email_codes=self.email_codes,
             reset_password_emails=self.reset_emails,
             audit=self.audit,
@@ -876,6 +902,7 @@ def test_email_code_login_creates_workspace_for_existing_account() -> None:
 
     assert result == TOKENS
     assert dependencies.workspaces_provisioning.account_ids == ["account-1"]
+    assert dependencies.email_codes.consumed == [("user@example.com", "challenge-token", "claim-1")]
 
 
 def test_email_code_login_provisions_new_account() -> None:
@@ -894,6 +921,48 @@ def test_email_code_login_provisions_new_account() -> None:
         }
     ]
     assert dependencies.sessions.issued == ["new-account"]
+    assert dependencies.email_codes.consumed == [("user@example.com", "challenge-token", "claim-1")]
+
+
+def test_email_code_login_releases_claim_and_maps_atomic_workspace_quota_for_existing_account() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.workspaces_provisioning.error = WorkspacesLimitExceededError()
+
+    with pytest.raises(account_errors.LoginWorkspaceLimitError):
+        dependencies.service().login_with_email_code(_email_code_command())
+
+    assert dependencies.email_codes.released == [("user@example.com", "challenge-token", "claim-1")]
+    assert dependencies.email_codes.consumed == []
+
+    dependencies.workspaces_provisioning.error = None
+    assert dependencies.service().login_with_email_code(_email_code_command()) == TOKENS
+    assert dependencies.email_codes.consumed == [("user@example.com", "challenge-token", "claim-2")]
+
+
+@pytest.mark.parametrize(
+    ("provisioning_error", "application_error"),
+    [
+        (account_errors.SeatsLimitExceededError(), account_errors.LoginSeatLimitError),
+        (WorkspacesLimitExceededError(), account_errors.LoginWorkspaceLimitError),
+    ],
+)
+def test_email_code_login_releases_claim_and_maps_atomic_quota_for_new_account(
+    provisioning_error: BaseException,
+    application_error: type[account_errors.AccountApplicationError],
+) -> None:
+    dependencies = Dependencies()
+    dependencies.accounts_provisioning.error = provisioning_error
+
+    with pytest.raises(application_error):
+        dependencies.service().login_with_email_code(_email_code_command())
+
+    assert dependencies.email_codes.released == [("user@example.com", "challenge-token", "claim-1")]
+    assert dependencies.email_codes.consumed == []
+
+    dependencies.accounts_provisioning.error = None
+    assert dependencies.service().login_with_email_code(_email_code_command()) == TOKENS
+    assert dependencies.email_codes.consumed == [("user@example.com", "challenge-token", "claim-2")]
 
 
 def test_reset_password_email_uses_shared_account_snapshot() -> None:

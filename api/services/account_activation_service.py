@@ -1,5 +1,6 @@
 """Application service for checking and accepting account invitations."""
 
+import logging
 from typing import Protocol
 
 from services.account_errors import (
@@ -18,14 +19,19 @@ from services.entities.account_activation_entities import (
     InvitationLookup,
     InvitationToken,
 )
+from services.workspace.quota import WorkspaceMemberQuotaGateway, WorkspaceMemberQuotaSnapshot
 
 _DEFAULT_ROLE = "normal"
 _NON_OWNER_ROLES = frozenset({"admin", "editor", "normal", "dataset_operator"})
 _PENDING_ACCOUNT_STATUS = "pending"
 
+logger = logging.getLogger(__name__)
+
 
 class InvitationTokenStore(Protocol):
-    def consume_membership(self, invitation: InvitationLookup) -> bool: ...
+    def claim_membership(self, invitation: InvitationLookup) -> str | None: ...
+
+    def release_membership(self, invitation: InvitationLookup, claim_id: str) -> None: ...
 
     def is_membership_consumed(self, invitation: InvitationLookup) -> bool: ...
 
@@ -43,6 +49,7 @@ class AccountActivationRepository(Protocol):
         *,
         role: str,
         setup: AccountSetup | None,
+        quota: WorkspaceMemberQuotaSnapshot,
         create_membership: bool = True,
     ) -> ActivationPersistenceResult | None: ...
 
@@ -73,6 +80,7 @@ class AccountActivationService:
         eligibility: AccountActivationEligibility,
         membership_cache: WorkspaceMembershipCache,
         member_access_sync: WorkspaceMemberAccessSync,
+        member_quotas: WorkspaceMemberQuotaGateway,
     ) -> None:
         self._tokens = tokens
         self._accounts = accounts
@@ -80,6 +88,7 @@ class AccountActivationService:
         self._eligibility = eligibility
         self._membership_cache = membership_cache
         self._member_access_sync = member_access_sync
+        self._member_quotas = member_quotas
 
     def check(self, invitation: InvitationLookup) -> ActivationCheckResult:
         resolved = self._resolve(invitation)
@@ -114,20 +123,29 @@ class AccountActivationService:
 
         setup = self._resolve_setup(invitation, command)
         role = self._membership_role(invitation.role)
+        quota = self._member_quotas.snapshot(invitation.workspace_id)
         # An invitation that already restored membership at sign-in must not grant it again after removal.
         membership_consumed = self._tokens.is_membership_consumed(command.invitation)
 
         normalized_email = command.invitation.email.lower() if command.invitation.email else None
-        self._tokens.revoke(
-            InvitationLookup(
-                workspace_id=command.invitation.workspace_id,
-                email=normalized_email,
-                token=command.invitation.token,
-            )
+        normalized_lookup = InvitationLookup(
+            workspace_id=command.invitation.workspace_id,
+            email=normalized_email,
+            token=command.invitation.token,
         )
-        result = self._accounts.activate(invitation, role=role, setup=setup, create_membership=not membership_consumed)
+        if membership_consumed:
+            self._tokens.revoke(normalized_lookup)
+        result = self._accounts.activate(
+            invitation,
+            role=role,
+            setup=setup,
+            quota=quota,
+            create_membership=not membership_consumed,
+        )
         if result is None:
             raise InvalidInvitationError
+        if not membership_consumed:
+            self._tokens.revoke(normalized_lookup)
         if result.membership_created:
             self._membership_cache.invalidate(invitation.workspace_id)
         self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
@@ -137,16 +155,34 @@ class AccountActivationService:
         invitation = self._resolve(lookup)
         if invitation is None or invitation.account_id != account_id:
             return False
-        if not self._tokens.consume_membership(lookup):
+        claim_id = self._tokens.claim_membership(lookup)
+        if claim_id is None:
             return False
 
-        result = self._accounts.activate(invitation, role=self._membership_role(invitation.role), setup=None)
+        try:
+            quota = self._member_quotas.snapshot(invitation.workspace_id)
+            result = self._accounts.activate(
+                invitation,
+                role=self._membership_role(invitation.role),
+                setup=None,
+                quota=quota,
+            )
+        except BaseException:
+            self._release_membership_claim(lookup, claim_id)
+            raise
         if result is None:
+            self._release_membership_claim(lookup, claim_id)
             return False
         if result.membership_created:
             self._membership_cache.invalidate(invitation.workspace_id)
             self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
         return True
+
+    def _release_membership_claim(self, invitation: InvitationLookup, claim_id: str) -> None:
+        try:
+            self._tokens.release_membership(invitation, claim_id)
+        except Exception:
+            logger.exception("Failed to release invitation membership claim")
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)

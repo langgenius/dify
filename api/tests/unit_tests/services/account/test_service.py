@@ -2,12 +2,14 @@
 
 from collections.abc import Callable
 from datetime import datetime
-from unittest.mock import Mock
+from typing import override
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from models import WorkspaceProvisioningOperation
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import DifySetup
 from repositories.installation_state_repository import InstallationStateRepository
@@ -24,6 +26,9 @@ from services.account_errors import (
 )
 from services.entities.account_entities import AccountSessionTokens
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.workspace.contracts import WorkspaceCreation
+from services.workspace.provisioning_service import WorkspaceProvisioningEffects
+from services.workspace.quota import DeploymentQuotaSnapshot
 from tests.unit_tests.account_domain import AccountDomain
 
 
@@ -52,7 +57,6 @@ def test_creation_hashes_password_and_keeps_registration_ip(
         pytest.param(
             lambda policy: policy.is_registration_allowed, False, AccountNotFoundError, id="registration_disabled"
         ),
-        pytest.param(lambda policy: policy.has_account_capacity, False, SeatsLimitExceededError, id="seat_limit"),
         pytest.param(
             lambda policy: policy.get_email_freeze_type,
             "email_domain_suspended",
@@ -75,17 +79,26 @@ def test_creation_policy_prevents_persistence(
     assert sqlite_session.scalar(select(Account.id)) is None
 
 
-def test_setup_bypasses_registration_but_not_seat_limit(account_domain: AccountDomain) -> None:
+def test_setup_bypasses_registration_but_not_committed_seat_limit(
+    account_domain: AccountDomain, sqlite_session: Session
+) -> None:
+    sqlite_session.add(DifySetup(version="test-version"))
+    sqlite_session.commit()
     account_domain.policy.is_registration_allowed.return_value = False
+    account_domain.policy.quota_snapshot.return_value = DeploymentQuotaSnapshot(
+        seat_limit=1,
+        seat_usage=0,
+        workspace_limit=None,
+        workspace_usage=0,
+    )
     account_domain.accounts.create_account("first@example.com", "First", "en-US", is_setup=True)
-    account_domain.policy.has_account_capacity.return_value = False
     with pytest.raises(SeatsLimitExceededError):
         account_domain.accounts.create_account("second@example.com", "Second", "en-US", is_setup=True)
 
 
 def test_email_collision_is_checked_before_capacity(account_domain: AccountDomain) -> None:
     account_domain.accounts.create_account("first@example.com", "First", "en-US")
-    account_domain.policy.has_account_capacity.return_value = False
+    account_domain.policy.quota_snapshot.side_effect = AssertionError("duplicate must fail before quota I/O")
     with pytest.raises(AccountNormalizedEmailAlreadyInUseError):
         account_domain.accounts.create_account("First@example.com", "Second", "en-US", check_normalized_email=True)
 
@@ -105,28 +118,37 @@ def test_registration_initializes_and_creates_owner_membership(
     account_domain.policy.try_join_default_workspace.assert_called_once_with(account.id)
 
 
-@pytest.mark.parametrize(
-    "setting",
-    [
-        pytest.param(lambda policy: policy.is_workspace_creation_allowed, id="creation_disabled"),
-        pytest.param(lambda policy: policy.has_workspace_capacity, id="workspace_limit"),
-    ],
-)
 def test_registration_without_personal_workspace_still_joins_default(
-    account_domain: AccountDomain, sqlite_session: Session, setting: Callable[[Mock], Mock]
+    account_domain: AccountDomain, sqlite_session: Session
 ) -> None:
-    setting(account_domain.policy).return_value = False
+    account_domain.policy.is_workspace_creation_allowed.return_value = False
     account = account_domain.accounts.register("new@example.com", "New", status="pending")
     assert account.status == "pending"
     assert sqlite_session.scalar(select(Tenant.id)) is None
     account_domain.policy.try_join_default_workspace.assert_called_once_with(account.id)
 
 
-def test_personal_workspace_failure_still_attempts_enterprise_join(account_domain: AccountDomain) -> None:
+def test_registration_rolls_back_account_when_workspace_quota_is_exhausted(
+    account_domain: AccountDomain, sqlite_session: Session
+) -> None:
+    sqlite_session.add(DifySetup(version="test-version"))
+    sqlite_session.commit()
+    account_domain.policy.quota_snapshot.return_value = DeploymentQuotaSnapshot(None, 0, 1, 1)
+
+    with pytest.raises(AccountRegisterError, match="Registration failed"):
+        account_domain.accounts.register("new@example.com", "New")
+
+    assert sqlite_session.scalar(select(Account.id)) is None
+    assert sqlite_session.scalar(select(Tenant.id)) is None
+    assert sqlite_session.scalar(select(TenantAccountJoin.id)) is None
+    account_domain.policy.try_join_default_workspace.assert_not_called()
+
+
+def test_personal_workspace_failure_does_not_join_nonexistent_account(account_domain: AccountDomain) -> None:
     account_domain.policy.is_workspace_creation_allowed.return_value = False
     with pytest.raises(WorkSpaceNotAllowedCreateError):
         account_domain.accounts.create_account_and_tenant("new@example.com", "New", "en-US")
-    account_domain.policy.try_join_default_workspace.assert_called_once()
+    account_domain.policy.try_join_default_workspace.assert_not_called()
 
 
 def test_existing_archived_membership_prevents_implicit_workspace_creation(
@@ -167,7 +189,7 @@ def test_authentication_rejects_banned_account(account_domain: AccountDomain) ->
         account_domain.accounts.authenticate("b@example.com", "Valid123!")
 
 
-def test_setup_cleans_partial_state_on_failure(
+def test_setup_cleans_committed_account_when_workspace_provisioning_fails(
     account_domain: AccountDomain, sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
 ) -> None:
     class Telemetry:
@@ -175,7 +197,8 @@ def test_setup_cleans_partial_state_on_failure(
             pytest.fail("Failed setup cannot report success")
 
     installation = InstallationStateRepository(session_factory=sqlite_session_factory)
-    account_domain.policy.has_workspace_capacity.return_value = False
+    unlimited = DeploymentQuotaSnapshot(None, 0, None, 0)
+    account_domain.policy.quota_snapshot.side_effect = [unlimited, RuntimeError("workspace quota unavailable")]
     provisioner = AccountSetupProvisioner(
         accounts=account_domain.accounts,
         workspaces=account_domain.provisioning,
@@ -221,3 +244,44 @@ def test_setup_persists_initialized_owner_before_telemetry(
         SetupInput(email="a@example.com", name="A", password="Valid123!", ip_address="127.0.0.1", language="en-US")
     )
     assert len(reported) == 1
+
+
+def test_setup_marker_failure_cleans_only_the_created_workspace_and_external_resources(
+    account_domain: AccountDomain,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FailingInstallation(InstallationStateRepository):
+        @override
+        def mark_setup(self) -> None:
+            raise RuntimeError("setup marker unavailable")
+
+    class UnexpectedTelemetry:
+        def report(self) -> None:
+            pytest.fail("Failed setup cannot report success")
+
+    effects = create_autospec(WorkspaceProvisioningEffects, instance=True)
+    effects.prepare.side_effect = lambda workspace_id, name: WorkspaceCreation(workspace_id, name, "key", 0, 0, {})
+    monkeypatch.setattr(account_domain.provisioning, "_effects", effects)
+    provisioner = AccountSetupProvisioner(
+        accounts=account_domain.accounts,
+        workspaces=account_domain.provisioning,
+        installation=FailingInstallation(session_factory=sqlite_session_factory),
+        telemetry=UnexpectedTelemetry(),
+    )
+
+    with pytest.raises(ValueError, match="Setup failed: setup marker unavailable"):
+        provisioner.provision(
+            SetupInput(email="a@example.com", name="A", password="Valid123!", ip_address="127.0.0.1", language="en-US")
+        )
+
+    workspace_id = effects.prepare.call_args.args[0]
+    effects.unbind_owner.assert_called_once_with(workspace_id, effects.bind_owner.call_args.args[1])
+    effects.discard_key.assert_called_once_with(workspace_id)
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account.id)) is None
+        assert session.scalar(select(Tenant.id)) is None
+        assert session.scalar(select(DifySetup.version)) is None
+        operation = session.get(WorkspaceProvisioningOperation, workspace_id)
+        assert operation is not None
+        assert operation.status == "compensation_watch"

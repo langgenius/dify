@@ -73,6 +73,7 @@ from services.entities.auth_entities import (
     ChangeEmailTokenData,
 )
 from services.telemetry_service import CommunityTelemetryService
+from services.workspace.quota import DeploymentQuotaGateway
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_change_mail_task import send_change_mail_completed_notification_task, send_change_mail_task
@@ -104,6 +105,9 @@ class AccountIdentityGateway:
     def get_account_by_id(self, account_id: str) -> Account | None:
         return self._accounts.get_model(account_id)
 
+    def get_account_for_workspace(self, account_id: str, workspace_id: str) -> Account | None:
+        return self._accounts.get_workspace_identity(account_id, workspace_id)
+
     def get_account_by_email(self, email: str, *, case_fallback: bool = False) -> Account | None:
         return self._accounts.find_identity(email, case_fallback=case_fallback)
 
@@ -132,8 +136,11 @@ class AccountIdentityGateway:
 
 
 class DeploymentAccountLifecyclePolicy(DeploymentConsoleAuthPolicyGateway):
-    def __init__(self) -> None:
-        super().__init__(billing_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD)
+    def __init__(self, *, quota: DeploymentQuotaGateway) -> None:
+        super().__init__(
+            billing_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD,
+            quota=quota,
+        )
 
     def validate_timezone(self, timezone: str) -> str:
         return validate_timezone(timezone)
@@ -186,16 +193,30 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         return _invitation_token_adapter.validate_json(data)
 
     @override
-    def consume_membership(self, invitation: InvitationLookup) -> bool:
+    def claim_membership(self, invitation: InvitationLookup) -> str | None:
         key = self._invitation_token_key(invitation.token)
         ttl = self._redis.pttl(key)
         if ttl <= 0:
-            return False
-        return bool(self._redis.set(self._membership_used_key(invitation.token), "1", nx=True, px=ttl))
+            return None
+        claim_id = f"claim:{uuid.uuid4()}"
+        if not self._redis.set(self._membership_used_key(invitation.token), claim_id, nx=True, px=ttl):
+            return None
+        return claim_id
+
+    @override
+    def release_membership(self, invitation: InvitationLookup, claim_id: str) -> None:
+        script = self._redis.register_script("""
+            if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+            return redis.call('DEL', KEYS[1])
+        """)
+        script(keys=[self._membership_used_key(invitation.token)], args=[claim_id])
 
     @override
     def is_membership_consumed(self, invitation: InvitationLookup) -> bool:
-        return self._redis.get(self._membership_used_key(invitation.token)) == b"1"
+        value = self._redis.get(self._membership_used_key(invitation.token))
+        if isinstance(value, bytes):
+            return value == b"1" or value.startswith(b"claim:")
+        return isinstance(value, str) and (value == "1" or value.startswith("claim:"))
 
     @override
     def revoke(self, invitation: InvitationLookup) -> None:

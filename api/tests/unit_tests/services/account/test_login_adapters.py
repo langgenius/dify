@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import override
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, call, create_autospec
 
 import pytest
 from sqlalchemy import select
@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.model import DifySetup
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
@@ -27,7 +28,11 @@ from services.account.adapters import (
     RBACWorkspaceMemberAccessSync,
     RedisInvitationTokenStore,
 )
-from services.account_activation_service import AccountActivationService
+from services.account_activation_service import (
+    AccountActivationRepository,
+    AccountActivationService,
+    InvitationTokenStore,
+)
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
     EmailCodeLoginChallengeStatus,
@@ -36,11 +41,17 @@ from services.email_code_login_challenge import (
 from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
+    EmailCodeChallengeClaim,
     EmailCodeChallengeStatus,
+    EmailCodeLoginCommand,
+    LoginAccountSnapshot,
     PasswordLoginCommand,
     RefreshAccountStatus,
 )
+from services.entities.feature_entities import LicenseLimitationModel, LicenseModel
+from services.errors.workspace import WorkspaceInvitationQuotaError
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
+from services.workspace.quota import DeploymentQuotaSnapshot, WorkspaceMemberQuotaSnapshot
 from tests.unit_tests.account_domain import AccountDomain
 from tests.unit_tests.services.account.test_login_service import Dependencies
 
@@ -75,6 +86,65 @@ class FakeTask:
         self.calls.append(kwargs)
 
 
+class FakeDeploymentQuotaGateway:
+    def snapshot(self) -> DeploymentQuotaSnapshot:
+        return DeploymentQuotaSnapshot(None, 0, None, 0)
+
+
+class FakeWorkspaceMemberQuotaGateway:
+    def snapshot(self, workspace_id: str) -> WorkspaceMemberQuotaSnapshot:
+        del workspace_id
+        return WorkspaceMemberQuotaSnapshot(None, 0, None, 0)
+
+
+def _email_code_login_command() -> EmailCodeLoginCommand:
+    return EmailCodeLoginCommand(
+        email="User@Example.com",
+        code="123456",
+        token="challenge-token",
+        turnstile_token=None,
+        language="zh-Hans",
+        timezone="Asia/Singapore",
+        ip_address="127.0.0.1",
+    )
+
+
+@pytest.mark.parametrize("seats", [False, True])
+def test_invitation_gateway_translates_membership_quota_for_login(seats: bool) -> None:
+    activation = create_autospec(AccountActivationService, instance=True)
+    activation.ensure_membership.side_effect = WorkspaceInvitationQuotaError(seats=seats)
+    gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
+        tokens=create_autospec(InvitationTokenStore, instance=True),
+        accounts=create_autospec(AccountActivationRepository, instance=True),
+        activation=activation,
+    )
+
+    with pytest.raises(account_errors.LoginInvitationQuotaError) as raised:
+        gateway.ensure_membership(account_id="account-1", email="user@example.com", token="token-1")
+
+    assert raised.value.seats is seats
+
+
+def test_capacity_prechecks_read_uncached_license(monkeypatch: pytest.MonkeyPatch) -> None:
+    license_model = LicenseModel(
+        seats=LicenseLimitationModel(enabled=True, size=1, limit=1),
+        workspaces=LicenseLimitationModel(enabled=True, size=1, limit=1),
+    )
+
+    def cached_license_must_not_be_used() -> LicenseModel:
+        raise AssertionError("cached quota must not decide write admission")
+
+    monkeypatch.setattr(adapters.SystemFeatureService, "get_license", cached_license_must_not_be_used)
+    monkeypatch.setattr(adapters.SystemFeatureService, "get_uncached_license", lambda: license_model)
+    policy = adapters.DeploymentConsoleAuthPolicyGateway(
+        billing_enabled=False,
+        quota=FakeDeploymentQuotaGateway(),
+    )
+
+    assert policy.has_account_capacity() is False
+    assert policy.has_workspace_capacity() is False
+
+
 def _persist_account(session: Session) -> Account:
     account = Account(name="User", email="user@example.com")
     account.id = "account-1"
@@ -107,6 +177,7 @@ def test_invitation_gateway_restores_editor_membership_without_revoking_token(
         eligibility=BillingAccountActivationEligibility(enabled=False),
         membership_cache=BillingWorkspaceMembershipCache(enabled=False),
         member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+        member_quotas=FakeWorkspaceMemberQuotaGateway(),
     )
     gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
         tokens=tokens,
@@ -192,6 +263,7 @@ def test_login_restores_membership_when_invitation_is_stored_under_prefixed_key(
             eligibility=BillingAccountActivationEligibility(enabled=False),
             membership_cache=BillingWorkspaceMembershipCache(enabled=False),
             member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+            member_quotas=FakeWorkspaceMemberQuotaGateway(),
         ),
     )
     dependencies = Dependencies()
@@ -468,6 +540,82 @@ def test_provisioning_rejects_equivalent_normalized_email(
         )
 
 
+def test_email_code_login_retries_same_code_after_real_seat_quota_is_released(
+    account_domain: AccountDomain,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        blocker = Account(name="Seat blocker", email="blocker@example.com")
+        session.add_all([DifySetup(version="test-version"), blocker])
+        session.flush()
+        blocker_id = blocker.id
+    account_domain.policy.quota_snapshot.return_value = DeploymentQuotaSnapshot(1, 0, None, 0)
+    dependencies = Dependencies()
+    service = dependencies.service(
+        account_provisioning=account_domain.provisioning,
+        workspace_provisioning=account_domain.provisioning,
+    )
+
+    with pytest.raises(account_errors.LoginSeatLimitError):
+        service.login_with_email_code(_email_code_login_command())
+
+    assert dependencies.email_codes.released == [("user@example.com", "challenge-token", "claim-1")]
+    with sqlite_session_factory.begin() as session:
+        blocker = session.get_one(Account, blocker_id)
+        session.delete(blocker)
+
+    result = service.login_with_email_code(_email_code_login_command())
+
+    assert result == AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
+    assert dependencies.email_codes.consumed == [("user@example.com", "challenge-token", "claim-2")]
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account.id).where(Account.normalized_email == "user@example.com")) is not None
+
+
+def test_email_code_login_retries_same_code_after_real_workspace_quota_is_released(
+    account_domain: AccountDomain,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="Existing", email="user@example.com")
+        blocker = Tenant(name="Workspace blocker")
+        session.add_all([DifySetup(version="test-version"), account, blocker])
+        session.flush()
+        account_id = account.id
+        blocker_id = blocker.id
+    account_domain.policy.quota_snapshot.return_value = DeploymentQuotaSnapshot(None, 0, 1, 0)
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [
+        LoginAccountSnapshot(
+            id=account_id,
+            email="user@example.com",
+            status="active",
+            password_hash="hash",
+            password_salt="salt",
+        )
+    ]
+    service = dependencies.service(
+        account_provisioning=account_domain.provisioning,
+        workspace_provisioning=account_domain.provisioning,
+    )
+
+    with pytest.raises(account_errors.LoginWorkspaceLimitError):
+        service.login_with_email_code(_email_code_login_command())
+
+    assert dependencies.email_codes.released == [("user@example.com", "challenge-token", "claim-1")]
+    with sqlite_session_factory.begin() as session:
+        blocker = session.get_one(Tenant, blocker_id)
+        session.delete(blocker)
+
+    result = service.login_with_email_code(_email_code_login_command())
+
+    assert result == AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
+    assert dependencies.email_codes.consumed == [("user@example.com", "challenge-token", "claim-2")]
+    with sqlite_session_factory() as session:
+        membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id))
+        assert membership is not None
+
+
 @pytest.mark.parametrize("account_id", [None, "account-1"])
 @pytest.mark.parametrize("registration_allowed", [False, True])
 def test_email_code_gateway_sends_and_maps_shared_challenge_status(
@@ -476,18 +624,18 @@ def test_email_code_gateway_sends_and_maps_shared_challenge_status(
     limiter = FakeRateLimiter()
     task = FakeTask()
     created: list[tuple[str | None, str, str]] = []
-    verified: list[tuple[str, str, str]] = []
+    claimed: list[tuple[str, str, str]] = []
 
     def create(*, account_id: str | None, email: str, code: str) -> str:
         created.append((account_id, email, code))
         return "challenge-token"
 
-    def verify(*, email: str, code: str, token: str) -> EmailCodeLoginChallengeResult:
-        verified.append((email, code, token))
+    def claim(*, email: str, code: str, token: str) -> EmailCodeLoginChallengeResult:
+        claimed.append((email, code, token))
         return EmailCodeLoginChallengeResult(status=EmailCodeLoginChallengeStatus.EMAIL_MISMATCH)
 
     monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "create", create)
-    monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "verify", verify)
+    monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "claim", claim)
     monkeypatch.setattr(adapters, "send_email_code_login_mail_task", task)
     gateway = adapters.RedisEmailCodeGateway(rate_limiter=limiter)
 
@@ -507,11 +655,10 @@ def test_email_code_gateway_sends_and_maps_shared_challenge_status(
     else:
         assert task.calls == []
     assert limiter.recorded == ["user@example.com"]
-    assert (
-        gateway.verify(normalized_email="User@Example.COM", code="123456", token="challenge-token")
-        == EmailCodeChallengeStatus.EMAIL_MISMATCH
-    )
-    assert verified == [("user@example.com", "123456", "challenge-token")]
+    assert gateway.claim(
+        normalized_email="User@Example.COM", code="123456", token="challenge-token"
+    ) == EmailCodeChallengeClaim(EmailCodeChallengeStatus.EMAIL_MISMATCH)
+    assert claimed == [("user@example.com", "123456", "challenge-token")]
 
 
 def test_email_code_gateway_maps_challenge_store_outage(
@@ -538,22 +685,42 @@ def test_email_code_gateway_maps_challenge_store_outage(
     assert record.exc_info is not None
 
 
-def test_email_code_gateway_logs_challenge_verification_outage(
+def test_email_code_gateway_logs_challenge_claim_outage(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    def verify(**_kwargs: object) -> EmailCodeLoginChallengeResult:
+    def claim(**_kwargs: object) -> EmailCodeLoginChallengeResult:
         raise EmailCodeLoginChallengeUnavailableError
 
-    monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "verify", verify)
+    monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "claim", claim)
     gateway = adapters.RedisEmailCodeGateway(rate_limiter=FakeRateLimiter())
 
     with caplog.at_level(logging.WARNING, logger=adapters.__name__):
         with pytest.raises(account_errors.EmailCodeLoginUnavailableError):
-            gateway.verify(normalized_email="user@example.com", code="123456", token="challenge-token")
+            gateway.claim(normalized_email="user@example.com", code="123456", token="challenge-token")
 
     record = caplog.records[-1]
-    assert record.getMessage() == "Email-code challenge verification is unavailable"
+    assert record.getMessage() == "Email-code challenge claim is unavailable"
     assert record.exc_info is not None
+
+
+@pytest.mark.parametrize("consume", [False, True])
+def test_email_code_gateway_transitions_owned_claim(
+    monkeypatch: pytest.MonkeyPatch,
+    consume: bool,
+) -> None:
+    calls: list[tuple[str, str, str]] = []
+    method_name = "consume" if consume else "release"
+
+    def transition(*, email: str, token: str, claim_id: str) -> None:
+        calls.append((email, token, claim_id))
+
+    monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, method_name, transition)
+    gateway = adapters.RedisEmailCodeGateway(rate_limiter=FakeRateLimiter())
+
+    method = gateway.consume if consume else gateway.release
+    method(normalized_email="User@Example.COM", token="challenge-token", claim_id="claim-1")
+
+    assert calls == [("user@example.com", "challenge-token", "claim-1")]
 
 
 def test_reset_password_gateway_uses_neutral_identity_values(monkeypatch: pytest.MonkeyPatch) -> None:

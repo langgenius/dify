@@ -183,11 +183,23 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
+        "tasks.workspace_provisioning_recovery_task",  # workspace key/RBAC compensation recovery
+        "tasks.workspace_owner_transfer_recovery_task",  # workspace ownership convergence
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    beat_schedule["workspace_provisioning_recovery"] = {
+        "task": "tasks.workspace_provisioning_recovery_task.recover_workspace_provisioning_operations",
+        "schedule": timedelta(minutes=1),
+        "options": {"queue": "schedule_executor"},
+    }
+    beat_schedule["workspace_owner_transfer_recovery"] = {
+        "task": "tasks.workspace_owner_transfer_recovery_task.recover_workspace_owner_transfer_operations",
+        "schedule": timedelta(minutes=1),
+        "options": {"queue": "schedule_executor"},
+    }
     if dify_config.AGENT_SANDBOX_METERING_ENABLED:
         try:
             interval = int(dify_config.AGENT_SANDBOX_METERING_INTERVAL_SECONDS)

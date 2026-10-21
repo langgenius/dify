@@ -4,7 +4,17 @@ import pytest
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
+from models.account import (
+    Account,
+    AccountIntegrate,
+    AccountStatus,
+    InvitationCode,
+    InvitationCodeStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+    TenantStatus,
+)
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from services.account_email import normalize_email
@@ -26,6 +36,41 @@ def _persist_account(session: Session) -> Account:
     session.add(account)
     session.commit()
     return account
+
+
+@pytest.mark.parametrize(
+    ("workspace_status", "role", "identity_exists"),
+    [
+        (TenantStatus.NORMAL, TenantAccountRole.OWNER, True),
+        (TenantStatus.ARCHIVE, TenantAccountRole.OWNER, False),
+        (TenantStatus.NORMAL, TenantAccountRole.ADMIN, False),
+    ],
+)
+def test_workspace_identity_requires_an_active_owner_membership(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    workspace_status: TenantStatus,
+    role: TenantAccountRole,
+    identity_exists: bool,
+) -> None:
+    account = _persist_account(sqlite_session)
+    workspace = Tenant(name="Workspace", status=workspace_status)
+    workspace.id = "workspace-1"
+    sqlite_session.add_all(
+        [
+            workspace,
+            TenantAccountJoin(tenant_id=workspace.id, account_id=account.id, role=role),
+        ]
+    )
+    sqlite_session.commit()
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    identity = repository.get_workspace_identity(account.id, workspace.id)
+
+    assert (identity is not None) is identity_exists
+    if identity is not None:
+        assert identity.current_tenant_id == workspace.id
+        assert identity.role == TenantAccountRole.OWNER
 
 
 def test_update_profile_persists_multiple_fields(

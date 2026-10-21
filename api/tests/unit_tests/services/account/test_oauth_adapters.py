@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from libs.oauth import JsonObject, OAuth, OAuthUserInfo
 from models.account import Account, AccountStatus, Tenant
+from models.model import DifySetup
 from services.account import oauth_adapters as account_oauth_adapters
 from services.account.oauth_adapters import (
     AccountLifecycleOAuthRegistrationGateway,
@@ -23,6 +24,7 @@ from services.account_errors import (
     OAuthWorkspaceCreationNotAllowedError,
 )
 from services.entities.account_oauth_entities import OAuthAccountRegistration, OAuthAuthorizationRequest, OAuthIdentity
+from services.workspace.quota import DeploymentQuotaSnapshot
 from tests.unit_tests.account_domain import AccountDomain
 
 
@@ -256,9 +258,11 @@ def test_registration_gateway_creates_only_the_account(account_domain: AccountDo
     assert sqlite_session.scalar(select(func.count()).select_from(Tenant)) == 0
 
 
-def test_workspace_gateway_maps_workspace_quota_failure(account_domain: AccountDomain) -> None:
+def test_workspace_gateway_maps_workspace_quota_failure(account_domain: AccountDomain, sqlite_session: Session) -> None:
     account = account_domain.accounts.create_account("u@example.com", "User", "en-US")
-    account_domain.policy.has_workspace_capacity.return_value = False
+    sqlite_session.add(DifySetup(version="test-version"))
+    sqlite_session.commit()
+    account_domain.policy.quota_snapshot.return_value = DeploymentQuotaSnapshot(None, 0, 1, 1)
     gateway = WorkspaceProvisioningOAuthGateway(workspaces=account_domain.provisioning)
     with pytest.raises(OAuthWorkspaceCreationNotAllowedError):
         gateway.create_owner_workspace(account.id)
