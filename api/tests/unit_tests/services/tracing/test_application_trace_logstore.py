@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import Literal
 
 import pytest
+from aliyun.log.logclient import LogClient
 from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -118,6 +119,11 @@ def stored(
     monkeypatch.setattr(AliyunLogStore, "_instance", None)
     monkeypatch.setattr(AliyunLogStore, "_initialized", False)
     monkeypatch.setattr(AliyunLogStore, "_check_endpoint_connectivity", staticmethod(lambda _endpoint, _timeout: None))
+
+    def reject_http_transport(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("Configured LogStore test escaped its isolated transport boundary")
+
+    monkeypatch.setattr(LogClient, "_getHttpResponse", reject_http_transport)
     transactions: set[Connection] = set()
 
     def begun(connection: Connection) -> None:
@@ -128,17 +134,37 @@ def stored(
 
     requests: list[str] = []
 
-    def get_logs(_client: AliyunLogStore, *, query: str, **_kwargs: object) -> list[dict[str, object]]:
+    def get_logs(_client: AliyunLogStore, *, query: str, logstore: str, **_kwargs: object) -> list[dict[str, object]]:
         # Exercise real configured repository construction, scoped query generation,
         # and model decoding; replace only the remote transport boundary.
         assert not transactions, "LogStore I/O must not hold a SQL transaction"
-        assert f'tenant_id:"{case.run.tenant_id}"' in query
+        assert f'tenant_id:"{case.run.tenant_id}"' in query.replace(": ", ":")
+        assert logstore == (
+            AliyunLogStore.workflow_execution_logstore
+            if kind == "workflow"
+            else AliyunLogStore.workflow_node_execution_logstore
+        )
         if kind == "workflow":
             assert f'app_id:"{case.run.app_id}"' in query
         requests.append(query)
         return [dict(row)] if row else []
 
     monkeypatch.setattr(AliyunLogStore, "get_logs", get_logs)
+
+    def execute_sql(
+        client: AliyunLogStore, *, sql: str, query: str, logstore: str, **_kwargs: object
+    ) -> list[dict[str, object]]:
+        # The node reader now uses SQL in both SDK and PG modes. Preserve the
+        # real repository's query/decoding path while isolating this transport.
+        assert kind == "node"
+        assert f'id:"{identifier("logstore-source")}"' in query.replace(": ", ":")
+        assert f"tenant_id = '{case.run.tenant_id}'" in sql
+        assert f"id = '{identifier('logstore-source')}'" in sql
+        assert f'FROM "{logstore}"' in sql
+        assert "ORDER BY log_version DESC LIMIT 1" in sql
+        return get_logs(client, query=query, logstore=logstore)
+
+    monkeypatch.setattr(AliyunLogStore, "execute_sql", execute_sql)
     event.listen(sqlite_engine, "begin", begun)
     event.listen(sqlite_engine, "commit", ended)
     event.listen(sqlite_engine, "rollback", ended)

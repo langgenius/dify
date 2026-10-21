@@ -1,6 +1,6 @@
 # Agent tracing 前端接入说明
 
-更新日期：2026-10-19。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
+更新日期：2026-10-21。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
 
 后端应用级 Agent tracing、Console API 与生成契约已实现。各 provider 的平台证据及边界记录于第 12 节。Weave 在 10 月 16 日的验收受账号试用状态限制；10 月 19 日切换 Free 后，项目、trace 树及调用链接已能实际打开，后续专项按独立证据记录。后续 Databricks、Opik、腾讯云、OSS MLflow 和 Phoenix 均通过 Dify UI 配置并发起业务，再独立查询平台。本文定义后端契约；dev 前端的具体联调范围单独记录。
 
@@ -865,7 +865,27 @@ dev `41eb10a66d` 已通过标准 Build/Deploy；7 服务与镜像 revision、5 �
 
 最终原始 Agent 的 published v3、已有 provider 配置与采集策略、克隆/新 fixture 的 Agent 快照及模型/工具均保持预期。Workflow B 的 draft 整份 graph JSON 与早期记录不完全相同，前后实际运行冻结图逐路径仅 viewport.x/y 改变，所有业务 node data、binding 和 snapshot 均相同；不宣称画布原字节未变。发布与新版本验收没有回填、覆盖或重投旧 accepted/failed/uncertain 样本。
 
-独立 Agent 的预览与后端链路已验证；当前新 fixture 的正式 Web App 已停用，其日志页不展示预览对话。正式日志入口需要临时开放测试访问，尚待用户确认，不将预览、Workflow 日志或平台查询替代这项 UI 验收。真实账号凭据撤销、断连重试/429/5xx、跨 tenant 及 ingest-only 权限专项仍未覆盖；没有依据将整个供应商矩阵标为完成。
+独立 Agent 的正式 Web App / 日志入口已于 10-21 经用户授权临时开放完成验收，详见 12.12；测试后入口已关闭。真实账号凭据撤销、断连重试/429/5xx、跨 tenant 及 ingest-only 权限专项仍未覆盖；没有依据将整个供应商矩阵标为完成。
+
+### 12.12 Arize 正式 Web App 与 Agent 日志闭环（2026-10-21）
+
+用户明确授权临时发布并开放隔离 Agent。通过 Dify UI 发布 snapshot v2，从正式 Web App 发送 `ARIZE-E2E-20261021-WEBAPP-20`，工具计算 `17*19` 后正常回复 `323` 及 marker。SQL 确认 `invoke_from=web-app`、browser EndUser 严格属于同 App/tenant，绑定正式 snapshot，而非预览草稿。
+
+| 检查 | 结果 |
+| --- | --- |
+| 正式来源 | message `cd5c9afc-b942-4088-b152-a1a1e2ea9374`；conversation `81695dce-5689-4be6-99e9-9af48df08b2f`；published snapshot v2 `01a15c3a-8c96-78b2-971e-1095bb19a5d1`。 |
+| 日志与跳转 | 正式 Agent 日志显示对应轮次及“已发送至 Arize”；“打开项目”实际落到当次冻结的 `dify-arize-e2e-20261020`，能看到该输入/回复。实际 DTO 的 `trace_url` / `span_url` 为 null，能力为 false，不把项目回退称作执行深链。 |
+| 原生数据 | trace `01a15c3b6aff7bcc9efc4aa6579f46e1` accepted 一次；官方只读精确查询完整 6 spans：2 LLM、1 tool、另 3 层 chain/agent。ID、父子、session、模型/provider、状态、内容及 usage 匹配；4648 input + 45 output = 4693 tokens。DTO `span_count=4` 是内部片段口径，不混同完整原生树的总数。`native_cost=false` 不变。 |
+| 访问恢复 | 10:14:10（Asia/Shanghai）从界面关闭 Web App；API 已关闭，未创建 API Key。刷新公开地址显示“此应用不存在，或无法从您的网络访问”。10:16:45 SQL 独立读回 `enable_site=false`、`enable_api=false`、API Key=0。授权发布的隔离 v2 及旧 seed v1 均保留，其他应用未改。 |
+| 版本边界 | 本次仍运行在 dev `29acde9afe`；7 服务、开关、关键源码和健康检查再次读回。此前 20 个案例加本次合计 21 次 UI 业务执行、117 个唯一原生业务 spans，包含旧失败及投影边界，不声称所有历史字段无差异。 |
+
+结合此前九供应商历史状态/冻结链接、正式多轮、Workflow 与错误文案回归，前端展示和跳转范围 [DIFY-2985](https://linear.app/dify/issue/DIFY-2985) 已设 Done；Databricks 的历史平台深链仍注明由用户人工确认。完整故障矩阵 DIFY-2986、Arize 供应商项 DIFY-2989 及后端汇总 DIFY-2976 继续 In Review；DIFY-2995 的关闭部署/低权限环境缺口按用户决定保留。
+
+10-21 后续为处理 main 新提交造成的合并冲突，保留双方持久化测试并重新生成 API 契约；新增无 DDL 的 migration merge `d6b9e2f1a407` 连接 `a8c3e7f4b912` 与 `f7e2c9a6d481`，不重写旧迁移。上游的 Workflow Tool 迁移及 Graphon Git pin 属于合入 main 的版本范围，不能用本节 dev `29acde9afe` 的验收冒充其端到端验证；新 head 的 CI 单独核对，dev 数据库未在此步骤升级。
+
+新引入的 **Workflow Tool 容器内部 Agent 暂不采集内部 Agent spans**：该子执行使用 source app 上下文，保留父 run ID，但子节点不在根 graph 中。本轮在 `workflow_tool_invocation_id` 非 None 时于 tracing 服务构造前跳过，避免按子应用当前策略预留父运行的记录或产生缺少父节点的树；不改变常规根 Workflow、inline/reference 和 detached preview 的既有范围。外层工具/legacy 记录不能作为内部 Agent 全树已采集的证明，相关 usage 也不据此宣称覆盖隐藏内部模型调用。完整根归属、开始时冻结、父子树、统计及真实平台验收由 [DIFY-3008](https://linear.app/dify/issue/DIFY-3008) 跟踪；这是新上游功能的明确边界，不宣称已发生真实供应商串数据。
+
+随后合入 main `7d039cb619`，保留新增的 Workflow Tool 对外导出过滤。`a1d41de2e8` 首轮 CI 在合成的主分支合并树上出现 29 个 API 单测失败：LogStore 读取已改为 `execute_sql`，两个旧 fixture 只隔离 `get_logs`；新增 MLflow 边界测试也只隔离全局 tracer，遗漏了私有客户端请求。修复仅调整三个测试的传输边界，保留租户/所有者/无 SQL 事务跨 I/O 及内部数据排除断言，并用底层 HTTP/socket tripwire 禁止真实网络；不是修改生产逻辑、timeout、skip 或覆盖率门槛来通过。旧 head 的覆盖率报告缺失失败的两个 API unit 上传，不能沿用其不完整比例或更早的全绿作为新 head 结论。该轮 Docker 基础镜像 token 超时与上述单测问题分开记录，失败/连带取消任务仅重跑一次后通过。最终 CI 以 PR 当前提交及其实际合并树的检查为准。
 
 ## 13. 定稿检查与代码定位
 
