@@ -21,7 +21,7 @@ dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 server = [
     "e2b>=2.55.1,<3.0.0",
     "fastapi==0.136.0",
-    "graphon==0.5.2",
+    "graphon==0.8.0",
     # grpcio is a runtime requirement of the openshell SDK that its wheel
     # does not declare; keep it pinned here until upstream fixes the metadata.
     "grpcio>=1.60.0,<2.0.0",
@@ -34,6 +34,10 @@ server = [
     "redis>=7.4.0,<8.0.0",
     "uvicorn[standard]==0.46.0",
 ]
+
+[tool.uv.sources]
+# shortcut: pin the joint replay candidate until Graphon releases incremental accumulation and container output fixes.
+graphon = { git = "https://github.com/langgenius/graphon", rev = "bfeca97726f91eab257e513357b72d456de851b2" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

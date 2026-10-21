@@ -388,29 +388,35 @@ class TestStructuredOutput:
         assert result.structured_output == {"result": "success"}
         assert result.system_fingerprint == "fp_prompt"
 
-    def test_invoke_llm_with_structured_output_no_string_error(self):
+    def test_invoke_llm_with_structured_output_preserves_content_blocks(self):
         model_schema = make_model_schema("gpt-4")
         model_schema.features = []
         model_schema.parameter_rules = []
 
         llm_response = LLMResult(
             model=model_schema.model,
-            message=AssistantPromptMessage(content=[TextPromptMessageContent(data="not a string")]),
+            message=AssistantPromptMessage(
+                content=[
+                    TextPromptMessageContent(data='{"value":', opaque_body=False),
+                    TextPromptMessageContent(data="1}"),
+                ],
+                opaque_body=0,
+            ),
             usage=LLMUsage.empty_usage(),
         )
 
         model_instance = _ModelInstance(llm_response)
 
-        with pytest.raises(OutputParserError) as excinfo:
-            invoke_llm_with_structured_output(
-                provider="anthropic",
-                model_schema=model_schema,
-                model_instance=model_instance,
-                prompt_messages=[],
-                json_schema={},
-                stream=False,
-            )
-        assert "Failed to parse structured output, LLM result is not a string" in str(excinfo.value)
+        result = invoke_llm_with_structured_output(
+            provider="anthropic",
+            model_schema=model_schema,
+            model_instance=model_instance,
+            prompt_messages=[],
+            json_schema={},
+            stream=False,
+        )
+        assert result.structured_output == {"value": 1}
+        assert result.message == llm_response.message
 
     def test_invoke_llm_with_structured_output_stream(self):
         model_schema = make_model_schema("gpt-4")

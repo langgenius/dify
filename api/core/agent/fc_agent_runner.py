@@ -2,7 +2,6 @@ import json
 import logging
 import re
 from collections.abc import Generator
-from copy import deepcopy
 from typing import Any
 
 from sqlalchemy import select
@@ -29,13 +28,13 @@ from graphon.model_runtime.entities import (
     LLMResultChunkDelta,
     LLMUsage,
     PromptMessage,
-    PromptMessageContentType,
     SystemPromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from graphon.model_runtime.model_providers.base.large_language_model import LLMResultAccumulator
 from models import UploadFile
 from models.model import Message
 
@@ -158,9 +157,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 messages_ids=message_file_ids,
             )
 
-            # recalc llm max tokens
             prompt_messages = self._organize_prompt_messages()
-            self.recalc_llm_max_tokens(self.model_config, prompt_messages)
 
             # Release any setup/tool transaction before waiting on the provider stream.
             session.commit()
@@ -183,18 +180,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 request_metadata=request_metadata,
             )
 
-            tool_calls: list[tuple[str, str, dict[str, Any]]] = []
-
-            # save full response
-            response = ""
-
-            # save tool call names and inputs
-            tool_call_names = ""
-            tool_call_inputs = ""
-
             current_llm_usage = None
-
             if isinstance(chunks, Generator):
+                accumulator = LLMResultAccumulator()
                 is_first_chunk = True
                 for chunk in chunks:
                     if is_first_chunk:
@@ -202,88 +190,31 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                         )
                         is_first_chunk = False
-                    # check if there is any tool call
-                    if self.check_tool_calls(chunk):
-                        function_call_state = True
-                        tool_calls.extend(self.extract_tool_calls(chunk) or [])
-                        tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
-                        try:
-                            tool_call_inputs = json.dumps(
-                                {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
-                            )
-                        except TypeError:
-                            # fallback: force ASCII to handle non-serializable objects
-                            tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
-
-                    if chunk.delta.message and chunk.delta.message.content:
-                        if isinstance(chunk.delta.message.content, list):
-                            for content in chunk.delta.message.content:
-                                response += content.data
-                        else:
-                            response += str(chunk.delta.message.content)
-
-                    if chunk.delta.usage:
-                        increase_usage(llm_usage, chunk.delta.usage)
-                        current_llm_usage = chunk.delta.usage
-
+                    accumulator.consume(chunk)
                     yield chunk
+                result = accumulator.to_result(model=model_instance.model_name, prompt_messages=prompt_messages)
             else:
                 result = chunks
-                # check if there is any tool call
-                if self.check_blocking_tool_calls(result):
-                    function_call_state = True
-                    tool_calls.extend(self.extract_blocking_tool_calls(result) or [])
-                    tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
-                    try:
-                        tool_call_inputs = json.dumps(
-                            {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
-                        )
-                    except TypeError:
-                        # fallback: force ASCII to handle non-serializable objects
-                        tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
-
-                if result.usage:
-                    increase_usage(llm_usage, result.usage)
-                    current_llm_usage = result.usage
-
-                if result.message and result.message.content:
-                    if isinstance(result.message.content, list):
-                        for content in result.message.content:
-                            response += content.data
-                    else:
-                        response += result.message.content
-
-                if not result.message.content:
-                    result.message.content = ""
-
                 self.queue_manager.publish(
                     QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                 )
-
                 yield LLMResultChunk(
                     model=model_instance.model_name,
                     prompt_messages=result.prompt_messages,
                     system_fingerprint=result.system_fingerprint,
-                    delta=LLMResultChunkDelta(
-                        index=0,
-                        message=result.message,
-                        usage=result.usage,
-                    ),
+                    delta=LLMResultChunkDelta(index=0, message=result.message, usage=result.usage),
                 )
 
-            assistant_message = AssistantPromptMessage(content=response, tool_calls=[])
-            if tool_calls:
-                assistant_message.tool_calls = [
-                    AssistantPromptMessage.ToolCall(
-                        id=tool_call[0],
-                        type="function",
-                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                            name=tool_call[1], arguments=json.dumps(tool_call[2], ensure_ascii=False)
-                        ),
-                    )
-                    for tool_call in tool_calls
-                ]
-
+            if result.usage:
+                increase_usage(llm_usage, result.usage)
+                current_llm_usage = result.usage
+            assistant_message = result.message.model_copy(deep=True)
+            response = assistant_message.get_text_content()
+            tool_calls = self.extract_blocking_tool_calls(result) or []
+            function_call_state = bool(tool_calls)
+            tool_call_names = ";".join(tool_call[1] for tool_call in tool_calls)
+            tool_call_inputs = json.dumps({call[1]: call[2] for call in tool_calls}, ensure_ascii=False)
+            thought_start = len(self._current_thoughts)
             self._current_thoughts.append(assistant_message)
 
             # save thought
@@ -297,6 +228,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 answer=response,
                 messages_ids=[],
                 llm_usage=current_llm_usage,
+                model_messages=self._current_thoughts[thought_start:],
             )
             self.queue_manager.publish(
                 QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
@@ -396,6 +328,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     },
                     answer="",
                     messages_ids=message_file_ids,
+                    model_messages=self._current_thoughts[thought_start:],
                 )
                 self.queue_manager.publish(
                     QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
@@ -527,31 +460,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_messages
 
-    def _clear_user_prompt_image_messages(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
-        """
-        As for now, gpt supports both fc and vision at the first iteration.
-        We need to remove the image messages from the prompt messages at the first iteration.
-        """
-        prompt_messages = deepcopy(prompt_messages)
-
-        for prompt_message in prompt_messages:
-            if isinstance(prompt_message, UserPromptMessage):
-                if prompt_message.name == _KNOWLEDGE_RETRIEVAL_PROMPT_NAME:
-                    continue
-                if isinstance(prompt_message.content, list):
-                    prompt_message.content = "\n".join(
-                        [
-                            content.data
-                            if content.type == PromptMessageContentType.TEXT
-                            else "[image]"
-                            if content.type == PromptMessageContentType.IMAGE
-                            else "[file]"
-                            for content in prompt_message.content
-                        ]
-                    )
-
-        return prompt_messages
-
     def _organize_prompt_messages(self):
         prompt_template = self.app_config.prompt_template.simple_prompt_template or ""
         self.history_prompt_messages = self._init_system_message(prompt_template, self.history_prompt_messages)
@@ -565,7 +473,4 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         ).get_prompt()
 
         prompt_messages = [*self.history_prompt_messages, *query_prompt_messages, *self._current_thoughts]
-        if len(self._current_thoughts) != 0:
-            # clear messages after the first iteration
-            prompt_messages = self._clear_user_prompt_image_messages(prompt_messages)
         return prompt_messages

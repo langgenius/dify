@@ -32,6 +32,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
     VideoPromptMessageContent,
 )
+from graphon.model_runtime.model_providers.base.large_language_model import LLMResultAccumulator
 from typing_extensions import assert_never, override
 
 from pydantic_ai._parts_manager import ModelResponsePartsManager
@@ -159,6 +160,7 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             ),
             response_model_name=self.model_name,
             provider_name_value=self.system,
+            model_provider=self.model_provider,
         )
         async for _event in response:
             pass
@@ -192,6 +194,7 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             ),
             response_model_name=self.model_name,
             provider_name_value=self.system,
+            model_provider=self.model_provider,
         )
         yield response
         self._record_usage(response.dify_usage)
@@ -212,7 +215,9 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
         model_request_parameters: ModelRequestParameters,
     ) -> _DifyRequestInput:
         return _DifyRequestInput(
-            prompt_messages=_map_messages_to_prompt_messages(messages, model_request_parameters),
+            prompt_messages=_map_messages_to_prompt_messages(
+                messages, model_request_parameters, model=self.model, model_provider=self.model_provider
+            ),
             model_parameters=_map_model_settings_to_parameters(model_settings),
             tools=_map_tool_definitions_to_prompt_tools(model_request_parameters),
             stop_sequences=_get_stop_sequences(model_settings),
@@ -230,9 +235,11 @@ class DifyStreamedResponse(StreamedResponse):
     chunks: AsyncIterator[LLMResultChunk]
     response_model_name: str
     provider_name_value: str
+    model_provider: str
     _timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     _embedded_thinking_parser: "_EmbeddedThinkingParser" = field(default_factory=lambda: _EmbeddedThinkingParser())
     _dify_usage: LLMUsage | None = field(default=None, init=False, repr=False)
+    _result: LLMResultAccumulator = field(default_factory=LLMResultAccumulator, init=False, repr=False)
 
     @override
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
@@ -244,18 +251,31 @@ class DifyStreamedResponse(StreamedResponse):
             if chunk.delta.finish_reason is not None:
                 self.finish_reason: FinishReason | None = _normalize_finish_reason(chunk.delta.finish_reason)
 
-            for event in _chunk_to_stream_events(
+            events = _chunk_to_stream_events(
                 self._parts_manager,
                 chunk,
                 self.provider_name_value,
                 self._embedded_thinking_parser,
                 chunk_sequence,
-            ):
+            )
+            self._result.consume(chunk)
+            for event in events:
                 yield event
             chunk_sequence += 1
 
         for event in self._embedded_thinking_parser.flush(self._parts_manager, self.provider_name_value):
             yield event
+
+    @override
+    def get(self) -> ModelResponse:
+        response = super().get()
+        message = self._result.to_result(model=self.model_name, prompt_messages=[]).message
+        response.provider_details = {
+            **(response.provider_details or {}),
+            "dify_provider": self.model_provider,
+            "dify_message": message.model_dump(mode="json", exclude={"tool_calls"}),
+        }
+        return response
 
     @property
     def dify_usage(self) -> LLMUsage | None:
@@ -286,6 +306,9 @@ class DifyStreamedResponse(StreamedResponse):
 def _map_messages_to_prompt_messages(
     messages: Sequence[ModelMessage],
     model_request_parameters: ModelRequestParameters,
+    *,
+    model: str,
+    model_provider: str,
 ) -> list[PromptMessage]:
     prompt_messages: list[PromptMessage] = []
 
@@ -293,7 +316,13 @@ def _map_messages_to_prompt_messages(
         if isinstance(message, ModelRequest):
             prompt_messages.extend(_map_model_request_to_prompt_messages(message))
         elif isinstance(message, ModelResponse):
-            assistant_message = _map_model_response_to_prompt_message(message)
+            assistant_message = _map_model_response_to_prompt_message(
+                message,
+                preserve_provider_message=(
+                    message.model_name == model
+                    and (message.provider_details or {}).get("dify_provider") == model_provider
+                ),
+            )
             if assistant_message is not None:
                 prompt_messages.append(assistant_message)
         else:
@@ -390,14 +419,10 @@ def _map_tool_return_part_to_prompt_message(part: ToolReturnPart) -> ToolPromptM
 
 def _map_model_response_to_prompt_message(
     message: ModelResponse,
+    *,
+    preserve_provider_message: bool,
 ) -> AssistantPromptMessage | None:
-    """Map prior assistant output into daemon prompt history.
-
-    The plugin daemon requires ``PromptMessage.content`` to be present even when
-    an assistant turn contains only tool calls. Tool-call-only assistant history
-    therefore uses the empty string instead of ``null`` so the second request in
-    a tool round trip remains schema-compatible.
-    """
+    """Restore original provider content and state, using native parts for tool IDs."""
     content_parts: list[PromptMessageContentUnionTypes] = []
     tool_calls: list[AssistantPromptMessage.ToolCall] = []
 
@@ -423,6 +448,12 @@ def _map_model_response_to_prompt_message(
             )
         else:
             raise UnexpectedModelBehavior(f"Unsupported response part for daemon adapter: {type(part).__name__}")
+
+    stored = (message.provider_details or {}).get("dify_message")
+    if preserve_provider_message and stored is not None:
+        restored = AssistantPromptMessage.model_validate(stored)
+        restored.tool_calls = tool_calls
+        return None if restored.is_empty() else restored
 
     content = _normalize_prompt_content(content_parts)
     if content is None and not tool_calls:

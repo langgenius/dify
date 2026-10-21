@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -87,10 +87,13 @@ class PreparedHistory:
     perform storage/network I/O, so callers should first close the history session.
     """
 
-    prompts: tuple[HistoryPrompt, ...]
+    prompts: tuple[HistoryPrompt | PromptMessage, ...]
+
+    def to_prompt_messages(self) -> list[PromptMessage]:
+        return [prompt.to_prompt_message() if isinstance(prompt, HistoryPrompt) else prompt for prompt in self.prompts]
 
     def get_prompt_messages(self, *, model_instance: ModelInstance, max_token_limit: int) -> Sequence[PromptMessage]:
-        prompt_messages = [prompt.to_prompt_message() for prompt in self.prompts]
+        prompt_messages = self.to_prompt_messages()
         if not prompt_messages:
             return []
 
@@ -207,6 +210,7 @@ class TokenBufferMemory:
         session: Session,
         message_limit: int | None,
         workflow_run_repo: APIWorkflowRunRepository | None = None,
+        message_loader: Callable[[Message], Sequence[PromptMessage] | None] | None = None,
     ) -> PreparedHistory:
         """Read ordered history and attachment configuration without provider or file I/O.
 
@@ -258,8 +262,13 @@ class TokenBufferMemory:
             ).all():
                 assistant_files_by_message[message_file.message_id].append(message_file)
 
-        prompts: list[HistoryPrompt] = []
+        prompts: list[HistoryPrompt | PromptMessage] = []
         for message in messages:
+            if message_loader is not None:
+                restored = message_loader(message)
+                if restored is not None:
+                    prompts.extend(restored)
+                    continue
             user_files = user_files_by_message.get(message.id, [])
             assistant_files = assistant_files_by_message.get(message.id, [])
             if (

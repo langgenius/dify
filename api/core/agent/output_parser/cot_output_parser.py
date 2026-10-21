@@ -73,9 +73,7 @@ class CotAgentOutputParser:
         for response in llm_response:
             if response.delta.usage:
                 usage_dict["usage"] = response.delta.usage
-            response_content = response.delta.message.content
-            if not isinstance(response_content, str):
-                continue
+            response_content = response.delta.message.get_text_content()
 
             # stream
             index = 0

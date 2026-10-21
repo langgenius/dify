@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 
+import pytest
 from pytest_mock import MockerFixture
 
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
@@ -63,3 +64,30 @@ def test_get_prompt(mocker: MockerFixture) -> None:
     result = transform.get_prompt()
 
     assert len(result) == 12
+
+
+@pytest.mark.parametrize("observation_name", ["agent_observation", "knowledge_retrieval"])
+def test_history_limit_keeps_complete_agent_turns(mocker: MockerFixture, observation_name: str) -> None:
+    history = [
+        UserPromptMessage(content="Earlier query"),
+        AssistantPromptMessage(content="Earlier thought", opaque_body={"signature": "signed"}),
+        UserPromptMessage(content="Tool observation", name=observation_name),
+        AssistantPromptMessage(content="Earlier answer"),
+        UserPromptMessage(content="Latest query"),
+        AssistantPromptMessage(content="Latest answer"),
+    ]
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
+    mocker.patch.object(
+        model_config.provider_model_bundle.model_type_instance,
+        "get_num_tokens",
+        side_effect=lambda _model, _credentials, messages: len(messages),
+    )
+    transform = AgentHistoryPromptTransform(
+        model_config=model_config,
+        prompt_messages=[],
+        history_messages=history,
+        memory=make_token_buffer_memory(model_config),
+    )
+    mocker.patch.object(transform, "_calculate_rest_token", return_value=4)
+
+    assert transform.get_prompt() == history[-2:]

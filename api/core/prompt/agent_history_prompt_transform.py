@@ -62,8 +62,11 @@ class AgentHistoryPromptTransform(PromptTransform):
                 continue
             prompt_messages.append(prompt_message)
             num_prompt += 1
-            # a message is start with UserPromptMessage
-            if isinstance(prompt_message, UserPromptMessage):
+            # Tool observations belong to the original user turn.
+            if isinstance(prompt_message, UserPromptMessage) and prompt_message.name not in {
+                "agent_observation",
+                "knowledge_retrieval",
+            }:
                 curr_message_tokens = model_type_instance.get_num_tokens(
                     self.model_config.model,
                     self.model_config.credentials,

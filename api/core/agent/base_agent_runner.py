@@ -4,6 +4,7 @@ import uuid
 from decimal import Decimal
 from typing import TYPE_CHECKING, cast
 
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -43,6 +44,7 @@ from graphon.model_runtime.entities.model_entities import ModelFeature
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile, load_annotation_reply_config
+from services.agent.message_history import AgentMessageHistory
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
@@ -282,14 +284,25 @@ class BaseAgentRunner(AppRunner):
         answer: str | None,
         messages_ids: list[str],
         llm_usage: LLMUsage | None = None,
+        model_messages: list[PromptMessage] | None = None,
     ):
         """
         Save agent thought
         """
-        stmt = select(MessageAgentThought).where(MessageAgentThought.id == agent_thought_id)
+        stmt = select(MessageAgentThought).where(
+            MessageAgentThought.id == agent_thought_id,
+            MessageAgentThought.message_id == self.message.id,
+        )
         agent_thought = db.session.scalar(stmt)
         if not agent_thought:
             raise ValueError("agent thought not found")
+
+        if model_messages is not None:
+            agent_thought.model_messages = AgentMessageHistory(
+                provider=self.model_config.provider,
+                model=self.model_config.model,
+                messages=model_messages,
+            ).model_dump_json()
 
         if thought:
             existing_thought = agent_thought.thought or ""
@@ -373,7 +386,10 @@ class BaseAgentRunner(AppRunner):
             (
                 session.execute(
                     select(Message)
-                    .where(Message.conversation_id == self.message.conversation_id)
+                    .where(
+                        Message.conversation_id == self.message.conversation_id,
+                        Message.app_id == self.app_config.app_id,
+                    )
                     .order_by(Message.created_at.desc())
                 )
             )
@@ -391,6 +407,17 @@ class BaseAgentRunner(AppRunner):
             agent_thoughts = message.agent_thoughts_with_session(session=session)
             if agent_thoughts:
                 for agent_thought in agent_thoughts:
+                    if agent_thought.model_messages:
+                        try:
+                            history = AgentMessageHistory.model_validate_json(agent_thought.model_messages)
+                            restored = history.restore(
+                                provider=self.model_config.provider, model=self.model_config.model
+                            )
+                            if restored is not None:
+                                result.extend(restored)
+                                continue
+                        except ValidationError:
+                            logger.warning("Invalid model history for agent thought %s", agent_thought.id)
                     tool_names_raw = agent_thought.tool
                     if tool_names_raw:
                         tool_names = tool_names_raw.split(";")

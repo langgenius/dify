@@ -29,6 +29,10 @@ layers =
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
+    # Legacy agent callers delegate model history to the application owner during core migration.
+    core.agent.base_agent_runner -> services.agent.message_history
+    core.workflow.nodes.agent.message_transformer -> services.agent.message_history
+    core.workflow.nodes.agent.runtime_support -> services.agent.workflow_message_history
     core.app.app_config.easy_ui_based_app.dataset.manager -> services.knowledge.dataset_service
     core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
     core.app.apps.advanced_chat.app_generator -> services.conversation_service
