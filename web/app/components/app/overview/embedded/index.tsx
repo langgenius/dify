@@ -1,5 +1,5 @@
 import type { AppDetailSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type {
   EmbeddedWebAppRoute,
   WorkflowHiddenStartVariable,
@@ -109,7 +109,7 @@ const AsyncEmbeddedOptionContent = ({
 }: {
   option: Option
   iframeUrlPromise: Promise<string>
-  latestResolvedIframeUrlRef: MutableRefObject<string>
+  latestResolvedIframeUrlRef: RefObject<string>
 }) => {
   const iframeUrl = use(iframeUrlPromise)
   latestResolvedIframeUrlRef.current = iframeUrl

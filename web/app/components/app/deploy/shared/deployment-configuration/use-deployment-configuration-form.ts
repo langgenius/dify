@@ -1,6 +1,6 @@
 'use client'
 
-import type { FormEventHandler } from 'react'
+import type { SubmitEventHandler } from 'react'
 import type { DeploymentConfigurationQueryState } from './use-deployment-configuration-queries'
 import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
 import type { DeploymentFieldError } from './utils/field-id'
@@ -56,7 +56,7 @@ export function useDeploymentConfigurationForm({
   })
   const canDeploy = Boolean(appId) && !disabled && queryState.canDeploy && !deployMutation.isPending
 
-  const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => {
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault()
     if (!appId || !canDeploy || !queryState.deploymentOptions) return
 

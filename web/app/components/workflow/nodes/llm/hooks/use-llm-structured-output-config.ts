@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../types'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
@@ -12,7 +12,7 @@ import { consoleQuery } from '@/service/console'
 type Params = {
   id: string
   model: LLMNodeType['model']
-  inputRef: MutableRefObject<LLMNodeType>
+  inputRef: RefObject<LLMNodeType>
   setInputs: (inputs: LLMNodeType) => void
   deleteNodeInspectorVars: (nodeId: string) => void
 }
