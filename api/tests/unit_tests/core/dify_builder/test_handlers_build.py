@@ -1185,7 +1185,7 @@ def test_review_continue_adjusting_collects_a_fresh_request_before_planning(monk
 
 
 @pytest.mark.parametrize("payload", [{}, {"__builder_adjustment_request": "  "}, {"__builder_adjustment_request": 42}])
-def test_adjustment_submission_requires_new_text(payload: dict, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_adjustment_submission_requires_new_text(payload: dict[str, object], monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application.handlers_build import handle_goal_analysis
 
     env, repo = _new_env()
