@@ -1,5 +1,6 @@
 from collections.abc import Generator
 from datetime import datetime
+from decimal import Decimal
 from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, Self, cast
@@ -60,12 +61,12 @@ from controllers.console.app.message import (
     AgentMessageApi,
     AgentMessageFeedbackApi,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import CloudPlan, DeploymentEdition
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
-from models.enums import ApiTokenType, ConversationFromSource, CustomizeTokenStrategy, TagType
+from models.enums import ApiTokenType, ConversationFromSource, ConversationStatus, CustomizeTokenStrategy, TagType
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import ApiToken, App, AppMode, Conversation, IconType, Message, Site, Tag, TagBinding
 from services.agent.observability_service import AgentLogQueryParams, AgentStatisticsQueryParams
 from services.enterprise.rbac_service import RBACService
@@ -105,12 +106,12 @@ def _persist_conversation_message(
             model_id=None,
             mode=AppMode.CHAT,
             name="Conversation",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
-            status="normal",
-            invoke_from=InvokeFrom.DEBUGGER,
+            status=ConversationStatus.NORMAL,
+            invoke_from=ModelInvokeFrom.DEBUGGER,
             from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,
             from_account_id="00000000-0000-0000-0000-000000000021",
@@ -121,27 +122,27 @@ def _persist_conversation_message(
     message = Message(
         app_id=app_id,
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="answer",
         answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         provider_response_latency=0,
-        total_price=0,
+        total_price=Decimal(0),
         currency="USD",
-        invoke_from=InvokeFrom.DEBUGGER,
+        invoke_from=ModelInvokeFrom.DEBUGGER,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id="00000000-0000-0000-0000-000000000021",
         app_mode=AppMode.CHAT,
-        created_at=created_at,
     )
     message.id = message_id
+    message.created_at = created_at
     session.add(message)
     session.flush()
     return conversation, message
@@ -234,7 +235,10 @@ def _app_detail_obj(**overrides: object) -> App:
     overrides.pop("bound_agent_id", None)
     data.update(overrides)
     data["icon_type"] = IconType(data["icon_type"])
-    return App(**data)
+    app = App()
+    for key, value in data.items():
+        setattr(app, key, value)
+    return app
 
 
 def _account(*, account_id: str = "account-1", privileged: bool = False, timezone: str | None = None) -> Account:

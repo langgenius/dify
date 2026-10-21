@@ -23,7 +23,7 @@ def test_attach_message_extra_contents_assigns_serialized_payload(db_session_wit
         model_id="",
         override_model_configs=None,
         conversation_id=fixture.conversation.id,
-        inputs={},
+        _inputs={},
         query="Query without extra content",
         message={"messages": [{"role": "user", "content": "Query without extra content"}]},
         message_tokens=0,

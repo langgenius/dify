@@ -22,6 +22,7 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
+from models.model import AppMode
 from repositories.app.console_repository import ConsoleAppRepository
 from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
@@ -359,9 +360,14 @@ def test_queries_and_related_apps_materialize_after_session_close(
         )
         session.add_all(
             [
-                App(id="app", tenant_id="tenant", name="App", mode="chat", enable_api=False, enable_site=False),
+                App(id="app", tenant_id="tenant", name="App", mode=AppMode.CHAT, enable_api=False, enable_site=False),
                 App(
-                    id="foreign-app", tenant_id="other", name="Other", mode="chat", enable_api=False, enable_site=False
+                    id="foreign-app",
+                    tenant_id="other",
+                    name="Other",
+                    mode=AppMode.CHAT,
+                    enable_api=False,
+                    enable_site=False,
                 ),
                 AppDatasetJoin(app_id="app", dataset_id="dataset"),
                 AppDatasetJoin(app_id="foreign-app", dataset_id="dataset"),

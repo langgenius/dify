@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -445,19 +446,19 @@ def test_shared_message_files_are_retained(sqlite_session: Session, storage: Mag
     upload.created_by_role = CreatorUserRole.END_USER
     upload.created_by = user.id
     conversation = Conversation(
-        app_id="app-2", mode=AppMode.CHAT, name="other app", inputs={}, from_source=ConversationFromSource.API
+        app_id="app-2", mode=AppMode.CHAT, name="other app", _inputs={}, from_source=ConversationFromSource.API
     )
     sqlite_session.add(conversation)
     sqlite_session.flush()
     message = Message(
         app_id="app-2",
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="q",
         message={},
-        message_unit_price=0,
+        message_unit_price=Decimal(0),
         answer="a",
-        answer_unit_price=0,
+        answer_unit_price=Decimal(0),
         currency="USD",
         from_source=ConversationFromSource.API,
     )
@@ -506,7 +507,7 @@ def test_conversation_owned_tools_are_cleaned_and_account_assets_retained(
     sqlite_session: Session, storage: MagicMock
 ) -> None:
     conversation = Conversation(
-        app_id="app-1", mode=AppMode.CHAT, name="owned", inputs={}, from_source=ConversationFromSource.CONSOLE
+        app_id="app-1", mode=AppMode.CHAT, name="owned", _inputs={}, from_source=ConversationFromSource.CONSOLE
     )
     sqlite_session.add(conversation)
     sqlite_session.flush()

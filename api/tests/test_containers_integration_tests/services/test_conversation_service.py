@@ -79,7 +79,7 @@ class ConversationServiceIntegrationTestDataFactory:
             type=EndUserType.SERVICE_API,
             external_user_id=f"external-{uuid4()}",
             name="End User",
-            is_anonymous=False,
+            _is_anonymous=False,
             session_id=f"session-{uuid4()}",
         )
         db_session_with_containers.add(end_user)
@@ -104,7 +104,7 @@ class ConversationServiceIntegrationTestDataFactory:
             mode=app.mode,
             name=f"Conversation {uuid4()}",
             summary="",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
@@ -141,7 +141,7 @@ class ConversationServiceIntegrationTestDataFactory:
             model_id="",
             override_model_configs=None,
             conversation_id=conversation.id,
-            inputs={},
+            _inputs={},
             query=query,
             message={"messages": [{"role": "user", "content": query}]},
             message_tokens=0,

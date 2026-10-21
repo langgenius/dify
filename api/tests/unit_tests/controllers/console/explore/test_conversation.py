@@ -15,6 +15,7 @@ from werkzeug.test import TestResponse
 import controllers.console.explore.conversation as module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, Message
 from models.web import PinnedConversation
 from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
@@ -156,11 +157,11 @@ def _conversation(
         from_source=source,
         from_account_id=account_id or state.harness.account.id,
         from_end_user_id=end_user_id,
-        invoke_from=invoke_from,
+        invoke_from=ModelInvokeFrom(invoke_from) if invoke_from is not None else None,
         is_deleted=is_deleted,
-        created_at=_CREATED_AT,
-        updated_at=_CREATED_AT - timedelta(minutes=age),
     )
+    conversation.created_at = _CREATED_AT
+    conversation.updated_at = _CREATED_AT - timedelta(minutes=age)
     with state.factory.begin() as session:
         session.add(conversation)
     return conversation
@@ -168,22 +169,21 @@ def _conversation(
 
 def _message(state: _Conversations, conversation: Conversation, *, query: str = "First question", age: int = 0) -> None:
     with state.factory.begin() as session:
-        session.add(
-            Message(
-                app_id=conversation.app_id,
-                conversation_id=conversation.id,
-                _inputs={},
-                query=query,
-                message={},
-                answer="answer",
-                message_unit_price=Decimal(0),
-                answer_unit_price=Decimal(0),
-                currency="USD",
-                from_source=ConversationFromSource.CONSOLE,
-                from_account_id=state.harness.account.id,
-                created_at=_CREATED_AT + timedelta(minutes=age),
-            )
+        created_message = Message(
+            app_id=conversation.app_id,
+            conversation_id=conversation.id,
+            _inputs={},
+            query=query,
+            message={},
+            answer="answer",
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.CONSOLE,
+            from_account_id=state.harness.account.id,
         )
+        created_message.created_at = _CREATED_AT + timedelta(minutes=age)
+        session.add(created_message)
 
 
 def _pin(state: _Conversations, conversation: Conversation, *, account_id: str | None = None) -> None:

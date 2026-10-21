@@ -130,7 +130,7 @@ def _make_conversation(*, conversation_id: str = "conversation-id", app_id: str 
         app_id=app_id,
         mode=AppMode.ADVANCED_CHAT,
         name="Test Conversation",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.API,
     )
 
@@ -140,7 +140,7 @@ def _make_message(*, conversation_id: str = "conversation-id", workflow_run_id: 
         id="message-id",
         app_id="app-id",
         conversation_id=conversation_id,
-        inputs={},
+        _inputs={},
         query="query",
         message={"role": "user", "content": "query"},
         answer="answer",
@@ -254,7 +254,7 @@ def _persist_resumption_models(
             app_id=app.id,
             mode=AppMode.ADVANCED_CHAT,
             name="Test Conversation",
-            inputs={},
+            _inputs={},
             from_source=ConversationFromSource.API,
         )
         messages = [
@@ -262,7 +262,7 @@ def _persist_resumption_models(
                 id="older-message-id",
                 app_id=app.id,
                 conversation_id=conversation.id,
-                inputs={},
+                _inputs={},
                 query="older matching message",
                 message={"role": "user", "content": "older"},
                 answer="older",
@@ -271,13 +271,12 @@ def _persist_resumption_models(
                 currency="USD",
                 from_source=ConversationFromSource.API,
                 workflow_run_id=workflow_run_id,
-                created_at=datetime(2025, 1, 1),
             ),
             Message(
                 id="expected-message-id",
                 app_id=app.id,
                 conversation_id=conversation.id,
-                inputs={},
+                _inputs={},
                 query="newer matching message",
                 message={"role": "user", "content": "expected"},
                 answer="expected",
@@ -286,13 +285,12 @@ def _persist_resumption_models(
                 currency="USD",
                 from_source=ConversationFromSource.API,
                 workflow_run_id=workflow_run_id,
-                created_at=datetime(2025, 1, 2),
             ),
             Message(
                 id="other-run-message-id",
                 app_id=app.id,
                 conversation_id=conversation.id,
-                inputs={},
+                _inputs={},
                 query="newest message from another run",
                 message={"role": "user", "content": "other run"},
                 answer="other run",
@@ -301,9 +299,14 @@ def _persist_resumption_models(
                 currency="USD",
                 from_source=ConversationFromSource.API,
                 workflow_run_id="other-run-id",
-                created_at=datetime(2025, 1, 3),
             ),
         ]
+        for message, created_at in zip(
+            messages,
+            (datetime(2025, 1, 1), datetime(2025, 1, 2), datetime(2025, 1, 3)),
+            strict=True,
+        ):
+            message.created_at = created_at
         session.add(conversation)
         session.add_all(messages)
 

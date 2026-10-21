@@ -29,7 +29,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import AppStatus, CustomizeTokenStrategy
+from models.enums import AppStatus, ConversationFromSource, CustomizeTokenStrategy
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import (
     AccountTrialAppRecord,
     App,
@@ -1274,7 +1275,14 @@ def test_trial_generation_uses_configured_access_runtime_and_usage(
     app_id, tenant_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
     with sqlite_session_factory.begin() as session:
         session.add(
-            App(id=app_id, tenant_id=tenant_id, name="Trial", mode="completion", enable_site=True, enable_api=False)
+            App(
+                id=app_id,
+                tenant_id=tenant_id,
+                name="Trial",
+                mode=AppMode.COMPLETION,
+                enable_site=True,
+                enable_api=False,
+            )
         )
         account = Account(name="Account", email="trial@example.com")
         account.id = account_id
@@ -1317,7 +1325,7 @@ def test_app_audio_uses_the_configured_database_and_app_owner(
                 id=app_id,
                 tenant_id=tenant_id,
                 name="Trial",
-                mode="chat",
+                mode=AppMode.CHAT,
                 app_model_config_id=config.id,
                 enable_site=True,
                 enable_api=False,
@@ -1366,8 +1374,22 @@ def test_app_previews_use_the_configured_catalog_and_app_owner(
     with sqlite_session_factory.begin() as session:
         session.add_all(
             [
-                App(id=app_id, tenant_id=tenant_id, name="Preview", mode="chat", enable_site=False, enable_api=False),
-                App(id=other_id, tenant_id=tenant_id, name="Private", mode="chat", enable_site=False, enable_api=False),
+                App(
+                    id=app_id,
+                    tenant_id=tenant_id,
+                    name="Preview",
+                    mode=AppMode.CHAT,
+                    enable_site=False,
+                    enable_api=False,
+                ),
+                App(
+                    id=other_id,
+                    tenant_id=tenant_id,
+                    name="Private",
+                    mode=AppMode.CHAT,
+                    enable_site=False,
+                    enable_api=False,
+                ),
             ]
         )
 
@@ -1394,7 +1416,14 @@ def test_app_preview_details_use_the_configured_database_without_request_globals
         session.add_all(
             [
                 account,
-                App(id=app_id, tenant_id=owner_id, name="Preview", mode="chat", enable_site=True, enable_api=False),
+                App(
+                    id=app_id,
+                    tenant_id=owner_id,
+                    name="Preview",
+                    mode=AppMode.CHAT,
+                    enable_site=True,
+                    enable_api=False,
+                ),
                 Site(
                     app_id=app_id,
                     title="Preview site",
@@ -1747,11 +1776,11 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             app_id=app.id,
             mode=AppMode.CHAT,
             name="Original",
-            inputs={"enabled": False},
-            from_source="console",
+            _inputs={"enabled": False},
+            from_source=ConversationFromSource.CONSOLE,
             from_account_id=account_id,
             from_end_user_id=None,
-            invoke_from="explore",
+            invoke_from=ModelInvokeFrom.EXPLORE,
         )
         session.add(conversation)
         session.flush()
@@ -1760,14 +1789,14 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             Message(
                 app_id=app.id,
                 conversation_id=conversation.id,
-                inputs={},
+                _inputs={},
                 query="First question",
                 message={},
                 message_unit_price=Decimal(0),
                 answer="Answer",
                 answer_unit_price=Decimal(0),
                 currency="USD",
-                from_source="console",
+                from_source=ConversationFromSource.CONSOLE,
                 from_account_id=account_id,
             )
         )
