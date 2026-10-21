@@ -780,10 +780,30 @@ def test_projection_truncates_a_single_field_over_the_string_limit(monkeypatch: 
 
 
 def test_projection_evicts_oldest_entries_over_the_byte_budget(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 200, raising=False)
+    # A budget below a single entry forces the notice path deterministically.
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 20, raising=False)
     monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 100_000, raising=False)
     projection = _projection()
-    for index in range(6):
+    for index in range(3):
+        projection.observe(_stream_event(
+            "function_tool_call",
+            index=index,
+            part={"tool_name": "shell_run", "tool_call_id": f"tc-{index}", "args": {"n": index}},
+        ))
+
+    entries = projection.entries()
+
+    assert [entry.label for entry in entries] == ["Agent process truncated"]
+    assert entries[0].data == {"truncated": True}
+    assert entries[0].node_execution_id == "exec-1"
+
+
+def test_projection_keeps_newest_entries_when_trimming_to_the_budget(monkeypatch: pytest.MonkeyPatch):
+    # A budget between one and two entries keeps the tail and drops the head.
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 74, raising=False)
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 100_000, raising=False)
+    projection = _projection()
+    for index in range(3):
         projection.observe(_stream_event(
             "function_tool_call",
             index=index,
@@ -795,9 +815,11 @@ def test_projection_evicts_oldest_entries_over_the_byte_budget(monkeypatch: pyte
     total = sum(
         len(json.dumps(entry.data, ensure_ascii=False)) + len(entry.label) for entry in entries
     )
-    assert entries[0].label == "Agent process truncated"
-    assert len(entries) < 6
-    assert total <= 200 + len("Agent process truncated") + len(json.dumps({"truncated": True}))
+    assert len(entries) == 2
+    assert [entry.label for entry in entries] == ["shell_run", "shell_run"]
+    assert entries[0].data["tool_input"] == '{"n": 1}'
+    assert entries[1].data["tool_input"] == '{"n": 2}'
+    assert total <= 74
 
 
 def test_projection_skips_output_tool_calls_and_non_mapping_payloads():

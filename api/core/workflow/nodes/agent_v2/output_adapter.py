@@ -119,7 +119,7 @@ class WorkflowAgentOutputAdapter:
             status=status,
             inputs=inputs,
             process_data=process_data,
-            metadata=self._build_node_metadata(metadata=metadata, usage=usage),
+            metadata=self._build_node_metadata(metadata=metadata, usage=usage, agent_log=agent_log),
             llm_usage=usage or LLMUsage.empty_usage(),
             error=error,
             error_type=error_type,

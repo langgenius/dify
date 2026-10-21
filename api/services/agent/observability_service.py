@@ -826,7 +826,12 @@ class AgentObservabilityService:
 
     @classmethod
     def _workflow_agent_thoughts(cls, entries: list[Any]) -> list[dict[str, Any]]:
-        """Map persisted ``AgentLogEvent`` entries onto the shared AgentThought shape."""
+        """Map persisted ``AgentLogEvent`` entries onto the shared AgentThought shape.
+
+        The renderer treats a thought without a tool as internal and skips it, so a
+        recorded reasoning segment is carried in ``answer`` — the field it reads for
+        model text — beside the ``thought`` copy kept for callers that render thoughts.
+        """
         thoughts: list[dict[str, Any]] = []
         for position, entry in enumerate(entries, start=1):
             if not isinstance(entry, Mapping):
@@ -837,6 +842,8 @@ class AgentObservabilityService:
             tool = "" if is_thinking else label
             thought_text = data.get("thought")
             answer_text = data.get("answer")
+            if answer_text is None and isinstance(thought_text, str) and is_thinking:
+                answer_text = thought_text
             thoughts.append(
                 {
                     "id": str(entry.get("message_id") or position),
@@ -1075,15 +1082,24 @@ WHERE
     ) -> list[dict[str, Any]]:
         converted_run_created_at = convert_datetime_to_date("aru.created_at")
         total_tokens = self._workflow_execution_metadata_numeric_sql(("total_tokens",), "BIGINT")
+        # Agent V2 recorded its run statistics under "agent_log" before the flattened
+        # "agent_backend" shape. Keep the old path readable so untransformed rows do
+        # not silently report zero usage.
         nested_total_tokens = self._workflow_execution_metadata_numeric_sql(
-            ("agent_backend", "usage", "total_tokens"), "BIGINT"
+            ("agent_backend", "usage", "total_tokens"),
+            "BIGINT",
+            fallback_path=("agent_log", "agent_backend", "usage", "total_tokens"),
         )
         total_price = self._workflow_execution_metadata_numeric_sql(("total_price",), "DECIMAL(65, 30)")
         nested_total_price = self._workflow_execution_metadata_numeric_sql(
-            ("agent_backend", "usage", "total_price"), "DECIMAL(65, 30)"
+            ("agent_backend", "usage", "total_price"),
+            "DECIMAL(65, 30)",
+            fallback_path=("agent_log", "agent_backend", "usage", "total_price"),
         )
         completion_tokens = self._workflow_execution_metadata_numeric_sql(
-            ("agent_backend", "usage", "completion_tokens"), "BIGINT"
+            ("agent_backend", "usage", "completion_tokens"),
+            "BIGINT",
+            fallback_path=("agent_log", "agent_backend", "usage", "completion_tokens"),
         )
         binding_filters = self._statistics_workflow_binding_filters_sql(source_filter)
         binding_join = self._statistics_workflow_node_binding_join_sql()
@@ -1243,7 +1259,20 @@ WHERE
         )"""
 
     @staticmethod
-    def _workflow_execution_metadata_numeric_sql(path: tuple[str, ...], numeric_type: str) -> str:
+    def _workflow_execution_metadata_numeric_sql(
+        path: tuple[str, ...],
+        numeric_type: str,
+        *,
+        fallback_path: tuple[str, ...] | None = None,
+    ) -> str:
+        current = self._workflow_execution_metadata_json_sql(path, numeric_type)
+        if fallback_path is None:
+            return current
+        legacy = self._workflow_execution_metadata_json_sql(fallback_path, numeric_type)
+        return f"COALESCE({current}, {legacy})"
+
+    @staticmethod
+    def _workflow_execution_metadata_json_sql(path: tuple[str, ...], numeric_type: str) -> str:
         if dify_config.DB_TYPE == "postgresql":
             json_path = ",".join(path)
             value = f"CAST(wne.execution_metadata AS JSONB) #>> '{{{json_path}}}'"

@@ -24,6 +24,7 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
+from core.workflow.nodes.agent.events import AgentLogEvent
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.engine_events import NodeRunPauseRequestedEvent
 from graphon.enums import (
@@ -574,6 +575,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         metadata=metadata,
                         error=f"Unexpected internal event type {internal_event.type!r}",
                         error_type="agent_backend_stream_error",
+                        agent_log=process_projection.entries(),
                     )
         except AgentBackendError as error:
             cancellation = self._cancel_backend_run(
@@ -587,6 +589,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 metadata=metadata,
                 error=str(error),
                 error_type=self._agent_backend_error_type(error),
+                agent_log=process_projection.entries(),
             )
         except Exception as error:
             cancellation = self._cancel_backend_run(
@@ -600,6 +603,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 metadata=metadata,
                 error=str(error),
                 error_type="agent_backend_stream_error",
+                agent_log=process_projection.entries(),
             )
 
         cancellation = self._cancel_backend_run(
