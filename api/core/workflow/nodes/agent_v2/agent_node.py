@@ -49,7 +49,10 @@ from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from .entities import DifyAgentNodeData
-from .output_adapter import WorkflowAgentOutputAdapter
+from .output_adapter import (
+    WorkflowAgentOutputAdapter,
+    WorkflowAgentProcessProjection,
+)
 from .output_failure_orchestrator import (
     FailedOutput,
     OutputFailureDecision,
@@ -295,6 +298,13 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             metadata.update(runtime_request.metadata)
             metadata["attempt"] = attempt
 
+            # One projection per attempt: a retried run replaces its process entries
+            # instead of appending to the previous attempt's.
+            process_projection = WorkflowAgentProcessProjection(
+                node_id=self._node_id,
+                node_execution_id=self.execution_id,
+            )
+
             try:
                 create_response = self._agent_backend_client.create_run(runtime_request.request)
             except AgentBackendError as error:
@@ -321,6 +331,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 stream_text=not custom_outputs
                 and not node_job.output_routes.enabled
                 and self.error_strategy != ErrorStrategy.DEFAULT_VALUE,
+                process_projection=process_projection,
             )
             if metadata.get("knowledge_fs_sources"):
                 yield RunRetrieverResourceEvent(retriever_resources=metadata["knowledge_fs_sources"], context="")
@@ -346,6 +357,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         inputs=inputs,
                         process_data=process_data,
                         metadata=metadata,
+                        agent_log=process_projection.entries(),
                     )
                 )
                 return
@@ -359,6 +371,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         inputs=inputs,
                         process_data=process_data,
                         metadata=metadata,
+                        agent_log=process_projection.entries(),
                     )
                 )
                 return
@@ -413,6 +426,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                             metadata=metadata,
                             error=outcome.primary_reason,
                             error_type=error_type,
+                            agent_log=process_projection.entries(),
                         )
                         return
 
@@ -429,6 +443,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         metadata=metadata,
                         error="Agent output switch must select one configured output route ID.",
                         error_type="output_route_selection_failed",
+                        agent_log=process_projection.entries(),
                     )
                     return
                 edge_source_handle = selected
@@ -441,6 +456,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     process_data=process_data,
                     metadata=metadata,
                     declared_outputs=custom_outputs,
+                    agent_log=process_projection.entries(),
                 )
             )
             return
@@ -453,6 +469,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
         stream_text: bool,
+        process_projection: WorkflowAgentProcessProjection,
     ) -> Generator[
         StreamChunkEvent,
         None,
@@ -485,6 +502,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             process_data=process_data,
             metadata=metadata,
             stream_text=stream_text,
+            process_projection=process_projection,
         )
         if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
@@ -498,6 +516,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
         stream_text: bool,
+        process_projection: WorkflowAgentProcessProjection,
     ) -> Generator[
         StreamChunkEvent,
         None,
@@ -519,10 +538,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
+                            process_projection.observe(internal_event)
                         continue
                     if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
                         if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
                             self._record_agent_message_delta_metadata(metadata, internal_event)
+                            process_projection.observe_agent_message_delta(internal_event.delta)
                             if stream_text:
                                 yield StreamChunkEvent(
                                     selector=[self._node_id, "text"],
@@ -691,13 +712,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
         error: str,
         error_type: str,
+        agent_log: Sequence[AgentLogEvent] = (),
     ) -> StreamCompletedEvent:
         return StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=inputs,
                 process_data=process_data,
-                metadata={WorkflowNodeExecutionMetadataKey.AGENT_LOG: metadata},
+                metadata=WorkflowAgentOutputAdapter.build_node_execution_metadata(
+                    metadata=metadata,
+                    agent_log=agent_log,
+                ),
                 outputs={},
                 error=error,
                 error_type=error_type,
