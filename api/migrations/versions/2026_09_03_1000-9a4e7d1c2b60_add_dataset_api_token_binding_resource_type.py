@@ -52,21 +52,39 @@ def upgrade():
         batch_op.create_index("dataset_api_token_binding_space_idx", ["control_space_id"], unique=False)
 
 
-def _count_knowledge_fs_only_keys() -> int:
-    return (
-        op.get_bind()
-        .execute(
-            sa.text(
-                "SELECT COUNT(DISTINCT api_token_id) FROM dataset_api_token_bindings AS space_binding"
-                " WHERE space_binding.resource_type = 'knowledge_fs_space'"
-                " AND NOT EXISTS ("
-                "SELECT 1 FROM dataset_api_token_bindings AS dataset_binding"
-                " WHERE dataset_binding.api_token_id = space_binding.api_token_id"
-                " AND dataset_binding.resource_type = 'dataset')"
-            )
+_KNOWLEDGE_FS_ONLY_KEYS_SQL = (
+    "SELECT COUNT(DISTINCT api_token_id) FROM dataset_api_token_bindings AS space_binding"
+    " WHERE space_binding.resource_type = 'knowledge_fs_space'"
+    " AND NOT EXISTS ("
+    "SELECT 1 FROM dataset_api_token_bindings AS dataset_binding"
+    " WHERE dataset_binding.api_token_id = space_binding.api_token_id"
+    " AND dataset_binding.resource_type = 'dataset')"
+)
+_KNOWLEDGE_FS_ONLY_KEYS_MESSAGE = (
+    "dataset API key(s) are bound only to KnowledgeFS spaces and would gain access to every dataset "
+    "in their tenant after this downgrade. Revoke them before downgrading."
+)
+
+
+def _assert_no_knowledge_fs_only_keys() -> None:
+    if not op.get_context().as_sql:
+        count = op.get_bind().execute(sa.text(_KNOWLEDGE_FS_ONLY_KEYS_SQL)).scalar_one()
+        if count:
+            raise RuntimeError(f"{count} {_KNOWLEDGE_FS_ONLY_KEYS_MESSAGE}")
+        return
+    # Offline scripts cannot inspect rows, so the generated SQL carries the check itself.
+    if op.get_context().dialect.name == "postgresql":
+        op.execute(
+            # No RAISE placeholder: offline rendering doubles "%", which would break the format.
+            "DO $$ DECLARE knowledge_fs_only_keys bigint; BEGIN "
+            f"{_KNOWLEDGE_FS_ONLY_KEYS_SQL} "
+            "INTO knowledge_fs_only_keys; "
+            "IF knowledge_fs_only_keys > 0 THEN "
+            f"RAISE EXCEPTION 'Some {_KNOWLEDGE_FS_ONLY_KEYS_MESSAGE}'; "
+            "END IF; END $$"
         )
-        .scalar_one()
-    )
+    else:
+        op.execute(f"-- Before running this downgrade, confirm no {_KNOWLEDGE_FS_ONLY_KEYS_MESSAGE}")
 
 
 def downgrade():
@@ -74,14 +92,7 @@ def downgrade():
     # bindings of a key bound only to KnowledgeFS spaces would widen it to every legacy
     # dataset, so those keys must be revoked through the API (which also clears the token
     # cache) before downgrading.
-    if op.get_context().as_sql:
-        raise RuntimeError("Downgrading 9a4e7d1c2b60 must run online so KnowledgeFS-only API keys can be checked.")
-    knowledge_fs_only_keys = _count_knowledge_fs_only_keys()
-    if knowledge_fs_only_keys:
-        raise RuntimeError(
-            f"{knowledge_fs_only_keys} dataset API key(s) are bound only to KnowledgeFS spaces and would gain "
-            "access to every dataset in their tenant after this downgrade. Revoke them before downgrading."
-        )
+    _assert_no_knowledge_fs_only_keys()
     # Keys that also bind legacy datasets keep those bindings and only lose their space scope.
     op.execute(sa.text("DELETE FROM dataset_api_token_bindings WHERE resource_type <> 'dataset'"))
     with op.batch_alter_table("dataset_api_token_bindings", schema=None) as batch_op:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 from collections.abc import Iterator
+from io import StringIO
 from pathlib import Path
 from types import ModuleType
 
@@ -91,9 +92,28 @@ def test_downgrade_refuses_to_widen_knowledge_fs_only_keys(upgraded: tuple[sa.Co
     assert connection.execute(sa.text("SELECT COUNT(*) FROM dataset_api_token_bindings")).scalar_one() == 4
 
 
-def test_offline_downgrade_is_rejected() -> None:
+def _render_offline_downgrade(dialect_name: str) -> str:
     migration = _load_migration()
-    migration.__dict__["op"] = Operations(MigrationContext.configure(dialect_name="postgresql", opts={"as_sql": True}))
+    output = StringIO()
+    context = MigrationContext.configure(dialect_name=dialect_name, opts={"as_sql": True, "output_buffer": output})
+    migration.__dict__["op"] = Operations(context)
+    migration.downgrade()
+    return output.getvalue()
 
-    with pytest.raises(RuntimeError, match="must run online"):
-        migration.downgrade()
+
+def test_offline_postgresql_downgrade_raises_before_dropping_space_bindings() -> None:
+    sql = _render_offline_downgrade("postgresql")
+
+    guard = sql.index("DO $$ DECLARE knowledge_fs_only_keys bigint; BEGIN SELECT COUNT(DISTINCT api_token_id)")
+    assert sql.index("RAISE EXCEPTION 'Some dataset API key(s)", guard) < sql.index(
+        "DELETE FROM dataset_api_token_bindings"
+    )
+    assert "%" not in sql
+
+
+def test_offline_mysql_downgrade_warns_before_dropping_space_bindings() -> None:
+    sql = _render_offline_downgrade("mysql")
+
+    assert sql.index("-- Before running this downgrade, confirm no dataset API key(s)") < sql.index(
+        "DELETE FROM dataset_api_token_bindings"
+    )
