@@ -138,7 +138,7 @@ def _confirmed_result_card(run: Run) -> TestResultCard:
     return card
 
 
-def result_card(run: Run) -> TestResultCard:
+def result_card(run: Run, *, reply_language: str = "en-US") -> TestResultCard:
     evidence = run.verification
     summary = evidence.execution_evidence if evidence else None
     if summary is not None and summary.mode == "confirmed_tool":
@@ -163,7 +163,7 @@ def result_card(run: Run) -> TestResultCard:
         card.safety_outcome = "execution_evidence_unknown"
     from services.dify_builder.execution_messages import observed_failure_message
 
-    observed_failure = observed_failure_message(summary)
+    observed_failure = observed_failure_message(summary, reply_language=reply_language)
     if observed_failure is not None:
         card.outcome = (
             "execution_failed"

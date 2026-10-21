@@ -306,7 +306,7 @@ def test_observed_preparation_failure_has_specific_copy_without_entering_repair(
     assert card.outcome == "execution_failed"
     assert isinstance(card.failure_reason, BuilderCopy)
     assert card.failure_reason.id == "test.preparationFailed"
-    assert card.failure_reason.params == {"reason": "connection_refused"}
+    assert card.failure_reason.params == {"reason": "connection refused"}
     assert card.failure_phase == "preparation"
     assert card.failure_code == "connection_refused"
     assert "secret" not in english_text(card.failure_reason)

@@ -52,6 +52,7 @@ def prepare_continuation(
     from services.dify_builder.application.handlers_fix import (
         append_assistant,
         append_card,
+        mint_checkpoint,
         saved_test_inputs,
         start_schema,
         testdata_form,
@@ -92,11 +93,19 @@ def prepare_continuation(
     context.last_edit_rejection = ""
     context.unknown_outcome_count = 0
     context.verify_run_id = ""
+    context.checkpoint_id = ""
+    context.checkpoint_seq = context.next_seq
     # The model request cannot inherit execution approval. Inputs remain data,
     # and the existing form owner re-reads the current schema and risk facts.
     if intent == "test":
-        context.last_snapshot_hash = graph_revision
-        context.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
+        mode = active_entry_mode(session, context)
+        next_state = {EntryMode.EDIT: PcState.EDIT_AWAIT_TESTDATA, EntryMode.BUILD: PcState.BUILD_AWAIT_TESTDATA}.get(
+            mode, PcState.FIX_AWAIT_TESTDATA
+        )
+        # The existing durable checkpoint is also this task's undo/history
+        # boundary. Never inherit the preceding task's restore point.
+        context.checkpoint_seq = context.next_seq
+        mint_checkpoint(env, session, context, graph, graph_revision, next_state)
         schema = start_schema(graph, env.dify.get_app_mode(session.app_id, turn.actor))
         values = saved_test_inputs(env, context)
         from services.dify_builder.test_input_continuity import reusable_values
@@ -115,10 +124,6 @@ def prepare_continuation(
             *append_card(context, card),
             *append_assistant(env, session, context, reply, cards=["form"], turn_id=turn_id),
         ]
-        mode = active_entry_mode(session, context)
-        next_state = {EntryMode.EDIT: PcState.EDIT_AWAIT_TESTDATA, EntryMode.BUILD: PcState.BUILD_AWAIT_TESTDATA}.get(
-            mode, PcState.FIX_AWAIT_TESTDATA
-        )
         return StepResult(next=next_state, context=context, items=items)
 
     from services.dify_builder.application.handlers_edit import handle_capability_check

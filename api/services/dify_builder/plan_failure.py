@@ -53,7 +53,11 @@ def edit_planning_failed(
         env,
         session,
         context,
-        cognition_failure_message(env.diagnostics, copy_text(BuilderCopyId.REPLIES_BUILDER_COULDN_T_PRODUCE_A_USABLE)),
+        cognition_failure_message(
+            env.diagnostics,
+            copy_text(BuilderCopyId.REPLIES_BUILDER_COULDN_T_PRODUCE_A_USABLE),
+            reply_language=context.reply_language,
+        ),
         execution=execution,
         cards=["form"] if form_items else None,
         turn_id=progress.operation_id,

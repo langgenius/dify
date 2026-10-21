@@ -64,7 +64,38 @@ def code_risk_unavailable_notice(reply_language: str) -> str:
     return _CODE_RISK_UNAVAILABLE["zh" if reply_language.lower().startswith("zh") else "en"]
 
 
-def observed_failure_message(summary: ExecutionEvidenceSummary | None) -> BuilderText | None:
+# Only bounded backend-owned display labels are translated here. Technical
+# codes remain in diagnostics/failure_code; resource names and user text are
+# never interpreted as localization keys. Other locales use the English label.
+_REASON_LABELS = {
+    "connection_refused": ("connection refused", "连接被拒绝"),
+    "timeout": ("request timed out", "请求超时"),
+    "authentication": ("authentication failed", "身份认证失败"),
+    "rate_limit": ("rate limit exceeded", "请求超过频率限制"),
+    "service_unavailable": ("service unavailable", "服务不可用"),
+    "provider_invocation_failed": ("model invocation failed", "模型调用失败"),
+    "model_resolution_failed": ("model configuration unavailable", "模型配置不可用"),
+    "empty_response": ("empty model response", "模型响应为空"),
+    "json_decode_failed": ("invalid JSON response", "模型响应不是有效的 JSON"),
+    "response_schema_invalid": ("response does not match the required schema", "模型响应不符合要求的结构"),
+    "unknown": ("cause unavailable", "暂未获取到具体原因"),
+}
+_SCOPE_LABELS = {"structure": ("structure", "结构"), "configuration": ("configuration", "配置")}
+
+
+def _display_label(labels: Mapping[str, tuple[str, str]], value: str, reply_language: str) -> str:
+    pair = labels.get(value)
+    return pair[1 if reply_language.lower().startswith("zh") else 0] if pair else value
+
+
+def change_scope_label(scope: str, reply_language: str) -> str:
+    """Translate the display scope without mutating the ChangeSet's machine scope."""
+    return _display_label(_SCOPE_LABELS, scope, reply_language)
+
+
+def observed_failure_message(
+    summary: ExecutionEvidenceSummary | None, *, reply_language: str = "en-US"
+) -> BuilderText | None:
     """Observed preparation failure and unknown effects need different recovery."""
     if summary is None:
         return None
@@ -74,7 +105,10 @@ def observed_failure_message(summary: ExecutionEvidenceSummary | None) -> Builde
         message = (
             copy_text(BuilderCopyId.TEST_RUNTIME_SERVICE_FAILED)
             if summary.failure_phase == "execution"
-            else copy_text(BuilderCopyId.TEST_PREPARATION_FAILED, reason=summary.failure_reason or "unknown")
+            else copy_text(
+                BuilderCopyId.TEST_PREPARATION_FAILED,
+                reason=_display_label(_REASON_LABELS, summary.failure_reason or "unknown", reply_language),
+            )
         )
         if summary.failure_resource:
             _, provider, name = summary.failure_resource
@@ -102,7 +136,9 @@ def native_service_failure(run: Run) -> bool:
     )
 
 
-def cognition_failure_message(records: Sequence[Mapping[str, Any]], fallback: BuilderText) -> BuilderText:
+def cognition_failure_message(
+    records: Sequence[Mapping[str, Any]], fallback: BuilderText, *, reply_language: str = "en-US"
+) -> BuilderText:
     """Use bounded observations from this operation; never provider error text."""
     for record in reversed(records):
         code = record.get("code")
@@ -122,5 +158,7 @@ def cognition_failure_message(records: Sequence[Mapping[str, Any]], fallback: Bu
                 "service_unavailable",
             }:
                 reason = code
-            return copy_text(BuilderCopyId.OPERATION_MODEL_FAILED, reason=reason)
+            return copy_text(
+                BuilderCopyId.OPERATION_MODEL_FAILED, reason=_display_label(_REASON_LABELS, reason, reply_language)
+            )
     return fallback
