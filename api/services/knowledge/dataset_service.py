@@ -29,6 +29,7 @@ from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_redis import redis_client
+from graphon.enums import WorkflowExecutionStatus
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
@@ -60,11 +61,12 @@ from models.enums import (
     IndexingStatus,
     ProcessRuleMode,
     SegmentStatus,
+    WorkflowRunTriggeredFrom,
 )
 from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowRun
 from repositories.knowledge import dataset_api_key_bindings
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form, get_latest_dataset_process_rule
 from repositories.knowledge.segment_repository import query_child_chunks
@@ -78,12 +80,13 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.base import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
-from services.errors.dataset import DatasetNameDuplicateError
+from services.errors.dataset import DatasetIndexingInProgressError, DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.knowledge.dataset_access import DatasetAccessRecord, DatasetAccessSnapshot, can_access_dataset
+from services.knowledge.dataset_operation_lock import dataset_operation_lock, lock_dataset_row
 from services.knowledge.entities.document_creation import DocumentCreationDataset, DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import (
     KnowledgeConfig,
@@ -1253,12 +1256,28 @@ class DatasetService:
 
     @staticmethod
     def delete_dataset(dataset_id, user, session: Session):
-        dataset = DatasetService.get_dataset(dataset_id, session)
+        deleted: bool | None = None
+        try:
+            with dataset_operation_lock(str(dataset_id)):
+                deleted = DatasetService._delete_dataset_under_operation_lock(dataset_id, user, session)
+                return deleted
+        except LockNotOwnedError:
+            # A long deletion may outlive the Redis lease after its database commit.
+            if deleted is None:
+                raise
+            return deleted
+
+    @staticmethod
+    def _delete_dataset_under_operation_lock(dataset_id, user, session: Session):
+        dataset = lock_dataset_row(session, str(dataset_id))
 
         if dataset is None:
             return False
 
         DatasetService.check_dataset_permission(dataset, user, session)
+
+        if DatasetService._has_active_indexing_documents(dataset_id, session):
+            raise DatasetIndexingInProgressError()
 
         dataset_was_deleted.send(dataset)
 
@@ -1274,6 +1293,49 @@ class DatasetService:
         session.delete(dataset)
         session.commit()
         return True
+
+    @staticmethod
+    def _has_active_indexing_documents(dataset_id: str, session: Session) -> bool:
+        """Return whether a dataset has a document currently processing an indexing stage."""
+        # The dataset adapter may have read the dataset before waiting on the
+        # operation lock. Under MySQL REPEATABLE READ, an EXISTS query here can
+        # reuse that old snapshot and miss indexing work committed while it waited.
+        # A locking row read uses the current committed state instead.
+        active_document_id = session.scalar(
+            select(Document.id)
+            .where(
+                Document.dataset_id == dataset_id,
+                Document.indexing_status.in_(DocumentService._INDEXING_STATUSES),
+                Document.is_paused.is_not(True),
+            )
+            .limit(1)
+            .with_for_update()
+        )
+        if active_document_id is not None:
+            return True
+
+        # The RAG Pipeline Knowledge Index node leaves documents in `waiting` while
+        # a run is active, so document statuses alone do not cover that path.
+        pipeline_id = (
+            select(Dataset.pipeline_id)
+            .where(
+                Dataset.id == dataset_id,
+                Dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE,
+                Dataset.pipeline_id.is_not(None),
+            )
+            .scalar_subquery()
+        )
+        active_pipeline_run_id = session.scalar(
+            select(WorkflowRun.id)
+            .where(
+                WorkflowRun.tenant_id == select(Dataset.tenant_id).where(Dataset.id == dataset_id).scalar_subquery(),
+                WorkflowRun.app_id == pipeline_id,
+                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
+                WorkflowRun.status == WorkflowExecutionStatus.RUNNING,
+            )
+            .limit(1)
+        )
+        return active_pipeline_run_id is not None
 
     @staticmethod
     def dataset_use_check(dataset_ref: DatasetRef, session: Session) -> bool:
@@ -2167,11 +2229,7 @@ class DocumentService:
         )
         documents: list[Document] = []
         batch = ""
-        lock = (
-            nullcontext()
-            if config.original_document_id
-            else redis_client.lock(f"add_document_lock_dataset_id_{dataset.id}", timeout=600)
-        )
+        lock = nullcontext() if config.original_document_id else dataset_operation_lock(str(dataset.id))
         try:
             with lock:
                 documents, batch, jobs = DocumentService.save_prepared_documents(

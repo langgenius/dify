@@ -15,6 +15,7 @@ from models.dataset import Dataset, DocumentSegment
 from models.enums import IndexingStatus
 from repositories.knowledge.document_repository import _get_document
 from services.feature_service import FeatureService
+from services.knowledge.dataset_operation_lock import dataset_operation_lock, lock_dataset_row
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.resource_scope import DatasetRef
 
@@ -67,6 +68,23 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
                 redis_client.delete(sync_indexing_cache_key)
                 return
 
+        with dataset_operation_lock(str(dataset_id)):
+            dataset = lock_dataset_row(session, str(dataset_id))
+            if dataset is None:
+                logger.info(click.style(f"Dataset not found: {dataset_id}", fg="yellow"))
+                return
+            tenant_id = dataset.tenant_id
+            dataset_ref = DatasetRef(tenant_id=tenant_id, dataset_id=dataset.id)
+            document_ref = dataset_ref.document(document_id)
+            document = _get_document(session, document_ref)
+            if document is None:
+                logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
+                return
+            document.indexing_status = IndexingStatus.PARSING
+            document.processing_started_at = naive_utc_now()
+            session.add(document)
+            session.commit()
+
         logger.info(click.style(f"Start sync website document: {document_id}", fg="green"))
         try:
             # clean old data
@@ -98,9 +116,6 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
                 session.execute(segment_delete_stmt)
             session.commit()
 
-            document.indexing_status = IndexingStatus.PARSING
-            document.processing_started_at = naive_utc_now()
-            session.add(document)
             indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
             # Release document/segment locks before extraction starts.
             session.commit()

@@ -845,6 +845,7 @@ Permanently delete a knowledge base and all its documents.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Dataset has documents that are still indexing | **application/json**: [DatasetIndexingInProgressError](#datasetindexinginprogresserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}
@@ -3055,6 +3056,14 @@ Enum class for custom configuration status.
 | icon_background | string |  | No |
 | icon_type | string |  | No |
 | icon_url | string |  | No |
+
+#### DatasetIndexingInProgressError
+
+The knowledge base has documents that are still indexing. Wait for indexing to finish before deleting it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetIndexingInProgressError |  | The knowledge base has documents that are still indexing. Wait for indexing to finish before deleting it. |  |
 
 #### DatasetKeywordSettingResponse
 

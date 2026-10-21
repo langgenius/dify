@@ -6,7 +6,10 @@ from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Document
+from models.enums import IndexingStatus
+from services.knowledge.dataset_operation_lock import dataset_operation_lock, lock_dataset_row
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.resource_scope import DatasetRef
@@ -27,19 +30,26 @@ def recover_document_indexing_task(dataset_id: str, document_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        document = session.scalar(
-            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-        )
-
-        if not document:
-            logger.info(click.style(f"Document not found: {document_id}", fg="red"))
-            return
+        with dataset_operation_lock(str(dataset_id)):
+            dataset = lock_dataset_row(session, str(dataset_id))
+            if not dataset:
+                logger.info(click.style(f"Dataset not found: {dataset_id}", fg="red"))
+                return
+            document = session.scalar(
+                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+            )
+            if not document:
+                logger.info(click.style(f"Document not found: {document_id}", fg="red"))
+                return
+            status = document.indexing_status
+            if status == IndexingStatus.WAITING:
+                document.indexing_status = IndexingStatus.PARSING
+                document.processing_started_at = naive_utc_now()
+            session.commit()
 
         try:
             indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
             document_ref = DatasetRef(document.tenant_id, document.dataset_id).document(document.id)
-            status = document.indexing_status
-            session.commit()
             if status in {"waiting", "parsing", "cleaning"}:
                 indexing_service.run([document_ref])
             elif status == "splitting":

@@ -27,6 +27,7 @@ from models.dataset import Document as DatasetDocument
 from models.enums import SummaryStatus
 from repositories.knowledge.dataset_read_repository import get_segment_document
 from repositories.knowledge.summary_repository import SQLAlchemySummaryRepository
+from services.knowledge.dataset_operation_lock import dataset_operation_lock
 from services.knowledge.resource_scope import DatasetRef
 from services.knowledge.summaries.application import SummaryIndexService, SummaryVectorInput, SummaryVectorResult
 
@@ -1223,16 +1224,44 @@ class SummaryVectorGateway:
         return tokens[0] if tokens and isinstance(tokens[0], int) else 0
 
     def write(self, command: SummaryVectorInput, result: SummaryVectorResult) -> None:
-        document = Document(
-            page_content=command.content,
-            metadata={
-                "doc_id": result.node_id,
-                "doc_hash": result.content_hash,
-                "dataset_id": command.ref.document.dataset.dataset_id,
-                "document_id": command.ref.document.document_id,
-                "original_chunk_id": command.ref.segment_id,
-                "doc_type": DocType.TEXT,
-                "is_summary": True,
-            },
-        )
-        self._factory().add_texts([document], duplicate_check=False)
+        dataset_id = command.ref.document.dataset.dataset_id
+        tenant_id = command.ref.document.dataset.tenant_id
+        document_id = command.ref.document.document_id
+
+        # Dataset deletion cleans the vector index asynchronously after removing the
+        # dataset row. Serialize this final write with deletion and revalidate its
+        # owner chain after acquiring the lock so a late summary cannot recreate an
+        # index entry after cleanup has already run.
+        with dataset_operation_lock(str(dataset_id)):
+            with session_factory.create_session() as session:
+                owned_segment = session.scalar(
+                    select(DocumentSegment.id)
+                    .join(DatasetDocument, DatasetDocument.id == DocumentSegment.document_id)
+                    .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
+                    .where(
+                        Dataset.id == dataset_id,
+                        Dataset.tenant_id == tenant_id,
+                        DatasetDocument.id == document_id,
+                        DatasetDocument.dataset_id == dataset_id,
+                        DatasetDocument.tenant_id == tenant_id,
+                        DocumentSegment.id == command.ref.segment_id,
+                        DocumentSegment.dataset_id == dataset_id,
+                        DocumentSegment.tenant_id == tenant_id,
+                    )
+                )
+                if owned_segment is None:
+                    raise LookupError("Summary segment no longer exists in this dataset")
+
+            document = Document(
+                page_content=command.content,
+                metadata={
+                    "doc_id": result.node_id,
+                    "doc_hash": result.content_hash,
+                    "dataset_id": dataset_id,
+                    "document_id": document_id,
+                    "original_chunk_id": command.ref.segment_id,
+                    "doc_type": DocType.TEXT,
+                    "is_summary": True,
+                },
+            )
+            self._factory().add_texts([document], duplicate_check=False)

@@ -17,6 +17,7 @@ from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_create_erro
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
+    DatasetIndexingInProgressError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
@@ -45,7 +46,12 @@ from models.account import TenantAccountRole
 from models.enums import CreatorUserRole, DatasetQuerySource
 from models.enums import PermissionEnum as DatasetPermissionEnum
 from models.model import AppMode, IconType
-from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
+from services.errors.dataset import (
+    DatasetIndexingInProgressError as DatasetIndexingInProgressFailure,
+)
+from services.errors.dataset import (
+    DatasetNameDuplicateError as DatasetNameDuplicateFailure,
+)
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.entities.indexing_estimate import (
@@ -75,6 +81,8 @@ def _raise_dataset_error(error: Exception) -> Never:
         raise NotFound("Dataset not found.") from error
     if isinstance(error, DatasetAccessDeniedError):
         raise Forbidden(str(error)) from error
+    if isinstance(error, DatasetIndexingInProgressFailure):
+        raise DatasetIndexingInProgressError() from error
     raise error
 
 
@@ -436,6 +444,8 @@ class DatasetApi(Resource):
         return dump_response(DatasetDetailWithPartialMembersResponse, result), 200
 
     @console_ns.response(204, "Dataset deleted successfully")
+    @console_ns.response(409, "Dataset has documents that are still indexing")
+    @error_responses(DatasetIndexingInProgressError)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_DELETE, DatasetId()),)
     )

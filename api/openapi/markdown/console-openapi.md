@@ -5994,6 +5994,7 @@ Get mock dataset retrieval settings by vector type
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Dataset deleted successfully |  |
+| 409 | Dataset has documents that are still indexing | **application/json**: [DatasetIndexingInProgressError](#datasetindexinginprogresserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}
@@ -20378,6 +20379,14 @@ Dataset access denied.
 | icon_background | string |  | No |
 | icon_type | string |  | No |
 | icon_url | string |  | No |
+
+#### DatasetIndexingInProgressError
+
+The knowledge base has documents that are still indexing. Wait for indexing to finish before deleting it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetIndexingInProgressError |  | The knowledge base has documents that are still indexing. Wait for indexing to finish before deleting it. |  |
 
 #### DatasetKeywordSettingResponse
 

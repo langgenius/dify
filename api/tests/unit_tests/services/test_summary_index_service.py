@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import sys
+from contextlib import nullcontext
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import delete, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.knowledge.summaries.adapters as summary_module
@@ -372,6 +373,48 @@ class TestVectorizeSummary:
             assert refreshed.status == SummaryStatus.COMPLETED
             assert observer.get(DocumentSegmentSummary, detached.id) is None
 
+    def test_does_not_recreate_summary_vector_after_dataset_cleanup(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        dataset, document, segment = _graph(sqlite_session)
+        summary = _persist_summary(sqlite_session, dataset, document, segment)
+        vector = _install_vector_dependencies(monkeypatch)
+        vector_ids = {"existing-node"}
+
+        # Model token counting occurs after vectorize_summary's initial ownership
+        # check. Interleave deletion and cleanup there, before the summary write.
+        def delete_dataset_before_write(_content: str) -> list[int]:
+            with sqlite_session_factory.begin() as cleanup_session:
+                cleanup_session.execute(
+                    delete(DocumentSegmentSummary).where(DocumentSegmentSummary.dataset_id == dataset.id)
+                )
+                cleanup_session.execute(delete(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id))
+                cleanup_session.execute(delete(Document).where(Document.dataset_id == dataset.id))
+                cleanup_session.execute(delete(Dataset).where(Dataset.id == dataset.id))
+            vector_ids.clear()  # Dataset cleanup runs before the late summary write.
+            return [5]
+
+        embedding_model = summary_module.ModelManager.for_tenant.return_value.get_model_instance.return_value
+        embedding_model.get_text_embedding_num_tokens.side_effect = delete_dataset_before_write
+        vector.delete_by_ids.side_effect = lambda node_ids: vector_ids.difference_update(node_ids)
+        vector.add_texts.side_effect = lambda documents, **_: vector_ids.update(
+            document.metadata["doc_id"] for document in documents
+        )
+
+        # Use a no-op lock in this unit test; the deterministic interleaving above
+        # models deletion completing before the writer acquires the shared lock.
+        monkeypatch.setattr(summary_module, "dataset_operation_lock", lambda _: nullcontext(), raising=False)
+        with pytest.raises(LookupError, match="Summary segment no longer exists"):
+            SummaryIndexAdapter.vectorize_summary(summary, segment, dataset, session=sqlite_session)
+
+        with sqlite_session_factory() as observer:
+            assert observer.scalar(select(Dataset.id).where(Dataset.id == dataset.id)) is None
+        assert vector_ids == set()
+        vector.add_texts.assert_not_called()
+
     def test_service_owned_session_creates_missing_record(
         self,
         sqlite_session: Session,
@@ -410,7 +453,7 @@ class TestVectorizeSummary:
         with pytest.raises(RuntimeError, match="fatal vector failure"):
             SummaryIndexAdapter.vectorize_summary(summary, segment, dataset, session=sqlite_session)
 
-        assert create_session.call_count == 2
+        assert create_session.call_count == 3
         assert not sqlite_session.in_transaction()
         assert summary.status == SummaryStatus.ERROR
         assert summary.error == "Vectorization failed: fatal vector failure"

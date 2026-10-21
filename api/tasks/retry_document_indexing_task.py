@@ -18,6 +18,7 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.feature_service import FeatureService
+from services.knowledge.dataset_operation_lock import dataset_operation_lock, lock_dataset_row
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.resource_scope import DatasetRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -81,12 +82,21 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                         return
 
                 logger.info(click.style(f"Start retry document: {document_id}", fg="green"))
-                document = session.scalar(
-                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-                )
-                if not document:
-                    logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
-                    return
+                with dataset_operation_lock(str(dataset_id)):
+                    dataset = lock_dataset_row(session, str(dataset_id))
+                    if not dataset:
+                        logger.info(click.style(f"Dataset not found: {dataset_id}", fg="yellow"))
+                        return
+                    document = session.scalar(
+                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                    )
+                    if not document:
+                        logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
+                        return
+                    document.indexing_status = IndexingStatus.PARSING
+                    document.processing_started_at = naive_utc_now()
+                    session.add(document)
+                    session.commit()
                 try:
                     # clean old data
                     index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
@@ -111,9 +121,6 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                         session.execute(segment_delete_stmt)
                     session.commit()
 
-                    document.indexing_status = IndexingStatus.PARSING
-                    document.processing_started_at = naive_utc_now()
-                    session.add(document)
                     document_ref = DatasetRef(document.tenant_id, document.dataset_id).document(document.id)
                     runtime_mode = dataset.runtime_mode
                     # Persist preparation before handing off to the selected execution service.

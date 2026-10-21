@@ -19,6 +19,14 @@ class DatasetNameDuplicateError(BaseHTTPException):
     code = 409
 
 
+class DatasetIndexingInProgressError(BaseHTTPException):
+    error_code = "dataset_indexing_in_progress"
+    description = (
+        "The knowledge base has documents that are still indexing. Wait for indexing to finish before deleting it."
+    )
+    code = 409
+
+
 class InvalidActionError(BaseHTTPException):
     error_code = "invalid_action"
     description = "Invalid action."

@@ -28,7 +28,12 @@ from controllers.common.schema import (
 from controllers.common.session import with_session
 from controllers.console.wraps import edit_permission_required, model_validate
 from controllers.service_api import service_api_ns
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
+from controllers.service_api.dataset.error import (
+    DatasetIndexingInProgressError,
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    InvalidActionError,
+)
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
@@ -746,6 +751,7 @@ class DatasetApi(DatasetApiResource):
 
         return _dump_service_dataset_with_partial_members(result_data), 200
 
+    @error_responses(DatasetIndexingInProgressError)
     @service_api_ns.doc(
         summary="Delete Knowledge Base",
         description="Permanently delete a knowledge base and all its documents.",
@@ -763,6 +769,7 @@ class DatasetApi(DatasetApiResource):
             204: "Dataset deleted successfully",
             401: "Unauthorized - invalid API token",
             404: "Dataset not found",
+            409: "Dataset has documents that are still indexing",
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
@@ -794,6 +801,8 @@ class DatasetApi(DatasetApiResource):
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError as caught_error:
             raise DatasetInUseError() from caught_error
+        except services.errors.dataset.DatasetIndexingInProgressError as caught_error:
+            raise DatasetIndexingInProgressError() from caught_error
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>")

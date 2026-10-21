@@ -11,10 +11,12 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+import tasks.document_indexing_sync_task as task_module
 from core.db import session_factory as session_factory_module
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.knowledge.indexing.execution import DocumentIndexingService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 pytestmark = pytest.mark.parametrize(
@@ -282,3 +284,46 @@ class TestDataSourceInfoSerialization:
             assert parsed["last_edited_time"] == "2024-02-01T00:00:00Z"
             assert stored_document.indexing_status == IndexingStatus.PARSING
             assert stored_document.processing_started_at is not None
+
+    @pytest.mark.parametrize("deleted_resource", ["dataset", "document"])
+    def test_sync_skips_when_admission_target_is_deleted_before_locked_lookup(
+        self,
+        document: Document,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_datasource_provider_service,
+        mock_notion_extractor,
+        deleted_resource: str,
+    ) -> None:
+        original_lock_dataset_row = task_module.lock_dataset_row
+        dataset_id = document.dataset_id
+        document_id = document.id
+        mock_notion_extractor["instance"].get_notion_last_edited_time.return_value = "2024-02-01T00:00:00Z"
+        locked_lookup_reached = False
+        indexing_calls = []
+
+        def delete_target_then_lock(session: Session, dataset_id: str):
+            nonlocal locked_lookup_reached
+            locked_lookup_reached = True
+            with Session(bind=sqlite_session.get_bind()) as remover, remover.begin():
+                if deleted_resource == "dataset":
+                    remover.delete(remover.get(Document, document_id))
+                    remover.delete(remover.get(Dataset, dataset_id))
+                else:
+                    remover.delete(remover.get(Document, document_id))
+            return original_lock_dataset_row(session, dataset_id)
+
+        def fail_if_indexing_is_started(*_args, **_kwargs):
+            raise AssertionError("Indexing should not start after the admission target is deleted")
+
+        def record_indexing_call(_service, document_refs) -> None:
+            indexing_calls.append(list(document_refs))
+
+        monkeypatch.setattr(task_module, "lock_dataset_row", delete_target_then_lock)
+        monkeypatch.setattr(task_module, "IndexProcessorFactory", fail_if_indexing_is_started)
+        monkeypatch.setattr(DocumentIndexingService, "run", record_indexing_call)
+
+        document_indexing_sync_task(dataset_id, document_id)
+
+        assert locked_lookup_reached
+        assert indexing_calls == []

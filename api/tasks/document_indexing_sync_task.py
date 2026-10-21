@@ -13,6 +13,7 @@ from extensions.application_services.data_sources import build_data_source_crede
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
+from services.knowledge.dataset_operation_lock import dataset_operation_lock, lock_dataset_row
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.resource_scope import DatasetRef
@@ -119,14 +120,32 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
     try:
         indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
         with session_factory.create_session() as session:
-            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
-            if not document:
-                logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
-                return
+            with dataset_operation_lock(str(dataset_id)):
+                dataset = lock_dataset_row(session, str(dataset_id))
+                if not dataset:
+                    logger.warning(click.style(f"Dataset {dataset_id} not found during sync", fg="yellow"))
+                    return
 
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+                document = session.scalar(
+                    select(Document)
+                    .where(
+                        Document.id == document_id,
+                        Document.dataset_id == dataset_id,
+                    )
+                    .limit(1)
+                )
+                if not document:
+                    logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
+                    return
+
+                data_source_info = document.data_source_info_dict
+                data_source_info["last_edited_time"] = last_edited_time
+                document.data_source_info = json.dumps(data_source_info)
+                document.indexing_status = IndexingStatus.PARSING
+                document.processing_started_at = naive_utc_now()
+                session.commit()
+
             # End the read transaction before the external vector cleanup.
-            session.commit()
             if dataset:
                 try:
                     index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -146,13 +165,6 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                     if not document:
                         logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
                         return
-
-            data_source_info = document.data_source_info_dict
-            data_source_info["last_edited_time"] = last_edited_time
-            document.data_source_info = json.dumps(data_source_info)
-
-            document.indexing_status = IndexingStatus.PARSING
-            document.processing_started_at = naive_utc_now()
 
             segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
             session.execute(segment_delete_stmt)

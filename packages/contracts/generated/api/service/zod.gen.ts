@@ -1053,6 +1053,18 @@ export const zCompletionRequestError = zErrorResponse.and(
 )
 
 /**
+ * DatasetIndexingInProgressError
+ *
+ * The knowledge base has documents that are still indexing. Wait for indexing to finish before deleting it.
+ */
+export const zDatasetIndexingInProgressError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_indexing_in_progress'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * DatasetNameDuplicateError
  *
  * The dataset name already exists. Please modify your dataset name.
