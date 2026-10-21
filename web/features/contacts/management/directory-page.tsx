@@ -533,7 +533,7 @@ export function ContactsDirectoryPage() {
                     <thead className="text-left system-xs-medium-uppercase text-text-tertiary">
                       <tr className="h-7">
                         {context.permissions.canManageContacts && (
-                          <th scope="col" className="w-8 px-2 text-center">
+                          <th scope="col" className="w-8 px-2 text-center font-medium">
                             <Checkbox
                               aria-label={t(($) => $['directory.selectAll'])}
                               checked={allRemovableSelected}
@@ -543,16 +543,16 @@ export function ContactsDirectoryPage() {
                             />
                           </th>
                         )}
-                        <th scope="col" className="pr-2 pl-3">
+                        <th scope="col" className="pr-2 pl-3 font-medium">
                           {t(($) => $['directory.column.name'])}
                         </th>
-                        <th scope="col" className="px-3">
+                        <th scope="col" className="px-3 font-medium">
                           {t(($) => $['directory.column.type'])}
                         </th>
-                        <th scope="col" className="px-3">
+                        <th scope="col" className="px-3 font-medium">
                           {t(($) => $['directory.column.channels'])}
                         </th>
-                        <th scope="col" className="px-3">
+                        <th scope="col" className="px-3 font-medium">
                           {t(($) => $['directory.column.joined'])}
                         </th>
                       </tr>
