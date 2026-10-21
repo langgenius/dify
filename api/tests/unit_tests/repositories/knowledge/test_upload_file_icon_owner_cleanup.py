@@ -12,40 +12,13 @@ from sqlalchemy.orm import Session
 import tasks.clean_upload_files_task as cleanup_task_module
 from models.account import Account, Tenant
 from models.agent import Agent, AgentIconType, AgentKind, AgentScope, AgentSource
-from models.dataset import Dataset, PipelineCustomizedTemplate, SegmentAttachmentBinding
+from models.dataset import Dataset, PipelineCustomizedTemplate
 from models.enums import CustomizeTokenStrategy
-from models.human_input import HumanInputFormUploadFile
-from models.model import App, IconType, KnowledgeUploadFileReference, MessageFile, Site, UploadFile
+from models.model import App, IconType, Site, UploadFile
 from models.snippet import CustomizedSnippet, SnippetType
 from models.tools import MCPToolProvider
-from models.workflow import (
-    WorkflowDraftVariable,
-    WorkflowDraftVariableFile,
-    WorkflowDraftVariableUploadFileReference,
-    WorkflowNodeExecutionOffload,
-)
 from repositories.knowledge.upload_file_repository import (
-    claim_detached_icon_upload_references,
-    guard_account_avatar_upload_reference,
-    guard_agent_icon_upload_reference,
-    guard_app_icon_upload_reference,
-    guard_dataset_icon_upload_reference,
-    guard_human_input_upload_reference,
-    guard_knowledge_upload_reference,
-    guard_local_message_file_upload_reference,
-    guard_mcp_icon_upload_reference,
-    guard_pipeline_template_icon_upload_reference,
-    guard_segment_attachment_upload_reference,
-    guard_site_icon_upload_reference,
-    guard_snippet_icon_upload_reference,
-    guard_tenant_logo_upload_reference,
-    guard_workflow_draft_variable_file_upload_reference,
-    guard_workflow_draft_variable_normalized_upload_reference,
-    guard_workflow_draft_variable_upload_references,
-    guard_workflow_node_execution_offload_upload_reference,
-    prepare_icon_owner_deletion,
     register_upload_file_reference_guards,
-    sync_workflow_draft_variable_upload_references,
 )
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app, make_dataset, make_tenant, make_upload_file
@@ -72,13 +45,6 @@ class OwnerSetup:
     owner: IconOwner
     tenant_id: str
     dependencies: tuple[object, ...] = ()
-
-
-@dataclass(frozen=True)
-class MapperListener:
-    model: type[object]
-    operation: str
-    listener: Callable[..., object]
 
 
 @dataclass
@@ -260,80 +226,32 @@ def _persist_owner_with_uploads(
     session.commit()
 
 
-def _all_registered_listeners() -> tuple[MapperListener, ...]:
-    before_guards = (
-        (MessageFile, guard_local_message_file_upload_reference),
-        (App, guard_app_icon_upload_reference),
-        (Site, guard_site_icon_upload_reference),
-        (Account, guard_account_avatar_upload_reference),
-        (Tenant, guard_tenant_logo_upload_reference),
-        (Dataset, guard_dataset_icon_upload_reference),
-        (PipelineCustomizedTemplate, guard_pipeline_template_icon_upload_reference),
-        (Agent, guard_agent_icon_upload_reference),
-        (CustomizedSnippet, guard_snippet_icon_upload_reference),
-        (MCPToolProvider, guard_mcp_icon_upload_reference),
-        (WorkflowDraftVariable, guard_workflow_draft_variable_upload_references),
-        (KnowledgeUploadFileReference, guard_knowledge_upload_reference),
-        (SegmentAttachmentBinding, guard_segment_attachment_upload_reference),
-        (WorkflowDraftVariableUploadFileReference, guard_workflow_draft_variable_normalized_upload_reference),
-        (WorkflowDraftVariableFile, guard_workflow_draft_variable_file_upload_reference),
-        (WorkflowNodeExecutionOffload, guard_workflow_node_execution_offload_upload_reference),
-        (HumanInputFormUploadFile, guard_human_input_upload_reference),
-    )
-    icon_owner_models: tuple[type[object], ...] = (
-        App,
-        Site,
-        Account,
-        Tenant,
-        Dataset,
-        PipelineCustomizedTemplate,
-        Agent,
-        CustomizedSnippet,
-        MCPToolProvider,
-    )
-    return (
-        tuple(
-            MapperListener(model=model, operation=operation, listener=listener)
-            for model, listener in before_guards
-            for operation in ("before_insert", "before_update")
-        )
-        + (
-            MapperListener(
-                model=WorkflowDraftVariable,
-                operation="after_insert",
-                listener=sync_workflow_draft_variable_upload_references,
-            ),
-            MapperListener(
-                model=WorkflowDraftVariable,
-                operation="after_update",
-                listener=sync_workflow_draft_variable_upload_references,
-            ),
-        )
-        + tuple(
-            MapperListener(model=model, operation="before_delete", listener=prepare_icon_owner_deletion)
-            for model in icon_owner_models
-        )
-        + tuple(
-            MapperListener(model=model, operation=operation, listener=claim_detached_icon_upload_references)
-            for model in icon_owner_models
-            for operation in ("after_update", "after_delete")
-        )
-    )
-
-
 @pytest.fixture(autouse=True)
-def _registered_upload_file_reference_guards() -> Iterator[None]:
-    listeners = _all_registered_listeners()
-    previous = {
-        listener: event.contains(listener.model, listener.operation, listener.listener) for listener in listeners
-    }
-    register_upload_file_reference_guards()
+def _registered_upload_file_reference_guards(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    added_listeners: list[tuple[object, str, Callable[..., object]]] = []
+    original_listen = event.listen
+
+    def record_listener(
+        target: object,
+        identifier: str,
+        listener: Callable[..., object],
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        was_registered = event.contains(target, identifier, listener)
+        original_listen(target, identifier, listener, *args, **kwargs)
+        if not was_registered and event.contains(target, identifier, listener):
+            added_listeners.append((target, identifier, listener))
+
+    with monkeypatch.context() as patcher:
+        patcher.setattr(event, "listen", record_listener)
+        register_upload_file_reference_guards()
     try:
         yield
     finally:
-        for listener, was_registered in previous.items():
-            if not was_registered and event.contains(listener.model, listener.operation, listener.listener):
-                event.remove(listener.model, listener.operation, listener.listener)
+        for target, identifier, listener in reversed(added_listeners):
+            if event.contains(target, identifier, listener):
+                event.remove(target, identifier, listener)
 
 
 @pytest.mark.parametrize("owner_kind", tuple(IconOwnerKind), ids=str)

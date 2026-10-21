@@ -1,5 +1,6 @@
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import NoReturn, Protocol, cast
@@ -7,16 +8,20 @@ from uuid import uuid4
 
 import pytest
 from celery.exceptions import Reject
+from sqlalchemy import event, insert
 from sqlalchemy.orm import Session
 
 import tasks.clean_upload_files_task as task_module
 from configs import dify_config
 from extensions.storage.storage_type import StorageType
-from models.dataset import Dataset
+from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType
 from models.model import KnowledgeUploadFileReference, UploadFile
-from repositories.knowledge.upload_file_repository import claim_orphan_upload_files
-from services.knowledge.indexing.cleanup import UploadFileCleanup
+from repositories.knowledge.upload_file_repository import (
+    claim_orphan_upload_files,
+    guard_knowledge_owner_upload_references,
+)
+from services.knowledge.indexing.cleanup import UploadFileCleanup, UploadFilePendingDeletionError
 from services.knowledge.task_outbox.execution import KnowledgeTaskExecutionLease
 from tasks.clean_upload_files_task import (
     _clean_upload_files,
@@ -82,6 +87,18 @@ def _upload(*, tenant_id: str, key: str) -> UploadFile:
         created_at=datetime.now(UTC),
         used=True,
     )
+
+
+@contextmanager
+def _registered_document_upload_guard() -> Generator[None]:
+    was_registered = event.contains(Document, "before_insert", guard_knowledge_owner_upload_references)
+    if not was_registered:
+        event.listen(Document, "before_insert", guard_knowledge_owner_upload_references)
+    try:
+        yield
+    finally:
+        if not was_registered and event.contains(Document, "before_insert", guard_knowledge_owner_upload_references):
+            event.remove(Document, "before_insert", guard_knowledge_owner_upload_references)
 
 
 @pytest.fixture(autouse=True)
@@ -210,7 +227,8 @@ def test_file_cleanup_retry_releases_claim_after_unindexed_reference_commit(
     upload = _upload(tenant_id=tenant_id, key="documents/reused-by-old-worker.txt")
     sqlite_session.add(upload)
     sqlite_session.flush()
-    candidate = (UploadFileCleanup(id=upload.id, key=upload.key),)
+    upload_id = upload.id
+    candidate = (UploadFileCleanup(id=upload_id, key=upload.key),)
     claimed = claim_orphan_upload_files(sqlite_session, tenant_id=tenant_id, files=candidate)
     assert claimed == candidate
     sqlite_session.commit()
@@ -222,23 +240,47 @@ def test_file_cleanup_retry_releases_claim_after_unindexed_reference_commit(
         data_source_type=DataSourceType.UPLOAD_FILE,
         created_by=str(uuid4()),
     )
+    sqlite_session.add(dataset)
+    sqlite_session.commit()
     document = make_document(
         document_id=str(uuid4()),
         tenant_id=tenant_id,
         dataset_id=dataset_id,
         data_source_type=DataSourceType.LOCAL_FILE,
-        data_source_info=json.dumps({"related_id": upload.id}),
+        data_source_info=json.dumps({"related_id": upload_id}),
         created_by=str(uuid4()),
     )
-    sqlite_session.add_all([dataset, document])
-    sqlite_session.commit()
+    legacy_document_values = {
+        "id": document.id,
+        "tenant_id": document.tenant_id,
+        "dataset_id": document.dataset_id,
+        "position": document.position,
+        "data_source_type": document.data_source_type,
+        "data_source_info": document.data_source_info,
+        "batch": document.batch,
+        "name": document.name,
+        "created_from": document.created_from,
+        "created_by": document.created_by,
+    }
+
+    with _registered_document_upload_guard():
+        sqlite_session.add(document)
+        with pytest.raises(UploadFilePendingDeletionError):
+            sqlite_session.flush()
+        sqlite_session.rollback()
+
+        # This row models a reference committed by a legacy writer that predates
+        # mapper fences. Core insertion deliberately bypasses ORM writer events.
+        sqlite_session.execute(insert(Document.__table__).values(**legacy_document_values))
+        sqlite_session.commit()
+
     recorder = RecordingStorage()
     monkeypatch.setattr(task_module, "storage", recorder)
 
-    _clean_upload_files(tenant_id=tenant_id, file_ids=[upload.id])
+    _clean_upload_files(tenant_id=tenant_id, file_ids=[upload_id])
 
     sqlite_session.expire_all()
-    retained = sqlite_session.get(UploadFile, upload.id)
+    retained = sqlite_session.get(UploadFile, upload_id)
     assert retained is not None
     assert retained.knowledge_cleanup_started_at is None
     assert recorder.attempts == []
