@@ -76,6 +76,22 @@ beforeEach(() => {
 })
 afterEach(() => toast.dismiss())
 
+it('opens the file chooser from the visible keyboard upload action', async () => {
+  const { user } = renderBrand()
+  const openChooser = vi.spyOn(uploadInput(), 'click').mockImplementation(() => {})
+  await user.tab()
+  expect(removalSwitch()).toHaveFocus()
+  await user.tab()
+  expect(screen.getByRole('button', { name: 'custom.restore' })).toHaveFocus()
+  await user.tab()
+  const changeButton = screen.getByRole('button', { name: 'custom.change' })
+  expect(changeButton).toHaveFocus()
+  await user.keyboard('{Enter}')
+  expect(openChooser).toHaveBeenCalledOnce()
+  expect(changeButton).toHaveFocus()
+  openChooser.mockRestore()
+})
+
 it('cancels an upload, accepts the same file again, then applies and restores the logo', async () => {
   const { user } = renderBrand()
   const file = logoFile()

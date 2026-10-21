@@ -2,7 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useId } from 'react'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatPreviewCard from './components/chat-preview-card'
 import WorkflowPreviewCard from './components/workflow-preview-card'
@@ -13,6 +13,7 @@ const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 const CustomWebAppBrand = () => {
   const brandSwitchId = useId()
   const logoInputId = useId()
+  const logoInputRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation(['appOverview', 'common', 'custom'])
   const {
     fileId,
@@ -73,24 +74,24 @@ const CustomWebAppBrand = () => {
             </>
           )}
           {!uploading && (
-            <Button className="relative" disabled={uploadDisabled}>
-              <span className="i-ri-image-add-line size-4" />
-              {webappLogo || fileId
-                ? t(($) => $.change, { ns: 'custom' })
-                : t(($) => $.upload, { ns: 'custom' })}
+            <>
+              <Button disabled={uploadDisabled} onClick={() => logoInputRef.current?.click()}>
+                <span aria-hidden="true" className="i-ri-image-add-line size-4" />
+                {webappLogo || fileId
+                  ? t(($) => $.change, { ns: 'custom' })
+                  : t(($) => $.upload, { ns: 'custom' })}
+              </Button>
               <input
+                ref={logoInputRef}
                 id={logoInputId}
-                className={cn(
-                  'absolute inset-0 block w-full text-[0] opacity-0',
-                  uploadDisabled ? 'cursor-not-allowed' : 'cursor-pointer',
-                )}
+                hidden
                 onClick={(e) => ((e.target as HTMLInputElement).value = '')}
                 type="file"
                 accept={ALLOW_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(',')}
                 onChange={handleChange}
                 disabled={uploadDisabled}
               />
-            </Button>
+            </>
           )}
           {uploading && (
             <Button className="relative" disabled={true}>
