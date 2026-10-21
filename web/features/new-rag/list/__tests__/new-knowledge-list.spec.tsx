@@ -370,10 +370,9 @@ describe('NewKnowledgeList', () => {
       await user.click(await screen.findByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
       const dialog = await screen.findByRole('alertdialog')
-      const confirmation = within(dialog).getByRole('textbox', {
-        name: /^knowledgeSettings\.settings\.deleteConfirmPrompt/,
-      })
-      const deleteButton = within(dialog).getByRole('button', { name: 'common.operation.delete' })
+      const confirmation = within(dialog).getByRole('textbox')
+      expect(confirmation).toHaveFocus()
+      const deleteButton = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
 
       await user.type(confirmation, 'Support')
       expect(deleteButton).toBeDisabled()

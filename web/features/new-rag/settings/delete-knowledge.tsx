@@ -1,18 +1,7 @@
 'use client'
 
-import {
-  AlertDialog,
-  AlertDialogBody,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
+import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
@@ -20,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { DeleteKnowledgeForm } from '../components/delete-knowledge-form'
 import { newKnowledgeListPath } from '../routes'
 import { knowledgeSettingsSpaceAtom } from './state/queries'
 import { knowledgeSettingsHasPendingSaveAtom } from './state/workflow'
@@ -32,8 +22,7 @@ export function DeleteKnowledgeAction() {
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const hasPendingSave = useAtomValue(knowledgeSettingsHasPendingSaveAtom)
   const [open, setOpen] = useState(false)
-  const [confirmation, setConfirmation] = useState('')
-  const cancelRef = useRef<HTMLButtonElement>(null)
+  const confirmationRef = useRef<HTMLInputElement>(null)
   const mutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions(),
   )
@@ -44,7 +33,7 @@ export function DeleteKnowledgeAction() {
   const name = space.technical_summary?.name ?? ''
 
   const deleteKnowledge = async () => {
-    if (confirmation !== name || mutation.isPending) return
+    if (mutation.isPending) return
     try {
       await mutation.mutateAsync({
         params: { control_space_id: space.control_space_id },
@@ -92,47 +81,15 @@ export function DeleteKnowledgeAction() {
           // The pending deletion redirects when it settles; keep it modal until then.
           if (!nextOpen && mutation.isPending) return
           setOpen(nextOpen)
-          if (!nextOpen) setConfirmation('')
         }}
       >
-        <AlertDialogContent initialFocus={cancelRef}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t(($) => $['settings.deleteDialogTitle'], { ns: 'knowledgeSettings', name })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t(($) => $['settings.deleteDialogDescription'], { ns: 'knowledgeSettings' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogBody>
-            <label
-              htmlFor="knowledge-delete-confirmation"
-              className="block system-sm-medium text-text-secondary"
-            >
-              {t(($) => $['settings.deleteConfirmPrompt'], { ns: 'knowledgeSettings', name })}
-            </label>
-            <Input
-              id="knowledge-delete-confirmation"
-              autoComplete="off"
-              name="knowledge-delete-confirmation"
-              placeholder={name}
-              value={confirmation}
-              className="mt-2 w-full"
-              onChange={(event) => setConfirmation(event.target.value)}
-            />
-          </AlertDialogBody>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton ref={cancelRef} disabled={mutation.isPending}>
-              {tCommon(($) => $['operation.cancel'])}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              disabled={confirmation !== name}
-              loading={mutation.isPending}
-              onClick={() => void deleteKnowledge()}
-            >
-              {tCommon(($) => $['operation.delete'])}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
+        <AlertDialogContent initialFocus={confirmationRef}>
+          <DeleteKnowledgeForm
+            confirmationRef={confirmationRef}
+            knowledgeName={name}
+            isPending={mutation.isPending}
+            onSubmit={() => void deleteKnowledge()}
+          />
         </AlertDialogContent>
       </AlertDialog>
     </>

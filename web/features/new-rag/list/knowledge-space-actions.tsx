@@ -1,17 +1,7 @@
 'use client'
 
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import {
-  AlertDialog,
-  AlertDialogBody,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
+import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,15 +10,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { DeleteKnowledgeForm } from '../components/delete-knowledge-form'
 import { newKnowledgeSettingsPath } from '../routes'
 
 export function KnowledgeSpaceActions({
@@ -36,11 +25,10 @@ export function KnowledgeSpaceActions({
 }: {
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSettings'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const confirmationRef = useRef<HTMLInputElement>(null)
   const canEdit = knowledgeSpace.permission_keys.includes('knowledge_space_edit')
   const canDelete = knowledgeSpace.permission_keys.includes('knowledge_space_delete')
   const name = knowledgeSpace.technical_summary?.name ?? knowledgeSpace.control_space_id
@@ -53,7 +41,6 @@ export function KnowledgeSpaceActions({
     onSuccess: () => {
       // The card leaves the list once it refreshes; that removal is the success feedback.
       setDeleteDialogOpen(false)
-      setDeleteConfirmation('')
       void queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
       })
@@ -112,61 +99,21 @@ export function KnowledgeSpaceActions({
         onOpenChange={(open) => {
           if (deleteMutation.isPending) return
           setDeleteDialogOpen(open)
-          if (!open) {
-            setDeleteConfirmation('')
-            deleteMutation.reset()
-          }
+          if (!open) deleteMutation.reset()
         }}
       >
-        <AlertDialogContent>
-          <form
-            className="contents"
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (deleteConfirmation !== name || deleteMutation.isPending) return
+        <AlertDialogContent initialFocus={confirmationRef}>
+          <DeleteKnowledgeForm
+            confirmationRef={confirmationRef}
+            knowledgeName={name}
+            isPending={deleteMutation.isPending}
+            error={deleteError}
+            onSubmit={() =>
               deleteMutation.mutate({
                 params: { control_space_id: knowledgeSpace.control_space_id },
               })
-            }}
-          >
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t(($) => $['settings.deleteDialogTitle'], { ns: 'knowledgeSettings', name })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t(($) => $['settings.deleteDialogDescription'], { ns: 'knowledgeSettings' })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogBody>
-              <Field name="knowledge-delete-confirmation">
-                <FieldLabel>
-                  {t(($) => $['settings.deleteConfirmPrompt'], { ns: 'knowledgeSettings', name })}
-                </FieldLabel>
-                <Input
-                  autoComplete="off"
-                  value={deleteConfirmation}
-                  onChange={(event) => setDeleteConfirmation(event.target.value)}
-                />
-              </Field>
-              {deleteError && (
-                <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-                  {deleteError}
-                </p>
-              )}
-            </AlertDialogBody>
-            <AlertDialogFooter>
-              <AlertDialogCancelButton disabled={deleteMutation.isPending}>
-                {tCommon(($) => $['operation.cancel'])}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                type="submit"
-                disabled={deleteConfirmation !== name}
-                loading={deleteMutation.isPending}
-              >
-                {tCommon(($) => $['operation.delete'])}
-              </AlertDialogConfirmButton>
-            </AlertDialogFooter>
-          </form>
+            }
+          />
         </AlertDialogContent>
       </AlertDialog>
     </>

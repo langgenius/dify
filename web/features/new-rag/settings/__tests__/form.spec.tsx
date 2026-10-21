@@ -1045,20 +1045,21 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     const dialog = await screen.findByRole('alertdialog')
-    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toHaveFocus()
+    const confirmationInput = within(dialog).getByRole('textbox')
+    expect(confirmationInput).toHaveFocus()
     const confirmButton = within(dialog).getByRole('button', {
-      name: 'common.operation.delete',
-    })
-    const confirmationInput = within(dialog).getByRole('textbox', {
-      name: /^knowledgeSettings\.settings\.deleteConfirmPrompt/,
+      name: 'common.operation.confirm',
     })
 
-    expect(confirmationInput).toHaveAttribute('placeholder', 'Camera Technical Spec')
+    expect(confirmationInput).toHaveAttribute(
+      'placeholder',
+      'knowledgeSettings.settings.deleteConfirmInputPlaceholder',
+    )
     expect(confirmButton).toBeDisabled()
     await user.type(confirmationInput, 'Camera')
     expect(confirmButton).toBeDisabled()
-    await user.clear(confirmationInput)
-    await user.type(confirmationInput, 'Camera Technical Spec')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
+    expect(confirmationInput).toHaveValue('Camera Technical Spec')
     await user.click(confirmButton)
 
     await waitFor(() => {
@@ -1080,13 +1081,8 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     const dialog = await screen.findByRole('alertdialog')
-    await user.type(
-      within(dialog).getByRole('textbox', {
-        name: /^knowledgeSettings\.settings\.deleteConfirmPrompt/,
-      }),
-      'Camera Technical Spec',
-    )
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+    await user.type(within(dialog).getByRole('textbox'), 'Camera Technical Spec')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent'))
     expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
@@ -1105,13 +1101,8 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     const dialog = await screen.findByRole('alertdialog')
-    await user.type(
-      within(dialog).getByRole('textbox', {
-        name: /^knowledgeSettings\.settings\.deleteConfirmPrompt/,
-      }),
-      'Camera Technical Spec',
-    )
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+    await user.type(within(dialog).getByRole('textbox'), 'Camera Technical Spec')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
     await waitFor(() => expect(serviceMock.deleteSpace).toHaveBeenCalledOnce())
 
     const cancelButton = within(dialog).getByRole('button', { name: 'common.operation.cancel' })
