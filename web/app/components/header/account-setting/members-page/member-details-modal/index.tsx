@@ -123,147 +123,145 @@ const MemberDetailsModal = ({
   }, [allowMultipleRoles, isSaving, onAssignSubmit, onClose, selectedRoles])
 
   return (
-    <>
-      <Dialog
-        open
-        onOpenChange={(next) => {
-          if (!next && !isSaving) onClose()
-        }}
-      >
-        <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
-          <DialogHeader>
-            <DialogTitle>
-              {t(($) => $['members.memberDetails.title'], {
-                ns: 'workspaceMembers',
-                defaultValue: 'Member Details',
-              })}
-            </DialogTitle>
-            <DialogHeaderCloseButton
-              disabled={isSaving}
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            />
-          </DialogHeader>
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next && !isSaving) onClose()
+      }}
+    >
+      <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $['members.memberDetails.title'], {
+              ns: 'workspaceMembers',
+              defaultValue: 'Member Details',
+            })}
+          </DialogTitle>
+          <DialogHeaderCloseButton
+            disabled={isSaving}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          />
+        </DialogHeader>
 
-          <DialogBody>
-            <div className="flex items-center gap-3">
-              <Avatar size="2xl" aria-hidden="true">
-                <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
-                <AvatarImage src={member.avatar_url || undefined} alt="" />
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <div className="system-md-semibold wrap-break-word text-text-primary">
-                  {member.name}
-                </div>
-                <div className="system-xs-regular wrap-break-word text-text-tertiary">
-                  {member.email}
-                </div>
+        <DialogBody>
+          <div className="flex items-center gap-3">
+            <Avatar size="2xl" aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
+              <AvatarImage src={member.avatar_url || undefined} alt="" />
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="system-md-semibold wrap-break-word text-text-primary">
+                {member.name}
+              </div>
+              <div className="system-xs-regular wrap-break-word text-text-tertiary">
+                {member.email}
               </div>
             </div>
+          </div>
 
-            <div className="-mx-6 my-3 border-t border-divider-subtle" />
+          <div className="-mx-6 my-3 border-t border-divider-subtle" />
 
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 system-sm-semibold text-text-secondary">
-                <span>{assignedRolesLabel}</span>
-                {!isLoadingRolesOfMember && (
-                  <span className="system-xs-medium text-text-tertiary">
-                    {selectedRoleIds.length}
-                  </span>
-                )}
-              </div>
-              {canAssignRoles && (
-                <Button
-                  variant="ghost"
-                  size="small"
-                  disabled={isSaving}
-                  onClick={() => setAssignOpen(true)}
-                >
-                  <span aria-hidden className={assignActionIconClassName} />
-                  {assignActionLabel}
-                </Button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 system-sm-semibold text-text-secondary">
+              <span>{assignedRolesLabel}</span>
+              {!isLoadingRolesOfMember && (
+                <span className="system-xs-medium text-text-tertiary">
+                  {selectedRoleIds.length}
+                </span>
               )}
             </div>
-
-            {isLoadingRolesOfMember ? (
-              <div className="mt-4">
-                <LoadingPlaceholder />
-              </div>
-            ) : (
-              <>
-                {builtinRoles.length > 0 && (
-                  <div className="mt-4">
-                    <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['members.memberDetails.generalGroup'], {
-                        ns: 'workspaceMembers',
-                      })}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {builtinRoles.map((role) => (
-                        <PermissionRoleChip
-                          key={role.id}
-                          roleId={role.id}
-                          label={role.name}
-                          isOwner={role.role_tag === 'owner'}
-                          permissionKeys={role.permission_keys}
-                          onRemove={canRemoveRoles && !isSaving ? handleRemove : undefined}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {customRoles.length > 0 && (
-                  <div className="mt-4">
-                    <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['members.memberDetails.customGroup'], {
-                        ns: 'workspaceMembers',
-                      })}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {customRoles.map((role) => (
-                        <PermissionRoleChip
-                          key={role.id}
-                          roleId={role.id}
-                          label={role.name}
-                          isOwner={role.role_tag === 'owner'}
-                          permissionKeys={role.permission_keys}
-                          onRemove={canRemoveRoles && !isSaving ? handleRemove : undefined}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </DialogBody>
-
-          {saveFailed && <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>}
-          {canAssignRoles && (
-            <DialogFooter>
-              <Button variant="secondary" disabled={isSaving} onClick={onClose}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
+            {canAssignRoles && (
               <Button
-                variant="primary"
-                onClick={handleSave}
-                loading={isSaving}
-                disabled={!onAssignSubmit}
+                variant="ghost"
+                size="small"
+                disabled={isSaving}
+                onClick={() => setAssignOpen(true)}
               >
-                {t(($) => $['operation.save'], { ns: 'common' })}
+                <span aria-hidden className={assignActionIconClassName} />
+                {assignActionLabel}
               </Button>
-            </DialogFooter>
-          )}
-        </DialogContent>
-      </Dialog>
+            )}
+          </div>
 
-      {assignOpen && (
-        <AssignRolesModal
-          selectedRoles={selectedRoles}
-          allowMultipleRoles={allowMultipleRoles}
-          onClose={handleClose}
-          onSubmit={handleAssignSubmit}
-        />
-      )}
-    </>
+          {isLoadingRolesOfMember ? (
+            <div className="mt-4">
+              <LoadingPlaceholder />
+            </div>
+          ) : (
+            <>
+              {builtinRoles.length > 0 && (
+                <div className="mt-4">
+                  <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
+                    {t(($) => $['members.memberDetails.generalGroup'], {
+                      ns: 'workspaceMembers',
+                    })}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {builtinRoles.map((role) => (
+                      <PermissionRoleChip
+                        key={role.id}
+                        roleId={role.id}
+                        label={role.name}
+                        isOwner={role.role_tag === 'owner'}
+                        permissionKeys={role.permission_keys}
+                        onRemove={canRemoveRoles && !isSaving ? handleRemove : undefined}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {customRoles.length > 0 && (
+                <div className="mt-4">
+                  <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
+                    {t(($) => $['members.memberDetails.customGroup'], {
+                      ns: 'workspaceMembers',
+                    })}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {customRoles.map((role) => (
+                      <PermissionRoleChip
+                        key={role.id}
+                        roleId={role.id}
+                        label={role.name}
+                        isOwner={role.role_tag === 'owner'}
+                        permissionKeys={role.permission_keys}
+                        onRemove={canRemoveRoles && !isSaving ? handleRemove : undefined}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </DialogBody>
+
+        {saveFailed && <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>}
+        {canAssignRoles && (
+          <DialogFooter>
+            <Button variant="secondary" disabled={isSaving} onClick={onClose}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              loading={isSaving}
+              disabled={!onAssignSubmit}
+            >
+              {t(($) => $['operation.save'], { ns: 'common' })}
+            </Button>
+          </DialogFooter>
+        )}
+
+        {assignOpen && (
+          <AssignRolesModal
+            selectedRoles={selectedRoles}
+            allowMultipleRoles={allowMultipleRoles}
+            onClose={handleClose}
+            onSubmit={handleAssignSubmit}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 
