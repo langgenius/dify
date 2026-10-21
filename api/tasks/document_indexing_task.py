@@ -439,6 +439,9 @@ def _snapshot_indexing_candidates(
         for document in documents:
             if document.id in generations and document.indexing_generation != generations[document.id]:
                 continue
+            if not document.enabled or document.archived:
+                logger.info("Skipping inactive document indexing delivery for %s", document.id)
+                continue
             if document.indexing_status in {IndexingStatus.COMPLETED, IndexingStatus.PAUSED} or document.is_paused:
                 logger.info("Skipping terminal document indexing delivery for %s", document.id)
                 continue
@@ -497,6 +500,8 @@ def _persist_parsing_state(
         for document in documents:
             candidate = candidates_by_id[document.id]
             if document.indexing_generation != candidate.generation:
+                continue
+            if not document.enabled or document.archived:
                 continue
             if document.indexing_status in {IndexingStatus.COMPLETED, IndexingStatus.PAUSED} or document.is_paused:
                 continue

@@ -6,8 +6,9 @@ ORM rows so each phase observes only committed database state.
 """
 
 import uuid
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager, nullcontext
+from importlib import import_module
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -533,6 +534,70 @@ class TestDocumentIndexing:
         assert persisted_intent is not None
         assert persisted_intent.status == "completed"
         assert calls == []
+
+    def test_inactive_documents_remain_unchanged_while_active_siblings_continue(
+        self,
+        sqlite_session: Session,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+        indexing_runner: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        late_disabled_id = str(uuid.uuid4())
+        eligible_id = str(uuid.uuid4())
+        all_ids = [*document_ids[:2], late_disabled_id, eligible_id]
+        _, documents = _persist_indexing_rows(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=all_ids,
+        )
+        generations = {document.id: str(uuid.uuid4()) for document in documents}
+        for document in documents:
+            document.indexing_generation = generations[document.id]
+        documents[0].enabled = False
+        documents[1].archived = True
+        sqlite_session.commit()
+
+        task_module = import_module("tasks.document_indexing_task")
+        original_snapshot = task_module._snapshot_indexing_candidates
+
+        def snapshot_then_disable(
+            *,
+            tenant_id: str,
+            dataset_id: str,
+            document_ids: Sequence[str],
+            generations: dict[str, str],
+            replace_existing: bool,
+        ) -> tuple[object, ...]:
+            candidates = original_snapshot(
+                tenant_id=tenant_id,
+                dataset_id=dataset_id,
+                document_ids=document_ids,
+                generations=generations,
+                replace_existing=replace_existing,
+            )
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                late_disabled = writer.get(Document, late_disabled_id)
+                assert late_disabled is not None
+                late_disabled.enabled = False
+            return candidates
+
+        monkeypatch.setattr(task_module, "_snapshot_indexing_candidates", snapshot_then_disable)
+
+        _document_indexing(dataset_id, all_ids, generations)
+
+        persisted = _persisted_documents(sqlite_session, all_ids)
+        by_id = {document.id: document for document in persisted}
+        for inactive_id in all_ids[:3]:
+            assert by_id[inactive_id].indexing_status == IndexingStatus.WAITING
+            assert by_id[inactive_id].processing_started_at is None
+            assert by_id[inactive_id].indexing_generation == generations[inactive_id]
+        assert by_id[eligible_id].indexing_status == IndexingStatus.PARSING
+        assert by_id[eligible_id].processing_started_at is not None
+        processed = [ref for call in indexing_runner.run.call_args_list for ref in call.args[0]]
+        assert [ref.document_id for ref in processed] == [eligible_id]
 
     def test_legacy_task_converts_to_durable_repair_without_running_provider(
         self,
