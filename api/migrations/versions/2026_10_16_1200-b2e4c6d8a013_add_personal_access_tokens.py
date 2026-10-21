@@ -39,7 +39,6 @@ def upgrade() -> None:
         sa.UniqueConstraint("account_id", "creation_key", name="personal_access_token_creation_unique"),
         sa.CheckConstraint("resource_scope_mode IN ('all', 'selected', 'none')", name="pat_resource_scope_mode"),
         sa.CheckConstraint("workspace_scope_mode IN ('all', 'selected', 'none')", name="pat_workspace_scope_mode"),
-        sa.CheckConstraint("resource_scope_mode != 'none' OR workspace_scope_mode != 'none'", name="pat_enabled_scope"),
         sa.CheckConstraint("version >= 1", name="pat_version"),
     )
     op.create_index("personal_access_token_account_idx", "personal_access_tokens", ["account_id"])

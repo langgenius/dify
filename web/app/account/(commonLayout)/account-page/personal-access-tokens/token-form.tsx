@@ -106,8 +106,7 @@ export default function TokenForm({
   }[]
   const validScope =
     (resourceMode !== 'selected' || resources.length > 0) &&
-    (workspaceMode !== 'selected' || workspaces.length > 0) &&
-    !(resourceMode === 'none' && workspaceMode === 'none')
+    (workspaceMode !== 'selected' || workspaces.length > 0)
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!name.trim() || !validScope || editExpired) return
@@ -226,7 +225,7 @@ export default function TokenForm({
           <p className="mt-2 system-xs-regular text-text-tertiary">
             {t(($) => $['personalAccessToken.copyNow'])}
           </p>
-          <div className="mt-6 flex items-center justify-between gap-4">
+          <div className="mt-12 flex items-center justify-between gap-4">
             <a
               href={docLink('/api-reference/guides/get-started')}
               target="_blank"

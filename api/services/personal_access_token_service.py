@@ -774,8 +774,6 @@ class PersonalAccessTokenService:
 
     @staticmethod
     def _validate_scopes(scopes: PersonalAccessTokenScopes) -> None:
-        if scopes.resource_mode == scopes.workspace_mode == "none":
-            raise ValueError("At least one scope must be enabled.")
         if scopes.resource_mode == "selected" and not scopes.resources:
             raise ValueError("Select at least one resource.")
         if scopes.workspace_mode == "selected" and not scopes.workspace_ids:
