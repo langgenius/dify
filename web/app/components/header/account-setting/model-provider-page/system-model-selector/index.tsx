@@ -287,6 +287,7 @@ function SystemModelSession({
   }
 
   const getClearProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({
+    'aria-labelledby': `${modelLabelId}-${labelKey}`,
     triggerRef: (element: HTMLButtonElement | null) => {
       modelTriggersRef.current[modelType] = element
     },
