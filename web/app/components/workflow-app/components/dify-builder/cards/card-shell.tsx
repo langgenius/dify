@@ -2,13 +2,7 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 
-export type DifyBuilderCardStatusState =
-  | 'waiting'
-  | 'working'
-  | 'done'
-  | 'skipped'
-  | 'blocked'
-  | 'failed'
+type DifyBuilderCardStatusState = 'waiting' | 'working' | 'done' | 'skipped' | 'blocked' | 'failed'
 
 export type DifyBuilderCardStatus = {
   className?: string
