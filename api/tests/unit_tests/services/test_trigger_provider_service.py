@@ -450,7 +450,9 @@ def test_refresh_oauth_token_persists_credentials_after_commit(
     subscription = trigger_db.add_subscription(credential_type=CredentialType.OAUTH2)
     _patch_provider(mocker, provider_controller)
     encrypter = _encrypter(decrypted={"refresh": "old"}, encrypted={"access": "new"})
-    mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, Mock()))
+    create_encrypter = mocker.patch.object(
+        service_module, "create_provider_encrypter", return_value=(encrypter, Mock())
+    )
     mocker.patch.object(TriggerProviderService, "get_oauth_client", return_value={"client": "system"})
     handler = Mock()
     handler.refresh_credentials.return_value = SimpleNamespace(credentials={"access": "plain"}, expires_at=1234)
@@ -464,6 +466,11 @@ def test_refresh_oauth_token_persists_credentials_after_commit(
     assert persisted.credentials == {"access": "new"}  # type: ignore[union-attr]
     assert persisted.credential_expires_at == 1234  # type: ignore[union-attr]
     clear_cache.assert_called_once()
+    # Credentials must be (de)crypted with the subscription credentials schema, not the OAuth client schema.
+    create_encrypter.assert_called_once()
+    provider_controller.get_credential_schema_config.assert_called_once_with(subscription.credential_type)
+    assert create_encrypter.call_args.kwargs["config"] is provider_controller.get_credential_schema_config.return_value
+    provider_controller.get_oauth_client_schema.assert_not_called()
 
 
 def test_refresh_oauth_rejects_missing_and_non_oauth(trigger_db: TriggerDatabase) -> None:
