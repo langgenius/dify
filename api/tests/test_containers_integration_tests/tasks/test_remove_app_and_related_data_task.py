@@ -277,7 +277,7 @@ class TestDeleteDraftVariableOffloadData:
     def test_delete_draft_variable_offload_data_storage_failure(
         self, mock_storage, db_session_with_containers: Session
     ):
-        """A storage failure preserves claimed rows for a later cleanup retry."""
+        """A storage failure preserves claimed uploads for a later cleanup retry."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
         offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=2)
         file_ids = [variable_file.id for variable_file in offload_data["variable_files"]]
@@ -299,10 +299,20 @@ class TestDeleteDraftVariableOffloadData:
         remaining_upload_files_count = db_session_with_containers.scalar(
             select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
         )
-        assert remaining_var_files_count == 2
+        assert remaining_var_files_count == 0
         assert remaining_upload_files_count == 2
         db_session_with_containers.expire_all()
         claimed_upload_files = db_session_with_containers.scalars(
             select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
         ).all()
         assert all(upload_file.knowledge_cleanup_started_at is not None for upload_file in claimed_upload_files)
+
+        recovery_storage = _CleanupStorage()
+        with patch.object(clean_upload_files_task, "storage", recovery_storage):
+            clean_upload_files_task.recover_claimed_upload_file_cleanup_task.run()
+
+        db_session_with_containers.expire_all()
+        assert (
+            db_session_with_containers.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all() == []
+        )
+        assert set(recovery_storage.deleted) == set(storage_keys)

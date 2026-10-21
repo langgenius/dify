@@ -41,7 +41,7 @@ from models.enums import (
     SegmentStatus,
 )
 from models.knowledge_task import KnowledgeTaskOutbox
-from models.model import UploadFile
+from models.model import KnowledgeUploadFileReference, UploadFile
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from services.knowledge.task_outbox.contracts import KnowledgeTaskKind
 from tasks.clean_dataset_task import clean_dataset_task
@@ -62,6 +62,7 @@ class TestCleanDatasetTask:
 
         # Clear all test data using the provided session fixture
         db_session_with_containers.execute(delete(KnowledgeTaskOutbox))
+        db_session_with_containers.execute(delete(KnowledgeUploadFileReference))
         db_session_with_containers.execute(delete(DatasetMetadataBinding))
         db_session_with_containers.execute(delete(DatasetMetadata))
         db_session_with_containers.execute(delete(AppDatasetJoin))
@@ -562,12 +563,12 @@ class TestCleanDatasetTask:
             image_files.append(image_file)
 
         # Create segment with image references in content
-        segment_content = f"""
-        This is a test segment with image references.
-        <img src="file://{image_files[0].id}" alt="Image 1">
-        <img src="file://{image_files[1].id}" alt="Image 2">
-        <img src="file://{image_files[2].id}" alt="Image 3">
-        """
+        segment_content = "\n".join(
+            [
+                "This is a test segment with image references.",
+                *(f"![Image {index}](/files/{image.id}/image-preview)" for index, image in enumerate(image_files, 1)),
+            ]
+        )
 
         segment = DocumentSegment(
             tenant_id=tenant.id,
@@ -585,22 +586,24 @@ class TestCleanDatasetTask:
 
         db_session_with_containers.add(segment)
         db_session_with_containers.commit()
-
-        # Mock the get_image_upload_file_ids function to return our image file IDs
-        with patch(
-            "repositories.knowledge.upload_file_repository.get_image_upload_file_ids", autospec=True
-        ) as mock_get_image_ids:
-            mock_get_image_ids.return_value = [f.id for f in image_files]
-
-            # Execute the task
-            clean_dataset_task(
-                dataset_id=dataset.id,
-                tenant_id=tenant.id,
-                indexing_technique=dataset.indexing_technique,
-                index_struct=dataset.index_struct,
-                collection_binding_id=dataset.collection_binding_id,
-                doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+        image_file_ids = [image.id for image in image_files]
+        normalized_references = db_session_with_containers.scalars(
+            select(KnowledgeUploadFileReference).where(
+                KnowledgeUploadFileReference.resource_id == segment.id,
+                KnowledgeUploadFileReference.upload_file_id.in_(image_file_ids),
             )
+        ).all()
+        assert {reference.upload_file_id for reference in normalized_references} == set(image_file_ids)
+
+        # Execute the task against the references persisted by the production writer.
+        clean_dataset_task(
+            dataset_id=dataset.id,
+            tenant_id=tenant.id,
+            indexing_technique=dataset.indexing_technique,
+            index_struct=dataset.index_struct,
+            collection_binding_id=dataset.collection_binding_id,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+        )
 
         # Verify results
         # Check that all documents were deleted
@@ -616,7 +619,6 @@ class TestCleanDatasetTask:
         assert len(remaining_segments) == 0
 
         # Check that all image files were deleted from database
-        image_file_ids = [f.id for f in image_files]
         remaining_image_files = db_session_with_containers.scalars(
             select(UploadFile).where(UploadFile.id.in_(image_file_ids))
         ).all()
@@ -625,9 +627,6 @@ class TestCleanDatasetTask:
         # Verify that storage.delete was called for each image file
         mock_storage = mock_external_service_dependencies["storage"]
         assert mock_storage.delete.call_count == 3
-
-        # Verify that get_image_upload_file_ids was called
-        mock_get_image_ids.assert_called_once()
 
     def test_clean_dataset_task_performance_with_large_dataset(
         self, db_session_with_containers: Session, mock_external_service_dependencies
