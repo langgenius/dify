@@ -124,6 +124,15 @@ completed attempts with unfinished work become eligible again after one minute. 
 NULL leases and are picked up automatically. Reconciliation uses the same prefork pool and
 570/600-second task limits. Keep Beat running with the lifecycle rollout gates enabled.
 
+Upgrade uploads retain their logical document identity before compilation finishes, so pending
+or failed documents can have their legacy disabled state restored without an active revision.
+Reconciliation releases a deleted document's checkpoint only after verifying a completed durable
+deletion receipt for that identity; a missing document or upstream error alone is not sufficient.
+Custom metadata is restored from the snapshot's field definitions, converting Classic UTC epoch
+seconds to ISO timestamps for time fields. Classic built-in fields are omitted because KnowledgeFS
+owns its system metadata. These corrections also apply when retrying existing unfinished
+checkpoints and require no additional migration.
+
 ## Client IP and trusted proxies
 
 Dify uses the request's resolved client IP for rate limits and audit records. The

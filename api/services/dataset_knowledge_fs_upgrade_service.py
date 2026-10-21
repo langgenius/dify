@@ -6,7 +6,7 @@ import json
 import re
 import uuid
 from collections import defaultdict
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from hashlib import sha256
 from typing import Any, cast
@@ -16,6 +16,7 @@ from pydantic import TypeAdapter
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from extensions.ext_storage import storage
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
@@ -41,6 +42,7 @@ from models.oauth import DatasourceProvider
 from models.provider_ids import ModelProviderID
 from services.dataset_knowledge_fs_upgrade_file_lease import release_upgrade_file_lease
 from services.feature_service import FeatureService
+from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.initial_source_import import (
     KnowledgeFSInitialSourceNotReadyError,
     submit_initial_source_for_upgrade,
@@ -52,6 +54,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentStagedUploadPayload,
     KnowledgeFSExternalAccessPayload,
     KnowledgeFSInitialSourcePayload,
+    KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMemberBindingPayload,
     KnowledgeFSMetadataFieldCreatePayload,
     KnowledgeFSModelIntent,
@@ -62,6 +65,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUpgradeDiscoveryResponse,
     KnowledgeFSUpgradeJobResponse,
 )
+from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 from services.knowledge_fs.staged_upload_service import KnowledgeFSStagedUploadService
 
@@ -836,6 +840,11 @@ class KnowledgeFSUpgradeRunner:
                 control_space_id=_required_space_id(job),
                 payload=KnowledgeFSDocumentStagedUploadPayload(upload_id=staged_upload_id),
             )
+            # Completion creates a candidate revision before compilation starts. Persist its
+            # stable logical identity now, including for documents that never become active.
+            logical_document_id = _resolve_uploaded_document_id(
+                job, get_knowledge_fs_runtime(self._session_maker).facade, claimed.document_asset_id
+            )
         except Exception as error:
             self._fail_document(document_id=document_id, error=error)
             raise
@@ -846,6 +855,7 @@ class KnowledgeFSUpgradeRunner:
             assert persisted_job is not None
             persisted_document.status = KnowledgeFSUpgradeItemStatus.SUCCEEDED
             persisted_document.new_document_asset_id = claimed.document_asset_id
+            persisted_document.new_logical_document_id = logical_document_id
             persisted_document.compilation_job_id = claimed.compilation_job_id
             persisted_job.completed_documents += 1
             remaining_references = session.scalar(
@@ -1056,6 +1066,7 @@ class KnowledgeFSUpgradeDocumentReconciler:
             return 0
         runtime = get_knowledge_fs_runtime(self._session_maker)
         logical_documents = _list_all_logical_documents(job, runtime.facade)
+        by_document_id = {document.id: document for document in logical_documents}
         by_asset_id = {
             logical_document.active.document_asset_id: logical_document
             for logical_document in logical_documents
@@ -1068,18 +1079,26 @@ class KnowledgeFSUpgradeDocumentReconciler:
         }
         remaining = 0
         for document in documents:
-            logical_document = None
-            if document.new_document_asset_id:
-                logical_document = by_asset_id.get(document.new_document_asset_id)
-            elif document.source_key:
-                logical_document = by_source_item.get(
-                    (sources.get(document.source_key), _expected_provider_item_id(document))
-                )
-            if logical_document is None:
-                self._record_reconcile_wait(document.id, "The new logical document is not visible yet")
-                remaining += 1
-                continue
             try:
+                logical_document = by_document_id.get(document.new_logical_document_id or "")
+                if logical_document is None and document.new_document_asset_id:
+                    logical_document = by_asset_id.get(document.new_document_asset_id)
+                elif logical_document is None and document.source_key:
+                    logical_document = by_source_item.get(
+                        (sources.get(document.source_key), _expected_provider_item_id(document))
+                    )
+                if logical_document is None:
+                    logical_document = self._resolve_document(job, document, runtime.facade)
+                if logical_document is None:
+                    if document.new_logical_document_id and _upgrade_document_deletion_completed(
+                        job, runtime.facade, document.new_logical_document_id
+                    ):
+                        self._finish_document(job, document.id, logical_document_id=document.new_logical_document_id)
+                        continue
+                    raise KnowledgeFSUpgradeNotReadyError("The new logical document is not visible yet")
+                # Keep the identity even if availability/metadata fails or the document is
+                # deleted before the next delivery. A missing active revision is not absence.
+                self._record_document_identity(job, document.id, logical_document.id)
                 current = logical_document
                 if document.availability_reconciled_at is None:
                     if current.enabled != document.desired_enabled:
@@ -1098,7 +1117,8 @@ class KnowledgeFSUpgradeDocumentReconciler:
                         if persisted is not None and persisted.availability_reconciled_at is None:
                             persisted.new_logical_document_id = current.id
                             persisted.availability_reconciled_at = naive_utc_now()
-                if document.metadata_snapshot:
+                metadata_patch = _upgrade_metadata_patch(job, document)
+                if metadata_patch:
                     current = runtime.facade.update_document_metadata(
                         tenant_id=job.tenant_id,
                         account_id=job.owner_account_id,
@@ -1106,21 +1126,64 @@ class KnowledgeFSUpgradeDocumentReconciler:
                         document_id=current.id,
                         payload=KnowledgeFSDocumentMetadataPayload(
                             expectedRowVersion=current.row_version,
-                            patch=dict(document.metadata_snapshot),
+                            patch=metadata_patch,
                         ),
                     )
             except Exception as error:
                 self._record_reconcile_wait(document.id, str(error))
                 remaining += 1
                 continue
-            with self._session_maker.begin() as session:
-                persisted = session.get(KnowledgeFSUpgradeDocument, document.id)
-                if persisted is not None and persisted.state_reconciled_at is None:
-                    persisted.new_logical_document_id = current.id
-                    persisted.state_reconciled_at = naive_utc_now()
-                    persisted.state_reconcile_error = None
-                    persisted.state_reconcile_attempt_count += 1
+            self._finish_document(job, document.id, logical_document_id=current.id)
         return remaining
+
+    def _resolve_document(
+        self, job: KnowledgeFSUpgradeJob, document: KnowledgeFSUpgradeDocument, facade: KnowledgeFSDataFacade
+    ) -> KnowledgeFSLogicalDocumentResponse | None:
+        try:
+            if document.new_logical_document_id is None and document.new_document_asset_id:
+                logical_document_id = _resolve_uploaded_document_id(job, facade, document.new_document_asset_id)
+                document.new_logical_document_id = logical_document_id
+                self._record_document_identity(job, document.id, logical_document_id)
+            if document.new_logical_document_id:
+                return facade.get_logical_document(
+                    tenant_id=job.tenant_id,
+                    account_id=job.owner_account_id,
+                    control_space_id=_required_space_id(job),
+                    document_id=document.new_logical_document_id,
+                )
+        except KnowledgeFSProductResourceNotFoundError:
+            # 404 alone is not proof of deletion. Only a completed durable deletion
+            # receipt for the known logical identity may release the retrieval gate.
+            return None
+        return None
+
+    def _record_document_identity(self, job: KnowledgeFSUpgradeJob, document_id: str, logical_document_id: str) -> None:
+        with self._session_maker.begin() as session:
+            document = session.scalar(
+                sa.select(KnowledgeFSUpgradeDocument).where(
+                    KnowledgeFSUpgradeDocument.id == document_id,
+                    KnowledgeFSUpgradeDocument.job_id == job.id,
+                    KnowledgeFSUpgradeDocument.tenant_id == job.tenant_id,
+                )
+            )
+            if document is not None:
+                document.new_logical_document_id = logical_document_id
+
+    def _finish_document(self, job: KnowledgeFSUpgradeJob, document_id: str, *, logical_document_id: str) -> None:
+        with self._session_maker.begin() as session:
+            document = session.scalar(
+                sa.select(KnowledgeFSUpgradeDocument).where(
+                    KnowledgeFSUpgradeDocument.id == document_id,
+                    KnowledgeFSUpgradeDocument.job_id == job.id,
+                    KnowledgeFSUpgradeDocument.tenant_id == job.tenant_id,
+                )
+            )
+            if document is not None and document.state_reconciled_at is None:
+                document.new_logical_document_id = logical_document_id
+                document.availability_reconciled_at = document.availability_reconciled_at or naive_utc_now()
+                document.state_reconciled_at = naive_utc_now()
+                document.state_reconcile_error = None
+                document.state_reconcile_attempt_count += 1
 
     def _record_reconcile_wait(self, document_id: str, message: str) -> None:
         with self._session_maker.begin() as session:
@@ -1189,6 +1252,82 @@ def upgrade_discovery_response(
         can_upgrade=True,
         can_retry=False,
     )
+
+
+def _resolve_uploaded_document_id(job: KnowledgeFSUpgradeJob, facade: KnowledgeFSDataFacade, asset_id: str) -> str:
+    asset = facade.get_document(
+        tenant_id=job.tenant_id,
+        account_id=job.owner_account_id,
+        control_space_id=_required_space_id(job),
+        document_id=asset_id,
+    )
+    reference = facade.resolve_document_reference(
+        tenant_id=job.tenant_id,
+        account_id=job.owner_account_id,
+        control_space_id=_required_space_id(job),
+        document_asset_id=asset_id,
+        document_asset_version=asset.version,
+    )
+    return reference.document_id
+
+
+def _upgrade_document_deletion_completed(
+    job: KnowledgeFSUpgradeJob, facade: KnowledgeFSDataFacade, logical_document_id: str
+) -> bool:
+    """Require durable deletion evidence, never infer deletion from a filtered list or 404."""
+    cursor = None
+    while True:
+        page = facade.list_background_tasks(
+            tenant_id=job.tenant_id,
+            account_id=job.owner_account_id,
+            control_space_id=_required_space_id(job),
+            cursor=cursor,
+            limit=100,
+        )
+        for task in page.data:
+            if task.operation != "document_delete" or task.document_id != logical_document_id:
+                continue
+            receipt = facade.get_deletion_job(
+                tenant_id=job.tenant_id,
+                account_id=job.owner_account_id,
+                control_space_id=_required_space_id(job),
+                job_id=task.id,
+            )
+            if (
+                receipt.knowledge_space_id == task.knowledge_space_id
+                and receipt.target_type == "logical_document"
+                and receipt.target_id == logical_document_id
+                and receipt.run_state == "completed"
+                and receipt.checkpoint == "completed"
+            ):
+                return True
+        cursor = page.next_cursor
+        if cursor is None:
+            return False
+
+
+def _upgrade_metadata_patch(job: KnowledgeFSUpgradeJob, document: KnowledgeFSUpgradeDocument) -> dict[str, object]:
+    """Only migrate declared custom fields; KnowledgeFS owns its own system metadata.
+
+    Classic time fields store UTC epoch seconds, whereas KnowledgeFS custom time
+    fields require ISO timestamps. Convert on delivery so old snapshots recover too.
+    """
+    fields = cast(list[dict[str, str]], job.config_snapshot.get("metadata_fields") or [])
+    patch: dict[str, object] = {}
+    for field in fields:
+        name = field["name"]
+        if name in BuiltInField or name not in document.metadata_snapshot:
+            continue
+        value = document.metadata_snapshot[name]
+        if field["type"] == "time" and value is not None:
+            try:
+                if isinstance(value, bool) or not isinstance(value, (int, float)):
+                    raise ValueError("Classic time metadata must contain UTC epoch seconds")
+                value = datetime.fromtimestamp(value, UTC).isoformat().replace("+00:00", "Z")
+            except (ValueError, OverflowError, OSError) as error:
+                raise KnowledgeFSUpgradeError(f"Metadata field {name!r} has an invalid time value") from error
+        patch[name] = value
+    return patch
 
 
 def _migrate_metadata_fields(job: KnowledgeFSUpgradeJob, facade: Any) -> None:

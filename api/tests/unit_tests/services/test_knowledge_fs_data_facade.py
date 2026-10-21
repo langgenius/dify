@@ -2297,6 +2297,38 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
     ]
 
 
+def test_deletion_receipt_read_is_scoped_to_the_admitted_knowledge_space() -> None:
+    class DeletionReceiptRemote(RecordingRemote):
+        @override
+        def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
+            self.requests.append(request)
+            return {
+                "id": "deletion-1",
+                "knowledgeSpaceId": "space-1",
+                "targetType": "logical_document",
+                "targetId": "logical-1",
+                "checkpoint": "completed",
+                "runState": "completed",
+                "createdAt": "2030-01-01T00:00:00Z",
+                "updatedAt": "2030-01-01T00:00:01Z",
+            }
+
+    remote = DeletionReceiptRemote()
+    broker = RecordingBroker()
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
+    receipt = facade.get_deletion_job(
+        tenant_id="tenant-1", account_id="account-1", control_space_id="control-1", job_id="deletion-1"
+    )
+    assert receipt.target_id == "logical-1"
+    assert receipt.run_state == "completed"
+    request = remote.requests[-1]
+    assert request.path == "/deletion-jobs/deletion-1"
+    assert request.query == (("knowledgeSpaceId", "space-1"),)
+    assert request.namespace_id == "tenant-1"
+    assert broker.calls[-1]["resource_id"] == "deletion-1"
+    assert broker.calls[-1]["control_space_id"] == "control-1"
+
+
 def test_logical_document_delete_preserves_initial_row_version() -> None:
     remote = RecordingRemote()
     facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)  # type: ignore[arg-type]

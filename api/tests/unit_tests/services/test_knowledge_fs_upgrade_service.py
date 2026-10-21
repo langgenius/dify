@@ -54,18 +54,24 @@ from services.knowledge_fs.initial_source_import import (
 )
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAppBindingPayload,
+    KnowledgeFSBackgroundTaskListResponse,
+    KnowledgeFSBackgroundTaskResponse,
     KnowledgeFSDocumentAvailabilityPayload,
     KnowledgeFSDocumentMetadataPayload,
+    KnowledgeFSDocumentResponse,
     KnowledgeFSDocumentStagedUploadAcceptedResponse,
+    KnowledgeFSDurableDeletionJobResponse,
     KnowledgeFSExternalAccessPayload,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMetadataFieldCreatePayload,
     KnowledgeFSMetadataFieldListResponse,
+    KnowledgeFSResolvedDocumentReferenceResponse,
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSSpaceCreateResponse,
     KnowledgeFSStagedUploadResponse,
 )
+from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
 from tests.unit_tests.services.knowledge_fs_services_a_fakes import CallRecorder, RecordedCall, UnusedSessionFactory
 
 _TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -112,6 +118,19 @@ class FakeUpgradeFacade:
     list_logical_documents: CallRecorder = field(default_factory=CallRecorder)
     update_document_metadata: CallRecorder = field(default_factory=CallRecorder)
     update_logical_document_availability: CallRecorder = field(default_factory=CallRecorder)
+    get_document: CallRecorder = field(default_factory=lambda: CallRecorder(result=_document_asset()))
+    resolve_document_reference: CallRecorder = field(
+        default_factory=lambda: CallRecorder(
+            result=KnowledgeFSResolvedDocumentReferenceResponse(document_id=_LOGICAL_DOCUMENT_ID, revision=1)
+        )
+    )
+    get_logical_document: CallRecorder = field(
+        default_factory=lambda: CallRecorder(error=KnowledgeFSProductResourceNotFoundError("Document not found"))
+    )
+    list_background_tasks: CallRecorder = field(
+        default_factory=lambda: CallRecorder(result=KnowledgeFSBackgroundTaskListResponse(data=[], next_cursor=None))
+    )
+    get_deletion_job: CallRecorder = field(default_factory=CallRecorder)
 
 
 @dataclass
@@ -210,6 +229,24 @@ def _claimed_response(asset_id: str, compilation_job_id: str) -> KnowledgeFSDocu
 
 def _unused_runner() -> KnowledgeFSUpgradeRunner:
     return KnowledgeFSUpgradeRunner(cast("sessionmaker[Session]", UnusedSessionFactory()))
+
+
+def _document_asset() -> KnowledgeFSDocumentResponse:
+    return KnowledgeFSDocumentResponse.model_validate(
+        {
+            "id": _DOCUMENT_ASSET_ID,
+            "knowledgeSpaceId": "00000000-0000-0000-0000-000000000008",
+            "filename": "guide.txt",
+            "metadata": {},
+            "mimeType": "text/plain",
+            "objectKey": "source.txt",
+            "parserStatus": "failed",
+            "sha256": "a" * 64,
+            "sizeBytes": 12,
+            "version": 1,
+            "createdAt": "2026-08-17T00:00:00Z",
+        }
+    )
 
 
 def _logical_document(*, enabled: bool, row_version: int = 1) -> KnowledgeFSLogicalDocumentResponse:
@@ -734,7 +771,17 @@ def test_shared_source_file_lease_is_released_after_every_document_handoff(
         ),
     )
     monkeypatch.setattr(upgrade_module, "KnowledgeFSStagedUploadService", lambda *_args, **_kwargs: staged)
-    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=FakeUpgradeFacade()))
+    facade = FakeUpgradeFacade(
+        resolve_document_reference=CallRecorder(
+            outcomes=deque(
+                [
+                    KnowledgeFSResolvedDocumentReferenceResponse(document_id="logical-1", revision=1),
+                    KnowledgeFSResolvedDocumentReferenceResponse(document_id="logical-2", revision=1),
+                ]
+            )
+        )
+    )
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
     monkeypatch.setattr(upgrade_module.storage, "load", lambda _key: b"shared body")
     monkeypatch.setattr(
         upgrade_module.FeatureService,
@@ -757,6 +804,16 @@ def test_shared_source_file_lease_is_released_after_every_document_handoff(
         assert persisted.released_at is not None
     assert [call["body"] for call in staged.stage_calls] == [b"shared body", b"shared body"]
     assert len(staged.claim_calls) == 2
+    with sqlite_session_factory() as session:
+        identities = {
+            row[0]: row[1]
+            for row in session.execute(
+                select(
+                    KnowledgeFSUpgradeDocument.new_document_asset_id, KnowledgeFSUpgradeDocument.new_logical_document_id
+                ).where(KnowledgeFSUpgradeDocument.job_id == job.id)
+            ).all()
+        }
+    assert identities == {"asset-1": "logical-1", "asset-2": "logical-2"}
 
 
 @pytest.mark.parametrize(("metadata_fails", "availability_fails"), [(False, False), (True, False), (False, True)])
@@ -770,6 +827,7 @@ def test_reconciler_restores_availability_before_metadata_and_preserves_later_us
         status=KnowledgeFSUpgradeJobStatus.SUCCEEDED,
         stage=KnowledgeFSUpgradeStage.COMPLETED,
         new_control_space_id=_CONTROL_SPACE_ID,
+        config_snapshot={"metadata_fields": [{"name": "department", "type": "string"}]},
     )
     with sqlite_session_factory.begin() as session:
         session.add(job)
@@ -1721,6 +1779,7 @@ def test_reconciler_records_missing_remote_document_and_remote_error(
         status=KnowledgeFSUpgradeJobStatus.SUCCEEDED,
         stage=KnowledgeFSUpgradeStage.COMPLETED,
         new_control_space_id=_CONTROL_SPACE_ID,
+        config_snapshot={"metadata_fields": [{"name": "department", "type": "string"}]},
     )
     with sqlite_session_factory.begin() as session:
         session.add(job)
@@ -1926,6 +1985,282 @@ def _pending_reconciliation_job(
         )
         session.add(document)
     return job, document
+
+
+@pytest.mark.parametrize("status", ["pending", "failed"])
+@pytest.mark.parametrize("identity_saved", [False, True])
+def test_reconciliation_disables_documents_without_an_active_revision(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    status: str,
+    identity_saved: bool,
+) -> None:
+    job, document = _pending_reconciliation_job(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        session.add_all([job, document])
+        job.status = KnowledgeFSUpgradeJobStatus.SUCCEEDED
+        if identity_saved:
+            document.new_logical_document_id = _LOGICAL_DOCUMENT_ID
+    initial = _logical_document(enabled=True).model_copy(update={"active": None, "status": status})
+    disabled = initial.model_copy(update={"enabled": False, "row_version": 2})
+    facade = FakeUpgradeFacade(
+        list_logical_documents=CallRecorder(
+            result=KnowledgeFSLogicalDocumentListResponse(data=[initial], next_cursor=None)
+        ),
+        get_logical_document=CallRecorder(result=initial),
+        update_logical_document_availability=CallRecorder(result=disabled),
+    )
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
+
+    reconciler = KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory)
+    assert reconciler.reconcile(job_id=job.id) == 0
+    assert reconciler.reconcile(job_id=job.id) == 0
+    assert len(facade.update_logical_document_availability.calls) == 1
+    assert facade.update_logical_document_availability.last.kwargs["document_id"] == _LOGICAL_DOCUMENT_ID
+    payload = facade.update_logical_document_availability.last.kwargs["payload"]
+    assert isinstance(payload, KnowledgeFSDocumentAvailabilityPayload)
+    assert payload.enabled is False
+    if not identity_saved:
+        assert facade.resolve_document_reference.last.kwargs == {
+            "tenant_id": _TENANT_ID,
+            "account_id": _ACCOUNT_ID,
+            "control_space_id": _CONTROL_SPACE_ID,
+            "document_asset_id": _DOCUMENT_ASSET_ID,
+            "document_asset_version": 1,
+        }
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeDocument, document.id)
+        assert persisted is not None
+        assert persisted.new_logical_document_id == _LOGICAL_DOCUMENT_ID
+        assert persisted.availability_reconciled_at is not None
+        assert persisted.state_reconciled_at is not None
+
+
+def _deletion_task() -> KnowledgeFSBackgroundTaskResponse:
+    return KnowledgeFSBackgroundTaskResponse.model_validate(
+        {
+            "id": "deletion-job",
+            "knowledgeSpaceId": "space-1",
+            "documentId": _LOGICAL_DOCUMENT_ID,
+            "operation": "document_delete",
+            "taskKind": "document_bulk",
+            "state": "completed",
+            "canCancel": False,
+            "canRetry": False,
+            "progressCompleted": 1,
+            "progressFailed": 0,
+            "progressPercent": 100,
+            "progressTotal": 1,
+            "createdAt": "2026-10-21T00:00:00Z",
+            "updatedAt": "2026-10-21T00:00:01Z",
+        }
+    )
+
+
+def _deletion_receipt() -> KnowledgeFSDurableDeletionJobResponse:
+    return KnowledgeFSDurableDeletionJobResponse.model_validate(
+        {
+            "id": "deletion-job",
+            "knowledgeSpaceId": "space-1",
+            "targetId": _LOGICAL_DOCUMENT_ID,
+            "targetType": "logical_document",
+            "runState": "completed",
+            "checkpoint": "completed",
+            "createdAt": "2026-10-21T00:00:00Z",
+            "updatedAt": "2026-10-21T00:00:01Z",
+        }
+    )
+
+
+@pytest.mark.parametrize("evidence", ["completed", "running", "wrong_document", "wrong_space", "wrong_type", "absent"])
+def test_deleted_upgrade_document_requires_matching_completed_deletion_evidence(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, evidence: str
+) -> None:
+    job, document = _pending_reconciliation_job(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        session.add_all([job, document])
+        job.status = KnowledgeFSUpgradeJobStatus.SUCCEEDED
+        document.new_logical_document_id = _LOGICAL_DOCUMENT_ID
+    receipt = _deletion_receipt()
+    if evidence == "running":
+        receipt = receipt.model_copy(update={"run_state": "running", "checkpoint": "quiescing"})
+    elif evidence == "wrong_document":
+        receipt = receipt.model_copy(update={"target_id": "another-document"})
+    elif evidence == "wrong_space":
+        receipt = receipt.model_copy(update={"knowledge_space_id": "another-space"})
+    elif evidence == "wrong_type":
+        receipt = receipt.model_copy(update={"target_type": "document"})
+    facade = FakeUpgradeFacade(
+        list_logical_documents=CallRecorder(result=KnowledgeFSLogicalDocumentListResponse(data=[], next_cursor=None)),
+        list_background_tasks=CallRecorder(
+            outcomes=deque(
+                [
+                    KnowledgeFSBackgroundTaskListResponse(data=[], next_cursor="second-page"),
+                    KnowledgeFSBackgroundTaskListResponse(
+                        data=[] if evidence == "absent" else [_deletion_task()], next_cursor=None
+                    ),
+                ]
+            )
+        ),
+        get_deletion_job=CallRecorder(result=receipt),
+    )
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
+
+    assert KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory).reconcile(job_id=job.id) == int(
+        evidence != "completed"
+    )
+    assert facade.list_background_tasks.last.kwargs["cursor"] == "second-page"
+    assert facade.update_logical_document_availability.calls == []
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeDocument, document.id)
+        assert persisted is not None
+        assert (persisted.availability_reconciled_at is not None) is (evidence == "completed")
+        assert (persisted.state_reconciled_at is not None) is (evidence == "completed")
+
+
+def test_reconciliation_preserves_resolved_identity_when_availability_write_fails(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    job, document = _pending_reconciliation_job(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+        job.status = KnowledgeFSUpgradeJobStatus.SUCCEEDED
+    failed = _logical_document(enabled=True).model_copy(update={"active": None, "status": "failed"})
+    facade = FakeUpgradeFacade(
+        list_logical_documents=CallRecorder(
+            result=KnowledgeFSLogicalDocumentListResponse(data=[failed], next_cursor=None)
+        ),
+        get_logical_document=CallRecorder(result=failed),
+        update_logical_document_availability=CallRecorder(error=RuntimeError("upstream unavailable")),
+    )
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
+    reconciler = KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory)
+    assert reconciler.reconcile(job_id=job.id) == 1
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeDocument, document.id)
+        assert persisted is not None
+        assert persisted.new_logical_document_id == _LOGICAL_DOCUMENT_ID
+        assert persisted.availability_reconciled_at is None
+    # The owner deletes the failed document before the next delivery. Recovery can
+    # still use the saved identity, even after all asset/revision rows disappear.
+    facade.list_logical_documents.result = KnowledgeFSLogicalDocumentListResponse(data=[], next_cursor=None)
+    facade.get_logical_document.error = KnowledgeFSProductResourceNotFoundError("Document not found")
+    facade.list_background_tasks.result = KnowledgeFSBackgroundTaskListResponse(
+        data=[_deletion_task()], next_cursor=None
+    )
+    facade.get_deletion_job.result = _deletion_receipt()
+    assert reconciler.reconcile(job_id=job.id) == 0
+    assert len(facade.resolve_document_reference.calls) == 1
+
+
+@pytest.mark.parametrize("failure_at", ["get_document", "resolve_document_reference", "get_logical_document"])
+def test_reconciliation_keeps_gate_closed_when_identity_resolution_is_unavailable(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, failure_at: str
+) -> None:
+    job, document = _pending_reconciliation_job(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+        job.status = KnowledgeFSUpgradeJobStatus.SUCCEEDED
+    facade = FakeUpgradeFacade(
+        list_logical_documents=CallRecorder(result=KnowledgeFSLogicalDocumentListResponse(data=[], next_cursor=None)),
+    )
+    recorder = getattr(facade, failure_at)
+    recorder.error = RuntimeError("upstream unavailable")
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
+    assert KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory).reconcile(job_id=job.id) == 1
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeDocument, document.id)
+        assert persisted is not None
+        assert persisted.availability_reconciled_at is None
+        assert persisted.state_reconciled_at is None
+        assert persisted.state_reconcile_error == "upstream unavailable"
+
+
+def test_reconciliation_converts_snapshot_time_metadata_and_omits_classic_builtin_fields(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    job, document = _pending_reconciliation_job(sqlite_session_factory)
+    snapshot = {
+        "department": "support",
+        "due_date": 1609459200.125,
+        "optional_date": None,
+        "weight": 2.5,
+        "document_name": "guide.txt",
+        "uploader": "admin",
+        "upload_date": 1609459200,
+        "last_update_date": 1609459201,
+        "source": "file_upload",
+        "undeclared_legacy_field": "not a custom field",
+    }
+    with sqlite_session_factory.begin() as session:
+        session.add_all([job, document])
+        job.status = KnowledgeFSUpgradeJobStatus.SUCCEEDED
+        job.config_snapshot = {
+            "built_in_field_enabled": True,
+            "metadata_fields": [
+                {"name": "department", "type": "string"},
+                {"name": "due_date", "type": "time"},
+                {"name": "optional_date", "type": "time"},
+                {"name": "weight", "type": "number"},
+            ],
+        }
+        document.metadata_snapshot = dict(snapshot)
+        # This also covers successful jobs stranded by the previous raw metadata patch.
+        document.state_reconcile_error = "Metadata field due_date requires a time value"
+    initial = _logical_document(enabled=True)
+    disabled = initial.model_copy(update={"enabled": False, "row_version": 2})
+    facade = FakeUpgradeFacade(
+        list_logical_documents=CallRecorder(
+            result=KnowledgeFSLogicalDocumentListResponse(data=[initial], next_cursor=None)
+        ),
+        update_logical_document_availability=CallRecorder(result=disabled),
+        update_document_metadata=CallRecorder(result=disabled.model_copy(update={"row_version": 3})),
+    )
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
+    assert KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory).reconcile(job_id=job.id) == 0
+    payload = facade.update_document_metadata.last.kwargs["payload"]
+    assert isinstance(payload, KnowledgeFSDocumentMetadataPayload)
+    assert payload.patch == {
+        "department": "support",
+        "due_date": "2021-01-01T00:00:00.125000Z",
+        "optional_date": None,
+        "weight": 2.5,
+    }
+    assert payload.expected_row_version == 2
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeDocument, document.id)
+        assert persisted is not None
+        assert persisted.metadata_snapshot == snapshot
+        assert persisted.state_reconciled_at is not None
+        assert persisted.state_reconcile_error is None
+
+
+@pytest.mark.parametrize("value", [True, "invalid-time", 10**20])
+def test_invalid_legacy_metadata_does_not_block_restoring_document_availability(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, value: object
+) -> None:
+    job, document = _pending_reconciliation_job(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        session.add_all([job, document])
+        job.status = KnowledgeFSUpgradeJobStatus.SUCCEEDED
+        job.config_snapshot = {"metadata_fields": [{"name": "due_date", "type": "time"}]}
+        document.metadata_snapshot = {"due_date": value}
+    initial = _logical_document(enabled=True)
+    facade = FakeUpgradeFacade(
+        list_logical_documents=CallRecorder(
+            result=KnowledgeFSLogicalDocumentListResponse(data=[initial], next_cursor=None)
+        ),
+        update_logical_document_availability=CallRecorder(result=initial.model_copy(update={"enabled": False})),
+    )
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
+    assert KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory).reconcile(job_id=job.id) == 1
+    assert facade.update_document_metadata.calls == []
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeDocument, document.id)
+        assert persisted is not None
+        assert persisted.availability_reconciled_at is not None
+        assert persisted.state_reconciled_at is None
+        assert persisted.state_reconcile_error == "Metadata field 'due_date' has an invalid time value"
 
 
 def test_recovery_sweep_finds_parent_success_without_a_reconciliation_claim(

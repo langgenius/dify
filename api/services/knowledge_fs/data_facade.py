@@ -55,6 +55,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentRevisionListResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
+    KnowledgeFSDurableDeletionJobResponse,
     KnowledgeFSEmbeddingSettingsResponse,
     KnowledgeFSFindQuery,
     KnowledgeFSGoldenQuestionBulkImportPayload,
@@ -794,6 +795,19 @@ class KnowledgeFSDataFacade:
             headers=(("Idempotency-Key", idempotency_key),),
         )
         return KnowledgeFSDurableDeletionAcceptedResponse.model_validate(raw)
+
+    def get_deletion_job(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, job_id: str
+    ) -> KnowledgeFSDurableDeletionJobResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getDeletionJob",
+            resource_id=job_id,
+            path_parameters=(("jobId", job_id),),
+        )
+        return KnowledgeFSDurableDeletionJobResponse.model_validate(raw)
 
     def bulk_delete_logical_documents(
         self,
