@@ -20,6 +20,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useQuery } from '@tanstack/react-query'
 import { intersectionBy } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -33,7 +34,6 @@ import {
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
 import DatasetList from '@/app/components/workflow/nodes/knowledge-retrieval/components/dataset-list'
-import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import RetrievalConfig from '@/app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config'
 import {
   ComparisonOperator,
@@ -51,12 +51,18 @@ import {
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { AgentMetadataFilter } from './metadata-filter'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
 type MetadataFilteringConditions = {
   logical_operator: LogicalOperator
   conditions: MetadataFilteringCondition[]
+}
+
+type KnowledgeRetrievalDataset = DatasetDetailWithPartialMembersResponse & {
+  metadataLoaded?: boolean
 }
 
 type KnowledgeRetrievalDialogState = {
@@ -68,11 +74,12 @@ type KnowledgeRetrievalDialogState = {
   name: string
   queryMode: KnowledgeRetrievalQueryMode
   retrievalMode: (typeof RETRIEVE_TYPE)[keyof typeof RETRIEVE_TYPE]
-  selectedDatasets: DatasetDetailWithPartialMembersResponse[]
+  selectedDatasets: KnowledgeRetrievalDataset[]
   singleRetrievalConfig?: SingleRetrievalConfig
 }
 
 type AgentKnowledgeRetrievalDialogProps = {
+  workflowNodeId?: string
   item?: AgentKnowledgeRetrievalItem
   initialName?: string
   onItemCreate?: (item: AgentKnowledgeRetrievalItem) => void
@@ -123,7 +130,7 @@ const createDefaultMetadataFilteringConditions = (): MetadataFilteringConditions
 const createDatasetFromRef = (
   dataset: AgentKnowledgeDatasetConfig,
   index: number,
-): DatasetDetailWithPartialMembersResponse => {
+): KnowledgeRetrievalDataset => {
   const id = dataset.id ?? dataset.name ?? `dataset-${index}`
   const name = dataset.name ?? id
 
@@ -180,6 +187,7 @@ const createDatasetFromRef = (
       score_threshold_enabled: false,
     },
     doc_metadata: [],
+    metadataLoaded: false,
     built_in_field_enabled: false,
     pipeline_id: null,
     runtime_mode: 'general',
@@ -326,6 +334,7 @@ function EditableKnowledgeRetrievalName({
 }
 
 function AgentKnowledgeRetrievalDialogContent({
+  workflowNodeId,
   item,
   initialName,
   onItemCreate,
@@ -350,9 +359,41 @@ function AgentKnowledgeRetrievalDialogContent({
     name,
     queryMode,
     retrievalMode,
-    selectedDatasets,
+    selectedDatasets: storedDatasets,
     singleRetrievalConfig,
   } = dialogState
+  // Saved Agent snapshots contain dataset references, not metadata definitions.
+  // Load definitions before allowing MetadataTrigger to prune deleted fields.
+  const unresolvedDatasetIds = storedDatasets
+    .filter((dataset) => dataset.metadataLoaded === false)
+    .map((dataset) => dataset.id)
+  const {
+    data: datasetPage,
+    isPending: metadataPending,
+    refetch: reloadMetadata,
+  } = useQuery(
+    consoleQuery.datasets.get.queryOptions({
+      input: { query: { ids: unresolvedDatasetIds, page: 1, limit: 100 } },
+      enabled: unresolvedDatasetIds.length > 0,
+    }),
+  )
+  const selectedDatasets = useMemo(() => {
+    const fetchedDatasets = new Map(
+      datasetPage?.data.map((dataset) => [dataset.id, dataset] as const),
+    )
+    return storedDatasets.map((dataset) => {
+      const definitions = fetchedDatasets.get(dataset.id)?.doc_metadata
+      if (dataset.metadataLoaded !== false || !definitions) return dataset
+      return {
+        ...dataset,
+        doc_metadata: definitions,
+        metadataLoaded: true,
+      }
+    })
+  }, [storedDatasets, datasetPage])
+  const selectedDatasetsLoaded = selectedDatasets.every(
+    (dataset) => dataset.metadataLoaded !== false,
+  )
   const { modelList: rerankModelList, defaultModel: rerankDefaultModel } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
@@ -637,9 +678,14 @@ function AgentKnowledgeRetrievalDialogContent({
         </div>
 
         <div className="py-2">
-          <MetadataFilter
+          <AgentMetadataFilter
+            workflowNodeId={workflowNodeId}
             metadataList={metadataList}
-            selectedDatasetsLoaded
+            selectedDatasetsLoaded={selectedDatasetsLoaded}
+            metadataUnavailable={!metadataPending && !selectedDatasetsLoaded}
+            onRetryMetadata={() => {
+              void reloadMetadata()
+            }}
             metadataFilterMode={metadataFilterMode}
             metadataFilteringConditions={metadataFilteringConditions}
             handleMetadataFilterModeChange={(nextMode) =>
@@ -736,6 +782,7 @@ function AgentKnowledgeRetrievalDialogContent({
 }
 
 export function AgentKnowledgeRetrievalDialog({
+  workflowNodeId,
   item,
   initialName,
   onItemCreate,
@@ -747,6 +794,7 @@ export function AgentKnowledgeRetrievalDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent backdropProps={{ forceRender: true }} className="h-130 w-100 overflow-hidden">
         <AgentKnowledgeRetrievalDialogContent
+          workflowNodeId={workflowNodeId}
           item={item}
           initialName={initialName}
           onItemCreate={onItemCreate}

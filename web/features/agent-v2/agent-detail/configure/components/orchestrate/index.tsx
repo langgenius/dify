@@ -186,7 +186,9 @@ export function AgentOrchestratePanel({
                             <AgentTools />
                           </>
                         )}
-                        {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL && <AgentKnowledgeRetrieval />}
+                        {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL && (
+                          <AgentKnowledgeRetrieval workflowNodeId={nodeId} />
+                        )}
                         {!isTemplatePreview && <AgentAdvancedSettings />}
                       </AgentBuildDraftChangedKeysProvider>
                     </AgentOrchestrateAddActionsProvider>
