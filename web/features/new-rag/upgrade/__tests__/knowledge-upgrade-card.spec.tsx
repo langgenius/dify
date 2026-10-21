@@ -3,9 +3,9 @@ import type { KnowledgeUpgrade } from '../knowledge-upgrade-context-value'
 import { QueryClient } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { KnowledgeUpgradeCard } from '../knowledge-upgrade-card'
 import { KnowledgeUpgradeProvider } from '../knowledge-upgrade-context'
 import { KnowledgeUpgradeContext, useKnowledgeUpgrade } from '../knowledge-upgrade-context-value'
@@ -38,18 +38,16 @@ const job = {
   total_sources: 1,
 } satisfies KnowledgeFsUpgradeJobResponse
 
-const upgrade = {
+const upgrade: KnowledgeUpgrade = {
   canRetry: false,
-  dataset: {
+  dataset: createDatasetFixture({
     app_count: 2,
     description: 'Support articles',
     document_count: 52,
-    id: 'dataset-1',
     name: 'Support knowledge',
-    tags: [],
-  },
+  }),
   job,
-} as unknown as KnowledgeUpgrade
+}
 
 const renderCard = (
   value: KnowledgeUpgrade,

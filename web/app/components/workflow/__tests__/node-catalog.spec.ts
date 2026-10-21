@@ -1,14 +1,13 @@
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+
+// The node catalog reads KnowledgeFS availability from the console features query.
+const catalogQueryClient = ({ enabled = true } = {}) =>
+  createConsoleQueryWrapper({ knowledgeFsFeatures: { enabled } }).queryClient
 
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
-const mockKnowledgeFsEnabled = vi.hoisted(() => vi.fn(() => true))
-
-vi.mock('@/features/knowledge-fs-availability/state', async () => {
-  const { atom } = await import('jotai')
-  return { knowledgeFsEnabledAtom: atom(() => mockKnowledgeFsEnabled()) }
-})
 const mockIsAgentV2InChatflowEnabled = vi.hoisted(() => vi.fn(() => false))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
@@ -24,12 +23,12 @@ describe('useWorkflowNodeCatalog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsAgentV2Enabled.mockReturnValue(true)
-    mockKnowledgeFsEnabled.mockReturnValue(true)
     mockIsAgentV2InChatflowEnabled.mockReturnValue(false)
   })
 
   it('should include chat-specific nodes and make the start node undeletable in chat mode', () => {
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
         appId: 'app-1',
@@ -51,6 +50,7 @@ describe('useWorkflowNodeCatalog', () => {
 
   it('should expose only legacy Agent in chat mode by default even when Agent v2 is enabled', () => {
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
         appId: 'app-1',
@@ -69,6 +69,7 @@ describe('useWorkflowNodeCatalog', () => {
     mockIsAgentV2InChatflowEnabled.mockReturnValue(true)
 
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
         appId: 'app-1',
@@ -88,6 +89,7 @@ describe('useWorkflowNodeCatalog', () => {
     mockIsAgentV2InChatflowEnabled.mockReturnValue(true)
 
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
         appId: 'app-1',
@@ -104,6 +106,7 @@ describe('useWorkflowNodeCatalog', () => {
 
   it('should include workflow-specific trigger and end nodes outside chat mode', () => {
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
         appId: 'app-1',
@@ -126,6 +129,7 @@ describe('useWorkflowNodeCatalog', () => {
 
   it('should use explicit docs pages and skip nodes without generated docs pages', () => {
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
         appId: 'app-1',
@@ -148,6 +152,7 @@ describe('useWorkflowNodeCatalog', () => {
 
   it('should hide legacy Agent from the node picker but retain its validator when Agent v2 is enabled', () => {
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
         appId: 'app-1',
@@ -169,6 +174,7 @@ describe('useWorkflowNodeCatalog', () => {
     mockIsAgentV2Enabled.mockReturnValue(false)
 
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
         appId: 'app-1',
@@ -187,9 +193,8 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should hide Knowledge Retrieval v2 when KnowledgeFS is disabled', () => {
-    mockKnowledgeFsEnabled.mockReturnValue(false)
-
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      queryClient: catalogQueryClient({ enabled: false }),
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
 

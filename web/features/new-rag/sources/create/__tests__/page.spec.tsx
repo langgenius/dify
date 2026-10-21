@@ -1,11 +1,15 @@
 import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { KnowledgeFsProductPermission } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
+import type { ReactElement } from 'react'
 import type { NewKnowledgeSourceDraft } from '../../setup/source-draft'
 import type { SourceConnection, SourceProvider } from '../../source-models'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { newKnowledgeSourceDraftStorageKey } from '../../setup/source-draft'
 import { AddSourcePage } from '../page'
 
@@ -20,7 +24,7 @@ const routerMock = vi.hoisted(() => ({
   replace: vi.fn(),
 }))
 const knowledgeSpacePermissionState = vi.hoisted(() => ({
-  keys: ['knowledge_space_document_write'],
+  keys: ['knowledge_space_document_write'] as KnowledgeFsProductPermission[],
 }))
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -29,10 +33,6 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('../../../space/context', () => ({
-  useKnowledgeSpacePermission: (permission: string) =>
-    knowledgeSpacePermissionState.keys.includes(permission),
-}))
 const openMock = vi.hoisted(() => vi.fn())
 
 const connectFirecrawlButtonName = 'knowledgeSources.connectProvider:{"provider":"Firecrawl"}'
@@ -142,189 +142,89 @@ vi.mock('@/app/notifications', () => ({
   toast: { info: toastInfoMock },
 }))
 
-type ConnectionsInfiniteData = {
-  pages: GetKnowledgeSpacesByIdSourceConnectionsResponse[]
-}
-const connectionInfiniteDataApiResponse = vi.hoisted(() => (data: ConnectionsInfiniteData) => ({
-  pages: data.pages.map((page) => ({
-    data: page.items.map(connectionApiResponse),
-    next_cursor: page.nextCursor ?? null,
-  })),
-}))
+type ServerResource<T> = { data: T; error: unknown; pending: boolean }
 
-type ConnectionsInfiniteOptions = {
-  enabled?: boolean
-  getNextPageParam: (lastPage: {
-    data: ReturnType<typeof connectionApiResponse>[]
-    next_cursor?: string | null
-  }) => string | null | undefined
-  input: (pageParam: string | null) => unknown
-  initialPageParam: string | null
-}
-
-const queryState = vi.hoisted(() => ({
+// Server-side state behind the real Query observers; each test edits it before or between fetches.
+const server = vi.hoisted(() => ({
   connections: {
-    data: { pages: [{ items: [] }] } as ConnectionsInfiniteData | undefined,
+    data: [{ items: [] }] as GetKnowledgeSpacesByIdSourceConnectionsResponse[],
     error: null as unknown,
-    fetchNextPage: vi.fn(),
-    hasNextPage: false,
-    isFetchNextPageError: false,
-    isFetchingNextPage: false,
-    isPending: false,
-    refetch: vi.fn(),
-  },
-  providers: {
-    data: undefined as GetSourceProvidersResponse | undefined,
-    error: null as unknown,
-    isPending: false,
-    refetch: vi.fn(),
+    nextPageError: null as unknown,
+    pending: false,
   },
   datasourceAuth: {
-    data: { result: [] } as DatasourceProviderAuthListResponse | undefined,
+    data: { result: [] } as DatasourceProviderAuthListResponse,
     error: null as unknown,
-    isPending: false,
-    refetch: vi.fn(),
+    pending: false,
   },
-  datasourcePlugins: {
-    data: [] as DataSourceItem[],
+  datasourcePlugins: { data: [] as DataSourceItem[], error: null as unknown, pending: false },
+  providers: {
+    data: { items: [] } as GetSourceProvidersResponse,
     error: null as unknown,
-    isPending: false,
-    refetch: vi.fn(),
+    pending: false,
   },
+  listConnections: vi.fn(),
+  listDatasourceAuth: vi.fn(),
+  listDatasourcePlugins: vi.fn(),
+  listProviders: vi.fn(),
 }))
+
+const respond = vi.hoisted(
+  () =>
+    <T, R>(resource: ServerResource<T>, toApi: (data: T) => R) =>
+      resource.pending
+        ? new Promise<R>(() => {})
+        : resource.error
+          ? Promise.reject(resource.error)
+          : Promise.resolve(toApi(resource.data)),
+)
 
 const clientMock = vi.hoisted(() => ({
   createConnection: vi.fn(),
   refreshConnection: vi.fn(),
 }))
 
-const queryClientMock = vi.hoisted(() => ({
-  invalidateQueries: vi.fn(),
-}))
-
-const providerQueryOptionsMock = vi.hoisted(() =>
-  vi.fn((options: { enabled?: boolean; select?: (data: unknown) => unknown }) => ({
-    enabled: options.enabled,
-    queryKey: ['source-providers'],
-    select: options.select,
-  })),
-)
-const connectionInfiniteOptionsMock = vi.hoisted(() =>
-  vi.fn((options: ConnectionsInfiniteOptions) => ({
-    enabled: options.enabled,
-    queryKey: ['source-connections'],
-  })),
-)
-const providerHookOptionsMock = vi.hoisted(() => vi.fn())
-const datasourceAuthQueryOptionsMock = vi.hoisted(() =>
-  vi.fn((options: { enabled?: boolean }) => ({
-    enabled: options.enabled,
-    queryKey: ['datasource-auth'],
-  })),
-)
-const connectionHookOptionsMock = vi.hoisted(() => vi.fn())
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
   return {
-    ...original,
-    useInfiniteQuery: (options: unknown) => {
-      connectionHookOptionsMock(options)
-      return {
-        ...queryState.connections,
-        data: queryState.connections.data
-          ? connectionInfiniteDataApiResponse(queryState.connections.data)
-          : undefined,
-        refetch: async () => {
-          const result = (await queryState.connections.refetch()) as
-            | { data?: ConnectionsInfiniteData; error?: unknown }
-            | undefined
-          if (!result?.data) return result
-          return {
-            ...result,
-            data: connectionInfiniteDataApiResponse(result.data),
-          }
-        },
-      }
-    },
-    useQuery: (options: { queryKey?: string[]; select?: (data: unknown) => unknown }) => {
-      if (options.queryKey?.[0] === 'datasource-plugins') return queryState.datasourcePlugins
-      providerHookOptionsMock(options)
-      if (options.queryKey?.[0] === 'datasource-auth') return queryState.datasourceAuth
-      const raw = queryState.providers.data
-        ? { data: queryState.providers.data.items.map(providerApiResponse) }
-        : undefined
-      return {
-        ...queryState.providers,
-        data: raw && options.select ? options.select(raw) : raw,
-      }
-    },
-    useQueryClient: () => queryClientMock,
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      [`${space}.sourceConnections.byConnectionId.refresh.post`]: async (input: never) =>
+        connectionApiResponse(await clientMock.refreshConnection(input)),
+      [`${space}.sourceConnections.post`]: async (input: never) =>
+        connectionApiResponse(await clientMock.createConnection(input)),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.defaultList.get': async (input: never) => {
+        await server.listDatasourceAuth(input)
+        return respond(server.datasourceAuth, (data) => data)
+      },
+      'rag.pipelines.datasourcePlugins.get': async (input: never) => {
+        await server.listDatasourcePlugins(input)
+        return respond(server.datasourcePlugins, (data) => data)
+      },
+      [`${space}.sourceConnections.get`]: async (input: { query: { cursor?: string } }) => {
+        await server.listConnections(input)
+        const index = input.query.cursor ? Number(input.query.cursor.replace('page-', '')) : 0
+        if (index > 0 && server.connections.nextPageError)
+          return Promise.reject(server.connections.nextPageError)
+        return respond(server.connections, (pages) => ({
+          data: (pages[index]?.items ?? []).map(connectionApiResponse),
+          next_cursor: index + 1 < pages.length ? `page-${index + 1}` : null,
+        }))
+      },
+      [`${space}.sourceProviders.get`]: async (input: never) => {
+        await server.listProviders(input)
+        return respond(server.providers, (data) => ({
+          data: data.items.map(providerApiResponse),
+        }))
+      },
+    }),
   }
 })
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          sourceConnections: {
-            byConnectionId: {
-              refresh: {
-                post: async (input: unknown) =>
-                  connectionApiResponse(await clientMock.refreshConnection(input)),
-              },
-            },
-            post: async (input: unknown) =>
-              connectionApiResponse(await clientMock.createConnection(input)),
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    rag: {
-      pipelines: {
-        datasourcePlugins: {
-          get: {
-            queryOptions: (options: { enabled?: boolean }) => ({
-              ...options,
-              queryKey: ['datasource-plugins'],
-            }),
-          },
-        },
-      },
-    },
-    auth: {
-      plugin: {
-        datasource: {
-          defaultList: {
-            get: {
-              queryOptions: datasourceAuthQueryOptionsMock,
-            },
-          },
-        },
-      },
-    },
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          sourceConnections: {
-            get: {
-              infiniteOptions: connectionInfiniteOptionsMock,
-              key: vi.fn(() => ['source-connections']),
-            },
-          },
-          sourceProviders: {
-            get: {
-              queryOptions: providerQueryOptionsMock,
-            },
-          },
-        },
-      },
-    },
-  },
-}))
 
 const firecrawlProvider: GetSourceProvidersResponse['items'][number] = {
   authKinds: ['api-key', 'endpoint'],
@@ -575,44 +475,51 @@ function createDeferred<T>() {
   return { promise, resolve }
 }
 
+const connectionsKey = () =>
+  consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.key()
+
+let currentQueryClient: ReturnType<typeof renderWithConsoleQuery>['queryClient'] | undefined
+
+/** Renders inside the space shell's context; by default waits until every settled request lands. */
+async function renderPage(ui: ReactElement, { settle = true } = {}) {
+  const view = renderWithConsoleQuery(
+    <KnowledgeSpaceTestProvider
+      space={createKnowledgeSpaceFixture({ permission_keys: knowledgeSpacePermissionState.keys })}
+    >
+      {ui}
+    </KnowledgeSpaceTestProvider>,
+  )
+  currentQueryClient = view.queryClient
+  if (settle) await waitFor(() => expect(view.queryClient.isFetching()).toBe(0))
+  return view
+}
+
+/** Lets the page observe the current server state, as a later background refetch would. */
+async function refetchConnections() {
+  await act(() => currentQueryClient!.invalidateQueries({ queryKey: connectionsKey() }))
+}
+
 describe('AddSourcePage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     knowledgeSpacePermissionState.keys = ['knowledge_space_document_write']
     vi.stubGlobal('open', openMock)
     globalThis.sessionStorage.clear()
     clientMock.createConnection.mockReset()
     clientMock.refreshConnection.mockReset()
-    queryState.connections.refetch.mockReset()
-    queryState.providers.refetch.mockReset()
-    queryState.datasourceAuth.refetch.mockReset()
-    queryState.datasourcePlugins.refetch.mockReset()
-    queryState.providers.data = { items: [firecrawlProvider] }
-    queryState.providers.error = null
-    queryState.providers.isPending = false
-    queryState.datasourceAuth.data = { result: [] }
-    queryState.datasourceAuth.error = null
-    queryState.datasourceAuth.isPending = false
-    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin]
-    queryState.datasourcePlugins.error = null
-    queryState.datasourcePlugins.isPending = false
-    queryState.connections.data = { pages: [{ items: [] }] }
-    queryState.connections.error = null
-    queryState.connections.hasNextPage = false
-    queryState.connections.isFetchNextPageError = false
-    queryState.connections.isFetchingNextPage = false
-    queryState.connections.isPending = false
+    server.providers = { data: { items: [firecrawlProvider] }, error: null, pending: false }
+    server.datasourceAuth = { data: { result: [] }, error: null, pending: false }
+    server.datasourcePlugins = { data: [firecrawlDatasourcePlugin], error: null, pending: false }
+    server.connections = { data: [{ items: [] }], error: null, nextPageError: null, pending: false }
   })
 
   afterEach(() => {
-    globalThis.sessionStorage.clear()
     vi.unstubAllGlobals()
   })
 
   it('redirects a direct route visit without document-write permission', async () => {
     knowledgeSpacePermissionState.keys = []
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
@@ -620,83 +527,51 @@ describe('AddSourcePage', () => {
     expect(screen.queryByText('knowledgeSpace.addSourceTitle')).not.toBeInTheDocument()
   })
 
-  it('loads the provider catalog and every scoped connection cursor page', () => {
-    queryState.providers.isPending = true
+  it('shows loading while the provider catalog is pending', async () => {
+    server.providers.pending = true
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />, { settle: false })
 
-    expect(providerQueryOptionsMock).toHaveBeenCalledWith({
-      context: { silent: true },
-      enabled: true,
-      input: { params: { control_space_id: 'space-1' } },
-      retry: false,
-      select: expect.any(Function),
-    })
-    const options = connectionInfiniteOptionsMock.mock.lastCall?.[0]
-    expect(options).toBeDefined()
-    if (!options) throw new Error('Expected connection infinite query options')
-    expect(options.input(null)).toEqual({
-      params: { control_space_id: 'space-1' },
-      query: { limit: 200 },
-    })
-    expect(options.input('next')).toEqual({
-      params: { control_space_id: 'space-1' },
-      query: { cursor: 'next', limit: 200 },
-    })
-    expect(options.getNextPageParam({ data: [], next_cursor: 'next' })).toBe('next')
-    expect(options.initialPageParam).toBeNull()
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(server.listProviders).toHaveBeenCalledWith({ params: { control_space_id: 'space-1' } })
   })
+  it('loads every scoped connection cursor page automatically', async () => {
+    server.connections.data = [{ items: [] }, { items: [] }]
 
-  it('continues loading connection pages automatically', async () => {
-    queryState.connections.hasNextPage = true
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-
-    await waitFor(() => expect(queryState.connections.fetchNextPage).toHaveBeenCalledOnce())
+    expect(server.listConnections.mock.calls.map(([input]) => input)).toEqual([
+      { params: { control_space_id: 'space-1' }, query: { limit: 200 } },
+      { params: { control_space_id: 'space-1' }, query: { cursor: 'page-1', limit: 200 } },
+    ])
   })
-
-  it('stops website connection pagination after switching source type', async () => {
-    const user = userEvent.setup()
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    queryState.connections.hasNextPage = true
-
-    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
-
-    expect(queryState.connections.fetchNextPage).not.toHaveBeenCalled()
-  })
-
   it.each(['onlineDocuments', 'onlineDrive'])(
     'does not request website provider data for the %s state',
-    (initialSourceType) => {
-      queryState.providers.isPending = true
-      queryState.connections.isPending = true
+    async (initialSourceType) => {
+      await renderPage(
+        <AddSourcePage initialSourceType={initialSourceType} knowledgeSpaceId="space-1" />,
+      )
 
-      render(<AddSourcePage initialSourceType={initialSourceType} knowledgeSpaceId="space-1" />)
-
-      expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
-      expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+      expect(server.listProviders).not.toHaveBeenCalled()
+      expect(server.listConnections).not.toHaveBeenCalled()
       expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
       expect(screen.getByTestId('connected-source-setup')).toBeInTheDocument()
     },
   )
 
-  it('stops automatic connection pagination after a cursor error', () => {
-    queryState.connections.error = new Error('next page failed')
-    queryState.connections.hasNextPage = true
-    queryState.connections.isFetchNextPageError = true
+  it('stops automatic connection pagination after a cursor error', async () => {
+    server.connections.data = [{ items: [] }, { items: [] }]
+    server.connections.nextPageError = new Error('next page failed')
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(queryState.connections.fetchNextPage).not.toHaveBeenCalled()
-    expect(screen.getByText('knowledgeSpace.providerLoadFailed')).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeSpace.providerLoadFailed')).toBeInTheDocument()
+    expect(server.listConnections).toHaveBeenCalledTimes(2)
   })
+  it('finds the provider connection on a later loaded page', async () => {
+    server.connections.data = [{ items: [] }, { items: [connection('active')] }]
 
-  it('finds the provider connection on a later loaded page', () => {
-    queryState.connections.data = { pages: [{ items: [] }, { items: [connection('active')] }] }
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
@@ -704,10 +579,10 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' })).toBeDisabled()
   })
 
-  it('offers replacement setup when the saved provider connection is revoked', () => {
-    queryState.connections.data = { pages: [{ items: [connection('revoked')] }] }
+  it('offers replacement setup when the saved provider connection is revoked', async () => {
+    server.connections.data = [{ items: [connection('revoked')] }]
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }),
@@ -717,9 +592,9 @@ describe('AddSourcePage', () => {
 
   it('restores a website draft handed off by the creation flow', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    server.connections.data = [{ items: [connection('active')] }]
 
-    render(
+    await renderPage(
       <AddSourcePage
         initialSourceDraft={{
           includeSubpages: false,
@@ -747,8 +622,8 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('spinbutton', { name: 'knowledgeSources.maxPages' })).toHaveValue(25)
   })
 
-  it('falls back to an installed website provider when the requested provider is not installed', () => {
-    render(
+  it('falls back to an installed website provider when the requested provider is not installed', async () => {
+    await renderPage(
       <AddSourcePage
         initialSourceDraft={{
           includeSubpages: true,
@@ -765,16 +640,16 @@ describe('AddSourcePage', () => {
 
     expect(screen.queryByRole('radio', { name: 'Jina Reader' })).not.toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
-    expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
+    expect(server.listProviders).toHaveBeenCalled()
+    expect(server.listConnections).toHaveBeenCalled()
     expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
   })
 
   it('clears provider-specific draft fields when falling back to another website provider', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    server.connections.data = [{ items: [connection('active')] }]
 
-    render(
+    await renderPage(
       <AddSourcePage
         initialSourceDraft={{
           includeSubpages: false,
@@ -802,8 +677,8 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('spinbutton', { name: 'knowledgeSources.maxPages' })).toHaveValue(100)
   })
 
-  it('keeps crawl fields hidden until the selected website provider is configured', () => {
-    render(
+  it('keeps crawl fields hidden until the selected website provider is configured', async () => {
+    await renderPage(
       <AddSourcePage
         initialSourceDraft={{
           includeSubpages: true,
@@ -835,8 +710,8 @@ describe('AddSourcePage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('restores online document configuration and keeps Add disabled until a resource is selected', () => {
-    render(
+  it('restores online document configuration and keeps Add disabled until a resource is selected', async () => {
+    await renderPage(
       <AddSourcePage
         initialSourceDraft={{
           provider: 'Google Docs',
@@ -860,7 +735,7 @@ describe('AddSourcePage', () => {
   })
 
   it('restores a website draft from session storage', async () => {
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    server.connections.data = [{ items: [connection('active')] }]
     const storageKey = newKnowledgeSourceDraftStorageKey('draft-1')
     globalThis.sessionStorage.setItem(
       storageKey,
@@ -875,7 +750,7 @@ describe('AddSourcePage', () => {
       }),
     )
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="draft-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="draft-1" />)
 
     expect(await screen.findByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue(
       'https://docs.dify.ai',
@@ -887,8 +762,9 @@ describe('AddSourcePage', () => {
   })
 
   it('retains the draft through Strict Mode, delayed loading, and a real remount', async () => {
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
-    queryState.connections.isPending = true
+    server.connections.data = [{ items: [connection('active')] }]
+    const connectionsLoaded = createDeferred<void>()
+    server.listConnections.mockImplementationOnce(() => connectionsLoaded.promise)
     const storageKey = newKnowledgeSourceDraftStorageKey('strict-draft')
     globalThis.sessionStorage.setItem(
       storageKey,
@@ -903,19 +779,15 @@ describe('AddSourcePage', () => {
       }),
     )
 
-    const view = render(
+    const view = await renderPage(
       <StrictMode>
         <AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="strict-draft" />
       </StrictMode>,
+      { settle: false },
     )
     await waitFor(() => expect(globalThis.sessionStorage.getItem(storageKey)).not.toBeNull())
 
-    queryState.connections.isPending = false
-    view.rerender(
-      <StrictMode>
-        <AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="strict-draft" />
-      </StrictMode>,
-    )
+    await act(async () => connectionsLoaded.resolve())
 
     expect(await screen.findByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue(
       'https://docs.dify.ai/strict',
@@ -925,8 +797,7 @@ describe('AddSourcePage', () => {
     )
 
     view.unmount()
-    queryState.connections.isPending = false
-    render(
+    await renderPage(
       <StrictMode>
         <AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="strict-draft" />
       </StrictMode>,
@@ -952,7 +823,7 @@ describe('AddSourcePage', () => {
       }),
     )
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="cancel-draft" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="cancel-draft" />)
     await user.click(
       await screen.findByRole('button', { name: 'knowledgeSources.cancelAddSource' }),
     )
@@ -966,7 +837,7 @@ describe('AddSourcePage', () => {
     const user = userEvent.setup()
     clientMock.createConnection.mockResolvedValue(connection('active'))
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
@@ -989,16 +860,15 @@ describe('AddSourcePage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
-    expect(queryClientMock.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['source-connections'],
-    })
+    // The connection list refetches so other pages see the new connection.
+    await waitFor(() => expect(server.listConnections).toHaveBeenCalledTimes(2))
     expect(screen.getByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
     expect(screen.queryByDisplayValue('secret-value')).not.toBeInTheDocument()
   })
 
   it('automatically binds the default Dify Firecrawl credential for the real KnowledgeFS provider', async () => {
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
-    queryState.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
     clientMock.createConnection.mockResolvedValue({
       ...connection('active'),
       authKind: 'endpoint',
@@ -1011,7 +881,7 @@ describe('AddSourcePage', () => {
       },
     })
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     await waitFor(() =>
       expect(clientMock.createConnection).toHaveBeenCalledWith({
@@ -1038,12 +908,11 @@ describe('AddSourcePage', () => {
   })
 
   it('names the provider when automatic credential binding fails', async () => {
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
-    queryState.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
     clientMock.createConnection.mockRejectedValue(new Error('provider unavailable'))
-    queryState.connections.refetch.mockResolvedValue({ data: queryState.connections.data })
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'knowledgeSources.connectionFailed:{"provider":"Firecrawl"}',
@@ -1051,28 +920,26 @@ describe('AddSourcePage', () => {
   })
 
   it('binds an installed Jina Reader datasource without reusing a Firecrawl connection', async () => {
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
-    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
-    queryState.datasourceAuth.data = { result: [jinaDatasourceAuth] }
-    queryState.connections.data = {
-      pages: [
-        {
-          items: [
-            {
-              ...connection('active'),
-              authKind: 'endpoint',
-              configuration: {
-                credentialId: 'firecrawl-credential-1',
-                datasource: 'crawl',
-                pluginId: 'langgenius/firecrawl_datasource',
-                provider: 'firecrawl',
-                providerKind: 'website',
-              },
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
+    server.datasourceAuth.data = { result: [jinaDatasourceAuth] }
+    server.connections.data = [
+      {
+        items: [
+          {
+            ...connection('active'),
+            authKind: 'endpoint',
+            configuration: {
+              credentialId: 'firecrawl-credential-1',
+              datasource: 'crawl',
+              pluginId: 'langgenius/firecrawl_datasource',
+              provider: 'firecrawl',
+              providerKind: 'website',
             },
-          ],
-        },
-      ],
-    }
+          },
+        ],
+      },
+    ]
     clientMock.createConnection.mockResolvedValue({
       ...connection('active'),
       authKind: 'endpoint',
@@ -1086,7 +953,7 @@ describe('AddSourcePage', () => {
       name: 'Jina Reader',
     })
 
-    render(
+    await renderPage(
       <AddSourcePage
         initialSourceProvider="Jina Reader"
         initialSourceType="websiteCrawl"
@@ -1117,43 +984,41 @@ describe('AddSourcePage', () => {
 
   it('clears website parameters when switching between configured providers', async () => {
     const user = userEvent.setup()
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
-    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
-    queryState.datasourceAuth.data = { result: [firecrawlDatasourceAuth, jinaDatasourceAuth] }
-    queryState.connections.data = {
-      pages: [
-        {
-          items: [
-            {
-              ...connection('active'),
-              authKind: 'endpoint',
-              configuration: {
-                credentialId: 'firecrawl-credential-1',
-                datasource: 'crawl',
-                pluginId: 'langgenius/firecrawl_datasource',
-                provider: 'firecrawl',
-                providerKind: 'website',
-              },
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
+    server.datasourceAuth.data = { result: [firecrawlDatasourceAuth, jinaDatasourceAuth] }
+    server.connections.data = [
+      {
+        items: [
+          {
+            ...connection('active'),
+            authKind: 'endpoint',
+            configuration: {
+              credentialId: 'firecrawl-credential-1',
+              datasource: 'crawl',
+              pluginId: 'langgenius/firecrawl_datasource',
+              provider: 'firecrawl',
+              providerKind: 'website',
             },
-            {
-              ...connection('active'),
-              authKind: 'endpoint',
-              configuration: {
-                credentialId: 'jina-credential-1',
-                datasource: 'jina_reader',
-                pluginId: 'langgenius/jina_datasource',
-                provider: 'jinareader',
-                providerKind: 'website',
-              },
-              id: 'jina-connection-1',
-              name: 'Jina Reader',
+          },
+          {
+            ...connection('active'),
+            authKind: 'endpoint',
+            configuration: {
+              credentialId: 'jina-credential-1',
+              datasource: 'jina_reader',
+              pluginId: 'langgenius/jina_datasource',
+              provider: 'jinareader',
+              providerKind: 'website',
             },
-          ],
-        },
-      ],
-    }
+            id: 'jina-connection-1',
+            name: 'Jina Reader',
+          },
+        ],
+      },
+    ]
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     const rootUrl = await screen.findByRole('textbox', {
       name: /knowledgeSources\.rootUrl/,
     })
@@ -1168,9 +1033,9 @@ describe('AddSourcePage', () => {
 
   it('opens Data Source settings when Dify has no Firecrawl credential', async () => {
     const user = userEvent.setup()
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     expect(screen.queryByLabelText(/Api Key/)).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: connectFirecrawlButtonName }),
@@ -1190,43 +1055,43 @@ describe('AddSourcePage', () => {
     expect(clientMock.createConnection).not.toHaveBeenCalled()
   })
 
-  it('refreshes website plugins, credentials, providers, and connections after configuration', () => {
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+  it('refreshes website plugins, credentials, providers, and connections after configuration', async () => {
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     act(() => globalThis.dispatchEvent(new Event('focus')))
 
-    expect(queryState.providers.refetch).toHaveBeenCalledOnce()
-    expect(queryState.datasourcePlugins.refetch).toHaveBeenCalledOnce()
-    expect(queryState.datasourceAuth.refetch).toHaveBeenCalledOnce()
-    expect(queryState.connections.refetch).toHaveBeenCalledOnce()
+    await waitFor(() => {
+      expect(server.listProviders).toHaveBeenCalledTimes(2)
+      expect(server.listDatasourcePlugins).toHaveBeenCalledTimes(2)
+      expect(server.listDatasourceAuth).toHaveBeenCalledTimes(2)
+      expect(server.listConnections).toHaveBeenCalledTimes(2)
+    })
   })
 
-  it('treats an active managed connection as unconfigured after its credential is deleted', () => {
-    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
-    queryState.datasourceAuth.data = {
+  it('treats an active managed connection as unconfigured after its credential is deleted', async () => {
+    server.providers.data = { items: [difyManagedFirecrawlProvider] }
+    server.datasourceAuth.data = {
       result: [{ ...firecrawlDatasourceAuth, credentials_list: [] }],
     }
-    queryState.connections.data = {
-      pages: [
-        {
-          items: [
-            {
-              ...connection('active'),
-              authKind: 'endpoint',
-              configuration: {
-                credentialId: 'deleted-firecrawl-credential',
-                datasource: 'crawl',
-                pluginId: 'langgenius/firecrawl_datasource',
-                provider: 'firecrawl',
-                providerKind: 'website',
-              },
+    server.connections.data = [
+      {
+        items: [
+          {
+            ...connection('active'),
+            authKind: 'endpoint',
+            configuration: {
+              credentialId: 'deleted-firecrawl-credential',
+              datasource: 'crawl',
+              pluginId: 'langgenius/firecrawl_datasource',
+              provider: 'firecrawl',
+              providerKind: 'website',
             },
-          ],
-        },
-      ],
-    }
+          },
+        ],
+      },
+    ]
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByText('knowledgeSources.providerNotConfigured:{"provider":"Firecrawl"}'),
@@ -1248,7 +1113,7 @@ describe('AddSourcePage', () => {
     const user = userEvent.setup()
     clientMock.createConnection.mockResolvedValue(connection('active'))
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
@@ -1264,7 +1129,7 @@ describe('AddSourcePage', () => {
     const createConnectionDeferred = createDeferred<ReturnType<typeof connection>>()
     clientMock.createConnection.mockReturnValue(createConnectionDeferred.promise)
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     const connectButton = screen.getByRole('button', { name: connectFirecrawlButtonName })
@@ -1283,9 +1148,9 @@ describe('AddSourcePage', () => {
     await screen.findByText(/knowledgeSources\.providerConnected/)
   })
 
-  it('discovers installed website providers and keeps the provider-management action', () => {
-    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, customCrawlerDatasourcePlugin]
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+  it('discovers installed website providers and keeps the provider-management action', async () => {
+    server.datasourcePlugins.data = [firecrawlDatasourcePlugin, customCrawlerDatasourcePlugin]
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('group', { name: 'knowledgeSpace.providerLabel' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Acme Crawler' })).toBeEnabled()
@@ -1298,10 +1163,10 @@ describe('AddSourcePage', () => {
     expect(moreProvidersLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  it('prompts for provider installation when no datasource integration is installed', () => {
-    queryState.datasourcePlugins.data = []
+  it('prompts for provider installation when no datasource integration is installed', async () => {
+    server.datasourcePlugins.data = []
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('status')).toHaveTextContent('plugin.list.notFound')
     expect(screen.queryByRole('radio', { name: 'Firecrawl' })).not.toBeInTheDocument()
@@ -1322,18 +1187,16 @@ describe('AddSourcePage', () => {
       sourceType: 'websiteCrawl' as const,
       syncPolicy: 'daily' as const,
     }
-    const view = render(
+    await renderPage(
       <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
     )
     expect(
       screen.queryByRole('textbox', { name: 'knowledgeSources.rootUrl' }),
     ).not.toBeInTheDocument()
 
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
-    view.rerender(
-      <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
-    )
-    expect(screen.getByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue(
+    server.connections.data = [{ items: [connection('active')] }]
+    await refetchConnections()
+    expect(await screen.findByRole('textbox', { name: /knowledgeSources\.rootUrl/ })).toHaveValue(
       'https://docs.dify.ai',
     )
     expect(screen.getByRole('textbox', { name: /knowledgeSources\.sourceName/ })).toHaveValue(
@@ -1341,12 +1204,12 @@ describe('AddSourcePage', () => {
     )
   })
 
-  it('does not select a lookalike provider by fuzzy display name', () => {
-    queryState.providers.data = {
+  it('does not select a lookalike provider by fuzzy display name', async () => {
+    server.providers.data = {
       items: [{ ...firecrawlProvider, displayName: 'Firecrawl impostor', id: 'impostor' }],
     }
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('knowledgeSources.providerUnavailable')).toBeInTheDocument()
   })
@@ -1354,9 +1217,8 @@ describe('AddSourcePage', () => {
   it('clears sensitive input but retains non-sensitive input after a connection error', async () => {
     const user = userEvent.setup()
     clientMock.createConnection.mockRejectedValue(new Error('provider unavailable'))
-    queryState.connections.refetch.mockResolvedValue({ data: queryState.connections.data })
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'do-not-retain')
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
@@ -1371,12 +1233,12 @@ describe('AddSourcePage', () => {
 
   it('reconciles a response-lost create before showing an error', async () => {
     const user = userEvent.setup()
-    clientMock.createConnection.mockRejectedValue(new Error('response lost'))
-    queryState.connections.refetch.mockResolvedValue({
-      data: { pages: [{ items: [connection('active')] }] },
+    clientMock.createConnection.mockImplementation(async () => {
+      server.connections.data = [{ items: [connection('active')] }]
+      throw new Error('response lost')
     })
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
@@ -1392,7 +1254,7 @@ describe('AddSourcePage', () => {
     const user = userEvent.setup()
     clientMock.createConnection.mockResolvedValue(connection('active'))
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-return')
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.authKind.endpoint' }))
@@ -1408,7 +1270,7 @@ describe('AddSourcePage', () => {
       authKind: 'endpoint',
     })
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-be-sent')
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.authKind.endpoint' }))
@@ -1449,9 +1311,9 @@ describe('AddSourcePage', () => {
         },
       ],
     }
-    queryState.providers.data = { items: [booleanProvider] }
+    server.providers.data = { items: [booleanProvider] }
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
 
     expect(screen.getByLabelText(/Api Key/)).toHaveAccessibleDescription('Firecrawl API key')
@@ -1460,10 +1322,10 @@ describe('AddSourcePage', () => {
 
   it('refreshes an errored connection using its current version', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    server.connections.data = [{ items: [connection('error')] }]
     clientMock.refreshConnection.mockResolvedValue(connection('active'))
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     expect(
       screen.getByText('knowledgeSources.connectionNeedsAttention:{"provider":"Firecrawl"}'),
     ).toBeInTheDocument()
@@ -1475,17 +1337,17 @@ describe('AddSourcePage', () => {
         params: { connection_id: 'connection-1', control_space_id: 'space-1' },
       }),
     )
-    expect(queryClientMock.invalidateQueries).toHaveBeenCalled()
+    await waitFor(() => expect(server.listConnections).toHaveBeenCalledTimes(2))
     expect(screen.getByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
   })
 
   it('keeps the refresh action focused and explicitly named while pending', async () => {
     const user = userEvent.setup()
     const refreshConnectionDeferred = createDeferred<ReturnType<typeof connection>>()
-    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    server.connections.data = [{ items: [connection('error')] }]
     clientMock.refreshConnection.mockReturnValue(refreshConnectionDeferred.promise)
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     const refreshButton = screen.getByRole('button', { name: 'common.operation.retry' })
     await user.click(refreshButton)
 
@@ -1504,30 +1366,24 @@ describe('AddSourcePage', () => {
 
   it('reconciles a refresh version race and retries with the server version', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    server.connections.data = [{ items: [connection('error')] }]
     clientMock.refreshConnection
-      .mockRejectedValueOnce(new Error('version conflict'))
-      .mockResolvedValueOnce(connection('active', 4))
-    queryState.connections.refetch.mockResolvedValue({
-      data: {
-        pages: [
+      .mockImplementationOnce(async () => {
+        server.connections.data = [
           {
             items: [
               connection('error', 3),
-              {
-                ...connection('error', 8),
-                id: 'connection-2',
-                updatedAt: '2026-07-20T11:00:00Z',
-              },
+              { ...connection('error', 8), id: 'connection-2', updatedAt: '2026-07-20T11:00:00Z' },
             ],
           },
-        ],
-      },
-    })
+        ]
+        throw new Error('version conflict')
+      })
+      .mockResolvedValueOnce(connection('active', 4))
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    await waitFor(() => expect(queryState.connections.refetch).toHaveBeenCalledOnce())
+    await waitFor(() => expect(server.listConnections).toHaveBeenCalledTimes(2))
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     await waitFor(() =>
@@ -1540,17 +1396,17 @@ describe('AddSourcePage', () => {
 
   it('does not regress the current version when reconciliation reads a stale replica', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('error', 3)] }] }
+    server.connections.data = [{ items: [connection('error', 3)] }]
     clientMock.refreshConnection
-      .mockRejectedValueOnce(new Error('response lost'))
+      .mockImplementationOnce(async () => {
+        server.connections.data = [{ items: [connection('error', 2)] }]
+        throw new Error('response lost')
+      })
       .mockResolvedValueOnce(connection('active', 4))
-    queryState.connections.refetch.mockResolvedValue({
-      data: { pages: [{ items: [connection('error', 2)] }] },
-    })
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    await waitFor(() => expect(queryState.connections.refetch).toHaveBeenCalledOnce())
+    await waitFor(() => expect(server.listConnections).toHaveBeenCalledTimes(2))
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     await waitFor(() =>
@@ -1563,42 +1419,38 @@ describe('AddSourcePage', () => {
 
   it('lets a newer remote connection version replace a local mutation response', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('error')] }] }
+    server.connections.data = [{ items: [connection('error')] }]
     clientMock.refreshConnection.mockResolvedValue(connection('provisioning', 3))
 
-    const view = render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(
       await screen.findByText('knowledgeSources.connectionProvisioning:{"provider":"Firecrawl"}'),
     ).toBeInTheDocument()
 
-    queryState.connections.data = {
-      pages: [
-        {
-          items: [
-            connection('active', 3),
-            {
-              ...connection('active', 10),
-              id: 'connection-2',
-              updatedAt: '2026-07-20T11:00:00Z',
-            },
-          ],
-        },
-      ],
-    }
-    view.rerender(<AddSourcePage knowledgeSpaceId="space-1" />)
+    server.connections.data = [
+      {
+        items: [
+          connection('active', 3),
+          {
+            ...connection('active', 10),
+            id: 'connection-2',
+            updatedAt: '2026-07-20T11:00:00Z',
+          },
+        ],
+      },
+    ]
+    await refetchConnections()
 
-    expect(screen.getByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
+    expect(await screen.findByText(/knowledgeSources\.providerConnected/)).toBeInTheDocument()
   })
 
   it('reconciles a provisioning connection with the refreshed server state', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('provisioning')] }] }
-    queryState.connections.refetch.mockResolvedValue({
-      data: { pages: [{ items: [connection('active')] }] },
-    })
+    server.connections.data = [{ items: [connection('provisioning')] }]
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
+    server.connections.data = [{ items: [connection('active')] }]
     await user.click(
       screen.getByRole('button', { name: 'knowledgeSources.refreshConnectionStatus' }),
     )
@@ -1608,13 +1460,10 @@ describe('AddSourcePage', () => {
 
   it('shows a retryable error when provisioning reconciliation fails', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('provisioning')] }] }
-    queryState.connections.refetch.mockResolvedValue({
-      data: queryState.connections.data,
-      error: new Error('temporary failure'),
-    })
+    server.connections.data = [{ items: [connection('provisioning')] }]
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
+    server.connections.error = new Error('temporary failure')
     await user.click(
       screen.getByRole('button', { name: 'knowledgeSources.refreshConnectionStatus' }),
     )
@@ -1622,21 +1471,17 @@ describe('AddSourcePage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'knowledgeSources.connectionRefreshFailed',
     )
+    expect(screen.queryByText('knowledgeSpace.providerLoadFailed')).not.toBeInTheDocument()
   })
-
   it('shows a retryable error when provisioning reconciliation finds no connection', async () => {
     const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('provisioning')] }] }
-    queryState.connections.refetch.mockImplementation(async () => {
-      queryState.connections.data = { pages: [{ items: [] }] }
-      return { data: queryState.connections.data }
-    })
+    server.connections.data = [{ items: [connection('provisioning')] }]
 
-    const view = render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
+    server.connections.data = [{ items: [] }]
     await user.click(
       screen.getByRole('button', { name: 'knowledgeSources.refreshConnectionStatus' }),
     )
-    view.rerender(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'knowledgeSources.connectionRefreshFailed',
@@ -1648,7 +1493,7 @@ describe('AddSourcePage', () => {
 
   it('keeps source types selectable and preserves each connected-source draft', async () => {
     const user = userEvent.setup()
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('radio', { name: 'knowledgeSpace.websiteCrawl' })).toBeChecked()
     const onlineDocuments = screen.getByRole('radio', {
@@ -1679,8 +1524,8 @@ describe('AddSourcePage', () => {
     )
   })
 
-  it('restores the selected source type from the create flow', () => {
-    render(<AddSourcePage initialSourceType="onlineDrive" knowledgeSpaceId="space-1" />)
+  it('restores the selected source type from the create flow', async () => {
+    await renderPage(<AddSourcePage initialSourceType="onlineDrive" knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' })).toBeChecked()
     expect(screen.getByTestId('connected-source-setup')).toBeVisible()
@@ -1691,20 +1536,23 @@ describe('AddSourcePage', () => {
   it.each([
     ['onlineDocuments', 'Confluence'],
     ['onlineDrive', 'OneDrive'],
-  ] as const)('restores the %s provider from a shortcut URL', (initialSourceType, provider) => {
-    render(
-      <AddSourcePage
-        initialSourceProvider={provider}
-        initialSourceType={initialSourceType}
-        knowledgeSpaceId="space-1"
-      />,
-    )
+  ] as const)(
+    'restores the %s provider from a shortcut URL',
+    async (initialSourceType, provider) => {
+      await renderPage(
+        <AddSourcePage
+          initialSourceProvider={provider}
+          initialSourceType={initialSourceType}
+          knowledgeSpaceId="space-1"
+        />,
+      )
 
-    expect(screen.getByRole('radio', { name: provider })).toBeChecked()
-  })
+      expect(screen.getByRole('radio', { name: provider })).toBeChecked()
+    },
+  )
 
-  it('does not expose an uninstalled website provider from a shortcut URL', () => {
-    render(
+  it('does not expose an uninstalled website provider from a shortcut URL', async () => {
+    await renderPage(
       <AddSourcePage
         initialSourceProvider="Jina Reader"
         initialSourceType="websiteCrawl"
@@ -1718,7 +1566,7 @@ describe('AddSourcePage', () => {
 
   it('disables the final Add source action while its backend dependency is missing', async () => {
     const user = userEvent.setup()
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     const addSource = screen.getByRole('button', { name: 'knowledgeSpace.addSource' })
@@ -1726,12 +1574,12 @@ describe('AddSourcePage', () => {
     expect(toastInfoMock).not.toHaveBeenCalled()
   })
 
-  it('shows catalog unavailability instead of offering a fake connection', () => {
-    queryState.providers.data = {
+  it('shows catalog unavailability instead of offering a fake connection', async () => {
+    server.providers.data = {
       items: [{ ...firecrawlProvider, available: false, unavailableReason: 'Disabled by admin' }],
     }
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('Disabled by admin')).toBeInTheDocument()
     expect(
@@ -1739,8 +1587,8 @@ describe('AddSourcePage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('does not offer unsupported OAuth or undocumented direct connection paths', () => {
-    queryState.providers.data = {
+  it('does not offer unsupported OAuth or undocumented direct connection paths', async () => {
+    server.providers.data = {
       items: [
         {
           ...firecrawlProvider,
@@ -1750,7 +1598,7 @@ describe('AddSourcePage', () => {
       ],
     }
 
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('knowledgeSources.providerUnavailable')).toBeInTheDocument()
     expect(

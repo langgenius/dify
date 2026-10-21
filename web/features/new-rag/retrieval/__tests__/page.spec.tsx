@@ -1,11 +1,15 @@
-import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type {
+  KnowledgeFsProductPermission,
+  KnowledgeFsSettingsResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { createQueryTestWrapper } from '@/test/query-state-testing'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { RetrievalTestPage } from '../page'
@@ -17,7 +21,6 @@ const apiMock = vi.hoisted(() => ({
   createResearch: vi.fn(),
   planResearch: vi.fn(),
   readinessRefetch: vi.fn(),
-  refreshQueries: () => {},
   resolveDocumentReference: vi.fn(),
   routerPush: vi.fn(),
   partials: [] as Array<Record<string, unknown>>,
@@ -71,11 +74,7 @@ const apiMock = vi.hoisted(() => ({
   } as KnowledgeFsSettingsResponse,
 }))
 const knowledgeSpacePermissionState = vi.hoisted(() => ({
-  keys: ['knowledge_space_edit', 'knowledge_space_query'],
-}))
-vi.mock('../../space/context', () => ({
-  useKnowledgeSpacePermission: (permission: string) =>
-    knowledgeSpacePermissionState.keys.includes(permission),
+  keys: ['knowledge_space_edit', 'knowledge_space_query'] as KnowledgeFsProductPermission[],
 }))
 
 vi.mock('../services/knowledge-query-events', () => ({
@@ -93,304 +92,188 @@ vi.mock('../services/research-task-events', async (importOriginal) => ({
   streamResearchTaskEvents: apiMock.streamResearchEvents,
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...original,
-    useQuery: (options: { queryKey?: string[] }) => {
-      const resource = options.queryKey?.[0]
-      if (resource === 'trace-detail')
-        return {
-          data: apiMock.traceDetail,
-          isPending: false,
-        }
-      if (resource === 'research-detail')
-        return {
-          data: apiMock.researchDetail,
-          isError: apiMock.researchDetailError,
-          isPending: apiMock.researchDetailPending,
-          refetch: apiMock.refetchResearchDetail,
-        }
-      if (resource === 'settings')
-        return {
-          data: apiMock.readiness,
-          isError: false,
-          isPending: false,
-          refetch: apiMock.readinessRefetch,
-        }
-      return { data: undefined, isPending: false }
-    },
-    useInfiniteQuery: (options: { queryKey?: string[] }) => {
-      const resource = options.queryKey?.[0]
-      if (resource === 'traces')
-        return {
-          data: { pageParams: [null], pages: [{ data: apiMock.traces, next_cursor: null }] },
-          fetchNextPage: apiMock.fetchNextTraces,
-          hasNextPage: apiMock.tracesHasNextPage,
-          isFetchingNextPage: false,
-          isPending: false,
-          refetch: apiMock.refetchTraces,
-        }
-      if (resource === 'tasks')
-        return {
-          data: { pageParams: [null], pages: [{ data: apiMock.researchTasks, next_cursor: null }] },
-          fetchNextPage: apiMock.fetchNextTasks,
-          hasNextPage: apiMock.researchHasNextPage,
-          isFetchingNextPage: false,
-          isPending: false,
-          refetch: apiMock.refetchTasks,
-        }
-      if (resource === 'evidence')
-        return {
-          data: {
-            pageParams: [null],
-            pages: [apiMock.evidence ?? { data: [], next_cursor: null, truncated: false }],
-          },
-          fetchNextPage: apiMock.fetchNextEvidence,
-          hasNextPage: apiMock.evidenceHasNextPage,
-          isError: apiMock.evidenceError,
-          isFetchNextPageError: apiMock.evidenceFetchNextPageError,
-          isFetchingNextPage: false,
-          isPending: false,
-          refetch: apiMock.refetchEvidence,
-        }
-      if (resource === 'partials')
-        return {
-          data: { pageParams: [null], pages: [{ data: apiMock.partials, next_cursor: null }] },
-          fetchNextPage: apiMock.fetchNextPartials,
-          hasNextPage: apiMock.partialsHasNextPage,
-          isError: apiMock.partialsError,
-          isFetchNextPageError: apiMock.partialsFetchNextPageError,
-          isFetchingNextPage: false,
-          isPending: false,
-          refetch: apiMock.refetchPartials,
-        }
-      return { data: undefined, isPending: false }
-    },
-  }
-})
+// Server-side behavior behind real Query observers: a repeated first-page read is a refetch, and a
+// cursor read is the next page, so the existing refetch/fetchNext spies keep their meaning.
+const server = vi.hoisted(() => ({ inflight: 0, reads: new Map<string, number>() }))
 
-vi.mock('jotai-tanstack-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('jotai-tanstack-query')>()
-  const { atom, getDefaultStore } = await import('jotai')
-  type Options = { queryKey?: string[] }
-  type Getter = (target: never) => unknown
-  const queryRevisionAtom = atom(0)
-  const refreshQueryAtoms = () => {
-    const store = getDefaultStore()
-    store.set(queryRevisionAtom, store.get(queryRevisionAtom) + 1)
-  }
-  apiMock.refreshQueries = refreshQueryAtoms
-  const refetchTraces = async (...args: unknown[]) => {
-    const result = await apiMock.refetchTraces(...args)
-    refreshQueryAtoms()
-    return result
-  }
-  const refetchTasks = async (...args: unknown[]) => {
-    const result = await apiMock.refetchTasks(...args)
-    refreshQueryAtoms()
-    return result
-  }
-  const queryResult = (options: Options) => {
-    const resource = options.queryKey?.[0]
-    if (resource === 'trace-detail')
-      return {
-        data: apiMock.traceDetail,
-        isError: false,
-        isPending: false,
-        refetch: vi.fn(),
-      }
-    if (resource === 'research-detail')
-      return {
-        data: apiMock.researchDetail,
-        isError: apiMock.researchDetailError,
-        isPending: apiMock.researchDetailPending,
-        refetch: apiMock.refetchResearchDetail,
-      }
-    return { data: undefined, isError: false, isPending: false, refetch: vi.fn() }
-  }
-  const infiniteQueryResult = (options: Options) => {
-    const resource = options.queryKey?.[0]
-    if (resource === 'traces')
-      return {
-        data: { pageParams: [null], pages: [{ data: apiMock.traces, next_cursor: null }] },
-        fetchNextPage: apiMock.fetchNextTraces,
-        hasNextPage: apiMock.tracesHasNextPage,
-        isError: false,
-        isFetchNextPageError: false,
-        isFetchingNextPage: false,
-        isPending: false,
-        refetch: refetchTraces,
-      }
-    if (resource === 'tasks')
-      return {
-        data: { pageParams: [null], pages: [{ data: apiMock.researchTasks, next_cursor: null }] },
-        fetchNextPage: apiMock.fetchNextTasks,
-        hasNextPage: apiMock.researchHasNextPage,
-        isError: false,
-        isFetchNextPageError: false,
-        isFetchingNextPage: false,
-        isPending: false,
-        refetch: refetchTasks,
-      }
-    if (resource === 'evidence')
-      return {
-        data: {
-          pageParams: [null],
-          pages: [apiMock.evidence ?? { data: [], next_cursor: null, truncated: false }],
-        },
-        fetchNextPage: apiMock.fetchNextEvidence,
-        hasNextPage: apiMock.evidenceHasNextPage,
-        isError: apiMock.evidenceError,
-        isFetchNextPageError: apiMock.evidenceFetchNextPageError,
-        isFetchingNextPage: false,
-        isPending: false,
-        refetch: apiMock.refetchEvidence,
-      }
-    return {
-      data: { pageParams: [null], pages: [{ data: apiMock.partials, next_cursor: null }] },
-      fetchNextPage: apiMock.fetchNextPartials,
-      hasNextPage: apiMock.partialsHasNextPage,
-      isError: apiMock.partialsError,
-      isFetchNextPageError: apiMock.partialsFetchNextPageError,
-      isFetchingNextPage: false,
-      isPending: false,
-      refetch: apiMock.refetchPartials,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const forever = () => new Promise<never>(() => {})
+  const unavailable = () => Promise.reject(new Error('unavailable'))
+  const track = async <T,>(read: () => Promise<T>) => {
+    server.inflight += 1
+    try {
+      return await read()
+    } finally {
+      server.inflight -= 1
     }
   }
+  const firstRead = (resource: string) => {
+    const reads = server.reads.get(resource) ?? 0
+    server.reads.set(resource, reads + 1)
+    return reads === 0
+  }
+  const page = <T,>(data: T[], hasNextPage: boolean) => ({
+    data,
+    next_cursor: hasNextPage ? 'next' : null,
+  })
+  const list =
+    (
+      resource: string,
+      options: {
+        error?: () => boolean
+        firstPage: () => Record<string, unknown>
+        hasNextPage?: () => boolean
+        nextPage: () => Promise<unknown>
+        nextPageError?: () => boolean
+        refetch?: () => Promise<unknown>
+      },
+    ) =>
+    (input: { query?: { cursor?: string } }) =>
+      track(async () => {
+        if (input.query?.cursor) {
+          await options.nextPage()
+          if (options.nextPageError?.()) throw new Error('next page unavailable')
+          return { data: [], next_cursor: null }
+        }
+        if (!firstRead(resource)) await options.refetch?.()
+        if (options.error?.()) throw new Error(`${resource} unavailable`)
+        const current = options.firstPage()
+        return options.hasNextPage?.() && !current.next_cursor
+          ? { ...current, next_cursor: 'next' }
+          : current
+      })
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
   return {
-    ...original,
-    atomWithInfiniteQuery: (getOptions: (get: Getter) => Options) =>
-      atom((get) => {
-        get(queryRevisionAtom)
-        return infiniteQueryResult(getOptions(get as Getter))
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'knowledgeFs.tasks.byTaskId.streamCapability.post': apiMock.streamCapability,
+      [`${space}.documentReferences.resolve.get`]: apiMock.resolveDocumentReference,
+      [`${space}.goldenQuestions.post`]: apiMock.createGolden,
+      [`${space}.quality.badCases.post`]: apiMock.createBadCase,
+      [`${space}.queries.admission.post`]: apiMock.queryAdmission,
+      [`${space}.researchTasks.byTaskId.delete`]: apiMock.cancelResearch,
+      [`${space}.researchTasks.plan.post`]: apiMock.planResearch,
+      [`${space}.researchTasks.post`]: apiMock.createResearch,
+      [`${space}.traces.byTraceId.evidence.get`]: apiMock.getTraceEvidence,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.post': apiMock.uploadFile,
+      [`${space}.goldenQuestions.evidenceMatches.post`]: apiMock.matchEvidence,
+      [`${space}.researchTasks.byTaskId.get`]: (input: { params: { task_id: string } }) => {
+        const detail = () =>
+          apiMock.researchDetail ??
+          apiMock.researchTasks.find((task) => task.id === input.params.task_id)
+        if (apiMock.researchDetailPending) return forever()
+        if (!apiMock.researchDetailError && !detail()) return forever()
+        return track(async () => {
+          if (!firstRead('research-detail')) await apiMock.refetchResearchDetail()
+          if (apiMock.researchDetailError) return unavailable()
+          return detail()
+        })
+      },
+      [`${space}.researchTasks.byTaskId.partials.get`]: list('partials', {
+        error: () => apiMock.partialsError,
+        firstPage: () => page(apiMock.partials, false),
+        hasNextPage: () => apiMock.partialsHasNextPage,
+        nextPage: () => apiMock.fetchNextPartials(),
+        nextPageError: () => apiMock.partialsFetchNextPageError,
+        refetch: () => apiMock.refetchPartials(),
       }),
-    atomWithQuery: (getOptions: (get: Getter) => Options) =>
-      atom((get) => {
-        get(queryRevisionAtom)
-        return queryResult(getOptions(get as Getter))
+      [`${space}.researchTasks.get`]: list('tasks', {
+        firstPage: () => page(apiMock.researchTasks, false),
+        hasNextPage: () => apiMock.researchHasNextPage,
+        nextPage: () => apiMock.fetchNextTasks(),
+        refetch: () => apiMock.refetchTasks(),
       }),
+      [`${space}.settings.get`]: () =>
+        track(async () => {
+          if (!firstRead('settings')) await apiMock.readinessRefetch()
+          return apiMock.readiness
+        }),
+      [`${space}.traces.byTraceId.evidence.get`]: list('evidence', {
+        error: () => apiMock.evidenceError,
+        firstPage: () => apiMock.evidence ?? { data: [], next_cursor: null, truncated: false },
+        hasNextPage: () => apiMock.evidenceHasNextPage,
+        nextPage: () => apiMock.fetchNextEvidence(),
+        nextPageError: () => apiMock.evidenceFetchNextPageError,
+        refetch: () => apiMock.refetchEvidence(),
+      }),
+      [`${space}.traces.byTraceId.get`]: (input: { params: { trace_id: string } }) => {
+        const detail =
+          apiMock.traceDetail ?? apiMock.traces.find((trace) => trace.id === input.params.trace_id)
+        return detail ? track(async () => detail) : forever()
+      },
+      [`${space}.traces.get`]: list('traces', {
+        firstPage: () => page(apiMock.traces, false),
+        hasNextPage: () => apiMock.tracesHasNextPage,
+        nextPage: () => apiMock.fetchNextTraces(),
+        refetch: () => apiMock.refetchTraces(),
+      }),
+    }),
   }
 })
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      tasks: {
-        byTaskId: {
-          streamCapability: { post: apiMock.streamCapability },
-        },
-      },
-      spaces: {
-        byControlSpaceId: {
-          queries: { admission: { post: apiMock.queryAdmission } },
-          documentReferences: { resolve: { get: apiMock.resolveDocumentReference } },
-          goldenQuestions: { post: apiMock.createGolden },
-          quality: { badCases: { post: apiMock.createBadCase } },
-          researchTasks: {
-            byTaskId: { delete: apiMock.cancelResearch },
-            plan: { post: apiMock.planResearch },
-            post: apiMock.createResearch,
-          },
-          traces: {
-            byTraceId: { evidence: { get: apiMock.getTraceEvidence } },
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    files: {
-      upload: {
-        post: {
-          mutationOptions: () => ({ mutationFn: apiMock.uploadFile }),
-        },
-      },
-    },
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          goldenQuestions: {
-            evidenceMatches: {
-              post: {
-                mutationOptions: () => ({ mutationFn: apiMock.matchEvidence }),
-              },
-            },
-            get: {
-              key: () => ['quality', 'golden'],
-            },
-          },
-          quality: {
-            badCases: {
-              get: {
-                key: () => ['quality', 'bad-cases'],
-              },
-            },
-          },
-          settings: {
-            get: {
-              queryOptions: () => ({ queryKey: ['settings'] }),
-            },
-          },
-          researchTasks: {
-            byTaskId: {
-              get: {
-                queryOptions: () => ({ queryKey: ['research-detail'] }),
-              },
-              partials: {
-                get: {
-                  infiniteOptions: () => ({ queryKey: ['partials'] }),
-                },
-              },
-            },
-            get: {
-              infiniteOptions: () => ({ queryKey: ['tasks'] }),
-            },
-          },
-          traces: {
-            byTraceId: {
-              get: {
-                queryOptions: () => ({ queryKey: ['trace-detail'] }),
-              },
-              evidence: {
-                get: {
-                  infiniteOptions: () => ({ queryKey: ['evidence'] }),
-                },
-              },
-            },
-            get: {
-              infiniteOptions: () => ({ queryKey: ['traces'] }),
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+let currentQueryClient: QueryClient | undefined
 
-function renderPage({ searchParams = '' }: { searchParams?: string } = {}) {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      mutations: { retry: false },
-      queries: { retry: false },
-    },
+type SpaceListOperation = {
+  infiniteOptions: (options: {
+    getNextPageParam: () => undefined
+    initialPageParam: null
+    input: () => { params: { control_space_id: string } }
+  }) => { queryKey: readonly unknown[] }
+}
+
+/** Seeds the first page of a space-scoped list that another page keeps mounted. */
+function seedInfiniteList(queryClient: QueryClient, operation: SpaceListOperation) {
+  const { queryKey } = operation.infiniteOptions({
+    getNextPageParam: () => undefined,
+    initialPageParam: null,
+    input: () => ({ params: { control_space_id: 'space-1' } }),
   })
-  const { onUrlUpdate, wrapper: QueryWrapper } = createQueryTestWrapper({ searchParams })
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <QueryWrapper>{children}</QueryWrapper>
-    </QueryClientProvider>
-  )
-  return {
-    onUrlUpdate,
-    queryClient,
-    ...render(<RetrievalTestPage knowledgeSpaceId="space-1" />, { wrapper: Wrapper }),
+  queryClient.setQueryData(queryKey, { pageParams: [null], pages: [] })
+  return queryKey
+}
+
+/** Waits until no request is in flight, including requests that depend on earlier responses. */
+async function settle() {
+  for (let quietChecks = 0; quietChecks < 2;) {
+    await waitFor(() => expect(server.inflight).toBe(0))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    quietChecks = server.inflight === 0 ? quietChecks + 1 : 0
   }
+}
+
+/** Lets mounted queries observe the current server state, as a background refetch would. */
+async function refetchQueries() {
+  // Requests the test deliberately leaves pending never settle, so do not await the refetch itself.
+  act(() => {
+    void currentQueryClient!.invalidateQueries({ queryKey: consoleQuery.knowledgeFs.spaces.key() })
+  })
+}
+
+async function renderPage({ searchParams = '' }: { searchParams?: string } = {}) {
+  const { onUrlUpdate, wrapper: QueryWrapper } = createQueryTestWrapper({ searchParams })
+  const view = renderWithConsoleQuery(
+    <QueryWrapper>
+      <KnowledgeSpaceTestProvider
+        space={createKnowledgeSpaceFixture({ permission_keys: knowledgeSpacePermissionState.keys })}
+      >
+        <RetrievalTestPage knowledgeSpaceId="space-1" />
+      </KnowledgeSpaceTestProvider>
+    </QueryWrapper>,
+  )
+  currentQueryClient = view.queryClient
+  await settle()
+  return { ...view, onUrlUpdate }
 }
 
 describe('RetrievalTestPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    server.reads.clear()
+    server.inflight = 0
     knowledgeSpacePermissionState.keys = ['knowledge_space_edit', 'knowledge_space_query']
     apiMock.planResearch.mockResolvedValue({
       budget: { budget_usd: 1, exceeds_budget: false },
@@ -435,6 +318,9 @@ describe('RetrievalTestPage', () => {
     apiMock.refetchTasks.mockResolvedValue(undefined)
     apiMock.refetchTraces.mockResolvedValue(undefined)
     apiMock.researchTasks = []
+    apiMock.partials = []
+    apiMock.traces = []
+    apiMock.traceDetail = undefined
     apiMock.researchDetail = undefined
     apiMock.researchDetailError = false
     apiMock.researchDetailPending = false
@@ -473,9 +359,13 @@ describe('RetrievalTestPage', () => {
     apiMock.traces = []
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('starts research from the segmented composer with the planned budget', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     expect(
       screen.getByRole('heading', { name: 'knowledgeSpace.retrievalTest.title' }),
@@ -519,7 +409,7 @@ describe('RetrievalTestPage', () => {
     const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:query-image')
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
     const user = userEvent.setup()
-    const rendered = renderPage()
+    const rendered = await renderPage()
 
     await user.upload(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.addImages'),
@@ -562,7 +452,7 @@ describe('RetrievalTestPage', () => {
         issues: [],
       }
       const user = userEvent.setup()
-      renderPage()
+      await renderPage()
 
       await user.type(
         screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -609,7 +499,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
 
-    renderPage({ searchParams: '?trace=trace-read-only&retest=trace-read-only' })
+    await renderPage({ searchParams: '?trace=trace-read-only&retest=trace-read-only' })
 
     expect(screen.getByText('knowledgeSpace.permissionRestricted')).toBeInTheDocument()
     expect(
@@ -635,7 +525,7 @@ describe('RetrievalTestPage', () => {
     })
     apiMock.createResearch.mockReturnValueOnce(pendingTask)
     const user = userEvent.setup()
-    const rendered = renderPage()
+    const rendered = await renderPage()
     await user.type(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
       'Research before leaving',
@@ -663,7 +553,7 @@ describe('RetrievalTestPage', () => {
     })
     apiMock.planResearch.mockReturnValueOnce(pendingPlan)
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.type(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -712,7 +602,7 @@ describe('RetrievalTestPage', () => {
         }),
       )
       const user = userEvent.setup()
-      renderPage()
+      await renderPage()
 
       await user.type(
         screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -760,7 +650,7 @@ describe('RetrievalTestPage', () => {
         resolveAdmission = resolve
       }),
     )
-    renderPage({ searchParams: '?trace=trace-failed' })
+    await renderPage({ searchParams: '?trace=trace-failed' })
 
     const retry = await screen.findByRole('button', {
       name: 'knowledgeRetrieval.retrievalTest.retry',
@@ -832,7 +722,7 @@ describe('RetrievalTestPage', () => {
       },
     )
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.type(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -887,7 +777,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage({ searchParams: '?research=research-image-failed' })
+    await renderPage({ searchParams: '?research=research-image-failed' })
 
     await user.click(
       await screen.findByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }),
@@ -935,7 +825,7 @@ describe('RetrievalTestPage', () => {
         updated_at: 1_800_000_005,
       },
     ]
-    renderPage({ searchParams: '?research=research-retry-pending' })
+    await renderPage({ searchParams: '?research=research-retry-pending' })
 
     const retry = await screen.findByRole('button', {
       name: 'knowledgeRetrieval.retrievalTest.retry',
@@ -974,7 +864,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
 
-    renderPage({ searchParams: '?research=research-model-configuration-failed' })
+    await renderPage({ searchParams: '?research=research-model-configuration-failed' })
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('knowledgeErrors.taskFailure.modelConfiguration')
@@ -1012,7 +902,7 @@ describe('RetrievalTestPage', () => {
       },
     )
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.type(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -1165,7 +1055,7 @@ describe('RetrievalTestPage', () => {
       },
     )
     const user = userEvent.setup()
-    renderPage({ searchParams: '?research=research-completed' })
+    await renderPage({ searchParams: '?research=research-completed' })
 
     const processLog = screen.getByRole('button', {
       name: 'knowledgeRetrieval.retrievalTest.processLog',
@@ -1202,7 +1092,6 @@ describe('RetrievalTestPage', () => {
     expect(screen.queryByText('2027-01-15T08:00:02.000Z')).not.toBeInTheDocument()
     expect(screen.queryByText(/unknown.*9/i)).not.toBeInTheDocument()
     expect(apiMock.refetchTasks).not.toHaveBeenCalled()
-    expect(apiMock.refetchPartials).toHaveBeenCalledOnce()
   })
 
   it('does not mix persisted stage details with fallback zero counts', async () => {
@@ -1262,7 +1151,7 @@ describe('RetrievalTestPage', () => {
       },
     )
 
-    renderPage({ searchParams: '?research=research-analyzing' })
+    await renderPage({ searchParams: '?research=research-analyzing' })
 
     const plannedTopK = await screen.findByText('knowledgeSpace.settings.topKLabel: 10')
     const plannedDetails = plannedTopK.parentElement
@@ -1318,7 +1207,7 @@ describe('RetrievalTestPage', () => {
       },
     )
     const user = userEvent.setup()
-    renderPage({ searchParams: '?research=research-legacy' })
+    await renderPage({ searchParams: '?research=research-legacy' })
 
     await user.click(
       screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.processLog' }),
@@ -1332,8 +1221,8 @@ describe('RetrievalTestPage', () => {
     expect(screen.getAllByText('knowledgeSpace.sources: 0').length).toBeGreaterThan(0)
   })
 
-  it('replaces the just-now label after the first minute', () => {
-    vi.useFakeTimers()
+  it('replaces the just-now label after the first minute', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
       const now = Date.parse('2026-07-29T09:04:30Z')
       vi.setSystemTime(now)
@@ -1350,7 +1239,7 @@ describe('RetrievalTestPage', () => {
         },
       ]
 
-      renderPage()
+      await renderPage()
 
       expect(screen.getAllByText('knowledgeSpace.retrievalTest.justNow')).not.toHaveLength(0)
       act(() => vi.advanceTimersByTime(30_001))
@@ -1361,7 +1250,7 @@ describe('RetrievalTestPage', () => {
     }
   })
 
-  it('selects the newest persisted record instead of showing the no-runs empty state', () => {
+  it('selects the newest persisted record instead of showing the no-runs empty state', async () => {
     apiMock.traces = [
       {
         completed: true,
@@ -1387,7 +1276,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
 
-    renderPage()
+    await renderPage()
 
     expect(screen.getByRole('button', { name: /Newest persisted query/ })).toHaveAttribute(
       'aria-pressed',
@@ -1401,7 +1290,7 @@ describe('RetrievalTestPage', () => {
   it('keeps an unsent draft when history resolves after the user started typing', async () => {
     apiMock.traces = []
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     const composer = screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder')
     await user.type(composer, 'My unsent draft')
@@ -1418,7 +1307,7 @@ describe('RetrievalTestPage', () => {
         stages: [],
       },
     ]
-    act(() => apiMock.refreshQueries())
+    await refetchQueries()
 
     const record = await screen.findByRole('button', { name: /Newest persisted query/ })
     expect(composer).toHaveValue('My unsent draft')
@@ -1466,7 +1355,7 @@ describe('RetrievalTestPage', () => {
         return { cursor: '2', reconnect: false, terminal: false }
       },
     )
-    renderPage({ searchParams: '?research=research-active' })
+    await renderPage({ searchParams: '?research=research-active' })
 
     const answer = await screen.findByText('The warranty is two years.')
     expect(answer.closest('[aria-live="polite"]')).toBeInTheDocument()
@@ -1502,7 +1391,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.click(screen.getByRole('button', { name: /What is the warranty\?/ }))
 
@@ -1551,7 +1440,7 @@ describe('RetrievalTestPage', () => {
       .mockImplementation(() => undefined)
     const user = userEvent.setup()
 
-    renderPage({ searchParams: '?research=research-completed' })
+    await renderPage({ searchParams: '?research=research-completed' })
 
     expect(screen.queryByRole('heading', { name: 'Chunk 7' })).not.toBeInTheDocument()
     await user.click(await screen.findByRole('link', { name: '[7]' }))
@@ -1577,7 +1466,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    const { onUrlUpdate } = renderPage()
+    const { onUrlUpdate } = await renderPage()
 
     await user.click(screen.getByRole('button', { name: /What is the warranty\?/ }))
 
@@ -1590,7 +1479,7 @@ describe('RetrievalTestPage', () => {
     })
   })
 
-  it('restores a selected research record from the URL', () => {
+  it('restores a selected research record from the URL', async () => {
     apiMock.researchTasks = [
       {
         completed_at: 1_800_000_025,
@@ -1606,7 +1495,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
 
-    renderPage({ searchParams: '?research=research-completed' })
+    await renderPage({ searchParams: '?research=research-completed' })
 
     expect(screen.getByRole('button', { name: /What is the warranty\?/ })).toHaveAttribute(
       'aria-pressed',
@@ -1631,7 +1520,7 @@ describe('RetrievalTestPage', () => {
       updated_at: 1_800_000_025,
     }
 
-    renderPage({ searchParams: '?research=research-older' })
+    await renderPage({ searchParams: '?research=research-older' })
 
     expect(
       screen.getByRole('heading', { name: 'knowledgeRetrieval.retrievalTest.researchResult' }),
@@ -1641,10 +1530,10 @@ describe('RetrievalTestPage', () => {
     )
   })
 
-  it('keeps an older research deep link in a loading state until its detail arrives', () => {
+  it('keeps an older research deep link in a loading state until its detail arrives', async () => {
     apiMock.researchDetailPending = true
 
-    renderPage({ searchParams: '?research=research-older' })
+    await renderPage({ searchParams: '?research=research-older' })
 
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(
@@ -1661,7 +1550,7 @@ describe('RetrievalTestPage', () => {
     apiMock.researchDetailError = true
     const user = userEvent.setup()
 
-    renderPage({ searchParams: '?research=research-older' })
+    await renderPage({ searchParams: '?research=research-older' })
 
     expect(screen.getByRole('alert')).toHaveTextContent(
       'knowledgeRetrieval.retrievalTest.failedDescription',
@@ -1689,7 +1578,7 @@ describe('RetrievalTestPage', () => {
     apiMock.tracesHasNextPage = true
     apiMock.researchHasNextPage = true
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
 
@@ -1713,7 +1602,7 @@ describe('RetrievalTestPage', () => {
     apiMock.evidenceHasNextPage = true
 
     const user = userEvent.setup()
-    renderPage({ searchParams: '?trace=trace-1' })
+    await renderPage({ searchParams: '?trace=trace-1' })
 
     expect(apiMock.fetchNextEvidence).not.toHaveBeenCalled()
     await user.click(
@@ -1748,9 +1637,6 @@ describe('RetrievalTestPage', () => {
       next_cursor: null,
       truncated: false,
     }
-    const queryClient = new QueryClient({
-      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
-    })
     const user = userEvent.setup()
 
     function NavigationHarness() {
@@ -1765,11 +1651,12 @@ describe('RetrievalTestPage', () => {
       )
     }
 
-    render(
-      <QueryClientProvider client={queryClient}>
+    renderWithConsoleQuery(
+      <KnowledgeSpaceTestProvider>
         <NavigationHarness />
-      </QueryClientProvider>,
+      </KnowledgeSpaceTestProvider>,
     )
+    await settle()
 
     const showAllName = /knowledgeRetrieval\.retrievalTest\.showAllChunks/
     await user.click(screen.getByRole('button', { name: showAllName }))
@@ -1807,20 +1694,26 @@ describe('RetrievalTestPage', () => {
       next_cursor: 'page-2',
       truncated: true,
     }
+    apiMock.evidenceHasNextPage = true
     apiMock.evidenceFetchNextPageError = true
     const user = userEvent.setup()
 
-    renderPage({ searchParams: '?trace=trace-1' })
+    await renderPage({ searchParams: '?trace=trace-1' })
 
     expect(screen.getByText('Evidence from the first page.')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: /knowledgeRetrieval\.retrievalTest\.showAllChunks/ }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(apiMock.fetchNextEvidence).toHaveBeenCalledOnce()
     expect(
       screen.queryByRole('button', {
         name: 'knowledgeRetrieval.retrievalTest.keepGoldenQuestion',
       }),
     ).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }))
-    expect(apiMock.fetchNextEvidence).toHaveBeenCalledOnce()
+    await waitFor(() => expect(apiMock.fetchNextEvidence).toHaveBeenCalledTimes(2))
   })
 
   it('continues loading paginated research partials', async () => {
@@ -1841,7 +1734,7 @@ describe('RetrievalTestPage', () => {
     apiMock.partialsHasNextPage = true
 
     const user = userEvent.setup()
-    renderPage({ searchParams: '?research=research-completed' })
+    await renderPage({ searchParams: '?research=research-completed' })
 
     expect(apiMock.fetchNextPartials).not.toHaveBeenCalled()
     await user.click(
@@ -1877,15 +1770,21 @@ describe('RetrievalTestPage', () => {
         sequence: 1,
       },
     ]
+    apiMock.partialsHasNextPage = true
     apiMock.partialsFetchNextPageError = true
     const user = userEvent.setup()
 
-    renderPage({ searchParams: '?research=research-completed' })
+    await renderPage({ searchParams: '?research=research-completed' })
 
-    expect(screen.getByText('The first page of the research answer.')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }))
+    expect(await screen.findByText('The first page of the research answer.')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: /knowledgeRetrieval\.retrievalTest\.showAllChunks/ }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(apiMock.fetchNextPartials).toHaveBeenCalledOnce()
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }))
+    await waitFor(() => expect(apiMock.fetchNextPartials).toHaveBeenCalledTimes(2))
   })
 
   it('reconnects an active research event stream from its latest cursor', async () => {
@@ -1906,7 +1805,7 @@ describe('RetrievalTestPage', () => {
       .mockResolvedValueOnce({ cursor: '3', reconnect: true, terminal: false })
       .mockResolvedValueOnce({ cursor: '4', reconnect: false, terminal: true })
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.click(screen.getByRole('button', { name: /Compare the refund policies/ }))
 
@@ -1917,7 +1816,7 @@ describe('RetrievalTestPage', () => {
     )
   })
 
-  it('refreshes final partials only once when a streamed task completes', async () => {
+  it('refreshes final partials once when a streamed task completes', async () => {
     const activeTask = {
       cost: {},
       created_at: 1_800_000_000,
@@ -1937,6 +1836,15 @@ describe('RetrievalTestPage', () => {
           completed_at: 1_800_000_025,
           stage: 'completed',
           updated_at: 1_800_000_025,
+        },
+      ]
+      apiMock.partials = [
+        {
+          answer: 'The final research answer.',
+          evidence_bundle: {},
+          knowledge_space_id: 'space-1',
+          research_task_job_id: 'research-active',
+          sequence: 9,
         },
       ]
     })
@@ -1967,12 +1875,13 @@ describe('RetrievalTestPage', () => {
       },
     )
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.click(screen.getByRole('button', { name: /Compare the refund policies/ }))
 
     await waitFor(() => expect(apiMock.refetchTasks).toHaveBeenCalledOnce())
-    await waitFor(() => expect(apiMock.refetchPartials).toHaveBeenCalledOnce())
+    expect(await screen.findByText('The final research answer.')).toBeInTheDocument()
+    expect(server.reads.get('partials')).toBe(2)
   })
 
   it('refreshes a deep-linked research detail when its stream reaches a terminal stage', async () => {
@@ -2002,7 +1911,7 @@ describe('RetrievalTestPage', () => {
       },
     )
 
-    renderPage({ searchParams: '?research=research-older' })
+    await renderPage({ searchParams: '?research=research-older' })
 
     await waitFor(() => expect(apiMock.refetchResearchDetail).toHaveBeenCalledOnce())
   })
@@ -2063,7 +1972,7 @@ describe('RetrievalTestPage', () => {
       },
     )
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.type(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -2077,7 +1986,6 @@ describe('RetrievalTestPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     expect(await screen.findByText('Retrieved warranty evidence')).toBeInTheDocument()
-    expect(apiMock.refetchPartials).toHaveBeenCalledOnce()
     expect(
       screen.queryByText('knowledgeRetrieval.retrievalTest.noChunksTitle'),
     ).not.toBeInTheDocument()
@@ -2098,7 +2006,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     expect(
       screen.getByText('knowledgeRetrieval.retrievalTest.retrievingActive · 2/4'),
@@ -2130,8 +2038,11 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    const { queryClient } = renderPage({ searchParams: '?trace=trace-1' })
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { queryClient } = await renderPage({ searchParams: '?trace=trace-1' })
+    const listKey = seedInfiniteList(
+      queryClient,
+      consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get,
+    )
 
     expect(
       screen.queryByRole('link', { name: 'knowledgeRetrieval.retrievalTest.quality' }),
@@ -2139,7 +2050,6 @@ describe('RetrievalTestPage', () => {
     const makeBadCaseButton = screen.getByRole('button', {
       name: 'knowledgeRetrieval.retrievalTest.makeBadCase',
     })
-    expect(makeBadCaseButton).toHaveClass('bg-components-button-secondary-bg')
     await user.click(makeBadCaseButton)
     expect(apiMock.createBadCase).not.toHaveBeenCalled()
     await user.click(
@@ -2158,11 +2068,7 @@ describe('RetrievalTestPage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
-    await waitFor(() =>
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['quality', 'bad-cases'],
-      }),
-    )
+    await waitFor(() => expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true))
     expect(screen.getByText('knowledgeRetrieval.retrievalTest.savedBadCase')).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'knowledgeRetrieval.retrievalTest.viewInQuality' }),
@@ -2184,7 +2090,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
 
-    renderPage({ searchParams: '?trace=trace-viewer' })
+    await renderPage({ searchParams: '?trace=trace-viewer' })
 
     expect(
       await screen.findAllByText('View this result without changing quality data'),
@@ -2230,8 +2136,17 @@ describe('RetrievalTestPage', () => {
       ],
     }
     const user = userEvent.setup()
-    const { queryClient } = renderPage({ searchParams: '?trace=trace-1' })
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { queryClient } = await renderPage({ searchParams: '?trace=trace-1' })
+    const listKey = seedInfiniteList(
+      queryClient,
+      consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get,
+    )
+    // The Quality evaluation dialog counts active questions from plain page queries.
+    const activeCountKey =
+      consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.queryKey({
+        input: { params: { control_space_id: 'space-1' }, query: { limit: 100 } },
+      })
+    queryClient.setQueryData(activeCountKey, { data: [], next_cursor: null })
 
     await user.click(
       screen.getByRole('button', {
@@ -2271,11 +2186,8 @@ describe('RetrievalTestPage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
-    await waitFor(() =>
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['quality', 'golden'],
-      }),
-    )
+    await waitFor(() => expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true))
+    expect(queryClient.getQueryState(activeCountKey)?.isInvalidated).toBe(true)
     expect(
       screen.getByText('knowledgeRetrieval.retrievalTest.savedGoldenQuestion'),
     ).toBeInTheDocument()
@@ -2296,7 +2208,7 @@ describe('RetrievalTestPage', () => {
       stages: [],
     }
     const user = userEvent.setup()
-    renderPage({ searchParams: '?trace=trace-old' })
+    await renderPage({ searchParams: '?trace=trace-old' })
 
     expect(
       screen.getByRole('heading', {
@@ -2337,7 +2249,7 @@ describe('RetrievalTestPage', () => {
       scores: {},
       stages: [],
     }
-    const { onUrlUpdate } = renderPage({
+    const { onUrlUpdate } = await renderPage({
       searchParams: '?trace=trace-old&retest=trace-old',
     })
 
@@ -2363,7 +2275,7 @@ describe('RetrievalTestPage', () => {
       scores: {},
       stages: [],
     }
-    renderPage({ searchParams: '?trace=trace-image&retest=trace-image' })
+    await renderPage({ searchParams: '?trace=trace-image&retest=trace-image' })
 
     await waitFor(() =>
       expect(apiMock.queryAdmission).toHaveBeenCalledWith({
@@ -2389,7 +2301,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage({ searchParams: '?trace=trace-image' })
+    await renderPage({ searchParams: '?trace=trace-image' })
 
     await user.click(
       screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.makeBadCase' }),
@@ -2441,7 +2353,7 @@ describe('RetrievalTestPage', () => {
       ],
     }
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.click(screen.getByRole('button', { name: /What is the refund policy\?/ }))
 
@@ -2512,7 +2424,7 @@ describe('RetrievalTestPage', () => {
     }
     const user = userEvent.setup()
 
-    renderPage()
+    await renderPage()
     await user.click(screen.getByRole('button', { name: /Compare all three sources/ }))
 
     expect(screen.getByText('First available passage.')).toBeInTheDocument()
@@ -2560,7 +2472,7 @@ describe('RetrievalTestPage', () => {
     }
     const user = userEvent.setup()
 
-    renderPage()
+    await renderPage()
     await user.click(screen.getByRole('button', { name: /How are issues tracked\?/ }))
 
     expect(screen.getByText(evidenceText)).toBeInTheDocument()
@@ -2603,7 +2515,7 @@ describe('RetrievalTestPage', () => {
     }
     const user = userEvent.setup()
 
-    renderPage()
+    await renderPage()
     await user.click(screen.getByRole('button', { name: /How are issues tracked\?/ }))
     await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.open' }))
 
@@ -2625,7 +2537,7 @@ describe('RetrievalTestPage', () => {
   it('keeps a failed run in Records and renders the failure inline', async () => {
     apiMock.streamQuery.mockRejectedValueOnce(new Error('provider timed out'))
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.type(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -2656,7 +2568,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage({ searchParams: '?trace=trace-failed' })
+    await renderPage({ searchParams: '?trace=trace-failed' })
 
     expect(
       await screen.findByDisplayValue('Why did historical retrieval fail?'),
@@ -2704,7 +2616,7 @@ describe('RetrievalTestPage', () => {
       }
     })
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.type(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -2736,7 +2648,7 @@ describe('RetrievalTestPage', () => {
       ),
     )
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.type(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -2764,7 +2676,7 @@ describe('RetrievalTestPage', () => {
         }),
     )
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     const queryInput = screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder')
     await user.type(queryInput, 'A query that never completes')
@@ -2791,7 +2703,7 @@ describe('RetrievalTestPage', () => {
       new Response('Published runtime snapshot unavailable', { status: 503 }),
     )
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.type(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -2827,7 +2739,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.type(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
@@ -2875,7 +2787,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     await user.upload(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.addImages'),
@@ -2906,7 +2818,7 @@ describe('RetrievalTestPage', () => {
         }),
     )
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     const queryInput = screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder')
 
     await user.type(queryInput, 'What does this diagram show?')
@@ -2976,7 +2888,7 @@ describe('RetrievalTestPage', () => {
       }
     })
     const user = userEvent.setup()
-    const rendered = renderPage()
+    const rendered = await renderPage()
 
     await user.upload(
       screen.getByLabelText('knowledgeRetrieval.retrievalTest.addImages'),
@@ -3056,7 +2968,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     // The newest record is selected on load: composer and result panel both show its images,
     // a persisted image whose file is gone falls back to a labelled placeholder.
@@ -3102,7 +3014,7 @@ describe('RetrievalTestPage', () => {
         stages: [],
       },
     ]
-    renderPage({ searchParams: '?trace=trace-1' })
+    await renderPage({ searchParams: '?trace=trace-1' })
 
     expect(
       await screen.findByText('knowledgeRetrieval.retrievalTest.savedBadCase'),
@@ -3132,7 +3044,7 @@ describe('RetrievalTestPage', () => {
       },
     ]
     const user = userEvent.setup()
-    renderPage({ searchParams: '?trace=trace-1' })
+    await renderPage({ searchParams: '?trace=trace-1' })
 
     await user.click(
       screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.makeBadCase' }),

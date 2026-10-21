@@ -1,25 +1,23 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { CreatorFilter } from '../creator-filter'
 import { CREATOR_FILTER_MAX_SELECTION } from '../creator-filter-query'
 
-const members = vi.hoisted(() => ({
-  result: {} as {
-    data?: { accounts: { id: string; name: string; avatar_url: null; status: string }[] }
-    isError: boolean
-    isPending: boolean
-    refetch: () => void
-  },
-}))
+const members = vi.hoisted(() => ({ get: vi.fn() }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.members.get': () => members.result,
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': members.get,
+    }),
+  }
 })
 
 const activeMembers = [
@@ -29,10 +27,10 @@ const activeMembers = [
   { id: 'member-4', name: 'Pending Pat', avatar_url: null, status: 'pending' },
 ]
 
-const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
-  renderWithConsoleState(ui, {
-    wrapper: createConsoleQueryWrapper({ accountProfile: { id: 'member-2' } }).wrapper,
-  })
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) => {
+  const { queryClient, wrapper } = createConsoleQueryWrapper({ accountProfile: { id: 'member-2' } })
+  return { ...renderWithConsoleState(ui, { wrapper }), queryClient }
+}
 
 function ControlledCreatorFilter({
   initialValue = [],
@@ -55,12 +53,8 @@ function ControlledCreatorFilter({
 
 describe('CreatorFilter', () => {
   beforeEach(() => {
-    members.result = {
-      data: { accounts: activeMembers },
-      isError: false,
-      isPending: false,
-      refetch: vi.fn(),
-    }
+    members.get.mockReset()
+    members.get.mockResolvedValue({ accounts: activeMembers })
   })
 
   it('searches and selects creators with the keyboard, keeping selections hidden by the search', async () => {
@@ -147,9 +141,8 @@ describe('CreatorFilter', () => {
 
   it('offers a retry for initial and cached refresh failures', async () => {
     const user = userEvent.setup()
-    const refetch = vi.fn()
-    members.result = { data: undefined, isError: true, isPending: false, refetch }
-    const { rerender } = render(<ControlledCreatorFilter />)
+    members.get.mockRejectedValueOnce(new Error('members unavailable'))
+    const { queryClient } = render(<ControlledCreatorFilter />)
 
     await user.click(screen.getByRole('combobox', { name: 'dataset.creatorFilter.creators' }))
     const initialError = await screen.findByRole('alert')
@@ -157,14 +150,18 @@ describe('CreatorFilter', () => {
       screen.getByRole('combobox', { name: 'app.studio.filters.searchCreators' }),
     ).toBeDisabled()
     await user.click(within(initialError).getByRole('button', { name: 'common.operation.retry' }))
-    expect(refetch).toHaveBeenCalledTimes(1)
+    expect(await screen.findAllByRole('option')).toHaveLength(3)
 
-    members.result = { data: { accounts: activeMembers }, isError: true, isPending: false, refetch }
-    rerender(<ControlledCreatorFilter />)
+    // A later background refresh fails while the loaded members stay visible.
+    members.get.mockRejectedValueOnce(new Error('members unavailable'))
+    await act(() =>
+      queryClient.refetchQueries({ queryKey: consoleQuery.workspaces.current.members.get.key() }),
+    )
 
     const refreshError = await screen.findByRole('alert')
     expect(screen.getAllByRole('option')).toHaveLength(3)
     await user.click(within(refreshError).getByRole('button', { name: 'common.operation.retry' }))
-    expect(refetch).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(members.get).toHaveBeenCalledTimes(4)
   })
 })

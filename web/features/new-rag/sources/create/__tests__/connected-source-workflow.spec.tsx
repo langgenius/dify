@@ -11,30 +11,18 @@ import type {
   KnowledgeFsSourceWorkflowResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
 } from '../../setup/source-draft'
-import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { ConnectedSourceWorkflow } from '../connected-source-workflow'
-
-type ProviderQueryOptions = {
-  input: unknown
-  retry?: boolean
-  select?: (response: KnowledgeFsSourceProviderListResponse) => unknown
-}
-
-type ConnectionInfiniteOptions = {
-  getNextPageParam: (lastPage: KnowledgeFsSourceConnectionListResponse) => string | null | undefined
-  initialPageParam: string | null
-  input: (pageParam: string | null) => unknown
-  retry?: boolean
-}
 
 const clientMock = vi.hoisted(() => ({
   createConnection: vi.fn(),
@@ -67,133 +55,40 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          sourceConnections: {
-            byConnectionId: {
-              refresh: {
-                post: clientMock.refreshConnection,
-              },
-            },
-            post: clientMock.createConnection,
-          },
-          sourceWorkflows: {
-            byRunId: {
-              get: clientMock.getWorkflow,
-            },
-          },
-          sources: {
-            bySourceId: {
-              asyncImport: {
-                post: clientMock.createWorkflowImport,
-              },
-              delete: clientMock.deleteSource,
-              files: {
-                get: clientMock.getFiles,
-              },
-              get: clientMock.getSource,
-              import: {
-                post: clientMock.importPages,
-              },
-              importFiles: {
-                post: clientMock.importFiles,
-              },
-              pages: {
-                get: clientMock.getPages,
-              },
-              patch: clientMock.patchSource,
-              syncPolicy: {
-                get: clientMock.getSyncPolicy,
-                put: clientMock.updateSyncPolicy,
-              },
-              workflowImports: {
-                post: clientMock.createWorkflowImport,
-              },
-            },
-            get: clientMock.listSources,
-            post: clientMock.createSource,
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    auth: {
-      plugin: {
-        datasource: {
-          list: {
-            get: {
-              queryOptions: (options: { enabled?: boolean } = {}) => ({
-                ...options,
-                queryKey: ['data-source-auth', 'list'],
-                queryFn: () => clientMock.listDatasourceAuth(),
-                retry: false,
-              }),
-            },
-          },
-        },
-      },
-    },
-    rag: {
-      pipelines: {
-        datasourcePlugins: {
-          get: {
-            queryOptions: (options: { enabled?: boolean }) => ({
-              ...options,
-              queryKey: ['datasource-plugins'],
-              queryFn: () => clientMock.listDatasourcePlugins(),
-              retry: false,
-            }),
-          },
-        },
-      },
-    },
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          documents: {
-            get: {
-              key: () => ['knowledge-documents'],
-            },
-          },
-          sourceConnections: {
-            get: {
-              infiniteOptions: (options: ConnectionInfiniteOptions) => ({
-                getNextPageParam: options.getNextPageParam,
-                initialPageParam: options.initialPageParam,
-                queryFn: ({ pageParam }: { pageParam: string | null }) =>
-                  clientMock.listConnections(options.input(pageParam)),
-                queryKey: ['source-connections'],
-                retry: options.retry,
-              }),
-              key: () => ['source-connections'],
-            },
-          },
-          sourceProviders: {
-            get: {
-              queryOptions: (options: ProviderQueryOptions) => ({
-                queryFn: async () => {
-                  const response = await clientMock.listProviders(options.input)
-                  return options.select ? options.select(response) : response
-                },
-                queryKey: ['source-providers'],
-                retry: options.retry,
-              }),
-            },
-          },
-          sources: {
-            get: {
-              key: () => ['knowledge-sources'],
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
+  const source = `${space}.sources.bySourceId`
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      [`${space}.sourceConnections.byConnectionId.refresh.post`]: clientMock.refreshConnection,
+      [`${space}.sourceConnections.post`]: clientMock.createConnection,
+      [`${space}.sourceWorkflows.byRunId.get`]: clientMock.getWorkflow,
+      [`${source}.asyncImport.post`]: clientMock.createWorkflowImport,
+      [`${source}.delete`]: clientMock.deleteSource,
+      [`${source}.files.get`]: clientMock.getFiles,
+      [`${source}.get`]: clientMock.getSource,
+      [`${source}.import.post`]: clientMock.importPages,
+      [`${source}.importFiles.post`]: clientMock.importFiles,
+      [`${source}.pages.get`]: clientMock.getPages,
+      [`${source}.patch`]: clientMock.patchSource,
+      [`${source}.syncPolicy.get`]: clientMock.getSyncPolicy,
+      [`${source}.syncPolicy.put`]: clientMock.updateSyncPolicy,
+      [`${source}.workflowImports.post`]: clientMock.createWorkflowImport,
+      [`${space}.sources.get`]: clientMock.listSources,
+      [`${space}.sources.post`]: clientMock.createSource,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.list.get': () => clientMock.listDatasourceAuth(),
+      'rag.pipelines.datasourcePlugins.get': () => clientMock.listDatasourcePlugins(),
+      [`${space}.sourceConnections.get`]: clientMock.listConnections,
+      [`${space}.sourceProviders.get`]: clientMock.listProviders,
+    }),
+  }
+})
 
 const notionProvider: KnowledgeFsSourceProviderResponse = {
   auth_kinds: ['endpoint'],
@@ -500,13 +395,25 @@ const defaultDraft: NewKnowledgeOnlineDocumentsSourceDraft = {
 
 type ConnectedDraft = NewKnowledgeOnlineDocumentsSourceDraft | NewKnowledgeOnlineDriveSourceDraft
 
-function renderSetup(draft: ConnectedDraft = defaultDraft) {
+/** The server lists a connection once it has been created, as later connection refetches expect. */
+function acceptConnection(connection: KnowledgeFsSourceConnectionResponse) {
+  clientMock.createConnection.mockImplementation(async () => {
+    clientMock.listConnections.mockResolvedValue({ data: [connection], next_cursor: null })
+    return connection
+  })
+}
+
+async function settle(queryClient: QueryClient) {
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+}
+
+async function renderSetup(draft: ConnectedDraft = defaultDraft, { settled = true } = {}) {
   const queryClient = createTestQueryClient()
   const onCompleted = vi.fn()
   const onDraftChange = vi.fn()
   const onExit = vi.fn()
   const content = (nextDraft: ConnectedDraft) => (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <ConnectedSourceWorkflow
         draft={nextDraft}
         knowledgeSpaceId="space-1"
@@ -514,9 +421,10 @@ function renderSetup(draft: ConnectedDraft = defaultDraft) {
         onDraftChange={onDraftChange}
         onExit={onExit}
       />
-    </QueryClientProvider>
+    </QueryClientTestProvider>
   )
   const view = render(content(draft))
+  if (settled) await settle(queryClient)
   return {
     ...view,
     onCompleted,
@@ -527,7 +435,7 @@ function renderSetup(draft: ConnectedDraft = defaultDraft) {
   }
 }
 
-function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
+async function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
   const queryClient = createTestQueryClient()
   const onCompleted = vi.fn()
   const onDraftChange = vi.fn()
@@ -536,7 +444,7 @@ function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
   function StatefulSetup() {
     const [currentDraft, setCurrentDraft] = useState(draft)
     return (
-      <QueryClientProvider client={queryClient}>
+      <QueryClientTestProvider queryClient={queryClient}>
         <ConnectedSourceWorkflow
           draft={currentDraft}
           knowledgeSpaceId="space-1"
@@ -547,11 +455,13 @@ function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
           }}
           onExit={onExit}
         />
-      </QueryClientProvider>
+      </QueryClientTestProvider>
     )
   }
 
-  return { ...render(<StatefulSetup />), onDraftChange }
+  const view = render(<StatefulSetup />)
+  await settle(queryClient)
+  return { ...view, onDraftChange }
 }
 
 describe('ConnectedSourceWorkflow', () => {
@@ -595,17 +505,19 @@ describe('ConnectedSourceWorkflow', () => {
     vi.unstubAllGlobals()
   })
 
-  it('keeps the sync policy available while provider data is loading', () => {
+  it('keeps the sync policy available while provider data is loading', async () => {
     clientMock.listProviders.mockReturnValue(new Promise(() => undefined))
 
-    renderSetup()
+    await renderSetup(defaultDraft, { settled: false })
 
-    expect(screen.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' })).toBeEnabled()
+    expect(
+      await screen.findByRole('combobox', { name: 'knowledgeSources.syncPolicy' }),
+    ).toBeEnabled()
   })
 
   it('shows the shared provider credential card and opens the provider package when no credential exists', async () => {
     const user = userEvent.setup()
-    const view = renderSetup()
+    const view = await renderSetup()
 
     expect(
       await screen.findByText('knowledgeSources.providerNotConfigured:{"provider":"Notion"}'),
@@ -638,7 +550,7 @@ describe('ConnectedSourceWorkflow', () => {
       next_cursor: null,
     } satisfies KnowledgeFsSourceConnectionListResponse)
 
-    renderSetup()
+    await renderSetup()
 
     expect(
       await screen.findByText('knowledgeSources.providerNotConfigured:{"provider":"Notion"}'),
@@ -649,7 +561,7 @@ describe('ConnectedSourceWorkflow', () => {
   })
 
   it('falls back to an installed provider when the requested provider is not installed', async () => {
-    renderSetup({
+    await renderSetup({
       ...defaultDraft,
       provider: 'Confluence',
     })
@@ -667,9 +579,9 @@ describe('ConnectedSourceWorkflow', () => {
     clientMock.listDatasourceAuth.mockResolvedValue({
       result: [notionDatasourceAuth([notionCredential])],
     })
-    clientMock.createConnection.mockResolvedValue(connectionResponse())
+    acceptConnection(connectionResponse())
 
-    renderSetup({
+    await renderSetup({
       ...defaultDraft,
       parameters: { folderId: 'stale-google-folder' },
       provider: 'Google Docs',
@@ -713,7 +625,7 @@ describe('ConnectedSourceWorkflow', () => {
   it('prompts for provider installation when no matching integration is installed', async () => {
     clientMock.listDatasourcePlugins.mockResolvedValue([s3DatasourcePlugin])
 
-    renderSetup()
+    await renderSetup()
 
     const prompt = await screen.findByText('plugin.list.notFound')
     expect(prompt.closest('[role="status"]')).toBeInTheDocument()
@@ -764,7 +676,7 @@ describe('ConnectedSourceWorkflow', () => {
       result: [notionDatasourceAuth([notionCredential])],
     })
     clientMock.createConnection.mockRejectedValue(new Error('provider unavailable'))
-    const { queryClient } = renderSetup()
+    const { queryClient } = await renderSetup()
 
     expect(
       await screen.findByText('knowledgeSources.connectionFailed:{"provider":"Notion"}'),
@@ -774,11 +686,9 @@ describe('ConnectedSourceWorkflow', () => {
       data: [outlineProvider],
     } satisfies KnowledgeFsSourceProviderListResponse)
     await act(async () => {
-      queryClient.setQueryData(['datasource-plugins'], [outlineDatasourcePlugin])
-      queryClient.setQueryData(['data-source-auth', 'list'], {
-        result: [outlineDatasourceAuth],
-      })
-      await queryClient.refetchQueries({ queryKey: ['source-providers'] })
+      clientMock.listDatasourcePlugins.mockResolvedValue([outlineDatasourcePlugin])
+      clientMock.listDatasourceAuth.mockResolvedValue({ result: [outlineDatasourceAuth] })
+      await queryClient.refetchQueries()
     })
 
     expect(await screen.findByRole('radio', { name: 'Outline' })).toBeChecked()
@@ -806,7 +716,7 @@ describe('ConnectedSourceWorkflow', () => {
         data: [connectionResponse()],
         next_cursor: null,
       })
-      renderStatefulSetup({ ...defaultDraft, sourceName })
+      await renderStatefulSetup({ ...defaultDraft, sourceName })
 
       const input = await screen.findByRole('textbox', { name: /knowledgeSources.sourceName/ })
       expect(input).not.toHaveValue('')
@@ -868,10 +778,10 @@ describe('ConnectedSourceWorkflow', () => {
       failed: [],
       skipped: [],
     })
-    const view = renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+    const view = await renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
 
     const page = await screen.findByRole('checkbox', { name: 'Product roadmap' })
-    expect(clientMock.createSource).toHaveBeenNthCalledWith(1, {
+    expect(clientMock.createSource).toHaveBeenCalledExactlyOnceWith({
       body: {
         connectionId: 'connection-1',
         metadata: {
@@ -906,7 +816,6 @@ describe('ConnectedSourceWorkflow', () => {
     await user.click(currentAddSource)
 
     await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
-    expect(clientMock.createSource).toHaveBeenCalledOnce()
     expect(clientMock.patchSource).toHaveBeenCalledWith({
       body: {
         expectedVersion: 3,
@@ -974,7 +883,7 @@ describe('ConnectedSourceWorkflow', () => {
     })
     const rename = deferred<KnowledgeFsSourceResponse>()
     clientMock.patchSource.mockReturnValue(rename.promise)
-    const view = renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+    const view = await renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
 
     await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
@@ -1029,7 +938,7 @@ describe('ConnectedSourceWorkflow', () => {
         },
       ],
     })
-    const view = renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+    const view = await renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
 
     await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
     expect(screen.getByRole('button', { name: 'knowledgeSpace.addSource' })).toHaveAttribute(
@@ -1089,7 +998,7 @@ describe('ConnectedSourceWorkflow', () => {
         version: 5,
       }),
     )
-    const view = renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+    const view = await renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
 
     await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
@@ -1112,7 +1021,7 @@ describe('ConnectedSourceWorkflow', () => {
       next_cursor: null,
     } satisfies KnowledgeFsSourceConnectionListResponse)
 
-    renderStatefulSetup({ ...defaultDraft, parameters: {} })
+    await renderStatefulSetup({ ...defaultDraft, parameters: {} })
 
     const workspace = await screen.findByRole('textbox', { name: 'Workspace' })
     await user.type(workspace, 'product-docs')
@@ -1134,9 +1043,9 @@ describe('ConnectedSourceWorkflow', () => {
     clientMock.listDatasourceAuth.mockResolvedValue({
       result: [notionDatasourceAuth([notionCredential])],
     })
-    clientMock.createConnection.mockResolvedValue(connectionResponse())
+    acceptConnection(connectionResponse())
 
-    const view = renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+    const view = await renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
 
     await waitFor(() =>
       expect(clientMock.createConnection).toHaveBeenCalledWith({
@@ -1179,9 +1088,9 @@ describe('ConnectedSourceWorkflow', () => {
       data: [failedConnection],
       next_cursor: null,
     } satisfies KnowledgeFsSourceConnectionListResponse)
-    clientMock.createConnection.mockResolvedValue(recoveredConnection)
+    acceptConnection(recoveredConnection)
 
-    renderSetup({ ...defaultDraft, sourceName: 'Recovered wiki' })
+    await renderSetup({ ...defaultDraft, sourceName: 'Recovered wiki' })
 
     expect(
       await screen.findByText('knowledgeSources.connectionNeedsAttention:{"provider":"Notion"}'),
@@ -1369,7 +1278,7 @@ describe('ConnectedSourceWorkflow', () => {
           }),
     )
 
-    const view = renderSetup(googleDraft)
+    const view = await renderSetup(googleDraft)
 
     expect(
       await screen.findByText('knowledgeSources.selectFoldersAndDocsToSync'),
@@ -1596,7 +1505,7 @@ describe('ConnectedSourceWorkflow', () => {
       },
     )
 
-    const view = renderSetup(s3Draft)
+    const view = await renderSetup(s3Draft)
 
     const bucket = await screen.findByRole('button', { name: 'product-bucket' })
     expect(screen.getByText('s3://product-bucket · us-west-2')).toBeInTheDocument()
@@ -1865,7 +1774,7 @@ describe('ConnectedSourceWorkflow', () => {
       },
     )
 
-    renderSetup(s3Draft)
+    await renderSetup(s3Draft)
 
     await user.click(await screen.findByRole('button', { name: 'limit-bucket' }))
     const folder = await screen.findByRole('checkbox', { name: 'Large folder' })

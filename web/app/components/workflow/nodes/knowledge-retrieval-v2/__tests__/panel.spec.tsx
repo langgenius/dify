@@ -1,168 +1,72 @@
-import type { ReactNode } from 'react'
+import type { KnowledgeRetrievalV2NodeType } from '../types'
+import type useConfig from '../use-config'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import Panel from '../panel'
 
-const mockUseInfiniteQuery = vi.hoisted(() => vi.fn())
-const mockUseQueries = vi.hoisted(() => vi.fn())
-const mockInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
-const mockMetadataQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
-const mockHandleMetadataFilterChange = vi.hoisted(() => vi.fn())
-const mockMetadataFilterProps = vi.hoisted(() => vi.fn())
-const mockHandleSpacesChange = vi.hoisted(() => vi.fn())
-const mockHandleTopNChange = vi.hoisted(() => vi.fn())
-const mockHandleRerankingModelChange = vi.hoisted(() => vi.fn())
-const mockHandleScoreThresholdChange = vi.hoisted(() => vi.fn())
-const mockRecallSettingsProps = vi.hoisted(() => vi.fn())
-const mockKnowledgeSpaceListProps = vi.hoisted(() => vi.fn())
-const mockVarReferencePickerProps = vi.hoisted(() => vi.fn())
-const mockHandleQueryAttachmentChange = vi.hoisted(() => vi.fn())
-const mockFilterFileVar = vi.hoisted(() => vi.fn())
-const mockHandleMetadataModelChange = vi.hoisted(() => vi.fn())
-const mockHandleMetadataCompletionParamsChange = vi.hoisted(() => vi.fn())
-const mockInputs = vi.hoisted(
-  () =>
-    ({
-      title: 'Knowledge Retrieval v2',
-      desc: '',
-      type: 'knowledge-retrieval-v2',
-      query_attachment_selector: ['start', 'images'],
-      query_variable_selector: ['start', 'query'],
-      control_space_ids: ['space-1'],
-      mode: 'research',
-      top_n: 10,
-    }) as {
-      title: string
-      desc: string
-      type: string
-      query_attachment_selector: string[]
-      query_variable_selector: string[]
-      control_space_ids: string[]
-      mode: string
-      top_n: number
-      metadata_filtering_mode?: string
-      metadata_model_config?: Record<string, unknown>
-    },
-)
-
-vi.mock('@tanstack/react-query', () => ({
-  useInfiniteQuery: mockUseInfiniteQuery,
-  useQueries: mockUseQueries,
+const service = vi.hoisted(() => ({
+  listMetadata: vi.fn(),
+  listSpaces: vi.fn(),
+}))
+const configState = vi.hoisted(() => ({
+  handleSpacesChange: vi.fn(),
+  handleTopNChange: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          metadata: { get: { queryOptions: mockMetadataQueryOptions } },
-        },
-        get: { infiniteOptions: mockInfiniteOptions },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'knowledgeFs.spaces.byControlSpaceId.metadata.get': service.listMetadata,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'knowledgeFs.spaces.get': service.listSpaces,
+    }),
+  }
+})
 
-vi.mock('../use-config', () => ({
-  default: () => ({
-    readOnly: false,
-    inputs: mockInputs,
-    availableNumberNodesWithParent: [],
-    availableNumberVars: [],
-    availableStringNodesWithParent: [],
-    availableStringVars: [],
-    filterFileVar: mockFilterFileVar,
-    filterStringVar: vi.fn(),
-    handleAddCondition: vi.fn(),
-    handleMetadataCompletionParamsChange: mockHandleMetadataCompletionParamsChange,
-    handleMetadataFilterChange: mockHandleMetadataFilterChange,
-    handleMetadataFilterModeChange: vi.fn(),
-    handleMetadataModelChange: mockHandleMetadataModelChange,
-    handleModeChange: vi.fn(),
-    handleNodeKindToggle: vi.fn(),
-    handleQueryAttachmentChange: mockHandleQueryAttachmentChange,
-    handleQueryVarChange: vi.fn(),
-    handleRerankingModelChange: mockHandleRerankingModelChange,
-    handleRemoveCondition: vi.fn(),
-    handleScoreThresholdChange: mockHandleScoreThresholdChange,
-    handleSpacesChange: mockHandleSpacesChange,
-    handleTopNChange: mockHandleTopNChange,
-    handleToggleConditionLogicalOperator: vi.fn(),
-    handleUpdateCondition: vi.fn(),
-  }),
+// Node configuration editing has its own hook suite; this panel suite renders a given config.
+const useConfigMock = vi.hoisted(() => vi.fn())
+vi.mock('../use-config', () => ({ default: useConfigMock }))
+// These children have their own interaction suites and only receive panel-owned values.
+vi.mock('../components/add-knowledge-space', () => ({ default: () => null }))
+vi.mock('../components/recall-settings', () => ({
+  default: ({ onTopKChange, topK }: { onTopKChange: (value: number) => void; topK: number }) => (
+    <button type="button" onClick={() => onTopKChange(12)}>
+      recall top {topK}
+    </button>
+  ),
 }))
-
+vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
+  default: () => null,
+}))
 vi.mock(
   '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter',
   () => ({
     default: (props: {
-      allowedModes: string[]
+      metadataFilterMode: string
       metadataList: Array<{ name: string; type: string }>
       selectedDatasetsLoaded: boolean
-    }) => {
-      mockMetadataFilterProps(props)
-      return (
-        <div data-testid="metadata-filter">
-          {props.metadataList.map((metadata) => `${metadata.name}:${metadata.type}`).join(',')}
-        </div>
-      )
-    },
+    }) => (
+      <section aria-label="metadata filter">
+        <p>mode: {props.metadataFilterMode}</p>
+        <p>loaded: {String(props.selectedDatasetsLoaded)}</p>
+        <ul>
+          {props.metadataList.map((field) => (
+            <li key={field.name}>{`${field.name}:${field.type}`}</li>
+          ))}
+        </ul>
+      </section>
+    ),
   }),
 )
-
-vi.mock('../components/add-knowledge-space', () => ({
-  default: () => <button type="button">add-space</button>,
-}))
-
-vi.mock('../components/knowledge-space-list', () => ({
-  default: (props: { list: Array<{ control_space_id: string; name: string }> }) => {
-    mockKnowledgeSpaceListProps(props)
-    return <div data-testid="space-list">{props.list.map((space) => space.name).join(',')}</div>
-  },
-}))
-
-vi.mock('../components/recall-settings', () => ({
-  default: (props: { onTopKChange: (value: number) => void; topK: number }) => {
-    mockRecallSettingsProps(props)
-    return (
-      <button type="button" onClick={() => props.onTopKChange(12)}>
-        recall-{props.topK}
-      </button>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({
-    children,
-    operations,
-    title,
-  }: {
-    children: ReactNode
-    operations?: ReactNode
-    title: string
-  }) => (
-    <section>
-      <div>{title}</div>
-      {operations}
-      {children}
-    </section>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name }: { name: string }) => <div>{name}</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({ default: () => null }))
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: (props: unknown) => {
-    mockVarReferencePickerProps(props)
-    return <div data-testid="variable-picker" />
-  },
-}))
 
 const panelProps: PanelProps = {
   getInputVars: () => [],
@@ -173,259 +77,159 @@ const panelProps: PanelProps = {
   runResult: undefined,
 }
 
+const space = (controlSpaceId: string, name: string, technicalStatus = 'available') => ({
+  control_space_id: controlSpaceId,
+  created_at: '2026-08-18T00:00:00Z',
+  knowledge_space_id: controlSpaceId,
+  linked_apps: 0,
+  owner_account_id: 'account-1',
+  permission_keys: ['knowledge_space_read', 'knowledge_space_query'],
+  resource_version: 1,
+  state: 'active',
+  technical_status: technicalStatus,
+  technical_summary: {
+    description: null,
+    knowledge_space_id: controlSpaceId,
+    name,
+    revision: 1,
+    slug: controlSpaceId,
+  },
+  updated_at: '2026-08-18T00:00:00Z',
+  visibility: 'only_me',
+})
+
+const field = (name: string, type: 'number' | 'string' | 'time') => ({
+  count: 1,
+  created_at: '2026-08-18T00:00:00Z',
+  id: `${name}-${type}`,
+  name,
+  row_version: 1,
+  type,
+  updated_at: '2026-08-18T00:00:00Z',
+})
+
+const nodeData = (
+  overrides: Partial<KnowledgeRetrievalV2NodeType> = {},
+): KnowledgeRetrievalV2NodeType => ({
+  title: 'Knowledge Retrieval v2',
+  desc: '',
+  type: BlockEnum.KnowledgeRetrievalV2,
+  query_variable_selector: ['start', 'query'],
+  control_space_ids: ['space-1'],
+  mode: 'research',
+  top_n: 10,
+  ...overrides,
+})
+
+function renderPanel(data = nodeData()) {
+  useConfigMock.mockReturnValue({
+    readOnly: false,
+    inputs: data,
+    availableNumberNodesWithParent: [],
+    availableNumberVars: [],
+    availableStringNodesWithParent: [],
+    availableStringVars: [],
+    filterFileVar: vi.fn(),
+    filterStringVar: vi.fn(),
+    handleAddCondition: vi.fn(),
+    handleMetadataCompletionParamsChange: vi.fn(),
+    handleMetadataFilterChange: vi.fn(),
+    handleMetadataFilterModeChange: vi.fn(),
+    handleMetadataModelChange: vi.fn(),
+    handleModeChange: vi.fn(),
+    handleNodeKindToggle: vi.fn(),
+    handleQueryAttachmentChange: vi.fn(),
+    handleQueryVarChange: vi.fn(),
+    handleRerankingModelChange: vi.fn(),
+    handleRemoveCondition: vi.fn(),
+    handleScoreThresholdChange: vi.fn(),
+    handleSpacesChange: configState.handleSpacesChange,
+    handleTopNChange: configState.handleTopNChange,
+    handleToggleConditionLogicalOperator: vi.fn(),
+    handleUpdateCondition: vi.fn(),
+  } satisfies Partial<ReturnType<typeof useConfig>>)
+  return renderWithConsoleQuery(
+    <Panel id="knowledge-retrieval-v2-1" data={data} panelProps={panelProps} />,
+  )
+}
+
 describe('KnowledgeRetrievalV2Panel', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockInputs.control_space_ids = ['space-1']
-    delete mockInputs.metadata_filtering_mode
-    delete mockInputs.metadata_model_config
-    mockUseQueries.mockReturnValue([
-      {
-        data: [
-          {
-            count: 2,
-            createdAt: '2026-08-18T00:00:00.000Z',
-            id: 'field-1',
-            name: 'department',
-            rowVersion: 1,
-            type: 'string',
-            updatedAt: '2026-08-18T00:00:00.000Z',
-          },
-        ],
-        isSuccess: true,
-      },
-    ])
-    mockUseInfiniteQuery.mockReturnValue({
-      data: {
-        pages: [
-          {
-            data: [
-              {
-                control_space_id: 'space-1',
-                technical_status: 'available',
-                technical_summary: {
-                  name: 'Product docs',
-                  model_profile: {
-                    retrievalProfile: { defaultMode: 'deep', topK: 8, rerank: { enabled: true } },
-                  },
-                },
-              },
-              {
-                control_space_id: 'space-2',
-                technical_status: 'unavailable',
-                technical_summary: { name: 'Archived docs' },
-              },
-            ],
-            has_more: false,
-            page: 1,
-          },
-        ],
-      },
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      isLoading: false,
+    service.listSpaces.mockReset()
+    service.listSpaces.mockResolvedValue({
+      data: [space('space-1', 'Product docs'), space('space-2', 'Archived docs', 'unavailable')],
+      has_more: false,
+      limit: 50,
+      page: 1,
+    })
+    service.listMetadata.mockReset()
+    service.listMetadata.mockResolvedValue({
+      data: [field('department', 'string')],
+      next_cursor: null,
     })
   })
 
-  it('uses the legacy-style selected knowledge list and centralizes recall controls', () => {
-    render(
-      <Panel
-        id="knowledge-retrieval-v2-1"
-        data={{
-          title: 'Knowledge Retrieval v2',
-          desc: '',
-          type: BlockEnum.KnowledgeRetrievalV2,
-          query_variable_selector: ['start', 'query'],
-          control_space_ids: ['space-1'],
-          mode: 'research',
-          top_n: 10,
-        }}
-        panelProps={panelProps}
-      />,
-    )
+  it('lists the selected spaces by name and routes recall changes to the node config', async () => {
+    const user = userEvent.setup()
+    renderPanel()
 
-    expect(screen.getByTestId('space-list')).toHaveTextContent('Product docs')
-    expect(mockKnowledgeSpaceListProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        list: [
-          expect.objectContaining({
-            control_space_id: 'space-1',
-            default_mode: 'deep',
-            top_k: 8,
-          }),
-        ],
-      }),
-    )
-    expect(screen.getByRole('button', { name: 'recall-10' })).toBeInTheDocument()
-
-    expect(mockVarReferencePickerProps).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        filterVar: mockFilterFileVar,
-        onChange: mockHandleQueryAttachmentChange,
-        value: ['start', 'images'],
-      }),
-    )
-
-    expect(screen.getByTestId('metadata-filter')).toHaveTextContent('department:string')
-    expect(screen.queryByText('workflow.nodes.knowledgeRetrievalV2.filters.tags')).toBeNull()
-    expect(mockMetadataFilterProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        allowedModes: ['disabled', 'automatic', 'manual'],
-        metadataFilterMode: 'disabled',
-        selectedDatasetsLoaded: true,
-      }),
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'recall-10' }))
-    expect(mockHandleTopNChange).toHaveBeenCalledWith(12)
+    expect(await screen.findByText('Product docs')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'recall top 10' }))
+    expect(configState.handleTopNChange).toHaveBeenCalledWith(12)
   })
 
-  it('wires the automatic metadata filtering model into the shared metadata filter', () => {
-    mockInputs.metadata_filtering_mode = 'automatic'
-    mockInputs.metadata_model_config = {
-      provider: 'openai',
-      name: 'gpt-4o-mini',
-      mode: 'chat',
-      completion_params: { temperature: 0.7 },
-    }
+  it('keeps a selected space visible after it becomes unavailable so it can be removed', async () => {
+    const user = userEvent.setup()
+    renderPanel(nodeData({ control_space_ids: ['space-2'] }))
 
-    render(
-      <Panel
-        id="knowledge-retrieval-v2-1"
-        data={{
-          title: 'Knowledge Retrieval v2',
-          desc: '',
-          type: BlockEnum.KnowledgeRetrievalV2,
-          query_variable_selector: ['start', 'query'],
-          control_space_ids: ['space-1'],
-          top_n: 10,
-        }}
-        panelProps={panelProps}
-      />,
-    )
+    expect(await screen.findByText('Archived docs')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+    expect(configState.handleSpacesChange).toHaveBeenCalledWith([])
+  })
 
-    expect(mockMetadataFilterProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        metadataFilterMode: 'automatic',
-        metadataModelConfig: mockInputs.metadata_model_config,
-        handleMetadataModelChange: mockHandleMetadataModelChange,
-        handleMetadataCompletionParamsChange: mockHandleMetadataCompletionParamsChange,
+  it('offers only user metadata shared by every selected space with the same type', async () => {
+    service.listMetadata.mockImplementation(
+      async ({ params }: { params: { control_space_id: string } }) => ({
+        data:
+          params.control_space_id === 'space-1'
+            ? [
+                field('department', 'string'),
+                field('priority', 'number'),
+                field('space_one_only', 'string'),
+              ]
+            : [field('department', 'string'), field('priority', 'string')],
+        next_cursor: null,
       }),
     )
-  })
+    renderPanel(nodeData({ control_space_ids: ['space-1', 'space-2'] }))
 
-  it('falls back to disabled filtering for an unknown persisted metadata mode', () => {
-    mockInputs.metadata_filtering_mode = 'legacy-unknown'
-
-    render(
-      <Panel
-        id="knowledge-retrieval-v2-1"
-        data={{
-          title: 'Knowledge Retrieval v2',
-          desc: '',
-          type: BlockEnum.KnowledgeRetrievalV2,
-          query_variable_selector: ['start', 'query'],
-          control_space_ids: ['space-1'],
-          top_n: 10,
-        }}
-        panelProps={panelProps}
-      />,
-    )
-
-    expect(mockMetadataFilterProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({ metadataFilterMode: 'disabled' }),
-    )
-  })
-
-  it('only offers user metadata shared by every selected knowledge space with the same type', () => {
-    mockInputs.control_space_ids = ['space-1', 'space-2']
-    mockUseQueries.mockReturnValue([
-      {
-        data: [
-          { id: 'a', name: 'department', type: 'string' },
-          { id: 'b', name: 'priority', type: 'number' },
-          { id: 'c', name: 'space_one_only', type: 'string' },
-        ],
-        isSuccess: true,
-      },
-      {
-        data: [
-          { id: 'd', name: 'department', type: 'string' },
-          { id: 'e', name: 'priority', type: 'string' },
-        ],
-        isSuccess: true,
-      },
+    const filter = screen.getByRole('region', { name: 'metadata filter' })
+    await waitFor(() => expect(filter).toHaveTextContent('loaded: true'))
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'department:string',
     ])
-
-    render(
-      <Panel
-        id="knowledge-retrieval-v2-1"
-        data={{
-          title: 'Knowledge Retrieval v2',
-          desc: '',
-          type: BlockEnum.KnowledgeRetrievalV2,
-          query_variable_selector: ['start', 'query'],
-          control_space_ids: ['space-1', 'space-2'],
-          top_n: 10,
-        }}
-        panelProps={panelProps}
-      />,
-    )
-
-    expect(screen.getByTestId('metadata-filter')).toHaveTextContent('department:string')
-    expect(screen.getByTestId('metadata-filter')).not.toHaveTextContent('priority')
-    expect(screen.getByTestId('metadata-filter')).not.toHaveTextContent('space_one_only')
   })
 
-  it('does not treat a failed metadata catalog request as a completed empty catalog', () => {
-    mockUseQueries.mockReturnValue([{ data: undefined, isSuccess: false }])
+  it('does not treat a failed metadata catalog request as a completed empty catalog', async () => {
+    service.listMetadata.mockRejectedValue(new Error('metadata unavailable'))
+    renderPanel()
 
-    render(
-      <Panel
-        id="knowledge-retrieval-v2-1"
-        data={{
-          title: 'Knowledge Retrieval v2',
-          desc: '',
-          type: BlockEnum.KnowledgeRetrievalV2,
-          query_variable_selector: ['start', 'query'],
-          control_space_ids: ['space-1'],
-          top_n: 10,
-        }}
-        panelProps={panelProps}
-      />,
+    await waitFor(() => expect(service.listMetadata).toHaveBeenCalled())
+    await screen.findByText('Product docs')
+    expect(screen.getByRole('region', { name: 'metadata filter' })).toHaveTextContent(
+      'loaded: false',
     )
-
-    expect(mockMetadataFilterProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({ metadataList: [], selectedDatasetsLoaded: false }),
-    )
+    expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
   })
 
-  it('keeps a selected space visible after it becomes unavailable so it can be removed', () => {
-    mockInputs.control_space_ids = ['space-2']
+  it.each([
+    [MetadataFilteringModeEnum.automatic, 'automatic'],
+    [undefined, 'disabled'],
+  ])('shows the %s metadata filtering mode as %s', async (persistedMode, mode) => {
+    renderPanel(nodeData({ metadata_filtering_mode: persistedMode }))
 
-    render(
-      <Panel
-        id="knowledge-retrieval-v2-1"
-        data={{
-          title: 'Knowledge Retrieval v2',
-          desc: '',
-          type: BlockEnum.KnowledgeRetrievalV2,
-          query_variable_selector: ['start', 'query'],
-          control_space_ids: ['space-2'],
-          top_n: 10,
-        }}
-        panelProps={panelProps}
-      />,
-    )
-
-    expect(screen.getByTestId('space-list')).toHaveTextContent('Archived docs')
-    expect(mockKnowledgeSpaceListProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        list: [expect.objectContaining({ control_space_id: 'space-2', name: 'Archived docs' })],
-        readonly: false,
-      }),
+    expect(screen.getByRole('region', { name: 'metadata filter' })).toHaveTextContent(
+      `mode: ${mode}`,
     )
   })
 })

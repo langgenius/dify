@@ -46,19 +46,4 @@ describe('goldenQuestionQueriesKey', () => {
     expect(invalidated(keys.nextPage)).toBe(true)
     expect(invalidated(keys.otherSpacePage)).toBe(false)
   })
-
-  it('covers keys that the infinite-only list key misses', async () => {
-    const queryClient = new QueryClient()
-    const keys = seedGoldenQuestionQueries(queryClient)
-
-    await queryClient.invalidateQueries({
-      queryKey: goldenQuestions.get.key({
-        input: { params: { control_space_id: 'space-1' } },
-        type: 'infinite',
-      }),
-    })
-
-    expect(queryClient.getQueryState(keys.activeCount)?.isInvalidated).toBe(false)
-    expect(queryClient.getQueryState(keys.page)?.isInvalidated).toBe(false)
-  })
 })

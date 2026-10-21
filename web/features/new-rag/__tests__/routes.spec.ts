@@ -1,18 +1,12 @@
 import {
   newKnowledgeAddSourcePath,
   newKnowledgeDocumentDetailPath,
-  newKnowledgeRetrievalTestPath,
-  newKnowledgeSettingsPath,
   newKnowledgeSettingsReturnPath,
   singleSearchParam,
   validateNewKnowledgeReturnTo,
 } from '../routes'
 
 describe('New RAG routes', () => {
-  it('builds the settings path from the knowledge space id', () => {
-    expect(newKnowledgeSettingsPath('space-1')).toBe('/datasets/new/space-1/settings')
-  })
-
   it('adds only a validated same-knowledge return path and capability', () => {
     expect(
       newKnowledgeSettingsReturnPath('space-1', {
@@ -26,10 +20,6 @@ describe('New RAG routes', () => {
     expect(
       validateNewKnowledgeReturnTo('space-1', '/datasets/new/another-space/retrieval'),
     ).toBeUndefined()
-  })
-
-  it('builds the retrieval test path from the knowledge space id', () => {
-    expect(newKnowledgeRetrievalTestPath('space-1')).toBe('/datasets/new/space-1/retrieval')
   })
 
   it('builds a document chunk deep link with its revision', () => {

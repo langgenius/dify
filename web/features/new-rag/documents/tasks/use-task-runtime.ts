@@ -88,16 +88,27 @@ export function useTaskRuntimeController({
   const taskProgressStore = useAtomValue(taskProgressStoreAtom)
   const taskListSnapshotRef = useRef<typeof listSnapshot | null>(null)
   useLayoutEffect(() => {
+    // The cache's update count reaches this effect a render before the query atom's data. Until the
+    // data catches up, the previous list is still the one shown, so one refetch is one list snapshot.
+    const cached = queryClient.getQueryState(tasksQueryOptions.queryKey)
+    const snapshot = {
+      ...listSnapshot,
+      dataUpdateCount:
+        cached &&
+        (cached.data !== listSnapshot.data || cached.dataUpdatedAt !== listSnapshot.dataUpdatedAt)
+          ? (taskListSnapshotRef.current?.dataUpdateCount ?? 0)
+          : listSnapshot.dataUpdateCount,
+    }
     if (
       taskListSnapshotRef.current?.tasks === baseTasks &&
-      taskListSnapshotRef.current?.dataUpdateCount === listSnapshot.dataUpdateCount &&
-      taskListSnapshotRef.current.dataUpdatedAt === listSnapshot.dataUpdatedAt &&
-      taskListSnapshotRef.current.data === listSnapshot.data
+      taskListSnapshotRef.current?.dataUpdateCount === snapshot.dataUpdateCount &&
+      taskListSnapshotRef.current.dataUpdatedAt === snapshot.dataUpdatedAt &&
+      taskListSnapshotRef.current.data === snapshot.data
     )
       return
-    taskListSnapshotRef.current = listSnapshot
+    taskListSnapshotRef.current = snapshot
     applyRuntimeEvent({ tasks: baseTasks, type: 'list-snapshot' })
-  }, [applyRuntimeEvent, baseTasks, listSnapshot])
+  }, [applyRuntimeEvent, baseTasks, listSnapshot, queryClient, tasksQueryOptions.queryKey])
 
   const readBaseTask = useAtomCallback(
     useCallback(

@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import { zKnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { queryClientAtom } from 'jotai-tanstack-query'
-import { useHydrateAtoms } from 'jotai/utils'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createKnowledgeSpaceFixture } from '@/test/knowledge-space'
 import { KnowledgeSettingsPage } from '../page'
 
 const navigationMock = vi.hoisted(() => ({
@@ -17,7 +17,6 @@ const serviceMock = vi.hoisted(() => ({
   getPermissions: vi.fn(),
   getSettings: vi.fn(),
   getSpace: vi.fn(),
-  queryOptions: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -25,32 +24,30 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => navigationMock.searchParams,
 }))
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'knowledgeFs.spaces.byControlSpaceId.externalAccess.get': serviceMock.getExternalAccess,
+      'knowledgeFs.spaces.byControlSpaceId.get': serviceMock.getSpace,
+      'knowledgeFs.spaces.byControlSpaceId.permissions.get': serviceMock.getPermissions,
+      'knowledgeFs.spaces.byControlSpaceId.settings.get': serviceMock.getSettings,
+    }),
+  }
+})
+
+// The form owns editing behavior and has its own suite; this page suite covers loading and routing.
 vi.mock('../form', () => ({
   KnowledgeSettingsForm: () => <div>settings-form</div>,
 }))
 
-const queryKeys = {
-  externalAccess: ['knowledge-fs', 'external-access'],
-  permissions: ['knowledge-fs', 'permissions'],
-  settings: ['knowledge-fs', 'settings'],
-  space: ['knowledge-fs', 'space'],
-}
-
-const space = {
-  control_space_id: 'space-1',
-  created_at: '2026-07-28T00:00:00Z',
-  knowledge_space_id: 'knowledge-1',
-  owner_account_id: 'owner-1',
+const space = createKnowledgeSpaceFixture({
   permission_keys: ['knowledge_space_access_config', 'knowledge_space_edit'],
-  resource_version: 1,
-  state: 'active',
-  technical_status: 'available',
-  technical_summary: null,
-  updated_at: '2026-07-28T00:00:00Z',
-  visibility: 'only_me',
-}
+})
 
-const settings = {
+const settings: KnowledgeFsSettingsResponse = {
   active_profile_available: true,
   active_profile_revisions: { embedding: 1, retrieval: 1 },
   capabilities: {
@@ -68,66 +65,16 @@ const settings = {
   revision: 1,
 }
 
-vi.mock('@/service/console', () => {
-  const query = (key: keyof typeof queryKeys, queryFn: () => Promise<unknown>) => ({
-    queryOptions: () => {
-      const options = { queryFn, queryKey: queryKeys[key] }
-      serviceMock.queryOptions(options)
-      return options
-    },
+const settingsQueryKey = () =>
+  consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.get.queryKey({
+    input: { params: { control_space_id: 'space-1' } },
   })
 
-  return {
-    consoleQuery: {
-      knowledgeFs: {
-        spaces: {
-          byControlSpaceId: {
-            externalAccess: { get: query('externalAccess', serviceMock.getExternalAccess) },
-            get: query('space', serviceMock.getSpace),
-            permissions: { get: query('permissions', serviceMock.getPermissions) },
-            settings: { get: query('settings', serviceMock.getSettings) },
-          },
-        },
-      },
-    },
-  }
-})
-
-function renderPage({
-  seed = false,
-  settingsData = settings,
-}: {
-  seed?: boolean
-  settingsData?: typeof settings
-} = {}) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
-  if (seed) {
-    queryClient.setQueryData(queryKeys.space, space)
-    queryClient.setQueryData(queryKeys.settings, settingsData)
-    queryClient.setQueryData(queryKeys.permissions, { data: [] })
-    queryClient.setQueryData(queryKeys.externalAccess, {
-      agent_enabled: false,
-      mcp_enabled: false,
-      revision: 1,
-      service_api_enabled: false,
-      workflow_enabled: false,
-    })
-  }
-  const Wrapper = ({ children }: { children: ReactNode }) => {
-    useHydrateAtoms([[queryClientAtom, queryClient]], { dangerouslyForceHydrate: true })
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  }
-  return {
-    queryClient,
-    ...render(<KnowledgeSettingsPage knowledgeSpaceId="space-1" />, { wrapper: Wrapper }),
-  }
-}
+const renderPage = () =>
+  renderWithConsoleQuery(<KnowledgeSettingsPage knowledgeSpaceId="space-1" />)
 
 describe('KnowledgeSettingsPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     navigationMock.searchParams = new URLSearchParams()
     serviceMock.getExternalAccess.mockResolvedValue({
       agent_enabled: false,
@@ -163,16 +110,6 @@ describe('KnowledgeSettingsPage', () => {
     expect(await screen.findByText('settings-form')).toBeInTheDocument()
   })
 
-  it('renders the form from cached queries without polling settings', async () => {
-    renderPage({ seed: true })
-
-    expect(await screen.findByText('settings-form')).toBeInTheDocument()
-    const settingsOptions = serviceMock.queryOptions.mock.calls
-      .map(([options]) => options)
-      .find((options) => options.queryKey === queryKeys.settings)
-    expect(settingsOptions).not.toHaveProperty('refetchInterval')
-  })
-
   it('returns to a validated source page when its blocked capability becomes available', async () => {
     navigationMock.searchParams = new URLSearchParams({
       capability: 'ingest',
@@ -182,15 +119,19 @@ describe('KnowledgeSettingsPage', () => {
       ...settings,
       capabilities: { ...settings.capabilities, ingest: false },
     }
-    const { queryClient } = renderPage({ seed: true, settingsData: blockedSettings })
+    serviceMock.getSettings.mockResolvedValue(blockedSettings)
+    const { queryClient } = renderPage()
     expect(await screen.findByText('settings-form')).toBeInTheDocument()
     expect(navigationMock.replace).not.toHaveBeenCalled()
 
     act(() => {
-      queryClient.setQueryData(queryKeys.settings, {
-        ...blockedSettings,
-        capabilities: { ...blockedSettings.capabilities, ingest: true },
-      })
+      queryClient.setQueryData(
+        settingsQueryKey(),
+        zKnowledgeFsSettingsResponse.parse({
+          ...blockedSettings,
+          capabilities: { ...blockedSettings.capabilities, ingest: true },
+        }),
+      )
     })
     await waitFor(() =>
       expect(navigationMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/documents'),

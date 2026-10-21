@@ -1,41 +1,22 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { createStore, Provider } from 'jotai'
+import { act, waitFor } from '@testing-library/react'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useKnowledgeBatchUpload } from '../use-batch-upload'
 
 const getFeatures = vi.hoisted(() => vi.fn())
-const editionMock = vi.hoisted(() => ({ value: 'CLOUD' }))
 
-vi.mock('@/features/system-features/state', async () => {
-  const { atom } = await import('jotai')
-  return { deploymentEditionAtom: atom(() => editionMock.value) }
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'features.get': getFeatures }),
+  }
 })
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    features: {
-      get: {
-        queryOptions: (options: object) => ({
-          queryKey: ['features'],
-          queryFn: getFeatures,
-          ...options,
-        }),
-      },
-    },
-  },
-}))
-
 function renderUploadPolicy(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE') {
-  const store = createStore()
-  editionMock.value = edition
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <Provider store={store}>
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    </Provider>
-  )
-  return renderHook(() => useKnowledgeBatchUpload(), { wrapper })
+  return renderHookWithConsoleQuery(() => useKnowledgeBatchUpload(), {
+    systemFeatures: { deployment_edition: edition },
+  })
 }
 
 beforeEach(() => {

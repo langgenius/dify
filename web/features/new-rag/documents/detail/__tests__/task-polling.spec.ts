@@ -8,11 +8,13 @@ import { documentBackgroundTasksAtom, documentTaskDrawerOpenAtom } from '../stat
 
 const listTasks = vi.hoisted(() => vi.fn<() => Promise<KnowledgeFsBackgroundTaskListResponse>>())
 
-vi.mock('@/service/console', async () => {
-  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
-    consoleQuery: createTanstackQueryUtils({
-      knowledgeFs: { spaces: { byControlSpaceId: { backgroundTasks: { get: listTasks } } } },
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get': listTasks,
     }),
   }
 })

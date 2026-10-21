@@ -1,80 +1,42 @@
 import type { ComponentProps } from 'react'
-import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
-import { createTestQueryClient } from '@/test/query-client'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { KnowledgeFsApiAccessDialog } from '../api-access-dialog'
 
-const workspacePermissionKeysMock = vi.hoisted(() => ({
-  value: ['dataset.api_key.manage'],
-}))
-
-const apiBaseInfoQueryOptionsMock = vi.hoisted(() =>
-  vi.fn(() => ({
-    queryFn: () => Promise.resolve({ api_base_url: 'https://api.example.com/v1/' }),
-    queryKey: ['datasets', 'api-base-info'],
-  })),
-)
-
-vi.mock('jotai', async (importOriginal) => {
-  const original = await importOriginal<typeof import('jotai')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
-    ...original,
-    useAtomValue: () => workspacePermissionKeysMock.value,
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.apiBaseInfo.get': async () => ({ api_base_url: 'https://api.example.com/v1/' }),
+    }),
   }
 })
 
-vi.mock('@/app/components/api-key/use-dataset-api-key-mutations', () => ({
-  useDatasetApiKeyMutations: () => ({ pending: false }),
-}))
-
+// The key manager owns its own list and mutations; this suite only proves the hand-off.
 vi.mock('@/app/components/api-key/dataset-api-key-dialog-content', async () => {
   const { DialogContent, DialogTitle } = await import('@langgenius/dify-ui/dialog')
   return {
-    DatasetApiKeyDialogContent: (props: { canManage: boolean }) => {
-      return (
-        <DialogContent>
-          <DialogTitle>workspace-dataset-api-keys:{String(props.canManage)}</DialogTitle>
-        </DialogContent>
-      )
-    },
+    DatasetApiKeyDialogContent: (props: { canManage: boolean }) => (
+      <DialogContent>
+        <DialogTitle>workspace-dataset-api-keys:{String(props.canManage)}</DialogTitle>
+      </DialogContent>
+    ),
   }
 })
 
-vi.mock('@/app/components/base/copy-feedback', () => ({
-  CopyFeedback: ({ content }: { content: string }) => (
-    <button type="button" aria-label={`copy:${content}`} />
-  ),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    datasets: {
-      apiBaseInfo: {
-        get: {
-          queryOptions: apiBaseInfoQueryOptionsMock,
-        },
-      },
-    },
-  },
-}))
-
-function renderDialog(props: ComponentProps<typeof KnowledgeFsApiAccessDialog>) {
-  const queryClient = createTestQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <KnowledgeFsApiAccessDialog {...props} />
-    </QueryClientProvider>,
-  )
+function renderDialog(
+  props: ComponentProps<typeof KnowledgeFsApiAccessDialog>,
+  workspacePermissionKeys: string[] = ['dataset.api_key.manage'],
+) {
+  return renderWithConsoleQuery(<KnowledgeFsApiAccessDialog {...props} />, {
+    workspacePermissionKeys,
+  })
 }
 
 describe('KnowledgeFsApiAccessDialog', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    workspacePermissionKeysMock.value = ['dataset.api_key.manage']
-  })
-
   it('shows the generated KnowledgeFS Service API endpoint', async () => {
     renderDialog({
       status: 'active',
@@ -86,7 +48,6 @@ describe('KnowledgeFsApiAccessDialog', () => {
     expect(
       await screen.findByText('https://api.example.com/v1/knowledge-fs/spaces/space-1'),
     ).toBeInTheDocument()
-    expect(apiBaseInfoQueryOptionsMock).toHaveBeenCalledWith({ context: { silent: true } })
     expect(screen.getByText('common.appMenus.apiAccessTip')).toBeInTheDocument()
   })
 
@@ -128,13 +89,15 @@ describe('KnowledgeFsApiAccessDialog', () => {
   })
 
   it('uses the workspace API key permission for the read-only state', () => {
-    workspacePermissionKeysMock.value = []
-    renderDialog({
-      status: 'active',
-      knowledgeSpaceId: 'space-1',
-      open: true,
-      onOpenChange: vi.fn(),
-    })
+    renderDialog(
+      {
+        status: 'active',
+        knowledgeSpaceId: 'space-1',
+        open: true,
+        onOpenChange: vi.fn(),
+      },
+      [],
+    )
 
     expect(screen.getByText('knowledgeSpace.settings.viewOnly')).toBeInTheDocument()
     expect(

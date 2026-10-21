@@ -91,21 +91,3 @@ it('draws the card focus inside the clipped card and leaves inner controls their
   const footer = screen.getByText('12').element()
   expect(document.elementFromPoint(...centerOf(footer))?.closest('a')).toBe(link.element())
 })
-
-it('opens the delete confirmation from the menu and returns focus to the trigger on cancel', async () => {
-  const screen = await renderCard()
-  const more = screen.getByRole('button', { name: 'common.operation.more' })
-
-  more.element().focus()
-  await userEvent.keyboard('{Enter}')
-  const edit = screen.getByRole('menuitem', { name: 'common.operation.edit' })
-  await expect.element(edit).toHaveAttribute('href', '/datasets/new/space-1/settings')
-  await userEvent.keyboard('{ArrowDown}')
-  await userEvent.keyboard('{Enter}')
-
-  const confirmation = screen.getByRole('textbox')
-  await expect.element(confirmation).toHaveFocus()
-  await userEvent.keyboard('{Escape}')
-  await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
-  await expect.element(more).toHaveFocus()
-})

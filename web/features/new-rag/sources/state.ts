@@ -203,7 +203,7 @@ export const filteredSourcesAtom = atom((get) => {
   })
 })
 
-const loadedSourcePageCountAtom = atom((get) => get(sourcesQueryDataAtom)?.pages.length ?? 0)
+export const loadedSourcePageCountAtom = atom((get) => get(sourcesQueryDataAtom)?.pages.length ?? 0)
 const localTransformActiveAtom = atom((get) =>
   Boolean(
     get(sourcesFilterAtom) !== 'all' || get(sourcesSearchAtom).trim() || get(sourcesSortAtom),

@@ -1595,7 +1595,15 @@ export function ConnectedSourceWorkflow(props: ConnectedSourceWorkflowProps) {
         }
         onChange={selectProvider}
       />
-      <ConnectedSourceWorkflowSession key={sessionKey} {...props} />
+      {/* The session is keyed by provider and credential; mounting it before both are known would
+          start a preview source for a key that is replaced as soon as they load. */}
+      {datasourcePluginsQuery.isPending || datasourceAuthQuery.isPending ? (
+        <div className="flex min-h-20 items-center justify-center">
+          <LoadingPlaceholder />
+        </div>
+      ) : (
+        <ConnectedSourceWorkflowSession key={sessionKey} {...props} />
+      )}
     </div>
   )
 }
@@ -1701,7 +1709,8 @@ function ConnectedSourceWorkflowSession({
     providersQuery.error ||
     datasourcePluginsQuery.error ||
     datasourceAuthQuery.error ||
-    connectionsQuery.error ||
+    // A failed refresh keeps the loaded connections; the action that refreshed reports it.
+    (connectionsQuery.error && !connectionsQuery.data) ||
     connectionsQuery.isFetchNextPageError
   const loadingConnections =
     connectionsQuery.isPending ||

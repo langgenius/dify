@@ -1,42 +1,36 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useDatasetList, useInvalidDatasetList } from '../use-dataset-list'
 
-const infiniteOptionsMock = vi.hoisted(() => vi.fn((options: unknown) => options))
-const invalidateQueriesMock = vi.hoisted(() => vi.fn())
-const useInfiniteQueryMock = vi.hoisted(() => vi.fn())
+const listDatasets = vi.hoisted(() => vi.fn())
 
-vi.mock('@tanstack/react-query', () => ({
-  keepPreviousData: Symbol('keepPreviousData'),
-  useInfiniteQuery: useInfiniteQueryMock,
-  useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    datasets: {
-      get: {
-        infiniteOptions: infiniteOptionsMock,
-        key: () => ['datasets'],
-      },
-    },
-  },
-}))
-
-type CapturedOptions = {
-  getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
-  initialPageParam: number
-  input: (pageParam: unknown) => {
-    query: Record<string, unknown>
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'datasets.get': listDatasets }),
   }
-}
+})
+
+const page = (pageNumber: number, hasMore: boolean) => ({
+  data: [],
+  has_more: hasMore,
+  limit: 30,
+  page: pageNumber,
+  total: 0,
+})
 
 describe('useDatasetList', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    listDatasets.mockReset()
+    listDatasets.mockImplementation(async ({ query }: { query: { page: number } }) =>
+      page(query.page, query.page < 2),
+    )
   })
 
-  it('maps list filters to the generated dataset contract', () => {
-    renderHook(() =>
+  it('requests the filtered dataset pages and continues while more pages exist', async () => {
+    const { result } = renderHookWithConsoleQuery(() =>
       useDatasetList({
         creatorIds: ['creator-1', 'creator-2'],
         includeAll: true,
@@ -45,48 +39,46 @@ describe('useDatasetList', () => {
       }),
     )
 
-    const options = infiniteOptionsMock.mock.calls[0]![0] as CapturedOptions
-    expect(options.input(2)).toEqual({
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true))
+    expect(listDatasets).toHaveBeenLastCalledWith({
       query: {
         creator_ids: ['creator-1', 'creator-2'],
         include_all: true,
         keyword: 'handbook',
         limit: 30,
-        page: 2,
+        page: 1,
         tag_ids: ['tag-1'],
       },
     })
-    expect(options.initialPageParam).toBe(1)
-    expect(options.getNextPageParam({ has_more: true, page: 2 })).toBe(3)
-    expect(options.getNextPageParam({ has_more: false, page: 2 })).toBeUndefined()
-    expect(useInfiniteQueryMock).toHaveBeenCalledWith(options)
+
+    await act(() => result.current.fetchNextPage())
+    expect(listDatasets).toHaveBeenLastCalledWith({
+      query: expect.objectContaining({ page: 2 }),
+    })
+    await waitFor(() => expect(result.current.hasNextPage).toBe(false))
   })
 
-  it('omits empty optional filters', () => {
-    renderHook(() =>
-      useDatasetList({
-        creatorIds: [],
-        includeAll: false,
-        keyword: '',
-        tagIds: [],
-      }),
+  it('omits empty optional filters', async () => {
+    renderHookWithConsoleQuery(() =>
+      useDatasetList({ creatorIds: [], includeAll: false, keyword: '', tagIds: [] }),
     )
 
-    const options = infiniteOptionsMock.mock.calls[0]![0] as CapturedOptions
-    expect(options.input(1)).toEqual({
-      query: {
-        include_all: false,
-        limit: 30,
-        page: 1,
-      },
-    })
+    await waitFor(() =>
+      expect(listDatasets).toHaveBeenCalledWith({
+        query: { include_all: false, limit: 30, page: 1 },
+      }),
+    )
   })
 
-  it('invalidates the generated dataset query', () => {
-    const { result } = renderHook(() => useInvalidDatasetList())
+  it('refreshes the mounted dataset list when invalidated', async () => {
+    const { result } = renderHookWithConsoleQuery(() => ({
+      invalidate: useInvalidDatasetList(),
+      list: useDatasetList({ creatorIds: [], includeAll: false, keyword: 'handbook', tagIds: [] }),
+    }))
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
 
-    act(() => result.current())
+    act(() => result.current.invalidate())
 
-    expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['datasets'] })
+    await waitFor(() => expect(listDatasets).toHaveBeenCalledTimes(2))
   })
 })

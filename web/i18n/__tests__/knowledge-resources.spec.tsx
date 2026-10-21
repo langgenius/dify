@@ -9,6 +9,7 @@ import { QualityTabList } from '@/features/new-rag/quality/quality-tab-list'
 import { SourceRow } from '@/features/new-rag/sources/source-list-item'
 import { sourcesKnowledgeSpaceIdAtom } from '@/features/new-rag/sources/state'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { changeLanguage } from '../client'
 import errors from '../locales/en-US/knowledge-errors.json'
 import quality from '../locales/en-US/knowledge-quality.json'
@@ -18,7 +19,6 @@ import chineseErrors from '../locales/zh-Hans/knowledge-errors.json'
 vi.unmock('react-i18next')
 const mocks = vi.hoisted(() => ({ load: vi.fn() }))
 vi.mock('../load-resource', () => ({ loadI18nResource: mocks.load }))
-vi.mock('@/features/new-rag/space/context', () => ({ useKnowledgeSpacePermission: () => false }))
 
 beforeEach(async () => {
   const { loadI18nResource } =
@@ -69,18 +69,20 @@ it('loads source row namespaces once, including failure copy for row actions, an
   const content = (value: Source) => (
     <I18nClientProvider locale="en-US" resource={{}}>
       <Suspense fallback={<span>Loading</span>}>
-        <ScopeProvider atoms={[[sourcesKnowledgeSpaceIdAtom, value.knowledgeSpaceId]]}>
-          <table>
-            <tbody>
-              <SourceRow
-                source={value}
-                checked={false}
-                onCheckedChange={() => {}}
-                ensureModelSetupReady={async () => true}
-              />
-            </tbody>
-          </table>
-        </ScopeProvider>
+        <KnowledgeSpaceTestProvider space={createKnowledgeSpaceFixture({ permission_keys: [] })}>
+          <ScopeProvider atoms={[[sourcesKnowledgeSpaceIdAtom, value.knowledgeSpaceId]]}>
+            <table>
+              <tbody>
+                <SourceRow
+                  source={value}
+                  checked={false}
+                  onCheckedChange={() => {}}
+                  ensureModelSetupReady={async () => true}
+                />
+              </tbody>
+            </table>
+          </ScopeProvider>
+        </KnowledgeSpaceTestProvider>
       </Suspense>
     </I18nClientProvider>
   )

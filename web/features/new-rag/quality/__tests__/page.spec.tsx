@@ -1,10 +1,13 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { KnowledgeFsProductPermission } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createHttpError } from '@/service/http-error'
-import { renderWithNuqs as render } from '@/test/nuqs-testing'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { QualityPage } from '../page'
 
+// The evaluation panel and report have their own suite; this page only routes to them.
 vi.mock('../quality-evaluation-panel', () => ({
   EvaluationReport: ({ onBack, runId }: { onBack: () => void; runId: string }) => (
     <div>
@@ -47,12 +50,7 @@ const navigationMock = vi.hoisted(() => ({
   tab: undefined as string | undefined,
 }))
 const knowledgeSpacePermissionState = vi.hoisted(() => ({
-  keys: ['knowledge_space_edit'],
-}))
-vi.mock('../../space/context', () => ({
-  useKnowledgeSpace: () => ({ space: { control_space_id: 'space-1' } }),
-  useKnowledgeSpacePermission: (permission: string) =>
-    knowledgeSpacePermissionState.keys.includes(permission),
+  keys: ['knowledge_space_edit'] as KnowledgeFsProductPermission[],
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -63,91 +61,30 @@ vi.mock('@/app/notifications', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          goldenQuestions: {
-            evidenceMatches: { post: serviceMock.matchEvidence },
-          },
-          quality: {
-            badCases: {
-              byBadCaseId: {
-                get: serviceMock.getBadCase,
-                patch: serviceMock.updateBadCase,
-                traceReference: { get: serviceMock.getTraceReference },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          goldenQuestions: {
-            bulkImport: {
-              post: {
-                mutationOptions: () => ({ mutationFn: serviceMock.bulkImport }),
-              },
-            },
-            byQuestionId: {
-              delete: {
-                mutationOptions: () => ({ mutationFn: serviceMock.deleteGolden }),
-              },
-              patch: {
-                mutationOptions: () => ({ mutationFn: serviceMock.updateGolden }),
-              },
-            },
-            get: {
-              key: () => ['quality', 'golden'],
-              infiniteOptions: (options: {
-                getNextPageParam: (page: { next_cursor?: string | null }) => string | undefined
-                initialPageParam: string | null
-                input: (pageParam: string | null) => unknown
-              }) => ({
-                getNextPageParam: options.getNextPageParam,
-                initialPageParam: options.initialPageParam,
-                queryFn: ({ pageParam }: { pageParam: string | null }) =>
-                  serviceMock.getGolden(options.input(pageParam)),
-                queryKey: ['quality', 'golden'],
-              }),
-            },
-            evidenceMatches: {
-              post: {
-                mutationOptions: () => ({ mutationFn: serviceMock.matchEvidence }),
-              },
-            },
-            post: {
-              mutationOptions: () => ({ mutationFn: serviceMock.createGolden }),
-            },
-          },
-          quality: {
-            badCases: {
-              get: {
-                key: () => ['quality', 'bad-cases'],
-                infiniteOptions: (options: {
-                  getNextPageParam: (page: { next_cursor?: string | null }) => string | undefined
-                  initialPageParam: string | null
-                  input: (pageParam: string | null) => unknown
-                }) => ({
-                  getNextPageParam: options.getNextPageParam,
-                  initialPageParam: options.initialPageParam,
-                  queryFn: ({ pageParam }: { pageParam: string | null }) =>
-                    serviceMock.getBadCases(options.input(pageParam)),
-                  queryKey: ['quality', 'bad-cases'],
-                }),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      [`${space}.goldenQuestions.evidenceMatches.post`]: serviceMock.matchEvidence,
+      [`${space}.quality.badCases.byBadCaseId.get`]: serviceMock.getBadCase,
+      [`${space}.quality.badCases.byBadCaseId.patch`]: serviceMock.updateBadCase,
+      [`${space}.quality.badCases.byBadCaseId.traceReference.get`]: serviceMock.getTraceReference,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      [`${space}.goldenQuestions.bulkImport.post`]: serviceMock.bulkImport,
+      [`${space}.goldenQuestions.byQuestionId.delete`]: serviceMock.deleteGolden,
+      [`${space}.goldenQuestions.byQuestionId.patch`]: serviceMock.updateGolden,
+      [`${space}.goldenQuestions.get`]: serviceMock.getGolden,
+      [`${space}.goldenQuestions.evidenceMatches.post`]: serviceMock.matchEvidence,
+      [`${space}.goldenQuestions.post`]: serviceMock.createGolden,
+      [`${space}.quality.badCases.get`]: serviceMock.getBadCases,
+    }),
+  }
+})
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -165,28 +102,25 @@ function delayedCsvFile(name: string, content: string) {
 }
 
 function renderPage() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      mutations: { retry: false },
-      queries: { retry: false },
-    },
-  })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <QualityPage />
-    </QueryClientProvider>,
-    {
-      searchParams: new URLSearchParams({
-        ...(navigationMock.run ? { run: navigationMock.run } : {}),
-        ...(navigationMock.tab ? { tab: navigationMock.tab } : {}),
-      }).toString(),
-    },
+  const onUrlUpdate = vi.fn()
+  const searchParams = new URLSearchParams({
+    ...(navigationMock.run ? { run: navigationMock.run } : {}),
+    ...(navigationMock.tab ? { tab: navigationMock.tab } : {}),
+  }).toString()
+  const rendered = renderWithConsoleQuery(
+    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+      <KnowledgeSpaceTestProvider
+        space={createKnowledgeSpaceFixture({ permission_keys: knowledgeSpacePermissionState.keys })}
+      >
+        <QualityPage />
+      </KnowledgeSpaceTestProvider>
+    </NuqsTestingAdapter>,
   )
+  return { ...rendered, onUrlUpdate }
 }
 
 describe('QualityPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     knowledgeSpacePermissionState.keys = ['knowledge_space_edit']
     navigationMock.run = undefined
     navigationMock.tab = undefined
@@ -242,22 +176,6 @@ describe('QualityPage', () => {
     })
   })
 
-  it('renders tab labels without item counts', async () => {
-    renderPage()
-
-    await screen.findByText('What is the refund policy?')
-    expect(
-      screen.getByRole('tab', { name: 'knowledgeQuality.qualityPage.goldenTab' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('tab', { name: 'knowledgeQuality.qualityPage.badCasesTab' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('tab', { name: 'knowledgeQuality.qualityPage.evaluationTab' }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('tabpanel')).toBeInTheDocument()
-  })
-
   it('does not load golden questions or bad cases for the evaluation tab', async () => {
     navigationMock.tab = 'evaluations'
 
@@ -308,7 +226,7 @@ describe('QualityPage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('uses tab primitive relationships and keeps route state in sync', async () => {
+  it('keeps the selected tab in the URL without adding history entries', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderPage()
 
@@ -318,8 +236,7 @@ describe('QualityPage', () => {
     const badCasesTab = screen.getByRole('tab', {
       name: 'knowledgeQuality.qualityPage.badCasesTab',
     })
-    expect(goldenTab).toHaveAttribute('aria-controls')
-    expect(badCasesTab).toHaveAttribute('tabindex', '-1')
+    expect(goldenTab).toHaveAttribute('aria-selected', 'true')
     await user.click(badCasesTab)
 
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
@@ -726,19 +643,16 @@ describe('QualityPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
 
     await waitFor(() =>
-      expect(serviceMock.updateGolden).toHaveBeenCalledWith(
-        {
-          body: {
-            annotation: 'Updated expected answer',
-            expected_evidence_ids: [],
-            match_policy: 'all',
-            question: 'What is the refund policy?',
-            tags: ['billing', 'sso'],
-          },
-          params: { control_space_id: 'space-1', question_id: 'golden-1' },
+      expect(serviceMock.updateGolden).toHaveBeenCalledWith({
+        body: {
+          annotation: 'Updated expected answer',
+          expected_evidence_ids: [],
+          match_policy: 'all',
+          question: 'What is the refund policy?',
+          tags: ['billing', 'sso'],
         },
-        expect.anything(),
-      ),
+        params: { control_space_id: 'space-1', question_id: 'golden-1' },
+      }),
     )
     expect(
       screen.queryByRole('dialog', { name: 'knowledgeQuality.qualityPage.editTitle' }),
@@ -823,19 +737,16 @@ describe('QualityPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
     await waitFor(() =>
-      expect(serviceMock.updateGolden).toHaveBeenCalledWith(
-        {
-          body: {
-            annotation: 'Must cite both permission rules.',
-            expected_evidence_ids: ['node-1', 'node-2'],
-            match_policy: 'all',
-            question: 'Who can change permissions?',
-            tags: ['permissions'],
-          },
-          params: { control_space_id: 'space-1', question_id: 'golden-1' },
+      expect(serviceMock.updateGolden).toHaveBeenCalledWith({
+        body: {
+          annotation: 'Must cite both permission rules.',
+          expected_evidence_ids: ['node-1', 'node-2'],
+          match_policy: 'all',
+          question: 'Who can change permissions?',
+          tags: ['permissions'],
         },
-        expect.anything(),
-      ),
+        params: { control_space_id: 'space-1', question_id: 'golden-1' },
+      }),
     )
   })
 

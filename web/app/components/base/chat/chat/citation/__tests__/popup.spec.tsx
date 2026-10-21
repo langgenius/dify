@@ -1,7 +1,6 @@
 import type { Resources } from '../index'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { resolveLogicalDocumentCitation } from '@/features/new-rag/documents/resolve-logical-document-id'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { downloadUrl } from '@/utils/download'
@@ -15,16 +14,13 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => navigationMock,
 }))
 
-vi.mock('@/features/new-rag/documents/resolve-logical-document-id', () => ({
-  resolveLogicalDocumentCitation: vi.fn(),
-}))
+const resolveDocumentReference = vi.hoisted(() => vi.fn())
 
 vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
 const mockDownloadDocument = vi.fn()
-const mockResolveLogicalDocumentCitation = vi.mocked(resolveLogicalDocumentCitation)
 const mockDownloadUrl = vi.mocked(downloadUrl)
 
 const makeSource = (
@@ -61,10 +57,8 @@ const openPopup = async (user: ReturnType<typeof userEvent.setup>, name = 'repor
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockResolveLogicalDocumentCitation.mockResolvedValue({
-    documentId: 'logical-document-1',
-    revision: 2,
-  })
+  resolveDocumentReference.mockReset()
+  resolveDocumentReference.mockResolvedValue({ document_id: 'logical-document-1', revision: 2 })
   mockDownloadDocument.mockResolvedValue({ url: 'https://example.com/file.pdf' })
 })
 
@@ -236,7 +230,7 @@ it('opens a versioned KnowledgeFS citation without resolving its asset', async (
     'href',
     '/datasets/new/space-1/documents/logical-document-1?revision=3&chunk=node-1',
   )
-  expect(mockResolveLogicalDocumentCitation).not.toHaveBeenCalled()
+  expect(resolveDocumentReference).not.toHaveBeenCalled()
 })
 
 it('resolves a historical KnowledgeFS asset through document revisions', async () => {
@@ -261,10 +255,9 @@ it('resolves a historical KnowledgeFS asset through document revisions', async (
   )
   await openPopup(user)
   await user.click(screen.getByRole('button', { name: /linkToDataset/ }))
-  expect(mockResolveLogicalDocumentCitation).toHaveBeenCalledExactlyOnceWith({
-    documentAssetId: 'asset-1',
-    documentVersion: 1,
-    knowledgeSpaceId: 'space-1',
+  expect(resolveDocumentReference).toHaveBeenCalledExactlyOnceWith({
+    params: { control_space_id: 'space-1' },
+    query: { document_asset_id: 'asset-1', document_asset_version: 1 },
   })
   expect(navigationMock.push).toHaveBeenCalledWith(
     '/datasets/new/space-1/documents/logical-document-1?revision=2&chunk=node-1',
@@ -283,9 +276,14 @@ it('keeps retrieval diagnostics out of citations shown to end users', async () =
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'knowledgeFs.spaces.byControlSpaceId.documentReferences.resolve.get':
+        resolveDocumentReference,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'datasets.byDatasetId.documents.byDocumentId.download.get': (input) =>
         mockDownloadDocument(input),

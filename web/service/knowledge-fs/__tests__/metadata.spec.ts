@@ -1,28 +1,16 @@
 import { knowledgeFsMetadataFieldsQueryOptions } from '../metadata'
 
 const metadataGet = vi.hoisted(() => vi.fn())
-const metadataQueryOptions = vi.hoisted(() => vi.fn(() => ({ queryKey: ['metadata'] })))
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          metadata: { get: metadataGet },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          metadata: { get: { queryOptions: metadataQueryOptions } },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'knowledgeFs.spaces.byControlSpaceId.metadata.get': metadataGet,
+    }),
+  }
+})
 
 describe('knowledgeFsMetadataFieldsQueryOptions', () => {
   it('collects every cursor page before exposing metadata fields', async () => {

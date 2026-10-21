@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest'
 import { maxGoldenQuestionCsvRows, parseGoldenQuestionCsv } from '../golden-question-csv'
 
 describe('parseGoldenQuestionCsv', () => {

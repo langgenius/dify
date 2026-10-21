@@ -1,117 +1,106 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import RecallSettings from '../recall-settings'
 
-const mockModelSelector = vi.hoisted(() => vi.fn())
-const mockTopKItem = vi.hoisted(() => vi.fn())
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    currentModel: { model: 'system-rerank' },
-    currentProvider: { provider: 'system/provider' },
-    modelList: [{ models: [], provider: 'system/provider' }],
-  }),
-}))
-
+// The model selector has its own suite; this one only needs the selected value and a choice.
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: (props: {
     onValueChange: (value: { model: string; provider: string }) => void
     value?: { model: string; provider: string }
-  }) => {
-    mockModelSelector(props)
-    return (
-      <button
-        type="button"
-        onClick={() => props.onValueChange({ provider: 'custom/provider', model: 'custom-rerank' })}
-      >
-        model-{props.value?.model}
-      </button>
-    )
-  },
-}))
-
-vi.mock('@/app/components/base/param-item/top-k-item', () => ({
-  default: (props: {
-    max?: number
-    onChange: (key: string, value: number) => void
-    value: number
-  }) => {
-    mockTopKItem(props)
-    return (
-      <button type="button" onClick={() => props.onChange('top_k', 20)}>
-        top-{props.value}
-      </button>
-    )
-  },
-}))
-
-vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
-  default: (props: {
-    enable: boolean
-    onChange: (key: string, value: number) => void
-    onSwitchChange: (key: string, enabled: boolean) => void
   }) => (
-    <div>
-      <button type="button" onClick={() => props.onSwitchChange('score_threshold', !props.enable)}>
-        threshold-{String(props.enable)}
-      </button>
-      <button type="button" onClick={() => props.onChange('score_threshold', 0.73)}>
-        threshold-value
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={() => props.onValueChange({ provider: 'custom/provider', model: 'custom-rerank' })}
+    >
+      reranker {props.value ? `${props.value.provider}/${props.value.model}` : 'none'}
+    </button>
   ),
 }))
+
+function renderSettings(props: Partial<ComponentProps<typeof RecallSettings>> = {}) {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      provider: 'system/provider',
+      models: [createCatalogModelFixture({ model: 'system-rerank', model_type: 'rerank' })],
+    }),
+  ])
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'rerank' } },
+    }),
+    {
+      data: createDefaultModelFixture({
+        model: 'system-rerank',
+        model_type: 'rerank',
+        provider: { provider: 'system/provider' },
+      }),
+    },
+  )
+  return renderWithConsoleQuery(
+    <RecallSettings
+      topK={10}
+      onModeChange={vi.fn()}
+      onRerankingModelChange={vi.fn()}
+      onScoreThresholdChange={vi.fn()}
+      onTopKChange={vi.fn()}
+      {...props}
+    />,
+    { queryClient },
+  )
+}
 
 describe('RecallSettings', () => {
   it('uses the workspace default reranker until the user selects an override', async () => {
     const user = userEvent.setup()
     const onRerankingModelChange = vi.fn()
-    const onScoreThresholdChange = vi.fn()
-    const onTopKChange = vi.fn()
-    render(
-      <RecallSettings
-        topK={10}
-        scoreThreshold={null}
-        onModeChange={vi.fn()}
-        onRerankingModelChange={onRerankingModelChange}
-        onScoreThresholdChange={onScoreThresholdChange}
-        onTopKChange={onTopKChange}
-      />,
-    )
+    renderSettings({ onRerankingModelChange })
 
     await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
     expect(screen.getByText('modelProvider.modelProvider.defaultConfig')).toBeInTheDocument()
-    expect(mockTopKItem).toHaveBeenLastCalledWith(expect.objectContaining({ max: 100 }))
-    expect(mockModelSelector).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        value: { provider: 'system/provider', model: 'system-rerank' },
-      }),
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'model-system-rerank' }))
+    await user.click(screen.getByRole('button', { name: 'reranker system/provider/system-rerank' }))
     expect(onRerankingModelChange).toHaveBeenCalledWith({
       provider: 'custom/provider',
       model: 'custom-rerank',
     })
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: 'top-10' }))
-    expect(onTopKChange).toHaveBeenCalledWith(20)
-    fireEvent.click(screen.getByRole('button', { name: 'threshold-false' }))
-    expect(onScoreThresholdChange).toHaveBeenCalledWith(0.5)
-    fireEvent.click(screen.getByRole('button', { name: 'threshold-value' }))
-    expect(onScoreThresholdChange).toHaveBeenCalledWith(0.73)
+  it('edits top K up to the knowledge retrieval maximum', async () => {
+    const user = userEvent.setup()
+    const onTopKChange = vi.fn()
+    renderSettings({ onTopKChange })
+
+    await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
+    const slider = screen.getByLabelText('appDebug.datasetConfig.top_k', {
+      selector: 'input[type="range"]',
+    })
+    slider.focus()
+    await user.keyboard('{End}')
+    expect(onTopKChange).toHaveBeenLastCalledWith(100)
+  })
+
+  it('enables the score threshold at its default and edits its value', async () => {
+    const user = userEvent.setup()
+    const onScoreThresholdChange = vi.fn()
+    renderSettings({ onScoreThresholdChange, scoreThreshold: null })
+
+    await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
+    await user.click(screen.getByRole('switch'))
+    expect(onScoreThresholdChange).toHaveBeenLastCalledWith(0.5)
   })
 
   it('labels the retrieval-mode select with its visible heading', async () => {
     const user = userEvent.setup()
-    render(
-      <RecallSettings
-        topK={10}
-        onModeChange={vi.fn()}
-        onRerankingModelChange={vi.fn()}
-        onScoreThresholdChange={vi.fn()}
-        onTopKChange={vi.fn()}
-      />,
-    )
+    renderSettings()
 
     await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
     const heading = screen.getByText('workflow.nodes.knowledgeRetrievalV2.mode.title')
@@ -125,18 +114,15 @@ describe('RecallSettings', () => {
   it('can reset an explicit reranker back to the workspace default', async () => {
     const user = userEvent.setup()
     const onRerankingModelChange = vi.fn()
-    render(
-      <RecallSettings
-        topK={10}
-        rerankingModel={{ provider: 'custom/provider', model: 'custom-rerank' }}
-        onModeChange={vi.fn()}
-        onRerankingModelChange={onRerankingModelChange}
-        onScoreThresholdChange={vi.fn()}
-        onTopKChange={vi.fn()}
-      />,
-    )
+    renderSettings({
+      onRerankingModelChange,
+      rerankingModel: { provider: 'custom/provider', model: 'custom-rerank' },
+    })
 
     await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
+    expect(
+      screen.getByRole('button', { name: 'reranker custom/provider/custom-rerank' }),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.reset' }))
     expect(onRerankingModelChange).toHaveBeenCalledWith(undefined)
   })

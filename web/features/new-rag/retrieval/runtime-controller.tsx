@@ -148,8 +148,10 @@ export function RetrievalRuntimeController() {
   const isSelectedResearchActive = useEffectEvent(() => selectedResearchActive)
   // A selected task outside the loaded history pages is not in the admitted or listed tasks, so
   // only its detail query learns that the stream reached a terminal stage.
+  // Final partials are refreshed by the active-to-terminal transition below, once the updated task
+  // is committed; refetching them here would race the partials observer that update replaces.
   const refreshTerminalResearch = useEffectEvent(() =>
-    Promise.all([refetchResearchTasks(), refetchResearchPartials(), refetchResearchDetail?.()]),
+    Promise.all([refetchResearchTasks(), refetchResearchDetail?.()]),
   )
 
   // Preview URLs are object URLs. Release one only once neither the composer nor any run in
@@ -240,8 +242,6 @@ export function RetrievalRuntimeController() {
                 event.stage === 'completed' ||
                 event.stage === 'failed'
               if (!terminal || !isSelectedResearchActive()) return
-              if (event.stage === 'completed')
-                refreshedTerminalPartialsTaskIdRef.current = selectedResearchTaskId
               void refreshTerminalResearch()
             },
             signal: controller.signal,

@@ -7,6 +7,7 @@ import { isInitialSourceForOperation } from './source-models'
 import {
   currentSourcesAtom,
   fetchNextSourcePageAtom,
+  loadedSourcePageCountAtom,
   markSourcePollingTimedOutAtom,
   shouldAutoLoadNextSourcePageAtom,
   sourcesAwaitedOperationIdAtom,
@@ -23,6 +24,7 @@ export function SourcesRuntimeController() {
   const currentSources = useAtomValue(currentSourcesAtom)
   const pollingPhase = useAtomValue(sourcesPollingPhaseAtom)
   const shouldAutoLoadNextSourcePage = useAtomValue(shouldAutoLoadNextSourcePageAtom)
+  const loadedSourcePageCount = useAtomValue(loadedSourcePageCountAtom)
   const fetchNextSourcePage = useSetAtom(fetchNextSourcePageAtom)
   const markPollingTimedOut = useSetAtom(markSourcePollingTimedOutAtom)
 
@@ -44,9 +46,11 @@ export function SourcesRuntimeController() {
     return () => globalThis.clearTimeout(timeout)
   }, [awaitedOperationId, markPollingTimedOut, pollingPhase])
 
+  // Re-evaluate after every loaded page: a fast response can complete within one render, so the
+  // auto-load condition may stay true without ever flipping while the page is fetched.
   useEffect(() => {
     if (shouldAutoLoadNextSourcePage) void fetchNextSourcePage()
-  }, [fetchNextSourcePage, shouldAutoLoadNextSourcePage])
+  }, [fetchNextSourcePage, loadedSourcePageCount, shouldAutoLoadNextSourcePage])
 
   return null
 }

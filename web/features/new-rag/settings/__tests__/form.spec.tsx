@@ -1,5 +1,6 @@
 import type {
   KnowledgeFsExternalAccessPayload,
+  KnowledgeFsExternalAccessResponse,
   KnowledgeFsMembersReplacePayload,
   KnowledgeFsPermissionResponse,
   KnowledgeFsProfileMigrationResponse,
@@ -7,16 +8,19 @@ import type {
   KnowledgeFsSettingsResponse,
   KnowledgeFsSpaceDetailResponse,
   KnowledgeFsSpaceUpdatePayload,
+  KnowledgeFsTechnicalSummary,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type { ComponentProps, ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  zKnowledgeFsSettingsResponse,
+  zKnowledgeFsSpaceDetailResponse,
+} from '@dify/contracts/api/console/knowledge-fs/zod.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { queryClientAtom } from 'jotai-tanstack-query'
-import { useHydrateAtoms } from 'jotai/utils'
-import { render } from '@/test/console/render'
-import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { KnowledgeSettingsPage } from '../page'
 
 const serviceMock = vi.hoisted(() => ({
@@ -40,161 +44,44 @@ const routerMock = vi.hoisted(() => ({
 }))
 
 const knowledgeQueryMock = vi.hoisted(() => ({
-  externalAccess: undefined as unknown,
-  permissions: { data: [] } as unknown,
-  settings: undefined as unknown,
-  space: undefined as unknown,
+  externalAccess: undefined as KnowledgeFsExternalAccessResponse | undefined,
+  permissions: { data: [] } as { data: KnowledgeFsPermissionResponse[] },
+  settings: undefined as KnowledgeFsSettingsResponse | undefined,
+  space: undefined as KnowledgeFsSpaceDetailResponse | undefined,
 }))
 
-const membersQueryMock = vi.hoisted(() => ({
-  data: { accounts: [] as AccountWithRoleResponse[] },
-  isError: false,
-  isPending: false,
-  refetch: vi.fn(() => Promise.resolve()),
-}))
-
-const queryKeys = {
-  accountProfile: [['console', 'account', 'profile', 'get'], { type: 'query' }],
-  externalAccess: ['knowledge-fs', 'external-access'],
-  permissions: ['knowledge-fs', 'permissions'],
-  settings: ['knowledge-fs', 'settings'],
-  space: ['knowledge-fs', 'space'],
-  spacesList: ['knowledge-fs', 'spaces'],
-  systemFeatures: ['console', 'system-features'],
-}
+const membersQueryMock = vi.hoisted(() => ({ accounts: [] as AccountWithRoleResponse[] }))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMock,
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.members.get': () => membersQueryMock,
-  })
-})
-
-vi.mock('@/service/console', async () => {
-  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
   return {
-    consoleQuery: {
-      workspaces: {
-        current: {
-          members: { get: consoleOperationStub('workspaces.current.members.get') },
-          models: {
-            modelTypes: {
-              byModelType: {
-                get: {
-                  queryOptions: ({
-                    input,
-                    select,
-                  }: {
-                    input: { params: { model_type: string } }
-                    select: (response: { data: never[] }) => never[]
-                  }) => ({
-                    queryKey: ['models', input.params.model_type],
-                    queryFn: async () => ({ data: [] }),
-                    select,
-                  }),
-                },
-              },
-            },
-          },
-        },
-      },
-      account: {
-        profile: {
-          get: { queryKey: () => queryKeys.accountProfile },
-        },
-      },
-      knowledgeFs: {
-        spaces: {
-          get: { key: () => queryKeys.spacesList },
-          byControlSpaceId: {
-            delete: {
-              mutationOptions: () => ({ mutationFn: serviceMock.deleteSpace }),
-            },
-            externalAccess: {
-              get: {
-                key: () => queryKeys.externalAccess,
-                queryOptions: (options?: { staleTime?: number }) => ({
-                  queryFn: () => Promise.resolve(knowledgeQueryMock.externalAccess),
-                  queryKey: queryKeys.externalAccess,
-                  staleTime: options?.staleTime ?? Infinity,
-                }),
-              },
-              put: {
-                mutationOptions: () => ({ mutationFn: serviceMock.patchExternalAccess }),
-              },
-            },
-            get: {
-              key: () => queryKeys.space,
-              queryOptions: (options?: { staleTime?: number }) => ({
-                queryFn: () => serviceMock.getSpace(),
-                queryKey: queryKeys.space,
-                staleTime: options?.staleTime ?? Infinity,
-              }),
-            },
-            members: {
-              put: {
-                mutationOptions: () => ({ mutationFn: serviceMock.replaceMembers }),
-              },
-            },
-            patch: {
-              mutationOptions: () => ({ mutationFn: serviceMock.patchSpace }),
-            },
-            permissions: {
-              get: {
-                key: () => queryKeys.permissions,
-                queryOptions: (options?: { staleTime?: number }) => ({
-                  queryFn: () => Promise.resolve(knowledgeQueryMock.permissions),
-                  queryKey: queryKeys.permissions,
-                  staleTime: options?.staleTime ?? Infinity,
-                }),
-              },
-            },
-            settings: {
-              get: {
-                key: () => queryKeys.settings,
-                queryOptions: (options?: { staleTime?: number }) => ({
-                  queryFn: () => Promise.resolve(knowledgeQueryMock.settings),
-                  queryKey: queryKeys.settings,
-                  staleTime: options?.staleTime ?? Infinity,
-                }),
-              },
-              migrations: {
-                byMigrationId: {
-                  get: {
-                    queryOptions: ({
-                      input,
-                    }: {
-                      input: {
-                        params: { control_space_id: string; migration_id: string }
-                      }
-                    }) => ({
-                      queryFn: () => serviceMock.getMigration(input),
-                      queryKey: ['knowledge-fs', 'settings-migration', input.params.migration_id],
-                    }),
-                  },
-                },
-              },
-              patch: {
-                mutationOptions: () => ({ mutationFn: serviceMock.patchSettings }),
-              },
-            },
-          },
-        },
-      },
-      systemFeatures: {
-        get: {
-          queryOptions: () => ({ queryKey: queryKeys.systemFeatures }),
-        },
-      },
-    },
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      [`${space}.delete`]: serviceMock.deleteSpace,
+      [`${space}.externalAccess.get`]: async () => knowledgeQueryMock.externalAccess,
+      [`${space}.externalAccess.put`]: serviceMock.patchExternalAccess,
+      [`${space}.get`]: () => serviceMock.getSpace(),
+      [`${space}.members.put`]: serviceMock.replaceMembers,
+      [`${space}.patch`]: serviceMock.patchSpace,
+      [`${space}.permissions.get`]: async () => knowledgeQueryMock.permissions,
+      [`${space}.settings.get`]: async () => knowledgeQueryMock.settings,
+      [`${space}.settings.migrations.byMigrationId.get`]: serviceMock.getMigration,
+      [`${space}.settings.patch`]: serviceMock.patchSettings,
+      'workspaces.current.members.get': async () => ({ accounts: membersQueryMock.accounts }),
+      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
+    }),
   }
 })
 
+// The model selector loads provider catalogs and has its own suite; this stub keeps the
+// selection contract (value, change, and ARIA wiring) that the settings form owns.
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: ({
     ariaDescribedBy,
@@ -241,6 +128,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   },
 }))
 
+// The real picker needs emoji data and canvas cropping and is covered by its browser suite; this
+// stub preserves its trigger/content/value contract.
 vi.mock('@/app/components/base/icon-picker', async () => {
   const { createContext, use, useState } = await import('react')
   type Selection = { background: string; icon: string; type: 'emoji' }
@@ -356,7 +245,7 @@ const settings = {
   },
   issues: [],
   revision: 5,
-}
+} satisfies KnowledgeFsSettingsResponse
 
 const externalAccess = {
   agent_enabled: true,
@@ -366,7 +255,44 @@ const externalAccess = {
   workflow_enabled: true,
 }
 
-function renderForm({
+const spaceInput = { input: { params: { control_space_id: 'space-1' } } }
+const spaceQuery = consoleQuery.knowledgeFs.spaces.byControlSpaceId
+const queryKeys = {
+  externalAccess: () => spaceQuery.externalAccess.get.queryKey(spaceInput),
+  permissions: () => spaceQuery.permissions.get.queryKey(spaceInput),
+  settings: () => spaceQuery.settings.get.queryKey(spaceInput),
+  space: () => spaceQuery.get.queryKey(spaceInput),
+  spacesList: (keyword: string) =>
+    consoleQuery.knowledgeFs.spaces.get.queryKey({ input: { query: { query: keyword } } }),
+}
+
+/** Applies a server-side edit to the space summary, bumping its version like the API does. */
+function updateSummary(
+  current: KnowledgeFsSpaceDetailResponse,
+  patch: Partial<KnowledgeFsTechnicalSummary>,
+): KnowledgeFsSpaceDetailResponse {
+  if (!current.technical_summary) throw new Error('The settings fixture always has a summary')
+  return {
+    ...current,
+    resource_version: current.resource_version + 1,
+    technical_summary: { ...current.technical_summary, ...patch },
+  }
+}
+
+// Query data holds the contract's parsed output, so seeds go through the same schemas.
+const seedSettings = (queryClient: QueryClient, data: KnowledgeFsSettingsResponse) =>
+  queryClient.setQueryData(queryKeys.settings(), zKnowledgeFsSettingsResponse.parse(data))
+const seedSpace = (queryClient: QueryClient, data: KnowledgeFsSpaceDetailResponse) =>
+  queryClient.setQueryData(queryKeys.space(), zKnowledgeFsSpaceDetailResponse.parse(data))
+
+const spacesListPage = () => ({
+  data: [{ ...space, linked_apps: 0, tags: [] }],
+  has_more: false,
+  limit: 30,
+  page: 1,
+})
+
+async function renderForm({
   accountProfile = {},
   externalAccess: externalAccessOverride = externalAccess,
   members = [],
@@ -391,17 +317,18 @@ function renderForm({
   settings?: KnowledgeFsSettingsResponse
   space?: KnowledgeFsSpaceDetailResponse
 } = {}) {
-  const queryClient =
-    queryClientOverride ??
-    new QueryClient({
-      defaultOptions: {
-        mutations: { retry: false },
-        queries: { retry: false },
-      },
-    })
-  queryClient.setQueryData(queryKeys.accountProfile, {
-    meta: { currentEnv: null, currentVersion: null },
-    profile: {
+  knowledgeQueryMock.externalAccess = externalAccessOverride
+  knowledgeQueryMock.permissions = { data: permissions }
+  knowledgeQueryMock.settings = settingsOverride
+  knowledgeQueryMock.space = spaceOverride
+  membersQueryMock.accounts = members
+  const queryClient = queryClientOverride ?? createConsoleQueryClient()
+  queryClient.setQueryData(queryKeys.externalAccess(), externalAccessOverride)
+  queryClient.setQueryData(queryKeys.permissions(), { data: permissions })
+  seedSettings(queryClient, settingsOverride)
+  seedSpace(queryClient, spaceOverride)
+  const view = renderWithConsoleQuery(<KnowledgeSettingsPage knowledgeSpaceId="space-1" />, {
+    accountProfile: {
       avatar: '',
       avatar_url: null,
       email: 'test@dify.ai',
@@ -411,25 +338,10 @@ function renderForm({
       timezone: 'Asia/Shanghai',
       ...accountProfile,
     },
-  })
-  queryClient.setQueryData(queryKeys.systemFeatures, createSystemFeaturesFixture())
-  knowledgeQueryMock.externalAccess = externalAccessOverride
-  knowledgeQueryMock.permissions = { data: permissions }
-  knowledgeQueryMock.settings = settingsOverride
-  knowledgeQueryMock.space = spaceOverride
-  membersQueryMock.data = { accounts: members }
-  queryClient.setQueryData(queryKeys.externalAccess, externalAccessOverride)
-  queryClient.setQueryData(queryKeys.permissions, { data: permissions })
-  queryClient.setQueryData(queryKeys.settings, settingsOverride)
-  queryClient.setQueryData(queryKeys.space, spaceOverride)
-  const Wrapper = ({ children }: { children: ReactNode }) => {
-    useHydrateAtoms([[queryClientAtom, queryClient]], { dangerouslyForceHydrate: true })
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  }
-  return {
     queryClient,
-    ...render(<KnowledgeSettingsPage knowledgeSpaceId="space-1" />, { wrapper: Wrapper }),
-  }
+  })
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+  return view
 }
 
 function acceptSettingsMigration(migration: KnowledgeFsProfileMigrationResponse) {
@@ -512,12 +424,11 @@ async function editAllSettings(user: ReturnType<typeof userEvent.setup>) {
 describe('KnowledgeSettingsPage workflows', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    membersQueryMock.refetch.mockResolvedValue(undefined)
     serviceMock.deleteSpace.mockResolvedValue(undefined)
     serviceMock.getSpace.mockImplementation(async () => knowledgeQueryMock.space)
     serviceMock.patchExternalAccess.mockImplementation(
       async ({ body }: { body: KnowledgeFsExternalAccessPayload }) => {
-        const current = knowledgeQueryMock.externalAccess as typeof externalAccess
+        const current = knowledgeQueryMock.externalAccess!
         const saved = { ...current, ...body, revision: current.revision + 1 }
         knowledgeQueryMock.externalAccess = saved
         return saved
@@ -525,7 +436,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
     serviceMock.patchSettings.mockImplementation(
       async ({ body }: { body: KnowledgeFsSettingsPayload }) => {
-        const current = knowledgeQueryMock.settings as KnowledgeFsSettingsResponse
+        const current = knowledgeQueryMock.settings!
         const saved: KnowledgeFsSettingsResponse = {
           ...current,
           embedding: body.embedding
@@ -556,12 +467,10 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
     serviceMock.patchSpace.mockImplementation(
       async ({ body }: { body: KnowledgeFsSpaceUpdatePayload }) => {
-        const current = knowledgeQueryMock.space as KnowledgeFsSpaceDetailResponse
-        const { visibility, ...basic } = body
+        const current = knowledgeQueryMock.space!
+        const { name, visibility, ...basic } = body
         const saved = {
-          ...current,
-          resource_version: current.resource_version + 1,
-          technical_summary: { ...current.technical_summary, ...basic },
+          ...updateSummary(current, { ...basic, ...(name ? { name } : {}) }),
           visibility: visibility ?? current.visibility,
         }
         knowledgeQueryMock.space = saved
@@ -581,7 +490,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('keeps save disabled and shows an inline error when the name is empty', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
@@ -598,7 +507,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('saves a changed knowledge name through the generated space mutation', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
@@ -609,15 +518,12 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(saveButton)
 
     await waitFor(() => {
-      expect(serviceMock.patchSpace).toHaveBeenCalledWith(
-        {
-          body: {
-            name: 'Updated camera specs',
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchSpace).toHaveBeenCalledWith({
+        body: {
+          name: 'Updated camera specs',
         },
-        expect.anything(),
-      )
+        params: { control_space_id: 'space-1' },
+      })
     })
     expect(serviceMock.patchSettings).not.toHaveBeenCalled()
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
@@ -625,12 +531,9 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('marks every cached knowledge-space list variant stale after saving basic information', async () => {
     const user = userEvent.setup()
-    const { queryClient } = renderForm()
-    const listKeys = [
-      [...queryKeys.spacesList, { keyword: '' }],
-      [...queryKeys.spacesList, { keyword: 'camera' }],
-    ]
-    for (const queryKey of listKeys) queryClient.setQueryData(queryKey, { data: [space] })
+    const { queryClient } = await renderForm()
+    const listKeys = [queryKeys.spacesList(''), queryKeys.spacesList('camera')]
+    for (const queryKey of listKeys) queryClient.setQueryData(queryKey, spacesListPage())
 
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
@@ -648,14 +551,9 @@ describe('KnowledgeSettingsPage workflows', () => {
     const refreshPromise = new Promise<void>((resolve) => {
       finishRefresh = resolve
     })
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        mutations: { retry: false },
-        queries: { retry: false },
-      },
-    })
+    const queryClient = createConsoleQueryClient()
     serviceMock.getSpace.mockReturnValueOnce(refreshPromise.then(() => knowledgeQueryMock.space))
-    renderForm({ queryClient })
+    await renderForm({ queryClient })
 
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
@@ -674,8 +572,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     expectNoWrites()
   })
 
-  it('uses the 40-character knowledge name limit from the design contract', () => {
-    renderForm()
+  it('uses the 40-character knowledge name limit from the design contract', async () => {
+    await renderForm()
 
     expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toHaveAttribute(
       'maxlength',
@@ -686,26 +584,23 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('submits the settings form when Enter is pressed in the name field', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
     await user.type(nameInput, 'Updated by keyboard{Enter}')
 
     await waitFor(() => {
-      expect(serviceMock.patchSpace).toHaveBeenCalledWith(
-        {
-          body: { name: 'Updated by keyboard' },
-          params: { control_space_id: 'space-1' },
-        },
-        expect.anything(),
-      )
+      expect(serviceMock.patchSpace).toHaveBeenCalledWith({
+        body: { name: 'Updated by keyboard' },
+        params: { control_space_id: 'space-1' },
+      })
     })
   })
 
   it('does not submit an unchanged emoji icon when saving a description', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     const descriptionInput = screen.getByRole('textbox', {
       name: 'datasetSettings.form.desc',
@@ -719,21 +614,18 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
 
     await waitFor(() => {
-      expect(serviceMock.patchSpace).toHaveBeenCalledWith(
-        {
-          body: {
-            description: 'Updated product documentation',
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchSpace).toHaveBeenCalledWith({
+        body: {
+          description: 'Updated product documentation',
         },
-        expect.anything(),
-      )
+        params: { control_space_id: 'space-1' },
+      })
     })
   })
 
   it('saves the selected emoji background style with the knowledge icon', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     const iconButton = screen.getByRole('button', {
       name: 'datasetSettings.form.nameAndIcon',
@@ -750,21 +642,18 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
 
     await waitFor(() => {
-      expect(serviceMock.patchSpace).toHaveBeenCalledWith(
-        {
-          body: {
-            icon: 'camera',
-            icon_background: '#FCE7F6',
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchSpace).toHaveBeenCalledWith({
+        body: {
+          icon: 'camera',
+          icon_background: '#FCE7F6',
         },
-        expect.anything(),
-      )
+        params: { control_space_id: 'space-1' },
+      })
     })
   })
 
-  it('restores a saved emoji background style from the space detail', () => {
-    renderForm({
+  it('restores a saved emoji background style from the space detail', async () => {
+    await renderForm({
       space: {
         ...space,
         technical_summary: {
@@ -782,7 +671,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('accepts 2000 description characters and blocks 2001 with a field error', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     const descriptionInput = screen.getByRole('textbox', {
       name: 'datasetSettings.form.desc',
@@ -813,18 +702,15 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(saveButton)
 
     await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
-    expect(serviceMock.patchSpace).toHaveBeenCalledWith(
-      {
-        body: { description: boundaryDescription },
-        params: { control_space_id: 'space-1' },
-      },
-      expect.anything(),
-    )
+    expect(serviceMock.patchSpace).toHaveBeenCalledWith({
+      body: { description: boundaryDescription },
+      params: { control_space_id: 'space-1' },
+    })
   })
 
   it('disables API access directly and preserves unrelated channels', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     await user.click(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
@@ -832,18 +718,15 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() => {
-      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
-        {
-          body: {
-            agent_enabled: false,
-            mcp_enabled: true,
-            service_api_enabled: false,
-            workflow_enabled: true,
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
+        body: {
+          agent_enabled: false,
+          mcp_enabled: true,
+          service_api_enabled: false,
+          workflow_enabled: true,
         },
-        expect.anything(),
-      )
+        params: { control_space_id: 'space-1' },
+      })
     })
     expect(
       screen.getByRole('button', {
@@ -855,7 +738,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('keeps access channels submittable before the first model profile activates', async () => {
     const user = userEvent.setup()
-    renderForm({
+    await renderForm({
       settings: {
         ...settings,
         active_profile_available: false,
@@ -891,18 +774,15 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() => {
-      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
-        {
-          body: {
-            agent_enabled: false,
-            mcp_enabled: true,
-            service_api_enabled: false,
-            workflow_enabled: true,
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
+        body: {
+          agent_enabled: false,
+          mcp_enabled: true,
+          service_api_enabled: false,
+          workflow_enabled: true,
         },
-        expect.anything(),
-      )
+        params: { control_space_id: 'space-1' },
+      })
     })
     await waitFor(() => expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'false'))
     expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
@@ -913,7 +793,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('enables Workflow access independently and preserves API and MCP channels', async () => {
     const user = userEvent.setup()
-    renderForm({
+    await renderForm({
       externalAccess: {
         ...externalAccess,
         workflow_enabled: false,
@@ -933,25 +813,22 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() => {
-      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
-        {
-          body: {
-            agent_enabled: true,
-            mcp_enabled: true,
-            service_api_enabled: false,
-            workflow_enabled: true,
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
+        body: {
+          agent_enabled: true,
+          mcp_enabled: true,
+          service_api_enabled: false,
+          workflow_enabled: true,
         },
-        expect.anything(),
-      )
+        params: { control_space_id: 'space-1' },
+      })
     })
     await waitFor(() => expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true'))
   })
 
   it('shows a partially enabled API channel as on and disables both channels directly', async () => {
     const user = userEvent.setup()
-    renderForm({
+    await renderForm({
       externalAccess: {
         ...externalAccess,
         agent_enabled: false,
@@ -969,25 +846,22 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() => {
-      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
-        {
-          body: {
-            agent_enabled: false,
-            mcp_enabled: true,
-            service_api_enabled: false,
-            workflow_enabled: true,
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
+        body: {
+          agent_enabled: false,
+          mcp_enabled: true,
+          service_api_enabled: false,
+          workflow_enabled: true,
         },
-        expect.anything(),
-      )
+        params: { control_space_id: 'space-1' },
+      })
     })
   })
 
   it('keeps the Workflow access edit and shows an error toast after failure', async () => {
     const user = userEvent.setup()
     serviceMock.patchExternalAccess.mockRejectedValueOnce(new Error('network error'))
-    renderForm({
+    await renderForm({
       externalAccess: {
         ...externalAccess,
         workflow_enabled: false,
@@ -1014,7 +888,7 @@ describe('KnowledgeSettingsPage workflows', () => {
   it('keeps the API access edit and shows an error toast after failure', async () => {
     const user = userEvent.setup()
     serviceMock.patchExternalAccess.mockRejectedValueOnce(new Error('network error'))
-    renderForm({
+    await renderForm({
       externalAccess: {
         ...externalAccess,
         agent_enabled: false,
@@ -1041,7 +915,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('requires the exact knowledge name before deletion', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     const dialog = await screen.findByRole('alertdialog')
@@ -1063,21 +937,18 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(confirmButton)
 
     await waitFor(() => {
-      expect(serviceMock.deleteSpace).toHaveBeenCalledWith(
-        {
-          params: { control_space_id: 'space-1' },
-        },
-        expect.anything(),
-      )
+      expect(serviceMock.deleteSpace).toHaveBeenCalledWith({
+        params: { control_space_id: 'space-1' },
+      })
     })
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent')
   })
 
   it('marks cached knowledge-space lists stale before returning after deletion', async () => {
     const user = userEvent.setup()
-    const { queryClient } = renderForm()
-    const listKey = [...queryKeys.spacesList, { keyword: '' }]
-    queryClient.setQueryData(listKey, { data: [space] })
+    const { queryClient } = await renderForm()
+    const listKey = queryKeys.spacesList('')
+    queryClient.setQueryData(listKey, spacesListPage())
 
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     const dialog = await screen.findByRole('alertdialog')
@@ -1097,7 +968,7 @@ describe('KnowledgeSettingsPage workflows', () => {
           finishDeletion = resolve
         }),
     )
-    renderForm()
+    await renderForm()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     const dialog = await screen.findByRole('alertdialog')
@@ -1119,7 +990,7 @@ describe('KnowledgeSettingsPage workflows', () => {
   it('keeps edits and shows a standard error toast after saving fails', async () => {
     const user = userEvent.setup()
     serviceMock.patchSpace.mockRejectedValueOnce(new Error('network error'))
-    renderForm()
+    await renderForm()
 
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
@@ -1143,7 +1014,7 @@ describe('KnowledgeSettingsPage workflows', () => {
   it('shows an error toast for a failed retrieval settings update without submitting basic info', async () => {
     const user = userEvent.setup()
     serviceMock.patchSettings.mockRejectedValueOnce(new Error('settings unavailable'))
-    renderForm()
+    await renderForm()
 
     await user.click(
       screen.getByRole('button', {
@@ -1175,7 +1046,7 @@ describe('KnowledgeSettingsPage workflows', () => {
         { status: 409 },
       ),
     )
-    renderForm()
+    await renderForm()
     const selector = screen.getByRole('button', {
       name: 'knowledgeSettings.settings.systemReasoningModelLabel',
     })
@@ -1209,7 +1080,7 @@ describe('KnowledgeSettingsPage workflows', () => {
         { status: 409 },
       ),
     )
-    renderForm()
+    await renderForm()
     const selector = screen.getByRole('button', {
       name: 'knowledgeSettings.settings.systemReasoningModelLabel',
     })
@@ -1262,7 +1133,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'Team Member',
       role: 'normal',
     } satisfies AccountWithRoleResponse
-    renderForm({
+    await renderForm({
       members: [owner, member],
     })
 
@@ -1289,7 +1160,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('requires a non-owner member for partial access and disables save', async () => {
     const user = userEvent.setup()
-    renderForm({
+    await renderForm({
       accountProfile: {
         email: 'owner@example.com',
         id: 'owner-1',
@@ -1318,7 +1189,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('clamps retrieval values and shows their supported ranges', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     const topKInput = screen.getByRole('textbox', {
       name: 'knowledgeSpace.settings.topKLabel',
@@ -1343,22 +1214,19 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() =>
-      expect(serviceMock.patchSettings).toHaveBeenCalledWith(
-        {
-          body: {
-            expectedRevision: 5,
-            retrieval: expect.objectContaining({ topK: 10 }),
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchSettings).toHaveBeenCalledWith({
+        body: {
+          expectedRevision: 5,
+          retrieval: expect.objectContaining({ topK: 10 }),
         },
-        expect.anything(),
-      ),
+        params: { control_space_id: 'space-1' },
+      }),
     )
   })
 
   it('clamps the score threshold to the standard field range', async () => {
     const user = userEvent.setup()
-    renderForm({
+    await renderForm({
       settings: {
         ...settings,
         retrieval: {
@@ -1383,24 +1251,21 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() =>
-      expect(serviceMock.patchSettings).toHaveBeenCalledWith(
-        {
-          body: {
-            expectedRevision: 5,
-            retrieval: expect.objectContaining({
-              scoreThreshold: expect.objectContaining({ value: 1 }),
-            }),
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchSettings).toHaveBeenCalledWith({
+        body: {
+          expectedRevision: 5,
+          retrieval: expect.objectContaining({
+            scoreThreshold: expect.objectContaining({ value: 1 }),
+          }),
         },
-        expect.anything(),
-      ),
+        params: { control_space_id: 'space-1' },
+      }),
     )
   })
 
   it('keeps a confirmed embedding model as a draft until the unified Save', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     await user.click(
       screen.getByRole('button', {
@@ -1414,20 +1279,17 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() =>
-      expect(serviceMock.patchSettings).toHaveBeenCalledWith(
-        {
-          body: {
-            embedding: {
-              model: 'openrouter/auto',
-              pluginId: 'langgenius/openrouter',
-              provider: 'openrouter',
-            },
-            expectedRevision: 5,
+      expect(serviceMock.patchSettings).toHaveBeenCalledWith({
+        body: {
+          embedding: {
+            model: 'openrouter/auto',
+            pluginId: 'langgenius/openrouter',
+            provider: 'openrouter',
           },
-          params: { control_space_id: 'space-1' },
+          expectedRevision: 5,
         },
-        expect.anything(),
-      ),
+        params: { control_space_id: 'space-1' },
+      }),
     )
     expect(
       screen.getByRole('button', {
@@ -1438,7 +1300,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('keeps the score threshold available in Fast and Deep because rerank is mandatory', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     const thresholdSwitch = screen.getByRole('switch', {
       name: 'appDebug.datasetConfig.score_threshold',
@@ -1464,7 +1326,7 @@ describe('KnowledgeSettingsPage workflows', () => {
         { status: 403 },
       ),
     )
-    renderForm({
+    await renderForm({
       settings: {
         ...settings,
         retrieval: {
@@ -1514,7 +1376,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       run_state: 'succeeded',
       updated_at: '2026-07-28T00:01:00Z',
     })
-    renderForm({
+    await renderForm({
       settings: {
         ...settings,
         configuration_state: 'setup-required',
@@ -1539,32 +1401,29 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
-    expect(serviceMock.patchSettings).toHaveBeenCalledWith(
-      {
-        body: {
-          expectedRevision: 5,
-          retrieval: expect.objectContaining({
-            defaultMode: 'fast',
-            reasoningModel: {
-              model: 'gpt-4o',
-              pluginId: 'langgenius/openai',
-              provider: 'openai',
+    expect(serviceMock.patchSettings).toHaveBeenCalledWith({
+      body: {
+        expectedRevision: 5,
+        retrieval: expect.objectContaining({
+          defaultMode: 'fast',
+          reasoningModel: {
+            model: 'gpt-4o',
+            pluginId: 'langgenius/openai',
+            provider: 'openai',
+          },
+          rerank: {
+            enabled: true,
+            model: {
+              model: 'openrouter/auto',
+              pluginId: 'langgenius/openrouter',
+              provider: 'openrouter',
             },
-            rerank: {
-              enabled: true,
-              model: {
-                model: 'openrouter/auto',
-                pluginId: 'langgenius/openrouter',
-                provider: 'openrouter',
-              },
-            },
-            scoreThreshold: expect.objectContaining({ stage: 'rerank' }),
-          }),
-        },
-        params: { control_space_id: 'space-1' },
+          },
+          scoreThreshold: expect.objectContaining({ stage: 'rerank' }),
+        }),
       },
-      expect.anything(),
-    )
+      params: { control_space_id: 'space-1' },
+    })
     expect(screen.queryByText('knowledgeSettings.settings.rerankModelRequired')).toBeNull()
     await waitFor(() => expect(serviceMock.getMigration).toHaveBeenCalledOnce())
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'))
@@ -1572,7 +1431,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('blocks a stale draft after the server baseline changes and restores the latest value', async () => {
     const user = userEvent.setup()
-    const { queryClient } = renderForm()
+    const { queryClient } = await renderForm()
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
     await user.type(nameInput, 'Version B')
@@ -1582,7 +1441,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       resource_version: space.resource_version + 1,
       technical_summary: { ...space.technical_summary, name: 'Version C' },
     }
-    act(() => queryClient.setQueryData(queryKeys.space, knowledgeQueryMock.space))
+    act(() => seedSpace(queryClient, knowledgeQueryMock.space!))
     expect(nameInput).toHaveValue('Version B')
     expect(await screen.findByRole('status')).toHaveTextContent(
       'knowledgeSettings.settings.serverConflict',
@@ -1601,7 +1460,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('allows embedding and retrieval to be configured together during initial setup', async () => {
     const user = userEvent.setup()
-    renderForm({
+    await renderForm({
       settings: {
         active_profile_available: false,
         active_profile_revisions: {},
@@ -1686,22 +1545,19 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() =>
-      expect(serviceMock.patchSettings).toHaveBeenCalledWith(
-        {
-          body: {
-            embedding: expect.any(Object),
-            expectedRevision: 1,
-            retrieval: expect.any(Object),
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchSettings).toHaveBeenCalledWith({
+        body: {
+          embedding: expect.any(Object),
+          expectedRevision: 1,
+          retrieval: expect.any(Object),
         },
-        expect.anything(),
-      ),
+        params: { control_space_id: 'space-1' },
+      }),
     )
   })
 
-  it('keeps active-profile controls enabled when a replacement candidate fails validation', () => {
-    renderForm({
+  it('keeps active-profile controls enabled when a replacement candidate fails validation', async () => {
+    await renderForm({
       settings: {
         ...settings,
         configuration_state: 'validation-failed',
@@ -1717,8 +1573,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     ).not.toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('keeps API access available without showing an idle pending-validation status', () => {
-    renderForm({
+  it('keeps API access available without showing an idle pending-validation status', async () => {
+    await renderForm({
       settings: {
         ...settings,
         configuration_state: 'pending-validation',
@@ -1736,8 +1592,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
-  it('shows a recovery alert when initial model validation fails', () => {
-    renderForm({
+  it('shows a recovery alert when initial model validation fails', async () => {
+    await renderForm({
       settings: {
         ...settings,
         configuration_state: 'validation-failed',
@@ -1751,7 +1607,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('does not protect unsaved changes from browser unload', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
@@ -1763,8 +1619,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
-  it('normalizes split Knowledge FS provider identities for the model selector', () => {
-    renderForm({
+  it('normalizes split Knowledge FS provider identities for the model selector', async () => {
+    await renderForm({
       settings: {
         ...settings,
         retrieval: {
@@ -1787,7 +1643,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('splits a canonical model provider before saving Knowledge FS settings', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
 
     await user.click(
       screen.getByRole('button', {
@@ -1799,22 +1655,19 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() => {
-      expect(serviceMock.patchSettings).toHaveBeenCalledWith(
-        {
-          body: {
-            expectedRevision: 5,
-            retrieval: expect.objectContaining({
-              reasoningModel: {
-                model: 'openrouter/auto',
-                pluginId: 'langgenius/openrouter',
-                provider: 'openrouter',
-              },
-            }),
-          },
-          params: { control_space_id: 'space-1' },
+      expect(serviceMock.patchSettings).toHaveBeenCalledWith({
+        body: {
+          expectedRevision: 5,
+          retrieval: expect.objectContaining({
+            reasoningModel: {
+              model: 'openrouter/auto',
+              pluginId: 'langgenius/openrouter',
+              provider: 'openrouter',
+            },
+          }),
         },
-        expect.anything(),
-      )
+        params: { control_space_id: 'space-1' },
+      })
     })
   })
 
@@ -1844,7 +1697,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       updated_at: '2026-07-28T00:00:00Z',
     })
     serviceMock.getMigration.mockReturnValueOnce(migrationPromise)
-    renderForm()
+    await renderForm()
 
     await user.click(
       screen.getByRole('button', {
@@ -1897,7 +1750,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       run_state: 'failed',
       updated_at: '2026-07-28T00:01:00Z',
     })
-    renderForm()
+    await renderForm()
 
     await user.click(
       screen.getByRole('button', {
@@ -1916,7 +1769,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('keeps every setting in draft and saves each changed resource once from the bottom action', async () => {
     const user = userEvent.setup()
-    renderForm({ accountProfile: { id: 'owner-1' }, members: [teamMember] })
+    await renderForm({ accountProfile: { id: 'owner-1' }, members: [teamMember] })
     const { name, description, topK, threshold } = await editAllSettings(user)
     const save = screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' })
     const cancel = screen.getByRole('button', { name: 'common.operation.cancel' })
@@ -1937,65 +1790,53 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(save)
 
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledOnce())
-    expect(serviceMock.patchSpace).toHaveBeenCalledExactlyOnceWith(
-      {
-        body: {
-          name: 'Draft camera specs',
-          description: 'Draft documentation',
-          icon: 'camera',
-          icon_background: '#FCE7F6',
-          visibility: 'partial_members',
-        },
-        params: { control_space_id: 'space-1' },
+    expect(serviceMock.patchSpace).toHaveBeenCalledExactlyOnceWith({
+      body: {
+        name: 'Draft camera specs',
+        description: 'Draft documentation',
+        icon: 'camera',
+        icon_background: '#FCE7F6',
+        visibility: 'partial_members',
       },
-      expect.anything(),
-    )
-    expect(serviceMock.replaceMembers).toHaveBeenCalledExactlyOnceWith(
-      {
-        body: { members: [{ account_id: 'member-1', role: 'viewer' }] },
-        params: { control_space_id: 'space-1' },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(serviceMock.replaceMembers).toHaveBeenCalledExactlyOnceWith({
+      body: { members: [{ account_id: 'member-1', role: 'viewer' }] },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(serviceMock.patchExternalAccess).toHaveBeenCalledExactlyOnceWith({
+      body: {
+        agent_enabled: false,
+        service_api_enabled: false,
+        workflow_enabled: false,
+        mcp_enabled: true,
       },
-      expect.anything(),
-    )
-    expect(serviceMock.patchExternalAccess).toHaveBeenCalledExactlyOnceWith(
-      {
-        body: {
-          agent_enabled: false,
-          service_api_enabled: false,
-          workflow_enabled: false,
-          mcp_enabled: true,
-        },
-        params: { control_space_id: 'space-1' },
-      },
-      expect.anything(),
-    )
-    expect(serviceMock.patchSettings).toHaveBeenCalledExactlyOnceWith(
-      {
-        body: {
-          expectedRevision: 5,
-          retrieval: {
-            defaultMode: 'deep',
-            reasoningModel: {
+      params: { control_space_id: 'space-1' },
+    })
+    expect(serviceMock.patchSettings).toHaveBeenCalledExactlyOnceWith({
+      body: {
+        expectedRevision: 5,
+        retrieval: {
+          defaultMode: 'deep',
+          reasoningModel: {
+            model: 'openrouter/auto',
+            pluginId: 'langgenius/openrouter',
+            provider: 'openrouter',
+          },
+          rerank: {
+            enabled: true,
+            model: {
               model: 'openrouter/auto',
               pluginId: 'langgenius/openrouter',
               provider: 'openrouter',
             },
-            rerank: {
-              enabled: true,
-              model: {
-                model: 'openrouter/auto',
-                pluginId: 'langgenius/openrouter',
-                provider: 'openrouter',
-              },
-            },
-            scoreThreshold: { enabled: true, stage: 'rerank', value: 0.72 },
-            topK: 8,
           },
+          scoreThreshold: { enabled: true, stage: 'rerank', value: 0.72 },
+          topK: 8,
         },
-        params: { control_space_id: 'space-1' },
       },
-      expect.anything(),
-    )
+      params: { control_space_id: 'space-1' },
+    })
     expect(name).toHaveValue('Draft camera specs')
     expect(description).toHaveValue('Draft documentation')
     expect(topK).toHaveValue('8')
@@ -2005,7 +1846,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('cancels basic, member, access, model and retrieval drafts together without writing', async () => {
     const user = userEvent.setup()
-    renderForm({ accountProfile: { id: 'owner-1' }, members: [teamMember] })
+    await renderForm({ accountProfile: { id: 'owner-1' }, members: [teamMember] })
     const { name, description, topK, threshold } = await editAllSettings(user)
     await user.click(
       screen.getByRole('button', { name: 'knowledgeSettings.settings.embeddingModelLabel' }),
@@ -2062,7 +1903,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       })
       return originalSave(...args)
     })
-    renderForm()
+    await renderForm()
     const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(name)
     await user.type(name, 'Saving camera specs')
@@ -2117,7 +1958,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('preserves all local drafts on a retrieval refetch conflict and cancels to the latest snapshot', async () => {
     const user = userEvent.setup()
-    const { queryClient } = renderForm()
+    const { queryClient } = await renderForm()
     const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
     const workflow = screen.getByRole('switch', { name: 'knowledgeSettings.workflowAccess' })
@@ -2132,7 +1973,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       revision: 8,
       retrieval: { ...settings.retrieval, top_k: 6 },
     }
-    act(() => queryClient.setQueryData(queryKeys.settings, knowledgeQueryMock.settings))
+    act(() => seedSettings(queryClient, knowledgeQueryMock.settings!))
 
     expect(await screen.findByRole('status')).toHaveTextContent(
       'knowledgeSettings.settings.serverConflict',
@@ -2174,12 +2015,12 @@ describe('KnowledgeSettingsPage workflows', () => {
         finishMigration = resolve
       })
       knowledgeQueryMock.settings = {
-        ...(knowledgeQueryMock.settings as KnowledgeFsSettingsResponse),
+        ...knowledgeQueryMock.settings!,
         revision: 9,
       }
       return { ...migration, checkpoint: 'activated', run_state: 'succeeded' }
     })
-    renderForm()
+    await renderForm()
     await user.click(
       screen.getByRole('button', { name: 'knowledgeSettings.settings.embeddingModelLabel' }),
     )
@@ -2197,44 +2038,37 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() => expect(serviceMock.getMigration).toHaveBeenCalledOnce())
-    expect(serviceMock.patchSettings).toHaveBeenCalledExactlyOnceWith(
-      {
-        body: {
-          expectedRevision: 5,
-          embedding: {
-            model: 'openrouter/auto',
-            pluginId: 'langgenius/openrouter',
-            provider: 'openrouter',
-          },
+    expect(serviceMock.patchSettings).toHaveBeenCalledExactlyOnceWith({
+      body: {
+        expectedRevision: 5,
+        embedding: {
+          model: 'openrouter/auto',
+          pluginId: 'langgenius/openrouter',
+          provider: 'openrouter',
         },
-        params: { control_space_id: 'space-1' },
       },
-      expect.anything(),
-    )
+      params: { control_space_id: 'space-1' },
+    })
     expect(topK).toBeDisabled()
     expect(toastMock.success).not.toHaveBeenCalled()
     finishMigration()
 
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledOnce())
     expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2)
-    expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
-      2,
-      {
-        body: {
-          expectedRevision: 9,
-          retrieval: expect.objectContaining({
-            topK: 8,
-            reasoningModel: {
-              model: 'openrouter/auto',
-              pluginId: 'langgenius/openrouter',
-              provider: 'openrouter',
-            },
-          }),
-        },
-        params: { control_space_id: 'space-1' },
+    expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(2, {
+      body: {
+        expectedRevision: 9,
+        retrieval: expect.objectContaining({
+          topK: 8,
+          reasoningModel: {
+            model: 'openrouter/auto',
+            pluginId: 'langgenius/openrouter',
+            provider: 'openrouter',
+          },
+        }),
       },
-      expect.anything(),
-    )
+      params: { control_space_id: 'space-1' },
+    })
     // The success toast fires when the save resolves; the form settles on the saved draft in a later render.
     await waitFor(() => {
       expect(topK).toHaveValue('8')
@@ -2248,18 +2082,12 @@ describe('KnowledgeSettingsPage workflows', () => {
   it('retries only the unsaved resource after a partial save and keeps the desired draft', async () => {
     const user = userEvent.setup()
     serviceMock.patchExternalAccess.mockImplementationOnce(async () => {
-      const saved = knowledgeQueryMock.space as KnowledgeFsSpaceDetailResponse
-      knowledgeQueryMock.space = {
-        ...saved,
-        resource_version: saved.resource_version + 1,
-        technical_summary: {
-          ...saved.technical_summary,
-          description: 'Updated by another administrator',
-        },
-      }
+      knowledgeQueryMock.space = updateSummary(knowledgeQueryMock.space!, {
+        description: 'Updated by another administrator',
+      })
       throw new Error('access temporarily unavailable')
     })
-    renderForm()
+    await renderForm()
     const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     const api = screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' })
     await user.clear(name)
@@ -2293,7 +2121,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('retains drafts when Cancel cannot refresh the saved data and discards them after a successful retry', async () => {
     const user = userEvent.setup()
-    renderForm()
+    await renderForm()
     const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(name)
     await user.type(name, 'Keep this draft until refresh succeeds')
@@ -2313,7 +2141,7 @@ describe('KnowledgeSettingsPage workflows', () => {
 
   it('accepts a background refresh without conflict after every edit is restored to its saved value', async () => {
     const user = userEvent.setup()
-    const { queryClient } = renderForm()
+    const { queryClient } = await renderForm()
     const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     const workflow = screen.getByRole('switch', { name: 'knowledgeSettings.workflowAccess' })
     const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
@@ -2332,12 +2160,12 @@ describe('KnowledgeSettingsPage workflows', () => {
     expectNoWrites()
 
     act(() => {
-      queryClient.setQueryData(queryKeys.space, {
+      seedSpace(queryClient, {
         ...space,
         resource_version: 4,
         technical_summary: { ...space.technical_summary, name: 'Latest server name' },
       })
-      queryClient.setQueryData(queryKeys.settings, {
+      seedSettings(queryClient, {
         ...settings,
         revision: 6,
         retrieval: { ...settings.retrieval, top_k: 7 },
@@ -2368,7 +2196,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     serviceMock.getMigration
       .mockRejectedValueOnce(new Error('migration poll interrupted'))
       .mockResolvedValueOnce({ ...migration, checkpoint: 'activated', run_state: 'succeeded' })
-    renderForm()
+    await renderForm()
     const reasoning = screen.getByRole('button', {
       name: 'knowledgeSettings.settings.systemReasoningModelLabel',
     })
@@ -2396,8 +2224,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     ).toBeDisabled()
   })
 
-  it('fully locks the page for a view-only user', () => {
-    renderForm({
+  it('fully locks the page for a view-only user', async () => {
+    await renderForm({
       space: {
         ...space,
         permission_keys: ['knowledge_space_read'],
@@ -2438,7 +2266,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       roles: [],
       status: 'active',
     } satisfies AccountWithRoleResponse
-    renderForm({
+    await renderForm({
       members: [member],
       space: {
         ...space,
@@ -2463,19 +2291,16 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }))
 
     await waitFor(() =>
-      expect(serviceMock.replaceMembers).toHaveBeenCalledWith(
-        {
-          body: { members: [{ account_id: 'member-1', role: 'viewer' }] },
-          params: { control_space_id: 'space-1' },
-        },
-        expect.anything(),
-      ),
+      expect(serviceMock.replaceMembers).toHaveBeenCalledWith({
+        body: { members: [{ account_id: 'member-1', role: 'viewer' }] },
+        params: { control_space_id: 'space-1' },
+      }),
     )
     expect(serviceMock.patchSpace).not.toHaveBeenCalled()
   })
 
-  it('shows the destructive action to a delete-only user', () => {
-    renderForm({
+  it('shows the destructive action to a delete-only user', async () => {
+    await renderForm({
       space: {
         ...space,
         permission_keys: ['knowledge_space_delete', 'knowledge_space_read'],

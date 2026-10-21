@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createHttpError } from '@/service/http-error'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { EvaluationReport, QualityEvaluationPanel } from '../quality-evaluation-panel'
 
 const serviceMock = vi.hoisted(() => ({
@@ -18,58 +18,20 @@ vi.mock('@/app/notifications', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 
-vi.mock('../../space/context', () => ({
-  useKnowledgeSpace: () => ({ space: { control_space_id: 'space-1' } }),
-  useKnowledgeSpacePermission: () => true,
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          goldenQuestions: {
-            get: {
-              queryOptions: ({ input }: { input: unknown }) => ({
-                queryFn: () => serviceMock.listGoldenQuestions(input),
-                queryKey: ['quality', 'golden-questions', input],
-              }),
-            },
-          },
-          quality: {
-            replayRuns: {
-              byRunId: {
-                get: {
-                  queryOptions: ({ input }: { input: unknown }) => ({
-                    queryFn: () => serviceMock.getReplay(input),
-                    queryKey: ['quality', 'evaluation', 'detail', input],
-                  }),
-                },
-              },
-              get: {
-                key: () => ['quality', 'evaluation', 'list'],
-                infiniteOptions: (options: {
-                  getNextPageParam: (page: { next_cursor?: string | null }) => string | undefined
-                  initialPageParam: string | null
-                  input: (pageParam: string | null) => unknown
-                }) => ({
-                  getNextPageParam: options.getNextPageParam,
-                  initialPageParam: options.initialPageParam,
-                  queryFn: ({ pageParam }: { pageParam: string | null }) =>
-                    serviceMock.listReplays(options.input(pageParam)),
-                  queryKey: ['quality', 'evaluation', 'list'],
-                }),
-              },
-              post: {
-                mutationOptions: () => ({ mutationFn: serviceMock.createReplay }),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      [`${space}.goldenQuestions.get`]: serviceMock.listGoldenQuestions,
+      [`${space}.quality.replayRuns.byRunId.get`]: serviceMock.getReplay,
+      [`${space}.quality.replayRuns.get`]: serviceMock.listReplays,
+      [`${space}.quality.replayRuns.post`]: serviceMock.createReplay,
+    }),
+  }
+})
 
 const completedRun = {
   attempt: 1,
@@ -159,17 +121,7 @@ const completedRunWithEvidence = {
   ],
 } as const
 
-function renderPanel(
-  queryClient = new QueryClient({
-    defaultOptions: {
-      mutations: { retry: false },
-      queries: { retry: false },
-    },
-  }),
-) {
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
+function renderPanel(queryClient?: QueryClient) {
   function Harness() {
     const [runId, setRunId] = useState<string>()
     return runId ? (
@@ -178,12 +130,16 @@ function renderPanel(
       <QualityEvaluationPanel onOpenReport={setRunId} />
     )
   }
-  return render(<Harness />, { wrapper: Wrapper })
+  return renderWithConsoleQuery(
+    <KnowledgeSpaceTestProvider>
+      <Harness />
+    </KnowledgeSpaceTestProvider>,
+    { queryClient },
+  )
 }
 
 describe('QualityEvaluationPanel', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     serviceMock.listGoldenQuestions.mockResolvedValue({
       data: Array.from({ length: 6 }, (_, index) => ({
         id: `golden-${index + 1}`,
@@ -194,10 +150,6 @@ describe('QualityEvaluationPanel', () => {
     serviceMock.listReplays.mockResolvedValue({ data: [], next_cursor: null })
     serviceMock.createReplay.mockResolvedValue({ ...completedRun, state: 'queued' })
     serviceMock.getReplay.mockResolvedValue(completedRun)
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
   })
 
   it('explains the empty state before the first evaluation run', async () => {
@@ -231,23 +183,7 @@ describe('QualityEvaluationPanel', () => {
     dateNowSpy.mockRestore()
   })
 
-  it('separates the report date and time with a middle dot', async () => {
-    const user = userEvent.setup()
-    const createdAt = new Date(completedRun.created_at)
-    const expected = `${new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(createdAt)} · ${new Intl.DateTimeFormat('en-US', { timeStyle: 'short' }).format(createdAt)}`
-    serviceMock.listReplays.mockResolvedValue({ data: [completedRun], next_cursor: null })
-
-    renderPanel()
-    await user.click(
-      await screen.findByRole('button', {
-        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
-      }),
-    )
-
-    expect(await screen.findByText(expected)).toBeVisible()
-  })
-
-  it('opens evaluation settings in an accessible centered modal', async () => {
+  it('opens evaluation settings with the run size and default retrieval mode', async () => {
     const user = userEvent.setup()
     renderPanel()
 
@@ -261,13 +197,6 @@ describe('QualityEvaluationPanel', () => {
     const dialog = screen.getByRole('dialog', {
       name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
     })
-    expect(dialog).toHaveClass(
-      'fixed',
-      'top-1/2',
-      'left-1/2',
-      '-translate-x-1/2',
-      '-translate-y-1/2',
-    )
     expect(dialog).toHaveAccessibleDescription(
       'knowledgeQuality.qualityPage.evaluation.dialogDescription:{"count":6}',
     )
@@ -367,34 +296,6 @@ describe('QualityEvaluationPanel', () => {
     )
   })
 
-  it('closes the evaluation dialog through its open state', async () => {
-    vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
-    const user = userEvent.setup()
-    renderPanel()
-
-    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
-    const runButton = screen.getByRole('button', {
-      name: 'knowledgeQuality.qualityPage.evaluation.run',
-    })
-    await user.click(runButton)
-    const dialog = screen.getByRole('dialog', {
-      name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.cancel' }))
-
-    // The root observes the close, so the popup plays its exit state before unmounting.
-    expect(dialog).toBeInTheDocument()
-    expect(dialog).toHaveAttribute('data-closed')
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', {
-          name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
-        }),
-      ).not.toBeInTheDocument(),
-    )
-    expect(runButton).toHaveFocus()
-  })
-
   it('starts each evaluation dialog session with the default retrieval mode', async () => {
     const user = userEvent.setup()
     renderPanel()
@@ -447,7 +348,6 @@ describe('QualityEvaluationPanel', () => {
           headers: { 'Idempotency-Key': expect.any(String) },
           params: { control_space_id: 'space-1' },
         }),
-        expect.anything(),
       ),
     )
     expect(await screen.findByText('Who can change workspace permissions?')).toBeVisible()

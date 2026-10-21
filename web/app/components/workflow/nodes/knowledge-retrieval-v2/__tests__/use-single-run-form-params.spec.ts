@@ -31,6 +31,8 @@ describe('knowledge-retrieval-v2/use-single-run-form-params', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAvailableVarList.mockReturnValue({
+      availableNodes: [],
+      availableNodesWithParent: [],
       availableVars: [
         {
           nodeId: 'start',
@@ -38,7 +40,7 @@ describe('knowledge-retrieval-v2/use-single-run-form-params', () => {
           vars: [{ variable: 'images', type: VarType.arrayFile }],
         },
       ],
-    } as unknown as ReturnType<typeof useAvailableVarList>)
+    })
   })
 
   it('builds an image form whenever an attachment selector is configured', () => {

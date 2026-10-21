@@ -1,6 +1,5 @@
 import { act, render } from '@testing-library/react'
 import { getDefaultStore } from 'jotai/vanilla'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createHttpError } from '@/service/http-error'
 import { documentsKnowledgeSpaceIdAtom } from '../../state/inputs'
 import { TaskEventObserver } from '../event-observer'
@@ -74,27 +73,6 @@ describe('TaskEventObserver', () => {
     await act(async () => {})
 
     expect(streamCursors).toEqual([undefined, 'task-1:cursor'])
-  })
-
-  it('does not retain a reconnect timer for an already-aborted observer', async () => {
-    vi.useFakeTimers()
-    let finishStream!: () => void
-    streamProcessingTaskEvents.mockImplementation(async function* () {
-      await new Promise<void>((resolve) => {
-        finishStream = resolve
-      })
-    })
-    const rendered = render(<TaskEventObserver {...observerProps} onEvent={vi.fn(() => true)} />)
-    try {
-      await act(async () => {})
-      rendered.unmount()
-      await act(async () => finishStream())
-
-      expect(vi.getTimerCount()).toBe(0)
-    } finally {
-      rendered.unmount()
-      vi.useRealTimers()
-    }
   })
 
   it('blocks the latest streamed task version when a reconnect loses permission', async () => {

@@ -4,12 +4,10 @@ import type {
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ClientLink } from '@orpc/client'
 import type { ConsoleClientContext } from '@/service/console'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createStore, Provider } from 'jotai'
-import { queryClientAtom } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { OverviewActivity } from '../overview-activity'
 import { OverviewTaskSync } from '../overview-task-sync'
@@ -21,11 +19,6 @@ const service = vi.hoisted(() => ({
   drawerActivity: vi.fn(),
   tasks: vi.fn(),
 }))
-
-vi.mock('@/features/system-features/state', async () => {
-  const { atom } = await import('jotai')
-  return { deploymentEditionAtom: atom('ENTERPRISE') }
-})
 
 // Real generated query keys: the drawer must stay inside the task-sync invalidation boundary.
 vi.mock('@/service/console', async () => {
@@ -93,36 +86,31 @@ function task(
 const tasksKey = consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key()
 
 describe('overview activity drawer', () => {
-  let client: QueryClient
+  let client: ReturnType<typeof createConsoleQueryClient>
   beforeEach(() => {
     vi.resetAllMocks()
-    client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
+    client = createConsoleQueryClient()
     service.tasks.mockResolvedValue({ data: [task('running')], next_cursor: null })
     service.drawerActivity.mockResolvedValue({
       data: [activity('activity-1', 1)],
       next_cursor: null,
     })
   })
-  afterEach(() => {
-    cleanup()
-    client.clear()
-  })
-
   async function openDrawer() {
     const user = userEvent.setup()
-    const store = createStore()
-    store.set(queryClientAtom, client)
+    // Only the drawer bounds activity by date outside the cloud edition.
+    const { wrapper } = createConsoleQueryWrapper({
+      queryClient: client,
+      systemFeatures: { deployment_edition: 'ENTERPRISE' },
+    })
     render(
-      <QueryClientProvider client={client}>
-        <Provider store={store}>
-          <QueryTestingAdapter>
-            <OverviewStateBoundary knowledgeSpaceId="space-a">
-              <OverviewTaskSync />
-              <OverviewActivity />
-            </OverviewStateBoundary>
-          </QueryTestingAdapter>
-        </Provider>
-      </QueryClientProvider>,
+      <QueryTestingAdapter>
+        <OverviewStateBoundary knowledgeSpaceId="space-a">
+          <OverviewTaskSync />
+          <OverviewActivity />
+        </OverviewStateBoundary>
+      </QueryTestingAdapter>,
+      { wrapper },
     )
     await user.click(
       await screen.findByRole('button', { name: 'knowledgeOverview.overview.allActivity' }),

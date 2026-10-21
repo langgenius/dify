@@ -1,6 +1,7 @@
 import type {
   KnowledgeFsDocumentMultimodalManifestResponse,
   KnowledgeFsDocumentOutlineResponse,
+  KnowledgeFsProductPermission,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ComponentProps, ReactElement } from 'react'
 import type { DocumentMetadataField } from '../../metadata/editor-model'
@@ -11,34 +12,32 @@ import type {
   LogicalDocument,
   LogicalDocumentRevision,
 } from '../../models'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { zGetFeaturesVectorSpaceResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import { createStore, Provider } from 'jotai'
+import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { render as renderWithConsole } from '@/test/console/render'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { DocumentDetailPage } from '../page'
 
 const knowledgeSpacePermissionState = vi.hoisted(() => ({
-  keys: ['knowledge_space_document_write'],
+  keys: ['knowledge_space_document_write'] as KnowledgeFsProductPermission[],
   name: 'Support knowledge',
   refetch: vi.fn(),
-}))
-vi.mock('../../../space/context', () => ({
-  useKnowledgeSpace: () => ({
-    refetch: knowledgeSpacePermissionState.refetch,
-    space: {
-      control_space_id: 'space-1',
-      permission_keys: knowledgeSpacePermissionState.keys,
-      technical_summary: { name: knowledgeSpacePermissionState.name },
-    },
-  }),
 }))
 
 const multimodalAssetGet = vi.hoisted(() => vi.fn())
 
+// Protected images are fetched as blobs through the base request helper.
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   get: multimodalAssetGet,
@@ -60,19 +59,8 @@ type BulkDocumentReindexResult = {
   total: number
 }
 
-type InfiniteOptions = {
-  enabled?: boolean
-  getNextPageParam: (lastPage: { next_cursor?: string | null }) => string | null | undefined
-  input: (pageParam: string | null) => unknown
-  initialPageParam: string | null
-  queryKind: 'chunks' | 'documents' | 'revisions' | 'tasks'
-}
-
-function infiniteInput(options?: Pick<InfiniteOptions, 'input'>) {
-  if (!options || typeof options.input !== 'function') throw new Error('Expected query input')
-  return options.input
-}
-
+// Server-side state behind the real Query observers. A repeated first-page read is a refetch and a
+// cursor read is the next page, so the refetch/fetchNextPage spies keep their meaning.
 const documentQuery = vi.hoisted(() => ({
   data: undefined as LogicalDocument | undefined,
   error: null as unknown,
@@ -88,8 +76,6 @@ const knowledgeSpaceQuery = vi.hoisted(() => ({
   error: null as unknown,
   isPending: false,
 }))
-
-const useDocumentTitleMock = vi.hoisted(() => vi.fn())
 
 const submittedJobQuery = vi.hoisted(() => ({
   data: undefined as
@@ -162,9 +148,7 @@ const tasksQuery = vi.hoisted(() => ({
 }))
 
 const permissionState = vi.hoisted(() => ({
-  datasetAtom: Symbol('datasetDefaultPermissionKeysAtom'),
   keys: ['dataset.acl.edit'],
-  refreshAtom: Symbol('refreshWorkspacePermissionKeysAfterMutationDenialAtom'),
   refresh: vi.fn(),
 }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
@@ -176,7 +160,6 @@ const createMetadataField = vi.hoisted(() => vi.fn())
 const metadataFieldsQuery = vi.hoisted(() => ({
   data: [] as DocumentMetadataField[] | undefined,
   error: null as unknown,
-  isFetching: false,
   isPending: false,
   refetch: vi.fn(),
 }))
@@ -185,16 +168,14 @@ const settingsState = vi.hoisted(() => ({
   configurationState: 'active' as 'active' | 'setup-required',
   refetch: vi.fn(),
 }))
-const queryClient = vi.hoisted(() => ({
-  invalidateQueries: vi.fn(),
-  removeQueries: vi.fn(),
+const systemFeaturesState = vi.hoisted(() => ({
+  deploymentEdition: 'ENTERPRISE' as 'CLOUD' | 'ENTERPRISE',
 }))
-const systemFeaturesState = vi.hoisted(() => ({ deploymentEdition: 'ENTERPRISE' }))
-
-vi.mock('@/features/system-features/state', async () => {
-  const { atom } = await import('jotai')
-  return { deploymentEditionAtom: atom(() => systemFeaturesState.deploymentEdition) }
-})
+const server = vi.hoisted(() => ({
+  inflight: 0,
+  inputs: new Map<string, unknown[]>(),
+  reads: new Map<string, number>(),
+}))
 
 const toastState = vi.hoisted(() => ({ error: vi.fn(), info: vi.fn(), success: vi.fn() }))
 const virtualizerState = vi.hoisted(() => ({ scrollToIndex: vi.fn() }))
@@ -213,41 +194,6 @@ const revisionApiResponse = vi.hoisted(
     state: revision.state,
   }),
 )
-const logicalDocumentApiResponse = vi.hoisted(() => (item: LogicalDocument) => ({
-  active: item.active ? revisionApiResponse(item.active) : null,
-  active_revision: item.activeRevision ?? null,
-  created_at: item.createdAt,
-  disabled_at: item.enabled ? null : item.updatedAt,
-  disabled_by_subject_id: item.enabled ? null : 'account-1',
-  enabled: item.enabled,
-  id: item.id,
-  knowledge_space_id: item.knowledgeSpaceId,
-  provider_item_id: item.providerItemId ?? null,
-  row_version: item.rowVersion,
-  source_id: item.sourceId ?? null,
-  status: item.status,
-  title: item.title,
-  updated_at: item.updatedAt,
-  user_metadata: item.userMetadata,
-}))
-const chunkApiResponse = vi.hoisted(() => (item: DocumentRevisionChunk) => ({
-  created_at: item.createdAt,
-  document_id: item.documentId,
-  document_revision: item.documentRevision,
-  end_offset: item.endOffset ?? null,
-  enabled: item.enabled,
-  id: item.id,
-  kind: item.kind,
-  knowledge_space_id: item.knowledgeSpaceId,
-  ordinal: item.ordinal,
-  parent_chunk_id: item.parentChunkId ?? null,
-  parse_element_ids: item.parseElementIds,
-  section_path: item.sectionPath,
-  start_offset: item.startOffset ?? null,
-  text: item.text,
-  token_count: item.tokenCount,
-  user_metadata: item.userMetadata,
-}))
 const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   semantic_enrichment: item.semanticEnrichment ?? null,
   can_cancel: item.canCancel ?? true,
@@ -280,226 +226,281 @@ const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   task_kind: item.taskKind ?? 'document',
   updated_at: item.updatedAt,
 }))
-const documentOptions = vi.hoisted(() =>
-  vi.fn((options: object) => ({
-    ...options,
-    queryKey: ['knowledge-fs', 'document', 'space-1', 'document-1'],
-    queryKind: 'document',
-  })),
-)
-const knowledgeSpaceOptions = vi.hoisted(() =>
-  vi.fn((options: object) => ({ ...options, queryKind: 'knowledge-space' })),
-)
-const submittedJobOptions = vi.hoisted(() =>
-  vi.fn((options: object) => ({
-    ...options,
-    queryKey: ['knowledge-fs', 'job'],
-    queryKind: 'submitted-job',
-  })),
-)
-const settingsOptions = vi.hoisted(() =>
-  vi.fn(({ input }: { input: unknown }) => ({
-    queryKey: ['knowledge-fs', 'settings', input],
-    queryKind: 'settings',
-  })),
-)
-const revisionsOptions = vi.hoisted(() =>
-  vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
-    ...options,
-    queryKey: ['knowledge-fs', 'revisions', 'space-1', 'document-1'],
-    queryKind: 'revisions',
-  })),
-)
-const chunksOptions = vi.hoisted(() =>
-  vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
-    ...options,
-    queryKey: ['knowledge-fs', 'chunks', 'space-1', 'document-1'],
-    queryKind: 'chunks',
-  })),
-)
-const outlineOptions = vi.hoisted(() =>
-  vi.fn((options: object) => ({
-    ...options,
-    queryKey: ['knowledge-fs', 'outline', 'space-1', 'asset-1'],
-    queryKind: 'outline',
-  })),
-)
-const multimodalOptions = vi.hoisted(() =>
-  vi.fn((options: object) => ({
-    ...options,
-    queryKey: ['knowledge-fs', 'multimodal', 'space-1', 'asset-1'],
-    queryKind: 'multimodal',
-  })),
-)
-const metadataFieldsOptions = vi.hoisted(() =>
-  vi.fn((options: object) => ({
-    ...options,
-    queryKey: ['knowledge-fs', 'metadata-fields'],
-  })),
-)
-const taskSnapshotOptions = vi.hoisted(() =>
-  vi.fn((options: object) => ({
-    ...options,
-    queryKind: 'task-snapshot',
-  })),
-)
-const documentTasksOptions = vi.hoisted(() =>
-  vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
-    ...options,
-    queryKey: ['knowledge-fs', 'tasks', 'space-1', 'document-1'],
-    queryKind: 'tasks',
-  })),
-)
-const documentsOptions = vi.hoisted(() =>
-  vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
-    ...options,
-    queryKey: ['knowledge-fs', 'documents', 'space-1'],
-    queryKind: 'documents',
-  })),
-)
-
-const queryAtomTestState = vi.hoisted(() => ({
-  versionAtom: undefined as import('jotai').PrimitiveAtom<number> | undefined,
+const metadataFieldApiResponse = vi.hoisted(() => (field: DocumentMetadataField) => ({
+  count: field.count,
+  created_at: field.createdAt,
+  id: field.id,
+  name: field.name,
+  row_version: field.rowVersion,
+  type: field.type,
+  updated_at: field.updatedAt,
 }))
 
-vi.mock('jotai-tanstack-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('jotai-tanstack-query')>()
-  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
-  const versionAtom = atom(0)
-  const testQueryClientAtom = atom(queryClient)
-  queryAtomTestState.versionAtom = versionAtom
+const logicalDocumentApiResponse = vi.hoisted(() => (item: LogicalDocument) => ({
+  active: item.active ? revisionApiResponse(item.active) : null,
+  active_revision: item.activeRevision ?? null,
+  created_at: item.createdAt,
+  disabled_at: item.enabled ? null : item.updatedAt,
+  disabled_by_subject_id: item.enabled ? null : 'account-1',
+  enabled: item.enabled,
+  id: item.id,
+  knowledge_space_id: item.knowledgeSpaceId,
+  latest_task: item.latestTask ? taskApiResponse(item.latestTask) : null,
+  provider_item_id: item.providerItemId ?? null,
+  row_version: item.rowVersion,
+  source_id: item.sourceId ?? null,
+  status: item.status,
+  title: item.title,
+  updated_at: item.updatedAt,
+  user_metadata: item.userMetadata,
+}))
+const chunkApiResponse = vi.hoisted(() => (item: DocumentRevisionChunk) => ({
+  created_at: item.createdAt,
+  document_id: item.documentId,
+  document_revision: item.documentRevision,
+  end_offset: item.endOffset ?? null,
+  enabled: item.enabled,
+  id: item.id,
+  kind: item.kind,
+  knowledge_space_id: item.knowledgeSpaceId,
+  ordinal: item.ordinal,
+  parent_chunk_id: item.parentChunkId ?? null,
+  parse_element_ids: item.parseElementIds,
+  section_path: item.sectionPath,
+  start_offset: item.startOffset ?? null,
+  text: item.text,
+  token_count: item.tokenCount,
+  user_metadata: item.userMetadata,
+}))
+const permissionsResponse = (datasetKeys: string[]) => ({
+  agent: { default_permission_keys: [], overrides: [] },
+  app: { default_permission_keys: [], overrides: [] },
+  dataset: { default_permission_keys: datasetKeys, overrides: [] },
+  workspace: { permission_keys: [] },
+})
 
+const task = (overrides: Partial<DocumentProcessingTask>): DocumentProcessingTask => ({
+  createdAt: '2026-07-21T10:00:00Z',
+  documentId: 'document-1',
+  documentRevision: 4,
+  id: 'task-1',
+  knowledgeSpaceId: 'space-1',
+  operation: 'document_processing',
+  progressPercent: 45,
+  stage: 'nodes_generated',
+  state: 'running',
+  taskKind: 'document',
+  updatedAt: '2026-07-21T10:01:00Z',
+  ...overrides,
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const forever = () => new Promise<never>(() => {})
+  const track = async <T,>(read: () => Promise<T> | T) => {
+    server.inflight += 1
+    try {
+      return await read()
+    } finally {
+      server.inflight -= 1
+    }
+  }
+  const repeatRead = (resource: string) => {
+    const reads = server.reads.get(resource) ?? 0
+    server.reads.set(resource, reads + 1)
+    return reads > 0
+  }
+  type Resource = { error: unknown; isPending?: boolean; refetch?: () => unknown }
+  const record = (resource: string, input: unknown) =>
+    server.inputs.set(resource, [...(server.inputs.get(resource) ?? []), input])
+  const single =
+    <T,>(resource: string, state: Resource, data: () => T) =>
+    (input?: unknown) =>
+      (record(resource, input), state.isPending)
+        ? forever()
+        : track(async () => {
+            if (repeatRead(resource)) await state.refetch?.()
+            if (state.error) throw state.error
+            return data()
+          })
+  type PagedResource<Item> = Resource & {
+    data: { pages: Array<{ items: Item[]; nextCursor?: string }> } | undefined
+    fetchNextPage: (...args: never[]) => unknown
+    hasNextPage: boolean
+    isFetchNextPageError: boolean
+  }
+  const paged =
+    <Item,>(resource: string, state: PagedResource<Item>, toApi: (item: Item) => unknown) =>
+    (input: { query?: { cursor?: string } }) => {
+      record(resource, input)
+      if (state.isPending || (!state.data && !state.error)) return forever()
+      return track(async () => {
+        const cursor = input.query?.cursor
+        if (cursor) await state.fetchNextPage()
+        const pages = state.data?.pages ?? []
+        const cursorIndex = pages.findIndex((_, i) => i > 0 && pages[i - 1]?.nextCursor === cursor)
+        const index = !cursor
+          ? 0
+          : cursorIndex >= 0
+            ? cursorIndex
+            : cursor.startsWith('page-')
+              ? Number(cursor.replace('page-', ''))
+              : pages.length
+        if (cursor) {
+          if (state.isFetchNextPageError) throw new Error(`${resource} next page unavailable`)
+        } else {
+          if (repeatRead(resource)) await state.refetch?.()
+          if (state.error) throw state.error
+        }
+        const page = pages[index] ?? { items: [] }
+        const hasMore =
+          index + 1 < pages.length || (state.hasNextPage && index === pages.length - 1)
+        return {
+          data: page.items.map(toApi),
+          next_cursor: page.nextCursor ?? (hasMore ? `page-${index + 1}` : null),
+        }
+      })
+    }
+  const { createHttpError } = await import('@/service/http-error')
+  const notFound = () => Promise.reject(createHttpError(new Response(null, { status: 404 })))
+  const optional =
+    <T,>(resource: string, state: Resource & { data: T | undefined }) =>
+    (input?: unknown) =>
+      (record(resource, input), state.isPending)
+        ? forever()
+        : track(async () => {
+            if (repeatRead(resource)) await state.refetch?.()
+            if (state.error) throw state.error
+            return state.data ?? notFound()
+          })
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
   return {
-    ...original,
-    queryClientAtom: testQueryClientAtom,
-    atomWithInfiniteQuery: (
-      getOptions: (get: <Value>(target: import('jotai').Atom<Value>) => Value) => {
-        queryKind?: string
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: retryTaskRequest,
+      [`${space}.documents.byDocumentId.patch`]: patchDocumentMetadata,
+      [`${space}.metadata.get`]: () =>
+        metadataFieldsQuery.isPending
+          ? forever()
+          : track(async () => {
+              if (repeatRead('metadata-fields')) await metadataFieldsQuery.refetch()
+              if (metadataFieldsQuery.error) throw metadataFieldsQuery.error
+              return {
+                data: (metadataFieldsQuery.data ?? []).map(metadataFieldApiResponse),
+                next_cursor: null,
+              }
+            }),
+      [`${space}.metadata.post`]: createMetadataField,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      [`${space}.backgroundTasks.byTaskKind.byTaskId.cancel.post`]: (input: never) =>
+        cancelMutation.mutateAsync(input),
+      [`${space}.backgroundTasks.get`]: (input: {
+        query?: { cursor?: string; task_ids?: string }
+      }) =>
+        input.query?.task_ids
+          ? (record('task-snapshot', input), taskSnapshotQuery.data) || taskSnapshotQuery.error
+            ? track(async () => {
+                if (repeatRead('task-snapshot')) await taskSnapshotQuery.refetch()
+                if (taskSnapshotQuery.error) throw taskSnapshotQuery.error
+                return { data: [taskApiResponse(taskSnapshotQuery.data!)], next_cursor: null }
+              })
+            : // An accepted task the test has not advanced yet is still queued on the server.
+              track(() => ({
+                data: [
+                  taskApiResponse(
+                    task({ id: input.query!.task_ids!, progressPercent: 0, state: 'queued' }),
+                  ),
+                ],
+                next_cursor: null,
+              }))
+          : paged('tasks', tasksQuery, taskApiResponse)(input),
+      [`${space}.documents.byDocumentId.multimodal.get`]: optional('multimodal', multimodalQuery),
+      [`${space}.documents.byDocumentId.outline.get`]: optional('outline', outlineQuery),
+      [`${space}.documents.byDocumentId.revisions.byRevision.chunks.get`]: paged(
+        'chunks',
+        chunksQuery,
+        chunkApiResponse,
+      ),
+      [`${space}.documents.byDocumentId.revisions.get`]: paged(
+        'revisions',
+        revisionsQuery,
+        (revision: LogicalDocumentRevision) => (revision ? revisionApiResponse(revision) : null),
+      ),
+      [`${space}.documents.reindex.post`]: (input: never) => reindexMutation.mutateAsync(input),
+      [`${space}.get`]: single('knowledge-space', knowledgeSpaceQuery, () =>
+        createKnowledgeSpaceFixture({
+          technical_summary: {
+            knowledge_space_id: 'knowledge-space-1',
+            name: knowledgeSpacePermissionState.name,
+            revision: 1,
+            slug: 'support-knowledge',
+          },
+        }),
+      ),
+      // An accepted job the test has not advanced yet is still queued; a missing job is an
+      // explicit 404 error.
+      [`${space}.jobs.byJobId.get`]: (input: { params: { job_id: string } }) =>
+        submittedJobQuery.data || submittedJobQuery.error
+          ? optional('submitted-job', submittedJobQuery)(input)
+          : (record('submitted-job', input),
+            track(() => ({
+              id: input.params.job_id,
+              run_state: 'queued',
+              stage: 'queued',
+              updated_at: 0,
+            }))),
+      [`${space}.logicalDocuments.get`]: listLogicalDocuments,
+      [`${space}.logicalDocuments.byDocumentId.get`]: single(
+        'document',
+        documentQuery,
+        () => documentQuery.data && logicalDocumentApiResponse(documentQuery.data),
+      ),
+      [`${space}.settings.get`]: single(
+        'settings',
+        { error: null, refetch: () => settingsState.refetch() },
+        () => {
+          const active = settingsState.configurationState === 'active'
+          return {
+            active_profile_available: active,
+            active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
+            capabilities: {
+              deep: active,
+              index: active,
+              ingest: active,
+              query: active,
+              research: active,
+              source_sync: active,
+            },
+            configuration_state: settingsState.configurationState,
+            embedding: null,
+            issues: [],
+            retrieval: null,
+            revision: 1,
+          }
+        },
+      ),
+      'workspaces.current.rbac.myPermissions.get': async () => {
+        const refreshed = await permissionState.refresh()
+        return permissionsResponse(
+          refreshed?.data?.dataset?.default_permission_keys ?? permissionState.keys,
+        )
       },
-    ) =>
-      atom((get) => {
-        get(versionAtom)
-        const options = getOptions(get)
-        if (options.queryKind === 'revisions')
-          return {
-            ...revisionsQuery,
-            data: revisionsQuery.data
-              ? {
-                  pages: revisionsQuery.data.pages.map((page) => ({
-                    data: page.items.flatMap((revision) =>
-                      revision ? [revisionApiResponse(revision)] : [],
-                    ),
-                    next_cursor: page.nextCursor ?? null,
-                  })),
-                }
-              : undefined,
-          }
-        if (options.queryKind === 'chunks')
-          return {
-            ...chunksQuery,
-            data: chunksQuery.data
-              ? {
-                  pages: chunksQuery.data.pages.map((page) => ({
-                    data: page.items.map(chunkApiResponse),
-                    next_cursor: page.nextCursor ?? null,
-                  })),
-                }
-              : undefined,
-          }
-        if (options.queryKind === 'tasks')
-          return {
-            ...tasksQuery,
-            data: tasksQuery.data
-              ? {
-                  pages: tasksQuery.data.pages.map((page) => ({
-                    data: page.items.map(taskApiResponse),
-                    next_cursor: page.nextCursor ?? null,
-                  })),
-                }
-              : undefined,
-          }
-        throw new Error(`Unexpected infinite query atom: ${options.queryKind ?? 'unknown'}`)
-      }),
-    atomWithMutation: (
-      getOptions: (get: <Value>(target: import('jotai').Atom<Value>) => Value) => {
-        mutationKind?: string
-      },
-    ) =>
-      atom((get) => {
-        const options = getOptions(get)
-        return options.mutationKind === 'cancel' ? cancelMutation : reindexMutation
-      }),
-    atomWithQuery: (
-      getOptions: (get: <Value>(target: import('jotai').Atom<Value>) => Value) => {
-        queryKind?: string
-      },
-    ) =>
-      atom((get) => {
-        get(versionAtom)
-        const options = getOptions(get)
-        if (options.queryKind === 'document') return { ...documentQuery }
-        if (options.queryKind === 'outline') return { ...outlineQuery }
-        if (options.queryKind === 'multimodal') return { ...multimodalQuery }
-        if (options.queryKind === 'submitted-job') return { ...submittedJobQuery }
-        if (options.queryKind === 'task-snapshot')
-          return {
-            ...taskSnapshotQuery,
-            data: taskSnapshotQuery.data
-              ? { data: [taskApiResponse(taskSnapshotQuery.data)] }
-              : undefined,
-          }
-        throw new Error(`Unexpected query atom: ${options.queryKind ?? 'unknown'}`)
-      }),
+    }),
   }
 })
 
-function render(
-  ui: ReactElement,
-  options?: Omit<ComponentProps<typeof QueryTestingAdapter>, 'children'>,
-) {
-  const store = createStore()
-  const onUrlUpdate = options?.onUrlUpdate ?? vi.fn()
-  const testQueryClient = new QueryClient({
-    defaultOptions: { queries: { gcTime: 0, retry: false } },
-  })
-  const refreshQueryAtoms = () => {
-    store.set(queryAtomTestState.versionAtom!, (version) => version + 1)
-  }
-  const withStore = (content: ReactElement) => (
-    <QueryClientProvider client={testQueryClient}>
-      <Provider store={store}>
-        <QueryTestingAdapter {...options} onUrlUpdate={onUrlUpdate}>
-          {content}
-        </QueryTestingAdapter>
-      </Provider>
-    </QueryClientProvider>
-  )
-
-  refreshQueryAtoms()
-  const rendered = renderWithConsole(withStore(ui))
-
-  return {
-    ...rendered,
-    onUrlUpdate,
-    rerender(nextUi: ReactElement) {
-      act(refreshQueryAtoms)
-      rendered.rerender(withStore(nextUi))
-    },
-  }
-}
-
-vi.mock('@/context/permission-state', () => ({
-  datasetDefaultPermissionKeysAtom: permissionState.datasetAtom,
-  refreshWorkspacePermissionKeysAfterMutationDenialAtom: permissionState.refreshAtom,
-}))
-
 vi.mock('@/app/notifications', () => ({ toast: toastState }))
+// Clipboard access is a browser permission boundary.
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn(() => true) }))
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/documents/document-1',
   useRouter: () => routerMock,
 }))
 
+// happy-dom has no layout, so the virtualizer would render no rows; render the first window.
 vi.mock('@tanstack/react-virtual', () => ({
   defaultRangeExtractor: ({ endIndex, startIndex }: { endIndex: number; startIndex: number }) =>
     Array.from({ length: endIndex - startIndex + 1 }, (_, index) => startIndex + index),
@@ -524,255 +525,99 @@ vi.mock('@tanstack/react-virtual', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...original,
-    useInfiniteQuery: (options: InfiniteOptions) => {
-      if (options.queryKind === 'documents')
-        return {
-          ...tasksQuery,
-          data: documentQuery.data
-            ? {
-                pages: [
-                  {
-                    data: [logicalDocumentApiResponse(documentQuery.data)],
-                    next_cursor: null,
-                  },
-                ],
-              }
-            : undefined,
-        }
-      if (options.queryKind === 'revisions')
-        return {
-          ...revisionsQuery,
-          data: revisionsQuery.data
-            ? {
-                pages: revisionsQuery.data.pages.map((page) => ({
-                  data: page.items.flatMap((revision) =>
-                    revision ? [revisionApiResponse(revision)] : [],
-                  ),
-                  next_cursor: page.nextCursor ?? null,
-                })),
-              }
-            : undefined,
-        }
-      if (
-        options.queryKind === 'chunks' ||
-        ('queryKey' in options &&
-          Array.isArray(options.queryKey) &&
-          options.queryKey.includes('chunks'))
-      )
-        return {
-          ...chunksQuery,
-          data: chunksQuery.data
-            ? {
-                pages: chunksQuery.data.pages.map((page) => ({
-                  data: page.items.map(chunkApiResponse),
-                  next_cursor: page.nextCursor ?? null,
-                })),
-              }
-            : undefined,
-        }
-      return {
-        ...tasksQuery,
-        data: tasksQuery.data
-          ? {
-              pages: tasksQuery.data.pages.map((page) => ({
-                data: page.items.map(taskApiResponse),
-                next_cursor: page.nextCursor ?? null,
-              })),
-            }
-          : undefined,
-      }
-    },
-    useMutation: (options: {
-      mutationFn?: (variables: unknown) => Promise<unknown>
-      mutationKind?: string
-      onError?: (error: unknown, variables: unknown) => void | Promise<void>
-      onSuccess?: (data: unknown, variables: unknown) => void | Promise<void>
-    }) => {
-      if (options.mutationKind === 'cancel') return cancelMutation
-      if (options.mutationKind) return reindexMutation
+type DetailRenderOptions = {
+  onUrlUpdate?: ComponentProps<typeof QueryTestingAdapter>['onUrlUpdate']
+  searchParams?: string
+  settle?: boolean
+}
 
-      const mutateAsync = async (variables: unknown) => {
-        try {
-          const data = await options.mutationFn?.(variables)
-          await options.onSuccess?.(data, variables)
-          return data
-        } catch (error) {
-          await options.onError?.(error, variables)
-          throw error
-        }
-      }
-      return {
-        isPending: false,
-        mutate: (variables: unknown) => void mutateAsync(variables).catch(() => undefined),
-        mutateAsync,
-      }
-    },
-    useQuery: (options: { queryKey?: readonly unknown[]; queryKind?: string }) => {
-      if (options.queryKey?.includes('document-multimodal-asset'))
-        return original.useQuery(options as Parameters<typeof original.useQuery>[0])
-      if (options.queryKey?.includes('metadata-fields')) return metadataFieldsQuery
-      if (options.queryKind === 'multimodal') return multimodalQuery
-      if (options.queryKind === 'outline') return outlineQuery
-      if (options.queryKind === 'settings')
-        return {
-          data: {
-            active_profile_available: settingsState.configurationState === 'active',
-            active_profile_revisions:
-              settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
-            capabilities: {
-              deep: settingsState.configurationState === 'active',
-              index: settingsState.configurationState === 'active',
-              ingest: settingsState.configurationState === 'active',
-              query: settingsState.configurationState === 'active',
-              research: settingsState.configurationState === 'active',
-              source_sync: settingsState.configurationState === 'active',
-            },
-            configuration_state: settingsState.configurationState,
-            embedding: null,
-            issues: [],
-            retrieval: null,
-            revision: 1,
-          },
-          refetch: settingsState.refetch,
-        }
-      if (options.queryKind === 'knowledge-space') return knowledgeSpaceQuery
-      if (options.queryKind === 'submitted-job') return submittedJobQuery
-      return documentQuery
-    },
-    useQueryClient: () => queryClient,
+let currentQueryClient: ReturnType<typeof createConsoleQueryClient> | undefined
+
+/** Waits until no request is in flight, including requests that depend on earlier responses. */
+async function settle() {
+  for (let quietChecks = 0; quietChecks < 2;) {
+    await waitFor(() => expect(server.inflight).toBe(0))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    quietChecks = server.inflight === 0 ? quietChecks + 1 : 0
   }
-})
+}
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          backgroundTasks: {
-            byTaskKind: {
-              byTaskId: {
-                retry: { post: retryTaskRequest },
-              },
-            },
-          },
-          documents: {
-            byDocumentId: {
-              patch: patchDocumentMetadata,
-            },
-          },
-          logicalDocuments: {
-            get: listLogicalDocuments,
-          },
-          metadata: {
-            post: createMetadataField,
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    features: {
-      get: { key: () => ['features'] },
-      vectorSpace: { get: { key: () => ['vector-space'] } },
-    },
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          get: {
-            queryOptions: knowledgeSpaceOptions,
-          },
-          backgroundTasks: {
-            byTaskKind: {
-              byTaskId: {
-                cancel: {
-                  post: {
-                    mutationOptions: () => ({ mutationKind: 'cancel' }),
-                  },
-                },
-              },
-            },
-            get: {
-              infiniteOptions: documentTasksOptions,
-              queryOptions: taskSnapshotOptions,
-              key: (options: object) => ['knowledge-fs', 'tasks', options],
-            },
-          },
-          documents: {
-            byDocumentId: {
-              multimodal: {
-                get: {
-                  queryOptions: multimodalOptions,
-                },
-              },
-              outline: {
-                get: {
-                  queryOptions: outlineOptions,
-                },
-              },
-              revisions: {
-                byRevision: {
-                  chunks: {
-                    get: {
-                      infiniteOptions: chunksOptions,
-                      key: () => ['knowledge-fs', 'chunks'],
-                    },
-                  },
-                },
-                get: {
-                  infiniteOptions: revisionsOptions,
-                  key: () => ['knowledge-fs', 'revisions'],
-                },
-              },
-            },
-            reindex: {
-              post: {
-                mutationOptions: () => ({}),
-              },
-            },
-          },
-          logicalDocuments: {
-            byDocumentId: {
-              get: {
-                queryOptions: documentOptions,
-                key: () => ['knowledge-fs', 'document'],
-              },
-            },
-            get: {
-              infiniteOptions: documentsOptions,
-              key: () => ['knowledge-fs', 'documents'],
-            },
-          },
-          metadata: {
-            get: {
-              key: () => ['knowledge-fs', 'metadata-fields'],
-              queryOptions: metadataFieldsOptions,
-            },
-          },
-          jobs: {
-            byJobId: {
-              get: {
-                queryOptions: submittedJobOptions,
-              },
-            },
-          },
-          settings: {
-            get: {
-              queryOptions: settingsOptions,
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+/** Lets mounted queries observe the current server state, as a background refetch would. */
+async function refetchAll() {
+  // Requests the test deliberately leaves pending never settle, so do not await the refetch itself.
+  act(() => {
+    void currentQueryClient!.invalidateQueries({ queryKey: consoleQuery.knowledgeFs.spaces.key() })
+  })
+  await settle()
+}
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: useDocumentTitleMock,
-}))
+const lastInput = (resource: string) => server.inputs.get(resource)?.at(-1)
+const snapshotReads = () => server.inputs.get('task-snapshot')?.length ?? 0
+
+/** Advances polling timers; tests that use it install fake timers that also advance on their own. */
+async function advance(ms: number) {
+  await act(() => vi.advanceTimersByTimeAsync(ms))
+  await settle()
+}
+
+/** Seeds the Documents list that the detail page keeps in sync after it edits a document. */
+function seedDocumentsList(queryClient: ReturnType<typeof createConsoleQueryClient>) {
+  const { queryKey } =
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.infiniteOptions({
+      getNextPageParam: () => undefined,
+      initialPageParam: null,
+      input: () => ({ params: { control_space_id: 'space-1' } }),
+    })
+  queryClient.setQueryData(queryKey, { pageParams: [null], pages: [] })
+  return queryKey
+}
+
+async function render(ui: ReactElement, options: DetailRenderOptions = {}) {
+  const onUrlUpdate = options.onUrlUpdate ?? vi.fn()
+  const queryClient = createConsoleQueryClient()
+  // The page retries transient failures itself; keep those retries immediate.
+  queryClient.setDefaultOptions({
+    ...queryClient.getDefaultOptions(),
+    queries: { ...queryClient.getDefaultOptions().queries, retryDelay: 0 },
+  })
+  currentQueryClient = queryClient
+  queryClient.setQueryData(
+    consoleQueryKey('workspaces.current.rbac.myPermissions.get'),
+    permissionsResponse(permissionState.keys),
+  )
+  const withProviders = (content: ReactElement) => (
+    <QueryTestingAdapter searchParams={options.searchParams} onUrlUpdate={onUrlUpdate}>
+      <KnowledgeSpaceTestProvider
+        refetch={knowledgeSpacePermissionState.refetch}
+        space={createKnowledgeSpaceFixture({
+          permission_keys: knowledgeSpacePermissionState.keys,
+          technical_summary: {
+            knowledge_space_id: 'knowledge-space-1',
+            name: knowledgeSpacePermissionState.name,
+            revision: 1,
+            slug: 'support-knowledge',
+          },
+        })}
+      >
+        {content}
+      </KnowledgeSpaceTestProvider>
+    </QueryTestingAdapter>
+  )
+  const rendered = renderWithConsoleQuery(withProviders(ui), {
+    queryClient,
+    systemFeatures: { deployment_edition: systemFeaturesState.deploymentEdition },
+  })
+  if (options.settle !== false) await settle()
+  return {
+    ...rendered,
+    onUrlUpdate,
+    queryClient,
+    async rerender(nextUi: ReactElement) {
+      rendered.rerender(withProviders(nextUi))
+      await refetchAll()
+    },
+  }
+}
 
 const activeRevision = (overrides: Partial<Exclude<LogicalDocumentRevision, null>> = {}) => ({
   contentHash: 'hash-3',
@@ -835,21 +680,6 @@ const chunk = (overrides: Partial<DocumentRevisionChunk>): DocumentRevisionChunk
   }
 }
 
-const task = (overrides: Partial<DocumentProcessingTask>): DocumentProcessingTask => ({
-  createdAt: '2026-07-21T10:00:00Z',
-  documentId: 'document-1',
-  documentRevision: 4,
-  id: 'task-1',
-  knowledgeSpaceId: 'space-1',
-  operation: 'document_processing',
-  progressPercent: 45,
-  stage: 'nodes_generated',
-  state: 'running',
-  taskKind: 'document',
-  updatedAt: '2026-07-21T10:01:00Z',
-  ...overrides,
-})
-
 const backgroundTask = (overrides: Partial<BackgroundTask> = {}): BackgroundTask => ({
   createdAt: '2026-07-21T10:00:00Z',
   id: 'background-task-1',
@@ -902,6 +732,9 @@ describe('DocumentDetailPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    server.inflight = 0
+    server.inputs.clear()
+    server.reads.clear()
     knowledgeSpacePermissionState.keys = ['knowledge_space_document_write']
     knowledgeSpacePermissionState.refetch.mockResolvedValue({
       permission_keys: ['knowledge_space_document_write'],
@@ -951,7 +784,6 @@ describe('DocumentDetailPage', () => {
     tasksQuery.isPending = false
     metadataFieldsQuery.data = []
     metadataFieldsQuery.error = null
-    metadataFieldsQuery.isFetching = false
     metadataFieldsQuery.isPending = false
     metadataFieldsQuery.refetch.mockResolvedValue({ data: [], error: null })
     permissionState.refresh.mockResolvedValue({
@@ -999,79 +831,43 @@ describe('DocumentDetailPage', () => {
       data: [logicalDocumentApiResponse(logicalDocument())],
       next_cursor: null,
     })
-    queryClient.invalidateQueries.mockResolvedValue(undefined)
     systemFeaturesState.deploymentEdition = 'ENTERPRISE'
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     globalThis.sessionStorage.clear()
     vi.unstubAllGlobals()
   })
 
-  it('uses the document and knowledge names in the document title', () => {
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+  it('uses the document and knowledge names in the document title', async () => {
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    expect(useDocumentTitleMock).toHaveBeenLastCalledWith('sso-enterprise.pdf · Support knowledge')
+    await waitFor(() =>
+      expect(document.title).toBe('sso-enterprise.pdf · Support knowledge - Dify'),
+    )
   })
 
-  it('loads the document, revisions, chunks, and task status through generated contracts', async () => {
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+  it('loads the document, revisions, chunks, and tasks for the routed document', async () => {
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    expect(documentOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: {
-          params: { control_space_id: 'space-1', document_id: 'document-1' },
-        },
-        retry: expect.any(Function),
-      }),
-    )
-    expect(infiniteInput(revisionsOptions.mock.lastCall?.[0])(null)).toEqual({
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-      query: {},
+    const documentParams = { control_space_id: 'space-1', document_id: 'document-1' }
+    expect(lastInput('document')).toEqual({ params: documentParams })
+    expect(lastInput('revisions')).toEqual({ params: documentParams, query: {} })
+    expect(lastInput('chunks')).toEqual({ params: { ...documentParams, revision: 3 }, query: {} })
+    expect(lastInput('outline')).toEqual({
+      params: { control_space_id: 'space-1', document_id: 'asset-1' },
     })
-    expect(infiniteInput(chunksOptions.mock.lastCall?.[0])('next')).toEqual({
-      params: {
-        control_space_id: 'space-1',
-        document_id: 'document-1',
-        revision: 3,
-      },
-      query: { cursor: 'next' },
-    })
-    expect(outlineOptions).toHaveBeenCalledWith({
-      context: { silent: true },
-      input: {
-        params: { control_space_id: 'space-1', document_id: 'asset-1' },
-      },
-      retry: false,
-    })
-    expect(multimodalOptions).toHaveBeenCalledWith({
-      context: { silent: true },
-      input: {
-        params: { control_space_id: 'space-1', document_id: 'asset-1' },
-      },
-      retry: false,
-    })
-    expect(metadataFieldsOptions).toHaveBeenCalledWith({
-      context: { silent: true },
-      input: {
-        params: { control_space_id: 'space-1' },
-        query: { limit: 100 },
-      },
-      retry: false,
-    })
-    expect(infiniteInput(documentTasksOptions.mock.lastCall?.[0])(null)).toEqual({
-      params: { control_space_id: 'space-1' },
-      query: { limit: 100 },
-    })
+    expect(server.inputs.get('tasks')).toBeUndefined()
     expect(
       screen.queryByRole('button', { name: /knowledgeDocuments\.documentActions/ }),
     ).not.toBeInTheDocument()
   })
 
-  it('disables re-indexing for an unavailable document', () => {
+  it('disables re-indexing for an unavailable document', async () => {
     documentQuery.data = logicalDocument({ enabled: false })
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }),
@@ -1079,22 +875,22 @@ describe('DocumentDetailPage', () => {
     expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
   })
 
-  it('does not construct a chunks request while the document is loading', () => {
+  it('does not construct a chunks request while the document is loading', async () => {
     documentQuery.data = undefined
     documentQuery.isPending = true
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    expect(chunksOptions).not.toHaveBeenCalled()
+    expect(server.inputs.get('chunks')).toBeUndefined()
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
-  it('uses source provenance instead of exposing an internal source id', () => {
+  it('uses source provenance instead of exposing an internal source id', async () => {
     documentQuery.data = logicalDocument({
       userMetadata: {},
     })
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByText('source-1')).not.toBeInTheDocument()
     expect(screen.getAllByText('knowledgeSpace.sourceType.connector')).not.toHaveLength(0)
@@ -1113,7 +909,7 @@ describe('DocumentDetailPage', () => {
       ],
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(await screen.findByRole('link', { name: 'Learn more' })).toHaveAttribute(
       'href',
@@ -1136,7 +932,7 @@ describe('DocumentDetailPage', () => {
       ],
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     const tree = screen.getByRole('tree')
     expect(within(tree).getByRole('treeitem', { name: 'Invoices' })).toBeInTheDocument()
@@ -1224,7 +1020,7 @@ describe('DocumentDetailPage', () => {
       version: 1,
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     const tree = screen.getByRole('tree')
     expect(within(tree).getAllByRole('treeitem', { name: 'Guide Operating safely' })).toHaveLength(
@@ -1311,7 +1107,7 @@ describe('DocumentDetailPage', () => {
       version: 1,
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     const article = screen.getByRole('article')
     expect(
@@ -1330,10 +1126,14 @@ describe('DocumentDetailPage', () => {
   })
 
   it('loads protected document images next to the chunk selected by canonical offsets', async () => {
-    const createObjectUrl = vi
-      .spyOn(URL, 'createObjectURL')
-      .mockReturnValueOnce('blob:asset')
-      .mockReturnValueOnce('blob:thumbnail')
+    // Each protected variant resolves to its own bytes, so its object URL follows the content.
+    multimodalAssetGet.mockImplementation(
+      async (path: string) =>
+        new Response(new Blob([path.includes('thumbnail') ? 'thumbnail' : 'asset'])),
+    )
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) =>
+      (blob as Blob).size === 'thumbnail'.length ? 'blob:thumbnail' : 'blob:asset',
+    )
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     chunksQuery.data = {
       pages: [
@@ -1372,7 +1172,7 @@ describe('DocumentDetailPage', () => {
       version: 1,
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     const image = await screen.findByRole('img', {
       name: 'Screenshot of the source configuration',
@@ -1397,7 +1197,6 @@ describe('DocumentDetailPage', () => {
       { needAllResponseContent: true, silent: true },
     )
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:asset')
-    expect(createObjectUrl).toHaveBeenCalledTimes(2)
     expect(
       screen.getByRole('button', { name: 'Screenshot of the source configuration' }),
     ).toBeInTheDocument()
@@ -1455,7 +1254,7 @@ describe('DocumentDetailPage', () => {
       version: 1,
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(screen.getAllByText('Issue: Copy button is unavailable')).not.toHaveLength(0)
     expect(
@@ -1470,7 +1269,7 @@ describe('DocumentDetailPage', () => {
     await waitFor(() => expect(within(chunkCountRow!).getByText('2')).toBeInTheDocument())
   })
 
-  it('shows images without location metadata after the document chunks', () => {
+  it('shows images without location metadata after the document chunks', async () => {
     chunksQuery.data = {
       pages: [
         {
@@ -1504,7 +1303,7 @@ describe('DocumentDetailPage', () => {
       version: 1,
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     const article = screen.getByRole('article')
     const chunkHeading = within(article).getByRole('heading', { level: 2, name: 'Chapter' })
@@ -1514,7 +1313,7 @@ describe('DocumentDetailPage', () => {
     )
   })
 
-  it('labels flat document chunks by their visible order', () => {
+  it('labels flat document chunks by their visible order', async () => {
     chunksQuery.data = {
       pages: [
         {
@@ -1526,14 +1325,14 @@ describe('DocumentDetailPage', () => {
       ],
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     const article = screen.getByRole('article')
     expect(within(article).getByText('C-1')).toBeInTheDocument()
     expect(within(article).getByText('C-2')).toBeInTheDocument()
   })
 
-  it('restarts child chunk labels for each parent chunk', () => {
+  it('restarts child chunk labels for each parent chunk', async () => {
     chunksQuery.data = {
       pages: [
         {
@@ -1566,7 +1365,7 @@ describe('DocumentDetailPage', () => {
       ],
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     const article = screen.getByRole('article')
     expect(within(article).getAllByText('C-1')).toHaveLength(2)
@@ -1599,7 +1398,7 @@ describe('DocumentDetailPage', () => {
       ],
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     const tree = screen.getByRole('tree', { name: 'knowledgeDocuments.documentContents' })
     const parent = within(tree).getByRole('treeitem', { name: /Setup requirements/ })
@@ -1648,7 +1447,10 @@ describe('DocumentDetailPage', () => {
       userMetadata: { category: 'support', sourceName: 'Notion support SOP' },
     })
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    const { queryClient } = await render(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
+    const documentsListKey = seedDocumentsList(queryClient)
 
     expect(screen.getByText('category')).toBeInTheDocument()
     expect(screen.queryByText('sourceName')).not.toBeInTheDocument()
@@ -1663,12 +1465,8 @@ describe('DocumentDetailPage', () => {
       params: { control_space_id: 'space-1', document_id: 'document-1' },
     })
     await waitFor(() => expect(toastState.success).toHaveBeenCalledWith('common.api.actionSuccess'))
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['knowledge-fs', 'document'],
-    })
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['knowledge-fs', 'documents'],
-    })
+    await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
+    expect(queryClient.getQueryState(documentsListKey)?.isInvalidated).toBe(true)
   })
 
   it('preserves a document metadata draft when the active revision changes', async () => {
@@ -1676,7 +1474,7 @@ describe('DocumentDetailPage', () => {
     documentQuery.data = logicalDocument({
       userMetadata: { category: 'support', sourceName: 'Notion support SOP' },
     })
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
 
@@ -1696,10 +1494,12 @@ describe('DocumentDetailPage', () => {
       userMetadata: { category: 'support', sourceName: 'Notion support SOP' },
     })
     revisionsQuery.data = { pages: [{ items: [nextRevision] }] }
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
 
     expect(screen.getByRole('textbox', { name: 'category' })).toHaveValue('draft value')
-    expect(infiniteInput(chunksOptions.mock.lastCall?.[0])(null)).toEqual({
+    expect(lastInput('chunks')).toEqual({
       params: {
         control_space_id: 'space-1',
         document_id: 'document-1',
@@ -1713,7 +1513,7 @@ describe('DocumentDetailPage', () => {
     const user = userEvent.setup()
     metadataFieldsQuery.data = [metadataField({ name: 'priority', type: 'number' })]
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(
       screen.getByRole('button', {
@@ -1740,7 +1540,7 @@ describe('DocumentDetailPage', () => {
       metadataField({ id: 'metadata-field-2', name: 'reviewed_at', type: 'time' }),
     ]
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(
       screen.getByRole('button', {
@@ -1761,7 +1561,7 @@ describe('DocumentDetailPage', () => {
     documentQuery.data = logicalDocument({ userMetadata: { reviewed_at: '' } })
     metadataFieldsQuery.data = [metadataField({ name: 'reviewed_at', type: 'time' })]
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
 
@@ -1774,7 +1574,7 @@ describe('DocumentDetailPage', () => {
     metadataFieldsQuery.data = undefined
     metadataFieldsQuery.isPending = true
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
 
@@ -1788,7 +1588,7 @@ describe('DocumentDetailPage', () => {
     metadataFieldsQuery.data = undefined
     metadataFieldsQuery.error = new Error('metadata catalog unavailable')
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const category = screen.getByLabelText('category')
@@ -1816,7 +1616,7 @@ describe('DocumentDetailPage', () => {
     })
     metadataFieldsQuery.data = [metadataField({ name: 'reviewed_at', type: 'time' })]
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
 
@@ -1827,7 +1627,7 @@ describe('DocumentDetailPage', () => {
   it('creates a reusable field and initializes only the current document', async () => {
     const user = userEvent.setup()
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(
       screen.getByRole('button', {
@@ -1874,7 +1674,7 @@ describe('DocumentDetailPage', () => {
       },
     )
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(
       screen.getByRole('button', {
@@ -1905,7 +1705,7 @@ describe('DocumentDetailPage', () => {
     const user = userEvent.setup()
     metadataFieldsQuery.isPending = true
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(
       screen.getByRole('button', {
@@ -1923,7 +1723,7 @@ describe('DocumentDetailPage', () => {
     const user = userEvent.setup()
     patchDocumentMetadata.mockRejectedValueOnce(new Error('metadata update failed'))
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(
       screen.getByRole('button', {
@@ -1952,7 +1752,7 @@ describe('DocumentDetailPage', () => {
     const user = userEvent.setup()
     metadataFieldsQuery.data = [metadataField({ name: 'existing_field' })]
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(
       screen.getByRole('button', {
@@ -2001,7 +1801,7 @@ describe('DocumentDetailPage', () => {
   it('opens the New RAG metadata manager from the document picker', async () => {
     const user = userEvent.setup()
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(
       screen.getByRole('button', {
@@ -2042,7 +1842,7 @@ describe('DocumentDetailPage', () => {
       ],
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const tree = screen.getByRole('tree')
     const parent = screen.getByRole('treeitem', { name: /Parent node/ })
     const child = screen.getByRole('treeitem', { name: /Child node/ })
@@ -2098,7 +1898,7 @@ describe('DocumentDetailPage', () => {
       ],
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     const parent = screen.getByRole('treeitem', { name: /Parent node/ })
     expect(parent).toHaveAttribute('aria-expanded', 'true')
@@ -2124,11 +1924,11 @@ describe('DocumentDetailPage', () => {
     const user = userEvent.setup()
     tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    expect(documentsOptions.mock.lastCall?.[0]).toEqual(expect.objectContaining({ enabled: false }))
+    expect(listLogicalDocuments).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
-    expect(documentsOptions.mock.lastCall?.[0]).toEqual(expect.objectContaining({ enabled: true }))
+    await waitFor(() => expect(listLogicalDocuments).toHaveBeenCalled())
   })
 
   it('cancels the active re-index task from the document header', async () => {
@@ -2136,7 +1936,7 @@ describe('DocumentDetailPage', () => {
     taskSnapshotQuery.data = task({ state: 'running' })
     documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
     )
@@ -2148,16 +1948,13 @@ describe('DocumentDetailPage', () => {
         task_kind: 'document',
       },
     })
-    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(4))
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['knowledge-fs', 'tasks', { input: { params: { control_space_id: 'space-1' } } }],
-    })
+    await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
   })
 
   it('cancels a newly accepted re-index before task discovery catches up', async () => {
     const user = userEvent.setup()
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
     await user.click(
       await screen.findByRole('button', {
@@ -2165,18 +1962,20 @@ describe('DocumentDetailPage', () => {
       }),
     )
 
-    expect(cancelMutation.mutateAsync).toHaveBeenCalledWith({
-      params: {
-        control_space_id: 'space-1',
-        task_id: 'compilation-job-1',
-        task_kind: 'document',
-      },
-    })
+    await waitFor(() =>
+      expect(cancelMutation.mutateAsync).toHaveBeenCalledWith({
+        params: {
+          control_space_id: 'space-1',
+          task_id: 'compilation-job-1',
+          task_kind: 'document',
+        },
+      }),
+    )
   })
 
   it('restores an accepted re-index after the document page remounts', async () => {
     const user = userEvent.setup()
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
@@ -2187,7 +1986,7 @@ describe('DocumentDetailPage', () => {
     ).toBeInTheDocument()
 
     rendered.unmount()
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
@@ -2209,20 +2008,13 @@ describe('DocumentDetailPage', () => {
       updated_at: 1,
     }
 
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
 
-    expect(submittedJobOptions).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        input: {
-          params: {
-            control_space_id: 'space-1',
-            job_id: 'compilation-job-1',
-          },
-        },
-      }),
-    )
+    expect(lastInput('submitted-job')).toEqual({
+      params: { control_space_id: 'space-1', job_id: 'compilation-job-1' },
+    })
     expect(
       screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
     ).toBeInTheDocument()
@@ -2233,14 +2025,16 @@ describe('DocumentDetailPage', () => {
       stage: 'published',
       updated_at: 2,
     }
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
 
     await waitFor(() =>
       expect(
         screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }),
       ).toBeInTheDocument(),
     )
-    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(4))
+    await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
     expect(globalThis.sessionStorage.getItem('dify-new-rag-reindex:space-1:document-1')).toBeNull()
   })
 
@@ -2256,7 +2050,7 @@ describe('DocumentDetailPage', () => {
       pages: [{ items: [task({ id: 'completed-task', state: 'succeeded' })] }],
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await waitFor(() =>
       expect(
@@ -2267,7 +2061,7 @@ describe('DocumentDetailPage', () => {
     expect(globalThis.sessionStorage.getItem('dify-new-rag-reindex:space-1:document-1')).toBeNull()
   })
 
-  it('renders missing revision and empty chunk states without issuing a usable chunk request', () => {
+  it('renders missing revision and empty chunk states without issuing a usable chunk request', async () => {
     documentQuery.data = logicalDocument({
       active: null,
       activeRevision: undefined,
@@ -2275,20 +2069,20 @@ describe('DocumentDetailPage', () => {
     })
     revisionsQuery.data = { pages: [{ items: [] }] }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('heading', { name: 'knowledgeDocuments.documentRevisionMissingTitle' }),
     ).toBeInTheDocument()
-    expect(chunksOptions).not.toHaveBeenCalled()
+    expect(server.inputs.get('chunks')).toBeUndefined()
   })
 
   it('keeps cached chunks visible when a background refresh fails', async () => {
     const user = userEvent.setup()
     chunksQuery.data = { pages: [{ items: [chunk({ id: 'cached', text: 'Cached content' })] }] }
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     chunksQuery.error = new Error('refresh failed')
-
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await refetchAll()
 
     expect(screen.getByRole('treeitem', { name: 'Cached content' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Cached content' })).toBeInTheDocument()
@@ -2302,23 +2096,24 @@ describe('DocumentDetailPage', () => {
       .closest('section')
     expect(indexInformation).not.toBeNull()
     expect(within(indexInformation!).getAllByText('—')).toHaveLength(3)
+    chunksQuery.refetch.mockClear()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(chunksQuery.refetch).toHaveBeenCalledOnce()
+    await waitFor(() => expect(chunksQuery.refetch).toHaveBeenCalledOnce())
   })
 
-  it('uses a revision from the URL without exposing revision controls', () => {
+  it('uses a revision from the URL without exposing revision controls', async () => {
     revisionsQuery.data = {
       pages: [{ items: [activeRevision({ revision: 2, state: 'superseded' })] }],
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
       searchParams: '?revision=2',
     })
 
     expect(
       screen.queryByRole('combobox', { name: 'knowledgeDocuments.documentRevision' }),
     ).not.toBeInTheDocument()
-    expect(infiniteInput(chunksOptions.mock.lastCall?.[0])(null)).toEqual({
+    expect(lastInput('chunks')).toEqual({
       params: {
         control_space_id: 'space-1',
         document_id: 'document-1',
@@ -2335,23 +2130,23 @@ describe('DocumentDetailPage', () => {
     }
     revisionsQuery.hasNextPage = true
     revisionsQuery.isFetchNextPageError = true
-    revisionsQuery.error = new Error('Older revisions unavailable')
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
       searchParams: '?revision=2',
     })
 
-    expect(screen.getByText('knowledgeDocuments.documentRevisionsLoadError')).toBeVisible()
+    // Looking up the URL revision loads the older page, and that request fails.
+    expect(await screen.findByText('knowledgeDocuments.documentRevisionsLoadError')).toBeVisible()
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
-    expect(revisionsQuery.fetchNextPage).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(revisionsQuery.fetchNextPage).toHaveBeenCalledOnce()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(revisionsQuery.fetchNextPage).toHaveBeenCalledTimes(2))
   })
 
-  it('keeps document actions available when a URL revision is missing', () => {
+  it('keeps document actions available when a URL revision is missing', async () => {
     revisionsQuery.data = { pages: [{ items: [] }] }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
       searchParams: '?revision=2',
     })
 
@@ -2369,16 +2164,17 @@ describe('DocumentDetailPage', () => {
     revisionsQuery.data = {
       pages: [{ items: [activeRevision({ revision: 3 })], nextCursor: 'older' }],
     }
-    revisionsQuery.hasNextPage = true
+    const olderPage = createDeferred<void>()
+    revisionsQuery.fetchNextPage.mockImplementationOnce(() => olderPage.promise)
 
-    const rendered = render(
-      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
-      { searchParams: '?revision=2' },
-    )
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      searchParams: '?revision=2',
+      settle: false,
+    })
 
-    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    expect(await screen.findByText('common.loading')).toBeInTheDocument()
     await waitFor(() => expect(revisionsQuery.fetchNextPage).toHaveBeenCalledOnce())
-    expect(chunksOptions).not.toHaveBeenCalled()
+    expect(server.inputs.get('chunks')).toBeUndefined()
 
     revisionsQuery.data = {
       pages: [
@@ -2386,11 +2182,10 @@ describe('DocumentDetailPage', () => {
         { items: [activeRevision({ revision: 2, state: 'superseded' })] },
       ],
     }
-    revisionsQuery.hasNextPage = false
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await act(async () => olderPage.resolve())
 
     await waitFor(() =>
-      expect(infiniteInput(chunksOptions.mock.lastCall?.[0])(null)).toEqual({
+      expect(lastInput('chunks')).toEqual({
         params: {
           control_space_id: 'space-1',
           document_id: 'document-1',
@@ -2406,7 +2201,7 @@ describe('DocumentDetailPage', () => {
       pages: [{ items: [task({ documentId: 'another-document', id: 'another-task' })] }],
     }
     tasksQuery.hasNextPage = true
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
     expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
@@ -2415,67 +2210,49 @@ describe('DocumentDetailPage', () => {
     tasksQuery.data = {
       pages: [{ items: [task({ documentRevision: 2, state: 'failed' })] }],
     }
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
     expect(screen.queryByText('knowledgeDocuments.documentReindexFailed')).toBeNull()
     expect(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' })).toBeEnabled()
   })
 
-  it('polls active work through the unified background-task contract', () => {
+  it('polls active work through the unified background-task contract', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     taskSnapshotQuery.data = task({ state: 'running' })
     documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    const reads = snapshotReads()
 
-    const taskOptions = taskSnapshotOptions.mock.lastCall?.[0] as unknown as {
-      refetchInterval: (query: {
-        state: {
-          data?: {
-            data: Array<ReturnType<typeof taskApiResponse>>
-          }
-        }
-      }) => number | false
-    }
-    expect(
-      taskOptions.refetchInterval({
-        state: {
-          data: {
-            data: [taskApiResponse(task({ state: 'running' }))],
-          },
-        },
-      }),
-    ).toBe(5000)
-    expect(taskSnapshotQuery.refetch).not.toHaveBeenCalled()
+    await advance(5100)
+
+    expect(lastInput('task-snapshot')).toEqual({
+      params: { control_space_id: 'space-1' },
+      query: { task_ids: 'task-1' },
+    })
+    expect(snapshotReads()).toBeGreaterThan(reads)
   })
 
-  it('keeps polling a retried task while its exact snapshot still contains the old failure', () => {
+  it('keeps polling a retried task while its exact snapshot still contains the old failure', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     const failed = task({ state: 'failed', updatedAt: '2026-09-11T12:00:00Z' })
     const running = task({ state: 'running', updatedAt: '2026-09-11T12:01:00Z' })
     documentQuery.data = { ...documentQuery.data!, latestTask: running }
     taskSnapshotQuery.data = failed
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
     ).toBeEnabled()
-    const options = taskSnapshotOptions.mock.lastCall?.[0] as {
-      refetchInterval: (query: {
-        state: { data: { data: Array<ReturnType<typeof taskApiResponse>> }; error?: unknown }
-      }) => number | false
-    }
-    expect(options.refetchInterval({ state: { data: { data: [taskApiResponse(failed)] } } })).toBe(
-      5000,
-    )
-    expect(
-      options.refetchInterval({
-        state: {
-          data: { data: [taskApiResponse(failed)] },
-          error: createHttpError(new Response(null, { status: 403 })),
-        },
-      }),
-    ).toBe(false)
-    const completed = task({ state: 'succeeded', updatedAt: '2026-09-11T12:02:00Z' })
-    expect(
-      options.refetchInterval({ state: { data: { data: [taskApiResponse(completed)] } } }),
-    ).toBe(false)
+    let reads = snapshotReads()
+    await advance(5100)
+    expect(snapshotReads()).toBeGreaterThan(reads)
+
+    taskSnapshotQuery.data = task({ state: 'succeeded', updatedAt: '2026-09-11T12:02:00Z' })
+    await advance(5100)
+    reads = snapshotReads()
+    await advance(15_000)
+    expect(snapshotReads()).toBe(reads)
   })
 
   it('shows graph repair separately from a published document and clears the notice when ready', async () => {
@@ -2487,7 +2264,7 @@ describe('DocumentDetailPage', () => {
     })
     documentQuery.data = logicalDocument({ latestTask })
     taskSnapshotQuery.data = latestTask
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
     expect(screen.getByText('knowledgeTasks.graphRepairPending')).toBeInTheDocument()
@@ -2499,49 +2276,47 @@ describe('DocumentDetailPage', () => {
       updatedAt: '2026-07-21T10:02:00Z',
       semanticEnrichment: { state: 'ready', nodes_completed: 1 },
     }
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
     expect(screen.queryByText('knowledgeTasks.graphRepairPending')).not.toBeInTheDocument()
   })
 
-  it.each(['CLOUD', 'ENTERPRISE'])(
+  it.each(['CLOUD', 'ENTERPRISE'] as const)(
     'refreshes document content and applicable usage when an active task becomes terminal in %s',
     async (edition) => {
       systemFeaturesState.deploymentEdition = edition
       taskSnapshotQuery.data = task({ state: 'running' })
       documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
-      const rendered = render(
+      const rendered = await render(
         <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
       )
-      expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
-        { queryKey: ['features'] },
-        { cancelRefetch: false },
+      const usageKeys = [
+        consoleQuery.features.get.queryKey(),
+        consoleQuery.features.vectorSpace.get.queryKey(),
+      ]
+      seedFeatures(rendered.queryClient)
+      rendered.queryClient.setQueryData(
+        consoleQuery.features.vectorSpace.get.queryKey(),
+        zGetFeaturesVectorSpaceResponse.parse({ limit: 10, size: 1 }),
       )
-      expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
-        { queryKey: ['vector-space'] },
-        { cancelRefetch: false },
-      )
-      taskSnapshotQuery.data = task({ state: 'succeeded' })
-      rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+      documentQuery.refetch.mockClear()
 
-      await waitFor(() =>
-        expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(edition === 'CLOUD' ? 6 : 4),
+      taskSnapshotQuery.data = task({ state: 'succeeded' })
+      await rendered.rerender(
+        <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
       )
-      if (edition === 'CLOUD') {
-        expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
-          { queryKey: ['features'] },
-          { cancelRefetch: false },
-        )
-        expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
-          { queryKey: ['vector-space'] },
-          { cancelRefetch: false },
-        )
-      }
-      rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-      expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(edition === 'CLOUD' ? 6 : 4)
+
+      await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
+      for (const key of usageKeys)
+        expect(rendered.queryClient.getQueryState(key)?.isInvalidated).toBe(edition === 'CLOUD')
+      const refreshes = documentQuery.refetch.mock.calls.length
+      await settle()
+      expect(documentQuery.refetch).toHaveBeenCalledTimes(refreshes)
     },
   )
 
-  it('virtualizes long trees and bounds their accessible labels', () => {
+  it('virtualizes long trees and bounds their accessible labels', async () => {
     chunksQuery.data = {
       pages: [
         {
@@ -2557,26 +2332,45 @@ describe('DocumentDetailPage', () => {
       ],
     }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(screen.getAllByRole('treeitem')).toHaveLength(12)
     expect(screen.getAllByRole('treeitem')[0]).toHaveAccessibleName(`${'x'.repeat(119)}…`)
   })
 
-  it('shows empty chunks, cursor errors, and a real load-more action', async () => {
+  it('shows a retryable error when the next chunk page fails', async () => {
     const user = userEvent.setup()
+    const intersectionCallbacks: IntersectionObserverCallback[] = []
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class MockIntersectionObserver {
+        constructor(callback: IntersectionObserverCallback) {
+          intersectionCallbacks.push(callback)
+        }
+
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    )
     chunksQuery.data = { pages: [{ items: [], nextCursor: 'next' }] }
-    chunksQuery.error = new Error('cursor failed')
     chunksQuery.hasNextPage = true
     chunksQuery.isFetchNextPageError = true
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(intersectionCallbacks.length).toBeGreaterThan(0))
+    act(() => {
+      intersectionCallbacks.at(-1)?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(await screen.findByRole('alert')).toHaveTextContent(
       'knowledgeDocuments.documentChunksLoadMoreError',
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
+    await waitFor(() => expect(chunksQuery.fetchNextPage).toHaveBeenCalledTimes(2))
   })
 
   it('automatically loads every remaining chunk page without showing a loading notice', async () => {
@@ -2598,53 +2392,37 @@ describe('DocumentDetailPage', () => {
     }
     chunksQuery.hasNextPage = true
 
-    const rendered = render(
-      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
-    )
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(chunksQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'false')
     expect(screen.queryByText('knowledgeSpace.documentContentIncomplete')).toBeNull()
-    expect(screen.getByRole('heading', { name: 'First chunk' }).closest('section')).toHaveClass(
-      '[content-visibility:auto]',
-    )
     expect(screen.queryByRole('button', { name: 'knowledgeSpace.loadMore' })).toBeNull()
 
+    const nextPage = createDeferred<void>()
+    chunksQuery.fetchNextPage.mockImplementationOnce(() => nextPage.promise)
     await waitFor(() => expect(intersectionCallbacks.length).toBeGreaterThan(0))
-    const firstObserverCount = intersectionCallbacks.length
     act(() => {
       intersectionCallbacks.at(-1)?.(
         [{ isIntersecting: true } as IntersectionObserverEntry],
         {} as IntersectionObserver,
       )
     })
-    expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
-
-    chunksQuery.isFetchingNextPage = true
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce())
     expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'true')
     expect(screen.queryByText('knowledgeSpace.documentContentIncomplete')).toBeNull()
 
     chunksQuery.data = {
       pages: [
-        { items: [chunk({ id: 'first', text: 'First chunk' })] },
+        { items: [chunk({ id: 'first', text: 'First chunk' })], nextCursor: 'next' },
         { items: [chunk({ id: 'second', ordinal: 2, text: 'Second chunk' })] },
       ],
     }
-    chunksQuery.isFetchingNextPage = false
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-
-    await waitFor(() => expect(intersectionCallbacks.length).toBeGreaterThan(firstObserverCount))
-    act(() => {
-      intersectionCallbacks.at(-1)?.(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
-      )
-    })
-    expect(chunksQuery.fetchNextPage).toHaveBeenCalledTimes(2)
-
     chunksQuery.hasNextPage = false
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await act(async () => nextPage.resolve())
+    await settle()
+
+    expect(await screen.findByRole('heading', { name: 'Second chunk' })).toBeInTheDocument()
     expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'false')
     expect(screen.queryByText('knowledgeSpace.documentContentIncomplete')).toBeNull()
   })
@@ -2679,30 +2457,33 @@ describe('DocumentDetailPage', () => {
       pages: [{ items: [chunk({ id: 'first', text: 'First chunk' })], nextCursor: 'next' }],
     }
     chunksQuery.hasNextPage = true
+    const targetPage = createDeferred<void>()
+    chunksQuery.fetchNextPage.mockImplementationOnce(() => targetPage.promise)
 
-    const rendered = render(
-      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
-      { searchParams: '?revision=3&chunk=target' },
-    )
-    const contentScroll = screen.getByTestId('chunk-content-scroll')
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      searchParams: '?revision=3&chunk=target',
+      settle: false,
+    })
+    const contentScroll = await screen.findByTestId('chunk-content-scroll')
     Object.defineProperty(contentScroll, 'clientHeight', { configurable: true, value: 1000 })
 
     await waitFor(() => expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce())
-    expect(screen.getByRole('treeitem', { name: 'First chunk' })).toHaveAttribute(
+    expect(await screen.findByRole('treeitem', { name: 'First chunk' })).toHaveAttribute(
       'aria-selected',
       'false',
     )
 
     chunksQuery.data = {
       pages: [
-        { items: [chunk({ id: 'first', text: 'First chunk' })] },
+        { items: [chunk({ id: 'first', text: 'First chunk' })], nextCursor: 'next' },
         { items: [chunk({ id: 'target', ordinal: 2, text: 'Target chunk' })] },
       ],
     }
     chunksQuery.hasNextPage = false
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await act(async () => targetPage.resolve())
+    await settle()
 
-    expect(screen.getByRole('treeitem', { name: 'Target chunk' })).toHaveAttribute(
+    expect(await screen.findByRole('treeitem', { name: 'Target chunk' })).toHaveAttribute(
       'aria-selected',
       'true',
     )
@@ -2710,7 +2491,7 @@ describe('DocumentDetailPage', () => {
     getBoundingClientRect.mockRestore()
   })
 
-  it('shares document URL state while client navigation renders two route instances', () => {
+  it('shares document URL state while client navigation renders two route instances', async () => {
     chunksQuery.data = {
       pages: [
         {
@@ -2722,7 +2503,7 @@ describe('DocumentDetailPage', () => {
       ],
     }
 
-    render(
+    await render(
       <>
         <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />
         <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />
@@ -2744,21 +2525,25 @@ describe('DocumentDetailPage', () => {
     const user = userEvent.setup()
     documentQuery.data = undefined
     documentQuery.error = createHttpError(new Response(null, { status: 404 }))
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
     expect(
       screen.getByRole('heading', { name: 'knowledgeDocuments.documentNotFoundTitle' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).toBeNull()
+    expect(server.reads.get('document')).toBe(1)
 
     documentQuery.error = new Error('temporary failure')
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(documentQuery.refetch).toHaveBeenCalledOnce()
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
+    documentQuery.refetch.mockClear()
+    await user.click(await screen.findByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
   })
 
-  it('shows re-index progress and preserves the last ready revision after failure', () => {
+  it('shows re-index progress and preserves the last ready revision after failure', async () => {
     taskSnapshotQuery.data = task({
       state: 'failed',
       errorCode: 'PARSER_FAILED',
@@ -2767,7 +2552,7 @@ describe('DocumentDetailPage', () => {
     documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
     chunksQuery.data = { pages: [{ items: [chunk({ id: 'ready-chunk' })] }] }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('alert')).toHaveTextContent('knowledgeDocuments.documentReindexFailed')
     expect(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' })).toBeInTheDocument()
@@ -2777,20 +2562,20 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('heading', { name: 'Parent content' })).toBeInTheDocument()
   })
 
-  it('renders a valid empty file size as zero bytes', () => {
+  it('renders a valid empty file size as zero bytes', async () => {
     documentQuery.data = logicalDocument({
       active: activeRevision({ sizeBytes: 0 }),
     })
     revisionsQuery.data = { pages: [{ items: [activeRevision({ sizeBytes: 0 })] }] }
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('0 B')).toBeInTheDocument()
   })
 
   it('starts re-indexing once and disables writes for readonly users', async () => {
     const user = userEvent.setup()
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
@@ -2799,11 +2584,13 @@ describe('DocumentDetailPage', () => {
       body: { documentIds: ['document-1'] },
       params: { control_space_id: 'space-1' },
     })
-    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalled())
+    await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
 
     permissionState.keys = ['dataset.acl.readonly']
     knowledgeSpacePermissionState.keys = []
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
     const readonlyReindexButton = screen.getByRole('button', {
       name: 'knowledgeDocuments.cancelDocumentReindex',
     })
@@ -2843,7 +2630,7 @@ describe('DocumentDetailPage', () => {
         })
       }
 
-      render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+      await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
       await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
 
       await waitFor(() =>
@@ -2879,7 +2666,7 @@ describe('DocumentDetailPage', () => {
       ),
     )
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
     const drawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
     await user.click(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' }))
@@ -2895,7 +2682,7 @@ describe('DocumentDetailPage', () => {
   it('prompts for model setup before re-indexing a document', async () => {
     const user = userEvent.setup()
     settingsState.configurationState = 'setup-required'
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
 
@@ -2922,7 +2709,7 @@ describe('DocumentDetailPage', () => {
           resolveReindex = resolve
         }),
     )
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const button = screen.getByRole('button', {
       name: 'knowledgeDocuments.reindexDocument',
     })
@@ -2934,19 +2721,14 @@ describe('DocumentDetailPage', () => {
       expect(toastState.error).toHaveBeenCalledWith('knowledgeDocuments.documentNotFoundTitle'),
     )
     expect(toastState.success).not.toHaveBeenCalled()
-    expect(queryClient.invalidateQueries).toHaveBeenCalledOnce()
-    expect(queryClient.removeQueries).toHaveBeenCalledOnce()
-    expect(queryClient.removeQueries).toHaveBeenCalledWith({
-      queryKey: ['knowledge-fs', 'document', 'space-1', 'document-1'],
-    })
     expect(
       screen.getByRole('heading', { name: 'knowledgeDocuments.documentNotFoundTitle' }),
     ).toBeInTheDocument()
   })
 
-  it('does not render cached document data after a refetch returns 403 or 404', () => {
+  it('does not render cached document data after a refetch returns 403 or 404', async () => {
     documentQuery.error = createHttpError(new Response(null, { status: 404 }))
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
 
@@ -2956,43 +2738,41 @@ describe('DocumentDetailPage', () => {
     expect(screen.queryByText('sso-enterprise.pdf')).toBeNull()
 
     documentQuery.error = createHttpError(new Response(null, { status: 403 }))
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
     expect(screen.queryByText('sso-enterprise.pdf')).toBeNull()
 
-    const retry = (
-      documentOptions.mock.calls.find(([options]) => 'retry' in options)?.[0] as {
-        retry: (failureCount: number, error: unknown) => boolean
-      }
-    ).retry
-    expect(retry(0, createHttpError(new Response(null, { status: 403 })))).toBe(false)
-    expect(retry(0, createHttpError(new Response(null, { status: 404 })))).toBe(false)
-    expect(retry(0, new Error('temporary'))).toBe(true)
+    // Permission and existence failures are final, so the request is not retried.
+    expect(documentQuery.refetch).toHaveBeenCalledOnce()
   })
 
   it('invalidates document content when an accepted re-index first appears as terminal', async () => {
     const user = userEvent.setup()
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
 
     await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
-    queryClient.invalidateQueries.mockClear()
+    documentQuery.refetch.mockClear()
     taskSnapshotQuery.data = task({
       id: 'compilation-job-1',
       documentRevision: 4,
       state: 'succeeded',
     })
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
 
-    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(4))
+    await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
   })
 
-  it('uses the latest document snapshot even when history has more pages', () => {
+  it('uses the latest document snapshot even when history has more pages', async () => {
     documentQuery.data = { ...documentQuery.data!, latestTask: task({ state: 'running' }) }
     tasksQuery.data = undefined
     tasksQuery.hasNextPage = true
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     expect(
       screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
     ).toBeEnabled()
@@ -3005,9 +2785,10 @@ describe('DocumentDetailPage', () => {
     const invalidation = new Promise<void>((resolve) => {
       finishInvalidation = resolve
     })
-    queryClient.invalidateQueries.mockReturnValue(invalidation)
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    // Holds the document refresh that the accepted re-index triggers.
+    documentQuery.refetch.mockReturnValueOnce(invalidation)
     const button = screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' })
     await user.click(button)
 
@@ -3015,7 +2796,7 @@ describe('DocumentDetailPage', () => {
     expect(button).not.toHaveAttribute('data-disabled')
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(screen.getByRole('status')).toHaveTextContent('knowledgeDocuments.documentReindexStatus')
-    finishInvalidation?.()
+    await act(async () => finishInvalidation?.())
     await waitFor(() => expect(toastState.success).toHaveBeenCalled())
     expect(button).toHaveTextContent('knowledgeDocuments.cancelDocumentReindex')
     expect(button).not.toHaveAttribute('data-disabled')
@@ -3027,7 +2808,7 @@ describe('DocumentDetailPage', () => {
     const user = userEvent.setup()
     taskSnapshotQuery.data = task({ documentRevision: 4, id: 'old-failed', state: 'failed' })
     documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const button = screen.getByRole('button', {
       name: 'knowledgeDocuments.retryReindexDocument',
     })
@@ -3039,21 +2820,18 @@ describe('DocumentDetailPage', () => {
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(cancelMutation.mutateAsync).not.toHaveBeenCalled()
 
-    const discoveryOptions = taskSnapshotOptions.mock.lastCall?.[0] as {
-      input: { params: { control_space_id: string }; query: { task_ids: string } }
-    }
-    expect(discoveryOptions.input).toEqual({
+    expect(lastInput('task-snapshot')).toEqual({
       params: { control_space_id: 'space-1' },
       query: { task_ids: 'compilation-job-1' },
     })
   })
 
   it('keeps the accepted re-index state while task discovery is delayed', async () => {
-    vi.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     taskSnapshotQuery.data = task({ documentRevision: 4, id: 'old-failed', state: 'failed' })
     documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
     try {
-      render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+      await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
       const reindexButton = screen.getByRole('button', {
         name: 'knowledgeDocuments.retryReindexDocument',
       })
@@ -3082,8 +2860,9 @@ describe('DocumentDetailPage', () => {
   })
 
   it('uses active-task polling after the exact snapshot observes the new task', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup()
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
     await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
@@ -3094,32 +2873,19 @@ describe('DocumentDetailPage', () => {
       id: 'compilation-job-1',
       state: 'running',
     })
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
+    const reads = snapshotReads()
+    await advance(5100)
 
-    const taskOptions = taskSnapshotOptions.mock.lastCall?.[0] as unknown as {
-      refetchInterval: (query: {
-        state: {
-          data?: {
-            data: Array<ReturnType<typeof taskApiResponse>>
-          }
-        }
-      }) => number | false
-    }
-    expect(
-      taskOptions.refetchInterval({
-        state: {
-          data: {
-            data: [taskApiResponse(task({ documentRevision: 4, state: 'running' }))],
-          },
-        },
-      }),
-    ).toBe(5000)
+    expect(snapshotReads()).toBeGreaterThan(reads)
   })
 
   it('recognizes the accepted re-index task when it recompiles the active revision', async () => {
-    vi.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
-      const rendered = render(
+      const rendered = await render(
         <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
       )
       await act(async () => {
@@ -3133,7 +2899,9 @@ describe('DocumentDetailPage', () => {
         id: 'compilation-job-1',
         state: 'running',
       })
-      rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+      await rendered.rerender(
+        <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+      )
 
       expect(
         screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
@@ -3147,11 +2915,11 @@ describe('DocumentDetailPage', () => {
     }
   })
 
-  it('surfaces exact task authorization failures and blocks re-indexing', () => {
+  it('surfaces exact task authorization failures and blocks re-indexing', async () => {
     documentQuery.data = logicalDocument({ latestTask: task({ state: 'succeeded' }) })
     taskSnapshotQuery.data = undefined
     taskSnapshotQuery.error = createHttpError(new Response(null, { status: 403 }))
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
 
@@ -3159,50 +2927,42 @@ describe('DocumentDetailPage', () => {
     expect(
       screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }),
     ).toHaveAttribute('data-disabled')
-    const taskOptions = taskSnapshotOptions.mock.lastCall?.[0] as unknown as {
-      refetchInterval: (query: {
-        state: {
-          data?: {
-            data: Array<ReturnType<typeof taskApiResponse>>
-          }
-          error?: unknown
-        }
-      }) => number | false
-    }
-    expect(
-      taskOptions.refetchInterval({
-        state: { error: createHttpError(new Response(null, { status: 403 })) },
-      }),
-    ).toBe(false)
+    // A denied snapshot is terminal for polling.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const reads = snapshotReads()
+    await advance(15_000)
+    expect(snapshotReads()).toBe(reads)
+    vi.useRealTimers()
 
     taskSnapshotQuery.error = createHttpError(new Response(null, { status: 404 }))
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
     expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.tasksErrorDescription')
   })
 
-  it('recovers task state from its exact snapshot without task history', () => {
+  it('recovers task state from its exact snapshot without task history', async () => {
     documentQuery.data = logicalDocument({ latestTask: task({ state: 'succeeded' }) })
     taskSnapshotQuery.data = undefined
     taskSnapshotQuery.error = createHttpError(new Response(null, { status: 404 }))
-    const rendered = render(
+    const rendered = await render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
 
     taskSnapshotQuery.error = null
     taskSnapshotQuery.data = task({ state: 'running' })
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await rendered.rerender(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
     expect(screen.getByRole('status')).toHaveTextContent('knowledgeDocuments.documentReindexStatus')
   })
 
   it('refreshes stale detail and task-list caches for a newer terminal task on revisit', async () => {
     taskSnapshotQuery.data = task({ documentRevision: 4, state: 'succeeded' })
     documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(4))
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['knowledge-fs', 'tasks', { input: { params: { control_space_id: 'space-1' } } }],
-    })
+    await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
   })
 
   it('locks local writes during a 403 refresh and restores editor access afterward', async () => {
@@ -3217,7 +2977,7 @@ describe('DocumentDetailPage', () => {
       createHttpError(new Response(null, { status: 403 })),
     )
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const button = screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' })
     await user.click(button)
 
@@ -3238,7 +2998,7 @@ describe('DocumentDetailPage', () => {
       createHttpError(new Response(null, { status: 403 })),
     )
 
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const button = screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' })
     await user.click(button)
 
@@ -3266,16 +3026,16 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
   })
 
-  it('disables re-index while the document is deleting', () => {
+  it('disables re-index while the document is deleting', async () => {
     documentQuery.data = logicalDocument({ status: 'deleting' })
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }),
     ).toHaveAttribute('data-disabled')
   })
 
-  it('keeps virtual tree focus stable across Home and End and exposes sibling positions', () => {
+  it('keeps virtual tree focus stable across Home and End and exposes sibling positions', async () => {
     chunksQuery.data = {
       pages: [
         {
@@ -3285,7 +3045,7 @@ describe('DocumentDetailPage', () => {
         },
       ],
     }
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const tree = screen.getByRole('tree')
     const first = screen.getByRole('treeitem', { name: 'Chunk 1' })
 
@@ -3299,5 +3059,120 @@ describe('DocumentDetailPage', () => {
     expect(last).toHaveClass('ring-state-accent-solid')
     fireEvent.keyDown(tree, { key: 'Home' })
     expect(tree).toHaveAttribute('aria-activedescendant', first.id)
+  })
+
+  describe('document metadata editor', () => {
+    const renderWithMetadata = async (userMetadata: Record<string, unknown>) => {
+      documentQuery.data = logicalDocument({ userMetadata })
+      return render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    }
+    const openCreateForm = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(
+        screen.getByRole('button', { name: 'dataset.metadata.documentMetadata.startLabeling' }),
+      )
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+      await user.click(
+        await screen.findByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
+      )
+      return screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' })
+    }
+
+    it('saves untouched timestamps unchanged after opening the editor', async () => {
+      const user = userEvent.setup()
+      metadataFieldsQuery.data = [metadataField({ name: 'reviewed_at', type: 'time' })]
+      await renderWithMetadata({ category: 'support', reviewed_at: '2026-08-04T10:00:45.123Z' })
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      const category = await screen.findByRole('textbox', { name: 'category' })
+      await user.clear(category)
+      await user.type(category, 'security')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() =>
+        expect(patchDocumentMetadata).toHaveBeenCalledWith({
+          body: { expectedRowVersion: 2, patch: { category: 'security' } },
+          params: { control_space_id: 'space-1', document_id: 'document-1' },
+        }),
+      )
+    })
+
+    it('closes without a request when only an untouched timestamp is present', async () => {
+      const user = userEvent.setup()
+      await renderWithMetadata({ reviewed_at: '2026-08-04T10:00:45.123Z' })
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(screen.queryByLabelText('reviewed_at')).not.toBeInTheDocument())
+      expect(patchDocumentMetadata).not.toHaveBeenCalled()
+    })
+
+    it('locks draft controls while a save is pending', async () => {
+      const user = userEvent.setup()
+      const pendingSave = createDeferred<ReturnType<typeof logicalDocumentApiResponse>>()
+      patchDocumentMetadata.mockReturnValueOnce(pendingSave.promise)
+      await renderWithMetadata({ category: 'support', owner: 'alice' })
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      const category = await screen.findByRole('textbox', { name: 'category' })
+      await user.clear(category)
+      await user.type(category, 'security')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      const owner = screen.getByRole('textbox', { name: 'owner' })
+      await waitFor(() => expect(owner).toBeDisabled())
+      expect(category).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' })).toBeDisabled()
+      await user.type(owner, 'bob')
+      expect(owner).toHaveValue('alice')
+
+      await act(async () =>
+        pendingSave.resolve(logicalDocumentApiResponse(logicalDocument({ rowVersion: 3 }))),
+      )
+      await waitFor(() =>
+        expect(toastState.success).toHaveBeenCalledWith('common.api.actionSuccess'),
+      )
+      expect(patchDocumentMetadata).toHaveBeenCalledOnce()
+    })
+
+    it('creates the field again when the previous creation request failed', async () => {
+      const user = userEvent.setup()
+      createMetadataField.mockRejectedValueOnce(new Error('create failed'))
+      await renderWithMetadata({})
+
+      const nameInput = await openCreateForm(user)
+      await user.type(nameInput, 'priority{Enter}')
+      await waitFor(() =>
+        expect(toastState.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
+      )
+      expect(patchDocumentMetadata).not.toHaveBeenCalled()
+
+      await user.click(
+        within(nameInput.closest('form')!).getByRole('button', { name: 'common.operation.save' }),
+      )
+
+      await waitFor(() => expect(createMetadataField).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(patchDocumentMetadata).toHaveBeenCalledOnce())
+    })
+
+    it('skips creation on retry only after the field was created', async () => {
+      const user = userEvent.setup()
+      patchDocumentMetadata.mockRejectedValueOnce(new Error('update failed'))
+      await renderWithMetadata({})
+
+      const nameInput = await openCreateForm(user)
+      await user.type(nameInput, 'priority{Enter}')
+      await waitFor(() =>
+        expect(toastState.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
+      )
+      metadataFieldsQuery.data = [metadataField({ name: 'priority' })]
+
+      await user.click(
+        within(nameInput.closest('form')!).getByRole('button', { name: 'common.operation.save' }),
+      )
+
+      await waitFor(() => expect(patchDocumentMetadata).toHaveBeenCalledTimes(2))
+      expect(createMetadataField).toHaveBeenCalledOnce()
+    })
   })
 })

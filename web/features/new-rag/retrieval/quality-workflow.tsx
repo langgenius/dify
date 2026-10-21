@@ -11,6 +11,7 @@ import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { GoldenQuestionDialog } from '../quality/golden-question-dialog'
+import { goldenQuestionQueriesKey } from '../quality/quality-model'
 import { newKnowledgeQualityBadCasesPath, newKnowledgeQualityPath } from '../routes'
 import { useKnowledgeSpacePermission } from '../space/context'
 import { QualityActions } from './results'
@@ -132,10 +133,7 @@ export function RetrievalQualityWorkflow() {
         params: { control_space_id: knowledgeSpaceId },
       })
       await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
-          input: { params: { control_space_id: knowledgeSpaceId } },
-          type: 'infinite',
-        }),
+        queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
       })
       setQualityDecisions((current) => ({ ...current, [promotion.resultKey]: 'golden' }))
       setGoldenPromotion(undefined)

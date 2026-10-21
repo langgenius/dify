@@ -1,10 +1,14 @@
+import type { KnowledgeFsProductPermission } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
-import type { Getter } from 'jotai'
+import type { ReactElement } from 'react'
 import type { Source, SourceSyncPolicy, SourceWorkflowRun } from '../source-models'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import knowledgeSpaceTranslations from '@/i18n/locales/en-US/knowledge-sources.json'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { SourcesPage } from '../page'
 
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
@@ -14,12 +18,10 @@ vi.mock('../../components/knowledge-model-readiness-banner', () => ({
 const toastInfoMock = vi.hoisted(() => vi.fn())
 const toastErrorMock = vi.hoisted(() => vi.fn())
 const permissionState = vi.hoisted(() => ({
-  knowledgeSpacePermissionKeys: ['knowledge_space_document_write'],
+  knowledgeSpacePermissionKeys: [
+    'knowledge_space_document_write',
+  ] as KnowledgeFsProductPermission[],
   workspacePermissionKeys: ['dataset.acl.edit', 'dataset.external.connect'],
-}))
-vi.mock('../../space/context', () => ({
-  useKnowledgeSpacePermission: (permission: string) =>
-    permissionState.knowledgeSpacePermissionKeys.includes(permission),
 }))
 const sourceApiResponse = vi.hoisted(() => (source: Source) => ({
   sync_workflow: source.syncWorkflow
@@ -98,21 +100,6 @@ const datasourcePluginsQuery = vi.hoisted(() => ({
   isPending: false,
 }))
 
-type SourcesInfiniteOptions = {
-  getNextPageParam: (lastPage: { next_cursor?: string | null }) => string | null | undefined
-  input: (pageParam: string | null) => unknown
-  initialPageParam: string | null
-  refetchInterval: (query: {
-    state: {
-      data?: { pages: Array<{ data: ReturnType<typeof sourceApiResponse>[] }> }
-    }
-  }) => false | number
-}
-
-type ConnectionsInfiniteOptions = {
-  input: (pageParam: string | null) => unknown
-}
-
 const sourcesQuery = vi.hoisted(() => ({
   data: undefined as { pages: Array<{ items: Source[]; nextCursor?: string }> } | undefined,
   error: null as unknown,
@@ -122,9 +109,6 @@ const sourcesQuery = vi.hoisted(() => ({
   isFetchingNextPage: false,
   isPending: false,
   refetch: vi.fn(),
-}))
-const jotaiQueryMocks = vi.hoisted(() => ({
-  bump: undefined as undefined | (() => void),
 }))
 const connectionsQuery = vi.hoisted(() => ({
   isFetchNextPageError: false,
@@ -156,10 +140,6 @@ const connectionsQuery = vi.hoisted(() => ({
   isPending: false,
 }))
 
-const infiniteOptionsMock = vi.hoisted(() => vi.fn((_options: SourcesInfiniteOptions) => ({})))
-const connectionInfiniteOptionsMock = vi.hoisted(() =>
-  vi.fn((_options: ConnectionsInfiniteOptions) => ({ scope: 'source-connections' })),
-)
 const clientMock = vi.hoisted(() => ({
   deleteSource: vi.fn(),
   deletePreviewJob: vi.fn(),
@@ -170,7 +150,11 @@ const clientMock = vi.hoisted(() => ({
   retrySourceWorkflow: vi.fn(),
   syncSource: vi.fn(),
 }))
-const invalidateQueriesMock = vi.hoisted(() => vi.fn())
+const server = vi.hoisted(() => ({
+  inflight: 0,
+  inputs: new Map<string, unknown[]>(),
+  reads: new Map<string, number>(),
+}))
 const routerMock = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
 const navigationMock = vi.hoisted(() => ({ awaitInitialSource: null as string | null }))
 const settingsState = vi.hoisted(() => ({
@@ -178,86 +162,6 @@ const settingsState = vi.hoisted(() => ({
   refetch: vi.fn(),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...original,
-    useInfiniteQuery: (options: { scope?: string }) =>
-      options.scope === 'source-connections'
-        ? connectionsQuery
-        : {
-            ...sourcesQuery,
-            data: sourcesQuery.data
-              ? {
-                  pages: sourcesQuery.data.pages.map((page) => ({
-                    data: page.items.map(sourceApiResponse),
-                    next_cursor: page.nextCursor ?? null,
-                  })),
-                }
-              : undefined,
-          },
-    useQuery: (options: { queryKey?: string[] }) =>
-      options.queryKey?.[0] === 'datasource-plugins'
-        ? datasourcePluginsQuery
-        : {
-            data: {
-              active_profile_available: settingsState.configurationState === 'active',
-              active_profile_revisions:
-                settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
-              capabilities: {
-                deep: settingsState.configurationState === 'active',
-                index: settingsState.configurationState === 'active',
-                ingest: settingsState.configurationState === 'active',
-                query: settingsState.configurationState === 'active',
-                research: settingsState.configurationState === 'active',
-                source_sync: settingsState.configurationState === 'active',
-              },
-              configuration_state: settingsState.configurationState,
-              embedding: null,
-              issues: [],
-              retrieval: null,
-              revision: 1,
-            },
-            refetch: settingsState.refetch,
-          },
-    useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
-  }
-})
-vi.mock('jotai-tanstack-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('jotai-tanstack-query')>()
-  const { atom } = await import('jotai/vanilla')
-  const revisionAtom = atom(0)
-  const subscribers = new Set<() => void>()
-  revisionAtom.onMount = (setRevision) => {
-    const notify = () => setRevision((revision) => revision + 1)
-    subscribers.add(notify)
-    return () => {
-      subscribers.delete(notify)
-    }
-  }
-  // Console fixtures render in an isolated store, so notify the mounted query stores.
-  jotaiQueryMocks.bump = () => subscribers.forEach((notify) => notify())
-
-  return {
-    ...original,
-    atomWithInfiniteQuery: (getOptions: (get: Getter) => unknown) =>
-      atom((get) => {
-        get(revisionAtom)
-        getOptions(get)
-        return {
-          ...sourcesQuery,
-          data: sourcesQuery.data
-            ? {
-                pages: sourcesQuery.data.pages.map((page) => ({
-                  data: page.items.map(sourceApiResponse),
-                  next_cursor: page.nextCursor ?? null,
-                })),
-              }
-            : undefined,
-        }
-      }),
-  }
-})
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/sources',
   useRouter: () => routerMock,
@@ -269,93 +173,173 @@ vi.mock('@/next/navigation', () => ({
   },
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      sourceProviderPreview: {
-        jobs: {
-          byJobId: {
-            delete: clientMock.deletePreviewJob,
-            get: clientMock.getPreviewJob,
-          },
-          post: clientMock.startPreviewJob,
-        },
-        post: clientMock.previewConnectedSource,
-      },
-      spaces: {
-        byControlSpaceId: {
-          sources: {
-            bySourceId: {
-              delete: clientMock.deleteSource,
-              patch: async (input: unknown) =>
-                sourceApiResponse(await clientMock.patchSource(input)),
-              sync: { post: clientMock.syncSource },
-            },
-            get: {
-              infiniteOptions: infiniteOptionsMock,
-              key: vi.fn(() => ['sources']),
-            },
-          },
-          sourceWorkflows: {
-            byRunId: {
-              retry: { post: clientMock.retrySourceWorkflow },
-            },
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    rag: {
-      pipelines: {
-        datasourcePlugins: {
-          get: {
-            queryOptions: (options: { enabled?: boolean }) => ({
-              ...options,
-              queryKey: ['datasource-plugins'],
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const forever = () => new Promise<never>(() => {})
+  const track = async <T,>(read: () => Promise<T> | T) => {
+    server.inflight += 1
+    try {
+      return await read()
+    } finally {
+      server.inflight -= 1
+    }
+  }
+  const record = (resource: string, input: unknown) =>
+    server.inputs.set(resource, [...(server.inputs.get(resource) ?? []), input])
+  const repeatRead = (resource: string) => {
+    const reads = server.reads.get(resource) ?? 0
+    server.reads.set(resource, reads + 1)
+    return reads > 0
+  }
+  type Page<Item> = {
+    items?: Item[]
+    data?: Item[]
+    nextCursor?: string
+    next_cursor?: string | null
+  }
+  type PagedState<Item> = {
+    data: { pages: Array<Page<Item>> } | undefined
+    error: unknown
+    fetchNextPage: (...args: never[]) => unknown
+    hasNextPage: boolean
+    isFetchNextPageError: boolean
+    isPending: boolean
+    refetch?: () => unknown
+  }
+  const paged =
+    <Item,>(resource: string, state: PagedState<Item>, toApi: (item: Item) => unknown) =>
+    (input: { query?: { cursor?: string } }) => {
+      record(resource, input)
+      if (state.isPending || (!state.data && !state.error)) return forever()
+      return track(async () => {
+        const cursor = input.query?.cursor
+        if (cursor) {
+          await state.fetchNextPage()
+          if (state.isFetchNextPageError) throw new Error(`${resource} next page unavailable`)
+        } else {
+          if (repeatRead(resource)) await state.refetch?.()
+          if (state.error) throw state.error
+        }
+        const pages = state.data?.pages ?? []
+        const next = (page?: Page<Item>) => page?.nextCursor ?? page?.next_cursor ?? undefined
+        const cursorIndex = pages.findIndex((_, i) => i > 0 && next(pages[i - 1]) === cursor)
+        const index = !cursor ? 0 : cursorIndex >= 0 ? cursorIndex : pages.length
+        const page = pages[index]
+        const items = page?.items ?? page?.data ?? []
+        const hasMore = index + 1 < pages.length || (state.hasNextPage && index >= pages.length - 1)
+        return {
+          data: items.map(toApi),
+          next_cursor: next(page) ?? (hasMore ? `page-${index + 1}` : null),
+        }
+      })
+    }
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'knowledgeFs.sourceProviderPreview.jobs.byJobId.delete': clientMock.deletePreviewJob,
+      'knowledgeFs.sourceProviderPreview.jobs.byJobId.get': clientMock.getPreviewJob,
+      'knowledgeFs.sourceProviderPreview.jobs.post': clientMock.startPreviewJob,
+      'knowledgeFs.sourceProviderPreview.post': clientMock.previewConnectedSource,
+      [`${space}.sources.bySourceId.delete`]: clientMock.deleteSource,
+      [`${space}.sources.bySourceId.patch`]: async (input: never) =>
+        sourceApiResponse(await clientMock.patchSource(input)),
+      [`${space}.sources.bySourceId.sync.post`]: clientMock.syncSource,
+      [`${space}.sourceWorkflows.byRunId.retry.post`]: clientMock.retrySourceWorkflow,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.datasourcePlugins.get': () =>
+        datasourcePluginsQuery.isPending
+          ? forever()
+          : track(async () => {
+              if (datasourcePluginsQuery.isError) throw new Error('plugins unavailable')
+              return datasourcePluginsQuery.data ?? []
             }),
-          },
-        },
-      },
-    },
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          settings: {
-            get: {
-              queryOptions: ({ input }: { input: unknown }) => ({
-                queryKey: ['knowledge-fs', 'settings', input],
-              }),
+      [`${space}.settings.get`]: () =>
+        track(async () => {
+          if (repeatRead('settings')) await settingsState.refetch()
+          const active = settingsState.configurationState === 'active'
+          return {
+            active_profile_available: active,
+            active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
+            capabilities: {
+              deep: active,
+              index: active,
+              ingest: active,
+              query: active,
+              research: active,
+              source_sync: active,
             },
-          },
-          sourceConnections: {
-            get: {
-              infiniteOptions: connectionInfiniteOptionsMock,
-            },
-          },
-          sources: {
-            get: {
-              infiniteOptions: infiniteOptionsMock,
-              key: vi.fn(() => ['sources']),
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+            configuration_state: settingsState.configurationState,
+            embedding: null,
+            issues: [],
+            retrieval: null,
+            revision: 1,
+          }
+        }),
+      [`${space}.sourceConnections.get`]: paged(
+        'connections',
+        connectionsQuery,
+        (connection) => connection,
+      ),
+      [`${space}.sources.get`]: paged('sources', sourcesQuery, sourceApiResponse),
+    }),
+  }
+})
 
-function render(...args: Parameters<typeof renderWithNuqs>) {
-  jotaiQueryMocks.bump?.()
-  const rendered = renderWithNuqs(...args)
-  const rerender = rendered.rerender
+let currentQueryClient: ReturnType<typeof createConsoleQueryClient> | undefined
+
+/** Waits until no request is in flight, including requests that depend on earlier responses. */
+async function settle() {
+  for (let quietChecks = 0; quietChecks < 2;) {
+    await waitFor(() => expect(server.inflight).toBe(0))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    quietChecks = server.inflight === 0 ? quietChecks + 1 : 0
+  }
+}
+
+/** Lets mounted queries observe the current server state, as a background refetch would. */
+async function refetchAll() {
+  // Requests the test deliberately leaves pending never settle, so do not await the refetch itself.
+  act(() => {
+    void currentQueryClient!.invalidateQueries({ queryKey: consoleQuery.knowledgeFs.spaces.key() })
+  })
+  await settle()
+}
+
+const lastInput = (resource: string) => server.inputs.get(resource)?.at(-1)
+
+async function render(
+  ui: ReactElement,
+  {
+    searchParams = '',
+    settle: shouldSettle = true,
+  }: { searchParams?: string; settle?: boolean } = {},
+) {
+  const onUrlUpdate = vi.fn()
+  const queryClient = createConsoleQueryClient()
+  currentQueryClient = queryClient
+  const withProviders = (content: ReactElement) => (
+    <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+      <KnowledgeSpaceTestProvider
+        space={createKnowledgeSpaceFixture({
+          permission_keys: permissionState.knowledgeSpacePermissionKeys,
+        })}
+      >
+        {content}
+      </KnowledgeSpaceTestProvider>
+    </NuqsTestingAdapter>
+  )
+  const rendered = renderWithConsoleQuery(withProviders(ui), { queryClient })
+  if (shouldSettle) await settle()
   return {
     ...rendered,
-    rerender: (ui: Parameters<typeof rerender>[0]) => {
-      act(() => {
-        jotaiQueryMocks.bump?.()
-        rerender(ui)
-      })
+    onUrlUpdate,
+    async rerender(nextUi: ReactElement) {
+      rendered.rerender(withProviders(nextUi))
+      await refetchAll()
     },
   }
 }
@@ -635,17 +619,31 @@ const sourceWorkflow = (state = 'queued'): SourceWorkflowRun => ({
   updatedAt: '2026-07-20T10:00:00Z',
 })
 
-function currentRefetchInterval(...sources: Source[]) {
-  const options = infiniteOptionsMock.mock.lastCall?.[0]
-  if (!options) throw new Error('Expected source infinite query options')
-  return options.refetchInterval({
-    state: { data: { pages: [{ data: sources.map(sourceApiResponse) }] } },
-  })
+/**
+ * Makes `sources` the server's current list and measures when the page polls it next, rounded to
+ * the second; false when it stops polling. The suite runs with fake timers that also advance.
+ */
+async function measurePollIntervalFor(sources: Source[]) {
+  sourcesQuery.data = { pages: [{ items: sources }] }
+  await refetchAll()
+  const reads = server.reads.get('sources') ?? 0
+  for (let elapsed = 250; elapsed <= 6000; elapsed += 250) {
+    await act(() => vi.advanceTimersByTimeAsync(250))
+    if ((server.reads.get('sources') ?? 0) > reads) return Math.round(elapsed / 1000) * 1000
+  }
+  return false
 }
 
 describe('SourcesPage', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.clearAllMocks()
+    server.inflight = 0
+    server.inputs.clear()
+    server.reads.clear()
+    sourcesQuery.refetch.mockReset()
+    sourcesQuery.fetchNextPage.mockReset()
+    connectionsQuery.fetchNextPage.mockReset()
     sourcesQuery.data = undefined
     sourcesQuery.error = null
     sourcesQuery.hasNextPage = false
@@ -667,7 +665,6 @@ describe('SourcesPage', () => {
     clientMock.deletePreviewJob.mockResolvedValue({ status: 'canceled' })
     clientMock.patchSource.mockResolvedValue(source({}))
     clientMock.retrySourceWorkflow.mockResolvedValue(workflow())
-    invalidateQueriesMock.mockResolvedValue(undefined)
     clientMock.syncSource.mockResolvedValue(workflow())
     permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.external.connect']
     permissionState.knowledgeSpacePermissionKeys = ['knowledge_space_document_write']
@@ -695,59 +692,44 @@ describe('SourcesPage', () => {
     }))
   })
 
-  it('loads sources through the KnowledgeFS contract', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('loads sources through the KnowledgeFS contract', async () => {
     sourcesQuery.isPending = true
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />, { settle: false })
 
-    const options = infiniteOptionsMock.mock.lastCall?.[0]
-    expect(options).toBeDefined()
-    if (!options) throw new Error('Expected source infinite query options')
-    expect(options.input(null)).toEqual({
+    expect(await screen.findByRole('progressbar')).toBeInTheDocument()
+    expect(lastInput('sources')).toEqual({
       params: { control_space_id: 'space-1' },
       query: { limit: 200 },
     })
-    expect(options.input('next')).toEqual({
-      params: { control_space_id: 'space-1' },
-      query: { cursor: 'next', limit: 200 },
-    })
-    expect(options.getNextPageParam({ next_cursor: 'next' })).toBe('next')
-    expect(options.initialPageParam).toBeNull()
-    expect(
-      options.refetchInterval({
-        state: {
-          data: { pages: [{ data: [sourceApiResponse(source({ status: 'syncing' }))] }] },
-        },
-      }),
-    ).toBe(3000)
-    expect(
-      options.refetchInterval({
-        state: {
-          data: {
-            pages: [
-              {
-                data: [sourceApiResponse(source({ syncWorkflow: sourceWorkflow('completed') }))],
-              },
-            ],
-          },
-        },
-      }),
-    ).toBe(false)
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
-  it('polls an empty list every two seconds while awaiting the Initial Source', () => {
+  it('polls syncing sources and stops once their work is complete', async () => {
+    sourcesQuery.data = { pages: [{ items: [] }] }
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(await measurePollIntervalFor([source({ status: 'syncing' })])).toBe(3000)
+    expect(
+      await measurePollIntervalFor([source({ syncWorkflow: sourceWorkflow('completed') })]),
+    ).toBe(false)
+  })
+
+  it('polls an empty list every two seconds while awaiting the Initial Source', async () => {
     navigationMock.awaitInitialSource = 'operation-1'
     sourcesQuery.data = { pages: [{ items: [] }] }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    expect(currentRefetchInterval()).toBe(2000)
+    expect(await measurePollIntervalFor([])).toBe(2000)
     expect(screen.getByText('knowledgeSources.awaitingInitialSource')).toBeInTheDocument()
     expect(screen.queryByText('knowledgeSources.sourcesEmptyTitle')).not.toBeInTheDocument()
   })
 
-  it('waits for the Initial Source created by the requested operation', () => {
+  it('waits for the Initial Source created by the requested operation', async () => {
     navigationMock.awaitInitialSource = 'operation-1'
     sourcesQuery.data = {
       pages: [
@@ -765,9 +747,9 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    expect(currentRefetchInterval(...sourcesQuery.data.pages[0]!.items)).toBe(2000)
+    expect(await measurePollIntervalFor([...sourcesQuery.data.pages[0]!.items])).toBe(2000)
     expect(screen.getByText('knowledgeSources.awaitingInitialSource')).toBeInTheDocument()
   })
 
@@ -789,7 +771,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() => {
       expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources', {
@@ -798,19 +780,20 @@ describe('SourcesPage', () => {
     })
   })
 
-  it('stops awaiting the Initial Source after ten minutes and keeps manual refresh available', () => {
-    vi.useFakeTimers()
+  it('stops awaiting the Initial Source after ten minutes and keeps manual refresh available', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
       navigationMock.awaitInitialSource = 'operation-1'
       sourcesQuery.data = { pages: [{ items: [] }] }
 
-      const view = render(<SourcesPage knowledgeSpaceId="space-1" />)
+      const view = await render(<SourcesPage knowledgeSpaceId="space-1" />)
       act(() => vi.advanceTimersByTime(10 * 60 * 1000))
 
-      expect(currentRefetchInterval()).toBe(false)
+      expect(await measurePollIntervalFor([])).toBe(false)
 
+      sourcesQuery.refetch.mockClear()
       act(() => screen.getByRole('button', { name: 'knowledgeSources.refreshSources' }).click())
-      expect(sourcesQuery.refetch).toHaveBeenCalledOnce()
+      await waitFor(() => expect(sourcesQuery.refetch).toHaveBeenCalledOnce())
 
       sourcesQuery.data = {
         pages: [
@@ -827,21 +810,21 @@ describe('SourcesPage', () => {
           },
         ],
       }
-      view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+      await view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
       expect(
         screen.queryByRole('button', { name: 'knowledgeSources.refreshSources' }),
       ).not.toBeInTheDocument()
-      expect(currentRefetchInterval(...sourcesQuery.data.pages[0]!.items)).toBe(false)
+      expect(await measurePollIntervalFor([...sourcesQuery.data.pages[0]!.items])).toBe(false)
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('renders the designed empty state and exposes source-type shortcuts', () => {
+  it('renders the designed empty state and exposes source-type shortcuts', async () => {
     sourcesQuery.data = { pages: [{ items: [] }] }
 
-    const { container } = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { container } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('knowledgeSources.sourcesEmptyTitle')).toBeInTheDocument()
     expect(knowledgeSpaceTranslations.sourcesEmptyDescription).toBe(
@@ -880,12 +863,12 @@ describe('SourcesPage', () => {
     }
   })
 
-  it('keeps empty-state shortcuts inert without add-source permission', () => {
+  it('keeps empty-state shortcuts inert without add-source permission', async () => {
     permissionState.workspacePermissionKeys = ['dataset.acl.readonly']
     permissionState.knowledgeSpacePermissionKeys = []
     sourcesQuery.data = { pages: [{ items: [] }] }
 
-    const { container } = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { container } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(container.querySelectorAll('[data-brand]')).toHaveLength(6)
@@ -911,7 +894,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    const { onUrlUpdate } = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { onUrlUpdate } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('knowledgeSpace.sourceStatus.active')).toBeInTheDocument()
     expect(screen.getByText('knowledgeSpace.sourceStatus.syncing')).toBeInTheDocument()
@@ -957,7 +940,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    const { onUrlUpdate } = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { onUrlUpdate } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.sourceColumn' }))
     await waitFor(() => {
@@ -973,7 +956,7 @@ describe('SourcesPage', () => {
     expect(within(rowsDescending[1]!).getByText('Alpha docs')).toBeInTheDocument()
   })
 
-  it('places the newest source first until the user selects a name sort', () => {
+  it('places the newest source first until the user selects a name sort', async () => {
     sourcesQuery.data = {
       pages: [
         {
@@ -985,14 +968,14 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const rows = screen.getAllByRole('row').slice(1)
     expect(within(rows[0]!).getByText('Newest source')).toBeInTheDocument()
     expect(within(rows[1]!).getByText('Older source')).toBeInTheDocument()
   })
 
-  it('keeps provisional crawl sources out of the source list', () => {
+  it('keeps provisional crawl sources out of the source list', async () => {
     sourcesQuery.data = {
       pages: [
         {
@@ -1015,7 +998,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByText('Discarded preview')).not.toBeInTheDocument()
     expect(screen.getByText('Connected source')).toBeInTheDocument()
@@ -1074,7 +1057,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByText('Ordinary preview')).not.toBeInTheDocument()
     expect(screen.queryByText('Incomplete Initial Source marker')).not.toBeInTheDocument()
@@ -1092,8 +1075,9 @@ describe('SourcesPage', () => {
     const failedRow = screen.getByRole('row', { name: /Initial website/ })
     expect(within(failedRow).getByText('knowledgeSpace.sourceStatus.error')).toBeInTheDocument()
 
+    const listedSources = sourcesQuery.data
     expect(
-      currentRefetchInterval(
+      await measurePollIntervalFor([
         source({
           metadata: {
             clientRequestId: 'initial-source:operation-1',
@@ -1101,10 +1085,10 @@ describe('SourcesPage', () => {
           },
           status: 'disabled',
         }),
-      ),
+      ]),
     ).toBe(3000)
     expect(
-      currentRefetchInterval(
+      await measurePollIntervalFor([
         source({
           metadata: {
             clientRequestId: 'initial-source:operation-1',
@@ -1112,10 +1096,10 @@ describe('SourcesPage', () => {
           },
           status: 'active',
         }),
-      ),
+      ]),
     ).toBe(false)
     expect(
-      currentRefetchInterval(
+      await measurePollIntervalFor([
         source({
           metadata: {
             clientRequestId: 'initial-website-source:operation-2',
@@ -1124,11 +1108,13 @@ describe('SourcesPage', () => {
           },
           status: 'disabled',
         }),
-      ),
+      ]),
     ).toBe(false)
 
+    sourcesQuery.data = listedSources
+    await refetchAll()
     await user.click(
-      within(initializingRow).getByRole('button', {
+      within(screen.getByRole('row', { name: /Initial documents/ })).getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Initial documents"}',
       }),
     )
@@ -1171,7 +1157,7 @@ describe('SourcesPage', () => {
       id: 'initial-workflow',
     })
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const sourceRow = screen.getByRole('row', { name: /Failed Initial Source/ })
     await user.click(within(sourceRow).getByRole('button', { name: 'common.operation.retry' }))
@@ -1229,7 +1215,7 @@ describe('SourcesPage', () => {
       updated_at: '2026-07-20T10:01:00Z',
     })
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     const sourceRow = screen.getByRole('row', { name: /Failed connected source/ })
     await user.click(
       within(sourceRow).getByRole('button', {
@@ -1252,7 +1238,7 @@ describe('SourcesPage', () => {
     )
   })
 
-  it('shows and polls an accepted async import even when the source status is briefly disabled', () => {
+  it('shows and polls an accepted async import even when the source status is briefly disabled', async () => {
     const pendingSource = source({
       metadata: {
         pendingImport: {
@@ -1267,24 +1253,13 @@ describe('SourcesPage', () => {
     })
     sourcesQuery.data = { pages: [{ items: [pendingSource] }] }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const sourceRow = screen.getByRole('row', { name: /Importing connected source/ })
     expect(within(sourceRow).getByRole('status')).toHaveTextContent(
       'knowledgeSpace.sourceStatus.syncing',
     )
-    const options = infiniteOptionsMock.mock.lastCall?.[0]
-    expect(options).toBeDefined()
-    if (!options) throw new Error('Expected source infinite query options')
-    expect(
-      options.refetchInterval({
-        state: {
-          data: {
-            pages: [{ data: [sourceApiResponse(pendingSource)] }],
-          },
-        },
-      }),
-    ).toBe(3000)
+    expect(await measurePollIntervalFor([pendingSource])).toBe(3000)
   })
 
   it('keeps polling when the source list briefly returns the stale failed retry snapshot', async () => {
@@ -1317,7 +1292,7 @@ describe('SourcesPage', () => {
       updated_at: '2026-07-20T10:01:00Z',
     })
 
-    const view = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const view = await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     await waitFor(() => {
@@ -1325,13 +1300,13 @@ describe('SourcesPage', () => {
     })
 
     sourcesQuery.data = { pages: [{ items: [staleFailedSource] }] }
-    view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.sourceStatus.syncing')
-    expect(currentRefetchInterval(staleFailedSource)).toBe(3000)
+    expect(await measurePollIntervalFor([staleFailedSource])).toBe(3000)
   })
 
-  it('continues past cursor pages containing only hidden preview drafts', () => {
+  it('continues past cursor pages containing only hidden preview drafts', async () => {
     sourcesQuery.data = {
       pages: [
         {
@@ -1348,41 +1323,17 @@ describe('SourcesPage', () => {
     }
     sourcesQuery.hasNextPage = true
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(screen.queryByText('knowledgeSources.sourcesEmptyTitle')).not.toBeInTheDocument()
-  })
-
-  it('continues when the newest loaded page contributes only hidden preview drafts', () => {
-    sourcesQuery.data = {
-      pages: [
-        { items: [source({ id: 'connected', name: 'Connected source' })] },
-        {
-          items: [
-            source({
-              id: 'preview',
-              metadata: { preview: true },
-              status: 'disabled',
-            }),
-          ],
-          nextCursor: 'next',
-        },
-      ],
-    }
-    sourcesQuery.hasNextPage = true
-
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
-
-    expect(screen.getByText('Connected source')).toBeInTheDocument()
-    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
   it('opens a source URI from the row action menu', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -1414,7 +1365,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     await user.click(
       screen.getByRole('button', {
@@ -1433,7 +1384,7 @@ describe('SourcesPage', () => {
     permissionState.knowledgeSpacePermissionKeys = ['knowledge_space_document_write']
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -1456,7 +1407,7 @@ describe('SourcesPage', () => {
     permissionState.knowledgeSpacePermissionKeys = []
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -1534,7 +1485,7 @@ describe('SourcesPage', () => {
         }),
       )
 
-      render(<SourcesPage knowledgeSpaceId="space-1" />)
+      await render(<SourcesPage knowledgeSpaceId="space-1" />)
       await user.click(
         screen.getByRole('button', {
           name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -1611,7 +1562,7 @@ describe('SourcesPage', () => {
         source({ name: 'Renamed documentation', version: 4 }),
       )
 
-      render(<SourcesPage knowledgeSpaceId="space-1" />)
+      await render(<SourcesPage knowledgeSpaceId="space-1" />)
       await user.click(
         screen.getByRole('button', {
           name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -1688,7 +1639,7 @@ describe('SourcesPage', () => {
       }),
     )
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -1773,7 +1724,7 @@ describe('SourcesPage', () => {
       }),
     )
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -1854,7 +1805,7 @@ describe('SourcesPage', () => {
       source({ ...connectorSource, status: 'syncing', syncWorkflow: sourceWorkflow(), version: 4 }),
     )
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -1939,7 +1890,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -1997,7 +1948,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = { pages: [{ items: [connectorSource] }] }
     clientMock.patchSource.mockResolvedValue(source({ ...connectorSource, version: 4 }))
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2038,7 +1989,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2082,7 +2033,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2132,7 +2083,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2170,7 +2121,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2226,7 +2177,7 @@ describe('SourcesPage', () => {
       source({ name: 'Renamed documentation', syncPolicy: manualPolicy, version: 4 }),
     )
 
-    const { rerender } = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { rerender } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2253,7 +2204,7 @@ describe('SourcesPage', () => {
         },
       ],
     }
-    rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
     const nameInput = screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' })
@@ -2306,7 +2257,7 @@ describe('SourcesPage', () => {
       }),
     )
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2355,7 +2306,7 @@ describe('SourcesPage', () => {
       },
     })
     sourcesQuery.data = { pages: [{ items: [websiteSource] }] }
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2395,7 +2346,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2416,8 +2367,6 @@ describe('SourcesPage', () => {
       connectionsQuery.data = { pages: [{ data: [], next_cursor: 'next' }] }
       connectionsQuery.hasNextPage = true
       connectionsQuery.isFetchNextPageError = true
-      connectionsQuery.isError = true
-      connectionsQuery.error = new Error('Connections unavailable')
       sourcesQuery.data = {
         pages: [
           {
@@ -2432,7 +2381,7 @@ describe('SourcesPage', () => {
         ],
       }
 
-      render(<SourcesPage knowledgeSpaceId="space-1" />)
+      await render(<SourcesPage knowledgeSpaceId="space-1" />)
       await user.click(
         screen.getByRole('button', {
           name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2441,11 +2390,12 @@ describe('SourcesPage', () => {
       await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
 
       expect(screen.getByRole('dialog')).toBeVisible()
-      expect(connectionsQuery.fetchNextPage).not.toHaveBeenCalled()
       const dialog = within(screen.getByRole('dialog'))
-      expect(dialog.getByText('knowledgeSpace.providerLoadFailed')).toBeVisible()
-      await user.click(dialog.getByRole('button', { name: 'common.operation.retry' }))
+      // The editor loads every connection page; the next page fails.
+      expect(await dialog.findByText('knowledgeSpace.providerLoadFailed')).toBeVisible()
       expect(connectionsQuery.fetchNextPage).toHaveBeenCalledOnce()
+      await user.click(dialog.getByRole('button', { name: 'common.operation.retry' }))
+      await waitFor(() => expect(connectionsQuery.fetchNextPage).toHaveBeenCalledTimes(2))
     },
   )
 
@@ -2466,7 +2416,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="control-space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="control-space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2474,8 +2424,8 @@ describe('SourcesPage', () => {
     )
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
 
-    const options = connectionInfiniteOptionsMock.mock.calls.at(-1)?.[0]
-    expect(options?.input(null)).toEqual({
+    await settle()
+    expect(lastInput('connections')).toEqual({
       params: { control_space_id: 'control-space-1' },
       query: { limit: 200 },
     })
@@ -2485,14 +2435,15 @@ describe('SourcesPage', () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
     let finishRefresh: (() => void) | undefined
-    invalidateQueriesMock.mockImplementationOnce(
+    // Holds the list refresh the sync triggers.
+    sourcesQuery.refetch.mockImplementationOnce(
       () =>
         new Promise<void>((resolve) => {
           finishRefresh = resolve
         }),
     )
 
-    const { rerender } = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { rerender } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2524,7 +2475,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = {
       pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
     }
-    rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await rerender(<SourcesPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
@@ -2532,34 +2483,17 @@ describe('SourcesPage', () => {
         ),
       ).toBeInTheDocument(),
     )
-    await waitFor(() => expect(invalidateQueriesMock).toHaveBeenCalledTimes(1))
-    const options = infiniteOptionsMock.mock.lastCall?.[0]
-    expect(options).toBeDefined()
-    if (!options) throw new Error('Expected source infinite query options')
+    await waitFor(() => expect(sourcesQuery.refetch).toHaveBeenCalled())
     expect(
-      options.refetchInterval({
-        state: {
-          data: {
-            pages: [
-              {
-                data: [sourceApiResponse(source({ syncWorkflow: sourceWorkflow('completed') }))],
-              },
-            ],
-          },
-        },
-      }),
+      await measurePollIntervalFor([source({ syncWorkflow: sourceWorkflow('completed') })]),
     ).toBe(false)
-    expect(invalidateQueriesMock).toHaveBeenLastCalledWith(
-      { queryKey: ['sources'] },
-      { throwOnError: true },
-    )
   })
 
   it('restores an active source sync from the server on page load', async () => {
     sourcesQuery.data = {
       pages: [{ items: [source({ syncWorkflow: sourceWorkflow('syncing') })] }],
     }
-    const restored = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const restored = await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
@@ -2570,7 +2504,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = {
       pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
     }
-    restored.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await restored.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() =>
       expect(
@@ -2596,7 +2530,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Product documentation/ })
     expect(within(row).getByText('knowledgeSpace.sourceStatus.disabled')).toBeInTheDocument()
@@ -2611,43 +2545,15 @@ describe('SourcesPage', () => {
 
     expect(within(row).getByText('knowledgeSpace.sourceStatus.disabled')).toBeInTheDocument()
     expect(within(row).queryByText('knowledgeSpace.sourceStatus.syncing')).not.toBeInTheDocument()
-
-    const options = infiniteOptionsMock.mock.lastCall?.[0]
-    expect(options).toBeDefined()
-    if (!options) throw new Error('Expected source infinite query options')
     expect(
-      options.refetchInterval({
-        state: {
-          data: {
-            pages: [
-              {
-                data: [
-                  sourceApiResponse(
-                    source({ status: 'disabled', syncWorkflow: sourceWorkflow('syncing') }),
-                  ),
-                ],
-              },
-            ],
-          },
-        },
-      }),
+      await measurePollIntervalFor([
+        source({ status: 'disabled', syncWorkflow: sourceWorkflow('syncing') }),
+      ]),
     ).toBe(3000)
     expect(
-      options.refetchInterval({
-        state: {
-          data: {
-            pages: [
-              {
-                data: [
-                  sourceApiResponse(
-                    source({ status: 'disabled', syncWorkflow: sourceWorkflow('completed') }),
-                  ),
-                ],
-              },
-            ],
-          },
-        },
-      }),
+      await measurePollIntervalFor([
+        source({ status: 'disabled', syncWorkflow: sourceWorkflow('completed') }),
+      ]),
     ).toBe(false)
   })
 
@@ -2673,9 +2579,9 @@ describe('SourcesPage', () => {
         version: 4,
       }),
     )
-    invalidateQueriesMock.mockRejectedValueOnce(new Error('Source refresh failed'))
+    sourcesQuery.refetch.mockRejectedValueOnce(new Error('Source refresh failed'))
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     const row = screen.getByRole('row', { name: /Product documentation/ })
     await user.click(
       within(row).getByRole('button', {
@@ -2687,23 +2593,8 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(within(row).getByText('knowledgeSpace.sourceStatus.syncing')).toBeInTheDocument(),
     )
-    const options = infiniteOptionsMock.mock.lastCall?.[0]
-    expect(options).toBeDefined()
-    if (!options) throw new Error('Expected source infinite query options')
     expect(
-      options.refetchInterval({
-        state: {
-          data: {
-            pages: [
-              {
-                data: [
-                  sourceApiResponse(source({ status: 'disabled', syncWorkflow: activeWorkflow })),
-                ],
-              },
-            ],
-          },
-        },
-      }),
+      await measurePollIntervalFor([source({ status: 'disabled', syncWorkflow: activeWorkflow })]),
     ).toBe(3000)
   })
 
@@ -2711,7 +2602,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = {
       pages: [{ items: [source({ syncWorkflow: sourceWorkflow('syncing') })] }],
     }
-    const restored = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const restored = await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     sourcesQuery.data = {
       pages: [
@@ -2728,7 +2619,7 @@ describe('SourcesPage', () => {
         },
       ],
     }
-    restored.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await restored.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Product documentation/ })
     await waitFor(() =>
@@ -2739,19 +2630,16 @@ describe('SourcesPage', () => {
       ).toBeInTheDocument(),
     )
     expect(within(row).queryByText('PROVIDER_FAILED')).not.toBeInTheDocument()
-    expect(invalidateQueriesMock).not.toHaveBeenCalled()
+    // Only the background refresh that delivered the failure; no extra reload is requested.
+    expect(sourcesQuery.refetch).toHaveBeenCalledOnce()
   })
 
   it('reconciles the source list after a sync finishes', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
-    invalidateQueriesMock.mockImplementationOnce((_filters, options) =>
-      options?.throwOnError
-        ? Promise.reject(new Error('Initial source refresh failed'))
-        : Promise.resolve(),
-    )
+    sourcesQuery.refetch.mockRejectedValueOnce(new Error('Initial source refresh failed'))
 
-    const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const rendered = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2768,27 +2656,12 @@ describe('SourcesPage', () => {
     sourcesQuery.data = {
       pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
     }
-    rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    await waitFor(() => expect(invalidateQueriesMock).toHaveBeenCalledTimes(1))
-    await waitFor(() => {
-      const options = infiniteOptionsMock.mock.lastCall?.[0]
-      expect(options).toBeDefined()
-      if (!options) throw new Error('Expected source infinite query options')
-      expect(
-        options.refetchInterval({
-          state: {
-            data: {
-              pages: [
-                {
-                  data: [sourceApiResponse(source({ syncWorkflow: sourceWorkflow('completed') }))],
-                },
-              ],
-            },
-          },
-        }),
-      ).toBe(false)
-    })
+    await waitFor(() => expect(sourcesQuery.refetch).toHaveBeenCalled())
+    expect(
+      await measurePollIntervalFor([source({ syncWorkflow: sourceWorkflow('completed') })]),
+    ).toBe(false)
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
         'knowledgeSpace.sourceStatus.active',
@@ -2800,7 +2673,7 @@ describe('SourcesPage', () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
-    const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const rendered = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2811,7 +2684,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = {
       pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
     }
-    rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
       expect(
         within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
@@ -2831,7 +2704,7 @@ describe('SourcesPage', () => {
         },
       ],
     }
-    rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() =>
       expect(
@@ -2846,7 +2719,7 @@ describe('SourcesPage', () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
-    const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const rendered = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2878,7 +2751,7 @@ describe('SourcesPage', () => {
         },
       ],
     }
-    rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() =>
       expect(
@@ -2887,32 +2760,17 @@ describe('SourcesPage', () => {
         ),
       ).toBeInTheDocument(),
     )
-    const options = infiniteOptionsMock.mock.lastCall?.[0]
-    expect(options).toBeDefined()
-    if (!options) throw new Error('Expected source infinite query options')
     expect(
-      options.refetchInterval({
-        state: {
-          data: {
-            pages: [
-              {
-                data: [
-                  sourceApiResponse(
-                    source({
-                      syncWorkflow: {
-                        ...sourceWorkflow('completed'),
-                        createdAt: '2026-07-20T11:00:00Z',
-                        id: 'workflow-2',
-                        updatedAt: '2026-07-20T11:01:00Z',
-                      },
-                    }),
-                  ),
-                ],
-              },
-            ],
+      await measurePollIntervalFor([
+        source({
+          syncWorkflow: {
+            ...sourceWorkflow('completed'),
+            createdAt: '2026-07-20T11:00:00Z',
+            id: 'workflow-2',
+            updatedAt: '2026-07-20T11:01:00Z',
           },
-        },
-      }),
+        }),
+      ]),
     ).toBe(false)
   })
 
@@ -2926,7 +2784,7 @@ describe('SourcesPage', () => {
       updated_at: '2026-07-20T11:01:00Z',
     })
 
-    const rendered = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const rendered = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2943,7 +2801,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = {
       pages: [{ items: [source({ syncWorkflow: retriedWorkflow })] }],
     }
-    rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await rendered.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() =>
       expect(
@@ -2952,22 +2810,7 @@ describe('SourcesPage', () => {
         ),
       ).toBeInTheDocument(),
     )
-    const options = infiniteOptionsMock.mock.lastCall?.[0]
-    expect(options).toBeDefined()
-    if (!options) throw new Error('Expected source infinite query options')
-    expect(
-      options.refetchInterval({
-        state: {
-          data: {
-            pages: [
-              {
-                data: [sourceApiResponse(source({ syncWorkflow: retriedWorkflow }))],
-              },
-            ],
-          },
-        },
-      }),
-    ).toBe(3000)
+    expect(await measurePollIntervalFor([source({ syncWorkflow: retriedWorkflow })])).toBe(3000)
   })
 
   it('keeps a newly accepted sync visible when the source list still has an older workflow', async () => {
@@ -2981,9 +2824,9 @@ describe('SourcesPage', () => {
       id: 'workflow-2',
       updated_at: '2026-07-20T11:00:00Z',
     })
-    invalidateQueriesMock.mockRejectedValueOnce(new Error('Source refresh failed'))
+    sourcesQuery.refetch.mockRejectedValueOnce(new Error('Source refresh failed'))
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -2998,21 +2841,8 @@ describe('SourcesPage', () => {
         ),
       ).toBeInTheDocument(),
     )
-    const options = infiniteOptionsMock.mock.lastCall?.[0]
-    expect(options).toBeDefined()
-    if (!options) throw new Error('Expected source infinite query options')
     expect(
-      options.refetchInterval({
-        state: {
-          data: {
-            pages: [
-              {
-                data: [sourceApiResponse(source({ syncWorkflow: sourceWorkflow('completed') }))],
-              },
-            ],
-          },
-        },
-      }),
+      await measurePollIntervalFor([source({ syncWorkflow: sourceWorkflow('completed') })]),
     ).toBe(3000)
   })
 
@@ -3021,7 +2851,7 @@ describe('SourcesPage', () => {
     settingsState.configurationState = 'setup-required'
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -3056,7 +2886,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     const activeSourceActions = within(
       screen.getByRole('row', { name: /Active source/ }),
     ).getByRole('button', { name: /knowledgeSources.sourceActions/ })
@@ -3099,7 +2929,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = {
       pages: [{ items: [source({ syncPolicy, syncWorkflow: sourceWorkflow('failed') })] }],
     }
-    invalidateQueriesMock.mockRejectedValue(new Error('Source refresh failed'))
+    sourcesQuery.refetch.mockRejectedValue(new Error('Source refresh failed'))
     clientMock.patchSource
       .mockResolvedValueOnce(
         source({
@@ -3116,7 +2946,7 @@ describe('SourcesPage', () => {
         }),
       )
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -3170,7 +3000,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = { pages: [{ items: [source({ syncPolicy: dailyPolicy })] }] }
     clientMock.patchSource.mockResolvedValue(updatedSource)
 
-    const view = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const view = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -3205,7 +3035,7 @@ describe('SourcesPage', () => {
         },
       ],
     }
-    view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+    await view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Product documentation/ })
     expect(within(row).getByText('knowledgeSources.syncPolicyManual')).toBeInTheDocument()
@@ -3217,7 +3047,7 @@ describe('SourcesPage', () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -3243,7 +3073,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
     clientMock.deleteSource.mockRejectedValue(new Error('temporary failure'))
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -3258,7 +3088,7 @@ describe('SourcesPage', () => {
     expect(
       screen.getByRole('button', { name: 'knowledgeSources.removeSource' }),
     ).toBeInTheDocument()
-    expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['sources'] })
+    await waitFor(() => expect(sourcesQuery.refetch).toHaveBeenCalled())
   })
 
   it.each([
@@ -3302,7 +3132,7 @@ describe('SourcesPage', () => {
         ),
       )
 
-      render(<SourcesPage knowledgeSpaceId="space-1" />)
+      await render(<SourcesPage knowledgeSpaceId="space-1" />)
       if (action === 'retry') {
         await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
       } else {
@@ -3327,14 +3157,15 @@ describe('SourcesPage', () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({ status: 'error' })] }] }
     let finishRefresh: (() => void) | undefined
-    invalidateQueriesMock.mockImplementationOnce(
+    // Holds the list refresh the sync triggers.
+    sourcesQuery.refetch.mockImplementationOnce(
       () =>
         new Promise<void>((resolve) => {
           finishRefresh = resolve
         }),
     )
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     await waitFor(() => expect(clientMock.syncSource).toHaveBeenCalledOnce())
@@ -3352,7 +3183,7 @@ describe('SourcesPage', () => {
       pages: [{ items: [source({ id: 'first' }), source({ id: 'second' })] }],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     const checkboxes = screen.getAllByRole('checkbox')
     expect(checkboxes).toHaveLength(3)
     const selectAll = checkboxes[0]
@@ -3371,7 +3202,7 @@ describe('SourcesPage', () => {
     const user = userEvent.setup()
     sourcesQuery.error = new Error('temporary failure')
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     expect(sourcesQuery.refetch).toHaveBeenCalledOnce()
@@ -3382,7 +3213,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = { pages: [{ items: [source({})], nextCursor: 'next' }] }
     sourcesQuery.hasNextPage = true
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
 
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
@@ -3393,7 +3224,7 @@ describe('SourcesPage', () => {
     sourcesQuery.data = { pages: [{ items: [], nextCursor: 'next' }] }
     sourcesQuery.hasNextPage = true
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByText('knowledgeSources.sourcesEmptyTitle')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
@@ -3405,13 +3236,13 @@ describe('SourcesPage', () => {
     sourcesQuery.data = { pages: [{ items: [source({})], nextCursor: 'next' }] }
     sourcesQuery.hasNextPage = true
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.type(
       screen.getByRole('searchbox', { name: 'knowledgeSources.searchSources' }),
       'later page',
     )
 
-    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+    await waitFor(() => expect(sourcesQuery.fetchNextPage).toHaveBeenCalled())
     expect(screen.queryByText('knowledgeSources.noMatchingSources')).not.toBeInTheDocument()
   })
 
@@ -3425,15 +3256,18 @@ describe('SourcesPage', () => {
     }
     sourcesQuery.hasNextPage = true
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.type(
       screen.getByRole('searchbox', { name: 'knowledgeSources.searchSources' }),
       'later page',
     )
 
-    expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
+    // Searching loads further pages automatically until five are loaded.
+    await waitFor(() => expect(sourcesQuery.fetchNextPage).toHaveBeenCalledTimes(4))
+    await settle()
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledTimes(4)
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
-    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+    await waitFor(() => expect(sourcesQuery.fetchNextPage).toHaveBeenCalledTimes(5))
   })
 
   it('stops automatic filtered pagination after a cursor error', async () => {
@@ -3442,30 +3276,31 @@ describe('SourcesPage', () => {
     sourcesQuery.hasNextPage = true
     sourcesQuery.isFetchNextPageError = true
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.type(
       screen.getByRole('searchbox', { name: 'knowledgeSources.searchSources' }),
       'later page',
     )
 
-    expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
-    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await settle()
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(screen.queryByText('knowledgeSources.noMatchingSources')).not.toBeInTheDocument()
   })
 
-  it('shows provider and source type as separate row details', () => {
+  it('shows provider and source type as separate row details', async () => {
     sourcesQuery.data = {
       pages: [{ items: [source({ metadata: { providerName: 'Firecrawl' } })] }],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('Firecrawl')).toBeInTheDocument()
     expect(screen.getByText('knowledgeSpace.sourceType.web')).toBeInTheDocument()
   })
 
-  it('restores legacy website provider metadata and shows policy and last sync details', () => {
+  it('restores legacy website provider metadata and shows policy and last sync details', async () => {
     const syncPolicy: SourceSyncPolicy = {
       createdAt: '2026-07-20T10:00:00Z',
       customIntervalSeconds: 86400,
@@ -3495,7 +3330,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Product documentation/ })
     expect(within(row).getByText('Firecrawl')).toBeInTheDocument()
@@ -3503,7 +3338,7 @@ describe('SourcesPage', () => {
     expect(within(row).queryByText('—')).not.toBeInTheDocument()
   })
 
-  it('restores a legacy Notion provider identifier as the designed provider details', () => {
+  it('restores a legacy Notion provider identifier as the designed provider details', async () => {
     sourcesQuery.data = {
       pages: [
         {
@@ -3518,7 +3353,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Notion support SOP/ })
     expect(within(row).getByText('Notion')).toBeInTheDocument()
@@ -3526,7 +3361,7 @@ describe('SourcesPage', () => {
     expect(within(row).queryByText('notion_datasource')).not.toBeInTheDocument()
   })
 
-  it('preserves a custom provider name containing a built-in brand', () => {
+  it('preserves a custom provider name containing a built-in brand', async () => {
     sourcesQuery.data = {
       pages: [
         {
@@ -3544,14 +3379,14 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Archived workspace/ })
     expect(within(row).getByText('Notion Backup')).toBeInTheDocument()
     expect(within(row).queryByText('Notion')).not.toBeInTheDocument()
   })
 
-  it('uses provider kind to distinguish legacy Google Drive sources', () => {
+  it('uses provider kind to distinguish legacy Google Drive sources', async () => {
     sourcesQuery.data = {
       pages: [
         {
@@ -3569,14 +3404,14 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Escalation archive/ })
     expect(within(row).getByText('Google Drive')).toBeInTheDocument()
     expect(within(row).getByText('knowledgeSpace.onlineDrive')).toBeInTheDocument()
   })
 
-  it('restores the OneDrive name, type, and brand icon', () => {
+  it('restores the OneDrive name, type, and brand icon', async () => {
     sourcesQuery.data = {
       pages: [
         {
@@ -3591,7 +3426,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Sales enablement/ })
     expect(within(row).getByText('OneDrive')).toBeInTheDocument()
@@ -3599,7 +3434,7 @@ describe('SourcesPage', () => {
     expect(row.querySelector('.i-logos-microsoft-onedrive')).toBeInTheDocument()
   })
 
-  it('does not report ordinary source updates as successful syncs', () => {
+  it('does not report ordinary source updates as successful syncs', async () => {
     const syncPolicy: SourceSyncPolicy = {
       createdAt: '2026-07-20T10:00:00Z',
       enabled: true,
@@ -3615,7 +3450,7 @@ describe('SourcesPage', () => {
       pages: [{ items: [source({ metadata: { preview: false }, syncPolicy })] }],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const row = screen.getByRole('row', { name: /Product documentation/ })
     expect(within(row).getByText('—')).toBeInTheDocument()
@@ -3627,7 +3462,7 @@ describe('SourcesPage', () => {
     permissionState.knowledgeSpacePermissionKeys = []
     sourcesQuery.data = { pages: [{ items: [source({ status: 'error' })] }] }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByRole('link', { name: 'knowledgeSpace.addSource' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()

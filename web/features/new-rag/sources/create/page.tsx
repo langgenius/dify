@@ -1014,7 +1014,8 @@ function AddSourcePageContent({
   const queryError =
     providersQuery.error ||
     datasourcePluginsQuery.error ||
-    connectionsQuery.error ||
+    // A failed refresh keeps the loaded connections; the action that refreshed reports it.
+    (connectionsQuery.error && !connectionsQuery.data) ||
     connectionsQuery.isFetchNextPageError ||
     (difyManagedProvider ? datasourceAuthQuery.error : null)
   const websiteReady = Boolean(

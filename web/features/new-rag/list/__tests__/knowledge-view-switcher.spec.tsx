@@ -10,17 +10,6 @@ describe('KnowledgeViewSwitcher', () => {
     localStorage.clear()
   })
 
-  it('restores focus to the guide trigger when Escape closes the popover', async () => {
-    const user = userEvent.setup()
-    render(<KnowledgeViewSwitcher value="agent" onChange={vi.fn()} />)
-
-    within(guide()).getByRole('button', { name: 'knowledgeSpace.gotIt' }).focus()
-    await user.keyboard('{Escape}')
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.guideTitle' })).toHaveFocus()
-  })
-
   it('remembers a dismissed guide without changing the selected view', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

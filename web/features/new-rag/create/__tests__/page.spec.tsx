@@ -1,11 +1,13 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { render } from '@/test/console/render'
-import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import { CreateKnowledgePage } from '../page'
 
 const serviceMock = vi.hoisted(() => ({
@@ -33,9 +35,6 @@ const serviceMock = vi.hoisted(() => ({
   updateKfsSource: vi.fn(),
   updateSyncPolicy: vi.fn(),
   upload: vi.fn(),
-  listKey: vi.fn(() => ['console', 'knowledgeFs', 'listKnowledgeSpaces']),
-  sourcesKey: vi.fn(() => ['console', 'knowledgeFs', 'sources']),
-  documentsKey: vi.fn(() => ['console', 'knowledgeFs', 'documents']),
 }))
 
 const datasourceQueryMock = vi.hoisted(() => ({
@@ -70,7 +69,6 @@ vi.mock('../../upload/quota', () => ({
 
 const uploadPlanMock = vi.hoisted(() => ({
   plan: 'professional' as string | undefined,
-  useLiveQuery: false,
 }))
 
 vi.mock('@/app/components/billing/upgrade-btn', () => ({
@@ -79,29 +77,14 @@ vi.mock('@/app/components/billing/upgrade-btn', () => ({
   ),
 }))
 
-const fileUploadConfigMock = vi.hoisted(() => ({
-  knowledgeFileSizeLimit: 15,
-}))
-
-const permissionStateMock = vi.hoisted(() => ({
-  atom: Symbol('datasetDefaultPermissionKeysAtom'),
-  keys: ['dataset.acl.access_config'],
-}))
+const permissionStateMock = vi.hoisted(() => ({ keys: ['dataset.acl.access_config'] }))
 
 const systemFeaturesStateMock = vi.hoisted(() => ({
-  editionAtom: Symbol('deploymentEditionAtom'),
-  deploymentEdition: 'ENTERPRISE',
-  uploadAtom: Symbol('knowledgeFsUploadEnabledAtom'),
-  rbacAtom: Symbol('rbacEnabledAtom'),
+  deploymentEdition: 'ENTERPRISE' as 'CLOUD' | 'ENTERPRISE',
   uploadEnabled: true,
   rbacEnabled: true,
 }))
-
-const permissionQueryKeys = {
-  accountProfile: ['account-profile'],
-  members: ['workspace-members'],
-  systemFeatures: ['system-features'],
-}
+const server = vi.hoisted(() => ({ inflight: 0, reads: new Map<string, number>() }))
 
 const workspaceMembers = [
   {
@@ -136,213 +119,62 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: {
-      file_size_limit: 15,
-      knowledge_file_size_limit: fileUploadConfigMock.knowledgeFileSizeLimit,
-    },
-  }),
-}))
-
-vi.mock('@/context/permission-state', () => ({
-  datasetDefaultPermissionKeysAtom: permissionStateMock.atom,
-}))
-
-vi.mock('@/features/system-features/state', () => ({
-  deploymentEditionAtom: systemFeaturesStateMock.editionAtom,
-  rbacEnabledAtom: systemFeaturesStateMock.rbacAtom,
-}))
-
-vi.mock('@/features/knowledge-fs-availability/state', () => ({
-  knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.uploadAtom,
-}))
-
-vi.mock('jotai', async (importOriginal) => {
-  const original = await importOriginal<typeof import('jotai')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const track = async <T,>(read: () => Promise<T> | T) => {
+    server.inflight += 1
+    try {
+      return await read()
+    } finally {
+      server.inflight -= 1
+    }
+  }
+  type Resource = { data: unknown; error: unknown; isPending: boolean; refetch: () => unknown }
+  const datasource = (name: string, state: Resource) => () =>
+    state.isPending
+      ? new Promise<never>(() => {})
+      : track(async () => {
+          const reads = server.reads.get(name) ?? 0
+          server.reads.set(name, reads + 1)
+          if (reads > 0) await state.refetch()
+          if (state.error) throw state.error
+          return state.data
+        })
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
   return {
-    ...original,
-    useAtomValue: (atom: unknown) =>
-      atom === permissionStateMock.atom
-        ? permissionStateMock.keys
-        : atom === systemFeaturesStateMock.editionAtom
-          ? systemFeaturesStateMock.deploymentEdition
-          : atom === systemFeaturesStateMock.uploadAtom
-            ? systemFeaturesStateMock.uploadEnabled
-            : atom === systemFeaturesStateMock.rbacAtom
-              ? systemFeaturesStateMock.rbacEnabled
-              : original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0]),
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'knowledgeFs.sourceProviderPreview.jobs.byJobId.delete': serviceMock.cancelWebsitePreview,
+      'knowledgeFs.sourceProviderPreview.jobs.byJobId.get': serviceMock.getWebsitePreview,
+      'knowledgeFs.sourceProviderPreview.jobs.post': serviceMock.startWebsitePreview,
+      'knowledgeFs.sourceProviderPreview.post': serviceMock.previewInitialSource,
+      'knowledgeFs.spaces.post': serviceMock.create,
+      [`${space}.documents.post`]: (input: never) => serviceMock.upload(input),
+      [`${space}.get`]: serviceMock.getSpace,
+      [`${space}.sourceConnections.get`]: serviceMock.listConnections,
+      [`${space}.sourceProviders.get`]: serviceMock.listProviders,
+      [`${space}.sourceWorkflows.byRunId.get`]: serviceMock.getWorkflow,
+      [`${space}.sourceWorkflows.byRunId.pages.get`]: serviceMock.listWorkflowPages,
+      [`${space}.sourceWorkflows.byRunId.selection.post`]: serviceMock.selectWorkflowPages,
+      [`${space}.sources.bySourceId.crawlPreview.post`]: serviceMock.startKfsCrawlPreview,
+      [`${space}.sources.bySourceId.get`]: serviceMock.getKfsSource,
+      [`${space}.sources.bySourceId.patch`]: serviceMock.updateKfsSource,
+      [`${space}.sources.bySourceId.syncPolicy.get`]: serviceMock.getSyncPolicy,
+      [`${space}.sources.bySourceId.syncPolicy.put`]: serviceMock.updateSyncPolicy,
+      [`${space}.sources.post`]: serviceMock.createKfsSource,
+      'workspaces.current.defaultModel.get': serviceMock.getDefaultModel,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.list.get': datasource('auth', datasourceQueryMock.auth),
+      'features.get': () =>
+        track(() => ({ billing: { subscription: { plan: uploadPlanMock.plan } } })),
+      'rag.pipelines.datasourcePlugins.get': datasource('plugins', datasourceQueryMock.plugins),
+      'workspaces.current.members.get': () => track(() => serviceMock.listMembers()),
+    }),
   }
 })
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...original,
-    useQuery: (options: Parameters<typeof original.useQuery>[0]) =>
-      options.queryKey[0] === 'features' && !uploadPlanMock.useLiveQuery
-        ? { data: uploadPlanMock.plan }
-        : options.queryKey[0] === 'datasource-plugins'
-          ? datasourceQueryMock.plugins
-          : options.queryKey[0] === 'data-source-auth'
-            ? datasourceQueryMock.auth
-            : original.useQuery(options),
-  }
-})
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      sourceProviderPreview: {
-        post: serviceMock.previewInitialSource,
-        jobs: {
-          post: serviceMock.startWebsitePreview,
-          byJobId: {
-            delete: serviceMock.cancelWebsitePreview,
-            get: serviceMock.getWebsitePreview,
-          },
-        },
-      },
-      spaces: {
-        byControlSpaceId: {
-          get: serviceMock.getSpace,
-          documents: {
-            post: (input: unknown) => serviceMock.upload(input),
-          },
-          sourceConnections: {
-            get: serviceMock.listConnections,
-          },
-          sourceProviders: {
-            get: serviceMock.listProviders,
-          },
-          sourceWorkflows: {
-            byRunId: {
-              get: serviceMock.getWorkflow,
-              pages: {
-                get: serviceMock.listWorkflowPages,
-              },
-              selection: {
-                post: serviceMock.selectWorkflowPages,
-              },
-            },
-          },
-          sources: {
-            bySourceId: {
-              crawlPreview: {
-                post: serviceMock.startKfsCrawlPreview,
-              },
-              get: serviceMock.getKfsSource,
-              patch: serviceMock.updateKfsSource,
-              syncPolicy: {
-                get: serviceMock.getSyncPolicy,
-                put: serviceMock.updateSyncPolicy,
-              },
-            },
-            post: serviceMock.createKfsSource,
-          },
-        },
-        post: serviceMock.create,
-      },
-    },
-    workspaces: {
-      current: {
-        defaultModel: {
-          get: serviceMock.getDefaultModel,
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    auth: {
-      plugin: {
-        datasource: {
-          list: {
-            get: {
-              queryOptions: (options: { enabled?: boolean } = {}) => ({
-                ...options,
-                queryKey: ['data-source-auth', 'list'],
-              }),
-            },
-          },
-        },
-      },
-    },
-    features: {
-      get: {
-        key: () => ['features'],
-        queryOptions: (options: object) => ({
-          queryKey: ['features'],
-          queryFn: () =>
-            Promise.resolve({ billing: { subscription: { plan: uploadPlanMock.plan } } }),
-          ...options,
-        }),
-      },
-      vectorSpace: { get: { key: () => ['vector-space'] } },
-    },
-    rag: {
-      pipelines: {
-        datasourcePlugins: {
-          get: {
-            queryOptions: ({ enabled }: { enabled: boolean }) => ({
-              enabled,
-              queryKey: ['datasource-plugins'],
-            }),
-          },
-        },
-      },
-    },
-    account: {
-      profile: { get: { queryKey: () => permissionQueryKeys.accountProfile } },
-    },
-    systemFeatures: {
-      get: {
-        queryOptions: () => ({
-          queryKey: permissionQueryKeys.systemFeatures,
-          queryFn: () => Promise.resolve(createSystemFeaturesFixture()),
-          staleTime: Infinity,
-        }),
-      },
-    },
-    workspaces: {
-      current: {
-        members: {
-          get: {
-            queryOptions: ({ enabled }: { enabled: boolean }) => ({
-              enabled,
-              queryKey: permissionQueryKeys.members,
-              queryFn: serviceMock.listMembers,
-              retry: false,
-              staleTime: Infinity,
-            }),
-          },
-        },
-      },
-    },
-    knowledgeFs: {
-      spaces: {
-        get: {
-          key: serviceMock.listKey,
-        },
-        byControlSpaceId: {
-          documents: {
-            get: {
-              key: serviceMock.documentsKey,
-            },
-          },
-          sources: {
-            get: {
-              key: serviceMock.sourcesKey,
-            },
-          },
-        },
-      },
-    },
-  },
-}))
 
 vi.mock('@/service/datasets', () => ({
   checkFirecrawlTaskStatus: serviceMock.getCrawlStatus,
@@ -702,27 +534,50 @@ vi.mock('../../upload/knowledge-fs-upload', async (importOriginal) => ({
   },
 }))
 
-function renderPage(
-  queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } }),
-  { preloadMembers = true } = {},
+const workspacePermissions = (datasetKeys: string[]) => ({
+  agent: { default_permission_keys: [], overrides: [] },
+  app: { default_permission_keys: [], overrides: [] },
+  dataset: { default_permission_keys: datasetKeys, overrides: [] },
+  workspace: { permission_keys: [] },
+})
+
+async function renderPage(
+  queryClient = createConsoleQueryClient(),
+  { preloadMembers = true }: { preloadMembers?: boolean } = {},
 ) {
-  queryClient.setQueryDefaults(permissionQueryKeys.accountProfile, { staleTime: Infinity })
-  queryClient.setQueryData(permissionQueryKeys.accountProfile, {
-    meta: { currentEnv: null, currentVersion: null },
-    profile: {
+  queryClient.setQueryData(
+    consoleQueryKey('workspaces.current.rbac.myPermissions.get'),
+    workspacePermissions(permissionStateMock.keys),
+  )
+  if (preloadMembers)
+    queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+      accounts: workspaceMembers,
+    })
+  const view = renderWithConsoleQuery(<CreateKnowledgePage />, {
+    accountProfile: {
       ...workspaceMembers[0],
       avatar: '',
       is_password_set: false,
       timezone: 'Asia/Shanghai',
     },
+    knowledgeFsFeatures: { upload_enabled: systemFeaturesStateMock.uploadEnabled },
+    queryClient,
+    systemFeatures: {
+      deployment_edition: systemFeaturesStateMock.deploymentEdition,
+      rbac_enabled: systemFeaturesStateMock.rbacEnabled,
+    },
   })
-  queryClient.setQueryData(permissionQueryKeys.systemFeatures, createSystemFeaturesFixture())
-  if (preloadMembers)
-    queryClient.setQueryData(permissionQueryKeys.members, { accounts: workspaceMembers })
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
-  return { queryClient, ...render(<CreateKnowledgePage />, { wrapper: Wrapper }) }
+  await settle()
+  return view
+}
+
+/** Waits until no request is in flight, including requests that depend on earlier responses. */
+async function settle() {
+  for (let quietChecks = 0; quietChecks < 2;) {
+    await waitFor(() => expect(server.inflight).toBe(0))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    quietChecks = server.inflight === 0 ? quietChecks + 1 : 0
+  }
 }
 
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
@@ -744,6 +599,8 @@ async function choosePermission(user: ReturnType<typeof userEvent.setup>, option
 describe('CreateKnowledgePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    server.inflight = 0
+    server.reads.clear()
     globalThis.sessionStorage.clear()
     datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin]
     datasourceQueryMock.plugins.error = null
@@ -898,8 +755,6 @@ describe('CreateKnowledgePage', () => {
     serviceMock.discardUpload.mockResolvedValue(undefined)
     permissionStateMock.keys = ['dataset.acl.access_config']
     uploadPlanMock.plan = 'professional'
-    uploadPlanMock.useLiveQuery = false
-    fileUploadConfigMock.knowledgeFileSizeLimit = 15
     systemFeaturesStateMock.uploadEnabled = true
     systemFeaturesStateMock.rbacEnabled = true
     systemFeaturesStateMock.deploymentEdition = 'ENTERPRISE'
@@ -918,7 +773,7 @@ describe('CreateKnowledgePage', () => {
 
   it('lets form validation explain a missing knowledge name', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     const createButton = screen.getByRole('button', {
       name: 'knowledgeCreate.createTitle',
@@ -945,7 +800,7 @@ describe('CreateKnowledgePage', () => {
   it('accepts a 40-character name and submits the exact value', async () => {
     const user = userEvent.setup()
     const boundaryName = '😀'.repeat(40)
-    renderPage()
+    await renderPage()
 
     await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), boundaryName)
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
@@ -959,7 +814,7 @@ describe('CreateKnowledgePage', () => {
   it('keeps a 41-character name visible, identifies the field, and blocks the request', async () => {
     const user = userEvent.setup()
     const invalidName = '知'.repeat(41)
-    renderPage()
+    await renderPage()
 
     const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
     await user.type(nameInput, invalidName)
@@ -984,7 +839,7 @@ describe('CreateKnowledgePage', () => {
 
   it('rejects a whitespace-only name and submits trimmed fields after correction', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
     const createButton = screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })
     await user.type(nameInput, '   ')
@@ -1010,7 +865,7 @@ describe('CreateKnowledgePage', () => {
 
   it('blocks an overlong description and accepts its Unicode boundary after correction', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), 'Handbook')
     const descriptionInput = screen.getByRole('textbox', { name: 'knowledgeCreate.description' })
     const createButton = screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })
@@ -1036,9 +891,9 @@ describe('CreateKnowledgePage', () => {
 
   it('creates a private empty knowledge space, invalidates the list, and navigates', async () => {
     const user = userEvent.setup()
-    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    const queryClient = createConsoleQueryClient()
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
-    renderPage(queryClient)
+    await renderPage(queryClient)
     await fillRequiredFields(user)
     await choosePermission(user, 'datasetSettings.form.permissionsOnlyMe')
 
@@ -1079,7 +934,7 @@ describe('CreateKnowledgePage', () => {
       })
     })
     expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['console', 'knowledgeFs', 'listKnowledgeSpaces'],
+      queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
     })
     expect(routerMock.replace).toHaveBeenCalledWith(
       '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources',
@@ -1088,7 +943,7 @@ describe('CreateKnowledgePage', () => {
 
   it('creates the default all-members visibility atomically', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toHaveTextContent(
       'datasetSettings.form.permissionsAllMember',
@@ -1106,7 +961,7 @@ describe('CreateKnowledgePage', () => {
   it('requires another member and creates partial access in the same request, retaining it on retry', async () => {
     const user = userEvent.setup()
     serviceMock.create.mockRejectedValueOnce(createHttpError(new Response(null, { status: 503 })))
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await choosePermission(user, 'datasetSettings.form.permissionsInvitedMembers')
 
@@ -1139,7 +994,7 @@ describe('CreateKnowledgePage', () => {
 
   it('does not grant selected members when switching back to private access', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await choosePermission(user, 'datasetSettings.form.permissionsInvitedMembers')
     await user.click(screen.getByRole('button', { name: /Alice alice@example.com/ }))
@@ -1156,7 +1011,7 @@ describe('CreateKnowledgePage', () => {
   it('can retry loading members before selecting partial access', async () => {
     const user = userEvent.setup()
     serviceMock.listMembers.mockRejectedValueOnce(new Error('members unavailable'))
-    renderPage(undefined, { preloadMembers: false })
+    await renderPage(undefined, { preloadMembers: false })
 
     expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
@@ -1169,7 +1024,7 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     permissionStateMock.keys = []
     systemFeaturesStateMock.rbacEnabled = false
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
 
     const permission = screen.getByRole('button', {
@@ -1191,7 +1046,7 @@ describe('CreateKnowledgePage', () => {
   it('forces RBAC users without access-config permission to create a private space', async () => {
     const user = userEvent.setup()
     permissionStateMock.keys = []
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
 
     const permission = screen.getByRole('button', {
@@ -1218,7 +1073,7 @@ describe('CreateKnowledgePage', () => {
           resolveCreate = resolve
         }),
     )
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     const createButton = screen.getByRole('button', {
       name: 'knowledgeCreate.createTitle',
@@ -1234,7 +1089,7 @@ describe('CreateKnowledgePage', () => {
   it('keeps the same idempotency key for a safe retry after failure', async () => {
     const user = userEvent.setup()
     serviceMock.create.mockRejectedValueOnce(new Error('upstream unavailable'))
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
@@ -1269,7 +1124,7 @@ describe('CreateKnowledgePage', () => {
           : { data: null },
       ),
     )
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
@@ -1293,7 +1148,7 @@ describe('CreateKnowledgePage', () => {
       model_setup_required: true,
     })
     serviceMock.getDefaultModel.mockRejectedValue(new Error('model service unavailable'))
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
@@ -1315,7 +1170,7 @@ describe('CreateKnowledgePage', () => {
       model_setup_required: true,
     })
     serviceMock.getDefaultModel.mockResolvedValue({ data: null })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', {
@@ -1350,7 +1205,7 @@ describe('CreateKnowledgePage', () => {
         .mockReturnValueOnce('11111111-1111-4111-8111-111111111111')
         .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
       serviceMock.create.mockRejectedValueOnce(createHttpError(new Response(null, { status })))
-      renderPage()
+      await renderPage()
       await fillRequiredFields(user)
 
       await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
@@ -1377,7 +1232,7 @@ describe('CreateKnowledgePage', () => {
     async (status) => {
       const user = userEvent.setup()
       serviceMock.create.mockRejectedValueOnce(createHttpError(new Response(null, { status })))
-      renderPage()
+      await renderPage()
       await fillRequiredFields(user)
 
       await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
@@ -1397,10 +1252,10 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
     systemFeaturesStateMock.deploymentEdition = 'CLOUD'
-    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    const queryClient = createConsoleQueryClient()
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     serviceMock.upload.mockRejectedValueOnce(new Error('upload unavailable'))
-    renderPage(queryClient)
+    await renderPage(queryClient)
     await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
@@ -1420,14 +1275,14 @@ describe('CreateKnowledgePage', () => {
       'knowledgeSpace.documentUploadFailed',
     )
     expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ['console', 'knowledgeFs', 'listKnowledgeSpaces'],
+      queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
     })
     expect(invalidate).not.toHaveBeenCalledWith(
-      { queryKey: ['features'] },
+      { queryKey: consoleQuery.features.get.key() },
       { cancelRefetch: false },
     )
     expect(invalidate).not.toHaveBeenCalledWith(
-      { queryKey: ['vector-space'] },
+      { queryKey: consoleQuery.features.vectorSpace.get.key() },
       { cancelRefetch: false },
     )
     const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
@@ -1441,9 +1296,12 @@ describe('CreateKnowledgePage', () => {
     expect(routerMock.replace).toHaveBeenCalledWith(
       '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents',
     )
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['features'] }, { cancelRefetch: false })
     expect(invalidate).toHaveBeenCalledWith(
-      { queryKey: ['vector-space'] },
+      { queryKey: consoleQuery.features.get.key() },
+      { cancelRefetch: false },
+    )
+    expect(invalidate).toHaveBeenCalledWith(
+      { queryKey: consoleQuery.features.vectorSpace.get.key() },
       { cancelRefetch: false },
     )
   })
@@ -1452,7 +1310,7 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
     systemFeaturesStateMock.deploymentEdition = 'CLOUD'
-    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    const queryClient = createConsoleQueryClient()
     queryClient.setQueryData(consoleQuery.features.get.key(), {
       documents_upload_quota: { size: 0, limit: 10 },
     })
@@ -1473,7 +1331,7 @@ describe('CreateKnowledgePage', () => {
         { status: 413 },
       ),
     )
-    renderPage(queryClient)
+    await renderPage(queryClient)
     await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
       [new File(['first'], 'first.md'), new File(['second'], 'second.md')],
@@ -1509,7 +1367,7 @@ describe('CreateKnowledgePage', () => {
   it('converges after an atomic creation response is lost', async () => {
     const user = userEvent.setup()
     serviceMock.create.mockRejectedValueOnce(new Error('response lost'))
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
@@ -1525,7 +1383,7 @@ describe('CreateKnowledgePage', () => {
 
   it('enables every atomic source type and only lists installed providers', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     const startEmpty = screen.getByRole('radio', { name: 'knowledgeSpace.startEmpty' })
     expect(startEmpty).toBeChecked()
@@ -1596,7 +1454,7 @@ describe('CreateKnowledgePage', () => {
     datasourceQueryMock.plugins.data = []
     datasourceQueryMock.auth.data = { result: [] }
 
-    renderPage()
+    await renderPage()
 
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.connectSource' }))
 
@@ -1609,7 +1467,7 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
     datasourceQueryMock.auth.data = { result: [firecrawlDatasourceAuth, jinaDatasourceAuth] }
-    const view = renderPage()
+    const view = await renderPage()
 
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.connectSource' }))
@@ -1629,19 +1487,28 @@ describe('CreateKnowledgePage', () => {
 
     datasourceQueryMock.plugins.data = [jinaDatasourcePlugin]
     datasourceQueryMock.auth.data = { result: [jinaDatasourceAuth] }
-    view.rerender(<CreateKnowledgePage />)
+    await act(() =>
+      Promise.all([
+        view.queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
+        }),
+        view.queryClient.invalidateQueries({
+          queryKey: consoleQuery.auth.plugin.datasource.list.get.key(),
+        }),
+      ]),
+    )
 
-    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeChecked()
+    expect(await screen.findByRole('radio', { name: 'Jina Reader' })).toBeChecked()
     expect(screen.queryByText('Getting started')).not.toBeInTheDocument()
     expect(screen.getByText('knowledgeSpace.pagesAppearTitle')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
   })
 
-  it('disables upload before creating a space when direct upload is unavailable', () => {
+  it('disables upload before creating a space when direct upload is unavailable', async () => {
     navigationMock.startMode = 'upload'
     systemFeaturesStateMock.uploadEnabled = false
 
-    renderPage()
+    await renderPage()
 
     expect(screen.getByRole('radio', { name: 'knowledgeSpace.startEmpty' })).toBeChecked()
     const uploadFiles = screen.getByRole('radio', { name: 'knowledgeSpace.uploadFiles' })
@@ -1662,7 +1529,7 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'upload'
     systemFeaturesStateMock.deploymentEdition = 'CLOUD'
     uploadQuotaMock.mockResolvedValue(failure)
-    renderPage()
+    await renderPage()
 
     await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
@@ -1690,7 +1557,7 @@ describe('CreateKnowledgePage', () => {
           }),
       )
       .mockResolvedValueOnce(undefined)
-    renderPage()
+    await renderPage()
     await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
@@ -1725,7 +1592,7 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'upload'
     systemFeaturesStateMock.deploymentEdition = 'CLOUD'
     uploadQuotaMock.mockResolvedValueOnce('taskFailure.documentCountQuotaExceeded')
-    renderPage()
+    await renderPage()
     const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
       selector: 'input[type="file"]',
     })
@@ -1746,7 +1613,7 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     systemFeaturesStateMock.deploymentEdition = 'CLOUD'
     uploadQuotaMock.mockResolvedValue('taskFailure.documentCountQuotaExceeded')
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
@@ -1763,7 +1630,7 @@ describe('CreateKnowledgePage', () => {
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
     serviceMock.upload.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('Quota full'))
-    renderPage()
+    await renderPage()
     await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
       [new File(['one'], 'one.txt'), new File(['two'], 'two.txt')],
@@ -1791,7 +1658,7 @@ describe('CreateKnowledgePage', () => {
   it('continues from the upload mode after real creation succeeds', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
-    renderPage()
+    await renderPage()
 
     expect(screen.getByRole('radio', { name: 'knowledgeSpace.uploadFiles' })).toBeChecked()
     await user.upload(
@@ -1819,7 +1686,7 @@ describe('CreateKnowledgePage', () => {
   it('shows the model cost notice beside the upload action without starting processing', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
-    renderPage()
+    await renderPage()
 
     const notice = screen.getByRole('region', { name: 'knowledgeSpace.modelCost.title' })
     expect(notice).toHaveTextContent('knowledgeSpace.modelCost.uploadDescription')
@@ -1859,7 +1726,7 @@ describe('CreateKnowledgePage', () => {
     })
 
     try {
-      renderPage()
+      await renderPage()
       await user.upload(
         screen.getByLabelText('knowledgeSpace.uploadFiles', {
           selector: 'input[type="file"]',
@@ -1877,7 +1744,7 @@ describe('CreateKnowledgePage', () => {
   it('previews a configured website in place without creating a knowledge space', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.type(
       screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
@@ -1933,7 +1800,7 @@ describe('CreateKnowledgePage', () => {
   it('lets users edit website parameters after a successful preview', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     const rootUrl = screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder')
     await user.type(rootUrl, 'https://docs.dify.ai')
@@ -1970,7 +1837,7 @@ describe('CreateKnowledgePage', () => {
         ],
       },
     })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
     await user.type(
@@ -2024,7 +1891,7 @@ describe('CreateKnowledgePage', () => {
         ],
       },
     })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'Tavily' }))
     await user.type(screen.getByRole('textbox', { name: /Search query/ }), 'agentic RAG')
@@ -2070,7 +1937,7 @@ describe('CreateKnowledgePage', () => {
       job_id: 'website-preview-1',
       status: 'running',
     })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.type(
       screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
@@ -2115,7 +1982,7 @@ describe('CreateKnowledgePage', () => {
         job_id: 'website-preview-1',
         status: 'canceled',
       })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.type(
       screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
@@ -2145,7 +2012,7 @@ describe('CreateKnowledgePage', () => {
   it('submits selected preview URLs for the server-side crawl import', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.type(
       screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
@@ -2210,7 +2077,7 @@ describe('CreateKnowledgePage', () => {
   it('does not cancel a preview job after creation hands it to the initial-source worker', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
-    const view = renderPage()
+    const view = await renderPage()
     await fillRequiredFields(user)
     await user.type(
       screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
@@ -2233,7 +2100,7 @@ describe('CreateKnowledgePage', () => {
   it('still cancels an unused preview job when the creation page unmounts', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
-    const view = renderPage()
+    const view = await renderPage()
     await user.type(
       screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder'),
       'https://docs.dify.ai',
@@ -2256,7 +2123,7 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
     datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, notionDatasourcePlugin]
-    renderPage()
+    await renderPage()
 
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
 
@@ -2293,7 +2160,7 @@ describe('CreateKnowledgePage', () => {
       kind: 'online_document',
       next_page_parameters: null,
     })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     const sourceName = screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder')
@@ -2356,7 +2223,7 @@ describe('CreateKnowledgePage', () => {
       kind: 'online_document',
       next_page_parameters: null,
     })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     await user.click(screen.getByRole('radio', { name: 'Outline' }))
@@ -2402,7 +2269,7 @@ describe('CreateKnowledgePage', () => {
       kind: 'online_document',
       next_page_parameters: null,
     })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     await user.type(screen.getByRole('textbox', { name: 'Workspace' }), 'Product')
@@ -2443,7 +2310,7 @@ describe('CreateKnowledgePage', () => {
       kind: 'online_drive',
       next_page_parameters: null,
     })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     await user.type(
@@ -2511,7 +2378,7 @@ describe('CreateKnowledgePage', () => {
       kind: 'online_drive',
       next_page_parameters: null,
     })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
     await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
@@ -2600,7 +2467,7 @@ describe('CreateKnowledgePage', () => {
         })
       },
     )
-    renderPage()
+    await renderPage()
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
 
@@ -2654,7 +2521,7 @@ describe('CreateKnowledgePage', () => {
       })
       .mockRejectedValueOnce(new Error('Page unavailable'))
       .mockResolvedValueOnce(firstPage)
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     await user.type(
@@ -2717,7 +2584,7 @@ describe('CreateKnowledgePage', () => {
         kind: 'online_drive',
         next_page_parameters: null,
       })
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     await user.type(
@@ -2743,7 +2610,7 @@ describe('CreateKnowledgePage', () => {
   it('requires a selected website preview page before creating with an initial source', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     const rootUrl = screen.getByPlaceholderText('knowledgeSources.rootUrlPlaceholder')
     const sourceName = screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder')
@@ -2773,7 +2640,7 @@ describe('CreateKnowledgePage', () => {
   it('keeps an invalid upload visible and prevents creating the knowledge space', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     const oversizedFile = new File(['content'], 'oversized.pdf', { type: 'application/pdf' })
     Object.defineProperty(oversizedFile, 'size', { value: 16 * 1024 * 1024 })
@@ -2799,7 +2666,7 @@ describe('CreateKnowledgePage', () => {
       navigationMock.startMode = 'upload'
       systemFeaturesStateMock.deploymentEdition = 'CLOUD'
       uploadPlanMock.plan = plan
-      renderPage()
+      await renderPage()
       expect(serviceMock.stageUpload).not.toHaveBeenCalled()
       expect(screen.getByText(/knowledgeSpace\.documentUploadFormats:.*"size":15/)).toBeVisible()
       const title = screen.queryByText('billing.upgrade.uploadMultiplePages.title')
@@ -2824,7 +2691,7 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'upload'
     systemFeaturesStateMock.deploymentEdition = 'CLOUD'
     uploadPlanMock.plan = 'sandbox'
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
       selector: 'input[type="file"]',
@@ -2849,7 +2716,7 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'upload'
     systemFeaturesStateMock.deploymentEdition = 'CLOUD'
     uploadPlanMock.plan = 'sandbox'
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
       selector: 'input[type="file"]',
@@ -2870,17 +2737,14 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
     systemFeaturesStateMock.deploymentEdition = 'CLOUD'
-    uploadPlanMock.useLiveQuery = true
-    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
-    queryClient.setQueryDefaults(consoleQuery.features.get.key(), { staleTime: Infinity })
-    queryClient.setQueryData(consoleQuery.features.get.key(), {
-      billing: { subscription: { plan: 'professional' } },
-    })
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryDefaults(consoleQuery.features.get.queryKey(), { staleTime: Infinity })
+    seedFeatures(queryClient, { billing: { subscription: { plan: 'professional' } } })
     vi.mocked(crypto.randomUUID)
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000003')
-    renderPage(queryClient)
+    await renderPage(queryClient)
     await fillRequiredFields(user)
     const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
       selector: 'input[type="file"]',
@@ -2894,11 +2758,7 @@ describe('CreateKnowledgePage', () => {
     await waitFor(() => expect(createButton).toBeEnabled())
     expect(serviceMock.stageUpload).toHaveBeenCalledTimes(3)
 
-    act(() =>
-      queryClient.setQueryData(consoleQuery.features.get.key(), {
-        billing: { subscription: { plan: 'sandbox' } },
-      }),
-    )
+    act(() => seedFeatures(queryClient, { billing: { subscription: { plan: 'sandbox' } } }))
     await waitFor(() => expect(createButton).toBeDisabled())
     expect(input).not.toHaveAttribute('multiple')
     await user.click(screen.getByRole('button', { name: 'common.operation.remove one.md' }))
@@ -2941,7 +2801,7 @@ describe('CreateKnowledgePage', () => {
           resolveQuota = resolve
         }),
     )
-    renderPage()
+    await renderPage()
     const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
       selector: 'input[type="file"]',
     })
@@ -2961,7 +2821,7 @@ describe('CreateKnowledgePage', () => {
     vi.mocked(crypto.randomUUID)
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
       selector: 'input[type="file"]',
@@ -2986,8 +2846,7 @@ describe('CreateKnowledgePage', () => {
       navigationMock.startMode = 'upload'
       systemFeaturesStateMock.deploymentEdition = 'CLOUD'
       uploadPlanMock.plan = plan
-      fileUploadConfigMock.knowledgeFileSizeLimit = 50
-      renderPage()
+      await renderPage()
       await fillRequiredFields(user)
       const file = new File(['content'], 'boundary.pdf', { type: 'application/pdf' })
       Object.defineProperty(file, 'size', { value: 15 * 1024 * 1024 + extraBytes })
@@ -3015,8 +2874,7 @@ describe('CreateKnowledgePage', () => {
   it('keeps the new RAG limit at 15MB when the legacy workspace limit is 50MB', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
-    fileUploadConfigMock.knowledgeFileSizeLimit = 50
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     const file = new File(['content'], 'handbook.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'size', { value: 16 * 1024 * 1024 })
@@ -3035,7 +2893,7 @@ describe('CreateKnowledgePage', () => {
   it('rejects an empty upload before staging or creating the knowledge space', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     const emptyFile = new File([], 'empty.txt', { type: 'text/plain' })
 
@@ -3060,7 +2918,7 @@ describe('CreateKnowledgePage', () => {
     vi.mocked(globalThis.crypto.randomUUID)
       .mockReturnValueOnce('11111111-1111-4111-8111-111111111111')
       .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     const emptyFile = new File([], 'empty.txt', { type: 'text/plain' })
     const oneByteFile = new File(['x'], 'one-byte.txt', { type: 'text/plain' })
@@ -3104,7 +2962,7 @@ describe('CreateKnowledgePage', () => {
       .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
       .mockReturnValue('33333333-3333-4333-8333-333333333333')
     serviceMock.upload.mockImplementation(() => new Promise(() => {}))
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     fireEvent.change(
       screen.getByLabelText('knowledgeSpace.uploadFiles', {
@@ -3162,7 +3020,7 @@ describe('CreateKnowledgePage', () => {
           resolveReadiness = resolve
         }),
     )
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', {
@@ -3198,7 +3056,7 @@ describe('CreateKnowledgePage', () => {
     navigationMock.startMode = 'upload'
     const file = new File(['# 让状态可分析'], 'handbook.md', { type: 'text/markdown' })
     const open = vi.spyOn(globalThis, 'open').mockReturnValue(null)
-    renderPage()
+    await renderPage()
 
     fireEvent.change(
       screen.getByLabelText('knowledgeSpace.uploadFiles', {
@@ -3222,7 +3080,7 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
     serviceMock.upload.mockRejectedValueOnce(new Error('KnowledgeFS unavailable'))
-    renderPage()
+    await renderPage()
     await fillRequiredFields(user)
     await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', {
@@ -3244,7 +3102,7 @@ describe('CreateKnowledgePage', () => {
 
   it('renders the approved creation modal and exposes both dismiss actions', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
 
     const dialog = screen.getByRole('dialog', {
       name: 'knowledgeCreate.createTitle',
@@ -3279,7 +3137,7 @@ describe('CreateKnowledgePage', () => {
 
   it('closes an unsaved draft without confirmation', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), 'Draft knowledge')
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
@@ -3290,7 +3148,7 @@ describe('CreateKnowledgePage', () => {
 
   it('does not protect an unsaved draft from browser unload', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), 'Draft knowledge')
     const event = new Event('beforeunload', { cancelable: true })
 
@@ -3303,7 +3161,7 @@ describe('CreateKnowledgePage', () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
     serviceMock.upload.mockRejectedValueOnce(new Error('upload unavailable'))
-    renderPage()
+    await renderPage()
     await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',

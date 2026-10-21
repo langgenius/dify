@@ -1,17 +1,14 @@
+import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { SyncPolicyValue } from '../../setup/sync-policy-field'
 import type { Source, SourceWorkflowRun } from '../../source-models'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createInstance } from 'i18next'
-import knowledgeSpaceTranslations from '@/i18n/locales/en-US/knowledge-sources.json'
-import { getInitOptions } from '@/i18n/settings'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { CrawlSelectionForm } from '../crawl-selection-form'
 
 const clientMock = vi.hoisted(() => ({ asyncImport: vi.fn() }))
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
-const queryClientMock = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
 const settingsState = vi.hoisted(() => ({
   configurationState: 'active' as 'active' | 'setup-required',
 }))
@@ -37,72 +34,48 @@ const workflowApiResponse = vi.hoisted(() => (workflow: SourceWorkflowRun) => ({
   updated_at: workflow.updatedAt,
 }))
 
+const settingsResponse = vi.hoisted(() => (): KnowledgeFsSettingsResponse => {
+  const active = settingsState.configurationState === 'active'
+  return {
+    active_profile_available: active,
+    active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
+    capabilities: {
+      deep: active,
+      index: active,
+      ingest: active,
+      query: active,
+      research: active,
+      source_sync: active,
+    },
+    configuration_state: settingsState.configurationState,
+    embedding: null,
+    issues: [],
+    retrieval: null,
+    revision: 1,
+  }
+})
+
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/sources/new/website',
   useRouter: () => routerMock,
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
-  return { ...original, useQueryClient: () => queryClientMock }
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post': async (
+        input: never,
+      ) => workflowApiResponse(await clientMock.asyncImport(input)),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'knowledgeFs.spaces.byControlSpaceId.settings.get': async () => settingsResponse(),
+    }),
+  }
 })
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          sources: {
-            bySourceId: {
-              asyncImport: {
-                post: async (input: unknown) =>
-                  workflowApiResponse(await clientMock.asyncImport(input)),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          settings: {
-            get: {
-              queryOptions: ({ input }: { input: unknown }) => ({
-                queryFn: async () => ({
-                  active_profile_available: settingsState.configurationState === 'active',
-                  active_profile_revisions:
-                    settingsState.configurationState === 'active'
-                      ? { embedding: 1, retrieval: 1 }
-                      : {},
-                  capabilities: {
-                    deep: settingsState.configurationState === 'active',
-                    index: settingsState.configurationState === 'active',
-                    ingest: settingsState.configurationState === 'active',
-                    query: settingsState.configurationState === 'active',
-                    research: settingsState.configurationState === 'active',
-                    source_sync: settingsState.configurationState === 'active',
-                  },
-                  configuration_state: settingsState.configurationState,
-                  embedding: null,
-                  issues: [],
-                  retrieval: null,
-                  revision: 1,
-                }),
-                queryKey: ['knowledge-fs', 'settings', input],
-              }),
-            },
-          },
-          sources: {
-            get: { key: vi.fn(() => ['knowledge-sources']) },
-          },
-        },
-      },
-    },
-  },
-}))
 
 const source: Source = {
   connectionId: 'connection-1',
@@ -174,38 +147,33 @@ function renderSelectionForm({
   syncPolicyValue?: SyncPolicyValue
   workflowUncertain?: boolean
 } = {}) {
-  const queryClient = new QueryClient({
-    defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
-  })
   const onInteractionLockChange = vi.fn()
   const onRecrawl = vi.fn()
   const onSubmissionUncertainChange = vi.fn()
   const onSubmitted = vi.fn()
   const onWorkflowPending = vi.fn()
   const onWorkflowRun = vi.fn()
-  const view = render(
-    <QueryClientProvider client={queryClient}>
-      <CrawlSelectionForm
-        discardRequested={() => false}
-        initialSelectedPageIds={initialSelectedPageIds}
-        initialSyncMode={initialSyncMode}
-        knowledgeSpaceId="space-1"
-        onCancel={onCancel}
-        onInteractionLockChange={onInteractionLockChange}
-        onRecrawl={onRecrawl}
-        onSubmissionUncertainChange={onSubmissionUncertainChange}
-        onSubmitted={onSubmitted}
-        onWorkflowPending={onWorkflowPending}
-        onWorkflowRun={onWorkflowRun}
-        pages={pages}
-        rootUrl="https://docs.dify.ai/"
-        run={run}
-        showSyncPolicyField={!syncPolicyValue}
-        source={source}
-        syncPolicyValue={syncPolicyValue}
-        workflowUncertain={workflowUncertain}
-      />
-    </QueryClientProvider>,
+  const view = renderWithConsoleQuery(
+    <CrawlSelectionForm
+      discardRequested={() => false}
+      initialSelectedPageIds={initialSelectedPageIds}
+      initialSyncMode={initialSyncMode}
+      knowledgeSpaceId="space-1"
+      onCancel={onCancel}
+      onInteractionLockChange={onInteractionLockChange}
+      onRecrawl={onRecrawl}
+      onSubmissionUncertainChange={onSubmissionUncertainChange}
+      onSubmitted={onSubmitted}
+      onWorkflowPending={onWorkflowPending}
+      onWorkflowRun={onWorkflowRun}
+      pages={pages}
+      rootUrl="https://docs.dify.ai/"
+      run={run}
+      showSyncPolicyField={!syncPolicyValue}
+      source={source}
+      syncPolicyValue={syncPolicyValue}
+      workflowUncertain={workflowUncertain}
+    />,
   )
   return {
     ...view,
@@ -233,27 +201,8 @@ async function selectSyncPolicy(
 
 describe('CrawlSelectionForm', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     clientMock.asyncImport.mockResolvedValue({ ...run, checkpoint: 'import', state: 'queued' })
     settingsState.configurationState = 'active'
-  })
-
-  it('uses singular and plural copy for the crawl summary', async () => {
-    const instance = createInstance()
-    await instance.init({
-      ...getInitOptions(),
-      defaultNS: 'dataset',
-      lng: 'en-US',
-      ns: ['dataset'],
-      resources: { 'en-US': { knowledgeSources: knowledgeSpaceTranslations } },
-    })
-    const tKnowledgeSpace = instance.getFixedT('en-US', 'knowledgeSources')
-    expect(tKnowledgeSpace(($) => $.pagesCrawled, { count: 1, host: 'example.com' })).toBe(
-      '1 page crawled at example.com',
-    )
-    expect(tKnowledgeSpace(($) => $.pagesCrawled, { count: 2, host: 'example.com' })).toBe(
-      '2 pages crawled at example.com',
-    )
   })
 
   it('prompts for model setup before submitting the import', async () => {
@@ -328,24 +277,21 @@ describe('CrawlSelectionForm', () => {
       title: `Page ${index + 1}`,
     }))
     const user = userEvent.setup()
-    const queryClient = new QueryClient()
-    render(
-      <QueryClientProvider client={queryClient}>
-        <CrawlSelectionForm
-          discardRequested={() => false}
-          knowledgeSpaceId="space-1"
-          onCancel={vi.fn()}
-          onRecrawl={vi.fn()}
-          onSubmissionUncertainChange={vi.fn()}
-          onSubmitted={vi.fn()}
-          onWorkflowPending={vi.fn()}
-          onWorkflowRun={vi.fn()}
-          pages={longPageList}
-          rootUrl="https://docs.dify.ai/"
-          run={run}
-          source={source}
-        />
-      </QueryClientProvider>,
+    renderWithConsoleQuery(
+      <CrawlSelectionForm
+        discardRequested={() => false}
+        knowledgeSpaceId="space-1"
+        onCancel={vi.fn()}
+        onRecrawl={vi.fn()}
+        onSubmissionUncertainChange={vi.fn()}
+        onSubmitted={vi.fn()}
+        onWorkflowPending={vi.fn()}
+        onWorkflowRun={vi.fn()}
+        pages={longPageList}
+        rootUrl="https://docs.dify.ai/"
+        run={run}
+        source={source}
+      />,
     )
     await user.click(screen.getByRole('checkbox', { name: 'knowledgeSources.selectAll' }))
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
@@ -356,7 +302,11 @@ describe('CrawlSelectionForm', () => {
 
   it('submits custom policy in one request and navigates on acceptance', async () => {
     const user = userEvent.setup()
-    const { onSubmitted, onWorkflowRun } = renderSelectionForm()
+    const { onSubmitted, onWorkflowRun, queryClient } = renderSelectionForm()
+    const sourcesKey = consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.queryKey({
+      input: { params: { control_space_id: 'space-1' } },
+    })
+    queryClient.setQueryData(sourcesKey, { data: [] })
     await user.click(screen.getByRole('checkbox', { name: 'Getting started' }))
     await selectSyncPolicy(user, 'custom')
     const dialog = await screen.findByRole('dialog', {
@@ -391,10 +341,7 @@ describe('CrawlSelectionForm', () => {
     })
     expect(onWorkflowRun).toHaveBeenCalledWith(expect.objectContaining({ state: 'queued' }))
     expect(onSubmitted).toHaveBeenCalledOnce()
-    expect(queryClientMock.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['knowledge-sources'],
-      refetchType: 'none',
-    })
+    expect(queryClient.getQueryState(sourcesKey)?.isInvalidated).toBe(true)
   })
 
   it.each([

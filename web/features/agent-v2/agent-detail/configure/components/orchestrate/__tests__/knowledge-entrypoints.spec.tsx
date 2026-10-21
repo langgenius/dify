@@ -18,15 +18,19 @@ vi.mock('../skills', () => ({ AgentSkills: () => null }))
 vi.mock('../files', () => ({ AgentFiles: () => null }))
 vi.mock('../tools', () => ({ AgentTools: () => null }))
 vi.mock('../advanced', () => ({ AgentAdvancedSettings: () => null }))
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  const emptyToolList = () => ({ data: [] })
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': emptyToolList,
-    'workspaces.current.tools.api.get': emptyToolList,
-    'workspaces.current.tools.workflow.get': emptyToolList,
-    'workspaces.current.tools.mcp.get': emptyToolList,
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const emptyToolList = async () => []
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.api.get': emptyToolList,
+      'workspaces.current.tools.builtin.get': emptyToolList,
+      'workspaces.current.tools.mcp.get': emptyToolList,
+      'workspaces.current.tools.workflow.get': emptyToolList,
+    }),
+  }
 })
 vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
 vi.mock('@/context/i18n', () => ({

@@ -1,48 +1,19 @@
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { consoleQuery } from '@/service/console'
-import { render } from '@/test/console/render'
-import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DocumentUploadPlanNotice } from '../plan-notice'
 
-vi.mock('@/features/system-features/state', async () => {
-  const { atom } = await import('jotai')
-  return { deploymentEditionAtom: atom('CLOUD') }
-})
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    features: {
-      get: { queryOptions: (options: object) => ({ queryKey: ['features'], ...options }) },
-    },
-    systemFeatures: {
-      get: { queryOptions: (options: object) => ({ queryKey: ['system-features'], ...options }) },
-    },
-  },
-}))
-
 function renderNotice(plan: 'sandbox' | 'professional' | 'team') {
-  const client = new QueryClient({
-    defaultOptions: { queries: { staleTime: Infinity, retry: false } },
-  })
-  client.setQueryData(
-    consoleQuery.features.get.queryOptions().queryKey,
-    zGetFeaturesResponse.parse({ billing: { subscription: { plan } } }),
-  )
-  client.setQueryData(
-    consoleQuery.systemFeatures.get.queryOptions().queryKey,
-    createSystemFeaturesFixture({ deployment_edition: 'CLOUD' }),
-  )
   const onUrlUpdate = vi.fn()
-  render(
-    <QueryClientProvider client={client}>
-      <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
-        <DocumentUploadPlanNotice fileSizeLimitMb={15} />
-      </NuqsTestingAdapter>
-    </QueryClientProvider>,
+  renderWithConsoleQuery(
+    <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
+      <DocumentUploadPlanNotice fileSizeLimitMb={15} />
+    </NuqsTestingAdapter>,
+    {
+      features: { billing: { subscription: { plan } } },
+      systemFeatures: { deployment_edition: 'CLOUD' },
+    },
   )
   return onUrlUpdate
 }

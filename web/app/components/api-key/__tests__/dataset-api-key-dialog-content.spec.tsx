@@ -1,12 +1,7 @@
-import type { PrimitiveAtom } from 'jotai'
 import { Dialog } from '@langgenius/dify-ui/dialog'
-import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useHydrateAtoms } from 'jotai/utils'
-import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
-import { render } from '@/test/console/render'
-import { createTestQueryClient } from '@/test/query-client'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetApiKeyDialogContent } from '../dataset-api-key-dialog-content'
 import { useDatasetApiKeyMutations } from '../use-dataset-api-key-mutations'
 
@@ -54,36 +49,11 @@ vi.mock('@/service/console/browser', () => ({
   },
 }))
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({ currentWorkspace: { id: 'workspace-1' } }))
-})
-
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({ formatTime: (value: number) => `Formatted: ${value}` }),
 }))
 
-// KnowledgeFS spaces only show up in the scope picker when the workspace has KnowledgeFS.
-vi.mock('@/features/knowledge-fs-availability/state', async () => {
-  const actual = await vi.importActual<typeof import('@/features/knowledge-fs-availability/state')>(
-    '@/features/knowledge-fs-availability/state',
-  )
-  const { atom } = await import('jotai')
-  return {
-    ...actual,
-    knowledgeFsEnabledAtom: atom(false),
-  }
-})
-
 function DatasetApiKeys() {
-  // The mocked atom is primitive so each case can seed it; the Jotai store outlives a single
-  // test, so force the hydration instead of keeping the first case's value.
-  useHydrateAtoms(
-    [[knowledgeFsEnabledAtom as PrimitiveAtom<boolean>, apiMocks.knowledgeFsEnabled]],
-    {
-      dangerouslyForceHydrate: true,
-    },
-  )
   const mutations = useDatasetApiKeyMutations()
   return (
     <Dialog open>
@@ -93,11 +63,11 @@ function DatasetApiKeys() {
 }
 
 function renderDialog() {
-  return render(
-    <QueryClientProvider client={createTestQueryClient()}>
-      <DatasetApiKeys />
-    </QueryClientProvider>,
-  )
+  // KnowledgeFS spaces only show up in the scope picker when the workspace has KnowledgeFS.
+  return renderWithConsoleQuery(<DatasetApiKeys />, {
+    currentWorkspace: { id: 'workspace-1' },
+    knowledgeFsFeatures: { enabled: apiMocks.knowledgeFsEnabled },
+  })
 }
 
 describe('DatasetApiKeyDialogContent', () => {
