@@ -221,14 +221,36 @@ def test_concurrent_last_reference_deletes_produce_one_cleanup_claim(
     tenant_id = str(uuid4())
     dataset_id = str(uuid4())
     document_ids = (str(uuid4()), str(uuid4()))
+    created_by = str(uuid4())
     upload = make_upload_file(
         tenant_id=tenant_id,
         key=f"knowledge/{uuid4()}.txt",
-        created_by=str(uuid4()),
+        created_by=created_by,
     )
-    db_session_with_containers.add(upload)
+    db_session_with_containers.add_all(
+        [
+            make_dataset(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                created_by=created_by,
+            ),
+            upload,
+        ]
+    )
     db_session_with_containers.flush()
     candidate = UploadFileCleanup(id=upload.id, key=upload.key)
+    db_session_with_containers.add_all(
+        make_document(
+            document_id=document_id,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            data_source_type=DataSourceType.NOTION_IMPORT,
+            data_source_info="{}",
+            created_by=created_by,
+        )
+        for document_id in document_ids
+    )
+    db_session_with_containers.flush()
     for document_id in document_ids:
         replace_document_upload_file_references(
             db_session_with_containers,
@@ -252,6 +274,9 @@ def test_concurrent_last_reference_deletes_produce_one_cleanup_claim(
                 dataset_id=dataset_id,
                 document_ids=(document_id,),
             )
+            document = session.get_one(Document, document_id)
+            session.delete(document)
+            session.flush()
             return claim_orphan_upload_files(
                 session,
                 tenant_id=tenant_id,

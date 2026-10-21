@@ -151,9 +151,20 @@ def test_delete_document_waits_for_writer_and_snapshots_committed_children(
     dataset_id = dataset.id
     tenant_id = dataset.tenant_id
     created_by = document.created_by
+    original_source_id = original_source.id
     committed_source_snapshot = (committed_source.id, committed_source.key)
     image_snapshot = (image.id, image.key)
     attachment_snapshot = (attachment.id, attachment.key)
+    upload_ids = tuple(
+        sorted(
+            (
+                original_source_id,
+                committed_source_snapshot[0],
+                image_snapshot[0],
+                attachment_snapshot[0],
+            )
+        )
+    )
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
     writer_locked = Event()
     delete_lock_requested = Event()
@@ -167,11 +178,22 @@ def test_delete_document_waits_for_writer_and_snapshots_committed_children(
         _context: object,
         _executemany: bool,
     ) -> None:
-        if get_ident() == deleting_thread_id and "FROM documents" in statement and "FOR UPDATE" in statement:
+        if get_ident() == deleting_thread_id and "FROM datasets" in statement and "FOR UPDATE" in statement:
             delete_lock_requested.set()
 
     def write_segment() -> tuple[str, str]:
         with sessions.begin() as session:
+            session.scalars(
+                select(UploadFile.id)
+                .where(UploadFile.id.in_(upload_ids))
+                .order_by(UploadFile.id)
+                .with_for_update(of=UploadFile)
+            ).all()
+            session.scalar(
+                select(Dataset.id)
+                .where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id)
+                .with_for_update(of=Dataset)
+            )
             locked_document = session.scalar(
                 select(Document).where(Document.id == document_id).with_for_update(of=Document)
             )
