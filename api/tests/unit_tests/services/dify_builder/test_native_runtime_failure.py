@@ -1,6 +1,7 @@
 from dataclasses import replace
 
 import pytest
+import pytest_mock
 from pydantic import ValidationError
 
 from core.dify_builder.models import NodeOutput, Run, RunVerification
@@ -9,7 +10,7 @@ from services.dify_builder.application import handlers_build, handlers_edit, han
 from services.dify_builder.application.verification import result_card
 
 
-def summary(**changes):
+def summary() -> ExecutionEvidenceSummary:
     return ExecutionEvidenceSummary(
         request_id="request",
         policy_version="builder-confirmed-run-v1",
@@ -22,11 +23,10 @@ def summary(**changes):
         failure_reason="service_unavailable",
         failure_resource=("model", "langgenius/anthropic/anthropic", "claude-opus-4-8"),
         failure_node_ids=("llm",),
-        **changes,
     )
 
 
-def test_runtime_service_failure_card_retains_native_run_and_specific_node():
+def test_runtime_service_failure_card_retains_native_run_and_specific_node() -> None:
     from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
     run = Run(
@@ -52,7 +52,7 @@ def test_runtime_service_failure_card_retains_native_run_and_specific_node():
 
 
 @pytest.mark.parametrize("variant", ["unsealed", "unknown", "no_native"])
-def test_runtime_failure_cannot_claim_unknown_or_missing_native_evidence(variant):
+def test_runtime_failure_cannot_claim_unknown_or_missing_native_evidence(variant: str) -> None:
     value = {
         "sealed": variant != "unsealed",
         "safety_outcome": "execution_evidence_unknown" if variant == "unknown" else "native_failed",
@@ -73,7 +73,7 @@ def test_runtime_failure_cannot_claim_unknown_or_missing_native_evidence(variant
         )
 
 
-def test_runtime_attribution_uses_failed_native_resource_not_code_error_text():
+def test_runtime_attribution_uses_failed_native_resource_not_code_error_text() -> None:
     from services.dify_builder.native_runtime_failure import plugin_service_failure
 
     graph = {
@@ -101,7 +101,7 @@ def test_runtime_attribution_uses_failed_native_resource_not_code_error_text():
 
 
 @pytest.mark.parametrize("flow", ["build", "edit", "fix"])
-def test_known_plugin_outage_does_not_ask_llm_to_rewrite_graph(flow, mocker):
+def test_known_plugin_outage_does_not_ask_llm_to_rewrite_graph(flow: str, mocker: pytest_mock.MockerFixture) -> None:
     import importlib
 
     from core.dify_builder.models import Turn
@@ -139,7 +139,9 @@ def test_known_plugin_outage_does_not_ask_llm_to_rewrite_graph(flow, mocker):
         "fix": handlers_fix.handle_verify,
     }[flow]
     result = handler(env, Turn(actor=helpers._actor()), session, context)
+    assert result.context is not None
     assert not result.context.staged_repair
+    assert result.run is not None
     assert result.run.dify_run_id == "native"
     assert result.next not in {PcState.BUILD_REVIEW, PcState.EDIT_REVIEW}
     env.agent.diagnose.assert_not_called()

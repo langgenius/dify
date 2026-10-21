@@ -3,6 +3,86 @@
 Explicit queue/runtime counters prove orchestration, not native Graphon reconstruction.
 """
 
+from __future__ import annotations
+
+from collections.abc import Callable, Generator
+from multiprocessing.connection import Connection as ProcessConnection
+from typing import TYPE_CHECKING, Literal, Never, Unpack, cast, override
+
+from flask import Flask
+from pydantic import JsonValue
+from sqlalchemy import Engine
+from werkzeug.local import LocalProxy
+
+from models.workflow import Workflow
+from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit, EffectIntent, RecordedResult
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    NativeDeliveryMessage,
+    NativeRuntimeWitness,
+    require_instance,
+)
+
+if TYPE_CHECKING:
+    from multiprocessing.synchronize import Barrier
+
+    from sqlalchemy.orm import Session
+
+    from runtime_contracts.builder.native.contracts import NativeTestContextRef
+    from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, ResolvedNativeTestContext
+    from services.dify_builder.native_testing.lifecycle import NativePendingResolution
+
+
+from typing import TYPE_CHECKING, NotRequired
+
+from typing_extensions import TypedDict
+
+if TYPE_CHECKING:
+    import services.dify_builder.native_testing.repository as _forward_types_0
+    import services.dify_builder.native_testing.state_store as _forward_types_1
+
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy.orm.state import InstanceState
+
+from runtime_contracts.builder.native.contracts import (
+    CheckpointRef,
+    NativeTestContextRef,
+    ResumeReceipt,
+)
+from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session, sessionmaker
+
+    from core.dify_builder.models import Actor
+    from dify_app import DifyApp
+    from runtime_contracts.builder.native.contracts import (
+        OperationKey,
+    )
+    from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+    from services.dify_builder.native_testing.lifecycle import NativePendingResolution
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
+
+    pass
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
+    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session, sessionmaker
+
+    from models.dify_builder_native_tests import NativePendingAction
+    from runtime_contracts.builder.native.contracts import WaitingReceipt
+    from services.dify_builder.native_testing.lifecycle import NativePendingResolution, NativeTestLifecycleService
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
+    from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+    from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import LedgerCase
+
+
 import json
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
@@ -20,14 +100,14 @@ from sqlalchemy import inspect as inspect_orm
 from core.dify_builder.models import Actor
 from models.account import Tenant
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
-from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
-from runtime_contracts.builder.native.contracts import CheckpointRef, OperationKey
+from runtime_contracts.builder.native.contracts import OperationKey
 from runtime_contracts.builder.native.runtime_contracts import (
     NativeCheckpointPayload,
-    NativeWorkflowOutcome,
     ResolvedNativeTestContext,
 )
+from services.dify_builder.native_testing.state_store import ObjectReceipt
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_present
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
     _migration,
     raw_ledger_case,
@@ -47,7 +127,7 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_e
 
 
 @pytest.fixture(scope="module", autouse=True)
-def migrated_continuation_tables(flask_app_with_containers, migrated_native_tables):
+def migrated_continuation_tables(flask_app_with_containers: DifyApp, migrated_native_tables: None) -> None:
     from extensions.ext_database import db
 
     assert migrated_native_tables is None
@@ -63,12 +143,16 @@ def migrated_continuation_tables(flask_app_with_containers, migrated_native_tabl
 
 class ResolutionOwner:
     resolved = False
+    answer_ref: str | None = None
 
-    def resolve(self, *, session, owned, pending):
+    def resolve(
+        self, *, session: Session, owned: OwnedNativeTest, pending: NativePendingAction
+    ) -> NativePendingResolution:
         from services.dify_builder.native_testing.lifecycle import NativePendingResolution
 
         assert session.in_transaction()
         assert pending.tenant_id == owned.tenant_id
+        assert pending.category in ("configuration", "interaction")
         return NativePendingResolution(
             category=pending.category,
             invocation_id=pending.invocation_id,
@@ -82,22 +166,26 @@ class ResolutionOwner:
 
 
 @dataclass
-class ContinuationCase:
-    ledger: object
-    store: object
-    lifecycle: object
-    resolution: object
-    context: object
+class NodeInputCase:
+    ledger: LedgerCase
+    store: NativeExecutionStateStore
+    context: ResolvedNativeTestContext
 
     @property
-    def ref(self):
+    def ref(self) -> NativeTestContextRef:
         return self.ledger.ref
 
     @property
-    def factory(self):
+    def factory(self) -> sessionmaker[Session]:
         return self.ledger.factory
 
-    def checkpoint(self, generation=0):
+
+@dataclass
+class ContinuationCase(NodeInputCase):
+    lifecycle: NativeTestLifecycleService
+    resolution: ResolutionOwner
+
+    def checkpoint(self, generation: int = 0) -> CheckpointRef:
         return self.store.commit_checkpoint(
             ref=self.ref,
             generation=generation,
@@ -114,21 +202,22 @@ class ContinuationCase:
             ),
         )
 
-    def pause(self):
+    def pause(self) -> WaitingReceipt:
         pending = self.ledger.guard.before_call(ref=self.ref, intent=self.ledger.intent)
+        assert isinstance(pending, ApprovalWait)
         cp = self.checkpoint()
         return self.lifecycle.pause(
             ref=self.ref, checkpoint=cp, pending_operation_ids=(pending.pending_operation_id,), expected_generation=0
         )
 
-    def resume(self, key="resume-1", generation=0):
+    def resume(self, key: str = "resume-1", generation: int = 0) -> ResumeReceipt:
         return self.lifecycle.resume(
             actor=self.ledger.actor, request_id=self.ref.request_id, expected_generation=generation, idempotency_key=key
         )
 
 
 @pytest.fixture
-def continuation_case(native_owner, no_live):
+def continuation_case(native_owner: _fixture_types_0.NativeOwner, no_live: None) -> ContinuationCase:
     from extensions.ext_database import db
     from libs.key_providers import generate_key_pair
     from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
@@ -149,12 +238,17 @@ def continuation_case(native_owner, no_live):
     # The existing tenant key owner provisions real synthetic RSA/hybrid storage.
     public_key = generate_key_pair(ledger_case.actor.tenant_id)
     with ledger_case.factory.begin() as session:
-        session.get(Tenant, ledger_case.actor.tenant_id).encrypt_public_key = public_key
+        require_instance(session.get(Tenant, ledger_case.actor.tenant_id), Tenant).encrypt_public_key = public_key
         request = session.get(DifyBuilderExecutionRequest, ledger_case.ref.request_id)
-        app_id, workflow_id = request.app_id, request.workflow_id
-        graph = json.loads(session.get(Workflow, workflow_id).graph)
-        revision = request.context["execution_revision"]
-        session.get(DifyBuilderTestInput, request.test_input_id).inputs = {"boolean": True}
+        app_id, workflow_id = (
+            require_instance(request, DifyBuilderExecutionRequest).app_id,
+            require_instance(request, DifyBuilderExecutionRequest).workflow_id,
+        )
+        graph = json.loads(require_instance(session.get(Workflow, workflow_id), Workflow).graph)
+        revision = require_instance(request, DifyBuilderExecutionRequest).context["execution_revision"]
+        require_instance(
+            session.get(DifyBuilderTestInput, require_present(request).test_input_id), DifyBuilderTestInput
+        ).inputs = {"boolean": True}
     loader = OwnedNativeTestLoader(ledger_case.factory, actor=ledger_case.actor, resolver=ledger_case.metadata)
     store = NativeExecutionStateStore(loader)
     context = ResolvedNativeTestContext(
@@ -180,10 +274,12 @@ def continuation_case(native_owner, no_live):
     store.initialize_context(context=context)
     resolution = ResolutionOwner()
     lifecycle = NativeTestLifecycleService(loader, state_store=store, resolution=resolution)
-    return ContinuationCase(ledger_case, store, lifecycle, resolution, context)
+    return ContinuationCase(
+        ledger=ledger_case, store=store, context=context, lifecycle=lifecycle, resolution=resolution
+    )
 
 
-def test_checkpoint_real_encrypted_storage_roundtrip_and_snapshot(continuation_case):
+def test_checkpoint_real_encrypted_storage_roundtrip_and_snapshot(continuation_case: ContinuationCase) -> None:
     from extensions.ext_storage import storage
     from models.dify_builder_native_tests import NativeContinuation
 
@@ -193,14 +289,16 @@ def test_checkpoint_real_encrypted_storage_roundtrip_and_snapshot(continuation_c
     assert payload.generate_entity_json == '{"secret_history":"private-value"}'
     with c.factory() as session:
         row = session.scalar(select(NativeContinuation).where(NativeContinuation.checkpoint_id == cp.checkpoint_id))
-        storage_key = row.payload_ref
+        storage_key = require_instance(row, NativeContinuation).payload_ref
     encrypted = storage.load(storage_key)
     assert b"private-value" not in encrypted
     c.context.inputs["boolean"] = "true"
     assert c.store.load_context(ref=c.ref).inputs == {"boolean": True}
 
 
-def test_missing_checkpoint_ack_never_reports_resumable_waiting(continuation_case, monkeypatch):
+def test_missing_checkpoint_ack_never_reports_resumable_waiting(
+    continuation_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from extensions.ext_storage import storage
     from models.dify_builder_native_tests import NativeContinuation
 
@@ -212,18 +310,23 @@ def test_missing_checkpoint_ack_never_reports_resumable_waiting(continuation_cas
         assert (
             session.scalar(select(NativeContinuation).where(NativeContinuation.request_id == c.ref.request_id)) is None
         )
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "running"
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).state
+            == "running"
+        )
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_fake_checkpoint_and_cross_invocation_reference_rejected(continuation_case):
+def test_fake_checkpoint_and_cross_invocation_reference_rejected(continuation_case: ContinuationCase) -> None:
     c = continuation_case
     pending = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
     with pytest.raises(BuilderExecutionPolicyError):
         c.lifecycle.pause(
             ref=c.ref,
             checkpoint=CheckpointRef(checkpoint_id=str(uuid4()), payload_digest="a" * 64),
-            pending_operation_ids=(pending.pending_operation_id,),
+            pending_operation_ids=(require_instance(pending, ApprovalWait).pending_operation_id,),
             expected_generation=0,
         )
     cp = c.checkpoint()
@@ -231,21 +334,25 @@ def test_fake_checkpoint_and_cross_invocation_reference_rejected(continuation_ca
         c.store.read_checkpoint(ref=c.ref.model_copy(update={"invocation_id": "foreign"}), checkpoint=cp)
 
 
-def test_result_owner_digest_and_completed_effect_replay(continuation_case):
+def test_result_owner_digest_and_completed_effect_replay(continuation_case: ContinuationCase) -> None:
     c = continuation_case
     result_ref = c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"sent": True})
     c.ledger.confirm()
     permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
-    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+    c.ledger.guard.record_outcome(
+        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref=result_ref
+    )
     replay = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
-    assert c.store.load_result(ref=c.ref, result_ref=replay.result_ref) == {"sent": True}
+    assert c.store.load_result(ref=c.ref, result_ref=require_instance(replay, RecordedResult).result_ref) == {
+        "sent": True
+    }
     with pytest.raises(BuilderExecutionPolicyError):
         c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"sent": "true"})
     assert c.ledger.dispatched_attempt_count() == 1
 
 
 @pytest.fixture
-def node_input_case(native_owner, no_live):
+def node_input_case(native_owner: _fixture_types_0.NativeOwner, no_live: None) -> NodeInputCase:
     """Dedicated synthetic admitted Run correlation; no actual native ID provenance claim."""
     ledger_case = raw_ledger_case(native_owner, no_live)
     from extensions.ext_database import db
@@ -263,28 +370,37 @@ def node_input_case(native_owner, no_live):
     run_id = str(uuid4())
     inputs = {"boolean": True}
     with ledger_case.factory.begin() as session:
-        session.get(Tenant, ledger_case.actor.tenant_id).encrypt_public_key = public_key
+        require_instance(session.get(Tenant, ledger_case.actor.tenant_id), Tenant).encrypt_public_key = public_key
         request = session.get(DifyBuilderExecutionRequest, ledger_case.ref.request_id)
-        request.context = {
-            **request.context,
-            "request_id": request.id,
+        require_instance(request, DifyBuilderExecutionRequest).context = {
+            **require_instance(request, DifyBuilderExecutionRequest).context,
+            "request_id": require_instance(request, DifyBuilderExecutionRequest).id,
             "invocation_id": ledger_case.ref.invocation_id,
             "native_run_id": run_id,
             "mode": "native",
-            "tenant_id": request.tenant_id,
-            "actor_id": request.actor_id,
-            "app_id": request.app_id,
-            "workflow_id": request.workflow_id,
-            "session_id": request.session_id,
-            "test_input_id": request.test_input_id,
+            "tenant_id": require_instance(request, DifyBuilderExecutionRequest).tenant_id,
+            "actor_id": require_instance(request, DifyBuilderExecutionRequest).actor_id,
+            "app_id": require_instance(request, DifyBuilderExecutionRequest).app_id,
+            "workflow_id": require_instance(request, DifyBuilderExecutionRequest).workflow_id,
+            "session_id": require_instance(request, DifyBuilderExecutionRequest).session_id,
+            "test_input_id": require_instance(request, DifyBuilderExecutionRequest).test_input_id,
             "input_revision": canonical_digest(inputs),
         }
-        request.context_digest = canonical_digest(request.context)
-        ref = ledger_case.ref.model_copy(update={"context_digest": request.context_digest})
-        app_id, workflow_id = request.app_id, request.workflow_id
-        graph = json.loads(session.get(Workflow, workflow_id).graph)
-        revision = request.context["execution_revision"]
-        session.get(DifyBuilderTestInput, request.test_input_id).inputs = inputs
+        require_instance(request, DifyBuilderExecutionRequest).context_digest = canonical_digest(
+            require_instance(request, DifyBuilderExecutionRequest).context
+        )
+        ref = ledger_case.ref.model_copy(
+            update={"context_digest": require_instance(request, DifyBuilderExecutionRequest).context_digest}
+        )
+        app_id, workflow_id = (
+            require_instance(request, DifyBuilderExecutionRequest).app_id,
+            require_instance(request, DifyBuilderExecutionRequest).workflow_id,
+        )
+        graph = json.loads(require_instance(session.get(Workflow, workflow_id), Workflow).graph)
+        revision = require_instance(request, DifyBuilderExecutionRequest).context["execution_revision"]
+        require_instance(
+            session.get(DifyBuilderTestInput, require_present(request).test_input_id), DifyBuilderTestInput
+        ).inputs = inputs
     ledger_case.ref = ref
     store = NativeExecutionStateStore(
         OwnedNativeTestLoader(ledger_case.factory, actor=ledger_case.actor, resolver=ledger_case.metadata)
@@ -310,11 +426,13 @@ def node_input_case(native_owner, no_live):
         execution_mode="native",
     )
     store.initialize_context(context=context)
-    return ContinuationCase(ledger_case, store, None, None, context)
+    return NodeInputCase(ledger=ledger_case, store=store, context=context)
 
 
 @pytest.mark.parametrize(("inputs", "changed"), [(True, "true"), ([1, None], "[1,null]"), (None, "null")])
-def test_node_inputs_real_storage_idempotence_conflict_and_cursor_zero_result(node_input_case, inputs, changed):
+def test_node_inputs_real_storage_idempotence_conflict_and_cursor_zero_result(
+    node_input_case: NodeInputCase, inputs: JsonValue, changed: str
+) -> None:
     from models.dify_builder_native_tests import NativePayloadObject
     from runtime_contracts.builder.native.contracts import operation_digest
 
@@ -329,20 +447,32 @@ def test_node_inputs_real_storage_idempotence_conflict_and_cursor_zero_result(no
     c.ledger.confirm()
     permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
     result_ref = c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"completed": True})
-    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+    c.ledger.guard.record_outcome(
+        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref=result_ref
+    )
     with c.factory() as session:
         input_row = session.get(NativePayloadObject, input_ref)
         result_row = session.get(NativePayloadObject, result_ref)
-        assert (input_row.kind, input_row.logical_key) == ("result", "node-input:" + native_id)
-        assert result_row.logical_key == operation_digest(c.ledger.intent.key)
-        assert input_row.id != result_row.id
+        assert (
+            require_instance(input_row, NativePayloadObject).kind,
+            require_instance(input_row, NativePayloadObject).logical_key,
+        ) == (
+            "result",
+            "node-input:" + native_id,
+        )
+        assert require_instance(result_row, NativePayloadObject).logical_key == operation_digest(c.ledger.intent.key)
+        assert (
+            require_instance(input_row, NativePayloadObject).id != require_instance(result_row, NativePayloadObject).id
+        )
     assert c.store.load_result(ref=c.ref, result_ref=result_ref) == {"completed": True}
     assert c.ledger.dispatched_attempt_count() == 1
 
 
 @pytest.mark.parametrize("phase", ["before-save", "after-readback", "before-ack"])
 @pytest.mark.parametrize("change", ["generation", "cancelled", "inactive", "owner", "graph"])
-def test_node_inputs_real_sql_authority_drift_never_acknowledges(node_input_case, monkeypatch, phase, change):
+def test_node_inputs_real_sql_authority_drift_never_acknowledges(
+    node_input_case: NodeInputCase, monkeypatch: pytest.MonkeyPatch, phase: str, change: str
+) -> None:
     from contextlib import contextmanager
 
     from extensions.ext_storage import storage
@@ -356,31 +486,42 @@ def test_node_inputs_real_sql_authority_drift_never_acknowledges(node_input_case
     c = node_input_case
     native_id = str(uuid4())
 
-    def drift():
+    def drift() -> None:
         with c.factory.begin() as session:
             if change == "generation":
-                session.scalar(
-                    select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
+                require_instance(
+                    session.scalar(
+                        select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
+                    ),
+                    NativeInvocationState,
                 ).generation += 1
             elif change == "cancelled":
-                session.scalar(
-                    select(NativeTestScope).where(NativeTestScope.request_id == c.ref.request_id)
+                require_instance(
+                    session.scalar(select(NativeTestScope).where(NativeTestScope.request_id == c.ref.request_id)),
+                    NativeTestScope,
                 ).cancelled = True
             elif change == "inactive":
-                session.scalar(
-                    select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.ref.request_id)
+                require_instance(
+                    session.scalar(
+                        select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.ref.request_id)
+                    ),
+                    NativeTestInvocation,
                 ).active = False
             elif change == "owner":
-                session.get(DifyBuilderExecutionRequest, c.ref.request_id).actor_id = str(uuid4())
+                require_instance(
+                    session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+                ).actor_id = str(uuid4())
             elif change == "graph":
-                session.get(Workflow, c.context.workflow_id).graph = '{"nodes":[],"edges":[]}'
+                require_instance(
+                    session.get(Workflow, c.context.workflow_id), Workflow
+                ).graph = '{"nodes":[],"edges":[]}'
 
     if phase == "before-save":
         drift()
     elif phase == "after-readback":
         original_prepare = c.store.prepare_object
 
-        def prepare_then_drift(**kwargs):
+        def prepare_then_drift(**kwargs: Unpack[_ForwardArguments487]) -> ObjectReceipt:
             receipt = original_prepare(**kwargs)
             drift()
             return receipt
@@ -390,7 +531,11 @@ def test_node_inputs_real_sql_authority_drift_never_acknowledges(node_input_case
         original_lock = c.store.loader.locked
 
         @contextmanager
-        def drift_before_lock(**kwargs):
+        def drift_before_lock(
+            **kwargs: Unpack[_ForwardArguments497],
+        ) -> _forward_types_0.Generator[
+            tuple[_forward_types_0.Session, _forward_types_0.OwnedNativeTest, _forward_types_0.NativeTestScope]
+        ]:
             drift()
             with original_lock(**kwargs) as locked:
                 yield locked
@@ -399,9 +544,9 @@ def test_node_inputs_real_sql_authority_drift_never_acknowledges(node_input_case
     saved = []
     original_save = storage.save
 
-    def counted_save(*args, **kwargs):
-        saved.append(args[0])
-        return original_save(*args, **kwargs)
+    def counted_save(filename: str, data: bytes) -> None:
+        saved.append(filename)
+        return original_save(filename, data)
 
     monkeypatch.setattr(storage, "save", counted_save)
     with pytest.raises(BuilderExecutionPolicyError):
@@ -424,7 +569,9 @@ def test_node_inputs_real_sql_authority_drift_never_acknowledges(node_input_case
 
 
 @pytest.mark.parametrize("phase", ["before-save", "after-readback", "before-ack"])
-def test_node_inputs_running_child_survives_unrelated_real_resume(node_input_case, monkeypatch, phase):
+def test_node_inputs_running_child_survives_unrelated_real_resume(
+    node_input_case: NodeInputCase, monkeypatch: pytest.MonkeyPatch, phase: str
+) -> None:
     """Root ruling: a running branch retains its local generation on another resume."""
     from contextlib import contextmanager
 
@@ -432,10 +579,24 @@ def test_node_inputs_running_child_survives_unrelated_real_resume(node_input_cas
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
     from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 
-    c = node_input_case
+    c = ContinuationCase(
+        ledger=node_input_case.ledger,
+        store=node_input_case.store,
+        context=node_input_case.context,
+        lifecycle=NativeTestLifecycleService(node_input_case.store.loader, state_store=node_input_case.store),
+        resolution=ResolutionOwner(),
+    )
 
     class ChildOwner:
-        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+        def resolve_child(
+            self,
+            *,
+            parent: ResolvedNativeTestContext,
+            ref: NativeTestContextRef,
+            child_app_id: str,
+            child_workflow_revision: str,
+            inputs: dict[str, JsonValue],
+        ) -> ResolvedNativeTestContext:
             assert child_app_id == parent.app_id
             assert child_workflow_revision == parent.graph_revision
             return parent.model_copy(
@@ -449,7 +610,7 @@ def test_node_inputs_running_child_survives_unrelated_real_resume(node_input_cas
                 }
             )
 
-    initial_inputs = {"initial": True}
+    initial_inputs: dict[str, JsonValue] = {"initial": True}
     initial_ref = c.store.store_node_inputs(
         ref=c.ref, generation=0, native_execution_id=str(uuid4()), inputs=initial_inputs
     )
@@ -461,14 +622,13 @@ def test_node_inputs_running_child_survives_unrelated_real_resume(node_input_cas
         input_digest=canonical_digest(initial_inputs),
         input_result_ref=initial_ref,
     )
-    c.lifecycle = NativeTestLifecycleService(c.store.loader, state_store=c.store)
     pending = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
     checkpoint = c.store.commit_checkpoint(
         ref=c.ref,
         generation=0,
         payload=NativeCheckpointPayload(
             schema_version="1",
-            native_run_id=c.context.native_run_id,
+            native_run_id=require_instance(c.context.native_run_id, str),
             generation=0,
             generate_entity_json="{}",
             graph_runtime_state_json="{}",
@@ -479,12 +639,15 @@ def test_node_inputs_running_child_survives_unrelated_real_resume(node_input_cas
         ),
     )
     c.lifecycle.pause(
-        ref=c.ref, checkpoint=checkpoint, pending_operation_ids=(pending.pending_operation_id,), expected_generation=0
+        ref=c.ref,
+        checkpoint=checkpoint,
+        pending_operation_ids=(require_instance(pending, ApprovalWait).pending_operation_id,),
+        expected_generation=0,
     )
     c.ledger.confirm()
     resumed = False
 
-    def resume_other_branch():
+    def resume_other_branch() -> None:
         nonlocal resumed
         if resumed:
             return
@@ -497,7 +660,7 @@ def test_node_inputs_running_child_survives_unrelated_real_resume(node_input_cas
     elif phase == "after-readback":
         original_prepare = c.store.prepare_object
 
-        def prepare_then_resume(**kwargs):
+        def prepare_then_resume(**kwargs: Unpack[_ForwardArguments619]) -> ObjectReceipt:
             receipt = original_prepare(**kwargs)
             resume_other_branch()
             return receipt
@@ -507,7 +670,11 @@ def test_node_inputs_running_child_survives_unrelated_real_resume(node_input_cas
         original_lock = c.store.loader.locked
 
         @contextmanager
-        def resume_before_lock(**kwargs):
+        def resume_before_lock(
+            **kwargs: Unpack[_ForwardArguments629],
+        ) -> _forward_types_0.Generator[
+            tuple[_forward_types_0.Session, _forward_types_0.OwnedNativeTest, _forward_types_0.NativeTestScope]
+        ]:
             resume_other_branch()
             with original_lock(**kwargs) as locked:
                 yield locked
@@ -537,19 +704,24 @@ def test_node_inputs_running_child_survives_unrelated_real_resume(node_input_cas
                 NativeInvocationState.invocation_id == child.invocation_id,
             )
         )
-        assert (state.generation, state.state) == (0, "running")
+        assert (
+            require_instance(state, NativeInvocationState).generation,
+            require_instance(state, NativeInvocationState).state,
+        ) == (0, "running")
     assert c.store.load_context(ref=child).generation == 0
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_node_inputs_real_sql_ack_rollback_returns_no_reference(node_input_case, monkeypatch):
+def test_node_inputs_real_sql_ack_rollback_returns_no_reference(
+    node_input_case: NodeInputCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from models.dify_builder_native_tests import NativePayloadObject
 
     c = node_input_case
     native_id = str(uuid4())
     original_ack = c.store.acknowledge_object
 
-    def acknowledge_then_fail(session, receipt):
+    def acknowledge_then_fail(session: Session, receipt: ObjectReceipt) -> Never:
         original_ack(session, receipt)
         raise RuntimeError("private-input-canary")
 
@@ -572,7 +744,9 @@ def test_node_inputs_real_sql_ack_rollback_returns_no_reference(node_input_case,
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_node_inputs_storage_and_key_io_are_outside_root_write_transaction(node_input_case, monkeypatch):
+def test_node_inputs_storage_and_key_io_are_outside_root_write_transaction(
+    node_input_case: NodeInputCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from contextlib import contextmanager
 
     from core.helper import encrypter
@@ -583,7 +757,11 @@ def test_node_inputs_storage_and_key_io_are_outside_root_write_transaction(node_
     original_lock = c.store.loader.locked
 
     @contextmanager
-    def tracked_lock(**kwargs):
+    def tracked_lock(
+        **kwargs: Unpack[_ForwardArguments712],
+    ) -> _forward_types_0.Generator[
+        tuple[_forward_types_0.Session, _forward_types_0.OwnedNativeTest, _forward_types_0.NativeTestScope]
+    ]:
         nonlocal writing
         with original_lock(**kwargs) as locked:
             writing = True
@@ -593,25 +771,25 @@ def test_node_inputs_storage_and_key_io_are_outside_root_write_transaction(node_
                 writing = False
 
     monkeypatch.setattr(c.store.loader, "locked", tracked_lock)
-    for target, name, original in (
-        (storage, "save", storage.save),
-        (storage, "load", storage.load),
-        (encrypter, "encrypt_token", encrypter.encrypt_token),
-        (encrypter, "decrypt_token", encrypter.decrypt_token),
-    ):
 
-        def outside_write_transaction(*args, _original=original, **kwargs):
+    def outside_write_transaction[**P, R](original: Callable[P, R]) -> Callable[P, R]:
+        def checked(*args: P.args, **kwargs: P.kwargs) -> R:
             assert not writing
-            return _original(*args, **kwargs)
+            return original(*args, **kwargs)
 
-        monkeypatch.setattr(target, name, outside_write_transaction)
+        return checked
+
+    monkeypatch.setattr(storage, "save", outside_write_transaction(storage.save))
+    monkeypatch.setattr(storage, "load", outside_write_transaction(storage.load))
+    monkeypatch.setattr(encrypter, "encrypt_token", outside_write_transaction(encrypter.encrypt_token))
+    monkeypatch.setattr(encrypter, "decrypt_token", outside_write_transaction(encrypter.decrypt_token))
     input_ref = c.store.store_node_inputs(
         ref=c.ref, generation=0, native_execution_id=str(uuid4()), inputs={"typed": [True, None]}
     )
     assert c.store.load_result(ref=c.ref, result_ref=input_ref) == {"typed": [True, None]}
 
 
-def test_resume_double_submit_same_generation_and_single_worker_claim(continuation_case):
+def test_resume_double_submit_same_generation_and_single_worker_claim(continuation_case: ContinuationCase) -> None:
     c = continuation_case
     c.pause()
     c.ledger.confirm()
@@ -623,19 +801,23 @@ def test_resume_double_submit_same_generation_and_single_worker_claim(continuati
     assert not c.lifecycle.claim_dispatch(ref=c.ref, generation=first.generation, dispatch_id=first.dispatch_id)
 
 
-def test_enqueue_ack_loss_republishes_same_dispatch(continuation_case):
+def test_enqueue_ack_loss_republishes_same_dispatch(continuation_case: ContinuationCase) -> None:
     c = continuation_case
     c.pause()
     c.ledger.confirm()
     receipt = c.resume()
     deliveries = []
 
-    def lose_ack(**payload):
+    def lose_ack(**payload: Unpack[NativeDeliveryMessage]) -> Never:
         deliveries.append(payload)
         raise OSError("queue ack lost")
 
     assert c.lifecycle.publish_pending(publish=lose_ack) == 0
-    assert c.lifecycle.publish_pending(publish=lambda **payload: deliveries.append(payload)) == 1
+
+    def record_delivery(**payload: Unpack[NativeDeliveryMessage]) -> None:
+        deliveries.append(payload)
+
+    assert c.lifecycle.publish_pending(publish=record_delivery) == 1
     assert len(deliveries) == 2
     assert deliveries[0] == deliveries[1]
     assert deliveries[0]["generation"] == receipt.generation
@@ -643,7 +825,7 @@ def test_enqueue_ack_loss_republishes_same_dispatch(continuation_case):
     assert not c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
 
 
-def test_crash_after_worker_claim_is_unknown_never_new_effect(continuation_case):
+def test_crash_after_worker_claim_is_unknown_never_new_effect(continuation_case: ContinuationCase) -> None:
     from models.dify_builder_native_tests import NativeDispatch
 
     c = continuation_case
@@ -652,16 +834,18 @@ def test_crash_after_worker_claim_is_unknown_never_new_effect(continuation_case)
     receipt = c.resume()
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
     with c.factory.begin() as session:
-        session.get(NativeDispatch, receipt.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        require_instance(session.get(NativeDispatch, receipt.dispatch_id), NativeDispatch).claim_expires_at = (
+            datetime.now(UTC) - timedelta(seconds=1)
+        )
     c.lifecycle.reconcile()
     assert not c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
     with c.factory() as session:
-        assert session.get(NativeDispatch, receipt.dispatch_id).state == "unknown"
+        assert require_instance(session.get(NativeDispatch, receipt.dispatch_id), NativeDispatch).state == "unknown"
     assert c.ledger.dispatched_attempt_count() == 0
 
 
 @pytest.mark.parametrize("reason", ["configuration", "interaction"])
-def test_pending_resolution_requires_actual_owner_completion(continuation_case, reason):
+def test_pending_resolution_requires_actual_owner_completion(continuation_case: ContinuationCase, reason: str) -> None:
     from services.dify_builder.native_testing.pending_actions import NativePendingActionService
 
     c = continuation_case
@@ -692,22 +876,24 @@ def test_pending_resolution_requires_actual_owner_completion(continuation_case, 
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_cancellation_stops_tree_and_projects_claimed_unknown(continuation_case):
+def test_cancellation_stops_tree_and_projects_claimed_unknown(continuation_case: ContinuationCase) -> None:
     c = continuation_case
     c.ledger.confirm()
     permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
     receipt = c.lifecycle.cancel(actor=c.ledger.actor, request_id=c.ref.request_id, idempotency_key="cancel-1")
     assert receipt.status == "unknown"
-    assert receipt.operation_states[permit.operation_id] == "unknown"
+    assert receipt.operation_states[require_instance(permit, DispatchPermit).operation_id] == "unknown"
     with pytest.raises(BuilderExecutionPolicyError):
         c.store.load_context(ref=c.ref)
     # Already-spent effects retain their C02 settlement path after cancellation.
     late_ref = c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"accepted": True})
-    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=late_ref)
+    c.ledger.guard.record_outcome(
+        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref=late_ref
+    )
     assert c.ledger.dispatched_attempt_count() == 1
 
 
-def test_expiry_and_foreign_actor_fail_resume(continuation_case):
+def test_expiry_and_foreign_actor_fail_resume(continuation_case: ContinuationCase) -> None:
     from models.dify_builder_native_tests import NativeTestScope
 
     c = continuation_case
@@ -721,12 +907,14 @@ def test_expiry_and_foreign_actor_fail_resume(continuation_case):
             idempotency_key="foreign",
         )
     with c.factory.begin() as session:
-        session.get(NativeTestScope, c.ref.request_id).expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).expires_at = datetime.now(
+            UTC
+        ) - timedelta(seconds=1)
     with pytest.raises(BuilderExecutionPolicyError, match="native_expired"):
         c.resume()
 
 
-def test_production_dispatch_without_native_collaborator_fails_closed(continuation_case):
+def test_production_dispatch_without_native_collaborator_fails_closed(continuation_case: ContinuationCase) -> None:
     c = continuation_case
     c.pause()
     c.ledger.confirm()
@@ -736,14 +924,22 @@ def test_production_dispatch_without_native_collaborator_fails_closed(continuati
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_child_input_owner_and_unique_identity_and_completion_wakeup(continuation_case):
+def test_child_input_owner_and_unique_identity_and_completion_wakeup(continuation_case: ContinuationCase) -> None:
     from models.dify_builder_native_tests import NativeDispatch
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
 
     c = continuation_case
 
     class ChildOwner:
-        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+        def resolve_child(
+            self,
+            *,
+            parent: ResolvedNativeTestContext,
+            ref: NativeTestContextRef,
+            child_app_id: str,
+            child_workflow_revision: str,
+            inputs: dict[str, JsonValue],
+        ) -> ResolvedNativeTestContext:
             assert child_app_id == parent.app_id
             assert child_workflow_revision == parent.graph_revision
             return parent.model_copy(
@@ -762,7 +958,7 @@ def test_child_input_owner_and_unique_identity_and_completion_wakeup(continuatio
     child_service = NativeChildInvocationService(c.store, resolver=ChildOwner())
     key = OperationKey(invocation_id=c.ref.invocation_id, occurrence_path=("child",), cursor=0)
     input_ref = c.store.store_result(ref=c.ref, key=key, result={"nested": True})
-    args = {
+    args: ChildArguments = {
         "parent_ref": c.ref,
         "key": key,
         "child_app_id": c.context.app_id,
@@ -770,8 +966,10 @@ def test_child_input_owner_and_unique_identity_and_completion_wakeup(continuatio
         "input_digest": canonical_digest({"nested": True}),
         "input_result_ref": input_ref,
     }
+    invalid_args = args.copy()
+    invalid_args["input_digest"] = "f" * 64
     with pytest.raises(BuilderExecutionPolicyError):
-        child_service.get_or_create(**{**args, "input_digest": "f" * 64})
+        child_service.get_or_create(**invalid_args)
     child = child_service.get_or_create(**args)
     assert child_service.get_or_create(**args) == child
     assert c.store.load_context(ref=child).parent_invocation_id == c.ref.invocation_id
@@ -800,11 +998,13 @@ def test_child_input_owner_and_unique_identity_and_completion_wakeup(continuatio
         assert len(rows) == 1
         assert rows[0].invocation_id == c.ref.invocation_id
     replayed = child_service.get_outcome(child_ref=child)
-    assert replayed.output_result_ref == result_ref
-    assert c.store.load_result(ref=child, result_ref=replayed.output_result_ref) == {"ok": True}
+    assert require_present(replayed).output_result_ref == result_ref
+    assert c.store.load_result(
+        ref=child, result_ref=require_instance(require_present(replayed).output_result_ref, str)
+    ) == {"ok": True}
 
 
-def test_revision_drift_fix_does_not_mutate_old_run(continuation_case):
+def test_revision_drift_fix_does_not_mutate_old_run(continuation_case: ContinuationCase) -> None:
     from models.dify_builder_native_tests import NativeInvocationState, NativePayloadObject
 
     c = continuation_case
@@ -813,23 +1013,23 @@ def test_revision_drift_fix_does_not_mutate_old_run(continuation_case):
         before = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
-        context_id = before.context_object_id
+        context_id = require_instance(before, NativeInvocationState).context_object_id
     with c.factory.begin() as session:
-        session.get(Workflow, c.context.workflow_id).graph += " "
+        require_instance(session.get(Workflow, c.context.workflow_id), Workflow).graph += " "
     with pytest.raises(BuilderExecutionPolicyError, match="native_revision_drift"):
         c.resume()
     with c.factory() as session:
         state = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
-        assert state.context_object_id == context_id
-        assert state.checkpoint_id == cp.checkpoint_id
-        assert state.generation == 0
+        assert require_instance(state, NativeInvocationState).context_object_id == context_id
+        assert require_instance(state, NativeInvocationState).checkpoint_id == cp.checkpoint_id
+        assert require_instance(state, NativeInvocationState).generation == 0
         assert session.get(NativePayloadObject, context_id) is not None
 
 
-def test_actual_membership_revocation_stops_resume(continuation_case):
-    from models.account import TenantAccountJoin
+def test_actual_membership_revocation_stops_resume(continuation_case: ContinuationCase) -> None:
+    from models.account import TenantAccountJoin, TenantAccountRole
 
     c = continuation_case
     c.pause()
@@ -841,13 +1041,15 @@ def test_actual_membership_revocation_stops_resume(continuation_case):
                 TenantAccountJoin.account_id == c.ledger.actor.account_id,
             )
         )
-        membership.role = "normal"
+        require_instance(membership, TenantAccountJoin).role = TenantAccountRole.NORMAL
     with pytest.raises(BuilderExecutionPolicyError):
         c.resume()
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def _resume_process(url, actor, ref, barrier, pipe):
+def _resume_process(
+    url: str, actor: Actor, ref: NativeTestContextRef, barrier: Barrier, pipe: ProcessConnection
+) -> None:
     # Spawn initializes every owner independently; no inherited Flask contexts,
     # threaded OpenDAL runtime, SQL pool, Redis sockets or crypto provider cache.
     try:
@@ -888,14 +1090,14 @@ def _resume_process(url, actor, ref, barrier, pipe):
         pipe.close()
 
 
-def test_real_process_resume_and_worker_claim_race(continuation_case):
+def test_real_process_resume_and_worker_claim_race(continuation_case: ContinuationCase) -> None:
     c = continuation_case
     c.pause()
     c.ledger.confirm()
     ctx = multiprocessing.get_context("spawn")
     barrier = ctx.Barrier(2)
     pairs = [ctx.Pipe(duplex=False) for _ in range(2)]
-    url = c.factory.kw["bind"].url.render_as_string(hide_password=False)
+    url = require_instance(c.factory.kw["bind"], Engine).url.render_as_string(hide_password=False)
     processes = [
         ctx.Process(target=_resume_process, args=(url, c.ledger.actor, c.ref, barrier, pair[1])) for pair in pairs
     ]
@@ -921,7 +1123,7 @@ def test_real_process_resume_and_worker_claim_race(continuation_case):
                 pipe.close()
 
 
-def test_checkpoint_sql_commit_failure_never_acknowledges_wait(continuation_case):
+def test_checkpoint_sql_commit_failure_never_acknowledges_wait(continuation_case: ContinuationCase) -> None:
     from sqlalchemy import event
     from sqlalchemy.orm import Session
 
@@ -929,7 +1131,7 @@ def test_checkpoint_sql_commit_failure_never_acknowledges_wait(continuation_case
 
     c = continuation_case
 
-    def fail_flush(session, _flush_context):
+    def fail_flush(session: Session, _flush_context) -> None:
         if any(isinstance(row, NativeContinuation) for row in session.new):
             raise RuntimeError("commit interrupted")
 
@@ -943,10 +1145,17 @@ def test_checkpoint_sql_commit_failure_never_acknowledges_wait(continuation_case
         assert (
             session.scalar(select(NativeContinuation).where(NativeContinuation.request_id == c.ref.request_id)) is None
         )
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "running"
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).state
+            == "running"
+        )
 
 
-def test_checkpoint_readback_corruption_never_acknowledges_wait(continuation_case, monkeypatch):
+def test_checkpoint_readback_corruption_never_acknowledges_wait(
+    continuation_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from extensions.ext_storage import storage
     from models.dify_builder_native_tests import NativeContinuation
 
@@ -954,12 +1163,12 @@ def test_checkpoint_readback_corruption_never_acknowledges_wait(continuation_cas
     original, original_save = storage.load, storage.save
     newly_saved = set()
 
-    def save(key, data):
+    def save(key: str, data: bytes) -> None:
         original_save(key, data)
         newly_saved.add(key)
 
-    def corrupt(key, *args, **kwargs):
-        return b"invalid encrypted payload" if key in newly_saved else original(key, *args, **kwargs)
+    def corrupt(key: str, *, stream: bool = False) -> bytes | Generator[bytes]:
+        return b"invalid encrypted payload" if key in newly_saved else original(key, stream=stream)
 
     monkeypatch.setattr(storage, "save", save)
     monkeypatch.setattr(storage, "load", corrupt)
@@ -971,7 +1180,7 @@ def test_checkpoint_readback_corruption_never_acknowledges_wait(continuation_cas
         )
 
 
-def test_claim_recovery_requires_native_fencing_proof(continuation_case):
+def test_claim_recovery_requires_native_fencing_proof(continuation_case: ContinuationCase) -> None:
     from models.dify_builder_native_tests import NativeDispatch
 
     c = continuation_case
@@ -980,13 +1189,16 @@ def test_claim_recovery_requires_native_fencing_proof(continuation_case):
     receipt = c.resume()
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
     with c.factory.begin() as session:
-        session.get(NativeDispatch, receipt.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        require_instance(session.get(NativeDispatch, receipt.dispatch_id), NativeDispatch).claim_expires_at = (
+            datetime.now(UTC) - timedelta(seconds=1)
+        )
     c.lifecycle.reconcile()
 
-    class RuntimeOwner:
-        proof = "unknown"
+    class RuntimeOwner(NativeRuntimeWitness):
+        proof: Literal["not_started", "stopped", "unknown"] = "unknown"
 
-        def recovery_evidence(self, **_kwargs):
+        @override
+        def recovery_evidence(self, **_kwargs: object) -> Literal["not_started", "stopped", "unknown"]:
             return self.proof
 
     owner = RuntimeOwner()
@@ -999,13 +1211,23 @@ def test_claim_recovery_requires_native_fencing_proof(continuation_case):
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def _form_waiting_child_and_parent(c):
+def _form_waiting_child_and_parent(
+    c: ContinuationCase,
+) -> tuple[NativeChildInvocationService, NativeTestContextRef, ApprovalWait, CheckpointRef, CheckpointRef]:
     from models.dify_builder_native_tests import NativeDispatch
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
     from services.dify_builder.native_testing.pending_actions import NativePendingActionService
 
     class ChildOwner:
-        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+        def resolve_child(
+            self,
+            *,
+            parent: ResolvedNativeTestContext,
+            ref: NativeTestContextRef,
+            child_app_id: str,
+            child_workflow_revision: str,
+            inputs: dict[str, JsonValue],
+        ) -> ResolvedNativeTestContext:
             assert child_app_id == parent.app_id
             assert child_workflow_revision == parent.graph_revision
             return parent.model_copy(
@@ -1076,7 +1298,7 @@ def _form_waiting_child_and_parent(c):
     return service, child, pending, child_checkpoint, parent_checkpoint
 
 
-def test_child_wait_requires_committed_child_and_parent_checkpoints(continuation_case):
+def test_child_wait_requires_committed_child_and_parent_checkpoints(continuation_case: ContinuationCase) -> None:
     from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
     from services.dify_builder.native_testing.transitions import dispatch_readiness
 
@@ -1094,22 +1316,26 @@ def test_child_wait_requires_committed_child_and_parent_checkpoints(continuation
     resumed = c.resume()
     with c.factory() as session:
         dispatch = session.scalar(select(NativeDispatch).where(NativeDispatch.request_id == c.ref.request_id))
-        assert dispatch.invocation_id == c.ref.invocation_id
+        assert require_instance(dispatch, NativeDispatch).invocation_id == c.ref.invocation_id
         state = session.scalar(
             select(NativeInvocationState).where(
                 NativeInvocationState.request_id == c.ref.request_id,
                 NativeInvocationState.invocation_id == c.ref.invocation_id,
             )
         )
-        assert state.checkpoint_id == parent_checkpoint.checkpoint_id
-        assert state.state == "queued"
+        assert require_instance(state, NativeInvocationState).checkpoint_id == parent_checkpoint.checkpoint_id
+        assert require_instance(state, NativeInvocationState).state == "queued"
         child_state = session.scalar(
             select(NativeInvocationState).where(
                 NativeInvocationState.request_id == child.request_id,
                 NativeInvocationState.invocation_id == child.invocation_id,
             )
         )
-        assert (child_state.state, child_state.generation, child_state.checkpoint_id) == (
+        assert (
+            require_instance(child_state, NativeInvocationState).state,
+            require_instance(child_state, NativeInvocationState).generation,
+            require_instance(child_state, NativeInvocationState).checkpoint_id,
+        ) == (
             "queued",
             resumed.generation,
             child_checkpoint.checkpoint_id,
@@ -1154,7 +1380,9 @@ def test_child_wait_requires_committed_child_and_parent_checkpoints(continuation
         assert dispatch_readiness(session, ref=c.ref, tenant_id=c.ledger.actor.tenant_id, now=datetime.now(UTC)) is None
 
 
-def test_terminal_child_with_unresolved_form_commits_without_parent_dispatch(continuation_case):
+def test_terminal_child_with_unresolved_form_commits_without_parent_dispatch(
+    continuation_case: ContinuationCase,
+) -> None:
     from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestInvocation
 
     c = continuation_case
@@ -1208,7 +1436,7 @@ def test_terminal_child_with_unresolved_form_commits_without_parent_dispatch(con
         assert session.scalar(select(NativeDispatch).where(NativeDispatch.request_id == c.ref.request_id)) is None
 
 
-def test_cancellation_of_unclaimed_dispatch_never_launches(continuation_case):
+def test_cancellation_of_unclaimed_dispatch_never_launches(continuation_case: ContinuationCase) -> None:
     c = continuation_case
     c.pause()
     c.ledger.confirm()
@@ -1222,7 +1450,7 @@ def test_cancellation_of_unclaimed_dispatch_never_launches(continuation_case):
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_migration_keeps_checkpoint_and_payload_evidence_immutable(continuation_case):
+def test_migration_keeps_checkpoint_and_payload_evidence_immutable(continuation_case: ContinuationCase) -> None:
     from sqlalchemy.exc import DBAPIError
 
     from models.dify_builder_native_tests import NativeContinuation, NativePayloadObject
@@ -1235,7 +1463,7 @@ def test_migration_keeps_checkpoint_and_payload_evidence_immutable(continuation_
             == "ci-alembic:d28f0e3c912a"
         )
         row = session.get(NativePayloadObject, cp.checkpoint_id)
-        row.storage_key = "replacement"
+        require_instance(row, NativePayloadObject).storage_key = "replacement"
         with pytest.raises(DBAPIError, match="append-only"):
             session.commit()
     with c.factory() as session:
@@ -1245,15 +1473,24 @@ def test_migration_keeps_checkpoint_and_payload_evidence_immutable(continuation_
             session.commit()
 
 
-def test_native_runtime_uses_same_checkpoint_and_terminal_stops_new_effects(continuation_case):
+def test_native_runtime_uses_same_checkpoint_and_terminal_stops_new_effects(
+    continuation_case: ContinuationCase,
+) -> None:
     c = continuation_case
     cp = c.pause().checkpoint
     c.ledger.confirm()
     receipt = c.resume()
     calls = []
 
-    class RuntimeOwner:
-        def resume(self, *, context, checkpoint, resolutions):
+    class RuntimeOwner(NativeRuntimeWitness):
+        @override
+        def resume(
+            self,
+            *,
+            context: ResolvedNativeTestContext,
+            checkpoint: NativeCheckpointPayload,
+            resolutions: tuple[NativePendingResolution, ...],
+        ) -> NativeWorkflowOutcome:
             calls.append((context.native_run_id, checkpoint.native_run_id, resolutions))
             return NativeWorkflowOutcome(
                 status="completed",
@@ -1269,16 +1506,21 @@ def test_native_runtime_uses_same_checkpoint_and_terminal_stops_new_effects(cont
 
     c.lifecycle.runtime = RuntimeOwner()
     outcome = c.lifecycle.execute_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
-    assert outcome.status == "completed"
+    assert require_present(outcome).status == "completed"
     assert calls == [("native-run", "native-run", ())]
     assert not c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
     assert c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent).kind == "stop"
     with c.factory() as session:
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "sealed"
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).state
+            == "sealed"
+        )
     assert cp.checkpoint_id
 
 
-def test_cancel_cleanup_reconciles_actual_native_evidence(continuation_case):
+def test_cancel_cleanup_reconciles_actual_native_evidence(continuation_case: ContinuationCase) -> None:
     """Generic cleanup evidence cannot replace this fixture's missing source history."""
     from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestScope
 
@@ -1289,8 +1531,9 @@ def test_cancel_cleanup_reconciles_actual_native_evidence(continuation_case):
     receipt = c.lifecycle.cancel(actor=c.ledger.actor, request_id=c.ref.request_id, idempotency_key="cancel")
     assert receipt.status == "cancelling"
 
-    class RuntimeOwner:
-        def cancel(self, *, refs):
+    class RuntimeOwner(NativeRuntimeWitness):
+        @override
+        def cancel(self, *, refs: tuple[NativeTestContextRef, ...]) -> tuple[str, ...]:
             return tuple(ref.invocation_id for ref in refs)
 
     c.lifecycle.runtime = RuntimeOwner()
@@ -1299,12 +1542,17 @@ def test_cancel_cleanup_reconciles_actual_native_evidence(continuation_case):
         state = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
-        assert state.cleanup_complete is True
-        assert state.state == "cancelled"
-        assert session.get(NativeTestScope, c.ref.request_id).cancelled
+        assert require_instance(state, NativeInvocationState).cleanup_complete is True
+        assert require_instance(state, NativeInvocationState).state == "cancelled"
+        assert require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).cancelled
         # The cleanup assertion remains independently true; this fixture never
         # acquired/finalized a source, so cancellation must not claim sealed/clean.
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "waiting"
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).state
+            == "waiting"
+        )
         assert session.scalar(select(NativeDispatch.id).where(NativeDispatch.request_id == c.ref.request_id)) is None
     assert (
         c.lifecycle.cancel(actor=c.ledger.actor, request_id=c.ref.request_id, idempotency_key="cancel").status
@@ -1317,16 +1565,27 @@ def test_cancel_cleanup_reconciles_actual_native_evidence(continuation_case):
         state = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
-        assert state.cleanup_complete is True
-        assert state.generation == session.get(NativeTestScope, c.ref.request_id).generation == 0
-        assert state.checkpoint_id == checkpoint.checkpoint_id
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "waiting"
+        assert require_instance(state, NativeInvocationState).cleanup_complete is True
+        assert (
+            require_instance(state, NativeInvocationState).generation
+            == require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).generation
+            == 0
+        )
+        assert require_instance(state, NativeInvocationState).checkpoint_id == checkpoint.checkpoint_id
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).state
+            == "waiting"
+        )
         assert session.scalar(select(NativeDispatch.id).where(NativeDispatch.request_id == c.ref.request_id)) is None
     assert c.ledger.dispatched_attempt_count() == 0
 
 
 @pytest.mark.parametrize("fault", ["missing", "corrupt"])
-def test_resume_rechecks_checkpoint_before_consuming_generation(continuation_case, monkeypatch, fault):
+def test_resume_rechecks_checkpoint_before_consuming_generation(
+    continuation_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
     from extensions.ext_storage import storage
     from models.dify_builder_native_tests import NativeContinuation, NativeDispatch, NativeTestScope
 
@@ -1339,29 +1598,37 @@ def test_resume_rechecks_checkpoint_before_consuming_generation(continuation_cas
         )
     original = storage.load
 
-    def unavailable(key, *args, **kwargs):
+    def unavailable(key: str, *, stream: bool = False) -> bytes | Generator[bytes]:
         if key == storage_key:
             if fault == "missing":
                 raise FileNotFoundError("checkpoint deleted")
             return b"corrupt ciphertext"
-        return original(key, *args, **kwargs)
+        return original(key, stream=stream)
 
     monkeypatch.setattr(storage, "load", unavailable)
     with pytest.raises(BuilderExecutionPolicyError, match="checkpoint_unavailable"):
         c.resume()
     with c.factory() as session:
-        assert session.get(NativeTestScope, c.ref.request_id).generation == 0
+        assert require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).generation == 0
         assert session.scalar(select(NativeDispatch).where(NativeDispatch.request_id == c.ref.request_id)) is None
 
 
-def test_resumed_child_can_checkpoint_a_second_native_wait(continuation_case):
+def test_resumed_child_can_checkpoint_a_second_native_wait(continuation_case: ContinuationCase) -> None:
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
     from services.dify_builder.native_testing.pending_actions import NativePendingActionService
 
     c = continuation_case
 
     class ChildOwner:
-        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+        def resolve_child(
+            self,
+            *,
+            parent: ResolvedNativeTestContext,
+            ref: NativeTestContextRef,
+            child_app_id: str,
+            child_workflow_revision: str,
+            inputs: dict[str, JsonValue],
+        ) -> ResolvedNativeTestContext:
             assert child_app_id == parent.app_id
             assert child_workflow_revision == parent.graph_revision
             return parent.model_copy(
@@ -1435,14 +1702,22 @@ def test_resumed_child_can_checkpoint_a_second_native_wait(continuation_case):
     assert second_checkpoint.checkpoint_id != child_checkpoint.checkpoint_id
 
 
-def test_unknown_root_quarantines_active_child_tree(continuation_case):
+def test_unknown_root_quarantines_active_child_tree(continuation_case: ContinuationCase) -> None:
     from models.dify_builder_native_tests import NativeDispatch, NativeTestInvocation
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
 
     c = continuation_case
 
     class ChildOwner:
-        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+        def resolve_child(
+            self,
+            *,
+            parent: ResolvedNativeTestContext,
+            ref: NativeTestContextRef,
+            child_app_id: str,
+            child_workflow_revision: str,
+            inputs: dict[str, JsonValue],
+        ) -> ResolvedNativeTestContext:
             assert child_app_id == parent.app_id
             assert child_workflow_revision == parent.graph_revision
             return parent.model_copy(
@@ -1472,7 +1747,9 @@ def test_unknown_root_quarantines_active_child_tree(continuation_case):
     resumed = c.resume()
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
     with c.factory.begin() as session:
-        session.get(NativeDispatch, resumed.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        require_instance(session.get(NativeDispatch, resumed.dispatch_id), NativeDispatch).claim_expires_at = (
+            datetime.now(UTC) - timedelta(seconds=1)
+        )
     c.lifecycle.reconcile()
     with c.factory() as session:
         assert not any(
@@ -1484,18 +1761,37 @@ def test_unknown_root_quarantines_active_child_tree(continuation_case):
         c.store.load_context(ref=child)
 
 
-def _child_case(c, parent_ref=None, app_id=None, workflow_id=None):
+def _child_case(
+    c: ContinuationCase,
+    parent_ref: NativeTestContextRef | None = None,
+    app_id: str | None = None,
+    workflow_id: str | None = None,
+) -> tuple[NativeChildInvocationService, NativeTestContextRef]:
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
     from services.dify_builder.native_testing.repository import native_workflow_revision
 
     parent_ref = parent_ref or c.ref
     with c.factory() as session:
         workflow = session.get(Workflow, workflow_id or c.context.workflow_id)
-        revision, graph = native_workflow_revision(workflow), json.loads(workflow.graph)
-        workflow_id, app_id = workflow.id, app_id or workflow.app_id
+        revision, graph = (
+            native_workflow_revision(require_instance(workflow, Workflow)),
+            json.loads(require_instance(workflow, Workflow).graph),
+        )
+        workflow_id, app_id = (
+            require_instance(workflow, Workflow).id,
+            app_id or require_instance(workflow, Workflow).app_id,
+        )
 
     class ChildOwner:
-        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+        def resolve_child(
+            self,
+            *,
+            parent: ResolvedNativeTestContext,
+            ref: NativeTestContextRef,
+            child_app_id: str,
+            child_workflow_revision: str,
+            inputs: dict[str, JsonValue],
+        ) -> ResolvedNativeTestContext:
             return parent.model_copy(
                 update={
                     "ref": ref,
@@ -1525,7 +1821,7 @@ def _child_case(c, parent_ref=None, app_id=None, workflow_id=None):
     return service, ref
 
 
-def _unknown_outcome(c, ref):
+def _unknown_outcome(c: ContinuationCase, ref: NativeTestContextRef) -> NativeWorkflowOutcome:
     return NativeWorkflowOutcome(
         status="unknown",
         ref=ref,
@@ -1539,7 +1835,13 @@ def _unknown_outcome(c, ref):
     )
 
 
-def _bind_child_effect(c, ref, *, approval_scope="batch", input_digest=None):
+def _bind_child_effect(
+    c: ContinuationCase,
+    ref: NativeTestContextRef,
+    *,
+    approval_scope: Literal["operation", "batch"] = "batch",
+    input_digest: str | None = None,
+) -> EffectIntent:
     from models.dify_builder_native_tests import NativeTestInvocation
     from runtime_contracts.builder.native.contracts import operation_digest
     from services.dify_builder.native_testing.repository import NativeBinding
@@ -1562,8 +1864,10 @@ def _bind_child_effect(c, ref, *, approval_scope="batch", input_digest=None):
                 NativeTestInvocation.invocation_id == ref.invocation_id,
             )
         )
-        binding = NativeBinding.model_validate(root.bindings[operation_digest(c.ledger.intent.key)])
-        child.bindings = {
+        binding = NativeBinding.model_validate(
+            require_instance(root, NativeTestInvocation).bindings[operation_digest(c.ledger.intent.key)]
+        )
+        require_instance(child, NativeTestInvocation).bindings = {
             operation_digest(intent.key): binding.model_copy(
                 update={
                     "intent_digest": canonical_digest(intent.model_dump(mode="json")),
@@ -1577,7 +1881,9 @@ def _bind_child_effect(c, ref, *, approval_scope="batch", input_digest=None):
     return intent
 
 
-def test_returned_unknown_root_quarantines_descendants(continuation_case):
+def test_returned_unknown_root_quarantines_descendants(
+    continuation_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from models.dify_builder_native_tests import NativeTestInvocation
 
     c = continuation_case
@@ -1603,14 +1909,14 @@ def test_returned_unknown_root_quarantines_descendants(continuation_case):
     c.ledger.confirm()
     receipt = c.resume()
 
-    class RuntimeOwner:
-        def resume(self, **_kwargs):
+    class RuntimeOwner(NativeRuntimeWitness):
+        @override
+        def resume(self, **_kwargs: object) -> NativeWorkflowOutcome:
             return outcome
 
-        def recovery_evidence(self, **_kwargs):
-            return None
-
-    c.lifecycle.runtime = RuntimeOwner()
+    runtime = RuntimeOwner()
+    monkeypatch.setattr(runtime, "recovery_evidence", lambda **_kwargs: None)
+    c.lifecycle.runtime = runtime
     assert (
         c.lifecycle.execute_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
         == outcome
@@ -1631,7 +1937,7 @@ def test_returned_unknown_root_quarantines_descendants(continuation_case):
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_unknown_child_does_not_wake_parent_or_leave_grandchild_active(continuation_case):
+def test_unknown_child_does_not_wake_parent_or_leave_grandchild_active(continuation_case: ContinuationCase) -> None:
     from models.dify_builder_native_tests import NativeDispatch, NativeTestInvocation
 
     c = continuation_case
@@ -1658,7 +1964,7 @@ def test_unknown_child_does_not_wake_parent_or_leave_grandchild_active(continuat
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def _private_material(c, ref):
+def _private_material(c: ContinuationCase, ref: NativeTestContextRef) -> PrivateMaterial:
     context = c.store.load_context(ref=ref)
     result = c.store.store_result(
         ref=ref,
@@ -1670,7 +1976,7 @@ def _private_material(c, ref):
         generation=0,
         payload=NativeCheckpointPayload(
             schema_version="1",
-            native_run_id=context.native_run_id,
+            native_run_id=require_instance(context.native_run_id, str),
             generation=0,
             generate_entity_json="{}",
             graph_runtime_state_json="{}",
@@ -1691,9 +1997,11 @@ def _private_material(c, ref):
 @pytest.mark.parametrize("child", [False, True])
 @pytest.mark.parametrize("read", ["result", "checkpoint", "recovery", "context"])
 @pytest.mark.parametrize("revocation", ["removed", "downgraded"])
-def test_current_membership_required_before_private_decrypt(continuation_case, monkeypatch, child, read, revocation):
+def test_current_membership_required_before_private_decrypt(
+    continuation_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch, child: bool, read: str, revocation: str
+) -> None:
     from configs import dify_config
-    from models.account import TenantAccountJoin
+    from models.account import TenantAccountJoin, TenantAccountRole
 
     c = continuation_case
     monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
@@ -1709,14 +2017,16 @@ def test_current_membership_required_before_private_decrypt(continuation_case, m
         if revocation == "removed":
             session.delete(membership)
         else:
-            membership.role = "normal"
+            require_instance(membership, TenantAccountJoin).role = TenantAccountRole.NORMAL
     monkeypatch.setattr(c.store, "_read_object", lambda *_: pytest.fail("private decrypt after revocation"))
     with pytest.raises(BuilderExecutionPolicyError):
         readers[read]()
 
 
 @pytest.mark.parametrize("read", ["result", "checkpoint", "recovery", "context"])
-def test_actual_child_app_permission_checked_before_decrypt(continuation_case, monkeypatch, read):
+def test_actual_child_app_permission_checked_before_decrypt(
+    continuation_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch, read: str
+) -> None:
     from configs import dify_config
     from models.model import App
     from services.enterprise.rbac_service import RBACService
@@ -1727,7 +2037,7 @@ def test_actual_child_app_permission_checked_before_decrypt(continuation_case, m
         original = session.get(App, c.context.app_id)
         app = App(
             **{
-                attr.key: inspect_orm(original).attrs[attr.key].value
+                attr.key: require_instance(inspect_orm(original), InstanceState).attrs[attr.key].value
                 for attr in inspect(App).column_attrs
                 if attr.key != "id"
             }
@@ -1736,7 +2046,7 @@ def test_actual_child_app_permission_checked_before_decrypt(continuation_case, m
         original_workflow = session.get(Workflow, c.context.workflow_id)
         workflow = Workflow(
             **{
-                attr.key: inspect_orm(original_workflow).attrs[attr.key].value
+                attr.key: require_instance(inspect_orm(original_workflow), InstanceState).attrs[attr.key].value
                 for attr in inspect(Workflow).column_attrs
                 if attr.key != "id"
             }
@@ -1750,9 +2060,11 @@ def test_actual_child_app_permission_checked_before_decrypt(continuation_case, m
         readers = _private_material(c, child)
         root_readers = _private_material(c, c.ref)
         monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
-        calls = []
+        calls: list[str | None] = []
 
-        def check(tenant_id, actor_id, *, scene, resource_type, resource_id):
+        def check(
+            tenant_id: str, actor_id: str, *, scene: str, resource_type: str | None, resource_id: str | None
+        ) -> bool:
             assert (tenant_id, actor_id) == (c.ledger.actor.tenant_id, c.ledger.actor.account_id)
             assert scene is not None
             assert resource_type is not None
@@ -1771,7 +2083,9 @@ def test_actual_child_app_permission_checked_before_decrypt(continuation_case, m
             session.delete(session.get(App, app_id))
 
 
-def test_spent_result_write_survives_membership_revocation_but_read_does_not(continuation_case):
+def test_spent_result_write_survives_membership_revocation_but_read_does_not(
+    continuation_case: ContinuationCase,
+) -> None:
     from models.account import TenantAccountJoin
 
     c = continuation_case
@@ -1808,7 +2122,7 @@ def test_spent_result_write_survives_membership_revocation_but_read_does_not(con
         "child_identity_digest",
     ],
 )
-def test_invocation_read_owner_is_sql_immutable(continuation_case, field):
+def test_invocation_read_owner_is_sql_immutable(continuation_case: ContinuationCase, field: str) -> None:
     from sqlalchemy.exc import DBAPIError
 
     from models.dify_builder_native_tests import NativeInvocationState
@@ -1818,7 +2132,13 @@ def test_invocation_read_owner_is_sql_immutable(continuation_case, field):
         state = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
-        assert (state.app_id, state.workflow_id) == (c.context.app_id, c.context.workflow_id)
+        assert (
+            require_instance(state, NativeInvocationState).app_id,
+            require_instance(state, NativeInvocationState).workflow_id,
+        ) == (
+            c.context.app_id,
+            c.context.workflow_id,
+        )
         setattr(state, field, str(uuid4()))
         with pytest.raises(DBAPIError, match="read owner is immutable"):
             session.commit()
@@ -1826,16 +2146,21 @@ def test_invocation_read_owner_is_sql_immutable(continuation_case, field):
         state = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
-        state.generation, state.state = 1, "queued"
+        (
+            require_instance(state, NativeInvocationState).generation,
+            require_instance(state, NativeInvocationState).state,
+        ) = 1, "queued"
     with c.factory() as session:
         state = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
-        assert state.generation == 1
-        assert state.state == "queued"
+        assert require_instance(state, NativeInvocationState).generation == 1
+        assert require_instance(state, NativeInvocationState).state == "queued"
 
 
-def test_legacy_null_owner_fails_closed_without_decrypt(continuation_case, monkeypatch):
+def test_legacy_null_owner_fails_closed_without_decrypt(
+    continuation_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from models.dify_builder_native_tests import NativeInvocationState, NativeTestInvocation
 
     c = continuation_case
@@ -1845,7 +2170,7 @@ def test_legacy_null_owner_fails_closed_without_decrypt(continuation_case, monke
         )
         state = NativeInvocationState(
             **{
-                attr.key: inspect_orm(original).attrs[attr.key].value
+                attr.key: require_instance(inspect_orm(original), InstanceState).attrs[attr.key].value
                 for attr in inspect(NativeInvocationState).column_attrs
                 if attr.key != "id"
             }
@@ -1868,7 +2193,7 @@ def test_legacy_null_owner_fails_closed_without_decrypt(continuation_case, monke
         c.store.load_recovery_context(ref=ref)
 
 
-def test_invocation_read_owner_must_be_paired(continuation_case):
+def test_invocation_read_owner_must_be_paired(continuation_case: ContinuationCase) -> None:
     from sqlalchemy.exc import IntegrityError
 
     from models.dify_builder_native_tests import NativeInvocationState
@@ -1880,7 +2205,7 @@ def test_invocation_read_owner_must_be_paired(continuation_case):
         )
         state = NativeInvocationState(
             **{
-                attr.key: inspect_orm(original).attrs[attr.key].value
+                attr.key: require_instance(inspect_orm(original), InstanceState).attrs[attr.key].value
                 for attr in inspect(NativeInvocationState).column_attrs
                 if attr.key != "id"
             }
@@ -1891,7 +2216,18 @@ def test_invocation_read_owner_must_be_paired(continuation_case):
             session.commit()
 
 
-def _root_with_child_dispatch(c, *, claimed):
+def _root_with_child_dispatch(
+    c: ContinuationCase, *, claimed: bool
+) -> tuple[
+    NativeTestContextRef,
+    str,
+    int,
+    ResumeReceipt,
+    CheckpointRef,
+    EffectIntent,
+    NativeChildInvocationService,
+    NativeWorkflowOutcome,
+]:
     from models.dify_builder_native_tests import NativeDispatch
 
     service, child = _child_case(c)
@@ -1904,7 +2240,7 @@ def _root_with_child_dispatch(c, *, claimed):
         generation=0,
         payload=NativeCheckpointPayload(
             schema_version="1",
-            native_run_id=child_context.native_run_id,
+            native_run_id=require_instance(child_context.native_run_id, str),
             generation=0,
             generate_entity_json="{}",
             graph_runtime_state_json='{"cursor":7}',
@@ -1915,7 +2251,10 @@ def _root_with_child_dispatch(c, *, claimed):
         ),
     )
     c.lifecycle.pause(
-        ref=child, checkpoint=checkpoint, pending_operation_ids=(pending.pending_operation_id,), expected_generation=0
+        ref=child,
+        checkpoint=checkpoint,
+        pending_operation_ids=(require_instance(pending, ApprovalWait).pending_operation_id,),
+        expected_generation=0,
     )
     c.pause()
     c.ledger.confirm()
@@ -1941,31 +2280,47 @@ def _root_with_child_dispatch(c, *, claimed):
                 NativeDispatch.request_id == c.ref.request_id, NativeDispatch.invocation_id == child.invocation_id
             )
         )
-        assert child_dispatch.state == "queued"
-        child_id, generation = child_dispatch.id, child_dispatch.generation
+        assert require_instance(child_dispatch, NativeDispatch).state == "queued"
+        child_id, generation = (
+            require_instance(child_dispatch, NativeDispatch).id,
+            require_instance(child_dispatch, NativeDispatch).generation,
+        )
     if claimed:
         assert c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
     return child, child_id, generation, root_dispatch, checkpoint, effect, service, completed
 
 
-def _quarantine_root_dispatch(c, root_dispatch):
+def _quarantine_root_dispatch(c: ContinuationCase, root_dispatch: ResumeReceipt) -> None:
     from models.dify_builder_native_tests import NativeDispatch
 
     with c.factory.begin() as session:
-        session.get(NativeDispatch, root_dispatch.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(
-            seconds=1
+        require_instance(session.get(NativeDispatch, root_dispatch.dispatch_id), NativeDispatch).claim_expires_at = (
+            datetime.now(UTC) - timedelta(seconds=1)
         )
     c.lifecycle.reconcile()
 
 
-def _quarantined_root_with_child_dispatch(c, *, claimed):
+def _quarantined_root_with_child_dispatch(
+    c: ContinuationCase, *, claimed: bool
+) -> tuple[
+    NativeTestContextRef,
+    str,
+    int,
+    ResumeReceipt,
+    CheckpointRef,
+    EffectIntent,
+    NativeChildInvocationService,
+    NativeWorkflowOutcome,
+]:
     case = _root_with_child_dispatch(c, claimed=claimed)
     _quarantine_root_dispatch(c, case[3])
     return case
 
 
 @pytest.mark.parametrize("claimed", [False, True])
-def test_child_dispatch_recovery_requires_controlling_ancestor_fence(continuation_case, claimed):
+def test_child_dispatch_recovery_requires_controlling_ancestor_fence(
+    continuation_case: ContinuationCase, claimed: bool
+) -> None:
     from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestInvocation
 
     c = continuation_case
@@ -1973,20 +2328,21 @@ def test_child_dispatch_recovery_requires_controlling_ancestor_fence(continuatio
         _quarantined_root_with_child_dispatch(c, claimed=claimed)
     )
 
-    class RuntimeOwner:
-        calls = []
+    class RuntimeOwner(NativeRuntimeWitness):
+        calls: list[tuple[str, str]] = []
         quarantine_during_child_proof = False
 
-        def recovery_evidence(self, *, context, dispatch_id):
+        @override
+        def recovery_evidence(self, *, context: ResolvedNativeTestContext, dispatch_id: str) -> Literal["stopped"]:
             self.calls.append((context.ref.invocation_id, dispatch_id))
             if context.ref == child and self.quarantine_during_child_proof:
                 assert c.lifecycle.claim_dispatch(
                     ref=c.ref, generation=root_dispatch.generation, dispatch_id=root_dispatch.dispatch_id
                 )
                 with c.factory.begin() as session:
-                    session.get(NativeDispatch, root_dispatch.dispatch_id).claim_expires_at = datetime.now(
-                        UTC
-                    ) - timedelta(seconds=1)
+                    require_instance(
+                        session.get(NativeDispatch, root_dispatch.dispatch_id), NativeDispatch
+                    ).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
                 c.lifecycle.reconcile()
             return "stopped"
 
@@ -1998,7 +2354,7 @@ def test_child_dispatch_recovery_requires_controlling_ancestor_fence(continuatio
     assert not c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
     assert c.ledger.guard.before_call(ref=child, intent=effect).kind == "stop"
     with c.factory() as session:
-        assert session.get(NativeDispatch, child_id).state == "unknown"
+        assert require_instance(session.get(NativeDispatch, child_id), NativeDispatch).state == "unknown"
         assert not any(
             session.scalars(
                 select(NativeTestInvocation.active).where(NativeTestInvocation.request_id == c.ref.request_id)
@@ -2027,7 +2383,7 @@ def test_child_dispatch_recovery_requires_controlling_ancestor_fence(continuatio
                 NativeInvocationState.invocation_id == child.invocation_id,
             )
         )
-        assert state.checkpoint_id == checkpoint.checkpoint_id
+        assert require_instance(state, NativeInvocationState).checkpoint_id == checkpoint.checkpoint_id
     permit = c.ledger.guard.before_call(ref=child, intent=effect)
     assert permit.kind == "dispatch"
     result = c.store.store_result(ref=child, key=effect.key, result={"settled": True})
@@ -2035,7 +2391,9 @@ def test_child_dispatch_recovery_requires_controlling_ancestor_fence(continuatio
     assert c.ledger.dispatched_attempt_count() == 1
 
 
-def test_child_claim_rechecks_unknown_ancestor_even_with_stale_active_delivery(continuation_case):
+def test_child_claim_rechecks_unknown_ancestor_even_with_stale_active_delivery(
+    continuation_case: ContinuationCase,
+) -> None:
     from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestInvocation
 
     c = continuation_case
@@ -2043,29 +2401,31 @@ def test_child_claim_rechecks_unknown_ancestor_even_with_stale_active_delivery(c
     # Fault injection models an old/reordered recovery projection. A valid queued
     # delivery and active child never override an authoritative unknown ancestor.
     with c.factory.begin() as session:
-        session.get(NativeDispatch, child_id).state = "queued"
+        require_instance(session.get(NativeDispatch, child_id), NativeDispatch).state = "queued"
         state = session.scalar(
             select(NativeInvocationState).where(
                 NativeInvocationState.request_id == child.request_id,
                 NativeInvocationState.invocation_id == child.invocation_id,
             )
         )
-        state.state = "queued"
+        require_instance(state, NativeInvocationState).state = "queued"
         invocation = session.scalar(
             select(NativeTestInvocation).where(
                 NativeTestInvocation.request_id == child.request_id,
                 NativeTestInvocation.invocation_id == child.invocation_id,
             )
         )
-        invocation.active = True
+        require_instance(invocation, NativeTestInvocation).active = True
     with pytest.raises(BuilderExecutionPolicyError, match="native_ancestor_quarantined"):
         c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
     with c.factory() as session:
-        assert session.get(NativeDispatch, child_id).state == "queued"
+        assert require_instance(session.get(NativeDispatch, child_id), NativeDispatch).state == "queued"
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def _spent_child_outcome(c, child, effect, status):
+def _spent_child_outcome(
+    c: ContinuationCase, child: NativeTestContextRef, effect: EffectIntent, status: Literal["completed", "stopped"]
+) -> tuple[NativeWorkflowOutcome, str]:
     permit = c.ledger.guard.before_call(ref=child, intent=effect)
     assert permit.kind == "dispatch"
     result_ref = c.store.store_result(ref=child, key=effect.key, result={"settled": True})
@@ -2083,7 +2443,7 @@ def _spent_child_outcome(c, child, effect, status):
     ), result_ref
 
 
-def _saved_child_recovery_facts(c, child):
+def _saved_child_recovery_facts(c: ContinuationCase, child: NativeTestContextRef) -> dict[str, list[dict[str, object]]]:
     """Capture persisted evidence, including nonzero spend, before a rejected recovery."""
     from models.dify_builder_native_tests import (
         NativeContinuation,
@@ -2098,7 +2458,7 @@ def _saved_child_recovery_facts(c, child):
         NativeTestScope,
     )
 
-    facts = {}
+    facts: dict[str, list[dict[str, object]]] = {}
     with c.factory() as session:
         for model in (
             NativeContinuation,
@@ -2115,17 +2475,37 @@ def _saved_child_recovery_facts(c, child):
             query = select(model).where(model.request_id == child.request_id)
             if hasattr(model, "invocation_id"):
                 query = query.where(model.invocation_id == child.invocation_id)
-            rows = session.scalars(query.order_by(model.request_id if model is NativeTestScope else model.id))
+            rows = session.scalars(query.order_by(*inspect(model).primary_key))
             facts[model.__tablename__] = [
                 {column.key: inspect_orm(row).attrs[column.key].value for column in inspect(model).column_attrs}
                 for row in rows
             ]
         scope = session.get(NativeTestScope, child.request_id)
-        assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (1, 1, 2)
+        assert (
+            require_instance(scope, NativeTestScope).spent_calls,
+            require_instance(scope, NativeTestScope).spent_dispatches,
+            require_instance(scope, NativeTestScope).spent_cost_units,
+        ) == (1, 1, 2)
     return facts
 
 
-def _assert_terminal_child_recovery_retained(c, case, status, outcome, result_ref, saved):
+def _assert_terminal_child_recovery_retained(
+    c: ContinuationCase,
+    case: tuple[
+        NativeTestContextRef,
+        str,
+        int,
+        ResumeReceipt,
+        CheckpointRef,
+        EffectIntent,
+        NativeChildInvocationService,
+        NativeWorkflowOutcome,
+    ],
+    status: Literal["completed", "stopped", "cancelled"],
+    outcome: NativeWorkflowOutcome,
+    result_ref: str,
+    saved: dict[str, list[dict[str, object]]],
+) -> None:
     from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestInvocation
 
     child, child_id, generation, _, checkpoint, _, service, _ = case
@@ -2136,8 +2516,12 @@ def _assert_terminal_child_recovery_retained(c, case, status, outcome, result_re
                 NativeInvocationState.invocation_id == child.invocation_id,
             )
         )
-        assert (state.state, state.generation, state.checkpoint_id) == (status, generation, checkpoint.checkpoint_id)
-        assert session.get(NativeDispatch, child_id).state == "unknown"
+        assert (
+            require_instance(state, NativeInvocationState).state,
+            require_instance(state, NativeInvocationState).generation,
+            require_instance(state, NativeInvocationState).checkpoint_id,
+        ) == (status, generation, checkpoint.checkpoint_id)
+        assert require_instance(session.get(NativeDispatch, child_id), NativeDispatch).state == "unknown"
         assert (
             session.scalar(
                 select(NativeTestInvocation.active).where(
@@ -2166,7 +2550,9 @@ def _assert_terminal_child_recovery_retained(c, case, status, outcome, result_re
 
 
 @pytest.mark.parametrize("status", ["completed", "stopped"])
-def test_terminal_child_dispatch_stays_terminal_after_ancestor_recovery(continuation_case, status):
+def test_terminal_child_dispatch_stays_terminal_after_ancestor_recovery(
+    continuation_case: ContinuationCase, status: Literal["completed", "stopped"]
+) -> None:
     c = continuation_case
     case = _root_with_child_dispatch(c, claimed=True)
     child, child_id, _, root_dispatch, _, effect, service, _ = case
@@ -2177,11 +2563,13 @@ def test_terminal_child_dispatch_stays_terminal_after_ancestor_recovery(continua
     assert terminal["dify_builder_native_invocation_states"][0]["state"] == status
     _quarantine_root_dispatch(c, root_dispatch)
 
-    class RuntimeOwner:
-        def recovery_evidence(self, **_kwargs):
+    class RuntimeOwner(NativeRuntimeWitness):
+        @override
+        def recovery_evidence(self, **_kwargs: object) -> Literal["not_started", "stopped", "unknown"]:
             return "stopped"
 
-        def resume(self, **_kwargs):
+        @override
+        def resume(self, **_kwargs: object) -> Never:
             pytest.fail("terminal child launched again")
 
     c.lifecycle.runtime = RuntimeOwner()
@@ -2195,7 +2583,9 @@ def test_terminal_child_dispatch_stays_terminal_after_ancestor_recovery(continua
 
 
 @pytest.mark.parametrize("status", ["completed", "stopped", "cancelled"])
-def test_child_terminal_settlement_while_recovery_proof_is_held(continuation_case, status):
+def test_child_terminal_settlement_while_recovery_proof_is_held(
+    continuation_case: ContinuationCase, status: Literal["completed", "stopped", "cancelled"]
+) -> None:
     from flask import current_app
 
     c = continuation_case
@@ -2205,24 +2595,26 @@ def test_child_terminal_settlement_while_recovery_proof_is_held(continuation_cas
     _quarantine_root_dispatch(c, root_dispatch)
     proof_entered, release_proof = Event(), Event()
 
-    class RuntimeOwner:
-        def recovery_evidence(self, *, context, dispatch_id):
+    class RuntimeOwner(NativeRuntimeWitness):
+        @override
+        def recovery_evidence(self, *, context: ResolvedNativeTestContext, dispatch_id: str) -> Literal["stopped"]:
             if context.ref == child:
                 assert dispatch_id == child_id
                 proof_entered.set()
                 assert release_proof.wait(10), "terminal settlement blocked while external proof held"
             return "stopped"
 
-        def resume(self, **_kwargs):
+        @override
+        def resume(self, **_kwargs: object) -> Never:
             pytest.fail("terminal child launched again")
 
     c.lifecycle.runtime = RuntimeOwner()
     c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=root_dispatch.dispatch_id)
     assert service.get_outcome(child_ref=child) is None
     assert c.store.load_context(ref=child).ref == child
-    app = current_app._get_current_object()
+    app = cast("LocalProxy[Flask]", current_app)._get_current_object()
 
-    def recover_child():
+    def recover_child() -> None:
         with app.app_context():
             c.lifecycle.recover_dispatch(ref=child, dispatch_id=child_id)
 
@@ -2242,3 +2634,52 @@ def test_child_terminal_settlement_while_recovery_proof_is_held(continuation_cas
         with pytest.raises(BuilderExecutionPolicyError):
             recovery.result(timeout=15)
     _assert_terminal_child_recovery_retained(c, case, status, outcome, result_ref, saved)
+
+
+class _ForwardArguments712(TypedDict, closed=True):
+    ref: _forward_types_0.NativeTestContextRef
+    settlement: NotRequired[bool]
+
+
+class _ForwardArguments487(TypedDict, closed=True):
+    ref: _forward_types_1.NativeTestContextRef
+    tenant_id: str
+    kind: _forward_types_1.PayloadKind
+    logical_key: str
+    payload: _forward_types_1.JsonValue
+    max_bytes: NotRequired[int | None]
+
+
+class _ForwardArguments497(TypedDict, closed=True):
+    ref: _forward_types_0.NativeTestContextRef
+    settlement: NotRequired[bool]
+
+
+class _ForwardArguments619(TypedDict, closed=True):
+    ref: _forward_types_1.NativeTestContextRef
+    tenant_id: str
+    kind: _forward_types_1.PayloadKind
+    logical_key: str
+    payload: _forward_types_1.JsonValue
+    max_bytes: NotRequired[int | None]
+
+
+class _ForwardArguments629(TypedDict, closed=True):
+    ref: _forward_types_0.NativeTestContextRef
+    settlement: NotRequired[bool]
+
+
+class PrivateMaterial(TypedDict, closed=True):
+    result: Callable[[], JsonValue]
+    checkpoint: Callable[[], NativeCheckpointPayload]
+    recovery: Callable[[], ResolvedNativeTestContext]
+    context: Callable[[], ResolvedNativeTestContext]
+
+
+class ChildArguments(TypedDict, closed=True):
+    parent_ref: NativeTestContextRef
+    key: OperationKey
+    child_app_id: str
+    child_workflow_revision: str
+    input_digest: str
+    input_result_ref: str

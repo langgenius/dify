@@ -1,6 +1,7 @@
 """Connector cause is diagnostic only; it cannot establish native execution evidence."""
 
 import json
+from collections.abc import Callable, Generator
 from contextvars import copy_context
 
 import pytest
@@ -9,7 +10,7 @@ from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.native_launch_observation import (
     NativeLaunchObservation,
@@ -17,8 +18,15 @@ from services.dify_builder.native_launch_observation import (
     mark_dispatched,
     observe_resource,
 )
-from tests.unit_tests.services.dify_builder.test_confirmed_full_run import _run, harness  # noqa: F401
-from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import engine, repo  # noqa: F401
+from services.dify_builder.repository import SqlDifyBuilderRepository
+from tests.unit_tests.services.dify_builder.test_confirmed_full_run import FullRunCase, _run
+from tests.unit_tests.services.dify_builder.test_confirmed_full_run import harness as full_run_harness
+from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import engine as engine_fixture
+from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import repo as repo_fixture
+
+harness = full_run_harness
+engine = engine_fixture
+repo = repo_fixture
 
 PREFIX = (
     "Failed to activate plugin before invocation: unexpected response from serverless connector activation: status="
@@ -27,12 +35,12 @@ BODY = json.dumps({"error": "synthetic serviceaccount cannot patch leases token=
 MESSAGE = PREFIX + "500 body=" + BODY
 
 
-def _typed(message=MESSAGE, code=-500):
+def _typed(message: str = MESSAGE, code: int = -500) -> PluginDaemonInnerError:
     # Keyword construction deliberately does not populate Exception.args.
     return PluginDaemonInnerError(code=code, message=message)
 
 
-def test_typed_activation_cause_is_bounded_and_does_not_depend_on_str():
+def test_typed_activation_cause_is_bounded_and_does_not_depend_on_str() -> None:
     error = _typed()
     assert str(error) == ""
     assert diagnostics.failure_reason(error) == "service_unavailable"
@@ -53,7 +61,7 @@ def test_typed_activation_cause_is_bounded_and_does_not_depend_on_str():
         _typed(json.dumps({"error_type": "PluginDaemonInnerError", "message": MESSAGE})),
     ],
 )
-def test_text_and_malformed_envelopes_cannot_claim_activation(error):
+def test_text_and_malformed_envelopes_cannot_claim_activation(error: Exception) -> None:
     assert diagnostics.failure_reason(error) == "unknown"
     records = []
     observation = NativeLaunchObservation()
@@ -65,7 +73,7 @@ def test_text_and_malformed_envelopes_cannot_claim_activation(error):
     assert records == []
 
 
-def _runtime_failure(monkeypatch):
+def _runtime_failure(monkeypatch: pytest.MonkeyPatch) -> Callable[[], AIModelEntity | None]:
     client = PluginModelClient()
     envelope = {"code": -500, "message": json.dumps({"error_type": "PluginDaemonInnerError", "message": MESSAGE})}
     monkeypatch.setattr(client, "_stream_request", lambda *_a, **_k: iter([json.dumps(envelope)]))
@@ -78,7 +86,9 @@ def _runtime_failure(monkeypatch):
 
 
 @pytest.mark.parametrize("dispatched", [False, True])
-def test_real_metadata_adapter_preserves_safe_cause_across_worker_context(monkeypatch, dispatched):
+def test_real_metadata_adapter_preserves_safe_cause_across_worker_context(
+    monkeypatch: pytest.MonkeyPatch, dispatched: bool
+) -> None:
     fail = _runtime_failure(monkeypatch)
     records = []
     observation = NativeLaunchObservation()
@@ -102,7 +112,7 @@ def test_real_metadata_adapter_preserves_safe_cause_across_worker_context(monkey
     assert "https://private" not in json.dumps(records)
 
 
-def test_no_active_native_observation_does_not_emit_native_diagnostic(monkeypatch):
+def test_no_active_native_observation_does_not_emit_native_diagnostic(monkeypatch: pytest.MonkeyPatch) -> None:
     fail = _runtime_failure(monkeypatch)
     records = []
     with diagnostics.scope(records.append, "inventory"), pytest.raises(PluginDaemonInnerError):
@@ -111,10 +121,12 @@ def test_no_active_native_observation_does_not_emit_native_diagnostic(monkeypatc
 
 
 @pytest.mark.parametrize("dispatched", [False, True])
-def test_activation_failure_preserves_evidence_and_never_replays(harness, monkeypatch, dispatched):  # noqa: F811
+def test_activation_failure_preserves_evidence_and_never_replays(
+    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch, dispatched: bool
+) -> None:
     fail = _runtime_failure(monkeypatch)
 
-    def generate(**_kwargs):
+    def generate(**_kwargs: object) -> None:
         begin_preparation()
         if dispatched:
             mark_dispatched()
@@ -129,26 +141,31 @@ def test_activation_failure_preserves_evidence_and_never_replays(harness, monkey
     assert harness.generate.call_count == 1
     assert not first.dify_run_id
     assert first.per_node == []
+    assert first.verification is not None
     evidence = first.verification.execution_evidence
+    assert evidence is not None
     assert evidence.safety_outcome == ("execution_evidence_unknown" if dispatched else "preparation_failed")
     if not dispatched:
+        assert evidence is not None
         assert evidence.failure_reason == "service_unavailable"
     assert any(record.get("reason") == "service_unavailable" for record in records)
     assert "secret" not in json.dumps(records)
 
 
-def test_worker_stream_conversion_keeps_cause_without_claiming_a_run(harness, monkeypatch):  # noqa: F811
+def test_worker_stream_conversion_keeps_cause_without_claiming_a_run(
+    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.dify_port import WorkflowServiceDifyPort
 
     fail = _runtime_failure(monkeypatch)
     monkeypatch.setattr(WorkflowServiceDifyPort, "_finish_run", harness.native_finish)
 
-    def generate(**_kwargs):
+    def generate(**_kwargs: object) -> Generator[dict[str, str]]:
         begin_preparation()
         worker_context = copy_context()
         mark_dispatched()
 
-        def stream():
+        def stream() -> Generator[dict[str, str]]:
             try:
                 worker_context.run(fail)
             except PluginDaemonInnerError:
@@ -167,13 +184,19 @@ def test_worker_stream_conversion_keeps_cause_without_claiming_a_run(harness, mo
     assert harness.generate.call_count == 1
     assert not run.dify_run_id
     assert run.per_node == []
+    assert run.verification is not None
+    assert run.verification.execution_evidence is not None
     assert not run.verification.execution_evidence.sealed
+    assert run.verification is not None
+    assert run.verification.execution_evidence is not None
     assert run.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
     assert [(r["code"], r["reason"]) for r in records] == [("native_outcome_unknown", "service_unavailable")]
     assert "secret" not in json.dumps(records)
 
 
-def test_unobserved_code_stream_text_cannot_acquire_connector_cause(harness, monkeypatch):  # noqa: F811
+def test_unobserved_code_stream_text_cannot_acquire_connector_cause(
+    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.dify_port import WorkflowServiceDifyPort
 
     monkeypatch.setattr(WorkflowServiceDifyPort, "_finish_run", harness.native_finish)
@@ -185,15 +208,20 @@ def test_unobserved_code_stream_text_cannot_acquire_connector_cause(harness, mon
     assert run.status == "failed"  # Native error frame; execution evidence remains unknown.
     assert recovered.status == "running"
     assert harness.generate.call_count == 1
+    assert run.verification is not None
+    assert run.verification.execution_evidence is not None
     assert run.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
     assert records == []
 
 
-def test_emitted_and_persisted_trace_retains_actual_worker_resource(repo, monkeypatch):  # noqa: F811
+def test_emitted_and_persisted_trace_retains_actual_worker_resource(
+    repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+
     from core.dify_builder.contract import AssistantTurnItem, ExecutionProgress
-    from core.dify_builder.models import Action, DifyBuilderContext, Turn
+    from core.dify_builder.models import Action, DifyBuilderContext, Session, Turn
     from core.dify_builder.state import PcState
-    from services.dify_builder.application.runner import Runner, StepResult
+    from services.dify_builder.application.runner import Env, Runner, StepResult
     from tests.unit_tests.core.dify_builder.test_runner import _actor, _new_env, _session
 
     fail = _runtime_failure(monkeypatch)
@@ -204,7 +232,7 @@ def test_emitted_and_persisted_trace_retains_actual_worker_resource(repo, monkey
     session = _session()
     repo.create_session(session, DifyBuilderContext(), [])
 
-    def handler(_env, _turn, session, context):
+    def handler(_env: Env, _turn: Turn, session: Session, context: DifyBuilderContext) -> StepResult:
         observation = NativeLaunchObservation()
         with observation.track():
             begin_preparation()
@@ -239,7 +267,7 @@ def test_emitted_and_persisted_trace_retains_actual_worker_resource(repo, monkey
 
 
 @pytest.mark.parametrize("identifier", ["https://private?token=secret", "x" * 129, "private\nsecret"])
-def test_trace_projection_rejects_unsafe_resource_identifiers(identifier):
+def test_trace_projection_rejects_unsafe_resource_identifiers(identifier: str) -> None:
     records = []
     with diagnostics.scope(records.append, "native"), NativeLaunchObservation().track():
         begin_preparation()
@@ -253,7 +281,7 @@ def test_trace_projection_rejects_unsafe_resource_identifiers(identifier):
     assert "secret" not in json.dumps(records)
 
 
-def test_tool_resource_name_does_not_become_a_model_identifier():
+def test_tool_resource_name_does_not_become_a_model_identifier() -> None:
     records = []
     with diagnostics.scope(records.append, "native"), NativeLaunchObservation().track():
         begin_preparation()

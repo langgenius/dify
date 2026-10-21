@@ -35,7 +35,7 @@ from __future__ import annotations
 import copy
 import threading
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from datetime import datetime
 from typing import Unpack, override
@@ -359,15 +359,30 @@ class FakeDifyPort(DifyPort):
     def get_app_mode(self, app_id: str, actor: Actor) -> str:
         return self.app_mode
 
-    def prepare_code_risks(self, _app_id, _actor, *, session_id, inputs, context):
+    def prepare_code_risks(
+        self,
+        app_id: str,
+        actor: Actor,
+        *,
+        session_id: str,
+        inputs: Mapping[str, object],
+        context: DifyBuilderContext,
+    ) -> dict[str, dict[str, object]]:
+        del app_id, actor
         del session_id, inputs
         # This canned fake has no reasoning/runtime implementation; Code tests
         # use the real adapter with an explicit deterministic reasoner.
         return dict(context.code_risk_assessments)
 
     def disclose_effects(
-        self, _app_id: str, _actor: Actor, *, inputs: Mapping[str, object] | None = None, code_risk_context=None
+        self,
+        app_id: str,
+        actor: Actor,
+        *,
+        inputs: Mapping[str, object] | None = None,
+        code_risk_context: object = None,
     ) -> EffectDisclosure:
+        del app_id, actor
         del inputs, code_risk_context
         return self.effect_disclosure
 
@@ -397,6 +412,9 @@ class FakeDifyPort(DifyPort):
         *,
         expected_revision: str = "",
         failed_run_id: str | None = None,
+        confirmed_resource_ids: Sequence[str] | None = None,
+        expected_resource_fingerprints: dict[str, str] | None = None,
+        expected_node_resources: dict[str, str] | None = None,
     ) -> ApplyResult:
         self.expected_revision = expected_revision
         self.last_repair_run_id = failed_run_id
@@ -562,21 +580,27 @@ class StubAgent(DifyBuilderAgent):
         self.learn_calls += 1
         return "stub-skill"
 
-    def analyze_impact(self, _goal_text, _graph, *, reply_language=None):  # noqa: ARG002
+    def analyze_impact(self, goal_text: str, graph: Graph, *, reply_language: str | None = None) -> dict[str, object]:
+        del goal_text, graph, reply_language
         return {"edit_rules": {}, "target_node_ids": []}
 
-    def propose_edit_plan(self, _edit_rules, _graph, **_kwargs):
-        return []
+    def propose_edit_plan(
+        self, edit_rules: dict[str, object], graph: Graph, *, reply_language: str | None = None
+    ) -> WorkflowPlan | None:
+        del edit_rules, graph, reply_language
+        return None
 
     def build_edit_intents(
         self,
-        _edit_rules,
-        _graph,
+        edit_rules: dict[str, object],
+        graph: Graph,
         *,
-        edit_target_node_ids=(),
-        last_edit_rejection=None,
-        approved_plan=None,  # noqa: ARG002
-    ):
+        edit_target_node_ids: Sequence[str] = (),
+        last_edit_rejection: str | None = None,
+        approved_plan: WorkflowPlan | None = None,
+    ) -> list[MutationIntent]:
+        del approved_plan
+        del edit_rules, graph
         self.edit_intent_calls.append((list(edit_target_node_ids), last_edit_rejection))
         return []
 
@@ -661,15 +685,30 @@ class FakeBuildDifyPort(DifyPort):
     def get_app_mode(self, app_id: str, actor: Actor) -> str:
         return self.app_mode
 
-    def prepare_code_risks(self, _app_id, _actor, *, session_id, inputs, context):
+    def prepare_code_risks(
+        self,
+        app_id: str,
+        actor: Actor,
+        *,
+        session_id: str,
+        inputs: Mapping[str, object],
+        context: DifyBuilderContext,
+    ) -> dict[str, dict[str, object]]:
+        del app_id, actor
         del session_id, inputs
         # This canned fake has no reasoning/runtime implementation; Code tests
         # use the real adapter with an explicit deterministic reasoner.
         return dict(context.code_risk_assessments)
 
     def disclose_effects(
-        self, _app_id: str, _actor: Actor, *, inputs: Mapping[str, object] | None = None, code_risk_context=None
+        self,
+        app_id: str,
+        actor: Actor,
+        *,
+        inputs: Mapping[str, object] | None = None,
+        code_risk_context: object = None,
     ) -> EffectDisclosure:
+        del app_id, actor
         del inputs, code_risk_context
         return self.effect_disclosure
 
@@ -699,6 +738,9 @@ class FakeBuildDifyPort(DifyPort):
         *,
         expected_revision: str = "",
         failed_run_id: str | None = None,
+        confirmed_resource_ids: Sequence[str] | None = None,
+        expected_resource_fingerprints: dict[str, str] | None = None,
+        expected_node_resources: dict[str, str] | None = None,
     ) -> ApplyResult:
         self.expected_revision = expected_revision
         self.last_repair_run_id = failed_run_id
@@ -927,6 +969,7 @@ class SessionOverrides(TypedDict, total=False, closed=True):
 
 
 class ContextOverrides(TypedDict, total=False, closed=True):
+    effect_confirmation: dict[str, str]
     failed_run_id: str
     diagnosis: Diagnosis | None
     staged_repair: list[MutationIntent]

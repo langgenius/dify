@@ -9,6 +9,8 @@ from dataclasses import replace
 from datetime import datetime
 from typing import NoReturn, Unpack
 
+import pytest_mock
+
 from core.dify_builder.contract import PreflightContextCard, PreflightIssue
 from core.dify_builder.models import (
     Action,
@@ -1517,7 +1519,7 @@ _UNFED_AGGREGATOR_REASON = (
 
 
 def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
     """Parity with Edit's refusal. ``propose_repair`` already refused to stage a
     batch the semantic guards condemned -- but it surfaced BLIND: the reason
@@ -1574,7 +1576,7 @@ def test_a_staged_repair_still_carries_no_error_card() -> None:
 
 
 def test_missing_test_input_ref_requests_test_data_without_launch(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
     from services.dify_builder.application.handlers_fix import handle_verify
 

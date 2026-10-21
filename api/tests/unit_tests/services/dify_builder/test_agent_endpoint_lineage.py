@@ -1,13 +1,25 @@
 """Actual lineage policy; backend and protected state I/O are explicit doubles."""
 
+from typing import cast
+from unittest.mock import patch
+
 import pytest
-from dify_agent.protocol.native_testing import AgentRuntimeIdentity
+from dify_agent.protocol.native_testing import (
+    AgentRuntimeIdentity,
+    AgentRunTransportSelection,
+    ReadAgentRuntimeIdentity,
+)
+from pydantic import JsonValue
+from sqlalchemy.orm import Session
 
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.agent_contracts import (
     AgentNodeAssociation,
     AgentPreparedConfig,
 )
+from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+from services.dify_builder.native_testing.agent_lineage import AgentServicePrincipal, NativeAgentEndpointLineage
+from services.dify_builder.native_testing.agent_operations import AgentOperationService
 from tests.unit_tests.services.dify_builder import native_owner_fixtures
 from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import (
     CONFIG,
@@ -20,7 +32,9 @@ operations_service = native_owner_fixtures.operations_service
 preparation_sql = native_owner_fixtures.preparation_sql
 
 
-def owner(parent=True, mutation=None, unbound=False):
+def owner(
+    parent: bool = True, mutation: str | None = None, unbound: bool = False
+) -> tuple[NativeAgentEndpointLineage, AgentServicePrincipal, AgentRunTransportSelection, list[str]]:
     from dify_agent.protocol.native_testing import AgentRunTransportSelection
 
     from services.dify_builder.native_testing.agent_lineage import (
@@ -53,9 +67,9 @@ def owner(parent=True, mutation=None, unbound=False):
         pinned_snapshot_id="pin",
         home_snapshot_id="home",
     )
-    phase = []
+    phase: list[str] = []
 
-    def load_context(**kwargs):
+    def load_context(**kwargs: object) -> ResolvedNativeTestContext:
         del kwargs
         return resolved_context(
             tenant_id="foreign" if phase and mutation == "tenant-owner" else "tenant",
@@ -65,17 +79,17 @@ def owner(parent=True, mutation=None, unbound=False):
             generation=5 if phase and mutation == "owner" else 4,
         )
 
-    def load_prepared_config(**kwargs):
+    def load_prepared_config(**kwargs: object) -> AgentPreparedConfig:
         del kwargs
         return config.model_copy(update={"config_digest": "f" * 64}) if phase and mutation == "config" else config
 
-    def discover_agent_run(**kwargs):
+    def discover_agent_run(**kwargs: object) -> AgentNodeAssociation | None:
         del kwargs
         if unbound:
             return None
         return association.model_copy(update={"agent_run_id": "foreign"}) if mutation == "association" else association
 
-    def read_run_identity_sync(run_id, query):
+    def read_run_identity_sync(run_id: str, query: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity | None:
         assert run_id == "run"
         assert query.request_digest == "a" * 64
         assert query.parent_node == selection.parent_node
@@ -118,13 +132,13 @@ def owner(parent=True, mutation=None, unbound=False):
     store.load_prepared_config = load_prepared_config
     store.discover_agent_run = discover_agent_run
     backend = Client(base_url="http://agent.invalid")
-    backend.read_run_identity_sync = read_run_identity_sync
+    patch.object(backend, "read_run_identity_sync", side_effect=read_run_identity_sync).start()
     preparation = AgentPreparationService(state_store=store, backend=backend, workspace=None, config_builder=None)
     lineage = NativeAgentEndpointLineage(backend=backend, preparation_for_ref=lambda _ref: preparation)
     return lineage, AgentServicePrincipal(), selection, phase
 
 
-def test_only_positive_actual_ordinary_identity_returns_none():
+def test_only_positive_actual_ordinary_identity_returns_none() -> None:
     lineage, principal, selection, phase = owner(parent=False)
     assert lineage.resolve(principal=principal, selection=selection, boundary="model", caller={}) is None
     assert phase == ["backend"]
@@ -146,26 +160,28 @@ def test_only_positive_actual_ordinary_identity_returns_none():
         "actor-owner",
     ],
 )
-def test_mismatched_private_or_current_protected_state_refuses(mutation):
+def test_mismatched_private_or_current_protected_state_refuses(mutation: str) -> None:
     lineage, principal, selection, _phase = owner(mutation=mutation)
     with pytest.raises(BuilderExecutionPolicyError):
         lineage.resolve(principal=principal, selection=selection, boundary="model", caller={})
 
 
-def test_unknown_native_association_never_returns_ordinary():
+def test_unknown_native_association_never_returns_ordinary() -> None:
     lineage, principal, selection, _phase = owner(unbound=True)
     with pytest.raises(BuilderExecutionPolicyError):
         lineage.resolve(principal=principal, selection=selection, boundary="model", caller={})
 
 
-def test_native_binding_control_does_not_require_existing_association_or_effect_envelope():
+def test_native_binding_control_does_not_require_existing_association_or_effect_envelope() -> None:
     lineage, principal, selection, phase = owner(unbound=True)
     result = lineage.resolve(principal=principal, selection=selection, boundary="prepare-run", caller={})
+    assert PARENT is not None
+    assert result is not None
     assert result.ref.model_dump(mode="json") == PARENT.ref.model_dump(mode="json")
     assert phase == ["backend"]
 
 
-def test_bound_native_effect_resolves_owned_context_without_claiming_permit():
+def test_bound_native_effect_resolves_owned_context_without_claiming_permit() -> None:
     lineage, principal, selection, _phase = owner()
     result = lineage.resolve(
         principal=principal,
@@ -178,7 +194,10 @@ def test_bound_native_effect_resolves_owned_context_without_claiming_permit():
             "user_from": "account",
         },
     )
+    assert result is not None
+    assert result.association is not None
     assert result.association.agent_run_id == "run"
+    assert result is not None
     assert result.physical_owner_ready is False
 
 
@@ -186,16 +205,17 @@ def test_bound_native_effect_resolves_owned_context_without_claiming_permit():
     "caller",
     [{"agent_run_id": "foreign"}, {"tenant_id": "foreign"}, {"user_id": "foreign"}],
 )
-def test_caller_cannot_override_owned_run_or_parent(caller):
+def test_caller_cannot_override_owned_run_or_parent(caller: dict[str, JsonValue]) -> None:
     lineage, principal, selection, _phase = owner()
     with pytest.raises(BuilderExecutionPolicyError):
         lineage.resolve(principal=principal, selection=selection, boundary="model", caller=caller)
 
 
-def test_resolver_requires_authenticated_principal():
+def test_resolver_requires_authenticated_principal() -> None:
     lineage, _principal, selection, phase = owner(parent=False)
+    # Deliberately violate the typed internal contract to test the runtime authentication guard.
     with pytest.raises(BuilderExecutionPolicyError):
-        lineage.resolve(principal=None, selection=selection, boundary="model", caller={})
+        lineage.resolve(principal=cast(AgentServicePrincipal, None), selection=selection, boundary="model", caller={})
     assert phase == []
 
 
@@ -209,7 +229,7 @@ def test_resolver_requires_authenticated_principal():
         ("ref", "native_endpoint_owner_mismatch"),
     ],
 )
-def test_validated_native_context_checks_exact_effect_but_never_spends_permit(change, reason):
+def test_validated_native_context_checks_exact_effect_but_never_spends_permit(change: str, reason: str) -> None:
     from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
     from flask import Flask, g, request
 
@@ -217,6 +237,7 @@ def test_validated_native_context_checks_exact_effect_but_never_spends_permit(ch
 
     lineage, principal, selection, _phase = owner()
     context = lineage.resolve(principal=principal, selection=selection, boundary="model", caller={})
+    assert context is not None
     envelope = AgentPhysicalDispatchPayload.model_validate(
         {
             "ref": context.ref.model_dump(mode="json"),
@@ -246,7 +267,10 @@ def test_validated_native_context_checks_exact_effect_but_never_spends_permit(ch
     if change == "ref":
         envelope = envelope.model_copy(update={"ref": envelope.ref.model_copy(update={"request_id": "foreign"})})
     with Flask(__name__).test_request_context():
-        g.agent_runtime_request = request._get_current_object()
+        from flask import Request
+        from werkzeug.local import LocalProxy
+
+        g.agent_runtime_request = cast("LocalProxy[Request]", request)._get_current_object()
         g.agent_runtime_context = context
         with pytest.raises(BuilderExecutionPolicyError, match=reason):
             claim_agent_endpoint(
@@ -261,8 +285,8 @@ def test_validated_native_context_checks_exact_effect_but_never_spends_permit(ch
 
 @pytest.mark.parametrize("mutation", ["none", "identity-io", "object-io"])
 def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
-    monkeypatch, mutation, operations_service, preparation_sql
-):
+    monkeypatch: pytest.MonkeyPatch, mutation: str, operations_service: AgentOperationService, preparation_sql: Session
+) -> None:
     """Real protected read/recheck; SQL/access/storage/backend are explicit doubles."""
     from dify_agent.protocol.native_testing import AgentRunTransportSelection
 
@@ -281,7 +305,7 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
     monkeypatch.setattr(store.loader, "_load", lambda *_args, **_kwargs: (owned, scope))
     prepared = prepared_state()
     context = prepared.context
-    value = {
+    value: dict[str, JsonValue] = {
         "schema": "agent-config-v2",
         "parent_node": PARENT.model_dump(mode="json"),
         "workflow_native_run_id": "workflow",
@@ -315,7 +339,7 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
     )
     reads = []
 
-    def read(*args, **kwargs):
+    def read(*args: object, **kwargs: object) -> dict[str, JsonValue]:
         del args, kwargs
         assert not sql.info["locked"]
         reads.append("object")
@@ -336,7 +360,7 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
     )
     monkeypatch.setattr(store, "discover_agent_run", lambda **_kwargs: association)
 
-    def read_run_identity_sync(run_id, selection):
+    def read_run_identity_sync(run_id: object, selection: object) -> AgentRuntimeIdentity:
         del run_id, selection
         assert not sql.info["locked"]
         if mutation == "identity-io":
@@ -362,15 +386,9 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
         agent_generation=0,
     )
     if mutation == "none":
-        assert (
-            lineage.resolve(
-                principal=AgentServicePrincipal(),
-                selection=selection,
-                boundary="model",
-                caller={},
-            ).association
-            == association
-        )
+        resolved = lineage.resolve(principal=AgentServicePrincipal(), selection=selection, boundary="model", caller={})
+        assert resolved is not None
+        assert resolved.association == association
     else:
         with pytest.raises(BuilderExecutionPolicyError, match="native_agent_owner_mismatch"):
             lineage.resolve(
@@ -382,7 +400,7 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
     assert not sql.info["locked"]
 
 
-def test_expired_request_native_context_cannot_taint_later_ordinary_preflight():
+def test_expired_request_native_context_cannot_taint_later_ordinary_preflight() -> None:
     from flask import Flask, g
 
     from services.dify_builder.native_testing.agent_bridge import claim_agent_endpoint

@@ -4,11 +4,72 @@ Fixture UUIDs and metadata are synthetic; actual native public-node association
 and physical host quiescence are separately owned. No provider I/O is invoked.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, override
+
+from pydantic import JsonValue
+
+from models.workflow import Workflow
+from runtime_contracts.builder.native.contracts import (
+    CheckpointRef,
+    DispatchPermit,
+    EffectDecision,
+    ResumeReceipt,
+)
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    NativeRuntimeWitness,
+    require_instance,
+)
+from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ChildArguments
+
+if TYPE_CHECKING:
+    from runtime_contracts.builder.native.contracts import NativeTestContextRef
+    from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, ResolvedNativeTestContext
+
+
+from typing import TYPE_CHECKING, NotRequired, Unpack
+
+from typing_extensions import TypedDict
+
+if TYPE_CHECKING:
+    import services.dify_builder.native_testing.repository as _forward_types_0
+
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy.orm.state import InstanceState
+
+from models.dify_builder_native_tests import NativeInvocationState
+
+if TYPE_CHECKING:
+    from runtime_contracts.builder.native.contracts import (
+        NativeTestContextRef,
+    )
+    from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_continuation as _fixture_types_0,
+    )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_continuation as _fixture_types_0,
+    )
+
+
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from uuid import uuid4
 
 import pytest
+import pytest_mock
 from sqlalchemy import func, select
 from sqlalchemy import inspect as inspect_orm
 
@@ -17,17 +78,25 @@ from models.dify_builder_native_tests import (
     NativeEffectDispatchClaim,
     NativeEffectOperation,
     NativeEffectOutcome,
-    NativeInvocationState,
     NativePendingAction,
     NativeTestScope,
 )
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
-from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit, PolicyStop, RecordedResult
+from runtime_contracts.builder.native.contracts import (
+    ApprovalWait,
+    NativeTestContextRef,
+    PolicyStop,
+    RecordedResult,
+)
 from services.dify_builder.native_testing.http_binding import NativeHttpDisclosure
 from services.dify_builder.native_testing.pending_actions import NativePendingActionService
 from services.dify_builder.native_testing.transitions import quarantine_unknown
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import ChildApprovalCase
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    ChildApprovalCase,
+    require_present,
+)
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+    ContinuationCase,
     _bind_child_effect,
     _child_case,
 )
@@ -55,12 +124,14 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_e
 
 
 @pytest.fixture
-def fence_case(continuation_case, migrated_dispatch_claims):
+def fence_case(
+    continuation_case: _fixture_types_0.ContinuationCase, migrated_dispatch_claims: None
+) -> ContinuationCase:
     assert migrated_dispatch_claims is None
     return continuation_case
 
 
-def _state(c, ref=None):
+def _state(c: ContinuationCase, ref: NativeTestContextRef | None = None) -> NativeInvocationState | None:
     ref = ref or c.ref
     with c.factory() as session:
         return session.scalar(
@@ -71,7 +142,7 @@ def _state(c, ref=None):
         )
 
 
-def _pending(c, category, ref=None):
+def _pending(c: ContinuationCase, category: str, ref: NativeTestContextRef | None = None) -> ApprovalWait:
     ref = ref or c.ref
     generation = c.store.load_context(ref=ref).generation
     service = NativePendingActionService(c.store.loader)
@@ -80,22 +151,29 @@ def _pending(c, category, ref=None):
     if category == "interaction":
         return service.interaction(ref=ref, native_form_ref="form-1", expected_generation=generation)
     effect = c.ledger.intent if ref == c.ref else _bind_child_effect(c, ref, approval_scope="operation")
-    return c.ledger.guard.before_call(ref=ref, intent=effect)
+    return require_instance(c.ledger.guard.before_call(ref=ref, intent=effect), ApprovalWait)
 
 
-def _fence(c, pending_id, ref=None):
+def _fence(c: ContinuationCase, pending_id: str, ref: NativeTestContextRef | None = None) -> None:
     ref = ref or c.ref
     return c.lifecycle.fence_pending(
         ref=ref, pending_operation_ids=(pending_id,), expected_generation=c.store.load_context(ref=ref).generation
     )
 
 
-def _count(c, model):
+def _count(
+    c: ContinuationCase,
+    model: type[NativeEffectAttempt]
+    | type[NativeEffectDispatchClaim]
+    | type[NativeEffectOperation]
+    | type[NativeEffectOutcome]
+    | type[NativeInvocationState],
+) -> int | None:
     with c.factory() as session:
         return session.scalar(select(func.count()).select_from(model).where(model.request_id == c.ref.request_id))
 
 
-def _pause_configuration(c):
+def _pause_configuration(c: ContinuationCase) -> tuple[ApprovalWait, CheckpointRef, ResumeReceipt]:
     wait = _pending(c, "configuration")
     _fence(c, wait.pending_operation_id)
     cp = c.checkpoint()
@@ -108,40 +186,52 @@ def _pause_configuration(c):
 
 
 @pytest.mark.parametrize("category", ["approval", "configuration", "interaction"])
-def test_running_fence_coalesces_exact_real_category_without_new_operation_or_spend(fence_case, category):
+def test_running_fence_coalesces_exact_real_category_without_new_operation_or_spend(
+    fence_case: ContinuationCase, category: str
+) -> None:
     c = fence_case
     wait = _pending(c, category)
     baseline = _count(c, NativeEffectOperation)
     assert _fence(c, wait.pending_operation_id) is None
     assert _fence(c, wait.pending_operation_id) is None
     state = _state(c)
-    assert (state.state, state.checkpoint_id, state.wait_reason) == ("running", None, category)
-    assert state.pending_ids == [wait.pending_operation_id]
+    assert (require_present(state).state, require_present(state).checkpoint_id, require_present(state).wait_reason) == (
+        "running",
+        None,
+        category,
+    )
+    assert require_present(state).pending_ids == [wait.pending_operation_id]
     sibling = c.ledger.occurrence("fixture-" + str(uuid4()))
     assert c.ledger.guard.before_call(ref=c.ref, intent=sibling) == wait
     assert _count(c, NativeEffectOperation) == baseline
     assert _count(c, NativeEffectAttempt) == _count(c, NativeEffectDispatchClaim) == 0
     with c.factory() as session:
         scope = session.get(NativeTestScope, c.ref.request_id)
-        assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (0, 0, 0)
+        assert (
+            require_instance(scope, NativeTestScope).spent_calls,
+            require_instance(scope, NativeTestScope).spent_dispatches,
+            require_instance(scope, NativeTestScope).spent_cost_units,
+        ) == (0, 0, 0)
 
 
-def test_completed_result_replay_survives_later_running_fence(fence_case):
+def test_completed_result_replay_survives_later_running_fence(fence_case: ContinuationCase) -> None:
     c = fence_case
     c.ledger.confirm()
     permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
-    c.ledger.guard.claim_dispatch(ref=c.ref, intent=c.ledger.intent, permit=permit)
+    c.ledger.guard.claim_dispatch(ref=c.ref, intent=c.ledger.intent, permit=require_instance(permit, DispatchPermit))
     result = c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"done": True})
-    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=result)
+    c.ledger.guard.record_outcome(
+        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref=result
+    )
     wait = _pending(c, "configuration")
     _fence(c, wait.pending_operation_id)
     assert c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent) == RecordedResult(
-        operation_id=permit.operation_id, result_ref=result
+        operation_id=require_instance(permit, DispatchPermit).operation_id, result_ref=result
     )
     assert _count(c, NativeEffectAttempt) == _count(c, NativeEffectDispatchClaim) == 1
 
 
-def test_reserved_permit_losing_fence_race_is_not_refunded_or_physically_consumed(fence_case):
+def test_reserved_permit_losing_fence_race_is_not_refunded_or_physically_consumed(fence_case: ContinuationCase) -> None:
     c = fence_case
     c.ledger.confirm()
     permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
@@ -157,11 +247,17 @@ def test_reserved_permit_losing_fence_race_is_not_refunded_or_physically_consume
     assert _count(c, NativeEffectDispatchClaim) == _count(c, NativeEffectOutcome) == 0
     with c.factory() as session:
         scope = session.get(NativeTestScope, c.ref.request_id)
-        assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (1, 1, 2)
+        assert (
+            require_instance(scope, NativeTestScope).spent_calls,
+            require_instance(scope, NativeTestScope).spent_dispatches,
+            require_instance(scope, NativeTestScope).spent_cost_units,
+        ) == (1, 1, 2)
 
 
 @pytest.mark.parametrize("boundary", ["reserve", "physical"])
-def test_real_root_lock_orders_fence_against_reservation_or_physical_claim(fence_case, boundary):
+def test_real_root_lock_orders_fence_against_reservation_or_physical_claim(
+    fence_case: ContinuationCase, boundary: str
+) -> None:
     c = fence_case
     c.ledger.confirm(max_calls=2, max_dispatches=2)
     wait = _pending(c, "configuration")
@@ -169,16 +265,16 @@ def test_real_root_lock_orders_fence_against_reservation_or_physical_claim(fence
     permit = c.ledger.guard.before_call(ref=c.ref, intent=effect) if boundary == "physical" else None
     barrier = Barrier(2)
 
-    def fence():
+    def fence() -> None:
         barrier.wait(timeout=10)
         _fence(c, wait.pending_operation_id)
 
-    def consume():
+    def consume() -> EffectDecision | str:
         barrier.wait(timeout=10)
         if boundary == "reserve":
             return c.ledger.guard.before_call(ref=c.ref, intent=effect)
         try:
-            c.ledger.guard.claim_dispatch(ref=c.ref, intent=effect, permit=permit)
+            c.ledger.guard.claim_dispatch(ref=c.ref, intent=effect, permit=require_instance(permit, DispatchPermit))
             return "claimed"
         except BuilderExecutionPolicyError as error:
             return error.reason_code
@@ -202,7 +298,9 @@ def test_real_root_lock_orders_fence_against_reservation_or_physical_claim(fence
         assert _count(c, NativeEffectAttempt) == 1
 
 
-def test_foreign_invocation_fence_and_ancestor_work_never_inherit_pending_identity(fence_case):
+def test_foreign_invocation_fence_and_ancestor_work_never_inherit_pending_identity(
+    fence_case: ContinuationCase,
+) -> None:
     c = fence_case
     service, child = _child_case(c)
     effect = _bind_child_effect(c, child)
@@ -227,7 +325,7 @@ def test_foreign_invocation_fence_and_ancestor_work_never_inherit_pending_identi
         )
 
 
-def test_pause_rejects_omitting_a_late_real_fence_member(fence_case):
+def test_pause_rejects_omitting_a_late_real_fence_member(fence_case: ContinuationCase) -> None:
     c = fence_case
     first = _pending(c, "configuration")
     second = _pending(c, "interaction")
@@ -238,29 +336,38 @@ def test_pause_rejects_omitting_a_late_real_fence_member(fence_case):
         c.lifecycle.pause(
             ref=c.ref, checkpoint=cp, pending_operation_ids=(first.pending_operation_id,), expected_generation=0
         )
-    assert _state(c).state == "running"
-    assert _state(c).pending_ids == [first.pending_operation_id, second.pending_operation_id]
+    assert require_present(_state(c)).state == "running"
+    assert require_present(_state(c)).pending_ids == [first.pending_operation_id, second.pending_operation_id]
 
 
-def test_enqueue_keeps_fence_and_exclusive_claim_opens_only_acknowledged_reason(fence_case):
+def test_enqueue_keeps_fence_and_exclusive_claim_opens_only_acknowledged_reason(fence_case: ContinuationCase) -> None:
     c = fence_case
     wait, _, receipt = _pause_configuration(c)
-    assert (_state(c).state, _state(c).pending_ids) == ("queued", [wait.pending_operation_id])
+    assert (require_present(_state(c)).state, require_present(_state(c)).pending_ids) == (
+        "queued",
+        [wait.pending_operation_id],
+    )
     assert isinstance(c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent), PolicyStop)
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
-    assert (_state(c).state, _state(c).pending_ids, _state(c).wait_reason) == (
+    assert (
+        require_present(_state(c)).state,
+        require_present(_state(c)).pending_ids,
+        require_present(_state(c)).wait_reason,
+    ) == (
         "running",
         [wait.pending_operation_id],
         None,
     )
     assert not c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
-    assert _state(c).pending_ids == [wait.pending_operation_id]
+    assert require_present(_state(c)).pending_ids == [wait.pending_operation_id]
     with pytest.raises(BuilderExecutionPolicyError, match="native_pending_mismatch"):
         c.lifecycle.fence_pending(ref=c.ref, pending_operation_ids=(wait.pending_operation_id,), expected_generation=1)
 
 
 @pytest.mark.parametrize("fault", ["empty", "wrong_id", "unresolved", "unknown"])
-def test_malformed_saved_resolution_or_unknown_never_reopens_queued_fence(fence_case, fault):
+def test_malformed_saved_resolution_or_unknown_never_reopens_queued_fence(
+    fence_case: ContinuationCase, fault: str
+) -> None:
     c = fence_case
     wait, _, receipt = _pause_configuration(c)
     with c.store.loader.locked(ref=c.ref) as (session, owned, _):
@@ -270,24 +377,26 @@ def test_malformed_saved_resolution_or_unknown_never_reopens_queued_fence(fence_
         if fault == "unknown":
             quarantine_unknown(session, ref=c.ref, tenant_id=owned.tenant_id)
         elif fault == "empty":
-            state.resolution = []
+            require_instance(state, NativeInvocationState).resolution = []
         else:
-            raw = dict(state.resolution[0])
+            raw = dict(require_instance(state, NativeInvocationState).resolution[0])
             raw["pending_action_id" if fault == "wrong_id" else "resolved"] = (
                 "foreign" if fault == "wrong_id" else False
             )
-            state.resolution = [raw]
+            require_instance(state, NativeInvocationState).resolution = [raw]
     if fault == "unknown":
         assert not c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
     else:
         with pytest.raises(BuilderExecutionPolicyError):
             c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
-    assert _state(c).pending_ids == [wait.pending_operation_id]
-    assert _state(c).state != "running"
+    assert require_present(_state(c)).pending_ids == [wait.pending_operation_id]
+    assert require_present(_state(c)).state != "running"
 
 
 @pytest.mark.parametrize("category", ["approval", "configuration", "interaction"])
-def test_real_pending_creation_and_fence_use_child_local_generation_after_unrelated_root_resume(fence_case, category):
+def test_real_pending_creation_and_fence_use_child_local_generation_after_unrelated_root_resume(
+    fence_case: ContinuationCase, category: str
+) -> None:
     c = fence_case
     _, child = _child_case(c)
     c.pause()
@@ -296,17 +405,24 @@ def test_real_pending_creation_and_fence_use_child_local_generation_after_unrela
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
     assert c.store.load_context(ref=child).generation == 0
     with c.factory() as session:
-        assert session.get(NativeTestScope, c.ref.request_id).generation == 1
+        assert require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).generation == 1
     wait = _pending(c, category, child)
     assert isinstance(wait, ApprovalWait)
     with c.factory() as session:
-        assert session.get(NativePendingAction, wait.pending_operation_id).generation == 0
+        assert (
+            require_instance(
+                session.get(NativePendingAction, wait.pending_operation_id), NativePendingAction
+            ).generation
+            == 0
+        )
     _fence(c, wait.pending_operation_id, child)
-    assert _state(c, child).pending_ids == [wait.pending_operation_id]
+    assert require_present(_state(c, child)).pending_ids == [wait.pending_operation_id]
 
 
 @pytest.mark.parametrize("stale_local", [False, True])
-def test_real_protected_child_approval_local_zero_shared_one_and_stale_local_rejection(fence_case, stale_local):
+def test_real_protected_child_approval_local_zero_shared_one_and_stale_local_rejection(
+    fence_case: ContinuationCase, stale_local: bool
+) -> None:
 
     from tests.test_containers_integration_tests.core.workflow.test_builder_native_approval_scope import (
         _decide,
@@ -332,8 +448,13 @@ def test_real_protected_child_approval_local_zero_shared_one_and_stale_local_rej
     )
     _, guards = _prepare_pending(selected, (effect,))
     with c.factory() as session:
-        assert session.get(NativeTestScope, c.ref.request_id).generation == 1
-        assert session.get(NativePendingAction, guards[0].pending_operation_id).generation == 0
+        assert require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).generation == 1
+        assert (
+            require_instance(
+                session.get(NativePendingAction, guards[0].pending_operation_id), NativePendingAction
+            ).generation
+            == 0
+        )
     if stale_local:
         with c.factory.begin() as session:
             state = session.scalar(
@@ -342,53 +463,68 @@ def test_real_protected_child_approval_local_zero_shared_one_and_stale_local_rej
                     NativeInvocationState.invocation_id == child.invocation_id,
                 )
             )
-            state.generation = 1
+            require_instance(state, NativeInvocationState).generation = 1
         with pytest.raises(BuilderExecutionPolicyError, match="native_pending_conflict"):
             _decide(selected, guards[0])
     else:
         assert _decide(selected, guards[0]) == _decide(selected, guards[0])
 
 
-def _expire_claim(c, receipt):
+def _expire_claim(c: ContinuationCase, receipt: ResumeReceipt) -> None:
     from datetime import UTC, datetime, timedelta
 
     from models.dify_builder_native_tests import NativeDispatch
 
     with c.factory.begin() as session:
-        session.get(NativeDispatch, receipt.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        require_instance(session.get(NativeDispatch, receipt.dispatch_id), NativeDispatch).claim_expires_at = (
+            datetime.now(UTC) - timedelta(seconds=1)
+        )
     c.lifecycle.reconcile()
 
 
 @pytest.mark.parametrize("late_fence", [False, True])
-def test_real_explicit_recovery_preserves_source_and_refuses_later_fence_evidence_loss(fence_case, late_fence):
+def test_real_explicit_recovery_preserves_source_and_refuses_later_fence_evidence_loss(
+    fence_case: ContinuationCase, late_fence: bool
+) -> None:
     c = fence_case
     wait, _, receipt = _pause_configuration(c)
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
-    assert (_state(c).pending_ids, _state(c).wait_reason) == ([wait.pending_operation_id], None)
+    assert (require_present(_state(c)).pending_ids, require_present(_state(c)).wait_reason) == (
+        [wait.pending_operation_id],
+        None,
+    )
+    late: ApprovalWait | None = None
     if late_fence:
         late = _pending(c, "interaction")
         _fence(c, late.pending_operation_id)
-        assert _state(c).pending_ids == [late.pending_operation_id]
+        assert late is not None
+        assert require_present(_state(c)).pending_ids == [late.pending_operation_id]
     _expire_claim(c, receipt)
-    assert _state(c).state == "unknown"
+    assert require_present(_state(c)).state == "unknown"
 
-    class RuntimeProof:
+    class RuntimeProof(NativeRuntimeWitness):
         """Trusted proof-port fixture; this does not claim real host quiescence."""
 
-        def recovery_evidence(self, **_kwargs):
+        @override
+        def recovery_evidence(self, **_kwargs: object) -> Literal["not_started"]:
             return "not_started"
 
     c.lifecycle.runtime = RuntimeProof()
     if late_fence:
         with pytest.raises(BuilderExecutionPolicyError):
             c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=receipt.dispatch_id)
-        assert _state(c).state == "unknown"
-        assert _state(c).pending_ids == [late.pending_operation_id]
+        assert require_present(_state(c)).state == "unknown"
+        assert late is not None
+        assert require_present(_state(c)).pending_ids == [late.pending_operation_id]
     else:
         c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=receipt.dispatch_id)
-        assert _state(c).state == "queued"
+        assert require_present(_state(c)).state == "queued"
         assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
-        assert (_state(c).state, _state(c).pending_ids, _state(c).wait_reason) == (
+        assert (
+            require_present(_state(c)).state,
+            require_present(_state(c)).pending_ids,
+            require_present(_state(c)).wait_reason,
+        ) == (
             "running",
             [wait.pending_operation_id],
             None,
@@ -396,7 +532,9 @@ def test_real_explicit_recovery_preserves_source_and_refuses_later_fence_evidenc
     assert _count(c, NativeEffectAttempt) == _count(c, NativeEffectDispatchClaim) == 0
 
 
-def test_history_allows_fresh_pending_then_first_new_fence_replaces_only_old_evidence(fence_case):
+def test_history_allows_fresh_pending_then_first_new_fence_replaces_only_old_evidence(
+    fence_case: ContinuationCase,
+) -> None:
     c = fence_case
     old, _, receipt = _pause_configuration(c)
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
@@ -405,10 +543,15 @@ def test_history_allows_fresh_pending_then_first_new_fence_replaces_only_old_evi
     assert fresh.wait_reason == "approval"
     assert fresh.pending_operation_id != old.pending_operation_id
     _fence(c, fresh.pending_operation_id)
-    assert (_state(c).pending_ids, _state(c).wait_reason) == ([fresh.pending_operation_id], "approval")
+    assert (require_present(_state(c)).pending_ids, require_present(_state(c)).wait_reason) == (
+        [fresh.pending_operation_id],
+        "approval",
+    )
 
 
-def test_active_private_reason_does_not_publish_a_waiting_receipt(mocker, fence_case):
+def test_active_private_reason_does_not_publish_a_waiting_receipt(
+    mocker: pytest_mock.MockerFixture, fence_case: ContinuationCase
+) -> None:
 
     from models.dify_builder import DifyBuilderExecutionRequest
     from services.dify_builder.native_testing.api_service import NativeTestApiService
@@ -417,7 +560,9 @@ def test_active_private_reason_does_not_publish_a_waiting_receipt(mocker, fence_
     wait = _pending(c, "configuration")
     _fence(c, wait.pending_operation_id)
     with c.factory() as session:
-        session_id = session.get(DifyBuilderExecutionRequest, c.ref.request_id).session_id
+        session_id = require_instance(
+            session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+        ).session_id
     disclosure = NativeHttpDisclosure(loader=c.store.loader, state_store=c.store)
     mocker.patch.object(disclosure, "describe", side_effect=lambda **_kw: pytest.fail("running fence is private"))
     api = NativeTestApiService(
@@ -430,13 +575,15 @@ def test_active_private_reason_does_not_publish_a_waiting_receipt(mocker, fence_
         disclosure=disclosure,
     )
     receipt = api.get(actor=c.ledger.actor, session_id=session_id, request_id=c.ref.request_id)
-    assert _state(c).state == "running"
+    assert require_present(_state(c)).state == "running"
     assert receipt.status != "waiting"
     assert receipt.wait_reason is None
     assert receipt.pending == ()
 
 
-def test_exclusive_parent_claim_reopens_only_checkpoint_represented_descendant_reasons(fence_case):
+def test_exclusive_parent_claim_reopens_only_checkpoint_represented_descendant_reasons(
+    fence_case: ContinuationCase,
+) -> None:
     from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
 
     c = fence_case
@@ -447,10 +594,12 @@ def test_exclusive_parent_claim_reopens_only_checkpoint_represented_descendant_r
     _fence(c, selected_wait.pending_operation_id, selected)
     _fence(c, unrelated_wait.pending_operation_id, unrelated)
 
-    def payload(ref, children=()):
+    def payload(
+        ref: NativeTestContextRef, children: tuple[()] | tuple[NativeTestContextRef] = ()
+    ) -> NativeCheckpointPayload:
         return NativeCheckpointPayload(
             schema_version="1",
-            native_run_id=c.store.load_context(ref=ref).native_run_id,
+            native_run_id=require_instance(c.store.load_context(ref=ref).native_run_id, str),
             generation=0,
             generate_entity_json="{}",
             graph_runtime_state_json="{}",
@@ -476,25 +625,35 @@ def test_exclusive_parent_claim_reopens_only_checkpoint_represented_descendant_r
     )
     c.resolution.resolved = True
     receipt = c.resume()
-    assert _state(c, selected).state == "queued"
-    assert _state(c, unrelated).state == "running"
+    assert require_present(_state(c, selected)).state == "queued"
+    assert require_present(_state(c, unrelated)).state == "running"
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
     for ref in (c.ref, selected):
         state = _state(c, ref)
-        assert (state.state, state.wait_reason, state.pending_ids) == (
+        assert (
+            require_present(state).state,
+            require_present(state).wait_reason,
+            require_present(state).pending_ids,
+        ) == (
             "running",
             None,
             [selected_wait.pending_operation_id],
         )
     other = _state(c, unrelated)
-    assert (other.generation, other.wait_reason, other.pending_ids) == (
+    assert (
+        require_present(other).generation,
+        require_present(other).wait_reason,
+        require_present(other).pending_ids,
+    ) == (
         0,
         "configuration",
         [unrelated_wait.pending_operation_id],
     )
 
 
-def test_lost_fence_commit_ack_never_returns_acceptance_or_a_wait_receipt(fence_case, monkeypatch):
+def test_lost_fence_commit_ack_never_returns_acceptance_or_a_wait_receipt(
+    fence_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from contextlib import contextmanager
 
     c = fence_case
@@ -502,7 +661,11 @@ def test_lost_fence_commit_ack_never_returns_acceptance_or_a_wait_receipt(fence_
     original = c.lifecycle.loader.locked
 
     @contextmanager
-    def lost_ack(**kwargs):
+    def lost_ack(
+        **kwargs: Unpack[_ForwardArguments634],
+    ) -> _forward_types_0.Generator[
+        tuple[_forward_types_0.Session, _forward_types_0.OwnedNativeTest, _forward_types_0.NativeTestScope]
+    ]:
         with original(**kwargs) as value:
             yield value
         raise OSError("lost commit acknowledgement")
@@ -510,7 +673,11 @@ def test_lost_fence_commit_ack_never_returns_acceptance_or_a_wait_receipt(fence_
     monkeypatch.setattr(c.lifecycle.loader, "locked", lost_ack)
     with pytest.raises(OSError, match="lost commit acknowledgement"):
         _fence(c, wait.pending_operation_id)
-    assert (_state(c).state, _state(c).wait_reason, _state(c).pending_ids) == (
+    assert (
+        require_present(_state(c)).state,
+        require_present(_state(c)).wait_reason,
+        require_present(_state(c)).pending_ids,
+    ) == (
         "running",
         "configuration",
         [wait.pending_operation_id],
@@ -518,19 +685,23 @@ def test_lost_fence_commit_ack_never_returns_acceptance_or_a_wait_receipt(fence_
     assert _count(c, NativeEffectAttempt) == _count(c, NativeEffectDispatchClaim) == 0
 
 
-def test_concurrent_generation_claim_has_one_owner_and_retains_exact_evidence(fence_case):
+def test_concurrent_generation_claim_has_one_owner_and_retains_exact_evidence(fence_case: ContinuationCase) -> None:
     c = fence_case
     wait, _, receipt = _pause_configuration(c)
     barrier = Barrier(2)
 
-    def claim(_):
+    def claim(_) -> bool:
         barrier.wait(timeout=10)
         return c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         outcomes = list(pool.map(claim, range(2)))
     assert sorted(outcomes) == [False, True]
-    assert (_state(c).generation, _state(c).wait_reason, _state(c).pending_ids) == (
+    assert (
+        require_present(_state(c)).generation,
+        require_present(_state(c)).wait_reason,
+        require_present(_state(c)).pending_ids,
+    ) == (
         1,
         None,
         [wait.pending_operation_id],
@@ -540,8 +711,12 @@ def test_concurrent_generation_claim_has_one_owner_and_retains_exact_evidence(fe
 @pytest.mark.parametrize("child_status", ["running", "completed", "stopped"])
 @pytest.mark.parametrize("fault", [None, "permission", "revision", "input"])
 def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_input(
-    mocker, fence_case, monkeypatch, child_status, fault
-):
+    mocker: pytest_mock.MockerFixture,
+    fence_case: ContinuationCase,
+    monkeypatch: pytest.MonkeyPatch,
+    child_status: Literal["running", "completed", "stopped", "unknown"],
+    fault: None | str,
+) -> None:
     """Root A stays authorized; actual parent B must qualify every lookup of C."""
     import json
 
@@ -551,7 +726,6 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
     from extensions.ext_storage import storage
     from models.dify_builder_native_tests import NativePayloadObject
     from models.model import App
-    from models.workflow import Workflow
     from runtime_contracts.builder.native.contracts import OperationKey
     from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
@@ -562,13 +736,17 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
     with c.factory.begin() as session:
         original = session.get(App, c.context.app_id)
         app = App(
-            **{a.key: inspect_orm(original).attrs[a.key].value for a in inspect(App).column_attrs if a.key != "id"}
+            **{
+                a.key: require_instance(inspect_orm(original), InstanceState).attrs[a.key].value
+                for a in inspect(App).column_attrs
+                if a.key != "id"
+            }
         )
         app.id, app.maintainer = str(uuid4()), str(uuid4())
         original_workflow = session.get(Workflow, c.context.workflow_id)
         workflow = Workflow(
             **{
-                a.key: inspect_orm(original_workflow).attrs[a.key].value
+                a.key: require_instance(inspect_orm(original_workflow), InstanceState).attrs[a.key].value
                 for a in inspect(Workflow).column_attrs
                 if a.key != "id"
             }
@@ -581,11 +759,18 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
         _, parent_ref = _child_case(c, app_id=parent_app_id, workflow_id=parent_workflow_id)
         parent = c.store.load_context(ref=parent_ref)
         assert parent.app_id != c.context.app_id
-        inputs = {"nested": True}
+        inputs: dict[str, JsonValue] = {"nested": True}
         key = OperationKey(invocation_id=parent_ref.invocation_id, occurrence_path=("existing-C",), cursor=0)
         input_ref = c.store.store_result(ref=parent_ref, key=key, result=inputs)
 
-        def resolve_child(*, parent, ref, child_app_id, child_workflow_revision, inputs):
+        def resolve_child(
+            *,
+            parent: ResolvedNativeTestContext,
+            ref: NativeTestContextRef,
+            child_app_id: str,
+            child_workflow_revision: str,
+            inputs: dict[str, JsonValue],
+        ) -> ResolvedNativeTestContext:
             return parent.model_copy(
                 update={
                     "ref": ref,
@@ -602,12 +787,26 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
             )
 
         class ChildResolver:
-            def resolve_child(self, **values):
-                return resolve_child(**values)
+            def resolve_child(
+                self,
+                *,
+                parent: ResolvedNativeTestContext,
+                ref: NativeTestContextRef,
+                child_app_id: str,
+                child_workflow_revision: str,
+                inputs: dict[str, JsonValue],
+            ) -> ResolvedNativeTestContext:
+                return resolve_child(
+                    parent=parent,
+                    ref=ref,
+                    child_app_id=child_app_id,
+                    child_workflow_revision=child_workflow_revision,
+                    inputs=inputs,
+                )
 
         resolver = ChildResolver()
         service = NativeChildInvocationService(c.store, resolver=resolver)
-        args = {
+        args: ChildArguments = {
             "parent_ref": parent_ref,
             "key": key,
             "child_app_id": c.context.app_id,
@@ -638,7 +837,9 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
         if fault == "permission":
             monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
 
-            def check(tenant_id, actor_id, *, scene, resource_type, resource_id):
+            def check(
+                tenant_id: str, actor_id: str, *, scene: str, resource_type: str | None, resource_id: str | None
+            ) -> bool:
                 assert (tenant_id, actor_id) == (c.ledger.actor.tenant_id, c.ledger.actor.account_id)
                 assert scene is not None
                 assert resource_type is not None
@@ -648,12 +849,14 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
         elif fault == "revision":
             with c.factory.begin() as session:
                 workflow = session.get(Workflow, parent_workflow_id)
-                graph = json.loads(workflow.graph)
+                graph = json.loads(require_instance(workflow, Workflow).graph)
                 graph["nodes"] = [*graph.get("nodes", []), {"id": "changed-node", "data": {"type": "start"}}]
-                workflow.graph = json.dumps(graph)
+                require_instance(workflow, Workflow).graph = json.dumps(graph)
         elif fault == "input":
             with c.factory() as session:
-                storage_key = session.get(NativePayloadObject, input_ref).storage_key
+                storage_key = require_instance(
+                    session.get(NativePayloadObject, input_ref), NativePayloadObject
+                ).storage_key
             original_load = storage.load
             monkeypatch.setattr(
                 storage,
@@ -673,9 +876,14 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
             with pytest.raises(BuilderExecutionPolicyError, match=reason):
                 service.get_or_create(**args)
         assert _count(c, NativeInvocationState) == before
-        assert _state(c, parent_ref).state == "running"
-        assert _state(c, child_ref).state == child_status
+        assert require_present(_state(c, parent_ref)).state == "running"
+        assert require_present(_state(c, child_ref)).state == child_status
     finally:
         with c.factory.begin() as session:
             session.delete(session.get(Workflow, parent_workflow_id))
             session.delete(session.get(App, parent_app_id))
+
+
+class _ForwardArguments634(TypedDict, closed=True):
+    ref: _forward_types_0.NativeTestContextRef
+    settlement: NotRequired[bool]

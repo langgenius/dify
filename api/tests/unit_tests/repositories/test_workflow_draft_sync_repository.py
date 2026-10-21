@@ -1,14 +1,16 @@
 import json
 
 import pytest
+import pytest_mock
 
 from repositories import workflow_draft_sync_repository as repo_module
 from repositories.workflow_draft_sync_repository import ServerDraftChange, WorkflowDraftSyncRepository
+from tests.unit_tests.installed_spies import installed_mock
 
 
 @pytest.mark.parametrize("previous", [None, {"nodes": [], "edges": []}])
 def test_graphs_stay_opaque_to_lua_and_round_trip_without_changing_values(
-    previous: dict[str, object] | None, monkeypatch: pytest.MonkeyPatch, mocker
+    previous: dict[str, object] | None, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture
 ) -> None:
     redis = repo_module.redis_client
     mocker.patch.object(redis, "eval", return_value=1)
@@ -31,5 +33,6 @@ def test_graphs_stay_opaque_to_lua_and_round_trip_without_changing_values(
     encoded = json.loads(payload)
     assert isinstance(encoded["graph"], str)
     assert encoded["previous_graph"] is None or isinstance(encoded["previous_graph"], str)
-    redis.get.return_value = payload.encode()
+    _installed_spy_1 = installed_mock(redis.get)
+    _installed_spy_1.return_value = payload.encode()
     assert repository.get("app") == change

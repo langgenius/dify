@@ -2,10 +2,11 @@
 
 import ast
 import inspect
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from runtime_contracts.builder.native import runtime_contracts
 from runtime_contracts.builder.native.runtime_contracts import (
@@ -97,21 +98,21 @@ COVERAGE = {
 }
 
 
-def test_checkpoint_roundtrip_preserves_recovery_state_and_input_references():
+def test_checkpoint_roundtrip_preserves_recovery_state_and_input_references() -> None:
     checkpoint = NativeCheckpointPayload.model_validate(CHECKPOINT)
     restored = NativeCheckpointPayload.model_validate_json(checkpoint.model_dump_json())
     expected = {
         **CHECKPOINT,
-        "approval_proposals": [],
-        "agent_associations": [],
-        "node_journals": [{**journal, "intents": []} for journal in CHECKPOINT["node_journals"]],
+        "approval_proposals": list[object](),
+        "agent_associations": list[object](),
+        "node_journals": [{**journal, "intents": list[object]()} for journal in CHECKPOINT["node_journals"]],
     }
     assert restored.model_dump(mode="json") == expected
     assert restored.node_journals[0].operation_keys[0].cursor == 0
     assert restored.input_result_refs == ("inputs-1",)
 
 
-def test_context_preserves_distinct_tenants_without_claiming_to_authorize_them():
+def test_context_preserves_distinct_tenants_without_claiming_to_authorize_them() -> None:
     first = ResolvedNativeTestContext.model_validate(CONTEXT)
     second = ResolvedNativeTestContext.model_validate({**CONTEXT, "tenant_id": "tenant-2"})
     assert first.tenant_id == "tenant-1"
@@ -131,7 +132,7 @@ def test_context_preserves_distinct_tenants_without_claiming_to_authorize_them()
         (NativeNodeCoverage, COVERAGE),
     ],
 )
-def test_models_reject_extra_fields_and_field_reassignment(model, data):
+def test_models_reject_extra_fields_and_field_reassignment(model: type[BaseModel], data: dict[str, object]) -> None:
     with pytest.raises(ValidationError, match="extra_forbidden"):
         model.model_validate({**data, "granted": True})
     instance = model.model_validate(data)
@@ -140,7 +141,7 @@ def test_models_reject_extra_fields_and_field_reassignment(model, data):
 
 
 @pytest.mark.parametrize("field", ["generation", "call_depth"])
-def test_context_rejects_negative_counters(field):
+def test_context_rejects_negative_counters(field: str) -> None:
     with pytest.raises(ValidationError):
         ResolvedNativeTestContext.model_validate({**CONTEXT, field: -1})
 
@@ -149,14 +150,14 @@ def test_context_rejects_negative_counters(field):
     ("model", "data", "field"),
     [(NodeJournalState, JOURNAL, "cursor"), (NativeCheckpointPayload, CHECKPOINT, "generation")],
 )
-def test_checkpoint_rejects_negative_counters(model, data, field):
+def test_checkpoint_rejects_negative_counters(model: type[BaseModel], data: dict[str, object], field: str) -> None:
     with pytest.raises(ValidationError):
         model.model_validate({**data, field: -1})
 
 
 @pytest.mark.parametrize("field", ["graph", "inputs", "resource_manifest"])
 @pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf"), b"file bytes"])
-def test_context_rejects_nonfinite_or_binary_json(field, bad):
+def test_context_rejects_nonfinite_or_binary_json(field: str, bad: object) -> None:
     value = [{"nested": bad}] if field == "resource_manifest" else {"nested": [bad]}
     with pytest.raises(ValidationError):
         ResolvedNativeTestContext.model_validate({**CONTEXT, field: value})
@@ -164,7 +165,7 @@ def test_context_rejects_nonfinite_or_binary_json(field, bad):
 
 @pytest.mark.parametrize("field", ["generate_entity_json", "graph_runtime_state_json", "response_stream_filter_json"])
 @pytest.mark.parametrize("bad", ['{"broken":', '{"value":NaN}', '{"value":Infinity}', '{"value":-Infinity}'])
-def test_checkpoint_rejects_invalid_or_nonfinite_json_strings(field, bad):
+def test_checkpoint_rejects_invalid_or_nonfinite_json_strings(field: str, bad: str) -> None:
     with pytest.raises(ValidationError):
         NativeCheckpointPayload.model_validate({**CHECKPOINT, field: bad})
 
@@ -179,13 +180,13 @@ def test_checkpoint_rejects_invalid_or_nonfinite_json_strings(field, bad):
         ("wait_reason", None),
     ],
 )
-def test_waiting_requires_durable_checkpoint_run_pending_operations_and_reason(field, bad):
+def test_waiting_requires_durable_checkpoint_run_pending_operations_and_reason(field: str, bad: object) -> None:
     with pytest.raises(ValidationError, match=field.removesuffix("_ref")):
         NativeWorkflowOutcome.model_validate({**WAITING, field: bad})
 
 
 @pytest.mark.parametrize("reason", ["approval", "configuration", "interaction"])
-def test_wait_categories_survive_outcome_and_projection_roundtrip(reason):
+def test_wait_categories_survive_outcome_and_projection_roundtrip(reason: str) -> None:
     outcome = NativeWorkflowOutcome.model_validate({**WAITING, "wait_reason": reason})
     projection = NativeBuilderProjection.model_validate({**PROJECTION, "wait_reason": reason})
     assert NativeWorkflowOutcome.model_validate_json(outcome.model_dump_json()).wait_reason == reason
@@ -193,14 +194,14 @@ def test_wait_categories_survive_outcome_and_projection_roundtrip(reason):
 
 
 @pytest.mark.parametrize("native_status", ["succeeded", "failed", "partial-succeeded", "stopped"])
-def test_native_terminal_states_are_completed_including_actual_failure(native_status):
+def test_native_terminal_states_are_completed_including_actual_failure(native_status: str) -> None:
     data = {
         **WAITING,
         "status": "completed",
         "wait_reason": None,
         "native_status": native_status,
         "checkpoint_ref": None,
-        "pending_operation_ids": [],
+        "pending_operation_ids": list[str](),
         "output_result_ref": "output-1",
     }
     outcome = NativeWorkflowOutcome.model_validate(data)
@@ -210,20 +211,20 @@ def test_native_terminal_states_are_completed_including_actual_failure(native_st
 
 
 @pytest.mark.parametrize("field", ["native_run_id", "native_status"])
-def test_completed_requires_native_run_and_terminal_state(field):
+def test_completed_requires_native_run_and_terminal_state(field: str) -> None:
     data = {**WAITING, "status": "completed", "wait_reason": None, "native_status": "failed", field: None}
     with pytest.raises(ValidationError, match=field):
         NativeWorkflowOutcome.model_validate(data)
 
 
 @pytest.mark.parametrize("status", ["completed", "stopped", "unknown"])
-def test_nonwaiting_outcome_rejects_wait_reason(status):
+def test_nonwaiting_outcome_rejects_wait_reason(status: str) -> None:
     with pytest.raises(ValidationError, match="wait_reason"):
         NativeWorkflowOutcome.model_validate({**WAITING, "status": status, "native_status": "failed"})
 
 
 @pytest.mark.parametrize("status", ["waiting", "stopped", "unknown"])
-def test_noncompleted_outcome_rejects_success_output(status):
+def test_noncompleted_outcome_rejects_success_output(status: str) -> None:
     data = {
         **WAITING,
         "status": status,
@@ -236,20 +237,20 @@ def test_noncompleted_outcome_rejects_success_output(status):
 
 @pytest.mark.parametrize("route", ["waiting", "stopped", "unknown"])
 @pytest.mark.parametrize("flag", ["can_diagnose", "can_start_new_run"])
-def test_projection_disallows_diagnosis_and_new_run_for_control_routes(route, flag):
+def test_projection_disallows_diagnosis_and_new_run_for_control_routes(route: str, flag: str) -> None:
     data = {**PROJECTION, "route": route, "wait_reason": "approval" if route == "waiting" else None, flag: True}
     with pytest.raises(ValidationError, match=flag):
         NativeBuilderProjection.model_validate(data)
 
 
 @pytest.mark.parametrize("field", list(WAITING))
-def test_outcome_fields_are_required_even_when_nullable(field):
+def test_outcome_fields_are_required_even_when_nullable(field: str) -> None:
     data = {key: value for key, value in WAITING.items() if key != field}
     with pytest.raises(ValidationError, match=field):
         NativeWorkflowOutcome.model_validate(data)
 
 
-def test_ports_expose_keyword_only_persistence_and_child_invocation_inputs():
+def test_ports_expose_keyword_only_persistence_and_child_invocation_inputs() -> None:
     expected = {
         NativeStatePort: {
             "load_context": ("ref",),
@@ -290,9 +291,9 @@ def test_ports_expose_keyword_only_persistence_and_child_invocation_inputs():
             assert all(param.kind == inspect.Parameter.KEYWORD_ONLY for param in params)
 
 
-def test_runtime_contract_import_boundary_excludes_runtime_core_and_database_dependencies():
+def test_runtime_contract_import_boundary_excludes_runtime_core_and_database_dependencies() -> None:
     tree = ast.parse(Path(runtime_contracts.__file__).read_text())
-    imports = []
+    imports: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             imports.extend(alias.name for alias in node.names)
@@ -322,14 +323,16 @@ def test_runtime_contract_import_boundary_excludes_runtime_core_and_database_dep
         {"resource_ref": "valid-resource"},
     ],
 )
-def test_context_rejects_manifest_generators_before_tuple_coercion(resource):
+def test_context_rejects_manifest_generators_before_tuple_coercion(resource: dict[str, object]) -> None:
     manifest = (entry for entry in [resource])
     with pytest.raises(ValidationError, match="resource_manifest"):
         ResolvedNativeTestContext.model_validate({**CONTEXT, "resource_manifest": manifest})
 
 
 @pytest.mark.parametrize("manifest", [[], (), [{"resource_ref": "resource-1"}], ({"resource_ref": "resource-1"},)])
-def test_context_manifest_accepts_lists_and_tuples_with_public_json_roundtrip(manifest):
+def test_context_manifest_accepts_lists_and_tuples_with_public_json_roundtrip(
+    manifest: Sequence[dict[str, str]],
+) -> None:
     context = ResolvedNativeTestContext.model_validate({**CONTEXT, "resource_manifest": manifest})
     assert isinstance(context.resource_manifest, tuple)
     assert context.model_dump(mode="json")["resource_manifest"] == list(manifest)

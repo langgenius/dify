@@ -10,10 +10,15 @@ import pytest
 from models.dify_builder import DifyBuilderTestInput
 from models.model import AppMode
 from models.workflow import Workflow
-from runtime_contracts.builder.execution import ExecutionEvidenceSummary, TrustedExecutionCompletion
+from runtime_contracts.builder.execution import (
+    BuilderExecutionContext,
+    ExecutionEvidenceSummary,
+    TrustedExecutionCompletion,
+)
 from services.dify_builder.application.execution_policy import scalar_inputs_digest
 from services.dify_builder.dify_port import _BuilderExecutionLaunch
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
+from services.workflow_execution_identity import build_workflow_execution_identity
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414 - export the shared pytest fixture
 
@@ -24,7 +29,6 @@ def effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
     from core.helper import encrypter
     from core.helper.code_executor.code_executor import CodeExecutor
     from core.model_manager import ModelManager
-    from core.ops.ops_trace_manager import OpsTraceManager
     from core.plugin.impl.oauth import OAuthHandler
     from core.tools.tool_manager import ToolManager
     from factories import file_factory
@@ -33,12 +37,11 @@ def effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
     for owner, name in (
         (file_factory, "build_from_mappings"),
         (file_factory, "build_from_mapping"),
-        (generator.TraceQueueManager, "start_timer"),
-        (OpsTraceManager, "get_ops_trace_instance"),
+        (generator, "create_trace_scope"),
         (ToolManager, "get_workflow_tool_runtime"),
         (OAuthHandler, "refresh_credentials"),
         (encrypter, "decrypt_token"),
-        (OpsTraceManager, "get_decrypted_tracing_config"),
+        (encrypter, "batch_decrypt_token"),
         (ModelManager, "get_model_instance"),
         (CodeExecutor, "execute_code"),
     ):
@@ -91,11 +94,11 @@ def test_port_refuses_unsupported_before_native_generation_or_secrets(
     monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
     calls = []
 
-    def native(*_args, **_kwargs):
+    def native(*_args: object, **_kwargs: object) -> Never:
         calls.append("native")
         raise AssertionError("native generator forbidden")
 
-    def secret(*_args, **_kwargs):
+    def secret(*_args: object, **_kwargs: object) -> Never:
         calls.append("secret")
         raise AssertionError("revision may resolve environment secrets")
 
@@ -137,7 +140,7 @@ def test_port_uses_native_defaults_numbers_and_sanitization(
     monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
     calls = []
 
-    def native(**kwargs):
+    def native(**kwargs: object) -> dict[str, object]:
         calls.append(kwargs)
         return {}
 
@@ -146,8 +149,11 @@ def test_port_uses_native_defaults_numbers_and_sanitization(
         app.id, actor, submitted, lambda _: None, session_id=sid, test_input_id=tid
     )
     assert result.dify_run_id == ""
-    assert calls[0]["args"]["inputs"] == expected
+    args = calls[0]["args"]
+    assert isinstance(args, dict)
+    assert args["inputs"] == expected
     marker = calls[0]["builder_execution"]
+    assert isinstance(marker, BuilderExecutionContext)
     assert marker.effective_inputs_digest == scalar_inputs_digest(expected)
     assert marker.submitted_inputs_digest == scalar_inputs_digest(submitted)
 
@@ -207,6 +213,7 @@ def test_native_generator_revalidates_its_normalized_effective_inputs(
         app_model=app,
         workflow=workflow,
         user=account,
+        execution_identity=build_workflow_execution_identity(account),
         args={"inputs": effective},
         invoke_from=InvokeFrom.DEBUGGER,
         streaming=False,
@@ -223,6 +230,7 @@ def test_native_generator_revalidates_its_normalized_effective_inputs(
             app_model=app,
             workflow=workflow,
             user=account,
+            execution_identity=build_workflow_execution_identity(account),
             args={"inputs": {**effective, "discarded": {}}},
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=False,
@@ -235,6 +243,7 @@ def test_native_generator_revalidates_its_normalized_effective_inputs(
             app_model=app,
             workflow=workflow,
             user=account,
+            execution_identity=build_workflow_execution_identity(account),
             args={"inputs": {"n": 42}},
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=False,
@@ -289,7 +298,7 @@ def test_postflight_rejects_raw_changes_before_secret_revision(
     monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda _, session: session.get(Workflow, workflow.id))
     revisions = []
 
-    def revision(*_args, **_kwargs):
+    def revision(*_args: object, **_kwargs: object) -> Never:
         revisions.append(True)
         raise AssertionError("raw changes must be denied before revision resolves secrets")
 
@@ -347,7 +356,7 @@ def test_direct_restricted_generator_admits_raw_before_config_and_normalization(
         workflow.graph = json.dumps(graph)
     configs = []
 
-    def config(*_args, **_kwargs):
+    def config(*_args: object, **_kwargs: object) -> Never:
         configs.append(True)
         raise AssertionError("config forbidden before raw admission")
 
@@ -360,6 +369,7 @@ def test_direct_restricted_generator_admits_raw_before_config_and_normalization(
             app_model=app,
             workflow=workflow,
             user=account,
+            execution_identity=build_workflow_execution_identity(account),
             args={"inputs": {"n": 41}},
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=False,
@@ -616,7 +626,7 @@ def test_final_seal_failure_returns_unsealed_unknown_without_allocation_identity
     monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
     monkeypatch.setattr(module.AppGenerateService, "generate", lambda **_: {})
 
-    def seal(*_args, **_kwargs):
+    def seal(*_args: object, **_kwargs: object) -> Never:
         raise RuntimeError("storage")
 
     monkeypatch.setattr(module.BuilderExecutionPolicyService, "seal", seal)
