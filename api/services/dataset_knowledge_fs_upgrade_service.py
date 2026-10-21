@@ -489,6 +489,25 @@ class KnowledgeFSUpgradeRunner:
             job.last_error_message = str(error)[:4000]
             job.completed_at = naive_utc_now()
 
+    def release_for_dispatch(self, *, job_id: str, celery_task_id: str | None) -> str | None:
+        """Return a committed checkpoint to an unclaimed QUEUED state before the next delivery.
+
+        Dispatch then goes through the same claim/release path as console enqueues, so a broker
+        failure leaves a job that ``retry`` and ``claim_enqueue`` can recover instead of a RUNNING
+        job with no delivery. Returns the tenant id, or None when the job moved on meanwhile.
+        """
+        with self._session_maker.begin() as session:
+            job = session.get(KnowledgeFSUpgradeJob, job_id, with_for_update=True)
+            if (
+                job is None
+                or job.status is not KnowledgeFSUpgradeJobStatus.RUNNING
+                or job.celery_task_id != celery_task_id
+            ):
+                return None
+            job.status = KnowledgeFSUpgradeJobStatus.QUEUED
+            job.celery_task_id = None
+            return job.tenant_id
+
     def _load_job(self, job_id: str) -> KnowledgeFSUpgradeJob:
         with self._session_maker() as session:
             job = session.get(KnowledgeFSUpgradeJob, job_id)

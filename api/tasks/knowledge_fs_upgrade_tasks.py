@@ -12,6 +12,7 @@ from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeDocumentReconciler,
     KnowledgeFSUpgradeNotReadyError,
     KnowledgeFSUpgradeRunner,
+    KnowledgeFSUpgradeSnapshotService,
 )
 
 KNOWLEDGE_FS_UPGRADE_QUEUE = "knowledge_fs_upgrade"
@@ -44,9 +45,18 @@ def run_knowledge_fs_upgrade(self, *, job_id: str) -> None:
         logger.exception("KnowledgeFS Dataset upgrade failed", extra={"upgrade_job_id": job_id})
         raise
     if has_more:
-        run_knowledge_fs_upgrade.apply_async(kwargs={"job_id": job_id})
+        _dispatch_next_checkpoint(runner, job_id=job_id, celery_task_id=self.request.id)
     else:
         reconcile_knowledge_fs_upgrade_documents.apply_async(kwargs={"job_id": job_id})
+
+
+def _dispatch_next_checkpoint(runner: KnowledgeFSUpgradeRunner, *, job_id: str, celery_task_id: str | None) -> None:
+    from services.knowledge.datasets.upgrades import enqueue_upgrade_job
+
+    tenant_id = runner.release_for_dispatch(job_id=job_id, celery_task_id=celery_task_id)
+    if tenant_id is None:
+        return
+    enqueue_upgrade_job(KnowledgeFSUpgradeSnapshotService(session_factory.get_session_maker()), tenant_id, job_id)
 
 
 @shared_task(

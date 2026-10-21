@@ -23,6 +23,8 @@ class _UpgradeRunner:
     outcome: bool | Exception
     runs: list[dict[str, object]] = field(default_factory=list)
     failures: list[dict[str, object]] = field(default_factory=list)
+    releases: list[tuple[str, str | None]] = field(default_factory=list)
+    released_tenant_id: str | None = "tenant-1"
 
     def run_next(self, **kwargs: object) -> bool:
         self.runs.append(kwargs)
@@ -32,6 +34,10 @@ class _UpgradeRunner:
 
     def fail(self, *, job_id: str, error: Exception) -> None:
         self.failures.append({"job_id": job_id, "error": error})
+
+    def release_for_dispatch(self, *, job_id: str, celery_task_id: str | None) -> str | None:
+        self.releases.append((job_id, celery_task_id))
+        return self.released_tenant_id
 
 
 def test_upgrade_tasks_are_pinned_to_the_dedicated_queue() -> None:
@@ -56,7 +62,7 @@ def test_worker_enqueues_only_the_expected_follow_up(has_more: bool) -> None:
     with (
         patch("tasks.knowledge_fs_upgrade_tasks.session_factory.get_session_maker", return_value="maker"),
         patch("tasks.knowledge_fs_upgrade_tasks.KnowledgeFSUpgradeRunner", return_value=runner),
-        patch.object(run_knowledge_fs_upgrade, "apply_async") as continue_upgrade,
+        patch("services.knowledge.datasets.upgrades.enqueue_upgrade_job") as continue_upgrade,
         patch.object(reconcile_knowledge_fs_upgrade_documents, "apply_async") as reconcile,
     ):
         run_knowledge_fs_upgrade.run(job_id="job-1")
@@ -64,11 +70,26 @@ def test_worker_enqueues_only_the_expected_follow_up(has_more: bool) -> None:
     assert len(runner.runs) == 1
     assert runner.runs[0]["job_id"] == "job-1"
     if has_more:
-        continue_upgrade.assert_called_once_with(kwargs={"job_id": "job-1"})
+        assert runner.releases == [("job-1", None)]
+        continue_upgrade.assert_called_once()
+        assert continue_upgrade.call_args.args[1:] == ("tenant-1", "job-1")
         reconcile.assert_not_called()
     else:
+        assert runner.releases == []
         continue_upgrade.assert_not_called()
         reconcile.assert_called_once_with(kwargs={"job_id": "job-1"})
+
+
+def test_worker_skips_dispatch_when_the_job_moved_on() -> None:
+    runner = _UpgradeRunner(outcome=True, released_tenant_id=None)
+    with (
+        patch("tasks.knowledge_fs_upgrade_tasks.session_factory.get_session_maker", return_value="maker"),
+        patch("tasks.knowledge_fs_upgrade_tasks.KnowledgeFSUpgradeRunner", return_value=runner),
+        patch("services.knowledge.datasets.upgrades.enqueue_upgrade_job") as continue_upgrade,
+    ):
+        run_knowledge_fs_upgrade.run(job_id="job-1")
+
+    continue_upgrade.assert_not_called()
 
 
 def test_worker_marks_parent_failed_when_a_checkpoint_raises() -> None:

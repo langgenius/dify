@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import cast
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import select
@@ -44,6 +45,7 @@ from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeRunner,
     KnowledgeFSUpgradeSnapshotService,
 )
+from services.knowledge.datasets.upgrades import enqueue_upgrade_job
 from services.knowledge_fs.initial_source_import import (
     KnowledgeFSInitialSourceNotReadyError,
     KnowledgeFSInitialSourceSubmission,
@@ -290,6 +292,29 @@ def test_retry_restores_failed_items_and_unreleased_file_lease(
         assert persisted_lease is not None
         assert persisted_lease.status is KnowledgeFSUpgradeFileLeaseStatus.ACTIVE
         assert persisted_lease.expires_at > naive_utc_now()
+
+
+def test_failed_next_checkpoint_dispatch_leaves_a_recoverable_job(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    job = _job(status=KnowledgeFSUpgradeJobStatus.RUNNING, celery_task_id="task-1")
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    snapshots = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory)
+
+    assert runner.release_for_dispatch(job_id=job.id, celery_task_id="stale-task") is None
+    assert runner.release_for_dispatch(job_id=job.id, celery_task_id="task-1") == _TENANT_ID
+    with (
+        patch("tasks.knowledge_fs_upgrade_tasks.run_knowledge_fs_upgrade.apply_async", side_effect=OSError("down")),
+        pytest.raises(OSError, match="down"),
+    ):
+        enqueue_upgrade_job(snapshots, _TENANT_ID, job.id)
+
+    retried = snapshots.retry(tenant_id=_TENANT_ID, job_id=job.id)
+    assert retried.status is KnowledgeFSUpgradeJobStatus.QUEUED
+    assert retried.celery_task_id is None
+    assert snapshots.claim_enqueue(tenant_id=_TENANT_ID, job_id=job.id, task_id="task-2") is True
 
 
 def test_retry_rejects_when_another_dataset_job_is_active(
