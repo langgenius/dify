@@ -3,7 +3,7 @@ import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -44,7 +44,7 @@ const renderBrand = ({
   const rendered = renderWithConsoleQuery(
     <>
       <CustomWebAppBrand />
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
     </>,
     {
       queryClient,

@@ -9,7 +9,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { marketplaceQuery } from '@/service/marketplace'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -155,7 +155,7 @@ async function setup({
     renderWithConsoleQuery(
       <NuqsTestingAdapter hasMemory searchParams={api.params}>
         <Apps />
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </NuqsTestingAdapter>,
       {
         queryClient,

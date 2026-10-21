@@ -13,7 +13,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
@@ -106,7 +106,7 @@ const render = (ui: ReactElement) => {
     >
       <EventEmitterContextProvider>
         {ui}
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </EventEmitterContextProvider>
     </DatasetDetailContext.Provider>,
     { queryClient, workspacePermissionKeys: [] },

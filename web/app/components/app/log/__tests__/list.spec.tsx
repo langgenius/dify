@@ -13,7 +13,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
@@ -218,7 +218,7 @@ function renderConversationList({
   const rendered = renderWithConsoleQuery(
     <UrlState>
       <ConversationList appDetail={appDetail} logs={logs} onRefresh={onRefresh} />
-      <AppToastHost />
+      <AppToaster />
     </UrlState>,
     { queryClient: createClient() },
   )
