@@ -1,8 +1,8 @@
 import logging
 import time
+from collections.abc import Callable
 from typing import Protocol, cast, override
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -16,7 +16,17 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import create_session
+from core.rag.docstore.dataset_docstore import (
+    SEGMENT_ATTACHMENT_WRITER_CONTEXT_KEY,
+    SegmentAttachmentWriter,
+)
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
+from core.workflow.nodes.knowledge_index.protocols import (
+    KNOWLEDGE_INDEX_PROCESSOR_CONTEXT_KEY,
+    SUMMARY_INDEX_SERVICE_CONTEXT_KEY,
+    IndexProcessorProtocol,
+    SummaryIndexServiceProtocol,
+)
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -40,8 +50,6 @@ class PipelineDocumentStore(Protocol):
 
     def exists(self, *, workspace_id: str, dataset_id: str, document_id: str) -> bool: ...
 
-    def mark_failed(self, *, workspace_id: str, dataset_id: str, document_id: str, error: str) -> None: ...
-
 
 class PipelineRunner(WorkflowBasedAppRunner):
     """
@@ -56,7 +64,11 @@ class PipelineRunner(WorkflowBasedAppRunner):
         workflow: Workflow,
         system_user_id: str,
         documents: PipelineDocumentStore,
+        attachment_writer: SegmentAttachmentWriter,
         workflow_thread_pool_id: str | None = None,
+        index_processor: IndexProcessorProtocol | None = None,
+        summary_index_service: SummaryIndexServiceProtocol | None = None,
+        document_failure_handler: Callable[[str], None] | None = None,
         execution_driver: WorkflowRunDriver | None = None,
     ) -> None:
         """
@@ -75,6 +87,11 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self._workflow = workflow
         self._sys_user_id = system_user_id
         self._documents = documents
+        self._attachment_writer = attachment_writer
+        self._index_processor = index_processor
+        self._summary_index_service = summary_index_service
+        self._document_failure_handler = document_failure_handler
+        self._document_failure_reported = False
 
     def _get_app_id(self) -> str:
         return self.application_generate_entity.app_config.app_id
@@ -130,12 +147,15 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 ):
                     raise ValueError("Pipeline original document not found")
 
-            workflow = self.get_workflow(session=session, pipeline=pipeline, workflow_id=app_config.workflow_id)
-            if not workflow:
+            workflow = self._workflow
+            if (
+                workflow.id != app_config.workflow_id
+                or workflow.app_id != pipeline.id
+                or workflow.tenant_id != pipeline.tenant_id
+            ):
                 raise ValueError("Workflow not initialized")
 
             session.expunge(pipeline)
-            session.expunge(workflow)
 
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -232,25 +252,13 @@ class PipelineRunner(WorkflowBasedAppRunner):
     def handle_event(self, workflow_entry: WorkflowEntry, event: EngineEvent, **kwargs) -> None:
         self._update_document_status(
             event,
-            workspace_id=self._dataset_workspace_id,
-            dataset_id=self._dataset_id,
             document_id=self._document_id,
         )
         super().handle_event(workflow_entry, event, **kwargs)
 
-    def get_workflow(self, session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
-        """
-        Get workflow
-        """
-        # fetch workflow by workflow_id
-        workflow = session.scalar(
-            select(Workflow)
-            .where(Workflow.tenant_id == pipeline.tenant_id, Workflow.app_id == pipeline.id, Workflow.id == workflow_id)
-            .limit(1)
-        )
-
-        # return workflow
-        return workflow
+    def report_preparation_failure(self, error: str) -> None:
+        """Report a failure after preparation through the execution-bound handler."""
+        self._report_document_failure(error, document_id=self._document_id)
 
     def _init_rag_pipeline_graph(
         self,
@@ -295,6 +303,11 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # graph_config["edges"] = real_edges
         # init graph
         # Create explicit graph init context for Graph.init.
+        extra_context: dict[str, object] = {SEGMENT_ATTACHMENT_WRITER_CONTEXT_KEY: self._attachment_writer}
+        if self._index_processor is not None:
+            extra_context[KNOWLEDGE_INDEX_PROCESSOR_CONTEXT_KEY] = self._index_processor
+        if self._summary_index_service is not None:
+            extra_context[SUMMARY_INDEX_SERVICE_CONTEXT_KEY] = self._summary_index_service
         run_context = build_dify_run_context(
             tenant_id=workflow.tenant_id,
             app_id=self._app_id,
@@ -302,6 +315,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             user_from=user_from,
             invoke_from=invoke_from,
             app_type=CreditUsageAppType.RAG_PIPELINE,
+            extra_context=extra_context,
         )
         graph_init_context = DifyGraphInitContext(
             execution_driver=self._execution_driver,
@@ -328,17 +342,17 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self,
         event: EngineEvent,
         *,
-        workspace_id: str,
-        dataset_id: str,
         document_id: str | None,
     ) -> None:
-        """Set an owner-bound document to error after a failed graph run, if it exists."""
-        if not isinstance(event, GraphRunFailedEvent) or document_id is None:
+        """Report a graph failure through the execution-bound document handler."""
+        if not isinstance(event, GraphRunFailedEvent):
             return
 
-        self._documents.mark_failed(
-            workspace_id=workspace_id,
-            dataset_id=dataset_id,
-            document_id=document_id,
-            error=event.error or "Unknown error",
-        )
+        self._report_document_failure(event.error or "Unknown error", document_id=document_id)
+
+    def _report_document_failure(self, error: str, *, document_id: str | None) -> None:
+        if document_id is None or self._document_failure_handler is None or self._document_failure_reported:
+            return
+
+        self._document_failure_handler(error)
+        self._document_failure_reported = True

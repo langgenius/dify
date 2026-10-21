@@ -334,7 +334,12 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             session.flush()
             document.dataset_process_rule_id = dataset_process_rule.id
             # save node to document segment
-            doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
+            doc_store = DatasetDocumentStore(
+                dataset=dataset,
+                user_id=document.created_by,
+                document_id=document.id,
+                attachment_writer=self._attachment_writer,
+            )
             # add document segments
             doc_store.add_documents(
                 session=session,

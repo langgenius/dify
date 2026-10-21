@@ -14,10 +14,10 @@ from models.dataset import (
     Document,
     build_built_in_field_values,
 )
-from repositories.knowledge.dataset_read_repository import get_document_uploader
+from repositories.knowledge.document_query_repository import get_document_uploader
 from services.errors.metadata import MetadataResourceNotFoundError
-from services.knowledge.entities.resource_scope import DatasetRef
-from services.knowledge.metadata.application import MetadataList, MetadataOperation, MetadataRecord
+from services.knowledge.metadata.contracts import MetadataList, MetadataOperation, MetadataRecord
+from services.knowledge.resource_scope import DatasetRef
 
 
 class SQLAlchemyMetadataRepository:

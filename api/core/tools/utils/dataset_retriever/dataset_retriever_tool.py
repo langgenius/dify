@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
+from core.db.session_factory import session_factory
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.entities import DocumentContext, RetrievalSourceMetadata
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -15,6 +16,10 @@ from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import Datas
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from repositories.knowledge.segment_read_adapter import sign_segment_content
+from services.knowledge.external.service import (
+    execute_external_knowledge_retrieval,
+    prepare_external_knowledge_retrieval,
+)
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -58,15 +63,13 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
 
     @override
     def _run(self, session: Session, query: str) -> str:
-        with Session(bind=session.get_bind(), expire_on_commit=False) as read_session:
-            dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
+        dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
+        dataset_retrieval = DatasetRetrieval()
+        external_request = None
+        with session_factory.create_session() as read_session:
             dataset = read_session.scalar(dataset_stmt)
-
             if not dataset:
                 return ""
-            for hit_callback in self.hit_callbacks:
-                hit_callback.on_query(query, dataset.id, session)
-            dataset_retrieval = DatasetRetrieval()
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
                 read_session,
                 [dataset.id],
@@ -78,27 +81,29 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 self.retrieve_config.metadata_filtering_conditions,
                 self.inputs,
             )
-            if metadata_filter_document_ids:
-                document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
-            else:
-                document_ids_filter = None
+            if dataset.provider == "external":
+                external_request = prepare_external_knowledge_retrieval(
+                    tenant_id=dataset.tenant_id,
+                    dataset_id=dataset.id,
+                    query=query,
+                    external_retrieval_parameters=dataset.retrieval_model or {},
+                    metadata_condition=metadata_condition,
+                    session=read_session,
+                )
+
+        document_ids_filter = metadata_filter_document_ids.get(dataset.id, []) if metadata_filter_document_ids else None
         if dataset.provider == "external":
             results: list[RetrievalDocument] = []
-            external_documents = RetrievalService.external_retrieve(
-                session,
-                dataset.id,
-                query,
-                tenant_id=dataset.tenant_id,
-                external_retrieval_model=dataset.retrieval_model,
-                metadata_condition=metadata_condition,
-            )
+            if external_request is None:
+                raise RuntimeError("external retrieval request was not prepared")
+            external_documents = execute_external_knowledge_retrieval(external_request)
+            for hit_callback in self.hit_callbacks:
+                hit_callback.on_query(query, dataset.id, session)
             for external_document in external_documents:
-                document = RetrievalDocument.model_validate(
-                    {
-                        "page_content": external_document.get("content"),
-                        "metadata": external_document.get("metadata"),
-                        "provider": "external",
-                    }
+                document = RetrievalDocument(
+                    page_content=external_document.get("content"),
+                    metadata=external_document.get("metadata"),
+                    provider="external",
                 )
                 if document.metadata is not None:
                     document.metadata["score"] = external_document.get("score")
@@ -128,6 +133,8 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
 
             return "\n".join([item.page_content for item in results])
         else:
+            for hit_callback in self.hit_callbacks:
+                hit_callback.on_query(query, dataset.id, session)
             if metadata_condition and not document_ids_filter:
                 return ""
             # get retrieval model , if the model is not setting , using default

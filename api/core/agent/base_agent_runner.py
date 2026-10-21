@@ -95,6 +95,7 @@ class BaseAgentRunner(AppRunner):
             message_id=message.id,
             user_id=user_id,
             invoke_from=self.application_generate_entity.invoke_from,
+            tenant_id=tenant_id,
         )
         self.dataset_tools = DatasetRetrieverTool.get_dataset_tools(
             session=session,

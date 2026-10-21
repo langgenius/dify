@@ -489,12 +489,25 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     )
     assert "404" not in payload["paths"]["/workflows/tasks/{task_id}/stop"]["post"]["responses"]
 
-    vector_space_operations = {
+    unavailable_operations = {
         (method, path)
         for path, path_item in payload["paths"].items()
         for method, operation in path_item.items()
         if isinstance(operation, dict) and "503" in operation.get("responses", {})
     }
+    knowledge_retrieval_operations = {
+        ("post", "/datasets/{dataset_id}/hit-testing"),
+        ("post", "/datasets/{dataset_id}/retrieve"),
+    }
+    assert knowledge_retrieval_operations <= unavailable_operations
+    for method, path in knowledge_retrieval_operations:
+        assert "#/components/schemas/KnowledgeIndexUnavailableError" in {
+            value
+            for value in _walk_values(_response_schema(payload["paths"][path][method], "503"))
+            if isinstance(value, str)
+        }
+    assert schemas["KnowledgeIndexUnavailableDetails"]["properties"]["reason"]["enum"] == ["failed", "indexing"]
+    vector_space_operations = unavailable_operations - knowledge_retrieval_operations
     assert vector_space_operations == {
         ("post", "/datasets/{dataset_id}/document/create-by-file"),
         ("post", "/datasets/{dataset_id}/document/create-by-text"),

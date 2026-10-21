@@ -1,220 +1,38 @@
-import logging
-import time
+"""Compatibility consumer for pre-outbox dataset index update deliveries."""
 
-import click
-from celery import shared_task  # type: ignore
-from sqlalchemy import select, update
+import logging
+from functools import partial
+
+from celery import shared_task
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor import IndexProcessorFactory
-from core.rag.models.document import AttachmentDocument, ChildDocument, Document
-from models.dataset import Dataset, DocumentSegment
-from models.dataset import Document as DatasetDocument
-from repositories.knowledge.dataset_read_repository import get_dataset_doc_form, get_segment_child_chunks
-from repositories.knowledge.segment_read_adapter import get_segment_attachments
+from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
+from services.api_token_service import ApiTokenCache
+from services.knowledge.task_outbox.gateway import wake_knowledge_task_dispatcher_after_commit
+
+logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset")
-def deal_dataset_index_update_task(dataset_id: str, action: str):
-    """
-    Async deal dataset from index
-    :param dataset_id: dataset_id
-    :param action: action
-    Usage: deal_dataset_index_update_task.delay(dataset_id, action)
-    """
-    logging.info(click.style(f"Start deal dataset index update: {dataset_id}", fg="green"))
-    start_at = time.perf_counter()
+@shared_task(
+    queue="dataset",
+    acks_late=True,
+    reject_on_worker_lost=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_kwargs={"max_retries": 10},
+)
+def deal_dataset_index_update_task(dataset_id: str, action: str) -> None:
+    """Convert a deployed legacy update/upgrade payload into current durable work."""
 
-    with session_factory.create_session() as session:
-        try:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-
-            if not dataset:
-                raise Exception("Dataset not found")
-            index_type = get_dataset_doc_form(dataset, session=session) or IndexStructureType.PARAGRAPH_INDEX
-            index_processor = IndexProcessorFactory(index_type).init_index_processor()
-            if action == "upgrade":
-                dataset_documents = session.scalars(
-                    select(DatasetDocument).where(
-                        DatasetDocument.dataset_id == dataset_id,
-                        DatasetDocument.indexing_status == "completed",
-                        DatasetDocument.enabled.is_(True),
-                        DatasetDocument.archived.is_(False),
-                    )
-                ).all()
-
-                if dataset_documents:
-                    dataset_documents_ids = [doc.id for doc in dataset_documents]
-                    session.execute(
-                        update(DatasetDocument)
-                        .where(DatasetDocument.id.in_(dataset_documents_ids))
-                        .values({DatasetDocument.indexing_status: "indexing"})
-                    )
-                    session.commit()
-
-                    for dataset_document in dataset_documents:
-                        try:
-                            # add from vector index
-                            segments = session.scalars(
-                                select(DocumentSegment)
-                                .where(
-                                    DocumentSegment.document_id == dataset_document.id,
-                                    DocumentSegment.enabled.is_(True),
-                                )
-                                .order_by(DocumentSegment.position.asc())
-                            ).all()
-                            if segments:
-                                documents = []
-                                for segment in segments:
-                                    document = Document(
-                                        page_content=segment.content,
-                                        metadata={
-                                            "doc_id": segment.index_node_id,
-                                            "doc_hash": segment.index_node_hash,
-                                            "document_id": segment.document_id,
-                                            "dataset_id": segment.dataset_id,
-                                        },
-                                    )
-
-                                    documents.append(document)
-                                # save vector index
-                                # clean keywords
-                                index_processor.clean(
-                                    dataset,
-                                    None,
-                                    with_keywords=True,
-                                    delete_child_chunks=False,
-                                    session=session,
-                                )
-                                index_processor.load(dataset, documents, with_keywords=False, session=session)
-                            session.execute(
-                                update(DatasetDocument)
-                                .where(DatasetDocument.id == dataset_document.id)
-                                .values({DatasetDocument.indexing_status: "completed"})
-                            )
-                            session.commit()
-                        except Exception as e:
-                            session.execute(
-                                update(DatasetDocument)
-                                .where(DatasetDocument.id == dataset_document.id)
-                                .values({DatasetDocument.indexing_status: "error", DatasetDocument.error: str(e)})
-                            )
-                            session.commit()
-            elif action == "update":
-                dataset_documents = session.scalars(
-                    select(DatasetDocument).where(
-                        DatasetDocument.dataset_id == dataset_id,
-                        DatasetDocument.indexing_status == "completed",
-                        DatasetDocument.enabled.is_(True),
-                        DatasetDocument.archived.is_(False),
-                    )
-                ).all()
-                # add new index
-                if dataset_documents:
-                    # update document status
-                    dataset_documents_ids = [doc.id for doc in dataset_documents]
-                    session.execute(
-                        update(DatasetDocument)
-                        .where(DatasetDocument.id.in_(dataset_documents_ids))
-                        .values({DatasetDocument.indexing_status: "indexing"})
-                    )
-                    session.commit()
-
-                    # clean index
-                    index_processor.clean(
-                        dataset, None, with_keywords=False, delete_child_chunks=False, session=session
-                    )
-
-                    for dataset_document in dataset_documents:
-                        # update from vector index
-                        try:
-                            segments = session.scalars(
-                                select(DocumentSegment)
-                                .where(
-                                    DocumentSegment.document_id == dataset_document.id,
-                                    DocumentSegment.enabled.is_(True),
-                                )
-                                .order_by(DocumentSegment.position.asc())
-                            ).all()
-                            if segments:
-                                documents = []
-                                multimodal_documents = []
-                                for segment in segments:
-                                    document = Document(
-                                        page_content=segment.content,
-                                        metadata={
-                                            "doc_id": segment.index_node_id,
-                                            "doc_hash": segment.index_node_hash,
-                                            "document_id": segment.document_id,
-                                            "dataset_id": segment.dataset_id,
-                                        },
-                                    )
-                                    if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                                        child_chunks = get_segment_child_chunks(segment, session=session)
-                                        if child_chunks:
-                                            child_documents = []
-                                            for child_chunk in child_chunks:
-                                                child_document = ChildDocument(
-                                                    page_content=child_chunk.content,
-                                                    metadata={
-                                                        "doc_id": child_chunk.index_node_id,
-                                                        "doc_hash": child_chunk.index_node_hash,
-                                                        "document_id": segment.document_id,
-                                                        "dataset_id": segment.dataset_id,
-                                                    },
-                                                )
-                                                child_documents.append(child_document)
-                                            document.children = child_documents
-                                    if dataset.is_multimodal:
-                                        for attachment in get_segment_attachments(segment, session=session):
-                                            multimodal_documents.append(
-                                                AttachmentDocument(
-                                                    page_content=attachment["name"],
-                                                    metadata={
-                                                        "doc_id": attachment["id"],
-                                                        "doc_hash": "",
-                                                        "document_id": segment.document_id,
-                                                        "dataset_id": segment.dataset_id,
-                                                        "doc_type": DocType.IMAGE,
-                                                    },
-                                                )
-                                            )
-                                    documents.append(document)
-                                # save vector index
-                                index_processor.load(
-                                    dataset,
-                                    documents,
-                                    multimodal_documents=multimodal_documents,
-                                    with_keywords=False,
-                                    session=session,
-                                )
-                            session.execute(
-                                update(DatasetDocument)
-                                .where(DatasetDocument.id == dataset_document.id)
-                                .values({DatasetDocument.indexing_status: "completed"})
-                            )
-                            session.commit()
-                        except Exception as e:
-                            session.execute(
-                                update(DatasetDocument)
-                                .where(DatasetDocument.id == dataset_document.id)
-                                .values({DatasetDocument.indexing_status: "error", DatasetDocument.error: str(e)})
-                            )
-                            session.commit()
-                else:
-                    # clean collection
-                    index_processor.clean(
-                        dataset, None, with_keywords=False, delete_child_chunks=False, session=session
-                    )
-
-            end_at = time.perf_counter()
-            logging.info(
-                click.style(
-                    f"Deal dataset vector index: {dataset_id} latency: {end_at - start_at}",
-                    fg="green",
-                )
-            )
-        except Exception:
-            logging.exception("Deal dataset vector index failed")
+    datasets = SQLAlchemyDatasetRepository(
+        session_factory=session_factory.get_session_maker(),
+        wake_after_commit=wake_knowledge_task_dispatcher_after_commit,
+        revoke_keys_after_commit=partial(ApiTokenCache.delete_after_commit, scope="dataset"),
+    )
+    converted = datasets.convert_legacy_vector_index_delivery(dataset_id)
+    logger.info(
+        "Legacy dataset index update reconciled dataset_id=%s legacy_action=%s converted=%s",
+        dataset_id,
+        action,
+        converted,
+    )

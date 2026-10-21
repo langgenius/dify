@@ -5,8 +5,9 @@ from uuid import uuid4
 
 import pytest
 from opentelemetry.trace import StatusCode, get_current_span, get_tracer
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+import core.rag.retrieval.dataset_retrieval as dataset_retrieval_module
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
@@ -16,6 +17,27 @@ from models.dataset import Dataset
 @pytest.fixture(autouse=True)
 def _otel_enabled(config_overrides: Callable[..., None]) -> None:
     config_overrides(ENABLE_OTEL=True)
+
+
+@pytest.fixture
+def internal_dataset_id(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> str:
+    """Persist the internal Dataset resolved before the traced retriever runs."""
+
+    dataset_id = str(uuid4())
+    sqlite_session.add(
+        Dataset(
+            id=dataset_id,
+            tenant_id=str(uuid4()),
+            name="Tracing dataset",
+            provider="dify",
+            created_by=str(uuid4()),
+            indexing_technique="high_quality",
+        )
+    )
+    sqlite_session.commit()
+    bound_factory = sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+    monkeypatch.setattr(dataset_retrieval_module.session_factory, "create_session", bound_factory)
+    return dataset_id
 
 
 def test_knowledge_retrieval_creates_a_child_otel_span(
@@ -96,6 +118,7 @@ def test_retriever_thread_exception_sets_error_span_and_is_collected(
     app,
     memory_span_exporter,
     tracer_provider_with_memory_exporter,
+    internal_dataset_id: str,
 ) -> None:
     retrieval = DatasetRetrieval()
     cancel_event = threading.Event()
@@ -107,7 +130,7 @@ def test_retriever_thread_exception_sets_error_span_and_is_collected(
     ):
         retrieval._run_retriever_thread_safely(
             flask_app=app,
-            dataset_id=str(uuid4()),
+            dataset_id=internal_dataset_id,
             query="test query",
             top_k=4,
             all_documents=[],
@@ -132,12 +155,13 @@ def test_retriever_thread_exception_emits_skip_event_when_requested(
     app,
     memory_span_exporter,
     tracer_provider_with_memory_exporter,
+    internal_dataset_id: str,
 ) -> None:
     retrieval = DatasetRetrieval()
     cancel_event = threading.Event()
     thread_exceptions: list[Exception] = []
     expected_error = RuntimeError("retrieval failed")
-    dataset_id = str(uuid4())
+    dataset_id = internal_dataset_id
 
     with (
         patch.object(retrieval, "_retriever", side_effect=expected_error),

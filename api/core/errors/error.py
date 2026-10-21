@@ -1,3 +1,17 @@
+from typing import Literal
+
+
+class KnowledgeIndexUnavailableError(ValueError):
+    """The current vector target cannot serve a consistent retrieval result."""
+
+    def __init__(self, reason: Literal["indexing", "failed"]):
+        self.reason = reason
+        message = (
+            "Knowledge index is unavailable while indexing." if reason == "indexing" else "Knowledge indexing failed."
+        )
+        super().__init__(message)
+
+
 class LLMError(ValueError):
     """Base class for all LLM exceptions."""
 

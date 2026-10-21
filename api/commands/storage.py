@@ -12,6 +12,26 @@ from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
 from models.model import UploadFile
+from services.knowledge.file_cleanup_gate import (
+    FilePhysicalCleanupDisabledError,
+    assert_physical_file_cleanup_enabled,
+)
+
+_STORAGE_FILE_TABLES = (
+    ("upload_files", "key"),
+    ("tool_files", "file_key"),
+)
+
+
+def _registered_storage_keys() -> set[str]:
+    """Read the current storage keys that still have a database owner."""
+    keys: set[str] = set()
+    for table, key_column in _STORAGE_FILE_TABLES:
+        click.echo(click.style(f"- Listing files from table {table}", fg="white"))
+        with db.engine.begin() as connection:
+            rows = connection.execute(sa.text(f"SELECT {key_column} FROM {table}"))
+            keys.update(str(row[0]) for row in rows if row[0] is not None)
+    return keys
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
@@ -237,17 +257,37 @@ def clear_orphaned_file_records(force: bool):
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
-@click.command("remove-orphaned-files-on-storage", help="Remove orphaned files on the storage.")
-def remove_orphaned_files_on_storage(force: bool):
+@click.option(
+    "--writers-stopped",
+    is_flag=True,
+    help="Confirm API, worker, retention, and file-reference writers are stopped and drained.",
+)
+@click.command(
+    "remove-orphaned-files-on-storage",
+    help="Maintenance-only orphan cleanup; stop file writers before running.",
+)
+def remove_orphaned_files_on_storage(force: bool, writers_stopped: bool) -> None:
     """
-    Remove orphaned files on the storage.
+    Remove orphaned storage objects during a stopped-writer maintenance window.
+
+    The deployment cleanup gate must be enabled only after all reference
+    writers honor the upload-file fence. Stop API, Celery, retention, and
+    workflow writers, drain active file operations, then pass
+    ``--writers-stopped``. The command refreshes database keys immediately
+    before deletion, but that current read cannot replace the writer pause.
     """
 
+    if not writers_stopped:
+        raise click.UsageError(
+            "Refusing orphan deletion until all file writers are stopped and drained; "
+            "rerun with --writers-stopped after establishing the maintenance window."
+        )
+    try:
+        assert_physical_file_cleanup_enabled()
+    except FilePhysicalCleanupDisabledError as error:
+        raise click.UsageError(str(error)) from error
+
     # define tables and columns to process
-    files_tables = [
-        {"table": "upload_files", "key_column": "key"},
-        {"table": "tool_files", "key_column": "file_key"},
-    ]
     storage_paths = ["image_files", "tools", "upload_files"]
 
     # notify user and ask for confirmation
@@ -255,8 +295,8 @@ def remove_orphaned_files_on_storage(force: bool):
     click.echo(
         click.style("by comparing the files on the storage with the records in the following tables:", fg="yellow")
     )
-    for files_table in files_tables:
-        click.echo(click.style(f"- {files_table['table']}", fg="yellow"))
+    for table, _key_column in _STORAGE_FILE_TABLES:
+        click.echo(click.style(f"- {table}", fg="yellow"))
     click.echo(click.style("The following paths on the storage will be scanned to find orphaned files:", fg="yellow"))
     for storage_path in storage_paths:
         click.echo(click.style(f"- {storage_path}", fg="yellow"))
@@ -280,8 +320,8 @@ def remove_orphaned_files_on_storage(force: bool):
     click.echo(
         click.style(
             (
-                "It is also recommended to run this during the maintenance window, "
-                "as this may cause high load on your instance."
+                "This command must run in a maintenance window after API, Celery, retention, "
+                "workflow, and file-reference writers are stopped and active file operations are drained."
             ),
             fg="yellow",
         )
@@ -293,15 +333,8 @@ def remove_orphaned_files_on_storage(force: bool):
     click.echo(click.style("Starting orphaned files cleanup.", fg="white"))
 
     # fetch file id and keys from each table
-    all_files_in_tables = []
     try:
-        for files_table in files_tables:
-            click.echo(click.style(f"- Listing files from table {files_table['table']}", fg="white"))
-            query = f"SELECT {files_table['key_column']} FROM {files_table['table']}"
-            with db.engine.begin() as conn:
-                rs = conn.execute(sa.text(query))
-            for i in rs:
-                all_files_in_tables.append(str(i[0]))
+        all_files_in_tables = _registered_storage_keys()
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
     except Exception as e:
         click.echo(click.style(f"Error fetching keys: {str(e)}", fg="red"))
@@ -322,7 +355,7 @@ def remove_orphaned_files_on_storage(force: bool):
     click.echo(click.style(f"Found {len(all_files_on_storage)} files on storage.", fg="white"))
 
     # find orphaned files
-    orphaned_files = list(set(all_files_on_storage) - set(all_files_in_tables))
+    orphaned_files = sorted(set(all_files_on_storage) - all_files_in_tables)
     if not orphaned_files:
         click.echo(click.style("No orphaned files found. There is nothing to remove.", fg="green"))
         return
@@ -332,10 +365,34 @@ def remove_orphaned_files_on_storage(force: bool):
     if not force:
         click.confirm(f"Do you want to proceed to remove all {len(orphaned_files)} orphaned files?", abort=True)
 
+    # The maintenance pause is the exclusion fence for storage objects that
+    # have no UploadFile row to lock. Refresh owners at the last possible point
+    # so an object registered during the scan is never deleted from this run.
+    try:
+        current_registered_files = _registered_storage_keys()
+    except Exception as error:
+        raise click.ClickException(f"Could not recheck current storage owners: {error}") from error
+    newly_referenced = set(orphaned_files) & current_registered_files
+    if newly_referenced:
+        click.echo(
+            click.style(
+                f"Keeping {len(newly_referenced)} files that gained a database owner during the scan.",
+                fg="yellow",
+            )
+        )
+    orphaned_files = [file for file in orphaned_files if file not in newly_referenced]
+    if not orphaned_files:
+        click.echo(click.style("No unowned files remain after the current-owner recheck.", fg="green"))
+        return
+
     # delete orphaned files
     removed_files = 0
     error_files = 0
     for file in orphaned_files:
+        try:
+            assert_physical_file_cleanup_enabled()
+        except FilePhysicalCleanupDisabledError as error:
+            raise click.ClickException(str(error)) from error
         try:
             storage.delete(file)
             removed_files += 1

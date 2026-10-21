@@ -4,13 +4,13 @@ import pytest
 from pydantic import ValidationError
 
 from machinery.context import RequestContext
-from services.errors.knowledge_retrieval import InnerKnowledgeRetrieveAppNotFoundError
-from services.knowledge.entities.inner_retrieval import (
+from services.entities.knowledge_retrieval_inner import (
     InnerKnowledgeRetrieveRequest,
     InnerKnowledgeRetrieveResult,
     InnerKnowledgeRetrieveUsage,
     InnerKnowledgeRetrieveWeights,
 )
+from services.errors.knowledge_retrieval import InnerKnowledgeRetrieveAppNotFoundError
 from services.knowledge.retrieval.application import InnerKnowledgeRetrievalService
 
 

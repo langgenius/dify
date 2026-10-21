@@ -1,11 +1,14 @@
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
+from unittest.mock import ANY, MagicMock, Mock, PropertyMock, call, patch
 from uuid import uuid4
 
+import httpx
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -19,7 +22,15 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.storage.storage_type import StorageType
-from models.dataset import ChildChunk, Dataset, DocumentSegment, DocumentSegmentSummary, SegmentAttachmentBinding
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    DocumentSegment,
+    DocumentSegmentSummary,
+    ExternalKnowledgeApis,
+    ExternalKnowledgeBindings,
+    SegmentAttachmentBinding,
+)
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
 from models.model import UploadFile
@@ -100,6 +111,25 @@ class _ImmediateExecutor:
             future = _ImmediateFuture(exc)
         self.futures.append(future)
         return future
+
+
+@dataclass
+class _RecordingDataPostProcessor:
+    result: list[Document]
+    calls: list[tuple[str, list[Document], float | None, int | None, QueryType]] = field(default_factory=list)
+    rerank_runner: object = field(default_factory=object)
+
+    def invoke(
+        self,
+        *,
+        query: str,
+        documents: list[Document],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
+    ) -> list[Document]:
+        self.calls.append((query, documents, score_threshold, top_n, query_type))
+        return self.result
 
 
 def _dataset(*, dataset_id: str = "dataset-id", tenant_id: str = "tenant-id") -> Dataset:
@@ -257,6 +287,102 @@ class TestRetrievalServiceInternals:
         assert len(results) == 2
         assert {doc.metadata["doc_id"] for doc in results} == {"att-1", "att-2"}
         assert mock_retrieve.call_count == 2
+
+    @patch("core.rag.datasource.retrieval_service.execute_external_knowledge_retrieval")
+    @patch("core.rag.datasource.retrieval_service.prepare_external_knowledge_retrieval")
+    @patch("core.rag.datasource.retrieval_service.MetadataFilteringCondition.model_validate")
+    def test_external_retrieve_with_metadata_conditions(
+        self,
+        mock_validate: MagicMock,
+        mock_prepare: MagicMock,
+        mock_execute: MagicMock,
+        sqlite_session: Session,
+    ) -> None:
+        mock_validate.return_value = "validated-condition"
+        expected_documents = [create_mock_document("external-doc", "external-1", 0.8, provider="external")]
+        request = Mock()
+        mock_prepare.return_value = request
+        mock_execute.return_value = expected_documents
+        sqlite_session.add(_dataset(dataset_id="dataset-1", tenant_id="tenant-1"))
+        sqlite_session.commit()
+
+        results = RetrievalService.external_retrieve(
+            dataset_id="dataset-1",
+            query="test query",
+            external_retrieval_model={"top_k": 3},
+            metadata_filtering_conditions={"field": "source", "operator": "contains", "value": "manual"},
+        )
+
+        assert results == expected_documents
+        mock_validate.assert_called_once()
+        mock_prepare.assert_called_once_with(
+            tenant_id="tenant-1",
+            dataset_id="dataset-1",
+            query="test query",
+            external_retrieval_parameters={"top_k": 3},
+            metadata_condition="validated-condition",
+            session=ANY,
+        )
+        assert mock_prepare.call_args.kwargs["session"] is not sqlite_session
+        mock_execute.assert_called_once_with(request)
+
+    def test_external_retrieve_returns_empty_when_dataset_not_found(self, sqlite_session: Session) -> None:
+        results = RetrievalService.external_retrieve(dataset_id="missing", query="q")
+
+        assert results == []
+
+    def test_external_retrieve_releases_read_connection_before_http(
+        self, sqlite_session: Session, sqlite_engine: Engine
+    ) -> None:
+        dataset = _dataset(dataset_id="dataset-1", tenant_id="tenant-1")
+        dataset.provider = "external"
+        dataset.retrieval_model = {"top_k": 2}
+        template = ExternalKnowledgeApis(
+            tenant_id="tenant-1",
+            created_by="actor",
+            updated_by="actor",
+            name="API",
+            description="",
+            settings=json.dumps({"endpoint": "https://example.com", "api_key": "secret"}),
+        )
+        template.id = "template-1"
+        sqlite_session.add_all(
+            [
+                dataset,
+                template,
+                ExternalKnowledgeBindings(
+                    tenant_id="tenant-1",
+                    dataset_id=dataset.id,
+                    external_knowledge_api_id=template.id,
+                    external_knowledge_id="knowledge-1",
+                    created_by="actor",
+                ),
+            ]
+        )
+        sqlite_session.commit()
+        checked_out: set[object] = set()
+
+        def checkout(_connection: object, record: object, _proxy: object) -> None:
+            checked_out.add(record)
+
+        def checkin(_connection: object, record: object) -> None:
+            checked_out.discard(record)
+
+        def send(_url: str, **_kwargs: object) -> httpx.Response:
+            assert not checked_out
+            assert not sqlite_session.in_transaction()
+            return httpx.Response(200, json={"records": [{"content": "answer"}]})
+
+        event.listen(sqlite_engine, "checkout", checkout)
+        event.listen(sqlite_engine, "checkin", checkin)
+        try:
+            with patch("services.knowledge.external.service.ssrf_proxy.post", side_effect=send):
+                results = RetrievalService.external_retrieve(dataset_id=dataset.id, query="hello")
+        finally:
+            event.remove(sqlite_engine, "checkout", checkout)
+            event.remove(sqlite_engine, "checkin", checkin)
+
+        assert results == [{"content": "answer"}]
 
     def test_get_dataset_queries_by_id(self, mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
         expected_dataset = _dataset(dataset_id="dataset-123")
@@ -813,6 +939,17 @@ class TestRetrievalServiceInternals:
                 },
                 provider="dify",
             ),
+            Document(
+                page_content="deleted summary vector",
+                metadata={
+                    "document_id": "doc-text",
+                    "doc_id": "deleted-summary-node",
+                    "is_summary": True,
+                    "original_chunk_id": "segment-deleted-summary",
+                    "score": "0.99",
+                },
+                provider="dify",
+            ),
         ]
 
         child_chunk = ChildChunk(
@@ -835,11 +972,17 @@ class TestRetrievalServiceInternals:
             document_id="doc-parent-summary",
             index_node_id="summary-parent-node",
         )
+        segment_deleted_summary = _segment(
+            segment_id="segment-deleted-summary",
+            document_id="doc-text",
+            index_node_id="deleted-summary-parent-node",
+        )
         text_summary = DocumentSegmentSummary(
             dataset_id="dataset-id",
             document_id="doc-text",
             chunk_id="segment-summary",
             summary_content="summary for text",
+            summary_index_node_id="summary-node-2",
             status=SummaryStatus.COMPLETED,
         )
         parent_summary = DocumentSegmentSummary(
@@ -847,6 +990,7 @@ class TestRetrievalServiceInternals:
             document_id="doc-parent-summary",
             chunk_id="segment-parent-summary",
             summary_content="summary for parent",
+            summary_index_node_id="summary-parent-valid",
             status=SummaryStatus.COMPLETED,
         )
         sqlite_session.add_all(
@@ -859,6 +1003,7 @@ class TestRetrievalServiceInternals:
                 segment_text,
                 segment_summary,
                 segment_parent_summary,
+                segment_deleted_summary,
                 text_summary,
                 parent_summary,
             ]
@@ -908,6 +1053,7 @@ class TestRetrievalServiceInternals:
         assert result_by_segment_id["segment-parent-summary"].score == pytest.approx(0.4)
         assert result_by_segment_id["segment-parent-summary"].summary == "summary for parent"
         assert result_by_segment_id["segment-parent-summary"].child_chunks == []
+        assert "segment-deleted-summary" not in result_by_segment_id
 
     def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(
         self, mocker: MockerFixture, sqlite_session: Session
@@ -1047,8 +1193,7 @@ class TestRetrievalServiceInternals:
                 all_documents.append(fulltext_doc)
 
             mock_fulltext.side_effect = fulltext_side_effect
-            processor_instance = Mock()
-            processor_instance.invoke.return_value = [processed_doc]
+            processor_instance = _RecordingDataPostProcessor([processed_doc])
             mock_processor_class.return_value = processor_instance
 
             all_documents: list[Document] = []
@@ -1066,7 +1211,7 @@ class TestRetrievalServiceInternals:
 
         assert len(all_documents) == 4
         assert any(doc.metadata["doc_id"] == "processed-doc" for doc in all_documents)
-        processor_instance.invoke.assert_called_once()
+        assert len(processor_instance.calls) == 1
 
     @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
     def test_get_segment_attachment_info_success(self, mock_sign, sqlite_session: Session):

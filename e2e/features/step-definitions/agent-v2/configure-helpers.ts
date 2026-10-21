@@ -148,10 +148,14 @@ export const expectAgentModelRequiredFeedback = async (page: ReturnType<DifyWorl
   await expect(page.getByText('Select your model')).toBeVisible({ timeout: 10_000 })
 }
 
-export const uploadSummaryConfigSkillForBuildDraft = async (world: DifyWorld) => {
+export const uploadSummaryConfigSkillForBuildDraft = async (
+  world: DifyWorld,
+  draftType: 'debug_build' | 'draft' = 'draft',
+) => {
   const agentId = getCurrentAgentId(world)
   const skill = await uploadAgentConfigSkillToDraft(world.getConsoleClient(), {
     agentId,
+    draftType,
     fileName: agentBuilderTestMaterials.summarySkill,
     filePath: getAgentBuilderTestMaterialPath('summarySkill'),
   })

@@ -1,4 +1,7 @@
+from collections.abc import Generator
+from typing import TypedDict
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from faker import Faker
@@ -9,13 +12,22 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
-from services.knowledge.entities.resource_scope import DatasetRef
+from models.knowledge_task import KnowledgeTaskOutbox
+from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.task_outbox.contracts import KnowledgeTaskKind, KnowledgeTaskRequeuedError
 from tasks.document_indexing_update_task import document_indexing_update_task
+
+
+class ExternalDependencies(TypedDict):
+    factory: MagicMock
+    processor: MagicMock
+    runner: MagicMock
+    runner_instance: MagicMock
 
 
 class TestDocumentIndexingUpdateTask:
     @pytest.fixture
-    def mock_external_dependencies(self):
+    def mock_external_dependencies(self) -> Generator[ExternalDependencies]:
         """Patch external collaborators used by the update task.
         - IndexProcessorFactory.init_index_processor().clean(...)
         - build_document_indexing_service.run([...])
@@ -35,7 +47,47 @@ class TestDocumentIndexingUpdateTask:
                 "runner_instance": runner_instance,
             }
 
-    def _create_dataset_document_with_segments(self, db_session_with_containers: Session, *, segment_count: int = 2):
+    def _run_durable_update(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        dataset_id: str,
+        document_id: str,
+    ) -> str:
+        """Execute the production update task with a persisted generation-fenced intent."""
+        generation = str(uuid4())
+        document = session.scalar(
+            select(Document).where(
+                Document.tenant_id == tenant_id,
+                Document.dataset_id == dataset_id,
+                Document.id == document_id,
+            )
+        )
+        if document is not None:
+            document.indexing_generation = generation
+        intent = KnowledgeTaskOutbox(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_id=document_id,
+            resource_id=document_id,
+            task_kind=KnowledgeTaskKind.DOCUMENT_INDEX_UPDATE.value,
+            payload={
+                "dataset_id": dataset_id,
+                "document_id": document_id,
+                "generation": generation,
+                "attachment_ids": [],
+            },
+            status="dispatched",
+        )
+        session.add(intent)
+        session.commit()
+        document_indexing_update_task.run(dataset_id, document_id, generation, [], intent.id)
+        return intent.id
+
+    def _create_dataset_document_with_segments(
+        self, db_session_with_containers: Session, *, segment_count: int = 2
+    ) -> tuple[Dataset, Document, list[str]]:
         fake = Faker()
 
         # Account and tenant
@@ -116,17 +168,25 @@ class TestDocumentIndexingUpdateTask:
 
         return dataset, document, node_ids
 
-    def test_cleans_segments_and_reindexes(self, db_session_with_containers: Session, mock_external_dependencies):
+    def test_cleans_segments_and_reindexes(
+        self, db_session_with_containers: Session, mock_external_dependencies: ExternalDependencies
+    ) -> None:
         dataset, document, node_ids = self._create_dataset_document_with_segments(db_session_with_containers)
 
         # Act
-        document_indexing_update_task(dataset.id, document.id)
+        self._run_durable_update(
+            db_session_with_containers,
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+        )
 
         # Ensure we see committed changes from another session
         db_session_with_containers.expire_all()
 
         # Assert document status updated before reindex
         updated = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
+        assert updated is not None
         assert updated.indexing_status == IndexingStatus.PARSING
         assert updated.processing_started_at is not None
 
@@ -145,39 +205,54 @@ class TestDocumentIndexingUpdateTask:
         # args[1] should contain our node_ids.
         assert set(args[1]) == set(node_ids)
         assert kwargs.get("with_keywords") is True
-        assert kwargs.get("delete_child_chunks") is True
+        assert kwargs.get("delete_child_chunks") is False
 
         # Reindexing receives the detached reference with its complete ownership chain.
-        mock_external_dependencies["runner_instance"].run.assert_called_once_with(
-            [DatasetRef(dataset.tenant_id, dataset.id).document(document.id)]
-        )
+        run_call = mock_external_dependencies["runner_instance"].run.call_args
+        assert run_call is not None
+        assert run_call.args[0] == [DatasetRef(dataset.tenant_id, dataset.id).document(document.id)]
+        assert document.id in run_call.kwargs["executions"]
 
-    def test_clean_error_is_logged_and_indexing_continues(
-        self, db_session_with_containers: Session, mock_external_dependencies
-    ):
+    def test_clean_error_requeues_before_indexing(
+        self, db_session_with_containers: Session, mock_external_dependencies: ExternalDependencies
+    ) -> None:
         dataset, document, node_ids = self._create_dataset_document_with_segments(db_session_with_containers)
 
-        # Force clean to raise; task should continue to indexing
+        # A failed destructive cleanup must durably retry before provider work.
         mock_external_dependencies["processor"].clean.side_effect = Exception("boom")
 
-        document_indexing_update_task(dataset.id, document.id)
+        with pytest.raises(KnowledgeTaskRequeuedError):
+            self._run_durable_update(
+                db_session_with_containers,
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset.id,
+                document_id=document.id,
+            )
 
         # Ensure we see committed changes from another session
         db_session_with_containers.expire_all()
 
-        # Indexing should still be triggered
-        mock_external_dependencies["runner_instance"].run.assert_called_once()
+        # Destructive cleanup must finish before provider work can begin.
+        mock_external_dependencies["runner_instance"].run.assert_not_called()
 
         # Segments should remain (since clean failed before DB delete)
         remaining = db_session_with_containers.scalar(
             select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
         )
+        assert remaining is not None
         assert remaining > 0
 
-    def test_document_not_found_noop(self, db_session_with_containers: Session, mock_external_dependencies):
+    def test_document_not_found_noop(
+        self, db_session_with_containers: Session, mock_external_dependencies: ExternalDependencies
+    ) -> None:
         fake = Faker()
         # Act with non-existent document id
-        document_indexing_update_task(dataset_id=fake.uuid4(), document_id=fake.uuid4())
+        self._run_durable_update(
+            db_session_with_containers,
+            tenant_id=fake.uuid4(),
+            dataset_id=fake.uuid4(),
+            document_id=fake.uuid4(),
+        )
 
         # Neither processor nor runner should be called
         mock_external_dependencies["processor"].clean.assert_not_called()

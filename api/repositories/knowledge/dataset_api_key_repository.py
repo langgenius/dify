@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from models.account import Tenant
 from models.dataset import Dataset
 from models.enums import ApiTokenType
-from models.model import ApiToken
+from models.model import ApiToken, DatasetApiTokenBinding
 from repositories.knowledge import dataset_api_key_bindings
 from services.auth.api_key_contracts import (
     ApiKeyLimitExceededError,
@@ -22,6 +22,22 @@ from services.knowledge.api_key_service import DatasetApiKeyStore, UnknownDatase
 class DatasetApiKeyRepository(DatasetApiKeyStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_active_scope(self, workspace_id: str, api_key_id: str) -> frozenset[str] | None:
+        """Read key existence and bindings together; revoked keys never become unrestricted."""
+        with self._session_factory() as session:
+            rows = session.execute(
+                select(ApiToken.id, DatasetApiTokenBinding.dataset_id)
+                .outerjoin(DatasetApiTokenBinding, DatasetApiTokenBinding.api_token_id == ApiToken.id)
+                .where(
+                    ApiToken.id == api_key_id,
+                    ApiToken.tenant_id == workspace_id,
+                    ApiToken.type == ApiTokenType.DATASET,
+                )
+            ).all()
+            if not rows:
+                return None
+            return frozenset(dataset_id for _, dataset_id in rows if dataset_id is not None)
 
     @override
     def list_keys(self, workspace_id: str, dataset_id: str) -> tuple[ApiKeyRecord, ...]:

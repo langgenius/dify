@@ -107,8 +107,9 @@ class FirecrawlApp:
                 if url_data_list:
                     file_key = "website_files/" + job_id + ".txt"
                     try:
-                        if storage.exists(file_key):
-                            storage.delete(file_key)
+                        # Storage ``save`` implementations replace the object at
+                        # the same key. Avoid a delete-then-save gap that can lose
+                        # the last successful crawl when the replacement fails.
                         storage.save(file_key, json.dumps(url_data_list).encode("utf-8"))
                     except Exception as e:
                         raise Exception(f"Error saving crawl data: {e}") from e

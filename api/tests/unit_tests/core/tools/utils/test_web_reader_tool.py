@@ -330,7 +330,7 @@ def test_extract_using_readabilipy_defaults_when_missing(monkeypatch: pytest.Mon
 # ---------------------------
 # Tests: get_image_upload_file_ids
 # ---------------------------
-def test_get_image_upload_file_ids():
+def test_get_image_upload_file_ids() -> None:
     # should extract id from https + file-preview
     content = "![image](https://example.com/a/b/files/abc123/file-preview)"
     assert get_image_upload_file_ids(content) == ["abc123"]
@@ -344,11 +344,19 @@ def test_get_image_upload_file_ids():
     assert get_image_upload_file_ids(content) == []
 
     # should extract multiple ids in order
-    content = """
-    some text
-    ![image](https://h/files/id1/file-preview)
-    middle
-    ![image](http://h/files/id2/image-preview)
-    end
-    """
+    content = (
+        "some text\n![image](https://h/files/id1/file-preview)\nmiddle\n![image](http://h/files/id2/image-preview)\nend"
+    )
     assert get_image_upload_file_ids(content) == ["id1", "id2"]
+
+
+def test_get_image_upload_file_ids_uses_full_markdown_image_grammar() -> None:
+    content = (
+        '![architecture diagram](/files/relative-id/file-preview "diagram")\n'
+        "![reference image][stored-image]\n"
+        "[stored-image]: https://example.test/files/reference-id/image-preview\n"
+        "[ordinary link](/files/not-an-image/file-preview)\n"
+        '<img alt="inline html" src="/files/html-id/image-preview?timestamp=1">'
+    )
+
+    assert get_image_upload_file_ids(content) == ["relative-id", "reference-id", "html-id"]

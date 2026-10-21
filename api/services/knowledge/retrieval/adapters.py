@@ -1,5 +1,6 @@
-"""Workflow retrieval adapter; owns runtime construction, sessions, and error translation."""
+"""Persistence and workflow runtime adapters for trusted inner retrieval."""
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.entities.metadata_entities import Condition, MetadataFilteringCondition
@@ -9,20 +10,58 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrieval
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes.llm.entities import ModelConfig
 from machinery.context import RequestContext
-from services.errors.knowledge_retrieval import (
-    ExternalKnowledgeRetrievalError,
-    InnerKnowledgeRetrieveConfigError,
-    InnerKnowledgeRetrieveExternalError,
-    InnerKnowledgeRetrieveRateLimitError,
-)
-from services.knowledge.entities.inner_retrieval import (
+from models.dataset import Dataset
+from models.model import App
+from services.entities.knowledge_retrieval_inner import (
     InnerKnowledgeRetrieveRequest,
     InnerKnowledgeRetrieveResult,
     InnerKnowledgeRetrieveUsage,
 )
+from services.errors.knowledge_retrieval import (
+    ExternalKnowledgeRetrievalError,
+    InnerKnowledgeRetrieveAppNotFoundError,
+    InnerKnowledgeRetrieveAppTenantMismatchError,
+    InnerKnowledgeRetrieveConfigError,
+    InnerKnowledgeRetrieveDatasetNotFoundError,
+    InnerKnowledgeRetrieveDatasetTenantMismatchError,
+    InnerKnowledgeRetrieveExternalError,
+    InnerKnowledgeRetrieveRateLimitError,
+)
+
+
+class SQLAlchemyInnerKnowledgeRetrievalScope:
+    """Validate the complete app/dataset owner chain in a short read session."""
+
+    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+        self._sessions = session_factory
+
+    def validate_inner_retrieval_scope(self, *, tenant_id: str, app_id: str, dataset_ids: list[str]) -> None:
+        """Reject missing and foreign resources without applying console visibility policy."""
+        with self._sessions() as session:
+            app_tenant_id = session.scalar(select(App.tenant_id).where(App.id == app_id).limit(1))
+            if app_tenant_id is None:
+                raise InnerKnowledgeRetrieveAppNotFoundError(f"App '{app_id}' not found")
+            if app_tenant_id != tenant_id:
+                raise InnerKnowledgeRetrieveAppTenantMismatchError(
+                    f"App '{app_id}' does not belong to tenant '{tenant_id}'"
+                )
+
+            datasets = dict(
+                session.execute(select(Dataset.id, Dataset.tenant_id).where(Dataset.id.in_(dataset_ids))).tuples().all()
+            )
+            missing_ids = sorted(set(dataset_ids) - datasets.keys())
+            if missing_ids:
+                raise InnerKnowledgeRetrieveDatasetNotFoundError(f"Datasets not found: {', '.join(missing_ids)}")
+            mismatched_ids = sorted(dataset_id for dataset_id, owner in datasets.items() if owner != tenant_id)
+            if mismatched_ids:
+                raise InnerKnowledgeRetrieveDatasetTenantMismatchError(
+                    f"Datasets do not belong to tenant '{tenant_id}': {', '.join(mismatched_ids)}"
+                )
 
 
 class WorkflowKnowledgeRetrievalGateway:
+    """Map the inner DTO to the workflow retrieval kernel in an owned session."""
+
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._sessions = session_factory
 
@@ -36,8 +75,6 @@ class WorkflowKnowledgeRetrievalGateway:
             }
         )
         try:
-            # Scope validation has finished before opening the runtime session.
-            # The kernel closes its external retrieval reads before provider HTTP.
             with self._sessions() as session:
                 results = rag.knowledge_retrieval(session=session, request=self._to_rag_request(request))
                 result = InnerKnowledgeRetrieveResult(
@@ -53,7 +90,8 @@ class WorkflowKnowledgeRetrievalGateway:
         except ValueError as error:
             raise InnerKnowledgeRetrieveConfigError(str(error)) from error
 
-    def _to_rag_request(self, request: InnerKnowledgeRetrieveRequest) -> KnowledgeRetrievalRequest:
+    @staticmethod
+    def _to_rag_request(request: InnerKnowledgeRetrieveRequest) -> KnowledgeRetrievalRequest:
         metadata_model_config = request.metadata_filtering.metadata_model_config
         metadata_conditions = request.metadata_filtering.conditions
 

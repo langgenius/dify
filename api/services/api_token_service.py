@@ -6,11 +6,12 @@ Includes Redis cache operations, database queries, and single-flight concurrency
 """
 
 import logging
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, override
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
@@ -44,7 +45,7 @@ class CachedApiToken(BaseModel):
     created_at: datetime | None
 
     # Dataset key scoping (DatasetApiTokenBinding) is intentionally NOT cached here:
-    # validate_dataset_token queries the bound dataset ids per request so scope changes
+    # Knowledge API admission queries the bound dataset ids per request so scope changes
     # take effect immediately. Unknown fields in older cache entries are ignored.
 
     @override
@@ -68,10 +69,20 @@ ACTIVE_TOKEN_KEY_PREFIX = "api_token_active:"
 
 
 class ApiTokenCache:
-    """
-    Redis cache wrapper for API tokens.
-    Handles serialization, deserialization, and cache invalidation.
-    """
+    """Redis cache wrapper for API token serialization and invalidation."""
+
+    @staticmethod
+    def delete_after_commit(session: Session, tokens: Sequence[str], *, scope: str) -> None:
+        """Invalidate committed revocations without evicting keys on transaction failure."""
+        if not tokens:
+            return
+        revoked_tokens = tuple(tokens)
+
+        def invalidate(_session: Session) -> None:
+            for token in revoked_tokens:
+                ApiTokenCache.delete(token, scope)
+
+        event.listen(session, "after_commit", invalidate, once=True)
 
     @staticmethod
     def make_active_key(token: str, scope: str | None = None) -> str:

@@ -12,7 +12,9 @@ from sqlalchemy.orm import Session
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore, DocumentSegment
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import ChildChunk, Dataset, SegmentAttachmentBinding
-from tests.unit_tests.model_factories import make_dataset
+from models.model import KnowledgeUploadFileReference
+from repositories.knowledge.segment_repository import SQLAlchemySegmentAttachmentWriter
+from tests.unit_tests.model_factories import make_dataset, make_document, make_upload_file
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DATASET_ID = "00000000-0000-0000-0000-000000000002"
@@ -381,37 +383,6 @@ class TestDatasetDocumentStoreGetDocument(_UsesSQLiteSession):
             store.get_document("nonexistent", session=self.session, raise_error=True)
 
 
-class TestDatasetDocumentStoreDeleteDocument(_UsesSQLiteSession):
-    """Tests for delete_document method."""
-
-    def test_delete_document_success(self) -> None:
-        """Test deleting a document successfully."""
-
-        segment = _persist_segment(self.session)
-        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
-
-        store.delete_document("doc-1", session=self.session)
-
-        assert self.session.get(DocumentSegment, segment.id) is None
-
-    def test_delete_document_returns_none_when_not_found(self) -> None:
-        """Test delete_document returns None when not found and raise_error=False."""
-
-        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
-
-        result = store.delete_document("nonexistent", session=self.session, raise_error=False)
-
-        assert result is None
-
-    def test_delete_document_raises_when_not_found(self) -> None:
-        """Test delete_document raises ValueError when not found and raise_error=True."""
-
-        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
-
-        with pytest.raises(ValueError, match="not found"):
-            store.delete_document("nonexistent", session=self.session, raise_error=True)
-
-
 class TestDatasetDocumentStoreHashOperations(_UsesSQLiteSession):
     """Tests for set_document_hash and get_document_hash methods."""
 
@@ -503,18 +474,30 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
 
         mock_session = self.session
 
+        dataset = _dataset()
+        segment = _segment()
+        mock_session.add_all(
+            [
+                dataset,
+                make_document(document_id=DOCUMENT_ID, tenant_id=TENANT_ID, dataset_id=DATASET_ID),
+                segment,
+                make_upload_file(file_id=ATTACHMENT_ID, tenant_id=TENANT_ID),
+            ]
+        )
+        mock_session.flush()
         store = DatasetDocumentStore(
-            dataset=_dataset(),
+            dataset=dataset,
             user_id=USER_ID,
             document_id=DOCUMENT_ID,
+            attachment_writer=SQLAlchemySegmentAttachmentWriter(),
         )
 
-        store.add_multimodel_documents_binding("seg-1", [attachment], session=mock_session)
+        store.add_multimodel_documents_binding(segment.id, [attachment], session=mock_session)
         mock_session.flush()
 
         binding = mock_session.scalar(select(SegmentAttachmentBinding))
         assert binding is not None
-        assert binding.segment_id == "seg-1"
+        assert binding.segment_id == segment.id
         assert binding.attachment_id == ATTACHMENT_ID
 
     def test_add_multimodel_documents_binding_without_attachments(self) -> None:
@@ -563,6 +546,42 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
         store.add_multimodel_documents_binding("seg-1", [attachment], session=mock_session)
 
         assert mock_session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
+
+
+class TestDatasetDocumentStoreInlineFileReferences(_UsesSQLiteSession):
+    def test_add_and_update_keeps_inline_file_references_in_sync(self) -> None:
+        dataset = _dataset()
+        upload = make_upload_file(file_id=ATTACHMENT_ID, tenant_id=TENANT_ID)
+        self.session.add_all(
+            [
+                dataset,
+                make_document(document_id=DOCUMENT_ID, tenant_id=TENANT_ID, dataset_id=DATASET_ID),
+                upload,
+            ]
+        )
+        self.session.flush()
+        store = DatasetDocumentStore(
+            dataset=dataset,
+            user_id=USER_ID,
+            document_id=DOCUMENT_ID,
+            attachment_writer=SQLAlchemySegmentAttachmentWriter(),
+        )
+        indexed_document = Document(
+            page_content=f"![image](https://example.test/files/{upload.id}/image-preview)",
+            metadata={"doc_id": "doc-with-image", "doc_hash": "hash-with-image"},
+        )
+
+        store.add_documents(session=self.session, docs=[indexed_document], token_counts=[3])
+
+        reference = self.session.scalar(select(KnowledgeUploadFileReference))
+        assert reference is not None
+        assert reference.upload_file_id == upload.id
+        assert reference.kind == "segment_image"
+
+        indexed_document.page_content = "updated without an inline image"
+        store.add_documents(session=self.session, docs=[indexed_document], token_counts=[4])
+
+        assert self.session.scalar(select(KnowledgeUploadFileReference)) is None
 
 
 class TestDatasetDocumentStoreAddDocumentsUpdateChild(_UsesSQLiteSession):

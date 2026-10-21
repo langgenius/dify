@@ -8,10 +8,10 @@ are deleted from the dataset.
 """
 
 import logging
-from unittest.mock import MagicMock, patch
 
+import pytest
 from faker import Faker
-from sqlalchemy import inspect
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -26,7 +26,10 @@ from models import (
     TenantStatus,
 )
 from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
+from models.knowledge_task import KnowledgeTaskOutbox
+from services.knowledge.task_outbox.contracts import KnowledgeTaskKind
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
+from tests.unit_tests.config_override import apply_config_overrides
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +50,11 @@ class TestDeleteSegmentFromIndexTask:
     All tests use the testcontainers infrastructure to ensure proper database isolation
     and realistic testing environment with actual database interactions.
     """
+
+    @pytest.fixture(autouse=True)
+    def _stub_dispatcher(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        apply_config_overrides(monkeypatch, ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
+        monkeypatch.setattr("services.knowledge.task_outbox.gateway.wake_knowledge_task_dispatcher", lambda: True)
 
     def _create_test_tenant(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
@@ -236,10 +244,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return segments
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_success(
-        self, mock_index_processor_factory, db_session_with_containers: Session
-    ):
+    def test_delete_segment_from_index_task_success(self, db_session_with_containers: Session):
         """
         Test successful segment deletion from index with comprehensive verification.
 
@@ -262,10 +267,6 @@ class TestDeleteSegmentFromIndexTask:
         # Extract index node IDs for the task
         index_node_ids = [segment.index_node_id for segment in segments]
 
-        # Mock the index processor
-        mock_processor = MagicMock()
-        mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
-
         # Extract segment IDs for the task
         segment_ids = [segment.id for segment in segments]
 
@@ -275,18 +276,14 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed successfully
         assert result is None  # Task should return None on success
 
-        # Verify index processor factory was called with correct document form
-        mock_index_processor_factory.assert_called_once_with(document.doc_form)
-
-        # Verify index processor clean method was called with correct parameters
-        # Note: We can't directly compare Dataset objects as they are different instances
-        # from database queries, so we verify the call was made and check the parameters
-        assert mock_processor.clean.call_count == 1
-        call_args = mock_processor.clean.call_args
-        assert call_args[0][0].id == dataset.id  # Verify dataset ID matches
-        assert call_args[0][1] == index_node_ids  # Verify index node IDs match
-        assert call_args[1]["with_keywords"] is True
-        assert call_args[1]["delete_child_chunks"] is True
+        intent = db_session_with_containers.scalar(
+            select(KnowledgeTaskOutbox).where(
+                KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DELETION_INDEX_CLEANUP,
+                KnowledgeTaskOutbox.dataset_id == dataset.id,
+            )
+        )
+        assert intent is not None
+        assert intent.payload["vector_node_ids"] == index_node_ids
 
     def test_delete_segment_from_index_task_dataset_not_found(self, db_session_with_containers: Session):
         """
@@ -421,194 +418,95 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when indexing is not completed
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_index_processor_clean(
-        self, mock_index_processor_factory, db_session_with_containers
-    ):
-        """
-        Test index processor clean method integration with different document forms.
-
-        This test verifies:
-        - Index processor factory creates correct processor for different document forms
-        - Clean method is called with proper parameters for each document form
-        - Task handles different index types correctly
-        - Database session is properly managed
-        """
-        fake = Faker()
-
-        # Test different document forms
-        document_forms = [
+    @pytest.mark.parametrize(
+        "doc_form",
+        [
             IndexStructureType.PARAGRAPH_INDEX,
             IndexStructureType.QA_INDEX,
             IndexStructureType.PARENT_CHILD_INDEX,
-        ]
-
-        for doc_form in document_forms:
-            # Create test data for each document form
-            tenant = self._create_test_tenant(db_session_with_containers, fake)
-            account = self._create_test_account(db_session_with_containers, tenant, fake)
-            dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
-            document = self._create_test_document(db_session_with_containers, dataset, account, fake, doc_form=doc_form)
-            segments = self._create_test_document_segments(db_session_with_containers, document, account, 2, fake)
-
-            index_node_ids = [segment.index_node_id for segment in segments]
-            segment_ids = [segment.id for segment in segments]
-
-            # Mock the index processor
-            mock_processor = MagicMock()
-            mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
-
-            # Execute the task
-            result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
-
-            # Verify the task completed successfully
-            assert result is None
-
-            # Verify index processor factory was called with correct document form
-            mock_index_processor_factory.assert_called_with(doc_form)
-
-            # Verify index processor clean method was called with correct parameters
-            assert mock_processor.clean.call_count == 1
-            call_args = mock_processor.clean.call_args
-            assert call_args[0][0].id == dataset.id  # Verify dataset ID matches
-            assert call_args[0][1] == index_node_ids  # Verify index node IDs match
-            assert call_args[1]["with_keywords"] is True
-            assert call_args[1]["delete_child_chunks"] is True
-
-            # Reset mocks for next iteration
-            mock_index_processor_factory.reset_mock()
-            mock_processor.reset_mock()
-
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_exception_handling(
-        self, mock_index_processor_factory, db_session_with_containers
-    ):
-        """
-        Test exception handling in the task.
-
-        This test verifies:
-        - Task handles index processor exceptions gracefully
-        - Database session is properly closed even when exceptions occur
-        - Task logs exceptions appropriately
-        - No unhandled exceptions are raised
-        """
+        ],
+    )
+    def test_delete_segment_persists_nodes_for_each_document_form(
+        self,
+        db_session_with_containers: Session,
+        doc_form: IndexStructureType,
+    ) -> None:
         fake = Faker()
-
-        # Create test data
         tenant = self._create_test_tenant(db_session_with_containers, fake)
         account = self._create_test_account(db_session_with_containers, tenant, fake)
         dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
-
+        document = self._create_test_document(
+            db_session_with_containers,
+            dataset,
+            account,
+            fake,
+            doc_form=doc_form,
+        )
+        segments = self._create_test_document_segments(db_session_with_containers, document, account, 2, fake)
         index_node_ids = [segment.index_node_id for segment in segments]
-        segment_ids = [segment.id for segment in segments]
-        expected_dataset_id = dataset.id
 
-        # Mock the index processor to raise an exception
-        mock_processor = MagicMock()
-        mock_processor.clean.side_effect = Exception("Index processor error")
-        mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+        delete_segment_from_index_task(
+            index_node_ids,
+            dataset.id,
+            document.id,
+            [segment.id for segment in segments],
+        )
 
-        # Execute the task - should not raise exception
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
+        intent = db_session_with_containers.scalar(
+            select(KnowledgeTaskOutbox).where(
+                KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DELETION_INDEX_CLEANUP,
+                KnowledgeTaskOutbox.dataset_id == dataset.id,
+            )
+        )
+        assert intent is not None
+        assert intent.payload["vector_node_ids"] == index_node_ids
 
-        # Verify the task completed without raising exceptions
-        assert result is None  # Task should return None even when exceptions occur
-
-        # Verify index processor clean method was called
-        assert mock_processor.clean.call_count == 1
-        call_args = mock_processor.clean.call_args
-        assert inspect(call_args[0][0]).identity == (expected_dataset_id,)
-        assert call_args[0][1] == index_node_ids  # Verify index node IDs match
-        assert call_args[1]["with_keywords"] is True
-        assert call_args[1]["delete_child_chunks"] is True
-
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_empty_index_node_ids(
-        self, mock_index_processor_factory, db_session_with_containers
-    ):
-        """
-        Test task behavior with empty index node IDs list.
-
-        This test verifies:
-        - Task handles empty index node IDs gracefully
-        - Index processor clean method is called with empty list
-        - Task completes successfully
-        - Database session is properly managed
-        """
+    def test_delete_segment_with_empty_nodes_skips_empty_index_intent(
+        self,
+        db_session_with_containers: Session,
+    ) -> None:
         fake = Faker()
-
-        # Create test data
         tenant = self._create_test_tenant(db_session_with_containers, fake)
         account = self._create_test_account(db_session_with_containers, tenant, fake)
         dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
         document = self._create_test_document(db_session_with_containers, dataset, account, fake)
 
-        # Use empty index node IDs
-        index_node_ids = []
+        delete_segment_from_index_task([], dataset.id, document.id, [])
 
-        # Mock the index processor
-        mock_processor = MagicMock()
-        mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+        intent_count = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(KnowledgeTaskOutbox)
+            .where(
+                KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DELETION_INDEX_CLEANUP,
+                KnowledgeTaskOutbox.dataset_id == dataset.id,
+            )
+        )
+        assert intent_count == 0
 
-        # Execute the task
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, [])
-
-        # Verify the task completed successfully
-        assert result is None
-
-        # Verify index processor clean method was called with empty list
-        assert mock_processor.clean.call_count == 1
-        call_args = mock_processor.clean.call_args
-        assert call_args[0][0].id == dataset.id  # Verify dataset ID matches
-        assert call_args[0][1] == index_node_ids  # Verify index node IDs match (empty list)
-        assert call_args[1]["with_keywords"] is True
-        assert call_args[1]["delete_child_chunks"] is True
-
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_large_index_node_ids(
-        self, mock_index_processor_factory, db_session_with_containers
-    ):
-        """
-        Test task behavior with large number of index node IDs.
-
-        This test verifies:
-        - Task handles large lists of index node IDs efficiently
-        - Index processor clean method is called with all node IDs
-        - Task completes successfully with large datasets
-        - Database session is properly managed
-        """
+    def test_delete_segment_persists_large_node_batch(
+        self,
+        db_session_with_containers: Session,
+    ) -> None:
         fake = Faker()
-
-        # Create test data
         tenant = self._create_test_tenant(db_session_with_containers, fake)
         account = self._create_test_account(db_session_with_containers, tenant, fake)
         dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
         document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-
-        # Create large number of segments
         segments = self._create_test_document_segments(db_session_with_containers, document, account, 50, fake)
         index_node_ids = [segment.index_node_id for segment in segments]
-        segment_ids = [segment.id for segment in segments]
 
-        # Mock the index processor
-        mock_processor = MagicMock()
-        mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
+        delete_segment_from_index_task(
+            index_node_ids,
+            dataset.id,
+            document.id,
+            [segment.id for segment in segments],
+        )
 
-        # Execute the task
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
-
-        # Verify the task completed successfully
-        assert result is None
-
-        # Verify index processor clean method was called with all node IDs
-        assert mock_processor.clean.call_count == 1
-        call_args = mock_processor.clean.call_args
-        assert call_args[0][0].id == dataset.id  # Verify dataset ID matches
-        assert call_args[0][1] == index_node_ids  # Verify index node IDs match
-        assert call_args[1]["with_keywords"] is True
-        assert call_args[1]["delete_child_chunks"] is True
-
-        # Verify all node IDs were passed
-        assert len(call_args[0][1]) == 50
+        intent = db_session_with_containers.scalar(
+            select(KnowledgeTaskOutbox).where(
+                KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DELETION_INDEX_CLEANUP,
+                KnowledgeTaskOutbox.dataset_id == dataset.id,
+            )
+        )
+        assert intent is not None
+        assert intent.payload["vector_node_ids"] == index_node_ids

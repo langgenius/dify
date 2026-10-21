@@ -31,7 +31,6 @@ from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_runtime
 from core.provider_manager import ProviderManager
-from core.rag.datasource.retrieval_service import RetrievalService
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from graphon.file import FileUploadConfig
@@ -360,13 +359,18 @@ class TestCompletionAppRunner:
 
         retrieval_calls: list[dict[str, object]] = []
 
-        def retrieve_external(
-            session: Session, dataset_id: str, query: str, **kwargs: object
-        ) -> list[dict[str, object]]:
-            retrieval_calls.append({**kwargs, "session": session, "dataset_id": dataset_id, "query": query})
-            return [{"content": "ctx", "metadata": {}, "score": 1.0, "title": "Document"}]
+        def prepare_external(**kwargs: object) -> object:
+            retrieval_calls.append(kwargs)
+            return object()
 
-        monkeypatch.setattr(RetrievalService, "external_retrieve", retrieve_external)
+        monkeypatch.setattr(
+            "core.rag.retrieval.dataset_retrieval.prepare_external_knowledge_retrieval",
+            prepare_external,
+        )
+        monkeypatch.setattr(
+            "core.rag.retrieval.dataset_retrieval.execute_external_knowledge_retrieval",
+            lambda _request: [{"content": "ctx", "metadata": {}, "score": 1.0, "title": "Document"}],
+        )
 
         runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 

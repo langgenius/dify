@@ -206,6 +206,7 @@ def initialize_extensions(app: DifyApp):
         ext_set_secretkey,
         ext_storage,
         ext_timezone,
+        ext_upload_file_reference_guards,
         ext_warnings,
     )
 
@@ -221,6 +222,7 @@ def initialize_extensions(app: DifyApp):
         ext_compress,
         ext_code_based_extension,
         ext_database,
+        ext_upload_file_reference_guards,
         ext_app_metrics,
         ext_migrate,
         ext_redis,

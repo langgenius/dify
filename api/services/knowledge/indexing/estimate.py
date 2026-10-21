@@ -1,15 +1,14 @@
 """Indexing-estimate application service and its consumer-owned ports."""
 
 from collections.abc import Mapping, Sequence
-from typing import NamedTuple, Never, Protocol
+from typing import Never, Protocol
 
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from machinery.context import RequestContext
 from services.data_source.credential_gateway import DatasourceCredentialError
 from services.data_source.entities.notion_import import NotionPageType
-from services.errors.dataset import DatasetNotFoundError
-from services.knowledge.dataset_access import DatasetAccess
+from services.knowledge.dataset_access import DatasetAccess, DatasetNotFoundError
 from services.knowledge.entities.indexing_estimate import (
     NewEstimateSource,
     NewSourcesEstimateCommand,
@@ -18,56 +17,13 @@ from services.knowledge.entities.indexing_estimate import (
     WebsiteEstimateSource,
     normalize_process_rule,
 )
-from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.indexing.contracts import DatasetEstimateRecord, EstimateDocumentRecord, StoredSource
 from services.knowledge.indexing.errors import (
     IndexingInputSourceError,
     SourceCredentialUnavailableError,
     UnsupportedStoredSourceError,
 )
-
-
-class DatasetEstimateRecord(NamedTuple):
-    """Dataset state required to estimate stored documents."""
-
-    id: str
-    workspace_id: str
-    indexing_technique: str | None
-
-
-class EstimateDocumentRecord(NamedTuple):
-    """Document state required by the stored-document estimate use case."""
-
-    id: str
-    workspace_id: str
-    dataset_id: str
-    data_source_type: str
-    data_source_info: Mapping[str, object] | None
-    indexing_status: str
-    doc_form: str
-    doc_language: str | None
-    dataset_process_rule_id: str | None
-
-    @property
-    def ref(self) -> DocumentRef:
-        return DatasetRef(self.workspace_id, self.dataset_id).document(self.id)
-
-
-class StoredSource(NamedTuple):
-    """A persisted extraction source bound to its owning document."""
-
-    document_ref: DocumentRef
-    source_type: str
-    source_info: Mapping[str, object] | None
-    document_model: str
-
-    @classmethod
-    def from_document(cls, document: EstimateDocumentRecord) -> "StoredSource":
-        return cls(
-            document_ref=document.ref,
-            source_type=document.data_source_type,
-            source_info=document.data_source_info,
-            document_model=document.doc_form,
-        )
+from services.knowledge.resource_scope import DatasetRef, DocumentRef
 
 
 class EstimateDocumentReader(Protocol):

@@ -473,6 +473,7 @@ def build_application_services(
         rbac_members=rbac.members,
     )
     tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
+    credential_queries = CredentialQueryRepository(session_factory=database_client)
     knowledge = build_knowledge_services(
         database_client=database_client,
         dataset_access=dataset_dependencies.access,
@@ -484,6 +485,9 @@ def build_application_services(
         redis=redis,
         tags=tags,
         rbac_members=rbac.members,
+        workspaces=workspace_repository,
+        deployment_edition=deployment_edition,
+        credential_query=credential_queries,
     )
     app_scoped_end_user_repository = AppScopedEndUserRepo(session_factory=database_client)
     file_service = FileService(session_factory=database_client)
@@ -533,7 +537,7 @@ def build_application_services(
         rbac=rbac,
         accounts=account_services,
         apps=apps,
-        credential_queries=CredentialQueryRepository(session_factory=database_client),
+        credential_queries=credential_queries,
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,

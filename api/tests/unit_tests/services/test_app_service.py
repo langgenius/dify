@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
-from models import Account, Tenant
+from models import Account, AppCleanupOperation, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
     Agent,
@@ -890,6 +890,9 @@ class TestAgentAppType:
         persisted_agent = sqlite_session.get(Agent, backing_agent.id)
         assert persisted_agent is not None
         assert sqlite_session.get(App, app.id) is None
+        cleanup_operation = sqlite_session.get_one(AppCleanupOperation, app.id)
+        assert cleanup_operation.tenant_id == app.tenant_id
+        assert cleanup_operation.status == "pending"
         assert persisted_agent.status == AgentStatus.ARCHIVED
         assert persisted_agent.archived_by == account_id
         assert persisted_agent.archived_at is not None
@@ -955,6 +958,8 @@ class TestAgentAppType:
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()
         enqueue_app_cleanup.assert_not_called()
+        sqlite_session.rollback()
+        assert sqlite_session.get(AppCleanupOperation, app.id) is None
 
     def test_delete_workflow_app_releases_all_bindings_before_retirement(self, sqlite_session: Session):
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))

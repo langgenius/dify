@@ -31,9 +31,9 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from models.dataset import Dataset, DocumentSegment, ExternalKnowledgeApis, ExternalKnowledgeBindings, RateLimitLog
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalKnowledgeApiSetting
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
-from services.knowledge.entities.external import ExternalKnowledgeApiSetting
-from services.knowledge.external.adapters import ExternalKnowledgeGateway
+from services.knowledge.external import service as external_service
 
 
 @dataclass(frozen=True)
@@ -511,18 +511,25 @@ def test_external_runtime_releases_read_connections_before_http(
     def checkin(_connection: object, record: object) -> None:
         active.discard(record)
 
-    def send(request: ExternalKnowledgeApiSetting, _files: object) -> httpx.Response:
+    def send(request: ExternalKnowledgeApiSetting) -> httpx.Response:
         assert not active
         requests.append(request)
         return (
             httpx.Response(502, text="provider failed") if provider_fails else httpx.Response(200, json={"records": []})
         )
 
-    def executed(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def executed(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: object,
+    ) -> None:
         if statement.lstrip().upper().startswith("SELECT") and "doc_metadata" in statement:
             metadata_reads.append(statement)
 
-    monkeypatch.setattr(ExternalKnowledgeGateway, "process_external_api", send)
+    monkeypatch.setattr(external_service, "_send_external_knowledge_request", send)
     retrieval = DatasetRetrieval()
     monkeypatch.setattr(retrieval, "_on_query", lambda *_args: None)
     monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", lambda *_args: None)
@@ -559,7 +566,8 @@ def test_external_runtime_releases_read_connections_before_http(
                     llm.get_model_schema.return_value = schema
                     model.model_type_instance = llm
                     model.model_name = "model"
-                    model.credentials = {}
+                    credentials: dict[str, object] = {}
+                    model.credentials = credentials
                     model.provider_model_bundle = create_autospec(ProviderModelBundle, instance=True)
                     manager = create_autospec(retrieval_module.ModelManager, instance=True)
                     manager.get_model_instance.return_value = model
@@ -592,7 +600,6 @@ def test_external_runtime_releases_read_connections_before_http(
                     )
                 elif entry == "single":
                     retrieval.single_retrieve(
-                        caller,
                         app_id="app-1",
                         tenant_id="tenant-1",
                         user_id="user-1",

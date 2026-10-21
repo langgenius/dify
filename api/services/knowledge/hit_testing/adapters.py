@@ -2,12 +2,18 @@
 
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 from core.app.file_access import (
     get_current_file_access_scope,
     grant_retriever_segment_access,
     grant_upload_file_access,
+)
+from core.errors.error import (
+    LLMBadRequestError,
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
 )
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.index_processor.constant.doc_type import DocType
@@ -16,19 +22,36 @@ from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file_preview_url
 from graphon.model_runtime.errors.invoke import InvokeError
-from services.errors.knowledge_retrieval import HitTestingInvocationError
-from services.knowledge.entities.hit_testing import (
+from machinery.context import RequestContext
+from services.knowledge.hit_testing.application import ExternalHitTestingGateway
+from services.knowledge.hit_testing.entities import (
+    ExternalHitTestingRecord,
+    HitTestingDatasetRecord,
     HitTestingRequest,
+    HitTestingResponse,
     HitTestingResult,
     RetrievalAttachmentRecord,
     RetrievalDocumentRecord,
     RetrievalSnapshot,
 )
-from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.hit_testing.errors import HitTestingInvocationError, HitTestingProviderError
+from services.knowledge.resource_scope import DatasetRef
+
+_MISSING_PROVIDER_MESSAGE = (
+    "No Embedding Model or Reranking Model available. Please configure a valid provider "
+    "in the Settings -> Model Provider."
+)
+_DEFAULT_RETRIEVAL_MODEL = {
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
+    "reranking_enable": False,
+    "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
+    "top_k": 4,
+    "score_threshold_enabled": False,
+}
 
 
 class HitTestingDatasetReader(Protocol):
-    def get_retrieval_model(self, ref: DatasetRef) -> dict[str, object] | None: ...
+    def get_hit_testing_dataset(self, dataset_ref: DatasetRef) -> HitTestingDatasetRecord: ...
 
 
 class HitTestingDocumentReader(Protocol):
@@ -50,15 +73,6 @@ class HitTestingSegmentReader(Protocol):
     ) -> RetrievalSnapshot: ...
 
 
-_DEFAULT_RETRIEVAL_MODEL = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
-    "reranking_enable": False,
-    "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-    "top_k": 4,
-    "score_threshold_enabled": False,
-}
-
-
 def _score(value: object) -> float | None:
     if not isinstance(value, int | float | str):
         return None
@@ -69,21 +83,49 @@ def _score(value: object) -> float | None:
 
 
 class DatasetHitTestingGateway:
+    """Resolve owned rows in bounded reads and perform provider I/O without a checked-out connection."""
+
     def __init__(
         self,
         *,
         datasets: HitTestingDatasetReader,
         documents: HitTestingDocumentReader,
         segments: HitTestingSegmentReader,
+        external_retrieval: ExternalHitTestingGateway,
     ) -> None:
         self._datasets = datasets
         self._documents = documents
         self._segments = segments
+        self._external_retrieval = external_retrieval
 
-    def retrieve(self, ref: DatasetRef, request: HitTestingRequest) -> HitTestingResult:
+    @staticmethod
+    def _metadata_filters(request: HitTestingRequest) -> dict[str, Any] | None:
+        retrieval_model = request.retrieval_model or {}
+        metadata_filters = retrieval_model.get("metadata_filtering_conditions")
+        return metadata_filters if isinstance(metadata_filters, dict) else None
+
+    def retrieve(
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        request: HitTestingRequest,
+    ) -> HitTestingResult:
         try:
-            stored_model = self._datasets.get_retrieval_model(ref)
-            model = request.retrieval_model or stored_model or _DEFAULT_RETRIEVAL_MODEL
+            dataset = self._datasets.get_hit_testing_dataset(ref)
+            if dataset.provider == "external":
+                response = cast(
+                    HitTestingResponse,
+                    self._external_retrieval.retrieve(
+                        context,
+                        ref,
+                        query=request.query,
+                        retrieval_model=request.external_retrieval_model,
+                        metadata_filters=self._metadata_filters(request),
+                    ),
+                )
+                return HitTestingResult(response=response, record_query=False)
+
+            model = request.retrieval_model or dataset.retrieval_model or _DEFAULT_RETRIEVAL_MODEL
             document_filter = None
             has_metadata_matches = True
             conditions = model.get("metadata_filtering_conditions", {})
@@ -105,13 +147,22 @@ class DatasetHitTestingGateway:
             )
             return HitTestingResult(
                 response={"query": {"content": request.query}, "records": self._format_records(ref, documents)},
-                # An empty metadata match has always skipped the query history write.
                 record_query=has_metadata_matches,
             )
+        except ProviderTokenNotInitError as error:
+            raise HitTestingProviderError(error.description, kind="uninitialized") from error
+        except QuotaExceededError as error:
+            raise HitTestingProviderError(str(error), kind="quota") from error
+        except ModelCurrentlyNotSupportError as error:
+            raise HitTestingProviderError(str(error), kind="unsupported") from error
+        except LLMBadRequestError as error:
+            raise HitTestingProviderError(_MISSING_PROVIDER_MESSAGE, kind="uninitialized") from error
         except InvokeError as error:
             raise HitTestingInvocationError(error.description) from error
 
-    def _format_records(self, ref: DatasetRef, retrieved: list[Document]) -> list[dict[str, object]]:
+    def _format_records(
+        self, ref: DatasetRef, retrieved: list[Document]
+    ) -> list[dict[str, Any] | ExternalHitTestingRecord]:
         scope = get_current_file_access_scope()
         if scope is not None and scope.tenant_id != ref.tenant_id:
             return []
@@ -161,7 +212,7 @@ class DatasetHitTestingGateway:
         files: dict[str, list[RetrievalAttachmentRecord]] = defaultdict(list)
         for attachment in snapshot.attachments:
             files[attachment.segment_id].append(attachment)
-        records: list[dict[str, object]] = []
+        records: list[dict[str, Any] | ExternalHitTestingRecord] = []
         included_segment_ids: list[str] = []
         included_file_ids: list[str] = []
         for segment in snapshot.segments:
@@ -210,7 +261,7 @@ class DatasetHitTestingGateway:
                 "id": attachment.id,
                 "name": attachment.name,
                 "extension": "." + attachment.extension,
-                "mime_type": attachment.mime_type,
+                "mime_type": attachment.mime_type or "application/octet-stream",
                 "size": attachment.size,
                 "source_url": sign_upload_file_preview_url(attachment.id, attachment.extension),
             }

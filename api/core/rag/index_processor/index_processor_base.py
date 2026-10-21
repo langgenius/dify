@@ -1,5 +1,7 @@
 """Abstract interface for document loader implementations."""
 
+from __future__ import annotations
+
 import logging
 import mimetypes
 import os
@@ -27,6 +29,7 @@ from core.rag.splitter.fixed_text_splitter import (
 from core.rag.splitter.text_splitter import TextSplitter
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from libs.markdown_images import extract_markdown_image_sources
 from models import Account, ToolFile
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
@@ -34,6 +37,7 @@ from models.model import UploadFile
 
 if TYPE_CHECKING:
     from core.model_manager import ModelInstance
+    from core.rag.docstore.dataset_docstore import SegmentAttachmentWriter
 
 
 class SummaryIndexSettingDict(TypedDict):
@@ -45,6 +49,9 @@ class SummaryIndexSettingDict(TypedDict):
 
 class BaseIndexProcessor(ABC):
     """Interface for extract files."""
+
+    def __init__(self, *, attachment_writer: SegmentAttachmentWriter | None = None) -> None:
+        self._attachment_writer = attachment_writer
 
     @abstractmethod
     def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
@@ -113,7 +120,7 @@ class BaseIndexProcessor(ABC):
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: "ModelInstance | None",
+        embedding_model_instance: ModelInstance | None,
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
@@ -250,8 +257,7 @@ class BaseIndexProcessor(ABC):
         """
         Extract the markdown images from the text.
         """
-        pattern = r"!\[.*?\]\((.*?)\)"
-        return re.findall(pattern, text)
+        return list(extract_markdown_image_sources(text))
 
     def _download_image(self, image_url: str, current_user: Account) -> str | None:
         """

@@ -9,8 +9,6 @@ from pydantic import BaseModel, Field, RootModel, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
-import services.errors.base
-from configs import dify_config
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import SimpleResultResponse
@@ -32,8 +30,10 @@ from controllers.console.app.workflow import (
     WorkflowResponseSource,
 )
 from controllers.console.app.wraps import with_session
+from controllers.console.datasets.error import DatasetConcurrentUpdateError as DatasetConcurrentUpdateHTTPError
 from controllers.console.datasets.error import PipelineNotFoundError
-from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline
+from controllers.console.datasets.wraps import get_rag_pipeline
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.tool_providers import ToolProviderApiEntityResponse
 from controllers.console.wraps import (
     RBACPermission,
@@ -47,7 +47,6 @@ from controllers.console.wraps import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import WorkflowAppBlockingResponse
 from core.entities.knowledge_entities import PipelineGenerateResponse
@@ -69,23 +68,41 @@ from libs import helper
 from libs.external_api import error_responses
 from libs.helper import TimestampField, UUIDStrOrEmpty, dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
+from models.account import TenantAccountRole
 from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.conversation import (
+    ConversationCompletedError as ConversationCompletedServiceError,
+)
+from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from services.knowledge.dataset_service import DatasetService
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.datasets.contracts import DatasetConcurrentUpdateError
+from services.knowledge.entities.pipeline_workflows import DatasourceNodeRun, PipelineRun
+from services.knowledge.rag_pipeline.application import (
+    PipelineActorNotFoundError,
+    PipelineConfigurationError,
+    PipelineDatasetNotFoundError,
+)
+from services.knowledge.rag_pipeline.application import (
+    PipelineNotFoundError as PipelineApplicationNotFoundError,
+)
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
-from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
+
+_PIPELINE_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+_DATASET_EDIT_ROLES = frozenset({*_PIPELINE_EDIT_ROLES, TenantAccountRole.DATASET_OPERATOR})
 
 
 class DraftWorkflowSyncPayload(BaseModel):
@@ -347,9 +364,9 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError as caught_error:
+        except ConversationNotExistsError as caught_error:
             raise NotFound("Conversation Not Exists.") from caught_error
-        except services.errors.conversation.ConversationCompletedError as caught_error:
+        except ConversationCompletedServiceError as caught_error:
             raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
@@ -388,9 +405,9 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError as caught_error:
+        except ConversationNotExistsError as caught_error:
             raise NotFound("Conversation Not Exists.") from caught_error
-        except services.errors.conversation.ConversationCompletedError as caught_error:
+        except ConversationCompletedServiceError as caught_error:
             raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
@@ -410,31 +427,39 @@ class DraftRagPipelineRunApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @with_current_user
-    @with_session
+    @with_current_tenant_id
     @model_validate(RagPipelineDraftWorkflowRunPayload)
     def post(
-        self, req_data: RagPipelineDraftWorkflowRunPayload, session: Session, current_user: Account, pipeline_id: UUID
+        self,
+        req_data: RagPipelineDraftWorkflowRunPayload,
+        current_tenant_id: str,
+        current_user: Account,
+        pipeline_id: UUID,
     ):
         """
         Run draft workflow
         """
-        pipeline = load_rag_pipeline(session, str(pipeline_id))
-        args = req_data.model_dump()
-
         try:
-            response = PipelineGenerateService.generate(
-                generator=application_services().knowledge.pipeline_generator,
-                session=session,
-                pipeline=pipeline,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.DEBUGGER,
-                streaming=True,
+            response = application_services().knowledge.pipeline_workflows.run_console_pipeline(
+                workspace_id=current_tenant_id,
+                actor_id=current_user.id,
+                pipeline_id=str(pipeline_id),
+                command=PipelineRun(
+                    values=req_data.model_dump(mode="json"),
+                    is_published=False,
+                    streaming=True,
+                ),
             )
 
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description) from ex
+        except PipelineApplicationNotFoundError as error:
+            raise PipelineNotFoundError() from error
+        except PipelineActorNotFoundError as error:
+            raise Forbidden(str(error)) from error
+        except PipelineConfigurationError as error:
+            raise InvalidArgumentError(str(error)) from error
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/run")
@@ -448,34 +473,46 @@ class PublishedRagPipelineRunApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @with_current_user
-    @with_session
+    @with_current_tenant_id
     @model_validate(PublishedWorkflowRunPayload)
-    def post(self, req_data: PublishedWorkflowRunPayload, session: Session, current_user: Account, pipeline_id: UUID):
+    def post(
+        self,
+        req_data: PublishedWorkflowRunPayload,
+        current_tenant_id: str,
+        current_user: Account,
+        pipeline_id: UUID,
+    ):
         """
         Run published workflow
         """
-        pipeline = load_rag_pipeline(session, str(pipeline_id))
-        args = req_data.model_dump(exclude_none=True)
         streaming = req_data.response_mode == "streaming"
 
         try:
-            response = PipelineGenerateService.generate(
-                generator=application_services().knowledge.pipeline_generator,
-                session=session,
-                pipeline=pipeline,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.DEBUGGER if req_data.is_preview else InvokeFrom.PUBLISHED_PIPELINE,
-                streaming=streaming,
+            response = application_services().knowledge.pipeline_workflows.run_console_pipeline(
+                workspace_id=current_tenant_id,
+                actor_id=current_user.id,
+                pipeline_id=str(pipeline_id),
+                command=PipelineRun(
+                    values=req_data.model_dump(mode="json", exclude_none=True),
+                    is_published=not req_data.is_preview,
+                    streaming=streaming,
+                ),
             )
 
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description) from ex
+        except PipelineApplicationNotFoundError as error:
+            raise PipelineNotFoundError() from error
+        except PipelineActorNotFoundError as error:
+            raise Forbidden(str(error)) from error
+        except PipelineConfigurationError as error:
+            raise InvalidArgumentError(str(error)) from error
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run")
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
+    @error_responses(PipelineNotFoundError)
     @console_ns.expect(console_ns.models[DatasourceNodeRunPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
@@ -484,32 +521,45 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @with_current_user
-    @get_rag_pipeline
+    @with_current_tenant_id
     @model_validate(DatasourceNodeRunPayload)
-    def post(self, req_data: DatasourceNodeRunPayload, current_user: Account, pipeline: Pipeline, node_id: str):
+    def post(
+        self,
+        req_data: DatasourceNodeRunPayload,
+        current_tenant_id: str,
+        current_user: Account,
+        pipeline_id: UUID,
+        node_id: str,
+    ):
         """
         Run rag pipeline datasource
         """
-
-        rag_pipeline_service = RagPipelineService(db.session())
-        return helper.compact_generate_response(
-            PipelineGenerator.convert_to_event_stream(
-                rag_pipeline_service.run_datasource_workflow_node(
-                    pipeline=pipeline,
+        try:
+            return helper.compact_generate_response(
+                application_services().knowledge.pipeline_workflows.run_console_datasource_node(
+                    workspace_id=current_tenant_id,
+                    actor_id=current_user.id,
+                    pipeline_id=str(pipeline_id),
                     node_id=node_id,
-                    user_inputs=req_data.inputs,
-                    account=current_user,
-                    datasource_type=req_data.datasource_type,
-                    is_published=False,
-                    credential_id=req_data.credential_id,
-                    datasource_providers=application_services().data_sources.providers,
+                    command=DatasourceNodeRun(
+                        inputs=req_data.inputs,
+                        datasource_type=req_data.datasource_type,
+                        is_published=True,
+                        credential_id=req_data.credential_id,
+                    ),
                 )
             )
-        )
+        except PipelineApplicationNotFoundError as error:
+            raise PipelineNotFoundError() from error
+        except PipelineActorNotFoundError as error:
+            raise Forbidden(str(error)) from error
+        except PipelineConfigurationError as error:
+            raise InvalidArgumentError(str(error)) from error
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run")
 class RagPipelineDraftDatasourceNodeRunApi(Resource):
+    @error_responses(PipelineNotFoundError)
     @console_ns.expect(console_ns.models[DatasourceNodeRunPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
@@ -518,28 +568,40 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @account_initialization_required
     @with_current_user
-    @get_rag_pipeline
+    @with_current_tenant_id
     @model_validate(DatasourceNodeRunPayload)
-    def post(self, req_data: DatasourceNodeRunPayload, current_user: Account, pipeline: Pipeline, node_id: str):
+    def post(
+        self,
+        req_data: DatasourceNodeRunPayload,
+        current_tenant_id: str,
+        current_user: Account,
+        pipeline_id: UUID,
+        node_id: str,
+    ):
         """
         Run rag pipeline datasource
         """
-
-        rag_pipeline_service = RagPipelineService(db.session())
-        return helper.compact_generate_response(
-            PipelineGenerator.convert_to_event_stream(
-                rag_pipeline_service.run_datasource_workflow_node(
-                    pipeline=pipeline,
+        try:
+            return helper.compact_generate_response(
+                application_services().knowledge.pipeline_workflows.run_console_datasource_node(
+                    workspace_id=current_tenant_id,
+                    actor_id=current_user.id,
+                    pipeline_id=str(pipeline_id),
                     node_id=node_id,
-                    user_inputs=req_data.inputs,
-                    account=current_user,
-                    datasource_type=req_data.datasource_type,
-                    is_published=False,
-                    credential_id=req_data.credential_id,
-                    datasource_providers=application_services().data_sources.providers,
+                    command=DatasourceNodeRun(
+                        inputs=req_data.inputs,
+                        datasource_type=req_data.datasource_type,
+                        is_published=False,
+                        credential_id=req_data.credential_id,
+                    ),
                 )
             )
-        )
+        except PipelineApplicationNotFoundError as error:
+            raise PipelineNotFoundError() from error
+        except PipelineActorNotFoundError as error:
+            raise Forbidden(str(error)) from error
+        except PipelineConfigurationError as error:
+            raise InvalidArgumentError(str(error)) from error
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run")
@@ -627,32 +689,35 @@ class PublishedRagPipelineApi(Resource):
 
         return dump_response(RagPipelinePublishedWorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
+    @error_responses(DatasetConcurrentUpdateHTTPError, DraftWorkflowNotSync)
     @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowPublishResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
-    @with_current_user
-    @get_rag_pipeline
-    def post(self, current_user: Account, pipeline: Pipeline):
+    @console_account_admission(
+        allowed_roles=_PIPELINE_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()),),
+    )
+    def post(self, request_context: RequestContext, pipeline_id: UUID):
         """
         Publish workflow
         """
-        rag_pipeline_service = RagPipelineService(db.session())
-        workflow = rag_pipeline_service.publish_workflow(
-            session=db.session(),
-            pipeline=pipeline,
-            account=current_user,
-        )
-        pipeline.is_published = True
-        pipeline.workflow_id = workflow.id
-        db.session.commit()
-        workflow_created_at = TimestampField().format(workflow.created_at)
+        try:
+            created_at = application_services().knowledge.pipeline_workflows.publish_workflow(
+                request_context,
+                pipeline_id=str(pipeline_id),
+            )
+        except (DatasetNotFoundError, PipelineDatasetNotFoundError, PipelineApplicationNotFoundError) as error:
+            raise NotFound(str(error)) from error
+        except DatasetAccessDeniedError as error:
+            raise Forbidden(str(error)) from error
+        except PipelineConfigurationError as error:
+            raise InvalidArgumentError(str(error)) from error
+        except WorkflowHashNotEqualError as error:
+            raise DraftWorkflowNotSync() from error
+        except DatasetConcurrentUpdateError as error:
+            raise DatasetConcurrentUpdateHTTPError() from error
 
         return {
             "result": "success",
-            "created_at": workflow_created_at,
+            "created_at": TimestampField().format(created_at),
         }
 
 
@@ -1100,31 +1165,23 @@ class RagPipelineWorkflowLastRunApi(Resource):
 class RagPipelineTransformApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[RagPipelineTransformResponse.__name__])
     @console_ns.response(404, "Dataset or pipeline not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
-    @with_session
-    def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
-        dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), current_tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-
-        if not dify_config.RBAC_ENABLED:
-            if not (current_user.has_edit_permission or current_user.is_dataset_operator):
-                raise Forbidden()
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.base.NoPermissionError as exc:
-                raise Forbidden(str(exc)) from exc
-
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    def post(self, request_context: RequestContext, dataset_id: UUID):
         try:
             return dump_response(
                 RagPipelineTransformResponse,
-                RagPipelineTransformService().transform_dataset(dataset, current_user.id, session),
+                application_services().knowledge.pipeline_workflows.transform_dataset(
+                    request_context,
+                    dataset_id=str(dataset_id),
+                ),
             )
+        except (DatasetNotFoundError, PipelineDatasetNotFoundError) as exc:
+            raise NotFound(str(exc)) from exc
+        except DatasetAccessDeniedError as exc:
+            raise Forbidden(str(exc)) from exc
         except RagPipelineResourceNotFoundError as exc:
             raise NotFound(str(exc)) from exc
 

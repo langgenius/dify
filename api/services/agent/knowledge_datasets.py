@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from models.agent_config_entities import AgentSoulConfig
+from repositories.knowledge.dataset_read_repository import list_datasets_by_ids
 
 
 def list_agent_soul_knowledge_dataset_ids(agent_soul: AgentSoulConfig) -> list[str]:
@@ -35,8 +36,6 @@ def get_tenant_knowledge_dataset_rows(*, session: Session, tenant_id: str, datas
     a dataset row, so they are treated as missing instead of breaking the
     UUID-typed dataset lookup.
     """
-    from services.knowledge.dataset_service import DatasetService
-
     valid_ids: list[str] = []
     for dataset_id in dataset_ids:
         try:
@@ -48,7 +47,7 @@ def get_tenant_knowledge_dataset_rows(*, session: Session, tenant_id: str, datas
     if not valid_ids:
         return {}
 
-    rows, _ = DatasetService.get_datasets_by_ids(valid_ids, tenant_id, session=session)
+    rows, _ = list_datasets_by_ids(session, tenant_id=tenant_id, dataset_ids=valid_ids)
     return {str(row.id): row for row in rows}
 
 

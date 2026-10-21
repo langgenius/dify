@@ -55,6 +55,24 @@ if [[ "${MODE}" == "worker" ]]; then
     echo "Using CELERY_WORKER_QUEUES: ${DEFAULT_QUEUES}"
   fi
 
+  # Versioned queues isolate extended task payloads from workers that only
+  # understand the previous release's signatures. New workers consume both.
+  if [[ ",${DEFAULT_QUEUES}," == *",dataset,"* && ",${DEFAULT_QUEUES}," != *",dataset_v2,"* ]]; then
+    DEFAULT_QUEUES="${DEFAULT_QUEUES},dataset_v2"
+  fi
+  if [[ ",${DEFAULT_QUEUES}," == *",dataset_summary,"* && ",${DEFAULT_QUEUES}," != *",dataset_summary_v2,"* ]]; then
+    DEFAULT_QUEUES="${DEFAULT_QUEUES},dataset_summary_v2"
+  fi
+  if [[ ",${DEFAULT_QUEUES}," == *",priority_dataset,"* && ",${DEFAULT_QUEUES}," != *",priority_dataset_v2,"* ]]; then
+    DEFAULT_QUEUES="${DEFAULT_QUEUES},priority_dataset_v2"
+  fi
+  if [[ ",${DEFAULT_QUEUES}," == *",pipeline,"* && ",${DEFAULT_QUEUES}," != *",pipeline_v2,"* ]]; then
+    DEFAULT_QUEUES="${DEFAULT_QUEUES},pipeline_v2"
+  fi
+  if [[ ",${DEFAULT_QUEUES}," == *",priority_pipeline,"* && ",${DEFAULT_QUEUES}," != *",priority_pipeline_v2,"* ]]; then
+    DEFAULT_QUEUES="${DEFAULT_QUEUES},priority_pipeline_v2"
+  fi
+
   if [[ -n "${CELERY_WORKER_CONCURRENCY}" ]]; then
     CONCURRENCY_OPTION="-c ${CELERY_WORKER_CONCURRENCY}"
     echo "Using CELERY_WORKER_CONCURRENCY: ${CELERY_WORKER_CONCURRENCY}"

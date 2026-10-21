@@ -20,8 +20,8 @@ from services.knowledge.entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
-from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.metadata.application import MetadataService
+from services.knowledge.resource_scope import DatasetRef
 
 
 def _metadata_service(session: Session) -> MetadataService:

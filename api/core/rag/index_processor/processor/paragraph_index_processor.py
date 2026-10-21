@@ -44,6 +44,7 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from libs import helper
+from libs.markdown_images import extract_markdown_image_sources
 from models import UploadFile
 from models.account import Account
 from models.dataset import Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
@@ -258,7 +259,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if documents:
             token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
             # save node to document segment
-            doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
+            doc_store = DatasetDocumentStore(
+                dataset=dataset,
+                user_id=document.created_by,
+                document_id=document.id,
+                attachment_writer=self._attachment_writer,
+            )
             # add document segments
             doc_store.add_documents(
                 session=session,
@@ -537,9 +543,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         Returns:
             List of File objects representing images found in the text
         """
-        # Extract markdown images using regex pattern
-        pattern = r"!\[.*?\]\((.*?)\)"
-        images = re.findall(pattern, text)
+        images = extract_markdown_image_sources(text)
 
         if not images:
             return []

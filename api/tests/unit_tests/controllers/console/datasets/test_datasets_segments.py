@@ -11,6 +11,7 @@ from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
+from controllers.console import flask_admission
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.datasets_segments import (
     BatchImportPayload,
@@ -26,38 +27,42 @@ from controllers.console.datasets.datasets_segments import (
     SegmentCreatePayload,
     SegmentUpdatePayload,
     _raise_child_chunk_create_error,
-    _raise_child_chunk_delete_error,
     _raise_child_chunk_write_error,
     _raise_segment_embedding_error,
     _raise_segment_error,
     _raise_segment_status_error,
 )
-from controllers.console.datasets.error import ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError
+from controllers.console.datasets.error import ChildChunkIndexingError, InvalidActionError
+from libs.login import AccountWithTenant
 from machinery.context import RequestContext
+from models.account import TenantAccountRole
 from services.knowledge.entities.segments import ChildChunkRecord, ChildChunkUpdateArgs, SegmentRecord
 from services.knowledge.segments.application import (
-    ChildChunkDeleteIndexApplicationError,
     ChildChunkIndexingApplicationError,
     ChildChunkNotFoundError,
-    ChildChunkPage,
     DatasetSegmentApplicationService,
-    SegmentBatchImport,
     SegmentBatchImportDispatchError,
     SegmentBatchImportNotFoundError,
     SegmentDatasetModelUnavailableError,
     SegmentDatasetNotFoundError,
-    SegmentDetail,
     SegmentDocumentIndexingError,
     SegmentDocumentNotFoundError,
     SegmentEmbeddingModelUnavailableError,
     SegmentInvalidFileTypeError,
-    SegmentListFilter,
     SegmentNotFoundError,
-    SegmentPage,
     SegmentPermissionDeniedError,
     SegmentStatusUpdateError,
     SegmentUploadFileNotFoundError,
 )
+from services.knowledge.segments.contracts import (
+    ChildChunkPage,
+    SegmentBatchImport,
+    SegmentDetail,
+    SegmentListFilter,
+    SegmentPage,
+)
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
 
 
 def _context() -> RequestContext:
@@ -137,10 +142,14 @@ def _patch_services(segments: DatasetSegmentApplicationService) -> AbstractConte
     )
 
 
+def _admission_layer(method: Callable[..., object]) -> Callable[..., object]:
+    return unwrap(method, stop=lambda view: "inject_request_context" in view.__code__.co_qualname)
+
+
 def test_list_segments_delegates_typed_query_and_serializes_page(app: Flask) -> None:
     segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
     segments.list_segments.return_value = SegmentPage(
-        items=(_segment_data(),), total=1, total_pages=1, page=2, limit=10
+        items=(_segment_data(),), total=1, total_pages=1, page=2, limit=10, doc_form="text_model"
     )
     method = unwrap(DatasetDocumentSegmentListApi.get)
 
@@ -252,6 +261,24 @@ def test_update_and_delete_segment_delegate_owned_ids(app: Flask) -> None:
     assert segments.delete_segment.call_args.kwargs["segment_id"] == "segment-1"
 
 
+def test_existing_segment_update_does_not_use_add_segment_plan_gate() -> None:
+    def decorator_chain(view: Callable[..., object]) -> list[str]:
+        names = []
+        current = view
+        while True:
+            names.append(current.__code__.co_qualname)
+            wrapped = current.__dict__.get("__wrapped__")
+            if wrapped is None:
+                return names
+            current = wrapped
+
+    create_chain = decorator_chain(DatasetDocumentSegmentAddApi.post)
+    update_chain = decorator_chain(DatasetDocumentSegmentUpdateApi.patch)
+
+    assert any("cloud_edition_billing_knowledge_limit_check" in name for name in create_chain)
+    assert all("cloud_edition_billing_knowledge_limit_check" not in name for name in update_chain)
+
+
 def test_batch_import_delegates_and_preserves_dispatch_failure_response(app: Flask) -> None:
     segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
     segments.start_batch_import.return_value = SegmentBatchImport(job_id="job-1", job_status="waiting")
@@ -278,6 +305,23 @@ def test_batch_import_delegates_and_preserves_dispatch_failure_response(app: Fla
             "document-1",
         )
     assert (response, status) == ({"error": "redis down"}, 500)
+
+
+def test_batch_import_rejects_readonly_role_when_rbac_is_disabled(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    account = make_account(role=TenantAccountRole.NORMAL)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+    monkeypatch.setattr(
+        flask_admission,
+        "current_account_with_tenant",
+        lambda: AccountWithTenant(account=account, tenant_id="tenant-1"),
+    )
+
+    with app.test_request_context(), pytest.raises(Forbidden):
+        _admission_layer(DatasetDocumentSegmentBatchImportApi.post)(
+            DatasetDocumentSegmentBatchImportApi(),
+            dataset_id="dataset-1",
+            document_id="document-1",
+        )
 
 
 def test_batch_import_status_preserves_missing_job_contract(app: Flask) -> None:
@@ -324,6 +368,7 @@ def test_child_chunk_create_and_list_delegate(app: Flask) -> None:
     assert create_response["data"]["id"] == "child-1"
     assert create_response["data"]["created_at"] == 1767225600
     assert list_response["data"][0]["id"] == "child-1"
+    assert segments.list_child_chunks.call_args.args[0] == _context()
 
 
 def test_child_chunk_mutations_delegate(app: Flask) -> None:
@@ -376,6 +421,7 @@ def test_child_chunk_mutations_delegate(app: Flask) -> None:
         (_raise_segment_error, SegmentPermissionDeniedError(), Forbidden),
         (_raise_segment_error, SegmentDatasetModelUnavailableError(), ValueError),
         (_raise_segment_error, SegmentInvalidFileTypeError(), ValueError),
+        (_raise_segment_error, SegmentDocumentIndexingError(), InvalidActionError),
         (_raise_segment_embedding_error, SegmentEmbeddingModelUnavailableError(), ProviderNotInitializeError),
         (_raise_segment_status_error, SegmentDocumentIndexingError(), InvalidActionError),
         (_raise_segment_status_error, SegmentStatusUpdateError(), InvalidActionError),
@@ -383,9 +429,6 @@ def test_child_chunk_mutations_delegate(app: Flask) -> None:
         (_raise_child_chunk_write_error, ChildChunkIndexingApplicationError(), ChildChunkIndexingError),
         (_raise_child_chunk_create_error, ChildChunkIndexingApplicationError(), ChildChunkIndexingError),
         (_raise_child_chunk_create_error, SegmentEmbeddingModelUnavailableError(), ProviderNotInitializeError),
-        (_raise_child_chunk_delete_error, ChildChunkDeleteIndexApplicationError(), ChildChunkDeleteIndexError),
-        # Every narrow translator falls back to the shared scope mapping.
-        (_raise_child_chunk_delete_error, SegmentNotFoundError(), NotFound),
     ],
 )
 def test_segment_application_errors_map_to_existing_http_contract(

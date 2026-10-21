@@ -237,6 +237,18 @@ export const zRagPipelineWorkflowPublishResponse = z.object({
 })
 
 /**
+ * DatasetConcurrentUpdateError
+ *
+ * The dataset changed while it was being updated. Please retry the request.
+ */
+export const zDatasetConcurrentUpdateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_concurrent_update'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * DatasourceContentPreviewPayload
  */
 export const zDatasourceContentPreviewPayload = z.object({
@@ -345,6 +357,11 @@ export const zDatasetTagResponse = z.object({
   name: z.string(),
   type: z.string(),
 })
+
+/**
+ * DatasetVectorIndexStatus
+ */
+export const zDatasetVectorIndexStatus = z.enum(['completed', 'error', 'indexing'])
 
 /**
  * PipelineTemplateItemResponse
@@ -895,6 +912,8 @@ export const zDatasetDetailResponse = z.object({
   total_documents: z.int(),
   updated_at: z.int(),
   updated_by: z.string().nullable(),
+  vector_indexing_error: z.string().nullish(),
+  vector_indexing_status: zDatasetVectorIndexStatus.nullish(),
   word_count: z.int(),
 })
 

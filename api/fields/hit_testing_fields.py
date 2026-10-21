@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, field_validator, model_validator
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
@@ -127,9 +127,41 @@ class HitTestingRecord(ResponseModel):
         return value
 
 
+class ExternalHitTestingQueryResponse(ResponseModel):
+    content: str
+
+
+class ExternalHitTestingRecordResponse(ResponseModel):
+    # Keep the two response branches disjoint: invalid internal records must not
+    # pass after Pydantic discards their segment-specific fields.
+    model_config = ConfigDict(extra="forbid")
+
+    content: str | None = None
+    title: str | None = None
+    score: float | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class ExternalHitTestingResponse(ResponseModel):
+    query: ExternalHitTestingQueryResponse
+    records: list[ExternalHitTestingRecordResponse]
+
+
+def _record_source(record: Any) -> Literal["internal", "external"]:
+    if isinstance(record, HitTestingRecord) or (isinstance(record, dict) and "segment" in record):
+        return "internal"
+    return "external"
+
+
+HitTestingResultRecord = Annotated[
+    Annotated[HitTestingRecord, Tag("internal")] | Annotated[ExternalHitTestingRecordResponse, Tag("external")],
+    Discriminator(_record_source),
+]
+
+
 class HitTestingResponse(ResponseModel):
     query: HitTestingQuery = Field(description="The original query object.")
-    records: list[HitTestingRecord]
+    records: list[HitTestingResultRecord]
 
 
 def _normalize_enum(value: Any) -> Any:

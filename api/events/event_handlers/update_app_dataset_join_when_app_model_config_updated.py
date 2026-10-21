@@ -1,11 +1,10 @@
 from typing import Any, cast
 
-from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from events.app_event import app_model_config_was_updated
-from models.dataset import AppDatasetJoin
 from models.model import AppModelConfig
+from repositories.knowledge.dataset_read_repository import sync_app_dataset_joins
 
 
 @app_model_config_was_updated.connect
@@ -18,28 +17,12 @@ def handle(sender, *, session: Session, **kwargs) -> None:
 
     dataset_ids = get_dataset_ids_from_model_config(app_model_config)
 
-    app_dataset_joins = session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
-
-    removed_dataset_ids: set[str] = set()
-    if not app_dataset_joins:
-        added_dataset_ids = dataset_ids
-    else:
-        old_dataset_ids: set[str] = set()
-        old_dataset_ids.update(app_dataset_join.dataset_id for app_dataset_join in app_dataset_joins)
-
-        added_dataset_ids = dataset_ids - old_dataset_ids
-        removed_dataset_ids = old_dataset_ids - dataset_ids
-
-    if removed_dataset_ids:
-        for dataset_id in removed_dataset_ids:
-            session.execute(
-                delete(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id)
-            )
-
-    if added_dataset_ids:
-        for dataset_id in added_dataset_ids:
-            app_dataset_join = AppDatasetJoin(app_id=app.id, dataset_id=dataset_id)
-            session.add(app_dataset_join)
+    sync_app_dataset_joins(
+        session,
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        dataset_ids=dataset_ids,
+    )
 
 
 def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set[str]:

@@ -14,8 +14,10 @@ from enums import CloudPlan, DeploymentEdition
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from services.knowledge.entities.resource_scope import DocumentRef
+from models.knowledge_task import KnowledgeTaskOutbox
 from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DocumentRef
+from services.knowledge.task_outbox.contracts import KnowledgeTaskKind
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,
@@ -87,7 +89,6 @@ def patched_external_dependencies():
     with (
         patch("tasks.document_indexing_task.build_document_indexing_service", autospec=True) as mock_indexing_runner,
         patch("tasks.document_indexing_task.FeatureService", autospec=True) as mock_feature_service,
-        patch("tasks.document_indexing_task.generate_summary_index_task", autospec=True) as mock_summary_task,
     ):
         mock_runner_instance = mock_indexing_runner.return_value
         mock_features = MagicMock()
@@ -101,7 +102,6 @@ def patched_external_dependencies():
             "indexing_runner_instance": mock_runner_instance,
             "feature_service": mock_feature_service,
             "features": mock_features,
-            "summary_task": mock_summary_task,
         }
 
 
@@ -215,23 +215,58 @@ class TestDatasetIndexingTaskIntegration:
         assert opened_ids <= closed_ids
 
     def _runner_documents_arg(self, patched_external_dependencies) -> Sequence[DocumentRef]:
-        """Return the document batch passed to the runner."""
-        return patched_external_dependencies["indexing_runner_instance"].run.call_args.args[0]
+        """Return all document references passed through singleton execution calls."""
+        return [
+            ref
+            for call in patched_external_dependencies["indexing_runner_instance"].run.call_args_list
+            for ref in call.args[0]
+        ]
+
+    def _assert_legacy_recovery_intent(
+        self,
+        session: Session,
+        *,
+        dataset: Dataset,
+        document_ids: Sequence[str],
+    ) -> None:
+        """Assert an unversioned delivery became one generation-aware durable retry."""
+        session.expire_all()
+        documents = session.scalars(select(Document).where(Document.id.in_(document_ids))).all()
+        generations = {document.id: document.indexing_generation for document in documents}
+        assert set(generations) == set(document_ids)
+        assert all(generation is not None for generation in generations.values())
+        assert all(document.indexing_status == IndexingStatus.WAITING for document in documents)
+        intents = session.scalars(
+            select(KnowledgeTaskOutbox).where(
+                KnowledgeTaskOutbox.dataset_id == dataset.id,
+                KnowledgeTaskOutbox.task_kind == KnowledgeTaskKind.DOCUMENT_INDEX_RETRY.value,
+            )
+        ).all()
+        assert len(intents) == 1
+        intent = intents[0]
+        assert intent.payload["document_ids"] == sorted(document_ids)
+        assert intent.payload["generations"] == generations
+        assert intent.payload["repair"] is True
 
     def test_legacy_document_indexing_task_still_works(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
-        """Ensure the legacy task entrypoint still updates parsing status."""
+        """Ensure the legacy entrypoint persists current-generation recovery work."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
         document_ids = [doc.id for doc in documents]
 
         # Act
         document_indexing_task(dataset.id, document_ids)
+        document_indexing_task(dataset.id, list(reversed(document_ids)))
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
+        self._assert_legacy_recovery_intent(
+            db_session_with_containers,
+            dataset=dataset,
+            document_ids=document_ids,
+        )
 
     def test_batch_processing_multiple_documents(
         self, db_session_with_containers: Session, patched_external_dependencies
@@ -245,9 +280,11 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert patched_external_dependencies["indexing_runner_instance"].run.call_count == len(document_ids)
         run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == len(document_ids)
+        run_calls = patched_external_dependencies["indexing_runner_instance"].run.call_args_list
+        assert all(len(call.args[0]) == 1 for call in run_calls)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -303,8 +340,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, [])
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        assert self._runner_documents_arg(patched_external_dependencies) == []
+        patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
 
     def test_tenant_queue_dispatches_next_task_after_completion(
         self, db_session_with_containers: Session, patched_external_dependencies
@@ -519,7 +555,7 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         run_args = self._runner_documents_arg(patched_external_dependencies)
-        assert len(run_args) == 2
+        assert {ref.document_id for ref in run_args} == set(existing_ids)
         self._assert_documents_parsing(db_session_with_containers, existing_ids)
 
     def test_tenant_queue_dispatches_up_to_concurrency_limit(
@@ -609,7 +645,7 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         run_args = self._runner_documents_arg(patched_external_dependencies)
-        assert len(run_args) == 100
+        assert {ref.document_id for ref in run_args} == set(large_document_ids)
         self._assert_documents_parsing(db_session_with_containers, large_document_ids)
 
     def test_complete_workflow_normal_task(self, db_session_with_containers: Session, patched_external_dependencies):
@@ -631,8 +667,12 @@ class TestDatasetIndexingTaskIntegration:
             normal_document_indexing_task(dataset.tenant_id, dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
+        self._assert_legacy_recovery_intent(
+            db_session_with_containers,
+            dataset=dataset,
+            document_ids=document_ids,
+        )
         delete_key_spy.assert_called_once()
 
     def test_complete_workflow_priority_task(self, db_session_with_containers: Session, patched_external_dependencies):
@@ -654,8 +694,12 @@ class TestDatasetIndexingTaskIntegration:
             priority_document_indexing_task(dataset.tenant_id, dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
+        self._assert_legacy_recovery_intent(
+            db_session_with_containers,
+            dataset=dataset,
+            document_ids=document_ids,
+        )
         delete_key_spy.assert_called_once()
 
     def test_single_document_processing(self, db_session_with_containers: Session, patched_external_dependencies):
@@ -706,7 +750,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert patched_external_dependencies["indexing_runner_instance"].run.call_count == len(document_ids)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -726,7 +770,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert patched_external_dependencies["indexing_runner_instance"].run.call_count == len(document_ids)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)

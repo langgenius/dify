@@ -32,6 +32,16 @@ from libs.helper import extract_tenant_id
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
+from repositories.knowledge.upload_file_repository import (
+    claim_orphan_upload_files,
+    delete_orphan_upload_files,
+    recheck_claimed_orphan_upload_files,
+)
+from services.knowledge.file_cleanup_gate import (
+    assert_physical_file_cleanup_enabled,
+    physical_file_cleanup_enabled,
+)
+from services.knowledge.indexing.cleanup import UploadFileCleanup
 
 from .errors.file import BlockedFileExtensionError, FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
 
@@ -351,14 +361,47 @@ class FileService:
 
         return content.decode("utf-8")
 
-    def delete_file(self, file_id: str):
+    def delete_file(self, file_id: str) -> None:
+        """Claim and delete a temporary upload only when no durable owner remains.
+
+        RAG pipeline payload files have no normalized database owner to detach.
+        The orphan claim is therefore the ownership unlink boundary: any
+        durable cross-domain reference keeps the row and object alive.
+        """
         with self._session_maker() as session, session.begin():
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id))
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).with_for_update())
 
             if not upload_file:
                 return
-            storage.delete(upload_file.key)
-            session.delete(upload_file)
+            tenant_id = upload_file.tenant_id
+            claimed = claim_orphan_upload_files(
+                session,
+                tenant_id=tenant_id,
+                files=(UploadFileCleanup(id=upload_file.id, key=upload_file.key),),
+            )
+
+        # A disabled rollout gate leaves the durable marker for the bounded
+        # recovery worker instead of losing the only cleanup candidate.
+        if not claimed or not physical_file_cleanup_enabled():
+            return
+        with self._session_maker() as session, session.begin():
+            claimed = recheck_claimed_orphan_upload_files(
+                session,
+                tenant_id=tenant_id,
+                files=claimed,
+            )
+        for upload_file in claimed:
+            if not upload_file.key:
+                continue
+            assert_physical_file_cleanup_enabled()
+            with suppress(FileNotFoundError):
+                storage.delete(upload_file.key)
+        with self._session_maker() as session, session.begin():
+            delete_orphan_upload_files(
+                session,
+                tenant_id=tenant_id,
+                files=claimed,
+            )
 
     @staticmethod
     def get_upload_file_by_id(tenant_id: str, upload_file_id: str, *, session: Session) -> UploadFile | None:

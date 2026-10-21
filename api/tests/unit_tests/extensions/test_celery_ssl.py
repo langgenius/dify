@@ -195,6 +195,11 @@ class TestCelerySSLConfiguration:
         mock_config.TRIGGER_PROVIDER_REFRESH_INTERVAL = 15
         mock_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
         mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
+        mock_config.ENABLE_KNOWLEDGE_TASK_OUTBOX_DISPATCH = True
+        mock_config.KNOWLEDGE_TASK_OUTBOX_INTERVAL_SECONDS = 10
+        mock_config.KNOWLEDGE_TASK_OUTBOX_BATCH_SIZE = 100
+        mock_config.ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP = True
+        mock_config.UPLOAD_FILE_CLEANUP_RECOVERY_INTERVAL_SECONDS = 60
 
         with patch("extensions.ext_celery.dify_config", mock_config):
             from dify_app import DifyApp
@@ -248,6 +253,11 @@ class TestCelerySSLConfiguration:
         mock_config.TRIGGER_PROVIDER_REFRESH_INTERVAL = 15
         mock_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
         mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
+        mock_config.ENABLE_KNOWLEDGE_TASK_OUTBOX_DISPATCH = True
+        mock_config.KNOWLEDGE_TASK_OUTBOX_INTERVAL_SECONDS = 10
+        mock_config.KNOWLEDGE_TASK_OUTBOX_BATCH_SIZE = 100
+        mock_config.ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP = True
+        mock_config.UPLOAD_FILE_CLEANUP_RECOVERY_INTERVAL_SECONDS = 60
         mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
         mock_config.ENTERPRISE_TELEMETRY_ENABLED = False
 
@@ -263,27 +273,33 @@ class TestCelerySSLConfiguration:
         assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
         assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
         assert "tasks.workflow_run_archive_deletion_tasks" in celery_app.conf["imports"]
+        assert "tasks.rag_pipeline.rag_pipeline_queue_recovery_task" in celery_app.conf["imports"]
+        import_module("tasks.rag_pipeline.rag_pipeline_queue_recovery_task")
+        recovery_task_name = "tasks.rag_pipeline.rag_pipeline_queue_recovery_task.recover_rag_pipeline_tenant_queue"
+        assert recovery_task_name in celery_app.tasks
+        assert celery_app.conf["beat_schedule"]["rag_pipeline_tenant_queue_recovery"]["task"] == recovery_task_name
         assert "tasks.workspace_provisioning_recovery_task" in celery_app.conf["imports"]
-        assert "tasks.workspace_owner_transfer_recovery_task" in celery_app.conf["imports"]
         import_module("tasks.workspace_provisioning_recovery_task")
-        workspace_provisioning_recovery_task = (
+        workspace_recovery_task_name = (
             "tasks.workspace_provisioning_recovery_task.recover_workspace_provisioning_operations"
         )
-        assert celery_app.tasks[workspace_provisioning_recovery_task].queue == "schedule_executor"
+        workspace_recovery = celery_app.tasks[workspace_recovery_task_name]
+        assert workspace_recovery.queue == "schedule_executor"
         assert celery_app.conf["beat_schedule"]["workspace_provisioning_recovery"] == {
-            "task": workspace_provisioning_recovery_task,
+            "task": workspace_recovery_task_name,
             "schedule": timedelta(minutes=1),
             "options": {"queue": "schedule_executor"},
         }
-        import_module("tasks.workspace_owner_transfer_recovery_task")
-        workspace_owner_transfer_recovery_task = (
-            "tasks.workspace_owner_transfer_recovery_task.recover_workspace_owner_transfer_operations"
-        )
-        assert celery_app.tasks[workspace_owner_transfer_recovery_task].queue == "schedule_executor"
-        assert celery_app.conf["beat_schedule"]["workspace_owner_transfer_recovery"] == {
-            "task": workspace_owner_transfer_recovery_task,
-            "schedule": timedelta(minutes=1),
-            "options": {"queue": "schedule_executor"},
+        assert "tasks.remove_app_and_related_data_task" in celery_app.conf["imports"]
+        import_module("tasks.remove_app_and_related_data_task")
+        app_cleanup_task_name = "tasks.remove_app_and_related_data_task.remove_app_and_related_data_task"
+        app_cleanup_recovery_name = "tasks.remove_app_and_related_data_task.recover_app_cleanup_operations"
+        assert celery_app.tasks[app_cleanup_task_name].queue == "app_deletion"
+        assert celery_app.tasks[app_cleanup_recovery_name].queue == "app_deletion"
+        assert celery_app.conf["beat_schedule"]["app_cleanup_recovery"] == {
+            "task": app_cleanup_recovery_name,
+            "schedule": timedelta(seconds=60),
+            "options": {"queue": "app_deletion"},
         }
         import_module("tasks.workflow_run_archive_deletion_tasks")
         task_name = "tasks.workflow_run_archive_deletion_tasks.delete_workflow_run_archive_task"
@@ -296,3 +312,8 @@ class TestCelerySSLConfiguration:
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
             "tasks.delete_conversation_task.sweep_deleted_conversations"
         )
+        assert celery_app.conf["beat_schedule"]["agent_config_tool_file_cleanup_recovery"] == {
+            "task": "tasks.delete_conversation_task.recover_agent_config_tool_file_cleanup",
+            "schedule": timedelta(seconds=60),
+            "options": {"queue": "conversation"},
+        }

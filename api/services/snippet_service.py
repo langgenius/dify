@@ -23,7 +23,6 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.enums import WorkflowRunTriggeredFrom
-from models.model import UploadFile
 from models.snippet import CustomizedSnippet, SnippetType
 from models.tools import WorkflowToolProvider
 from models.workflow import (
@@ -31,13 +30,13 @@ from models.workflow import (
     WorkflowAppLog,
     WorkflowArchiveLog,
     WorkflowDraftVariable,
-    WorkflowDraftVariableFile,
     WorkflowKind,
     WorkflowNodeExecutionModel,
     WorkflowRun,
     WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.knowledge.upload_file_repository import detach_workflow_draft_variables_and_claim_uploads
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -104,51 +103,19 @@ class SnippetService:
 
     @staticmethod
     def _delete_draft_variable_files(*, session: Session, snippet: CustomizedSnippet) -> None:
-        file_ids = list(
+        variable_ids = tuple(
             session.scalars(
-                select(WorkflowDraftVariable.file_id).where(
+                select(WorkflowDraftVariable.id).where(
                     WorkflowDraftVariable.app_id == snippet.id,
-                    WorkflowDraftVariable.file_id.is_not(None),
                 )
             ).all()
         )
-        if not file_ids:
+        if not variable_ids:
             return
-
-        file_records = session.execute(
-            select(WorkflowDraftVariableFile.id, WorkflowDraftVariableFile.upload_file_id, UploadFile.key)
-            .join(UploadFile, UploadFile.id == WorkflowDraftVariableFile.upload_file_id)
-            .where(
-                WorkflowDraftVariableFile.tenant_id == snippet.tenant_id,
-                WorkflowDraftVariableFile.app_id == snippet.id,
-                WorkflowDraftVariableFile.id.in_(file_ids),
-            )
-        ).all()
-        upload_file_ids: list[str] = []
-
-        from extensions.ext_storage import storage
-
-        for _, upload_file_id, storage_key in file_records:
-            try:
-                storage.delete(storage_key)
-            except Exception:
-                logger.exception("Failed to delete snippet draft variable storage object %s", storage_key)
-            upload_file_ids.append(upload_file_id)
-
-        if upload_file_ids:
-            session.execute(
-                delete(UploadFile)
-                .where(UploadFile.id.in_(upload_file_ids))
-                .execution_options(synchronize_session=False)
-            )
-        session.execute(
-            delete(WorkflowDraftVariableFile)
-            .where(
-                WorkflowDraftVariableFile.tenant_id == snippet.tenant_id,
-                WorkflowDraftVariableFile.app_id == snippet.id,
-                WorkflowDraftVariableFile.id.in_(file_ids),
-            )
-            .execution_options(synchronize_session=False)
+        detach_workflow_draft_variables_and_claim_uploads(
+            session,
+            tenant_id=snippet.tenant_id,
+            draft_variable_ids=variable_ids,
         )
 
     @staticmethod

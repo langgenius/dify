@@ -1,49 +1,54 @@
 """Session-owning dataset administration adapters."""
 
-from collections.abc import Generator, Mapping
-from contextlib import contextmanager
+import datetime
 from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.helper.name_generator import generate_incremental_name
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.pagination import clamp_pagination
 from machinery.context import RequestContext
-from models import Account, Dataset, Document
-from models.dataset import DatasetPermission, DatasetPermissionEnum
+from models import Dataset, Document
+from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
-from repositories.knowledge.dataset_repository import _get_dataset
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_list_actor_role,
+    list_auto_disabled_document_ids,
+    list_dataset_permission_member_ids,
+    list_dataset_queries,
+    list_related_apps,
+    list_visible_datasets,
+    list_visible_datasets_by_ids,
+)
+from repositories.knowledge.dataset_repository import (
+    SQLAlchemyDatasetRepository,
+    _get_dataset,
+    get_dataset_vector_index_state,
+    get_dataset_vector_index_states,
+)
+from repositories.knowledge.document_query_repository import (
+    get_document_segment_counts,
+    get_error_documents,
+    list_dataset_documents,
+)
 from services.app.query_service import RelatedApps
 from services.enterprise import rbac_service
-from services.errors.base import NoPermissionError
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
+from services.feature_service import FeatureService
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.dataset_read_service import get_dataset_queries, load_dataset_detail, load_dataset_details
-from services.knowledge.dataset_service import (
-    DatasetPermissionService,
-    DatasetService,
-    DocumentService,
-    ExternalKnowledgeTemplateLookup,
-)
-from services.knowledge.datasets.application import (
+from services.knowledge.datasets.contracts import (
     DatasetListFilter,
     DatasetVisibility,
 )
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
-from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.resource_scope import DatasetRef
 from services.rbac import contracts as rbac_contracts
 from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
-
-
-@contextmanager
-def _translate_permissions() -> Generator[None]:
-    try:
-        yield
-    except NoPermissionError as error:
-        raise DatasetAccessDeniedError() from error
 
 
 def require_dataset(session: Session, ref: DatasetRef) -> Dataset:
@@ -53,17 +58,21 @@ def require_dataset(session: Session, ref: DatasetRef) -> Dataset:
     return dataset
 
 
-def load_actor(session: Session, context: RequestContext) -> Account:
-    account = session.get(Account, context.account_id)
-    if account is None:
-        raise DatasetAccessDeniedError()
-    account.set_tenant_id_with_session(context.active_workspace_id, session=session)
-    return account
-
-
 def _normalize_provider(item: DatasetDetailRecord) -> DatasetDetailRecord:
     if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
         item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
+    return item
+
+
+def _apply_vector_index_state(
+    item: DatasetDetailRecord,
+    *,
+    dataset: Dataset,
+    session: Session,
+) -> DatasetDetailRecord:
+    state = get_dataset_vector_index_state(session, dataset=dataset)
+    item["vector_indexing_status"] = state.status if state is not None else None
+    item["vector_indexing_error"] = state.error if state is not None else None
     return item
 
 
@@ -92,14 +101,14 @@ class SQLAlchemyDatasetOperations:
         session_factory: sessionmaker[Session],
         tags: TagTargetQuery,
         app_queries: RelatedApps,
-        external_templates: ExternalKnowledgeTemplateLookup,
         members: MemberService,
+        datasets: SQLAlchemyDatasetRepository,
     ) -> None:
         self._sessions = session_factory
         self._tags = tags
         self._app_queries = app_queries
-        self._external_templates = external_templates
         self._members_service = members
+        self._datasets = datasets
 
     def visibility(self, context: RequestContext) -> DatasetVisibility:
         permissions = self._members_service.permissions(context.active_workspace_id, context.account_id)
@@ -127,45 +136,69 @@ class SQLAlchemyDatasetOperations:
         self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None, include_own: bool
     ) -> DatasetPage:
         page, limit = clamp_pagination(query.page, query.limit, 100)
+        tag_target_ids = (
+            self._tags.find_target_ids(
+                tenant_id=context.active_workspace_id,
+                tag_type="knowledge",
+                tag_ids=list(query.tag_ids),
+                match_all=True,
+            )
+            if query.tag_ids and not query.ids
+            else None
+        )
         with self._sessions() as session:
-            account = load_actor(session, context)
+            actor_role = get_dataset_list_actor_role(
+                session,
+                tenant_id=context.active_workspace_id,
+                actor_id=context.account_id,
+            )
+            if actor_role is None:
+                raise DatasetAccessDeniedError()
             if query.ids:
-                datasets, total = DatasetService.get_datasets_by_ids(
-                    list(query.ids),
-                    context.active_workspace_id,
-                    user=account,
+                datasets, total = list_visible_datasets_by_ids(
+                    session,
+                    tenant_id=context.active_workspace_id,
+                    dataset_ids=query.ids,
+                    actor_id=context.account_id,
+                    actor_role=actor_role,
+                    rbac_enabled=dify_config.RBAC_ENABLED,
+                    include_all=query.include_all,
                     accessible_dataset_ids=accessible_ids,
                     include_own_datasets=include_own,
-                    session=session,
                 )
             else:
-                datasets, total = DatasetService.get_datasets(
-                    page,
-                    limit,
+                datasets, total = list_visible_datasets(
                     session,
-                    context.active_workspace_id,
-                    account,
-                    query.keyword,
-                    list(query.tag_ids),
-                    query.include_all,
-                    tags=self._tags,
+                    tenant_id=context.active_workspace_id,
+                    actor_id=context.account_id,
+                    actor_role=actor_role,
+                    rbac_enabled=dify_config.RBAC_ENABLED,
+                    include_all=query.include_all,
                     accessible_dataset_ids=accessible_ids,
                     include_own_datasets=include_own,
+                    keyword=query.keyword,
+                    tag_target_ids=tag_target_ids,
+                    page=page,
+                    per_page=limit,
                 )
             data = load_dataset_details(datasets, session=session)
             partial_ids = [item["id"] for item in data if item["permission"] == "partial_members"]
-            members: dict[str, list[str]] = {}
-            if partial_ids:
-                for dataset_id, account_id in session.execute(
-                    select(DatasetPermission.dataset_id, DatasetPermission.account_id).where(
-                        DatasetPermission.dataset_id.in_(partial_ids),
-                        DatasetPermission.tenant_id == context.active_workspace_id,
-                    )
-                ):
-                    members.setdefault(dataset_id, []).append(account_id)
+            members = list_dataset_permission_member_ids(
+                session,
+                tenant_id=context.active_workspace_id,
+                dataset_ids=partial_ids,
+            )
+            vector_states = get_dataset_vector_index_states(
+                session,
+                tenant_id=context.active_workspace_id,
+                datasets=datasets,
+            )
             for item in data:
                 _normalize_provider(item)
-                item["partial_member_list"] = members.get(item["id"], [])
+                item["partial_member_list"] = list(members.get(item["id"], ()))
+                vector_state = vector_states.get(item["id"])
+                item["vector_indexing_status"] = vector_state.status if vector_state is not None else None
+                item["vector_indexing_error"] = vector_state.error if vector_state is not None else None
             return {
                 "data": data,
                 "has_more": not query.ids and page * limit < total,
@@ -174,109 +207,58 @@ class SQLAlchemyDatasetOperations:
                 "limit": limit,
             }
 
-    def _detail(self, session: Session, context: RequestContext, dataset: Dataset) -> DatasetDetailRecord:
-        result = load_dataset_detail(dataset, session=session)
+    def console_permission_keys(self, context: RequestContext, dataset_id: str) -> list[str]:
         permissions = self._members_service.resource_permissions(
-            context.active_workspace_id, context.account_id, rbac_contracts.RBACResourceType.DATASET, [dataset.id]
+            context.active_workspace_id,
+            context.account_id,
+            rbac_contracts.RBACResourceType.DATASET,
+            [dataset_id],
         )
-        result["permission_keys"] = permissions.get(dataset.id, [])
-        return result
+        return permissions.get(dataset_id, [])
+
+    @staticmethod
+    def initialize_creator_access(context: RequestContext, dataset_id: str) -> None:
+        if not dify_config.RBAC_ENABLED:
+            return
+        rbac_service.RBACService.DatasetAccess.replace_whitelist(
+            context.active_workspace_id,
+            context.account_id,
+            dataset_id,
+            rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
+        )
+        rbac_service.sync_creator_access_policy_member_bindings(
+            context.active_workspace_id,
+            context.account_id,
+            rbac_contracts.RBACResourceType.DATASET,
+            dataset_id,
+        )
 
     def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord:
         with self._sessions() as session:
             dataset = require_dataset(session, ref)
             result = load_dataset_detail(dataset, session=session)
-            permissions = self._members_service.permissions(
-                context.active_workspace_id, context.account_id, dataset_id=ref.dataset_id
-            )
-            result["permission_keys"] = permissions.dataset.permission_keys_by_resource_ids([dataset.id]).get(
-                dataset.id, []
-            )
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 result["partial_member_list"] = self._members(session, ref)
-            return _normalize_provider(result)
+            return _normalize_provider(_apply_vector_index_state(result, dataset=dataset, session=session))
 
-    def create_dataset(self, context: RequestContext, values: Mapping[str, Any]) -> DatasetDetailRecord:
-        with _translate_permissions(), self._sessions() as session:
-            dataset = DatasetService.create_empty_dataset(
-                session=session,
-                external_templates=self._external_templates,
-                tenant_id=context.active_workspace_id,
-                account=load_actor(session, context),
-                **dict(values),
-            )
-            result = self._detail(session, context, dataset)
-            result["partial_member_list"] = None
-            dataset_id = dataset.id
-            session.commit()
-        if dify_config.RBAC_ENABLED:
-            rbac_service.RBACService.DatasetAccess.replace_whitelist(
-                context.active_workspace_id,
-                context.account_id,
-                dataset_id,
-                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
-            )
-        return result
-
-    def update_dataset(
-        self, context: RequestContext, ref: DatasetRef, values: Mapping[str, Any]
-    ) -> DatasetDetailRecord:
-        data = dict(values)
-        if (
-            data.get("indexing_technique") == "high_quality"
-            and data.get("embedding_model_provider") is not None
-            and data.get("embedding_model") is not None
-        ):
-            data["is_multimodal"] = DatasetService.check_is_multimodal_model(
-                ref.tenant_id, data["embedding_model_provider"], data["embedding_model"]
-            )
-        with _translate_permissions(), self._sessions() as session:
-            dataset = require_dataset(session, ref)
-            account = load_actor(session, context)
-            if not dify_config.RBAC_ENABLED:
-                DatasetPermissionService.check_permission(
-                    account, dataset, data.get("permission"), data.get("partial_member_list"), session=session
-                )
-            # The legacy updater consumes fields from its input; retain the
-            # member selection for the permission update in this transaction.
-            dataset = DatasetService.update_dataset(
-                ref.dataset_id, dict(data), account, session=session, external_templates=self._external_templates
-            )
-            if dataset is None:
-                raise DatasetNotFoundError()
-            result = self._detail(session, context, dataset)
-            if (
-                data.get("partial_member_list") is not None
-                and data.get("permission") == DatasetPermissionEnum.PARTIAL_TEAM
-            ):
-                DatasetPermissionService.update_partial_member_list(
-                    ref.tenant_id, ref.dataset_id, data["partial_member_list"], session
-                )
-            elif data.get("permission") in {DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM}:
-                DatasetPermissionService.clear_partial_member_list(ref.dataset_id, session)
-            result["partial_member_list"] = self._members(session, ref)
-            session.commit()
-            return result
-
-    def delete_dataset(self, context: RequestContext, ref: DatasetRef) -> None:
-        with _translate_permissions(), self._sessions() as session:
-            require_dataset(session, ref)
-            if not DatasetService.delete_dataset(ref.dataset_id, load_actor(session, context), session):
-                raise DatasetNotFoundError()
-            DatasetPermissionService.clear_partial_member_list(ref.dataset_id, session)
-            session.commit()
+    def next_rag_pipeline_dataset_name(self, tenant_id: str) -> str:
+        return generate_incremental_name(self._datasets.list_names(tenant_id), "Untitled")
 
     def is_in_use(self, ref: DatasetRef) -> bool:
         with self._sessions() as session:
             require_dataset(session, ref)
-            return DatasetService.dataset_use_check(ref, session)
+            return bool(list_related_apps(session, tenant_id=ref.tenant_id, dataset_id=ref.dataset_id))
 
     def queries(self, ref: DatasetRef, *, page: int, limit: int) -> dict[str, Any]:
         page, limit = clamp_pagination(page, limit, 100)
         with self._sessions() as session:
             require_dataset(session, ref)
-            queries, total = DatasetService.get_dataset_queries(
-                dataset_id=ref.dataset_id, page=page, per_page=limit, session=session
+            queries, total = list_dataset_queries(
+                session,
+                tenant_id=ref.tenant_id,
+                dataset_id=ref.dataset_id,
+                page=page,
+                per_page=limit,
             )
             data = [
                 {
@@ -295,7 +277,7 @@ class SQLAlchemyDatasetOperations:
     def related_apps(self, ref: DatasetRef) -> dict[str, Any]:
         with self._sessions() as session:
             require_dataset(session, ref)
-            joins = DatasetService.get_related_apps(ref.dataset_id, session)
+            joins = list_related_apps(session, tenant_id=ref.tenant_id, dataset_id=ref.dataset_id)
             app_ids = [join.app_id for join in joins]
         apps = self._app_queries.related_apps(ref.tenant_id, app_ids)
         return {"data": apps, "total": len(apps)}
@@ -303,27 +285,24 @@ class SQLAlchemyDatasetOperations:
     def indexing_status(self, ref: DatasetRef) -> dict[str, Any]:
         with self._sessions() as session:
             require_dataset(session, ref)
-            documents = session.scalars(
-                select(Document).where(Document.dataset_id == ref.dataset_id, Document.tenant_id == ref.tenant_id)
-            ).all()
-            counts = DocumentService.get_document_segment_counts(documents, session=session)
+            documents = list_dataset_documents(session, tenant_id=ref.tenant_id, dataset_id=ref.dataset_id)
+            counts = get_document_segment_counts(session, documents)
             return {"data": [_status(document, counts.get(document.id, (0, 0))) for document in documents]}
 
     def error_documents(self, ref: DatasetRef) -> dict[str, Any]:
         with self._sessions() as session:
             require_dataset(session, ref)
-            documents = DocumentService.get_error_documents_by_dataset_ref(ref, session)
+            documents = get_error_documents(session, tenant_id=ref.tenant_id, dataset_id=ref.dataset_id)
             return {"data": [_status(document) for document in documents], "total": len(documents)}
 
     @staticmethod
     def _members(session: Session, ref: DatasetRef) -> list[str]:
-        return list(
-            session.scalars(
-                select(DatasetPermission.account_id).where(
-                    DatasetPermission.dataset_id == ref.dataset_id, DatasetPermission.tenant_id == ref.tenant_id
-                )
-            ).all()
+        members = list_dataset_permission_member_ids(
+            session,
+            tenant_id=ref.tenant_id,
+            dataset_ids=(ref.dataset_id,),
         )
+        return list(members.get(ref.dataset_id, ()))
 
     def partial_members(self, ref: DatasetRef) -> list[str]:
         with self._sessions() as session:
@@ -331,12 +310,17 @@ class SQLAlchemyDatasetOperations:
             return self._members(session, ref)
 
     def auto_disable_logs(self, ref: DatasetRef) -> dict[str, Any]:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return {"document_ids": [], "count": 0}
+        features = FeatureService.get_features(ref.tenant_id, exclude_vector_space=True)
+        if features.billing.subscription.plan == CloudPlan.SANDBOX:
+            return {"document_ids": [], "count": 0}
         with self._sessions() as session:
-            return dict(DatasetService.get_dataset_auto_disable_logs(ref, session))
-
-    def set_api_enabled(self, context: RequestContext, ref: DatasetRef, enabled: bool) -> None:
-        with self._sessions() as session:
-            DatasetService.update_dataset_api_status(
-                require_dataset(session, ref), enabled, load_actor(session, context), session
+            require_dataset(session, ref)
+            document_ids = list_auto_disabled_document_ids(
+                session,
+                tenant_id=ref.tenant_id,
+                dataset_id=ref.dataset_id,
+                created_after=datetime.datetime.now() - datetime.timedelta(days=30),
             )
-            session.commit()
+            return {"document_ids": document_ids, "count": len(document_ids)}

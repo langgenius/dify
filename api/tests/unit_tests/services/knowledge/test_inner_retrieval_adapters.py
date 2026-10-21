@@ -13,7 +13,7 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from machinery.context import RequestContext
 from models.dataset import Dataset
 from models.model import App, AppMode
-from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
+from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveWeights
 from services.errors.knowledge_retrieval import (
     ExternalKnowledgeRetrievalError,
     InnerKnowledgeRetrieveAppNotFoundError,
@@ -24,8 +24,10 @@ from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveExternalError,
     InnerKnowledgeRetrieveRateLimitError,
 )
-from services.knowledge.entities.inner_retrieval import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveWeights
-from services.knowledge.retrieval.adapters import WorkflowKnowledgeRetrievalGateway
+from services.knowledge.retrieval.adapters import (
+    SQLAlchemyInnerKnowledgeRetrievalScope,
+    WorkflowKnowledgeRetrievalGateway,
+)
 from services.knowledge.retrieval.application import InnerKnowledgeRetrievalService
 from tests.unit_tests.model_factories import make_app, make_dataset
 
@@ -130,7 +132,7 @@ class TestInnerKnowledgeRetrievalAdapters:
     @pytest.fixture(autouse=True)
     def service(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         self.service_instance = InnerKnowledgeRetrievalService(
-            scope=SQLAlchemyDatasetRepository(session_factory=sqlite_session_factory),
+            scope=SQLAlchemyInnerKnowledgeRetrievalScope(session_factory=sqlite_session_factory),
             retrieval=WorkflowKnowledgeRetrievalGateway(session_factory=sqlite_session_factory),
         )
 

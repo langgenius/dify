@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field, WithJsonSchema, field_validator
 from core.rag.entities import MetadataFilteringCondition, Rule
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from libs.helper import UUIDStr
-from models.enums import ProcessRuleMode
+from enums.knowledge import ProcessRuleMode
+from libs.uuid_utils import UUIDStr
 
 DocForm = Annotated[
     str,

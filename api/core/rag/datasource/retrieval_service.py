@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
 from core.app.file_access import grant_upload_file_access
+from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor, RerankingModelDict, WeightsDict
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -26,7 +27,6 @@ from core.tools.signature import sign_upload_file_preview_url
 from extensions.ext_database import db
 from extensions.otel import propagate_context, trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
-from libs.helper import escape_query_for_search
 from models.dataset import (
     ChildChunk,
     Dataset,
@@ -36,8 +36,14 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
-from repositories.knowledge.external_repository import load_external_knowledge_retrieval_request
-from services.knowledge.external.adapters import ExternalKnowledgeGateway
+from repositories.knowledge.dataset_retrieval_repository import (
+    get_dataset_retrieval_target,
+    verify_dataset_retrieval_target,
+)
+from services.knowledge.external.service import (
+    execute_external_knowledge_retrieval,
+    prepare_external_knowledge_retrieval,
+)
 
 
 class SegmentAttachmentResult(TypedDict):
@@ -115,6 +121,11 @@ class RetrievalService:
         if not dataset:
             return []
 
+        target = None
+        if dataset.provider != "external" and dataset.indexing_technique == "high_quality":
+            with Session(db.engine) as readiness_session:
+                target = get_dataset_retrieval_target(readiness_session, dataset)
+
         all_documents: list[Document] = []
         exceptions: list[str] = []
 
@@ -172,36 +183,37 @@ class RetrievalService:
         if exceptions:
             raise ValueError(";\n".join(exceptions))
 
+        if target is not None:
+            with Session(db.engine) as readiness_session:
+                verify_dataset_retrieval_target(readiness_session, target)
         return all_documents
 
     @classmethod
     def external_retrieve(
         cls,
-        session: Session,
         dataset_id: str,
         query: str,
-        *,
-        tenant_id: str,
-        external_retrieval_model: dict[str, Any],
-        metadata_condition: MetadataFilteringCondition | None,
-    ) -> list[dict[str, Any]]:
-        """Materialize external configuration in a separate read transaction before HTTP.
-
-        The caller's transaction is never committed, rolled back, or closed here.
-        Dataset selection must also finish its owned reads before entering this method.
-        """
-        with Session(bind=session.get_bind()) as read_session:
-            request = load_external_knowledge_retrieval_request(
-                tenant_id,
-                dataset_id,
-                query,
-                external_retrieval_model,
-                metadata_condition,
+        external_retrieval_model: dict[str, Any] | None = None,
+        metadata_filtering_conditions: dict[str, Any] | None = None,
+    ):
+        metadata_condition = (
+            MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
+            if metadata_filtering_conditions
+            else None
+        )
+        with session_factory.create_session() as read_session:
+            dataset = read_session.scalar(select(Dataset).where(Dataset.id == dataset_id))
+            if dataset is None:
+                return []
+            request = prepare_external_knowledge_retrieval(
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset_id,
+                query=query,
+                external_retrieval_parameters=external_retrieval_model or {},
+                metadata_condition=metadata_condition,
                 session=read_session,
             )
-        return ExternalKnowledgeGateway.execute_external_knowledge_retrieval(
-            ExternalKnowledgeGateway.build_external_knowledge_retrieval_request(request)
-        )
+        return execute_external_knowledge_retrieval(request)
 
     @classmethod
     def _filter_documents_by_vector_score_threshold(
@@ -467,7 +479,9 @@ class RetrievalService:
                 logger.error(e, exc_info=True)
                 exceptions.append(str(e))
 
-    escape_query_for_search = staticmethod(escape_query_for_search)
+    @staticmethod
+    def escape_query_for_search(query: str) -> str:
+        return query.replace('"', '\\"')
 
     @classmethod
     def format_retrieval_documents(cls, session: Session, documents: list[Document]) -> list[RetrievalSegments]:
@@ -503,10 +517,7 @@ class RetrievalService:
             child_index_node_ids = []
             index_node_ids = []
             doc_to_document_map = {}
-            summary_segment_ids = set()  # Track segments retrieved via summary
-            summary_score_map: dict[str, float] = {}  # Map original_chunk_id to summary score
-
-            # First pass: collect all document IDs and identify summary documents
+            summary_candidates: dict[tuple[str, str, str, str], float] = {}
             for document in documents:
                 document_id = document.metadata.get("document_id")
                 if document_id not in dataset_documents:
@@ -520,29 +531,17 @@ class RetrievalService:
                 doc_id = document.metadata.get("doc_id") or ""
                 doc_to_document_map[doc_id] = document
 
-                # Check if this is a summary document
-                is_summary = document.metadata.get("is_summary", False)
-                if is_summary:
-                    # For summary documents, find the original chunk via original_chunk_id
-                    original_chunk_id = document.metadata.get("original_chunk_id")
-                    if original_chunk_id:
-                        summary_segment_ids.add(original_chunk_id)
-                        # Save summary's score for later use
-                        summary_score = document.metadata.get("score")
-                        if summary_score is not None:
-                            try:
-                                summary_score_float = float(summary_score)
-                                # If the same segment has multiple summary hits, take the highest score
-                                if original_chunk_id not in summary_score_map:
-                                    summary_score_map[original_chunk_id] = summary_score_float
-                                else:
-                                    summary_score_map[original_chunk_id] = max(
-                                        summary_score_map[original_chunk_id], summary_score_float
-                                    )
-                            except (ValueError, TypeError):
-                                # Skip invalid score values
-                                pass
-                    continue  # Skip adding to other lists for summary documents
+                if document.metadata.get("is_summary", False):
+                    segment_id = document.metadata.get("original_chunk_id")
+                    if isinstance(segment_id, str) and segment_id and isinstance(doc_id, str) and doc_id:
+                        key = (segment_id, doc_id, dataset_document.dataset_id, dataset_document.id)
+                        try:
+                            score = float(document.metadata.get("score", 0.0))
+                        except (TypeError, ValueError):
+                            score = 0.0
+                        previous_score = summary_candidates.get(key)
+                        summary_candidates[key] = score if previous_score is None else max(previous_score, score)
+                    continue
 
                 if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                     if document.metadata.get("doc_type") == DocType.IMAGE:
@@ -558,6 +557,31 @@ class RetrievalService:
             image_doc_ids = [i for i in image_doc_ids if i]
             child_index_node_ids = [i for i in child_index_node_ids if i]
             index_node_ids = [i for i in index_node_ids if i]
+            summary_score_map: dict[str, float] = {}
+            segment_summary_map: dict[str, str] = {}
+            if summary_candidates:
+                summaries = session.scalars(
+                    select(DocumentSegmentSummary).where(
+                        tuple_(
+                            DocumentSegmentSummary.chunk_id,
+                            DocumentSegmentSummary.summary_index_node_id,
+                            DocumentSegmentSummary.dataset_id,
+                            DocumentSegmentSummary.document_id,
+                        ).in_(tuple(summary_candidates)),
+                        DocumentSegmentSummary.status == "completed",
+                        DocumentSegmentSummary.enabled.is_(True),
+                        DocumentSegmentSummary.summary_content.is_not(None),
+                    )
+                ).all()
+                for summary in summaries:
+                    if not summary.summary_content or not summary.summary_index_node_id:
+                        continue
+                    key = (summary.chunk_id, summary.summary_index_node_id, summary.dataset_id, summary.document_id)
+                    score = summary_candidates[key]
+                    if score > summary_score_map.get(summary.chunk_id, float("-inf")):
+                        summary_score_map[summary.chunk_id] = score
+                        segment_summary_map[summary.chunk_id] = summary.summary_content
+            summary_segment_ids = set(segment_summary_map)
 
             segment_ids: list[str] = []
             index_node_segments: Sequence[DocumentSegment] = []
@@ -565,7 +589,6 @@ class RetrievalService:
             attachment_map: dict[str, list[AttachmentInfoDict]] = {}
             child_chunk_map: dict[str, list[ChildChunk]] = {}
             doc_segment_map: dict[str, list[str]] = {}
-            segment_summary_map: dict[str, str] = {}  # Map segment_id to summary content
 
             dataset_refs = tuple(
                 {(document.tenant_id, document.dataset_id) for document in valid_dataset_documents.values()}
@@ -638,19 +661,6 @@ class RetrievalService:
                 for seg in summary_segments:
                     if seg.id not in segment_ids:
                         segment_ids.append(seg.id)
-
-            # Batch query summaries for segments retrieved via summary (only enabled summaries)
-            if summary_segment_ids:
-                summaries = session.scalars(
-                    select(DocumentSegmentSummary).where(
-                        DocumentSegmentSummary.chunk_id.in_(list(summary_segment_ids)),
-                        DocumentSegmentSummary.status == "completed",
-                        DocumentSegmentSummary.enabled.is_(True),  # Only retrieve enabled summaries
-                    )
-                ).all()
-                for summary in summaries:
-                    if summary.summary_content:
-                        segment_summary_map[summary.chunk_id] = summary.summary_content
 
             include_segment_ids = set()
             segment_child_map: dict[str, SegmentChildMapDetail] = {}

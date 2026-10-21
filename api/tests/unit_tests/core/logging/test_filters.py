@@ -5,6 +5,7 @@ import logging
 from unittest import mock
 
 import pytest
+from opentelemetry.context import Context, attach, detach
 from opentelemetry.trace import NonRecordingSpan, SpanContext, use_span
 
 
@@ -35,11 +36,15 @@ class TestTraceContextFilter:
         from core.logging.context import clear_request_context
         from core.logging.filters import TraceContextFilter
 
-        # Ensure no context is set
-        clear_request_context()
-
-        filter = TraceContextFilter()
-        result = filter.filter(log_record)
+        token = attach(Context())
+        try:
+            # Define both application and OTel context as empty, independent of
+            # whichever tests previously ran in this xdist worker.
+            clear_request_context()
+            filter = TraceContextFilter()
+            result = filter.filter(log_record)
+        finally:
+            detach(token)
 
         assert result is True
         assert hasattr(log_record, "trace_id")

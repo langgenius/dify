@@ -19,8 +19,8 @@ from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
 from libs.helper import dump_response
 from machinery.context import RequestContext
+from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveUsage
 from services.errors.knowledge_retrieval import InnerKnowledgeRetrievalServiceError
-from services.knowledge.entities.inner_retrieval import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveUsage
 
 
 class InnerKnowledgeRetrieveResponse(ResponseModel):
@@ -100,5 +100,4 @@ class InnerKnowledgeRetrieveApi(Resource):
                 description=exc.description,
                 status_code=exc.status_code,
             ) from exc
-
         return dump_response(InnerKnowledgeRetrieveResponse, response, by_alias=True)

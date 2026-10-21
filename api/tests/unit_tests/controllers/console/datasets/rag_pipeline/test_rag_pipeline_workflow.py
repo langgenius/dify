@@ -3,20 +3,22 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator, Mapping
+from dataclasses import dataclass, field
 from datetime import datetime
 from inspect import unwrap as unwrap_all
+from typing import Never, cast
 from unittest.mock import patch
 from uuid import UUID
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
+    DatasourceNodeRunPayload,
     NodeIdQuery,
     PublishedWorkflowRunPayload,
     RagPipelineDraftWorkflowRunPayload,
@@ -25,24 +27,158 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowUpdatePayload,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+from machinery.context import RequestContext
 from models.account import Account, TenantAccountRole
-from models.dataset import Dataset, Pipeline
+from models.dataset import Pipeline
 from models.engine import db
-from models.enums import PermissionEnum
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
 from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.entities.pipeline_workflows import DatasourceNodeRun, PipelineRun
+from services.knowledge.rag_pipeline.application import (
+    PipelineConfigurationError,
+    PipelineCredentialGateway,
+    PipelineDatasetAccess,
+    PipelineDatasetNotFoundError,
+    PipelineDatasetSettings,
+    PipelineWorkflowApplicationService,
+    PipelineWorkflowOperations,
+)
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
+from tests.unit_tests.model_factories import make_account, make_tenant
 
 DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
 DEFAULT_WORKFLOW_CREATED_BY = "00000000-0000-0000-0000-000000000003"
 DEFAULT_WORKFLOW_ID = "00000000-0000-0000-0000-000000000004"
 DEFAULT_DATASET_ID = "44444444-4444-4444-4444-444444444444"
+
+
+@dataclass
+class _RecordingPipelineWorkflows:
+    calls: list[tuple[str, str, str, PipelineRun]] = field(default_factory=list)
+    node_calls: list[tuple[str, str, str, str, DatasourceNodeRun]] = field(default_factory=list)
+    error: Exception | None = None
+
+    def run_console_pipeline(
+        self,
+        *,
+        workspace_id: str,
+        actor_id: str,
+        pipeline_id: str,
+        command: PipelineRun,
+    ) -> Mapping[str, object] | Iterable[str]:
+        self.calls.append((workspace_id, actor_id, pipeline_id, command))
+        if self.error is not None:
+            raise self.error
+        return {"event": "done"}
+
+    def run_console_datasource_node(
+        self,
+        *,
+        workspace_id: str,
+        actor_id: str,
+        pipeline_id: str,
+        node_id: str,
+        command: DatasourceNodeRun,
+    ) -> Iterable[str]:
+        self.node_calls.append((workspace_id, actor_id, pipeline_id, node_id, command))
+        if self.error is not None:
+            raise self.error
+        return iter(("data: complete\n\n",))
+
+
+@dataclass
+class _TransformingPipelineWorkflows:
+    calls: list[tuple[RequestContext, str]] = field(default_factory=list)
+    result: Mapping[str, object] = field(
+        default_factory=lambda: {"pipeline_id": "pipeline-1", "dataset_id": DEFAULT_DATASET_ID, "status": "success"}
+    )
+    error: Exception | None = None
+
+    def transform_dataset(self, context: RequestContext, *, dataset_id: str) -> Mapping[str, object]:
+        self.calls.append((context, dataset_id))
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+
+@dataclass(frozen=True)
+class _PreparedPipeline:
+    datasource_plugin_specs: tuple[Mapping[str, object], ...]
+
+
+@dataclass
+class _AuthorizationOperations:
+    run_called: bool = False
+
+    def prepare_pipeline(self, scope: object, *, command: PipelineRun) -> _PreparedPipeline:
+        del scope, command
+        return _PreparedPipeline(
+            (
+                {
+                    "node_id": "node-1",
+                    "provider_name": "notion",
+                    "plugin_id": "plugin-1",
+                    "datasource_type": "online_document",
+                },
+            )
+        )
+
+    def run_prepared_pipeline(self, prepared: object, *, command: PipelineRun) -> Mapping[str, object]:
+        del prepared, command
+        self.run_called = True
+        return {"status": "unexpected"}
+
+
+@dataclass
+class _AuthorizationCredentials:
+    actors: list[str] = field(default_factory=list)
+
+    def resolve_visible(
+        self,
+        *,
+        workspace_id: str,
+        actor_id: str,
+        provider: str,
+        plugin_id: str,
+        datasource_type: str,
+        credential_id: str | None,
+    ) -> None:
+        del workspace_id, provider, plugin_id, datasource_type, credential_id
+        self.actors.append(actor_id)
+        raise PipelineConfigurationError("Datasource credential is not available to this actor")
+
+
+class _UnusedDatasetSettings:
+    def initialize_creator_access(self, context: RequestContext, *, dataset_id: str) -> Never:
+        del context, dataset_id
+        raise AssertionError("dataset settings must not be used before credential authorization")
+
+    def prepare_rag_pipeline_dataset_settings(
+        self,
+        context: RequestContext,
+        *,
+        dataset_id: str,
+        settings: object,
+        has_published: bool,
+    ) -> Never:
+        del context, dataset_id, settings, has_published
+        raise AssertionError("dataset settings must not be used before credential authorization")
+
+
+@dataclass(frozen=True)
+class _KnowledgeServices:
+    pipeline_workflows: (
+        _RecordingPipelineWorkflows | _TransformingPipelineWorkflows | PipelineWorkflowApplicationService
+    )
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
 
 
 def _make_workflow(**overrides: object) -> Workflow:
@@ -83,17 +219,6 @@ def _pipeline() -> Pipeline:
     pipeline = Pipeline(tenant_id=DEFAULT_WORKFLOW_TENANT_ID, name="Pipeline", description="desc")
     pipeline.id = DEFAULT_WORKFLOW_APP_ID
     return pipeline
-
-
-def _dataset(*, tenant_id: str = DEFAULT_WORKFLOW_TENANT_ID, maintainer: str = DEFAULT_WORKFLOW_CREATED_BY) -> Dataset:
-    return make_dataset(
-        dataset_id=DEFAULT_DATASET_ID,
-        tenant_id=tenant_id,
-        created_by=maintainer,
-        maintainer=maintainer,
-        permission=PermissionEnum.ONLY_ME,
-        provider="vendor",
-    )
 
 
 def _persist_workflow(workflow: Workflow) -> None:
@@ -271,119 +396,61 @@ def test_rag_pipeline_recommended_plugins_serializes_known_envelope(database_app
     assert response == recommended_plugins
 
 
-def test_rag_pipeline_transform_rejects_read_only_member(sqlite_engine: Engine) -> None:
-    account = _account()
-    account.role = TenantAccountRole.NORMAL
+def test_rag_pipeline_transform_calls_application_service(monkeypatch: pytest.MonkeyPatch) -> None:
     api = module.RagPipelineTransformApi()
     handler = unwrap_all(api.post)
+    workflows = _TransformingPipelineWorkflows()
+    context = RequestContext(
+        "request-1",
+        None,
+        DEFAULT_WORKFLOW_CREATED_BY,
+        DEFAULT_WORKFLOW_TENANT_ID,
+    )
+    monkeypatch.setattr(
+        module,
+        "application_services",
+        lambda: _ApplicationServices(knowledge=_KnowledgeServices(pipeline_workflows=workflows)),
+    )
 
-    with Session(sqlite_engine) as session:
-        session.add(_dataset())
+    response = handler(api, context, UUID(DEFAULT_DATASET_ID))
 
-        with (
-            config_overrides_context(RBAC_ENABLED=False),
-            pytest.raises(Forbidden),
-        ):
-            handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, account, UUID(DEFAULT_DATASET_ID))
+    assert response == {
+        "pipeline_id": "pipeline-1",
+        "dataset_id": DEFAULT_DATASET_ID,
+        "status": "success",
+    }
+    assert workflows.calls == [(context, DEFAULT_DATASET_ID)]
 
 
-def test_rag_pipeline_transform_rejects_dataset_from_another_tenant_before_service_call(
-    sqlite_engine: Engine,
+@pytest.mark.parametrize(
+    ("error", "http_error"),
+    [
+        (DatasetNotFoundError(), NotFound),
+        (PipelineDatasetNotFoundError(), NotFound),
+        (RagPipelineResourceNotFoundError("Pipeline not found"), NotFound),
+        (DatasetAccessDeniedError("private dataset"), Forbidden),
+    ],
+)
+def test_rag_pipeline_transform_maps_application_errors(
+    error: Exception,
+    http_error: type[Exception],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     api = module.RagPipelineTransformApi()
     handler = unwrap_all(api.post)
+    workflows = _TransformingPipelineWorkflows(error=error)
+    monkeypatch.setattr(
+        module,
+        "application_services",
+        lambda: _ApplicationServices(knowledge=_KnowledgeServices(pipeline_workflows=workflows)),
+    )
 
-    with Session(sqlite_engine) as session:
-        session.add(_dataset(tenant_id="00000000-0000-0000-0000-000000000099"))
-
-        with (
-            patch.object(module.RagPipelineTransformService, "transform_dataset") as transform_dataset,
-            pytest.raises(NotFound),
-        ):
-            handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, _account(), UUID(DEFAULT_DATASET_ID))
-
-    transform_dataset.assert_not_called()
-
-
-def test_rag_pipeline_transform_enforces_legacy_dataset_permission_before_service_call(
-    sqlite_engine: Engine,
-) -> None:
-    api = module.RagPipelineTransformApi()
-    handler = unwrap_all(api.post)
-
-    with Session(sqlite_engine) as session:
-        session.add(_dataset(maintainer="00000000-0000-0000-0000-000000000099"))
-
-        with (
-            config_overrides_context(RBAC_ENABLED=False),
-            patch.object(module.RagPipelineTransformService, "transform_dataset") as transform_dataset,
-            pytest.raises(Forbidden),
-        ):
-            handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, _account(), UUID(DEFAULT_DATASET_ID))
-
-    transform_dataset.assert_not_called()
-
-
-def test_rag_pipeline_transform_passes_authorized_dataset_and_account_to_service(
-    sqlite_engine: Engine,
-) -> None:
-    api = module.RagPipelineTransformApi()
-    handler = unwrap_all(api.post)
-    account = _account()
-    expected = {"pipeline_id": "pipeline-1", "dataset_id": DEFAULT_DATASET_ID, "status": "success"}
-
-    with Session(sqlite_engine) as session:
-        dataset = _dataset()
-        session.add(dataset)
-
-        with (
-            config_overrides_context(RBAC_ENABLED=False),
-            patch.object(module.RagPipelineTransformService, "transform_dataset", return_value=expected) as transform,
-        ):
-            response = handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, account, UUID(DEFAULT_DATASET_ID))
-
-        transform.assert_called_once_with(dataset, account.id, session)
-
-    assert response == expected
-
-
-def test_rag_pipeline_transform_maps_missing_pipeline_to_not_found(sqlite_engine: Engine) -> None:
-    api = module.RagPipelineTransformApi()
-    handler = unwrap_all(api.post)
-
-    with Session(sqlite_engine) as session:
-        session.add(_dataset())
-
-        with (
-            config_overrides_context(RBAC_ENABLED=False),
-            patch.object(
-                module.RagPipelineTransformService,
-                "transform_dataset",
-                side_effect=RagPipelineResourceNotFoundError("Pipeline not found"),
-            ),
-            pytest.raises(NotFound, match="Pipeline not found"),
-        ):
-            handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, _account(), UUID(DEFAULT_DATASET_ID))
-
-
-def test_rag_pipeline_transform_skips_legacy_acl_when_rbac_is_enabled(sqlite_engine: Engine) -> None:
-    api = module.RagPipelineTransformApi()
-    handler = unwrap_all(api.post)
-    account = _account()
-    account.role = TenantAccountRole.NORMAL
-    expected = {"pipeline_id": "pipeline-1", "dataset_id": DEFAULT_DATASET_ID, "status": "success"}
-
-    with Session(sqlite_engine) as session:
-        session.add(_dataset(maintainer="00000000-0000-0000-0000-000000000099"))
-
-        with (
-            config_overrides_context(RBAC_ENABLED=True),
-            patch.object(module.RagPipelineTransformService, "transform_dataset", return_value=expected) as transform,
-        ):
-            response = handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, account, UUID(DEFAULT_DATASET_ID))
-
-    assert response == expected
-    transform.assert_called_once()
+    with pytest.raises(http_error, match=str(error)):
+        handler(
+            api,
+            RequestContext("request-1", None, DEFAULT_WORKFLOW_CREATED_BY, DEFAULT_WORKFLOW_TENANT_ID),
+            UUID(DEFAULT_DATASET_ID),
+        )
 
 
 @pytest.mark.parametrize(
@@ -405,22 +472,23 @@ def test_rag_pipeline_transform_skips_legacy_acl_when_rbac_is_enabled(sqlite_eng
         ),
     ],
 )
-def test_rag_pipeline_run_uses_sqlite_session(
+def test_rag_pipeline_run_uses_actor_aware_application_service(
     app: Flask,
-    sqlite_engine: Engine,
-    pipeline_application: PipelineGenerator,
+    monkeypatch: pytest.MonkeyPatch,
     api_type: type,
     payload: dict[str, object],
 ) -> None:
     api = api_type()
     handler = unwrap_all(api.post)
-    pipeline = _pipeline()
+    workflows = _RecordingPipelineWorkflows()
+    monkeypatch.setattr(
+        module,
+        "application_services",
+        lambda: _ApplicationServices(knowledge=_KnowledgeServices(pipeline_workflows=workflows)),
+    )
 
     with (
-        Session(sqlite_engine) as session,
         app.test_request_context("/", json=payload),
-        patch.object(module, "load_rag_pipeline", return_value=pipeline) as load_pipeline,
-        patch.object(module.PipelineGenerateService, "generate", return_value={"event": "done"}) as generate,
         patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
     ):
         req_data = (
@@ -428,20 +496,139 @@ def test_rag_pipeline_run_uses_sqlite_session(
             if api_type is module.DraftRagPipelineRunApi
             else PublishedWorkflowRunPayload.model_validate(payload)
         )
-        response = handler(api, req_data, session, _account(), pipeline.id)
+        response = handler(api, req_data, DEFAULT_WORKFLOW_TENANT_ID, _account(), UUID(DEFAULT_WORKFLOW_APP_ID))
 
     assert response == {"ok": True}
-    load_pipeline.assert_called_once_with(session, pipeline.id)
-    assert generate.call_args.kwargs["session"] is session
-    assert generate.call_args.kwargs["generator"] is pipeline_application
-    assert session.get_bind() is sqlite_engine
+    assert len(workflows.calls) == 1
+    workspace_id, actor_id, pipeline_id, command = workflows.calls[0]
+    assert (workspace_id, actor_id, pipeline_id) == (
+        DEFAULT_WORKFLOW_TENANT_ID,
+        DEFAULT_WORKFLOW_CREATED_BY,
+        DEFAULT_WORKFLOW_APP_ID,
+    )
+    assert command.is_published is (api_type is module.PublishedRagPipelineRunApi)
+    assert command.streaming is (api_type is module.DraftRagPipelineRunApi)
+
+
+@pytest.mark.parametrize(
+    ("api_type", "payload"),
+    [
+        (
+            module.DraftRagPipelineRunApi,
+            {
+                "inputs": {},
+                "datasource_type": "online_document",
+                "datasource_info_list": [{"page": {"page_id": "page-1"}, "credential_id": "other-member-private"}],
+                "start_node_id": "node-1",
+            },
+        ),
+        (
+            module.PublishedRagPipelineRunApi,
+            {
+                "inputs": {},
+                "datasource_type": "online_document",
+                "datasource_info_list": [{"page": {"page_id": "page-1"}, "credential_id": "other-member-private"}],
+                "start_node_id": "node-1",
+                "response_mode": "blocking",
+            },
+        ),
+    ],
+)
+def test_http_pipeline_run_rejects_private_credential_not_visible_to_actor(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    api_type: type,
+    payload: dict[str, object],
+) -> None:
+    operations = _AuthorizationOperations()
+    credentials = _AuthorizationCredentials()
+    service = PipelineWorkflowApplicationService(
+        operations=cast("PipelineWorkflowOperations", operations),
+        credentials=cast("PipelineCredentialGateway", credentials),
+        dataset_access=cast("PipelineDatasetAccess", object()),
+        dataset_settings=cast("PipelineDatasetSettings", _UnusedDatasetSettings()),
+    )
+    monkeypatch.setattr(
+        module,
+        "application_services",
+        lambda: _ApplicationServices(knowledge=_KnowledgeServices(pipeline_workflows=service)),
+    )
+    api = api_type()
+    handler = unwrap_all(api.post)
+    request_model = (
+        RagPipelineDraftWorkflowRunPayload.model_validate(payload)
+        if api_type is module.DraftRagPipelineRunApi
+        else PublishedWorkflowRunPayload.model_validate(payload)
+    )
+
+    with app.test_request_context("/", json=payload), pytest.raises(InvalidArgumentError, match="not available"):
+        handler(api, request_model, DEFAULT_WORKFLOW_TENANT_ID, _account(), UUID(DEFAULT_WORKFLOW_APP_ID))
+
+    assert credentials.actors == [DEFAULT_WORKFLOW_CREATED_BY]
+    assert operations.run_called is False
+
+
+@pytest.mark.parametrize(
+    ("api_type", "is_published"),
+    [
+        (module.RagPipelineDraftDatasourceNodeRunApi, False),
+        (module.RagPipelinePublishedDatasourceNodeRunApi, True),
+    ],
+)
+def test_datasource_node_run_uses_actor_aware_application_service(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    api_type: type,
+    is_published: bool,
+) -> None:
+    api = api_type()
+    handler = unwrap_all(api.post)
+    workflows = _RecordingPipelineWorkflows()
+    monkeypatch.setattr(
+        module,
+        "application_services",
+        lambda: _ApplicationServices(knowledge=_KnowledgeServices(pipeline_workflows=workflows)),
+    )
+    payload: dict[str, object] = {
+        "inputs": {"query": "hello"},
+        "datasource_type": "online_document",
+        "credential_id": "actor-visible",
+    }
+
+    with (
+        app.test_request_context("/", json=payload),
+        patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
+    ):
+        response = handler(
+            api,
+            DatasourceNodeRunPayload.model_validate(payload),
+            DEFAULT_WORKFLOW_TENANT_ID,
+            _account(),
+            UUID(DEFAULT_WORKFLOW_APP_ID),
+            "node-1",
+        )
+
+    assert response == {"ok": True}
+    assert workflows.node_calls == [
+        (
+            DEFAULT_WORKFLOW_TENANT_ID,
+            DEFAULT_WORKFLOW_CREATED_BY,
+            DEFAULT_WORKFLOW_APP_ID,
+            "node-1",
+            DatasourceNodeRun(
+                inputs={"query": "hello"},
+                datasource_type="online_document",
+                is_published=is_published,
+                credential_id="actor-visible",
+            ),
+        )
+    ]
 
 
 @pytest.mark.parametrize("api_type", [module.DraftRagPipelineRunApi, module.PublishedRagPipelineRunApi])
 def test_rag_pipeline_run_translates_rate_limit(
     app: Flask,
-    sqlite_engine: Engine,
-    pipeline_application: PipelineGenerator,
+    monkeypatch: pytest.MonkeyPatch,
     api_type: type,
 ) -> None:
     payload: dict[str, object] = {
@@ -452,21 +639,19 @@ def test_rag_pipeline_run_translates_rate_limit(
     }
     api = api_type()
     handler = unwrap_all(api.post)
-    pipeline = _pipeline()
+    workflows = _RecordingPipelineWorkflows(error=InvokeRateLimitError("limit"))
+    monkeypatch.setattr(
+        module,
+        "application_services",
+        lambda: _ApplicationServices(knowledge=_KnowledgeServices(pipeline_workflows=workflows)),
+    )
     req_data = (
         RagPipelineDraftWorkflowRunPayload.model_validate(payload)
         if api_type is module.DraftRagPipelineRunApi
         else PublishedWorkflowRunPayload.model_validate(payload)
     )
 
-    with (
-        Session(sqlite_engine) as session,
-        app.test_request_context("/", json=payload),
-        patch.object(module, "load_rag_pipeline", return_value=pipeline),
-        patch.object(module.PipelineGenerateService, "generate", side_effect=InvokeRateLimitError("limit")) as generate,
-        pytest.raises(InvokeRateLimitHttpError),
-    ):
-        handler(api, req_data, session, _account(), pipeline.id)
+    with app.test_request_context("/", json=payload), pytest.raises(InvokeRateLimitHttpError):
+        handler(api, req_data, DEFAULT_WORKFLOW_TENANT_ID, _account(), UUID(DEFAULT_WORKFLOW_APP_ID))
 
-    assert generate.call_args.kwargs["session"] is session
-    assert generate.call_args.kwargs["generator"] is pipeline_application
+    assert len(workflows.calls) == 1

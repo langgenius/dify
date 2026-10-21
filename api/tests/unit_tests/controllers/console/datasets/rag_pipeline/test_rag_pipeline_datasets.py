@@ -2,188 +2,215 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from inspect import unwrap
-from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden
 
 import services
-from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
+from controllers.console.datasets.rag_pipeline import rag_pipeline_datasets as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
     CreateEmptyRagPipelineDatasetApi,
     CreateRagPipelineDatasetApi,
     RagPipelineDatasetImportPayload,
 )
-from models.account import Account, TenantAccountRole
+from machinery.context import RequestContext
 from services.entities.dsl_entities import ImportStatus
-from services.rbac import contracts as rbac_contracts
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account
 
 
-def _account(*, editor: bool) -> Account:
-    return make_account(
-        account_id=None,
-        name="RAG Pipeline Tester",
-        email="rag-pipeline@example.com",
-        role=TenantAccountRole.EDITOR if editor else TenantAccountRole.NORMAL,
+@dataclass
+class _PipelineWorkflows:
+    result: dict[str, object]
+    calls: list[tuple[RequestContext, str]] = field(default_factory=list)
+    error: Exception | None = None
+
+    def import_dataset(self, context: RequestContext, *, yaml_content: str) -> dict[str, object]:
+        self.calls.append((context, yaml_content))
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+
+@dataclass
+class _Datasets:
+    result: dict[str, object]
+    calls: list[tuple[RequestContext, dict[str, object]]] = field(default_factory=list)
+    error: Exception | None = None
+
+    def create_rag_pipeline_dataset(
+        self,
+        context: RequestContext,
+        *,
+        values: dict[str, object],
+    ) -> dict[str, object]:
+        self.calls.append((context, values))
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+
+@dataclass(frozen=True)
+class _KnowledgeServices:
+    pipeline_workflows: _PipelineWorkflows
+    datasets: _Datasets
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
+
+
+def _context() -> RequestContext:
+    return RequestContext("request-1", None, "account-1", "tenant-1")
+
+
+def _import_result() -> dict[str, object]:
+    return {
+        "id": "import-1",
+        "status": ImportStatus.COMPLETED,
+        "dataset_id": "dataset-1",
+        "pipeline_id": "pipeline-1",
+        "current_dsl_version": "0.1.0",
+        "imported_dsl_version": "0.1.0",
+        "error": "",
+    }
+
+
+def _dataset_result() -> dict[str, object]:
+    return {
+        "id": "dataset-1",
+        "name": "",
+        "description": "",
+        "provider": "vendor",
+        "permission": "only_me",
+        "data_source_type": None,
+        "indexing_technique": "economy",
+        "app_count": 0,
+        "document_count": 0,
+        "word_count": 0,
+        "created_by": "account-1",
+        "author_name": None,
+        "created_at": 1,
+        "updated_by": None,
+        "updated_at": 1,
+        "embedding_model": None,
+        "embedding_model_provider": None,
+        "retrieval_model_dict": {
+            "search_method": "keyword_search",
+            "reranking_enable": False,
+            "top_k": 4,
+            "score_threshold_enabled": False,
+        },
+        "tags": [],
+        "doc_form": None,
+        "external_retrieval_model": None,
+        "doc_metadata": [],
+        "built_in_field_enabled": False,
+        "pipeline_id": "pipeline-1",
+        "runtime_mode": "rag_pipeline",
+        "chunk_structure": None,
+        "is_published": False,
+        "total_documents": 0,
+        "total_available_documents": 0,
+        "enable_api": False,
+        "is_multimodal": False,
+    }
+
+
+def _services(
+    *,
+    workflows: _PipelineWorkflows | None = None,
+    datasets: _Datasets | None = None,
+) -> _ApplicationServices:
+    return _ApplicationServices(
+        _KnowledgeServices(
+            pipeline_workflows=workflows or _PipelineWorkflows(_import_result()),
+            datasets=datasets or _Datasets(_dataset_result()),
+        )
     )
 
 
 class TestCreateRagPipelineDatasetApi:
-    def _valid_payload(self) -> dict[str, str]:
-        return {"yaml_content": "name: test"}
+    def test_post_calls_application_service(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        workflows = _PipelineWorkflows(_import_result())
+        monkeypatch.setattr(module, "application_services", lambda: _services(workflows=workflows))
+        context = _context()
 
-    def test_post_success(self, app: Flask) -> None:
-        api = CreateRagPipelineDatasetApi()
-        method = unwrap(api.post)
-
-        payload = self._valid_payload()
-        user = _account(editor=True)
-        import_info = {
-            "id": "import-1",
-            "status": ImportStatus.COMPLETED,
-            "dataset_id": "ds-1",
-            "pipeline_id": "pipeline-1",
-            "current_dsl_version": "0.1.0",
-            "imported_dsl_version": "0.1.0",
-            "error": "",
-        }
-
-        mock_service = MagicMock()
-        mock_service.create_rag_pipeline_dataset.return_value = import_info
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.RagPipelineDslService",
-                return_value=mock_service,
-            ),
-        ):
-            response, status = method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+        with app.test_request_context("/"):
+            response, status = unwrap(CreateRagPipelineDatasetApi.post)(
+                CreateRagPipelineDatasetApi(),
+                RagPipelineDatasetImportPayload(yaml_content="name: test"),
+                context,
+            )
 
         assert status == 201
         assert response == {
             "id": "import-1",
             "status": "completed",
-            "dataset_id": "ds-1",
+            "dataset_id": "dataset-1",
             "pipeline_id": "pipeline-1",
             "current_dsl_version": "0.1.0",
             "imported_dsl_version": "0.1.0",
             "error": "",
         }
+        assert workflows.calls == [(context, "name: test")]
 
-    def test_post_success_syncs_creator_under_rbac(self, app: Flask) -> None:
-        """RBAC: RAG-pipeline dataset create must keep the creator bound to their own dataset.
+    def test_post_maps_duplicate_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        workflows = _PipelineWorkflows(
+            _import_result(),
+            error=services.errors.dataset.DatasetNameDuplicateError(),
+        )
+        monkeypatch.setattr(module, "application_services", lambda: _services(workflows=workflows))
 
-        Regression guard for the #42430 flip to automatic_include_workspace_members=False:
-        this path bypasses DatasetService.create_empty_dataset (which syncs the creator
-        internally), so the controller has to sync the creator explicitly or the creator
-        gets 403 on their own dataset.
-        """
-        api = CreateRagPipelineDatasetApi()
-        method = unwrap(api.post)
-
-        payload = self._valid_payload()
-        user = _account(editor=True)
-        import_info = {
-            "id": "import-1",
-            "status": ImportStatus.COMPLETED,
-            "dataset_id": "ds-1",
-            "pipeline_id": "pipeline-1",
-            "current_dsl_version": "0.1.0",
-            "imported_dsl_version": "0.1.0",
-            "error": "",
-        }
-
-        mock_service = MagicMock()
-        mock_service.create_rag_pipeline_dataset.return_value = import_info
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            config_overrides_context(RBAC_ENABLED=True),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.RagPipelineDslService",
-                return_value=mock_service,
-            ),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
-            ),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
-            ) as sync_creator,
-        ):
-            response, status = method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
-
-        assert status == 201
-        assert sync_creator.called, "RAG pipeline create must sync the creator's own access"
-        sync_creator.assert_called_once_with("tenant-1", user.id, rbac_contracts.RBACResourceType.DATASET, "ds-1")
-        assert response["dataset_id"] == "ds-1"
-
-    def test_post_forbidden_non_editor(self, app: Flask) -> None:
-        api = CreateRagPipelineDatasetApi()
-        method = unwrap(api.post)
-
-        payload = self._valid_payload()
-        user = _account(editor=False)
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
-
-    def test_post_dataset_name_duplicate(self, app: Flask) -> None:
-        api = CreateRagPipelineDatasetApi()
-        method = unwrap(api.post)
-
-        payload = self._valid_payload()
-        user = _account(editor=True)
-
-        mock_service = MagicMock()
-        mock_service.create_rag_pipeline_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.RagPipelineDslService",
-                return_value=mock_service,
-            ),
-        ):
-            with pytest.raises(DatasetNameDuplicateError):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
-
-    def test_post_invalid_payload(self, app: Flask) -> None:
-        api = CreateRagPipelineDatasetApi()
-        method = unwrap(api.post)
-
-        payload: dict[str, str] = {}
-        user = _account(editor=True)
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-        ):
-            with pytest.raises(
-                ValueError, match="1 validation error for RagPipelineDatasetImportPayload\\\nyaml_content"
-            ):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+        with pytest.raises(DatasetNameDuplicateError):
+            unwrap(CreateRagPipelineDatasetApi.post)(
+                CreateRagPipelineDatasetApi(),
+                RagPipelineDatasetImportPayload(yaml_content="name: duplicate"),
+                _context(),
+            )
 
 
 class TestCreateEmptyRagPipelineDatasetApi:
-    def test_post_forbidden_non_editor(self, app: Flask) -> None:
-        api = CreateEmptyRagPipelineDatasetApi()
-        method = unwrap(api.post)
-
-        user = _account(editor=False)
+    def test_post_calls_dataset_application_service(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        datasets = _Datasets(_dataset_result())
+        monkeypatch.setattr(module, "application_services", lambda: _services(datasets=datasets))
+        context = _context()
 
         with app.test_request_context("/"):
-            with pytest.raises(Forbidden):
-                method(api, "tenant-1", user)
+            response, status = unwrap(CreateEmptyRagPipelineDatasetApi.post)(
+                CreateEmptyRagPipelineDatasetApi(),
+                context,
+            )
+
+        assert status == 201
+        assert response["id"] == "dataset-1"
+        assert response["runtime_mode"] == "rag_pipeline"
+        assert datasets.calls == [
+            (
+                context,
+                {
+                    "name": "",
+                    "description": "",
+                    "icon_info": {
+                        "icon": "📙",
+                        "icon_background": "#FFF4ED",
+                        "icon_type": "emoji",
+                        "icon_url": None,
+                    },
+                    "permission": "only_me",
+                    "partial_member_list": None,
+                },
+            )
+        ]
+
+    def test_post_maps_duplicate_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        datasets = _Datasets(
+            _dataset_result(),
+            error=services.errors.dataset.DatasetNameDuplicateError(),
+        )
+        monkeypatch.setattr(module, "application_services", lambda: _services(datasets=datasets))
+
+        with pytest.raises(DatasetNameDuplicateError):
+            unwrap(CreateEmptyRagPipelineDatasetApi.post)(CreateEmptyRagPipelineDatasetApi(), _context())

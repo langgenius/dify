@@ -13,6 +13,7 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
+    ArchivedDocumentImmutableError,
     DatasetAccessDeniedRequestError,
     IndexingEstimateError,
     InvalidActionError,
@@ -38,8 +39,12 @@ from services.data_source.notion_import_application_service import (
     DatasetIsNotNotionSourceError,
     NotionImportCredentialUnavailableError,
 )
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.document_sync import SyncDocumentNotFoundError, SyncDocumentSourceError
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.document_sync import (
+    SyncDocumentArchivedError,
+    SyncDocumentNotFoundError,
+    SyncDocumentSourceError,
+)
 from services.knowledge.entities.indexing_estimate import NewSourcesEstimateCommand, NotionEstimateSource
 from services.knowledge.indexing.estimate import (
     EstimateSourceNotFoundError,
@@ -306,7 +311,7 @@ class DataSourceNotionIndexingEstimateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/notion/sync")
 class DataSourceNotionDatasetSyncApi(Resource):
-    @error_responses(DatasetAccessDeniedRequestError)
+    @error_responses(DatasetAccessDeniedRequestError, ArchivedDocumentImmutableError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -316,12 +321,14 @@ class DataSourceNotionDatasetSyncApi(Resource):
             application_services().knowledge.document_sync.sync_dataset(request_context, str(dataset_id))
         except (DatasetNotFoundError, DatasetAccessDeniedError) as error:
             _raise_dataset_access_error(error)
+        except SyncDocumentArchivedError as error:
+            raise ArchivedDocumentImmutableError() from error
         return dump_response(SimpleResultResponse, {"result": "success"}), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync")
 class DataSourceNotionDocumentSyncApi(Resource):
-    @error_responses(DatasetAccessDeniedRequestError)
+    @error_responses(DatasetAccessDeniedRequestError, ArchivedDocumentImmutableError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -344,4 +351,6 @@ class DataSourceNotionDocumentSyncApi(Resource):
             raise NotFoundError(description="Document not found.") from error
         except SyncDocumentSourceError as error:
             raise InvalidArgumentError(description=str(error)) from error
+        except SyncDocumentArchivedError as error:
+            raise ArchivedDocumentImmutableError() from error
         return dump_response(SimpleResultResponse, {"result": "success"}), 200

@@ -11,7 +11,7 @@ from core.app.file_access import (
 )
 from models.dataset import DocumentSegment
 from models.model import UploadFile
-from repositories.knowledge.dataset_read_repository import get_segment_attachment_files, is_retrieved_segment_owned
+from repositories.knowledge.segment_query_repository import get_segment_attachment_files, is_retrieved_segment_owned
 
 
 def authorize_retrieved_segment(

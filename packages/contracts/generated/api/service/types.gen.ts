@@ -557,11 +557,6 @@ export type ConversationVariablesQuery = {
 
 export type CustomConfigurationStatus = 'active' | 'no-configure'
 
-export type DatasetAccessDeniedError = ErrorResponse & {
-  code: 'dataset_access_denied'
-  status: 403
-}
-
 export type DatasetBoundTagListResponse = {
   data: Array<DatasetBoundTagResponse>
   total: number
@@ -570,6 +565,11 @@ export type DatasetBoundTagListResponse = {
 export type DatasetBoundTagResponse = {
   id: string
   name: string
+}
+
+export type DatasetConcurrentUpdateError = ErrorResponse & {
+  code: 'dataset_concurrent_update'
+  status: 409
 }
 
 export type DatasetCreatePayload = {
@@ -634,6 +634,8 @@ export type DatasetDetailResponse = {
   total_documents: number
   updated_at: number
   updated_by: string | null
+  vector_indexing_error?: string | null
+  vector_indexing_status?: DatasetVectorIndexStatus | null
   word_count: number
 }
 
@@ -681,6 +683,8 @@ export type DatasetDetailWithPartialMembersResponse = {
   total_documents: number
   updated_at: number
   updated_by: string | null
+  vector_indexing_error?: string | null
+  vector_indexing_status?: DatasetVectorIndexStatus | null
   word_count: number
 }
 
@@ -820,6 +824,8 @@ export type DatasetUpdatePayload = {
   retrieval_model?: RetrievalModel | null
 }
 
+export type DatasetVectorIndexStatus = 'completed' | 'error' | 'indexing'
+
 export type DatasetVectorSettingResponse = {
   embedding_model_name?: string | null
   embedding_provider_name?: string | null
@@ -841,7 +847,7 @@ export type DatasourceCredentialInfoResponse = {
 
 export type DatasourceNodeRunPayload = {
   credential_id?: string | null
-  datasource_type: 'local_file' | 'online_document' | 'online_drive' | 'website_crawl'
+  datasource_type: DatasourceType
   inputs: {
     [key: string]: unknown
   }
@@ -865,6 +871,8 @@ export type DatasourcePluginResponse = {
 export type DatasourcePluginsQuery = {
   is_published?: boolean
 }
+
+export type DatasourceType = 'local_file' | 'online_document' | 'online_drive' | 'website_crawl'
 
 export type DocumentAndBatchResponse = {
   batch: string
@@ -910,6 +918,8 @@ export type DocumentDetailResponse = {
   hit_count?: number
   id: string
   indexing_latency?: number | null
+  indexing_retry_action?: 'archive' | 'disable' | 'enable' | 'retry' | null
+  indexing_state?: 'completed' | 'failed' | 'pending' | null
   indexing_status?: string
   name?: string
   need_summary?: boolean
@@ -980,6 +990,8 @@ export type DocumentResponse = {
   error?: string | null
   hit_count?: number | null
   id: string
+  indexing_retry_action?: 'archive' | 'disable' | 'enable' | 'retry' | null
+  indexing_state?: 'completed' | 'failed' | 'pending' | null
   indexing_status?: string | null
   name: string
   need_summary?: boolean | null
@@ -987,6 +999,11 @@ export type DocumentResponse = {
   summary_index_status?: string | null
   tokens?: number | null
   word_count?: number | null
+}
+
+export type DocumentSourceConflictError = ErrorResponse & {
+  code: 'document_source_conflict'
+  status: 409
 }
 
 export type DocumentSourceDetailResponse = {
@@ -1010,6 +1027,8 @@ export type DocumentStatusResponse = {
   error_code?: 'vector_space_estimate_exceeded' | null
   estimated_vector_space_mb?: number | null
   id: string
+  indexing_retry_action?: 'archive' | 'disable' | 'enable' | 'retry' | null
+  indexing_state?: 'completed' | 'failed' | 'pending' | null
   indexing_status:
     | 'cleaning'
     | 'completed'
@@ -1112,6 +1131,20 @@ export type ErrorResponse = {
 export type EventStreamResponse = string
 
 export type ExecutionContentType = 'human_input'
+
+export type ExternalHitTestingRecordResponse = {
+  content?: string | null
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  score?: number | null
+  title?: string | null
+}
+
+export type ExternalKnowledgeFailedError = ErrorResponse & {
+  code: 'external_knowledge_failed'
+  status: 502
+}
 
 export type FeedbackListQuery = {
   limit?: number
@@ -1252,7 +1285,7 @@ export type HitTestingRecord = {
 
 export type HitTestingResponse = {
   query: HitTestingQuery
-  records: Array<HitTestingRecord>
+  records: Array<HitTestingRecord | ExternalHitTestingRecordResponse>
 }
 
 export type HitTestingSegment = {
@@ -1384,6 +1417,16 @@ export type JsonObject = {
 export type JsonValueType = unknown
 
 export type JsonValue = unknown
+
+export type KnowledgeIndexUnavailableDetails = {
+  reason: 'failed' | 'indexing'
+}
+
+export type KnowledgeIndexUnavailableError = ErrorResponse & {
+  code: 'knowledge_index_unavailable'
+  details?: KnowledgeIndexUnavailableDetails
+  status: 503
+}
 
 export type KnowledgeTagListResponse = Array<KnowledgeTagResponse>
 
@@ -1899,7 +1942,16 @@ export type PipelineDocument = {
   position: number
 }
 
-export type PipelineRunApiEntity = {
+export type PipelineResponseMode = 'blocking' | 'streaming'
+
+export type PipelineRunError = ErrorResponse & {
+  code: 'pipeline_run_error'
+  status: 500
+}
+
+export type PipelineRunJsonResponse = PublishedPipelineRunResponse | WorkflowBlockingResponse
+
+export type PipelineRunPayload = {
   datasource_info_list: Array<
     | {
         name?: string
@@ -1920,26 +1972,20 @@ export type PipelineRunApiEntity = {
       }
     | {
         bucket?: string
+        credential_id?: string
         id: string
         name?: string
         type: 'file' | 'folder'
       }
   >
-  datasource_type: 'local_file' | 'online_document' | 'online_drive' | 'website_crawl'
+  datasource_type: DatasourceType
   inputs: {
     [key: string]: unknown
   }
   is_published: boolean
-  response_mode: 'blocking' | 'streaming'
+  response_mode: PipelineResponseMode
   start_node_id: string
 }
-
-export type PipelineRunError = ErrorResponse & {
-  code: 'pipeline_run_error'
-  status: 500
-}
-
-export type PipelineRunJsonResponse = PublishedPipelineRunResponse | WorkflowBlockingResponse
 
 export type PipelineUploadFileResponse = {
   created_at?: string | null
@@ -3430,6 +3476,7 @@ export type PatchDatasetsByDatasetIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DatasetConcurrentUpdateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3458,13 +3505,16 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
 export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
   400:
     | FilenameNotExistsError
+    | ModelCurrentlyNotSupportError
     | NoFileUploadedError
     | ProviderNotInitializeError
+    | ProviderQuotaExceededError
     | TooManyFilesError
     | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   413: FileTooLargeError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
@@ -3490,10 +3540,15 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextErrors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400:
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -3523,13 +3578,16 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
   400:
     | FilenameNotExistsError
+    | ModelCurrentlyNotSupportError
     | NoFileUploadedError
     | ProviderNotInitializeError
+    | ProviderQuotaExceededError
     | TooManyFilesError
     | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   413: FileTooLargeError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
@@ -3555,10 +3613,15 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400:
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -3783,10 +3846,17 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
+  400:
+    | FilenameNotExistsError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | TooManyFilesError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   413: FileTooLargeError | ErrorResponse
   415: UnsupportedFileTypeError | ErrorResponse
   503: ErrorResponse
@@ -3962,7 +4032,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4123,10 +4193,17 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
-  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
+  400:
+    | FilenameNotExistsError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | TooManyFilesError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   413: FileTooLargeError | ErrorResponse
   415: UnsupportedFileTypeError | ErrorResponse
   503: ErrorResponse
@@ -4154,10 +4231,15 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400:
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -4186,10 +4268,17 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
-  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
+  400:
+    | FilenameNotExistsError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | TooManyFilesError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   413: FileTooLargeError | ErrorResponse
   415: UnsupportedFileTypeError | ErrorResponse
   503: ErrorResponse
@@ -4217,10 +4306,15 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400:
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -4253,9 +4347,11 @@ export type PostDatasetsByDatasetIdHitTestingErrors = {
     | ProviderQuotaExceededError
     | ErrorResponse
   401: ErrorResponse
-  403: DatasetAccessDeniedError | ErrorResponse
+  403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  502: ExternalKnowledgeFailedError | ErrorResponse
+  503: KnowledgeIndexUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4487,8 +4583,38 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses =
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse =
   PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses]
 
+export type PostDatasetsByDatasetIdPipelineFileUploadData = {
+  body: {
+    file: Blob | File
+  }
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/pipeline/file-upload'
+}
+
+export type PostDatasetsByDatasetIdPipelineFileUploadErrors = {
+  400: FilenameNotExistsError | NoFileUploadedError | TooManyFilesError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdPipelineFileUploadError =
+  PostDatasetsByDatasetIdPipelineFileUploadErrors[keyof PostDatasetsByDatasetIdPipelineFileUploadErrors]
+
+export type PostDatasetsByDatasetIdPipelineFileUploadResponses = {
+  201: PipelineUploadFileResponse
+}
+
+export type PostDatasetsByDatasetIdPipelineFileUploadResponse =
+  PostDatasetsByDatasetIdPipelineFileUploadResponses[keyof PostDatasetsByDatasetIdPipelineFileUploadResponses]
+
 export type PostDatasetsByDatasetIdPipelineRunData = {
-  body: PipelineRunApiEntity
+  body: PipelineRunPayload
   path: {
     dataset_id: string
   }
@@ -4533,9 +4659,11 @@ export type PostDatasetsByDatasetIdRetrieveErrors = {
     | ProviderQuotaExceededError
     | ErrorResponse
   401: ErrorResponse
-  403: DatasetAccessDeniedError | ErrorResponse
+  403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  502: ExternalKnowledgeFailedError | ErrorResponse
+  503: KnowledgeIndexUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

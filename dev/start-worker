@@ -84,7 +84,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
-cd "$SCRIPT_DIR/../api"
+cd "$SCRIPT_DIR/../api" || exit 1
 
 if [[ -n "${ENV_FILE}" ]]; then
   if [[ ! -f "${ENV_FILE}" ]]; then
@@ -95,6 +95,7 @@ if [[ -n "${ENV_FILE}" ]]; then
   echo "Loading environment variables from ${ENV_FILE}"
   # Export everything sourced from the env file
   set -a
+  # shellcheck source=/dev/null
   source "${ENV_FILE}"
   set +a
 fi
@@ -113,6 +114,23 @@ if [[ -z "${QUEUES}" ]]; then
   echo "No queues specified, using edition-based defaults: ${QUEUES}"
 else
   echo "Using specified queues: ${QUEUES}"
+fi
+
+# Consume both legacy and extended payload generations during rolling upgrades.
+if [[ ",${QUEUES}," == *",dataset,"* && ",${QUEUES}," != *",dataset_v2,"* ]]; then
+  QUEUES="${QUEUES},dataset_v2"
+fi
+if [[ ",${QUEUES}," == *",dataset_summary,"* && ",${QUEUES}," != *",dataset_summary_v2,"* ]]; then
+  QUEUES="${QUEUES},dataset_summary_v2"
+fi
+if [[ ",${QUEUES}," == *",priority_dataset,"* && ",${QUEUES}," != *",priority_dataset_v2,"* ]]; then
+  QUEUES="${QUEUES},priority_dataset_v2"
+fi
+if [[ ",${QUEUES}," == *",pipeline,"* && ",${QUEUES}," != *",pipeline_v2,"* ]]; then
+  QUEUES="${QUEUES},pipeline_v2"
+fi
+if [[ ",${QUEUES}," == *",priority_pipeline,"* && ",${QUEUES}," != *",priority_pipeline_v2,"* ]]; then
+  QUEUES="${QUEUES},priority_pipeline_v2"
 fi
 
 echo "Starting Celery worker with:"

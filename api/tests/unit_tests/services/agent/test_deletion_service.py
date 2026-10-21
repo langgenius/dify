@@ -222,7 +222,7 @@ def test_purge_archived_agent_deletes_complete_aggregate_and_preserves_workflow_
             assert observer_session.get(type(row), row.id) is not None
 
 
-def test_purge_bulk_deletes_aggregate_dependencies_before_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_purge_bulk_deletes_dependencies_before_orm_agent_delete(monkeypatch: pytest.MonkeyPatch) -> None:
     context = MagicMock()
     session = context.__enter__.return_value
     session.scalars.return_value.all.return_value = [_archived_agent()]
@@ -234,6 +234,16 @@ def test_purge_bulk_deletes_aggregate_dependencies_before_agent(monkeypatch: pyt
             deleted_tables.append(cast(Table, statement.table).name)
 
     session.execute.side_effect = record_bulk_delete
+    detach_calls: list[tuple[object, str, list[str]]] = []
+
+    def detach_configs(session_arg: object, *, tenant_id: str, agent_ids: list[str]) -> tuple[()]:
+        detach_calls.append((session_arg, tenant_id, agent_ids))
+        return ()
+
+    monkeypatch.setattr(
+        "services.agent.deletion_service.detach_agent_config_versions_and_claim_uploads",
+        detach_configs,
+    )
     monkeypatch.setattr("services.agent.deletion_service.session_factory.create_session", lambda: context)
     AgentDeletionService.purge_archived_agents(tenant_id="tenant-1", agent_ids=["agent-1"])
 
@@ -242,13 +252,12 @@ def test_purge_bulk_deletes_aggregate_dependencies_before_agent(monkeypatch: pyt
         for model in (
             AgentDebugConversation,
             AgentConfigRevision,
-            AgentConfigDraft,
-            AgentConfigSnapshot,
             AgentHomeSnapshot,
             AgentWorkspaceBinding,
-            Agent,
         )
     ]
+    assert detach_calls == [(session, "tenant-1", ["agent-1"])]
+    session.delete.assert_called_once_with(session.scalars.return_value.all.return_value[0])
 
 
 @pytest.mark.parametrize(

@@ -5914,6 +5914,7 @@ Initialize dataset with documents
 | ---- | ----------- | ------ |
 | 200 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [DocumentSourceConflictError](#documentsourceconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/metadata/built-in
@@ -6036,6 +6037,7 @@ Update dataset details
 | 200 | Dataset updated successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Dataset changed during the update | **application/json**: [DatasetConcurrentUpdateError](#datasetconcurrentupdateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/api-keys/{status}
@@ -6116,6 +6118,7 @@ Get dataset auto disable logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Documents deleted successfully |  |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents
@@ -6159,6 +6162,7 @@ Get documents in a dataset
 | ---- | ----------- | ------ |
 | 200 | Documents created successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
 | 400 | Bad Request | **application/json**: [ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [DocumentSourceConflictError](#documentsourceconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/download-zip
@@ -6266,6 +6270,7 @@ then asynchronously generates summary indexes for the provided documents.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Document deleted successfully |  |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}
@@ -6382,7 +6387,7 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/pipeline-execution-log
@@ -6614,7 +6619,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segment updated successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
@@ -6698,7 +6703,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Child chunk deleted successfully |  |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
@@ -6769,6 +6774,7 @@ Returns:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6834,9 +6840,9 @@ Test dataset knowledge retrieval
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Hit testing completed successfully | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | Invalid parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[DatasetNotInitializedError](#datasetnotinitializederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeIndexUnavailableError](#knowledgeindexunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/indexing-status
@@ -6952,7 +6958,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/permission-part-users
@@ -7027,6 +7033,7 @@ Get applications related to dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Documents retry started successfully |  |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/use-check
@@ -8542,7 +8549,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Pipeline template published |  |
-| 404 | Pipeline, workflow, or dataset not found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Pipeline, workflow, or dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/exports
@@ -9128,7 +9135,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineWorkflowPublishResponse](#ragpipelineworkflowpublishresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [DatasetConcurrentUpdateError](#datasetconcurrentupdateerror)<br>[DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview
@@ -19388,14 +19395,6 @@ You cannot transfer ownership to yourself.
 | ---- | ---- | ----------- | -------- |
 | content | string | Child chunk text content. | Yes |
 
-#### ChildChunkDeleteIndexError
-
-Delete child chunk index failed: {message}
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| ChildChunkDeleteIndexError |  | Delete child chunk index failed: {message} |  |
-
 #### ChildChunkDetailResponse
 
 | Name | Type | Description | Required |
@@ -20249,6 +20248,14 @@ Dataset access denied.
 | ---- | ---- | ----------- | -------- |
 | dataset_ids | [ string ] |  | No |
 
+#### DatasetConcurrentUpdateError
+
+The dataset changed while it was being updated. Please retry the request.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetConcurrentUpdateError |  | The dataset changed while it was being updated. Please retry the request. |  |
+
 #### DatasetCreatePayload
 
 | Name | Type | Description | Required |
@@ -20302,6 +20309,8 @@ Dataset access denied.
 | total_documents | integer |  | Yes |
 | updated_at | integer |  | Yes |
 | updated_by | string |  | Yes |
+| vector_indexing_error | string |  | No |
+| vector_indexing_status | [DatasetVectorIndexStatus](#datasetvectorindexstatus) |  | No |
 | word_count | integer |  | Yes |
 
 #### DatasetDetailWithPartialMembersResponse
@@ -20346,6 +20355,8 @@ Dataset access denied.
 | total_documents | integer |  | Yes |
 | updated_at | integer |  | Yes |
 | updated_by | string |  | Yes |
+| vector_indexing_error | string |  | No |
+| vector_indexing_status | [DatasetVectorIndexStatus](#datasetvectorindexstatus) |  | No |
 | word_count | integer |  | Yes |
 
 #### DatasetDocMetadataResponse
@@ -20430,6 +20441,8 @@ Dataset access denied.
 | total_documents | integer |  | Yes |
 | updated_at | integer |  | Yes |
 | updated_by | string |  | Yes |
+| vector_indexing_error | string |  | No |
+| vector_indexing_status | [DatasetVectorIndexStatus](#datasetvectorindexstatus) |  | No |
 | word_count | integer |  | Yes |
 
 #### DatasetListResponse
@@ -20486,14 +20499,6 @@ The dataset name already exists. Please modify your dataset name.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | DatasetNameDuplicateError |  | The dataset name already exists. Please modify your dataset name. |  |
-
-#### DatasetNotInitializedError
-
-The dataset is still being initialized or indexing. Please wait a moment.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DatasetNotInitializedError |  | The dataset is still being initialized or indexing. Please wait a moment. |  |
 
 #### DatasetQueryContentResponse
 
@@ -20612,6 +20617,12 @@ Dataset query source
 | permission | [PermissionEnum](#permissionenum) |  | No |
 | retrieval_model | object |  | No |
 | summary_index_setting | object |  | No |
+
+#### DatasetVectorIndexStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetVectorIndexStatus | string |  |  |
 
 #### DatasetVectorSettingResponse
 
@@ -21042,6 +21053,8 @@ Request payload for bulk downloading documents as a zip archive.
 | hit_count | integer |  | No |
 | id | string |  | Yes |
 | indexing_latency | number |  | No |
+| indexing_retry_action | string, <br>**Available values:** "archive", "disable", "enable", "retry" |  | No |
+| indexing_state | string, <br>**Available values:** "completed", "failed", "pending" |  | No |
 | indexing_status | string |  | No |
 | name | string |  | No |
 | need_summary | boolean |  | No |
@@ -21141,6 +21154,8 @@ The document is being processed and cannot be edited.
 | error | string |  | No |
 | hit_count | integer |  | No |
 | id | string |  | Yes |
+| indexing_retry_action | string, <br>**Available values:** "archive", "disable", "enable", "retry" |  | No |
+| indexing_state | string, <br>**Available values:** "completed", "failed", "pending" |  | No |
 | indexing_status | string |  | No |
 | name | string |  | Yes |
 | need_summary | boolean |  | No |
@@ -21163,6 +21178,14 @@ The document is being processed and cannot be edited.
 | max_tokens | integer |  | Yes |
 | separator | string, <br>**Default:**
  |  | No |
+
+#### DocumentSourceConflictError
+
+The selected source file is being removed. Please upload it again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DocumentSourceConflictError |  | The selected source file is being removed. Please upload it again. |  |
 
 #### DocumentSourceDetailResponse
 
@@ -21189,6 +21212,8 @@ The uploaded file for file documents; Notion and website documents repeat their 
 | error_code | string |  | No |
 | estimated_vector_space_mb | integer |  | No |
 | id | string |  | Yes |
+| indexing_retry_action | string, <br>**Available values:** "archive", "disable", "enable", "retry" |  | No |
+| indexing_state | string, <br>**Available values:** "completed", "failed", "pending" |  | No |
 | indexing_status | string, <br>**Available values:** "cleaning", "completed", "error", "indexing", "parsing", "paused", "splitting", "waiting" | *Enum:* `"cleaning"`, `"completed"`, `"error"`, `"indexing"`, `"parsing"`, `"paused"`, `"splitting"`, `"waiting"` | Yes |
 | parsing_completed_at | integer |  | Yes |
 | paused_at | integer |  | Yes |
@@ -21250,6 +21275,8 @@ The uploaded file for file documents; Notion and website documents repeat their 
 | error | string |  | No |
 | hit_count | integer |  | No |
 | id | string |  | Yes |
+| indexing_retry_action | string, <br>**Available values:** "archive", "disable", "enable", "retry" |  | No |
+| indexing_state | string, <br>**Available values:** "completed", "failed", "pending" |  | No |
 | indexing_status | string |  | No |
 | name | string |  | Yes |
 | need_summary | boolean |  | No |
@@ -22330,7 +22357,7 @@ Enum class for form type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | query | [HitTestingQuery](#hittestingquery) | The original query object. | Yes |
-| records | [ [HitTestingRecord](#hittestingrecord) ] |  | Yes |
+| records | [ [HitTestingRecord](#hittestingrecord)<br>[ExternalHitTestingRecordResponse](#externalhittestingrecordresponse) ] |  | Yes |
 
 #### HitTestingSegment
 
@@ -22860,6 +22887,20 @@ This invitation was sent to another account. Please sign in with the invited acc
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | file_ids | [ string ] |  | Yes |
+
+#### KnowledgeIndexUnavailableDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason | string, <br>**Available values:** "failed", "indexing" | *Enum:* `"failed"`, `"indexing"` | Yes |
+
+#### KnowledgeIndexUnavailableError
+
+The knowledge index is unavailable. Retry after indexing completes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeIndexUnavailableError |  | The knowledge index is unavailable. Retry after indexing completes. |  |
 
 #### KnowledgePipeline
 

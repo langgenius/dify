@@ -1,35 +1,13 @@
-"""
-Unit tests for Service API Metadata controllers.
+"""Service API metadata controllers only adapt HTTP data to application use cases."""
 
-Tests coverage for:
-- DatasetMetadataCreateServiceApi (post, get)
-- DatasetMetadataServiceApi (patch, delete)
-- DatasetMetadataBuiltInFieldServiceApi (get)
-- DatasetMetadataBuiltInFieldActionServiceApi (post)
-- DocumentMetadataEditServiceApi (post)
-
-Decorator strategy:
-- ``@cloud_edition_billing_rate_limit_check`` preserves ``__wrapped__``
-  via ``functools.wraps`` → call the unwrapped method directly.
-- Methods without billing decorators → call directly; only patch ``db``,
-  services, and ``current_user``.
-- ``@model_validate`` injects the parsed payload as the first argument after
-  ``self``, so unwrapped calls must pass the validated model explicitly.
-"""
-
-import uuid
-from inspect import unwrap
-from unittest.mock import ANY, MagicMock, Mock, create_autospec, patch
+from dataclasses import dataclass
+from unittest.mock import Mock, create_autospec
+from uuid import uuid4
 
 import pytest
-from flask import Flask, request
-from flask.typing import ResponseReturnValue
-from flask_restx import Api, Resource
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from flask import Flask
 
-from controllers.common.controller_schemas import MetadataUpdatePayload
-from controllers.service_api import api as service_api
+from controllers.common.errors import ForbiddenError, InvalidArgumentError, NotFoundError
 from controllers.service_api.dataset import metadata as metadata_module
 from controllers.service_api.dataset.metadata import (
     DatasetMetadataBuiltInFieldActionServiceApi,
@@ -38,701 +16,195 @@ from controllers.service_api.dataset.metadata import (
     DatasetMetadataServiceApi,
     DocumentMetadataEditServiceApi,
 )
-from models.account import Account, Tenant
-from models.dataset import Dataset
-from models.enums import PermissionEnum
-from services.errors.base import NoPermissionError
+from machinery.context import RequestContext
 from services.errors.metadata import MetadataResourceNotFoundError
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.entities.knowledge_entities import MetadataArgs, MetadataOperationData
-from services.knowledge.entities.resource_scope import DatasetRef
-from services.knowledge.metadata.application import MetadataService
+from services.knowledge.metadata.application import MetadataInvalidActionError, MetadataService
+
+CONTEXT = RequestContext(
+    request_id="request-1",
+    trace_id="trace-1",
+    account_id="account-1",
+    active_workspace_id="workspace-1",
+)
+
+
+@dataclass(frozen=True)
+class _KnowledgeServices:
+    metadata: Mock
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
+
+
+@pytest.fixture
+def metadata_service(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    service = create_autospec(MetadataService, instance=True, spec_set=True)
+    services = _ApplicationServices(knowledge=_KnowledgeServices(metadata=service))
+    monkeypatch.setattr(metadata_module, "application_services", lambda: services)
+    return service
+
+
+def test_create_metadata_parses_payload_and_serializes_response(app: Flask, metadata_service: Mock) -> None:
+    dataset_id = uuid4()
+    metadata_service.create_dataset_metadata.return_value = {
+        "id": "metadata-1",
+        "name": "author",
+        "type": "string",
+    }
+
+    with app.test_request_context(json={"name": "author", "type": "string"}, method="POST"):
+        body, status = DatasetMetadataCreateServiceApi().post(CONTEXT, dataset_id)
+
+    assert status == 201
+    assert body == {"id": "metadata-1", "name": "author", "type": "string"}
+    metadata_service.create_dataset_metadata.assert_called_once()
+    context, called_dataset_id, payload = metadata_service.create_dataset_metadata.call_args.args
+    assert context == CONTEXT
+    assert called_dataset_id == str(dataset_id)
+    assert payload == MetadataArgs(name="author", type="string")
+
+
+def test_list_metadata_serializes_application_result(metadata_service: Mock) -> None:
+    dataset_id = uuid4()
+    metadata_service.list_dataset_metadata.return_value = {
+        "doc_metadata": [{"id": "metadata-1", "name": "author", "type": "string", "count": 2}],
+        "built_in_field_enabled": False,
+    }
+
+    body, status = DatasetMetadataCreateServiceApi().get(CONTEXT, dataset_id)
+
+    assert status == 200
+    assert body["doc_metadata"] == [{"id": "metadata-1", "name": "author", "type": "string", "count": 2}]
+    metadata_service.list_dataset_metadata.assert_called_once_with(CONTEXT, str(dataset_id))
+
+
+def test_rename_metadata_parses_payload(metadata_service: Mock, app: Flask) -> None:
+    dataset_id, metadata_id = uuid4(), uuid4()
+    metadata_service.rename_dataset_metadata.return_value = {
+        "id": str(metadata_id),
+        "name": "writer",
+        "type": "string",
+    }
+
+    with app.test_request_context(json={"name": "writer"}, method="PATCH"):
+        body, status = DatasetMetadataServiceApi().patch(CONTEXT, dataset_id, metadata_id)
+
+    assert status == 200
+    assert body["name"] == "writer"
+    metadata_service.rename_dataset_metadata.assert_called_once_with(
+        CONTEXT,
+        str(dataset_id),
+        str(metadata_id),
+        name="writer",
+    )
+
+
+def test_delete_metadata_returns_no_content(metadata_service: Mock) -> None:
+    dataset_id, metadata_id = uuid4(), uuid4()
+
+    body, status = DatasetMetadataServiceApi().delete(CONTEXT, dataset_id, metadata_id)
+
+    assert (body, status) == ("", 204)
+    metadata_service.delete_dataset_metadata.assert_called_once_with(CONTEXT, str(dataset_id), str(metadata_id))
+
+
+@pytest.mark.parametrize("error", [DatasetNotFoundError(), MetadataResourceNotFoundError("Metadata not found.")])
+def test_missing_resource_is_translated_at_controller_boundary(metadata_service: Mock, error: Exception) -> None:
+    metadata_service.delete_dataset_metadata.side_effect = error
+
+    with pytest.raises(NotFoundError, match=str(error)):
+        DatasetMetadataServiceApi().delete(CONTEXT, uuid4(), uuid4())
+
+
+def test_access_denial_is_translated_at_controller_boundary(metadata_service: Mock) -> None:
+    error = DatasetAccessDeniedError()
+    metadata_service.list_dataset_metadata.side_effect = error
+
+    with pytest.raises(ForbiddenError, match=str(error)):
+        DatasetMetadataCreateServiceApi().get(CONTEXT, uuid4())
+
+
+def test_built_in_fields_use_dataset_scoped_application_query(metadata_service: Mock) -> None:
+    dataset_id = uuid4()
+    metadata_service.list_dataset_built_in_fields.return_value = [{"name": "uploader", "type": "string"}]
+
+    body, status = DatasetMetadataBuiltInFieldServiceApi().get(CONTEXT, dataset_id)
+
+    assert status == 200
+    assert body == {"fields": [{"name": "uploader", "type": "string"}]}
+    metadata_service.list_dataset_built_in_fields.assert_called_once_with(CONTEXT, str(dataset_id))
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+def test_built_in_field_action_delegates_path_action(metadata_service: Mock, action: str) -> None:
+    dataset_id = uuid4()
+
+    body, status = DatasetMetadataBuiltInFieldActionServiceApi().post(CONTEXT, dataset_id, action)
+
+    assert (body, status) == ({"result": "success"}, 200)
+    metadata_service.apply_dataset_built_in_field_action.assert_called_once_with(
+        CONTEXT, str(dataset_id), action=action
+    )
+
+
+def test_built_in_field_action_maps_unknown_action_to_bad_request(metadata_service: Mock) -> None:
+    dataset_id = uuid4()
+    metadata_service.apply_dataset_built_in_field_action.side_effect = MetadataInvalidActionError(
+        "Unsupported metadata action: unknown"
+    )
+
+    with pytest.raises(InvalidArgumentError, match="Unsupported metadata action: unknown"):
+        DatasetMetadataBuiltInFieldActionServiceApi().post(CONTEXT, dataset_id, "unknown")
+
+    metadata_service.apply_dataset_built_in_field_action.assert_called_once_with(
+        CONTEXT, str(dataset_id), action="unknown"
+    )
+
+
+def test_batch_document_metadata_parses_payload(metadata_service: Mock, app: Flask) -> None:
+    dataset_id = uuid4()
+    document_id, metadata_id = uuid4(), uuid4()
+    raw_payload = {
+        "operation_data": [
+            {
+                "document_id": str(document_id),
+                "metadata_list": [{"id": str(metadata_id), "name": "author", "value": "Ada"}],
+                "partial_update": True,
+            }
+        ]
+    }
+
+    with app.test_request_context(json=raw_payload, method="POST"):
+        body, status = DocumentMetadataEditServiceApi().post(CONTEXT, dataset_id)
+
+    assert (body, status) == ({"result": "success"}, 200)
+    context, called_dataset_id, payload = metadata_service.update_dataset_documents_metadata.call_args.args
+    assert context == CONTEXT
+    assert called_dataset_id == str(dataset_id)
+    assert payload == MetadataOperationData.model_validate(raw_payload)
+
+
+def test_metadata_controller_has_no_persistence_or_identity_dependencies() -> None:
+    forbidden_names = {"DatasetService", "Session", "current_user", "db", "with_session"}
+    assert forbidden_names.isdisjoint(vars(metadata_module))
 
 
 @pytest.mark.parametrize(
-    ("error", "status", "code", "message"),
+    ("method", "rate_limited"),
     [
-        (NoPermissionError("Access denied"), 400, "invalid_param", "Access denied"),
-        (RuntimeError("backend detail"), 500, "unknown", "Internal Server Error"),
+        (DatasetMetadataCreateServiceApi.post, True),
+        (DatasetMetadataCreateServiceApi.get, False),
+        (DatasetMetadataServiceApi.patch, True),
+        (DatasetMetadataServiceApi.delete, True),
+        (DatasetMetadataBuiltInFieldServiceApi.get, False),
+        (DatasetMetadataBuiltInFieldActionServiceApi.post, True),
+        (DocumentMetadataEditServiceApi.post, True),
     ],
 )
-def test_metadata_permission_error_http_contract(
-    monkeypatch: pytest.MonkeyPatch,
-    account: Account,
-    mock_dataset: Dataset,
-    sqlite_session: Session,
-    error: Exception,
-    status: int,
-    code: str,
-    message: str,
-) -> None:
-    monkeypatch.setattr(metadata_module, "current_user", account)
-    monkeypatch.setattr(
-        metadata_module.DatasetService,
-        "get_dataset_for_tenant",
-        create_autospec(
-            metadata_module.DatasetService.get_dataset_for_tenant, return_value=mock_dataset, instance=True
-        ),
-    )
-    monkeypatch.setattr(
-        metadata_module.DatasetService,
-        "check_dataset_permission",
-        create_autospec(metadata_module.DatasetService.check_dataset_permission, side_effect=error, instance=True),
-    )
-    metadata = create_autospec(MetadataService, instance=True)
-    services = Mock()
-    services.knowledge.metadata = metadata
-    monkeypatch.setattr(metadata_module, "application_services", lambda: services)
-    http_app = Flask(__name__)
-    http_api = Api(http_app, doc=False)
-    http_api.error_handlers = service_api.error_handlers.copy()
-
-    class Endpoint(Resource):
-        def post(self) -> ResponseReturnValue:
-            return unwrap(DatasetMetadataCreateServiceApi.post)(
-                DatasetMetadataCreateServiceApi(),
-                MetadataArgs(type="string", name="author"),
-                sqlite_session,
-                mock_dataset.tenant_id,
-                uuid.UUID(mock_dataset.id),
-            )
-
-    http_api.add_resource(Endpoint, "/metadata")
-    response = http_app.test_client().post("/metadata")
-    assert response.status_code == status
-    assert response.json == {"code": code, "message": message, "status": status}
-    metadata.create_metadata.assert_not_called()
-
-
-@pytest.fixture
-def mock_tenant() -> Tenant:
-    tenant = Tenant(name="Metadata API Tenant")
-    tenant.id = str(uuid.uuid4())
-    return tenant
-
-
-@pytest.fixture
-def account() -> Account:
-    account = Account(name="Metadata API User", email=f"metadata-api-{uuid.uuid4()}@example.com")
-    account.id = str(uuid.uuid4())
-    return account
-
-
-@pytest.fixture
-def mock_dataset(mock_tenant: Tenant, account: Account) -> Dataset:
-    return Dataset(
-        id=str(uuid.uuid4()),
-        tenant_id=mock_tenant.id,
-        name="Metadata Dataset",
-        description="",
-        provider="vendor",
-        permission=PermissionEnum.ONLY_ME,
-        indexing_technique="economy",
-        created_by=account.id,
-    )
-
-
-@pytest.fixture(autouse=True)
-def _use_current_user(monkeypatch: pytest.MonkeyPatch, account: Account) -> None:
-    monkeypatch.setattr(metadata_module, "current_user", account)
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# DatasetMetadataCreateServiceApi
-# ---------------------------------------------------------------------------
-
-
-class _UsesSQLiteSession:
-    session: Session
-
-    @pytest.fixture(autouse=True)
-    def _inject_sqlite_session(self, sqlite_session: Session) -> None:
-        self.session = sqlite_session
-
-
-@pytest.mark.parametrize("method", ["patch", "delete"])
-def test_metadata_mutation_translates_missing_resource(
-    method: str, sqlite_session: Session, mock_tenant: Tenant, mock_dataset: Dataset
-) -> None:
-    with (
-        patch.object(metadata_module, "DatasetService") as datasets,
-        patch.object(metadata_module, "application_services") as services,
-    ):
-        datasets.get_dataset_for_tenant.return_value = mock_dataset
-        metadata = services.return_value.knowledge.metadata
-        operation = metadata.update_metadata_name if method == "patch" else metadata.delete_metadata
-        operation.side_effect = MetadataResourceNotFoundError("Metadata not found.")
-        resource = DatasetMetadataServiceApi()
-        arguments: dict[str, object] = {
-            "session": sqlite_session,
-            "tenant_id": mock_tenant.id,
-            "dataset_id": mock_dataset.id,
-            "metadata_id": uuid.uuid4(),
-        }
-        if method == "patch":
-            arguments["payload"] = MetadataUpdatePayload(name="renamed")
-        endpoint = DatasetMetadataServiceApi.patch if method == "patch" else DatasetMetadataServiceApi.delete
-        with pytest.raises(NotFound, match="Metadata not found"):
-            unwrap(endpoint)(resource, **arguments)
-
-
-class TestDatasetMetadataCreatePost(_UsesSQLiteSession):
-    """Tests for DatasetMetadataCreateServiceApi.post().
-
-    ``post`` is wrapped by ``@cloud_edition_billing_rate_limit_check``
-    which preserves ``__wrapped__``.
-    """
-
-    @staticmethod
-    def _call_post(
-        api: DatasetMetadataCreateServiceApi, session: Session, **kwargs: object
-    ) -> tuple[dict[str, object], int]:
-        # `post` is wrapped in @model_validate, so the unwrapped view expects the
-        # validated model where the decorator would have injected it.
-        metadata_args = MetadataArgs.model_validate(request.get_json() or {})
-        return unwrap(api.post)(api, metadata_args, session, **kwargs)
-
-    @patch("controllers.service_api.dataset.metadata.application_services")
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_create_metadata_success(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_meta_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test successful metadata creation."""
-        mock_meta_svc = mock_meta_svc.return_value.knowledge.metadata
-        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_metadata = {"id": "meta-1", "type": "string", "name": "Author"}
-        mock_meta_svc.create_metadata.return_value = mock_metadata
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata",
-            method="POST",
-            json={"type": "string", "name": "Author"},
-        ):
-            api = DatasetMetadataCreateServiceApi()
-            session = self.session
-            response, status = self._call_post(
-                api,
-                session,
-                tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
-            )
-
-        assert status == 201
-        assert response == {"id": "meta-1", "type": "string", "name": "Author"}
-        mock_meta_svc.create_metadata.assert_called_once()
-
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_create_metadata_dataset_not_found(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test 404 when dataset not found."""
-        mock_dataset_svc.get_dataset_for_tenant.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata",
-            method="POST",
-            json={"type": "string", "name": "Author"},
-        ):
-            api = DatasetMetadataCreateServiceApi()
-            session = self.session
-            with pytest.raises(NotFound):
-                self._call_post(
-                    api,
-                    session,
-                    tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
-                )
-
-
-class TestDatasetMetadataCreateGet(_UsesSQLiteSession):
-    """Tests for DatasetMetadataCreateServiceApi.get()."""
-
-    @patch("controllers.service_api.dataset.metadata.application_services")
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_get_metadata_success(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_meta_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test successful metadata list retrieval."""
-        mock_meta_svc = mock_meta_svc.return_value.knowledge.metadata
-        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
-        mock_meta_svc.get_dataset_metadatas.return_value = {
-            "doc_metadata": [{"id": "m1", "name": "Author", "type": "string", "count": 0}],
-            "built_in_field_enabled": False,
-        }
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata",
-            method="GET",
-        ):
-            api = DatasetMetadataCreateServiceApi()
-            response, status = api.get(
-                tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
-            )
-
-        assert status == 200
-        assert response == {
-            "doc_metadata": [{"id": "m1", "name": "Author", "type": "string", "count": 0}],
-            "built_in_field_enabled": False,
-        }
-
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_get_metadata_dataset_not_found(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test 404 when dataset not found."""
-        mock_dataset_svc.get_dataset_for_tenant.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata",
-            method="GET",
-        ):
-            api = DatasetMetadataCreateServiceApi()
-            with pytest.raises(NotFound):
-                api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
-
-
-# ---------------------------------------------------------------------------
-# DatasetMetadataServiceApi
-# ---------------------------------------------------------------------------
-
-
-class TestDatasetMetadataServiceApiPatch(_UsesSQLiteSession):
-    """Tests for DatasetMetadataServiceApi.patch().
-
-    ``patch`` is wrapped by ``@cloud_edition_billing_rate_limit_check``.
-    """
-
-    @staticmethod
-    def _call_patch(
-        api: DatasetMetadataServiceApi, session: Session, **kwargs: object
-    ) -> tuple[dict[str, object], int]:
-        payload = MetadataUpdatePayload.model_validate(request.get_json() or {})
-        return unwrap(api.patch)(api, payload, session, **kwargs)
-
-    @patch("controllers.service_api.dataset.metadata.application_services")
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_update_metadata_name_success(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_meta_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-        account: Account,
-    ) -> None:
-        """Test successful metadata name update."""
-        mock_meta_svc = mock_meta_svc.return_value.knowledge.metadata
-        metadata_id = str(uuid.uuid4())
-        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_meta_svc.update_metadata_name.return_value = {"id": metadata_id, "type": "string", "name": "New Name"}
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata/{metadata_id}",
-            method="PATCH",
-            json={"name": "New Name"},
-        ):
-            api = DatasetMetadataServiceApi()
-            session = self.session
-            response, status = self._call_patch(
-                api,
-                session,
-                tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
-                metadata_id=metadata_id,
-            )
-
-        assert status == 200
-        assert response == {"id": metadata_id, "type": "string", "name": "New Name"}
-        mock_dataset_svc.get_dataset_for_tenant.assert_called_once_with(
-            mock_dataset.id, mock_tenant.id, session=session
-        )
-        mock_meta_svc.update_metadata_name.assert_called_once_with(
-            DatasetRef(mock_tenant.id, mock_dataset.id), metadata_id, "New Name", actor_id=account.id
-        )
-
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_update_metadata_dataset_not_found(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test 404 when dataset not found."""
-        metadata_id = str(uuid.uuid4())
-        mock_dataset_svc.get_dataset_for_tenant.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata/{metadata_id}",
-            method="PATCH",
-            json={"name": "x"},
-        ):
-            api = DatasetMetadataServiceApi()
-            session = self.session
-            with pytest.raises(NotFound):
-                self._call_patch(
-                    api,
-                    session,
-                    tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
-                    metadata_id=metadata_id,
-                )
-
-
-class TestDatasetMetadataServiceApiDelete(_UsesSQLiteSession):
-    """Tests for DatasetMetadataServiceApi.delete().
-
-    ``delete`` is wrapped by ``@cloud_edition_billing_rate_limit_check``.
-    """
-
-    @staticmethod
-    def _call_delete(api: DatasetMetadataServiceApi, session: Session, **kwargs: object) -> tuple[str, int]:
-        return unwrap(api.delete)(api, session, **kwargs)
-
-    @patch("controllers.service_api.dataset.metadata.application_services")
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_delete_metadata_success(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_meta_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test successful metadata deletion."""
-        mock_meta_svc = mock_meta_svc.return_value.knowledge.metadata
-        metadata_id = str(uuid.uuid4())
-        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_meta_svc.delete_metadata.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata/{metadata_id}",
-            method="DELETE",
-        ):
-            api = DatasetMetadataServiceApi()
-            session = self.session
-            response = self._call_delete(
-                api,
-                session,
-                tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
-                metadata_id=metadata_id,
-            )
-
-        assert response == ("", 204)
-        mock_dataset_svc.get_dataset_for_tenant.assert_called_once_with(
-            mock_dataset.id, mock_tenant.id, session=session
-        )
-        mock_meta_svc.delete_metadata.assert_called_once_with(DatasetRef(mock_tenant.id, mock_dataset.id), metadata_id)
-
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_delete_metadata_dataset_not_found(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test 404 when dataset not found."""
-        metadata_id = str(uuid.uuid4())
-        mock_dataset_svc.get_dataset_for_tenant.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata/{metadata_id}",
-            method="DELETE",
-        ):
-            api = DatasetMetadataServiceApi()
-            session = self.session
-            with pytest.raises(NotFound):
-                self._call_delete(
-                    api,
-                    session,
-                    tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
-                    metadata_id=metadata_id,
-                )
-
-
-# ---------------------------------------------------------------------------
-# DatasetMetadataBuiltInFieldServiceApi
-# ---------------------------------------------------------------------------
-
-
-class TestDatasetMetadataBuiltInFieldGet(_UsesSQLiteSession):
-    """Tests for DatasetMetadataBuiltInFieldServiceApi.get()."""
-
-    @patch("controllers.service_api.dataset.metadata.application_services")
-    def test_get_built_in_fields_success(
-        self,
-        mock_meta_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test successful built-in fields retrieval."""
-        mock_meta_svc = mock_meta_svc.return_value.knowledge.metadata
-        mock_meta_svc.get_built_in_fields.return_value = [
-            {"name": "source", "type": "string"},
-        ]
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata/built-in",
-            method="GET",
-        ):
-            api = DatasetMetadataBuiltInFieldServiceApi()
-            response, status = api.get(
-                tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
-            )
-
-        assert status == 200
-        assert response == {"fields": [{"name": "source", "type": "string"}]}
-
-
-# ---------------------------------------------------------------------------
-# DatasetMetadataBuiltInFieldActionServiceApi
-# ---------------------------------------------------------------------------
-
-
-class TestDatasetMetadataBuiltInFieldAction(_UsesSQLiteSession):
-    """Tests for DatasetMetadataBuiltInFieldActionServiceApi.post().
-
-    ``post`` is wrapped by ``@cloud_edition_billing_rate_limit_check``.
-    """
-
-    @staticmethod
-    def _call_post(
-        api: DatasetMetadataBuiltInFieldActionServiceApi, session: Session, **kwargs: object
-    ) -> tuple[dict[str, object], int]:
-        return unwrap(api.post)(api, session, **kwargs)
-
-    @patch("controllers.service_api.dataset.metadata.application_services")
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_enable_built_in_field(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_meta_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test enabling built-in metadata field."""
-        mock_meta_svc = mock_meta_svc.return_value.knowledge.metadata
-        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata/built-in/enable",
-            method="POST",
-        ):
-            api = DatasetMetadataBuiltInFieldActionServiceApi()
-            session = self.session
-            response, status = self._call_post(
-                api,
-                session,
-                tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
-                action="enable",
-            )
-
-        assert status == 200
-        assert response["result"] == "success"
-        mock_meta_svc.enable_built_in_field.assert_called_once_with(DatasetRef(mock_tenant.id, mock_dataset.id))
-
-    @patch("controllers.service_api.dataset.metadata.application_services")
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_disable_built_in_field(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_meta_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test disabling built-in metadata field."""
-        mock_meta_svc = mock_meta_svc.return_value.knowledge.metadata
-        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata/built-in/disable",
-            method="POST",
-        ):
-            api = DatasetMetadataBuiltInFieldActionServiceApi()
-            session = self.session
-            response, status = self._call_post(
-                api,
-                session,
-                tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
-                action="disable",
-            )
-
-        assert status == 200
-        mock_meta_svc.disable_built_in_field.assert_called_once_with(DatasetRef(mock_tenant.id, mock_dataset.id))
-
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_action_dataset_not_found(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test 404 when dataset not found."""
-        mock_dataset_svc.get_dataset_for_tenant.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/metadata/built-in/enable",
-            method="POST",
-        ):
-            api = DatasetMetadataBuiltInFieldActionServiceApi()
-            session = self.session
-            with pytest.raises(NotFound):
-                self._call_post(
-                    api,
-                    session,
-                    tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
-                    action="enable",
-                )
-
-
-# ---------------------------------------------------------------------------
-# DocumentMetadataEditServiceApi
-# ---------------------------------------------------------------------------
-
-
-class TestDocumentMetadataEditPost(_UsesSQLiteSession):
-    """Tests for DocumentMetadataEditServiceApi.post().
-
-    ``post`` is wrapped by ``@cloud_edition_billing_rate_limit_check``.
-    """
-
-    @staticmethod
-    def _call_post(
-        api: DocumentMetadataEditServiceApi, session: Session, **kwargs: object
-    ) -> tuple[dict[str, object], int]:
-        metadata_args = MetadataOperationData.model_validate(request.get_json() or {})
-        return unwrap(api.post)(api, metadata_args, session, **kwargs)
-
-    @patch("controllers.service_api.dataset.metadata.application_services")
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_update_documents_metadata_success(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_meta_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-        account: Account,
-    ) -> None:
-        """Test successful documents metadata update."""
-        mock_meta_svc = mock_meta_svc.return_value.knowledge.metadata
-        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_meta_svc.update_documents_metadata.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/metadata",
-            method="POST",
-            json={"operation_data": []},
-        ):
-            api = DocumentMetadataEditServiceApi()
-            session = self.session
-            response, status = self._call_post(
-                api,
-                session,
-                tenant_id=mock_tenant.id,
-                dataset_id=mock_dataset.id,
-            )
-
-        assert status == 200
-        assert response["result"] == "success"
-        mock_meta_svc.update_documents_metadata.assert_called_once_with(
-            DatasetRef(mock_tenant.id, mock_dataset.id),
-            ANY,
-            actor_id=account.id,
-        )
-
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_update_documents_metadata_dataset_not_found(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        """Test 404 when dataset not found."""
-        mock_dataset_svc.get_dataset_for_tenant.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/metadata",
-            method="POST",
-            json={"operation_data": []},
-        ):
-            api = DocumentMetadataEditServiceApi()
-            session = self.session
-            with pytest.raises(NotFound):
-                self._call_post(
-                    api,
-                    session,
-                    tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
-                )
-
-    @patch("controllers.service_api.dataset.metadata.application_services")
-    @patch("controllers.service_api.dataset.metadata.DatasetService")
-    def test_update_documents_metadata_translates_missing_resource(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_meta_svc: MagicMock,
-        app: Flask,
-        mock_tenant: Tenant,
-        mock_dataset: Dataset,
-    ) -> None:
-        mock_meta_svc = mock_meta_svc.return_value.knowledge.metadata
-        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
-        mock_meta_svc.update_documents_metadata.side_effect = MetadataResourceNotFoundError("Document not found.")
-
-        with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/metadata",
-            method="POST",
-            json={"operation_data": []},
-        ):
-            api = DocumentMetadataEditServiceApi()
-            with pytest.raises(NotFound) as exc_info:
-                self._call_post(
-                    api,
-                    self.session,
-                    tenant_id=mock_tenant.id,
-                    dataset_id=mock_dataset.id,
-                )
-
-        assert exc_info.value.description == "Document not found."
+def test_metadata_routes_preserve_rate_limit_policy(method: object, rate_limited: bool) -> None:
+    policy = vars(method)["__dataset_admission_policy__"]
+    assert policy.rate_limit is rate_limited

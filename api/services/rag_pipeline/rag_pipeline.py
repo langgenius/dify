@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import (
@@ -60,8 +59,6 @@ from libs.login import resolve_account_fallback, resolve_tenant_id_fallback
 from models import Account
 from models.dataset import (  # type: ignore
     Dataset,
-    Document,
-    DocumentPipelineExecutionLog,
     Pipeline,
     PipelineCustomizedTemplate,
     PipelineRecommendedPlugin,
@@ -76,16 +73,13 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
-from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
-from services.credentials.query import CredentialQuery
-from services.data_source.provider_service import DatasourceProviderService
+from repositories.knowledge.document_query_repository import get_documents_by_ids
 from services.entities.knowledge_entities.rag_pipeline_entities import (
-    KnowledgeConfiguration,
     PipelineTemplateInfoEntity,
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.entities.pipeline_workflows import PreparedDatasourceWorkflowNode
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -493,27 +487,6 @@ class RagPipelineService:
         )
         # commit db session changes
         session.add(workflow)
-
-        graph = workflow.graph_dict
-        nodes = graph.get("nodes", [])
-        # dataset_service imports RagPipelineService, so defer this reverse dependency.
-        from services.knowledge.dataset_service import DatasetService
-
-        for node in nodes:
-            if node.get("data", {}).get("type") == "knowledge-index":
-                knowledge_configuration = node.get("data", {})
-                knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration)
-
-                # update dataset
-                dataset = get_pipeline_dataset(pipeline, session=session)
-                if not dataset:
-                    raise ValueError("Dataset not found")
-                DatasetService.update_rag_pipeline_dataset_settings(
-                    session=session,
-                    dataset=dataset,
-                    knowledge_configuration=knowledge_configuration,
-                    has_published=pipeline.is_published,
-                )
         # return new workflow
         return workflow
 
@@ -665,89 +638,87 @@ class RagPipelineService:
             )
         return workflow_node_execution_db_model
 
-    def run_datasource_workflow_node(
+    def prepare_datasource_workflow_node(
         self,
+        *,
         pipeline: Pipeline,
+        workflow: Workflow,
         node_id: str,
-        user_inputs: dict[str, Any],
+        user_inputs: Mapping[str, Any],
         account: Account,
         datasource_type: str,
-        is_published: bool,
-        credential_id: str | None = None,
+        credential_id: str | None,
+    ) -> PreparedDatasourceWorkflowNode:
+        """Load and detach all database state needed by datasource provider execution."""
+        datasource_node_data = next(
+            (node.get("data", {}) for node in workflow.graph_dict.get("nodes", []) if node.get("id") == node_id),
+            None,
+        )
+        if not datasource_node_data:
+            raise ValueError("Datasource node data not found")
+        plugin_id = datasource_node_data.get("plugin_id")
+        provider_name = datasource_node_data.get("provider_name")
+        datasource_name = datasource_node_data.get("datasource_name")
+        if not isinstance(plugin_id, str) or not plugin_id:
+            raise ValueError("Datasource plugin id is required")
+        if not isinstance(provider_name, str) or not provider_name:
+            raise ValueError("Datasource provider name is required")
+        if not isinstance(datasource_name, str) or not datasource_name:
+            raise ValueError("Datasource name is required")
+
+        variables_map: dict[str, Any] = {}
+        for key, value in datasource_node_data.get("datasource_parameters", {}).items():
+            param_value = value.get("value")
+            match param_value:
+                case None | "" | [] | {}:
+                    variables_map[key] = param_value
+                case str():
+                    pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                    match_result = re.match(pattern, param_value)
+                    if match_result:
+                        variables_map[key] = user_inputs.get(match_result.group(1).split(".")[-1], param_value)
+                    else:
+                        variables_map[key] = param_value
+                case list() if param_value:
+                    variables_map[key] = user_inputs.get(param_value[-1], param_value)
+                case _:
+                    variables_map[key] = param_value
+
+        return PreparedDatasourceWorkflowNode(
+            tenant_id=pipeline.tenant_id,
+            account_id=account.id,
+            plugin_id=plugin_id,
+            provider_name=provider_name,
+            datasource_name=datasource_name,
+            variables_map=variables_map,
+            user_inputs=dict(user_inputs),
+            datasource_type=datasource_type,
+            credential_id=credential_id,
+        )
+
+    @staticmethod
+    def run_prepared_datasource_workflow_node(
+        prepared: PreparedDatasourceWorkflowNode,
         *,
-        datasource_providers: DatasourceProviderService,
+        credentials: Mapping[str, object],
     ) -> Generator[Mapping[str, Any]]:
-        """
-        Run published workflow datasource
-        """
+        """Execute provider I/O from detached values only."""
         try:
-            if is_published:
-                # fetch published workflow by app_model
-                workflow = self.get_published_workflow(pipeline=pipeline)
-            else:
-                workflow = self.get_draft_workflow(pipeline=pipeline)
-            if not workflow:
-                raise ValueError("Workflow not initialized")
-
-            # run draft workflow node
-            datasource_node_data = None
-            datasource_nodes = workflow.graph_dict.get("nodes", [])
-            for datasource_node in datasource_nodes:
-                if datasource_node.get("id") == node_id:
-                    datasource_node_data = datasource_node.get("data", {})
-                    break
-            if not datasource_node_data:
-                raise ValueError("Datasource node data not found")
-
-            variables_map = {}
-
-            datasource_parameters = datasource_node_data.get("datasource_parameters", {})
-            for key, value in datasource_parameters.items():
-                param_value = value.get("value")
-
-                match param_value:
-                    case None | "" | [] | {}:
-                        variables_map[key] = param_value
-                    case str():
-                        # handle string type parameter value, check if it contains variable reference pattern
-                        pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
-                        match_result = re.match(pattern, param_value)
-                        if match_result:
-                            # extract variable path and try to get value from user inputs
-                            full_path = match_result.group(1)
-                            last_part = full_path.split(".")[-1]
-                            variables_map[key] = user_inputs.get(last_part, param_value)
-                        else:
-                            variables_map[key] = param_value
-                    case list() if param_value:
-                        # handle list type parameter value, check if the last element is in user inputs
-                        last_part = param_value[-1]
-                        variables_map[key] = user_inputs.get(last_part, param_value)
-                    case _:
-                        # other type directly use original value
-                        variables_map[key] = param_value
-
             datasource_runtime = DatasourceManager.get_datasource_runtime(
-                provider_id=f"{datasource_node_data.get('plugin_id')}/{datasource_node_data.get('provider_name')}",
-                datasource_name=datasource_node_data.get("datasource_name"),
-                tenant_id=pipeline.tenant_id,
-                datasource_type=DatasourceProviderType(datasource_type),
-            )
-            credentials = datasource_providers.get_datasource_credentials(
-                tenant_id=pipeline.tenant_id,
-                provider=datasource_node_data.get("provider_name"),
-                plugin_id=datasource_node_data.get("plugin_id"),
-                credential_id=credential_id,
+                provider_id=f"{prepared.plugin_id}/{prepared.provider_name}",
+                datasource_name=prepared.datasource_name,
+                tenant_id=prepared.tenant_id,
+                datasource_type=DatasourceProviderType(prepared.datasource_type),
             )
             if credentials:
-                datasource_runtime.runtime.credentials = credentials
-            match datasource_type:
+                datasource_runtime.runtime.credentials = dict(credentials)
+            match prepared.datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
                     online_document_result: Generator[OnlineDocumentPagesMessage] = (
                         datasource_runtime.get_online_document_pages(
-                            user_id=account.id,
-                            datasource_parameters=user_inputs,
+                            user_id=prepared.account_id,
+                            datasource_parameters=dict(prepared.user_inputs),
                             provider_type=datasource_runtime.datasource_provider_type(),
                         )
                     )
@@ -771,12 +742,12 @@ class RagPipelineService:
                     datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
                     online_drive_result: Generator[OnlineDriveBrowseFilesResponse] = (
                         datasource_runtime.online_drive_browse_files(
-                            user_id=account.id,
+                            user_id=prepared.account_id,
                             request=OnlineDriveBrowseFilesRequest(
-                                bucket=user_inputs.get("bucket"),
-                                prefix=user_inputs.get("prefix", ""),
-                                max_keys=user_inputs.get("max_keys", 20),
-                                next_page_parameters=user_inputs.get("next_page_parameters"),
+                                bucket=prepared.user_inputs.get("bucket"),
+                                prefix=prepared.user_inputs.get("prefix", ""),
+                                max_keys=prepared.user_inputs.get("max_keys", 20),
+                                next_page_parameters=prepared.user_inputs.get("next_page_parameters"),
                             ),
                             provider_type=datasource_runtime.datasource_provider_type(),
                         )
@@ -799,8 +770,8 @@ class RagPipelineService:
                 case DatasourceProviderType.WEBSITE_CRAWL:
                     datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
                     website_crawl_result: Generator[WebsiteCrawlMessage] = datasource_runtime.get_website_crawl(
-                        user_id=account.id,
-                        datasource_parameters=variables_map,
+                        user_id=prepared.account_id,
+                        datasource_parameters=dict(prepared.variables_map),
                         provider_type=datasource_runtime.datasource_provider_type(),
                     )
                     start_time = time.time()
@@ -830,71 +801,35 @@ class RagPipelineService:
             logger.exception("Error in run_datasource_workflow_node.")
             yield DatasourceErrorEvent(error=str(e)).model_dump()
 
-    def run_datasource_node_preview(
-        self,
-        pipeline: Pipeline,
-        node_id: str,
-        user_inputs: dict[str, Any],
-        account: Account,
-        datasource_type: str,
-        is_published: bool,
-        credential_id: str | None = None,
+    @staticmethod
+    def preview_prepared_datasource_workflow_node(
+        prepared: PreparedDatasourceWorkflowNode,
         *,
-        datasource_providers: DatasourceProviderService,
+        credentials: Mapping[str, object],
     ) -> Mapping[str, Any]:
-        """
-        Run published workflow datasource
-        """
+        """Read datasource content using an actor-authorized credential and detached workflow values."""
         try:
-            if is_published:
-                # fetch published workflow by app_model
-                workflow = self.get_published_workflow(pipeline=pipeline)
-            else:
-                workflow = self.get_draft_workflow(pipeline=pipeline)
-            if not workflow:
-                raise ValueError("Workflow not initialized")
-
-            # run draft workflow node
-            datasource_node_data = None
-            datasource_nodes = workflow.graph_dict.get("nodes", [])
-            for datasource_node in datasource_nodes:
-                if datasource_node.get("id") == node_id:
-                    datasource_node_data = datasource_node.get("data", {})
-                    break
-            if not datasource_node_data:
-                raise ValueError("Datasource node data not found")
-
-            datasource_parameters = datasource_node_data.get("datasource_parameters", {})
-            for key, value in datasource_parameters.items():
-                if not user_inputs.get(key):
-                    user_inputs[key] = value["value"]
-
             datasource_runtime = DatasourceManager.get_datasource_runtime(
-                provider_id=f"{datasource_node_data.get('plugin_id')}/{datasource_node_data.get('provider_name')}",
-                datasource_name=datasource_node_data.get("datasource_name"),
-                tenant_id=pipeline.tenant_id,
-                datasource_type=DatasourceProviderType(datasource_type),
-            )
-            credentials = datasource_providers.get_datasource_credentials(
-                tenant_id=pipeline.tenant_id,
-                provider=datasource_node_data.get("provider_name"),
-                plugin_id=datasource_node_data.get("plugin_id"),
-                credential_id=credential_id,
+                provider_id=f"{prepared.plugin_id}/{prepared.provider_name}",
+                datasource_name=prepared.datasource_name,
+                tenant_id=prepared.tenant_id,
+                datasource_type=DatasourceProviderType(prepared.datasource_type),
             )
             if credentials:
-                datasource_runtime.runtime.credentials = credentials
-            match datasource_type:
+                datasource_runtime.runtime.credentials = dict(credentials)
+            inputs = {**prepared.variables_map, **prepared.user_inputs}
+            match prepared.datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
                     online_document_result: Generator[DatasourceMessage] = (
                         datasource_runtime.get_online_document_page_content(
-                            user_id=account.id,
+                            user_id=prepared.account_id,
                             datasource_parameters=GetOnlineDocumentPageContentRequest(
-                                workspace_id=user_inputs.get("workspace_id", ""),
-                                page_id=user_inputs.get("page_id", ""),
-                                type=user_inputs.get("type", ""),
+                                workspace_id=inputs.get("workspace_id", ""),
+                                page_id=inputs.get("page_id", ""),
+                                type=inputs.get("type", ""),
                             ),
-                            provider_type=datasource_type,
+                            provider_type=prepared.datasource_type,
                         )
                     )
                     try:
@@ -920,7 +855,7 @@ class RagPipelineService:
                 case _:
                     raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
         except Exception as e:
-            logger.exception("Error in run_datasource_node_preview.")
+            logger.exception("Error in preview_prepared_datasource_workflow_node.")
             raise RuntimeError(str(e)) from e
 
     def run_free_workflow_node(
@@ -1068,15 +1003,13 @@ class RagPipelineService:
                             .limit(1)
                         )
                         if dataset:
-                            dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
-                            document_ref = dataset_ref.document(document_id.value)
-                            # dataset_service imports RagPipelineService; importing here avoids the cycle.
-                            from services.knowledge.dataset_service import DocumentService
-
                             document = next(
                                 iter(
-                                    DocumentService.get_documents_by_ids(
-                                        document_ref.dataset, [document_ref.document_id], self._session
+                                    get_documents_by_ids(
+                                        self._session,
+                                        tenant_id=dataset.tenant_id,
+                                        dataset_id=dataset.id,
+                                        document_ids=[document_id.value],
                                     )
                                 ),
                                 None,
@@ -1347,7 +1280,6 @@ class RagPipelineService:
             created_by=current_user.id,
         )
         session.add(pipeline_customized_template)
-        session.commit()
 
     def is_workflow_exist(self, pipeline: Pipeline) -> bool:
         return (
@@ -1511,55 +1443,13 @@ class RagPipelineService:
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
 
-    def retry_error_document(
-        self, dataset: Dataset, document: Document, user: Account | EndUser, *, generator: PipelineGenerator
-    ):
-        """
-        Retry error document
-        """
-        document_pipeline_execution_log = self._session.scalar(
-            select(DocumentPipelineExecutionLog).where(DocumentPipelineExecutionLog.document_id == document.id).limit(1)
-        )
-        if not document_pipeline_execution_log:
-            raise ValueError("Document pipeline execution log not found")
-        pipeline = self._session.get(Pipeline, document_pipeline_execution_log.pipeline_id)
-        if not pipeline:
-            raise ValueError("Pipeline not found")
-        # convert to app config
-        workflow = self.get_published_workflow(pipeline)
-        if not workflow:
-            raise ValueError("Workflow not found")
-        generator.generate(
-            session=self._session,
-            pipeline=pipeline,
-            workflow=workflow,
-            user=user,
-            args={
-                "inputs": document_pipeline_execution_log.input_data,
-                "start_node_id": document_pipeline_execution_log.datasource_node_id,
-                "datasource_type": document_pipeline_execution_log.datasource_type,
-                "datasource_info_list": [json.loads(document_pipeline_execution_log.datasource_info)],
-                "original_document_id": document.id,
-            },
-            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
-            streaming=False,
-            call_depth=0,
-            workflow_thread_pool_id=None,
-            is_retry=True,
-        )
-
-    def get_datasource_plugins(
+    def get_datasource_plugin_specs(
         self,
         tenant_id: str,
         dataset_id: str,
         is_published: bool,
-        *,
-        credential_query: CredentialQuery,
-        datasource_providers: DatasourceProviderService,
     ) -> list[dict]:
-        """
-        Get datasource plugins
-        """
+        """Load detached datasource plugin configuration without provider I/O."""
         dataset: Dataset | None = self._session.scalar(
             select(Dataset)
             .where(
@@ -1589,6 +1479,11 @@ class RagPipelineService:
         if not pipeline or not workflow:
             raise ValueError("Pipeline or workflow not found")
 
+        return self.datasource_plugin_specs(workflow)
+
+    @staticmethod
+    def datasource_plugin_specs(workflow: Workflow) -> list[dict[str, Any]]:
+        """Read datasource plugin identities from one fixed workflow snapshot."""
         datasource_nodes = workflow.graph_dict.get("nodes", [])
         datasource_plugins = []
         for datasource_node in datasource_nodes:
@@ -1619,33 +1514,15 @@ class RagPipelineService:
                     if key in user_input_variables_keys:
                         user_input_variables.append(value)
 
-                # get credentials
-                credentials: list[dict[Any, Any]] = datasource_providers.list_datasource_credentials(
-                    tenant_id=tenant_id,
-                    provider=datasource_node_data.get("provider_name"),
-                    plugin_id=datasource_node_data.get("plugin_id"),
-                    credential_query=credential_query,
-                )
-                credential_info_list: list[Any] = []
-                for credential in credentials:
-                    credential_info_list.append(
-                        {
-                            "id": credential.get("id"),
-                            "name": credential.get("name"),
-                            "type": credential.get("type"),
-                            "is_default": credential.get("is_default"),
-                        }
-                    )
-
                 datasource_plugins.append(
                     {
                         "node_id": datasource_node.get("id"),
                         "plugin_id": datasource_node_data.get("plugin_id"),
                         "provider_name": datasource_node_data.get("provider_name"),
                         "datasource_type": datasource_node_data.get("provider_type"),
+                        "credential_id": datasource_node_data.get("credential_id"),
                         "title": datasource_node_data.get("title"),
                         "user_input_variables": user_input_variables,
-                        "credentials": credential_info_list,
                     }
                 )
 

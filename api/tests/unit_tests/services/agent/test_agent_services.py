@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
+from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.agent import (
     Agent,
@@ -37,8 +38,8 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.enums import ConversationFromSource, ConversationStatus
-from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
+from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole
+from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, UploadFile
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
@@ -5726,6 +5727,22 @@ class TestWorkflowAgentDraftBindingSync:
             size=1,
         )
         archive_file.id = "archive-1"
+        config_file = UploadFile(
+            tenant_id="tenant-1",
+            storage_type=StorageType.LOCAL,
+            key="uploads/guide.md",
+            name="guide.md",
+            size=1,
+            extension="md",
+            mime_type="text/markdown",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-1",
+            created_at=datetime(2025, 1, 1),
+            used=True,
+        )
+        config_file.id = "file-1"
+        session.add(config_file)
+        session.commit()
         session.add_all([binding, agent, snapshot, skill, skill_version, skill_binding, archive_file])
         session.commit()
 
@@ -6738,14 +6755,14 @@ def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch, sql
     (placeholder semantics), never reach the UUID-typed dataset query (E2E 500)."""
     captured = {}
 
-    def fake_get_datasets_by_ids(ids, tenant_id, *, session):
-        captured["ids"] = ids
+    def fake_get_datasets_by_ids(_session, *, tenant_id, dataset_ids, **_kwargs):
+        captured["ids"] = dataset_ids
         return [], 0
 
-    import services.knowledge.dataset_service as dataset_service_module
+    import services.agent.knowledge_datasets as knowledge_datasets_module
     from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 
-    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
+    monkeypatch.setattr(knowledge_datasets_module, "list_datasets_by_ids", fake_get_datasets_by_ids)
 
     valid = "550e8400-e29b-41d4-a716-446655440000"
     rows = get_tenant_knowledge_dataset_rows(
@@ -6765,15 +6782,15 @@ def test_composer_save_rejects_malformed_knowledge_dataset_ids(
 ):
     captured = {"calls": 0}
 
-    def fake_get_datasets_by_ids(ids, tenant_id, *, session):
+    def fake_get_datasets_by_ids(_session, *, tenant_id, dataset_ids, **_kwargs):
         captured["calls"] += 1
-        captured["ids"] = ids
+        captured["ids"] = dataset_ids
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.knowledge.dataset_service as dataset_service_module
+    import services.agent.knowledge_datasets as knowledge_datasets_module
 
-    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
+    monkeypatch.setattr(knowledge_datasets_module, "list_datasets_by_ids", fake_get_datasets_by_ids)
 
     agent_soul = AgentSoulConfig.model_validate(
         {
@@ -6805,14 +6822,14 @@ def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(
     captured = {}
     missing_dataset_id = "550e8400-e29b-41d4-a716-446655440000"
 
-    def fake_get_datasets_by_ids(ids, tenant_id, *, session):
-        captured["ids"] = ids
+    def fake_get_datasets_by_ids(_session, *, tenant_id, dataset_ids, **_kwargs):
+        captured["ids"] = dataset_ids
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.knowledge.dataset_service as dataset_service_module
+    import services.agent.knowledge_datasets as knowledge_datasets_module
 
-    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
+    monkeypatch.setattr(knowledge_datasets_module, "list_datasets_by_ids", fake_get_datasets_by_ids)
 
     agent_soul = AgentSoulConfig.model_validate(
         {
@@ -6869,11 +6886,11 @@ def test_save_agent_composer_allows_incomplete_knowledge_draft(
 
     event.listen(session, "after_flush", count_flush)
 
-    import services.knowledge.dataset_service as dataset_service_module
+    import services.agent.knowledge_datasets as knowledge_datasets_module
 
     monkeypatch.setattr(
-        dataset_service_module.DatasetService,
-        "get_datasets_by_ids",
+        knowledge_datasets_module,
+        "list_datasets_by_ids",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("draft save must skip dataset lookup")),
     )
     monkeypatch.setattr(

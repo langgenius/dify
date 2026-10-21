@@ -9,6 +9,7 @@ spec export fail or succeed in the same way.
 import hashlib
 import json
 from collections.abc import Mapping
+from copy import deepcopy
 from typing import Protocol, TypeGuard, cast, runtime_checkable
 
 from flask import current_app
@@ -173,8 +174,14 @@ def _merge_registered_schemas(payload: dict[str, object], registered_models: Map
 def finalize_openapi_payload(
     payload: dict[str, object], *, registered_models: Mapping[str, object] | None = None
 ) -> dict[str, object]:
-    """Apply the shared finalization used by live and exported OpenAPI specs."""
+    """Return the shared final form used by live and exported OpenAPI specs.
 
+    Building a document can involve a cached live payload or output from a
+    surface-specific finisher. Work on a copy so a later export cannot mutate
+    either source while normalizing vendor extensions and operation IDs.
+    """
+
+    payload = deepcopy(payload)
     if registered_models is not None:
         payload = _merge_registered_schemas(payload, registered_models)
     _add_transport_response_schemas(payload)
@@ -268,8 +275,9 @@ def _inline_model_name(nested_fields: dict[object, object]) -> str:
 class DocumentFinisher(Protocol):
     """An Api that rewrites its finished OpenAPI document to say what Flask-RESTX cannot.
 
-    Runs last in ``Swagger.as_dict``, so the live ``openapi.json``, the spec generator
-    and every test that reads the document see the same result.
+    Runs after Flask-RESTX serialization and model merging. Its result receives
+    one final normalization pass, so the live ``openapi.json``, the spec
+    generator and every test that reads the document see the same result.
     """
 
     def finish_document(self, document: dict[str, object]) -> dict[str, object]: ...
@@ -442,7 +450,10 @@ def install_swagger_compatibility() -> None:
             payload = finalize_openapi_payload(original_as_dict(self), registered_models=self.api.models)
             if isinstance(self.api, DocumentFinisher):
                 payload = self.api.finish_document(payload)
-            return payload
+            # A finisher can add schemas and other arrays after the first pass.
+            # Normalize its result too; otherwise direct export (which applies
+            # the public finalizer again) can differ from the served document.
+            return finalize_openapi_payload(payload)
         finally:
             current_app.config["RESTX_INCLUDE_ALL_MODELS"] = include_all_models
 

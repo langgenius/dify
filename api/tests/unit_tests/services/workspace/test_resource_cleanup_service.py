@@ -2,10 +2,12 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models import Dataset
+from models import AppCleanupOperation, Dataset
 from models.agent import Agent, AgentHomeSnapshot, AgentScope, AgentSource, AgentStatus, AgentWorkingResourceStatus
+from models.knowledge_task import KnowledgeTaskOutbox
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
@@ -16,7 +18,11 @@ def _service(session_factory: sessionmaker[Session]) -> module.WorkspaceResource
     return module.WorkspaceResourceCleanupService(
         session_factory=session_factory,
         apps=ConsoleAppRepository(session_factory=session_factory),
-        datasets=SQLAlchemyDatasetRepository(session_factory=session_factory),
+        datasets=SQLAlchemyDatasetRepository(
+            revoke_keys_after_commit=lambda _session, _tokens: None,
+            session_factory=session_factory,
+            wake_after_commit=lambda _session: None,
+        ),
         agent_resources=WorkspaceResourceCleanupRepository(session_factory=session_factory),
     )
 
@@ -72,10 +78,13 @@ def test_agent_sweep_covers_all_scopes_and_retains_other_tenants(
     assert other_agent is not None
     assert other_agent.status == AgentStatus.ACTIVE
     app_cleanup.delay.assert_called_once_with(tenant_id="target", app_id="missing-app")
+    cleanup_operation = sqlite_session.get_one(AppCleanupOperation, "missing-app")
+    assert cleanup_operation.tenant_id == "target"
+    assert cleanup_operation.status == "pending"
 
 
 def test_dataset_deletion_schedules_even_without_index_configuration(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
     sqlite_session.add_all(
         [
@@ -84,18 +93,18 @@ def test_dataset_deletion_schedules_even_without_index_configuration(
         ]
     )
     sqlite_session.commit()
-    cleanup = Mock()
-    monkeypatch.setattr(module, "clean_dataset_task", cleanup)
-    monkeypatch.setattr(module.dataset_api_key_bindings, "delete_keys_scoped_only_to", Mock())
-    monkeypatch.setattr(module, "build_resource_access_token_cleanup_service", Mock())
     _service(sqlite_session_factory)._delete_dataset("target", "other-dataset")
-    cleanup.delay.assert_not_called()
+    assert sqlite_session.scalar(select(KnowledgeTaskOutbox)) is None
     _service(sqlite_session_factory)._delete_dataset("target", "dataset")
-    cleanup.delay.assert_called_once()
-    assert cleanup.delay.call_args.args[:2] == ("dataset", "target")
     sqlite_session.expire_all()
     assert sqlite_session.get(Dataset, "dataset") is None
     assert sqlite_session.get(Dataset, "other-dataset") is not None
+    intent = sqlite_session.scalar(select(KnowledgeTaskOutbox))
+    assert intent is not None
+    assert intent.payload["dataset_id"] == "dataset"
+    assert intent.payload["tenant_id"] == "target"
+    assert intent.payload["indexing_technique"] is None
+    assert intent.payload["doc_form"] is None
 
 
 def test_agent_collection_failure_propagates_and_retirement_can_be_retried(

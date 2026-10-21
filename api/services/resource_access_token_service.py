@@ -7,9 +7,11 @@ from machinery.context import RequestContext
 from services.auth.resource_access_token_contracts import (
     ResourceAccessTokenAccess,
     ResourceAccessTokenCreateResult,
+    ResourceAccessTokenDatasetGrant,
     ResourceAccessTokenForbiddenError,
     ResourceAccessTokenGrant,
     ResourceAccessTokenInputError,
+    ResourceAccessTokenNotFoundError,
     ResourceAccessTokenResource,
     ResourceAccessTokenRow,
 )
@@ -116,18 +118,32 @@ class ResourceAccessTokenService:
         self._tokens.record_usage(access.tenant_id, access.token_id)
         return ResourceAccessTokenGrant(access.token_id, access.tenant_id, frozenset({apps[0].id}))
 
-    def resolve_tenant_for_dataset_service_api(self, *, token: str, dataset_id: str | None) -> str:
-        """With no dataset id, authorize the collection route using any knowledge binding."""
+    def resolve_datasets_for_service_api(
+        self, *, token: str, dataset_id: str | None
+    ) -> ResourceAccessTokenDatasetGrant:
+        """Authorize a dataset route while retaining every usable knowledge binding."""
         access = self._tokens.access_by_secret(token)
-        if not any(
-            r.type == ResourceAccessTokenResourceType.KNOWLEDGE and (not dataset_id or r.id == dataset_id)
-            for r in access.resources
-        ):
+        knowledge_resources = tuple(
+            resource for resource in access.resources if resource.type == ResourceAccessTokenResourceType.KNOWLEDGE
+        )
+        if dataset_id is not None:
+            requested_resource = next((resource for resource in knowledge_resources if resource.id == dataset_id), None)
+            if requested_resource is None:
+                raise ResourceAccessTokenForbiddenError(
+                    "Resource access token is not allowed to access this knowledge base."
+                )
+            if not requested_resource.exists:
+                raise ResourceAccessTokenNotFoundError("The knowledge base no longer exists.")
+            if not requested_resource.enabled:
+                raise ResourceAccessTokenForbiddenError("Dataset api access is not enabled.")
+
+        dataset_ids = frozenset(resource.id for resource in knowledge_resources if resource.exists and resource.enabled)
+        if not dataset_ids:
             raise ResourceAccessTokenForbiddenError(
                 "Resource access token is not allowed to access this knowledge base."
             )
         self._tokens.record_usage(access.tenant_id, access.token_id)
-        return access.tenant_id
+        return ResourceAccessTokenDatasetGrant(access.token_id, access.tenant_id, dataset_ids)
 
     @staticmethod
     def _normalize_name(name: str) -> str:

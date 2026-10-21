@@ -152,7 +152,7 @@ def test_binding_revocation_is_immediate(resource_fixture: ResourceFixture, sqli
     call(flask_app, app_id)
     sqlite_session.execute(delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token_id))
     sqlite_session.commit()
-    with pytest.raises(Forbidden):
+    with pytest.raises(Unauthorized):
         call(flask_app, app_id)
 
 
@@ -175,14 +175,14 @@ def test_disabled_app_is_rejected(resource_fixture: ResourceFixture, sqlite_sess
         call(flask_app, app_id)
 
 
-def test_app_discovery_keeps_explicit_empty_binding_set(
+def test_app_discovery_rejects_token_with_no_remaining_bindings(
     resource_fixture: ResourceFixture, sqlite_session: Session
 ) -> None:
     flask_app, _, token_id, tenant_id, _ = resource_fixture
     sqlite_session.execute(delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token_id))
     sqlite_session.commit()
-    data = call(flask_app, workspace_id=tenant_id, scope=Scope.APPS_READ)
-    assert data.resource_app_ids == frozenset()
+    with pytest.raises(Unauthorized):
+        call(flask_app, workspace_id=tenant_id, scope=Scope.APPS_READ)
 
 
 def test_account_only_routes_reject_resource_token(resource_fixture: ResourceFixture) -> None:
@@ -283,21 +283,16 @@ def test_stop_task_rejects_other_token_owner(
 
 
 @pytest.mark.parametrize("search", ["list", "bound", "unbound"])
-@pytest.mark.parametrize("empty_bindings", [False, True])
 def test_app_list_filters_unbound_apps_before_pagination(
-    resource_fixture: ResourceFixture, sqlite_session: Session, search: str, empty_bindings: bool
+    resource_fixture: ResourceFixture, sqlite_session: Session, search: str
 ) -> None:
     from controllers.openapi.apps import AppListApi
 
-    flask_app, app_id, token_id, tenant_id, _ = resource_fixture
+    flask_app, app_id, _, tenant_id, _ = resource_fixture
     unbound = App(
         id=str(uuid4()), tenant_id=tenant_id, name="Unbound app", mode=AppMode.CHAT, enable_api=True, enable_site=False
     )
     sqlite_session.add(unbound)
-    if empty_bindings:
-        sqlite_session.execute(
-            delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token_id)
-        )
     sqlite_session.commit()
     query = {"workspace_id": tenant_id}
     if search != "list":
@@ -308,7 +303,7 @@ def test_app_list_filters_unbound_apps_before_pagination(
         headers={"Authorization": "Bearer sk-test", CATALOG_HEADER: catalog_for(flask_app)[1]},
     ):
         result, status = AppListApi().get()
-    expected_ids: list[str] = [] if empty_bindings or search == "unbound" else [app_id]
+    expected_ids: list[str] = [] if search == "unbound" else [app_id]
     assert status == 200
     assert result["total"] == len(expected_ids)
     assert [app["id"] for app in result["data"]] == expected_ids

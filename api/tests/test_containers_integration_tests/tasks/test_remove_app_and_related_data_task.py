@@ -1,5 +1,6 @@
 import logging
 import uuid
+from dataclasses import dataclass, field
 from unittest.mock import call, patch
 
 import pytest
@@ -11,19 +12,39 @@ from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from models import Tenant
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.model import App, UploadFile
-from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
+from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile, WorkflowNodeExecutionOffload
+from services import app_storage_cleanup_service
+from tasks import clean_upload_files_task
 from tasks.remove_app_and_related_data_task import (
     _delete_draft_variable_offload_data,
     delete_draft_variables_batch,
 )
+from tests.unit_tests.config_override import apply_config_overrides
+
+
+@dataclass
+class _CleanupStorage:
+    failure: Exception | None = None
+    deleted: list[str] = field(default_factory=list)
+
+    def delete(self, key: str) -> None:
+        self.deleted.append(key)
+        if self.failure is not None:
+            raise self.failure
+
+
+@pytest.fixture(autouse=True)
+def enable_physical_file_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
 
 
 @pytest.fixture(autouse=True)
 def cleanup_database(db_session_with_containers: Session):
     db_session_with_containers.execute(delete(WorkflowDraftVariable))
     db_session_with_containers.execute(delete(WorkflowDraftVariableFile))
+    db_session_with_containers.execute(delete(WorkflowNodeExecutionOffload))
     db_session_with_containers.execute(delete(UploadFile))
     db_session_with_containers.execute(delete(App))
     db_session_with_containers.execute(delete(Tenant))
@@ -117,6 +138,56 @@ def _create_offload_data(db_session_with_containers, *, tenant_id: str, app_id: 
     }
 
 
+def test_node_execution_offload_storage_failure_recovers_from_upload_marker(
+    db_session_with_containers: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant, app = _create_tenant_and_app(db_session_with_containers)
+    upload = UploadFile(
+        tenant_id=tenant.id,
+        storage_type=StorageType.LOCAL,
+        key=f"test/node-offload-{uuid.uuid4()}.json",
+        name="node-offload.json",
+        size=1024,
+        extension="json",
+        mime_type="application/json",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=str(uuid.uuid4()),
+        created_at=naive_utc_now(),
+        used=True,
+    )
+    db_session_with_containers.add(upload)
+    db_session_with_containers.flush()
+    offload = WorkflowNodeExecutionOffload(
+        tenant_id=tenant.id,
+        app_id=app.id,
+        node_execution_id=None,
+        type_=ExecutionOffLoadType.OUTPUTS,
+        file_id=upload.id,
+    )
+    db_session_with_containers.add(offload)
+    db_session_with_containers.commit()
+    upload_id, offload_id, upload_key = upload.id, offload.id, upload.key
+
+    failing_storage = _CleanupStorage(failure=RuntimeError("storage unavailable"))
+    monkeypatch.setattr(app_storage_cleanup_service, "storage", failing_storage)
+    with pytest.raises(RuntimeError, match="storage unavailable"):
+        app_storage_cleanup_service.cleanup_app_storage(tenant.id, app.id)
+
+    db_session_with_containers.expire_all()
+    pending = db_session_with_containers.get_one(UploadFile, upload_id)
+    assert pending.knowledge_cleanup_started_at is not None
+    assert db_session_with_containers.get(WorkflowNodeExecutionOffload, offload_id) is None
+
+    recovery_storage = _CleanupStorage()
+    monkeypatch.setattr(clean_upload_files_task, "storage", recovery_storage)
+    clean_upload_files_task.recover_claimed_upload_file_cleanup_task.run()
+
+    db_session_with_containers.expire_all()
+    assert db_session_with_containers.get(UploadFile, upload_id) is None
+    assert recovery_storage.deleted == [upload_key]
+
+
 class TestDeleteDraftVariablesBatch:
     def test_delete_draft_variables_batch_success(self, db_session_with_containers: Session):
         """Test successful deletion of draft variables in batches."""
@@ -204,22 +275,21 @@ class TestDeleteDraftVariableOffloadData:
 
     @patch("extensions.ext_storage.storage")
     def test_delete_draft_variable_offload_data_storage_failure(
-        self, mock_storage, db_session_with_containers, caplog: pytest.LogCaptureFixture
+        self, mock_storage, db_session_with_containers: Session
     ):
-        """Test handling of storage deletion failures."""
+        """A storage failure preserves claimed uploads for a later cleanup retry."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
         offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=2)
         file_ids = [variable_file.id for variable_file in offload_data["variable_files"]]
         storage_keys = [upload_file.key for upload_file in offload_data["upload_files"]]
         upload_file_ids = [upload_file.id for upload_file in offload_data["upload_files"]]
 
-        mock_storage.delete.side_effect = [Exception("Storage error"), None]
+        mock_storage.delete.side_effect = RuntimeError("Storage error")
 
-        with caplog.at_level(logging.ERROR):
-            result = _delete_draft_variable_offload_data(file_ids)
+        with pytest.raises(RuntimeError, match="Storage error"):
+            _delete_draft_variable_offload_data(file_ids)
 
-        assert result == 1
-        assert f"Failed to delete storage object {storage_keys[0]}" in caplog.text
+        mock_storage.delete.assert_called_once_with(storage_keys[0])
 
         remaining_var_files_count = db_session_with_containers.scalar(
             select(func.count())
@@ -230,4 +300,19 @@ class TestDeleteDraftVariableOffloadData:
             select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
         )
         assert remaining_var_files_count == 0
-        assert remaining_upload_files_count == 0
+        assert remaining_upload_files_count == 2
+        db_session_with_containers.expire_all()
+        claimed_upload_files = db_session_with_containers.scalars(
+            select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+        ).all()
+        assert all(upload_file.knowledge_cleanup_started_at is not None for upload_file in claimed_upload_files)
+
+        recovery_storage = _CleanupStorage()
+        with patch.object(clean_upload_files_task, "storage", recovery_storage):
+            clean_upload_files_task.recover_claimed_upload_file_cleanup_task.run()
+
+        db_session_with_containers.expire_all()
+        assert (
+            db_session_with_containers.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all() == []
+        )
+        assert set(recovery_storage.deleted) == set(storage_keys)

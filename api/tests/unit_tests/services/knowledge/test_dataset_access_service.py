@@ -3,8 +3,15 @@ from dataclasses import dataclass
 import pytest
 
 from machinery.context import RequestContext
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.dataset_access import DatasetAccessRecord, DatasetAccessService, DatasetAccessSnapshot
+from services.knowledge.dataset_access import (
+    DatasetAccessDeniedError,
+    DatasetAccessRecord,
+    DatasetAccessService,
+    DatasetAccessSnapshot,
+    DatasetNotFoundError,
+    DatasetPermissionValidationError,
+    validate_permission_change,
+)
 
 
 def _context(*, actor_id: str = "actor-1", workspace_id: str = "workspace-1") -> RequestContext:
@@ -164,3 +171,89 @@ def test_require_accessible_hides_missing_or_cross_workspace_dataset() -> None:
 
     with pytest.raises(DatasetNotFoundError):
         service.require_accessible(_context(), "dataset-1")
+
+
+@pytest.mark.parametrize("legacy_permissions_enabled", [False, True])
+@pytest.mark.parametrize("bound_ids", [frozenset(), frozenset({"other"})])
+def test_resource_scope_restricts_workspace_owner(legacy_permissions_enabled: bool, bound_ids: frozenset[str]) -> None:
+    service = DatasetAccessService(
+        datasets=DatasetReaderStub(_snapshot(permission="all_team_members")),
+        workspace_roles=WorkspaceRoleReaderStub("owner"),
+        legacy_permissions_enabled=legacy_permissions_enabled,
+    )
+    context = _context()._replace(resource_dataset_ids=bound_ids)
+
+    with pytest.raises(DatasetAccessDeniedError):
+        service.require_accessible(context, "dataset-1")
+
+
+def test_resource_scope_allows_only_bound_dataset() -> None:
+    service = DatasetAccessService(
+        datasets=DatasetReaderStub(_snapshot(permission="all_team_members")),
+        workspace_roles=WorkspaceRoleReaderStub("owner"),
+        legacy_permissions_enabled=True,
+    )
+    context = _context()._replace(resource_dataset_ids=frozenset({"dataset-1"}))
+
+    assert service.require_accessible(context, "dataset-1").id == "dataset-1"
+
+
+@pytest.mark.parametrize("role", ["owner", "admin", "editor"])
+def test_permission_change_allows_dataset_edit_roles(role: str) -> None:
+    validate_permission_change(
+        actor_role=role,
+        current_permission="only_me",
+        current_member_ids=(),
+        requested_permission="all_team_members",
+        requested_member_ids=None,
+    )
+
+
+def test_permission_change_rejects_non_editor() -> None:
+    with pytest.raises(DatasetAccessDeniedError, match="does not have permission to edit"):
+        validate_permission_change(
+            actor_role="normal",
+            current_permission="only_me",
+            current_member_ids=(),
+            requested_permission="only_me",
+            requested_member_ids=None,
+        )
+
+
+def test_dataset_operator_cannot_change_permission_mode_or_partial_members() -> None:
+    with pytest.raises(DatasetAccessDeniedError, match="cannot change the dataset permissions"):
+        validate_permission_change(
+            actor_role="dataset_operator",
+            current_permission="only_me",
+            current_member_ids=(),
+            requested_permission="all_team_members",
+            requested_member_ids=None,
+        )
+
+    with pytest.raises(DatasetPermissionValidationError, match="Partial member list is required"):
+        validate_permission_change(
+            actor_role="dataset_operator",
+            current_permission="partial_members",
+            current_member_ids=("member-1",),
+            requested_permission="partial_members",
+            requested_member_ids=(),
+        )
+
+    with pytest.raises(DatasetPermissionValidationError, match="cannot change the dataset permissions"):
+        validate_permission_change(
+            actor_role="dataset_operator",
+            current_permission="partial_members",
+            current_member_ids=("member-1",),
+            requested_permission="partial_members",
+            requested_member_ids=("member-2",),
+        )
+
+
+def test_dataset_operator_can_keep_same_partial_member_set_in_any_order() -> None:
+    validate_permission_change(
+        actor_role="dataset_operator",
+        current_permission="partial_members",
+        current_member_ids=("member-1", "member-2"),
+        requested_permission="partial_members",
+        requested_member_ids=("member-2", "member-1"),
+    )

@@ -263,7 +263,7 @@ class TestExtractDatasetConfig:
 
     def test_extract_dataset_not_exists(self, valid_uuid: str, mocker: MockerFixture, unbound_session: Session) -> None:
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.dataset.manager.DatasetService.get_dataset",
+            "core.app.app_config.easy_ui_based_app.dataset.manager.get_dataset_for_tenant",
             return_value=None,
         )
         config = {
@@ -293,7 +293,7 @@ class TestIsDatasetExists:
             created_by="account-1",
         )
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.dataset.manager.DatasetService.get_dataset",
+            "core.app.app_config.easy_ui_based_app.dataset.manager.get_dataset_for_tenant",
             return_value=dataset,
         )
 
@@ -303,7 +303,7 @@ class TestIsDatasetExists:
         self, mocker: MockerFixture, valid_uuid: str, unbound_session: Session
     ) -> None:
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.dataset.manager.DatasetService.get_dataset",
+            "core.app.app_config.easy_ui_based_app.dataset.manager.get_dataset_for_tenant",
             return_value=None,
         )
         assert not DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid, unbound_session)
@@ -311,15 +311,9 @@ class TestIsDatasetExists:
     def test_dataset_exists_false_when_tenant_mismatch(
         self, mocker: MockerFixture, valid_uuid: str, unbound_session: Session
     ) -> None:
-        dataset = Dataset(
-            id=valid_uuid,
-            tenant_id="other",
-            name="Other Tenant Dataset",
-            created_by="account-2",
-        )
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.dataset.manager.DatasetService.get_dataset",
-            return_value=dataset,
+            "core.app.app_config.easy_ui_based_app.dataset.manager.get_dataset_for_tenant",
+            return_value=None,
         )
         assert not DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid, unbound_session)
 

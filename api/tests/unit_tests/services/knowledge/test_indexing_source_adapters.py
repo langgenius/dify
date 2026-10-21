@@ -14,19 +14,19 @@ from services.data_source.credential_gateway import (
     DatasourceCredentialRefreshError,
 )
 from services.data_source.entities.notion_import import NotionPageType
-from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.sources import (
     CompositeStoredSourceResolver,
     FileSourceAdapter,
     NotionSourceResolver,
     WebsiteSourceAdapter,
 )
+from services.knowledge.indexing.contracts import StoredSource
 from services.knowledge.indexing.errors import (
     IndexingInputSourceError,
     SourceCredentialUnavailableError,
     UnsupportedStoredSourceError,
 )
-from services.knowledge.indexing.estimate import StoredSource
+from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.config_override import apply_config_overrides
 
 

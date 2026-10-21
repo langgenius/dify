@@ -62,19 +62,3 @@ class ExternalKnowledgeRetrievalError(ValueError):
     while still giving inner API controllers a dedicated error type to map to
     ``502 external_knowledge_failed``.
     """
-
-
-class ExternalTemplateNotFoundError(ValueError):
-    pass
-
-
-class ExternalHitTestingError(Exception):
-    pass
-
-
-class HitTestingFailedError(Exception):
-    pass
-
-
-class HitTestingInvocationError(Exception):
-    pass

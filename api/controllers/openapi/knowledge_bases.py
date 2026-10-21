@@ -19,7 +19,7 @@ from controllers.openapi._models import (
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import WORKSPACE_READ_GUARDS
 from extensions.ext_application_services import application_services
-from services.knowledge.datasets.application import DatasetListFilter
+from services.knowledge.datasets.contracts import DatasetListFilter
 
 
 def knowledge_base_row(record: Mapping[str, Any]) -> KnowledgeBaseRow:
@@ -47,8 +47,9 @@ class KnowledgeBasesApi(Resource):
         returns=(HTTPStatus.OK, KnowledgeBaseListResponse, "Knowledge bases"),
     )
     def get(self, ctx: Context, workspace_id: str, *, query: KnowledgeBaseListQuery):
-        page = application_services().knowledge.datasets.list_datasets(
-            ctx.request_context, DatasetListFilter(page=query.page, limit=query.limit, keyword=query.query or None)
+        page = application_services().knowledge.datasets.list_accessible_datasets(
+            ctx.request_context,
+            DatasetListFilter(page=query.page, limit=query.limit, keyword=query.query or None),
         )
         return KnowledgeBaseListResponse.build(
             page=query.page, limit=query.limit, total=page["total"], items=[knowledge_base_row(r) for r in page["data"]]

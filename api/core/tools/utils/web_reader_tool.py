@@ -11,6 +11,7 @@ from readabilipy import simple_json_from_html_string
 from core.file import remote_fetcher
 from core.rag.extractor import extract_processor
 from core.rag.extractor.extract_processor import ExtractProcessor
+from libs.markdown_images import extract_upload_file_ids_from_markdown
 
 FULL_TEMPLATE = """
 TITLE: {title}
@@ -120,17 +121,7 @@ def extract_using_readabilipy(html: str):
     return article
 
 
-def get_image_upload_file_ids(content):
-    pattern = r"!\[image\]\((https?://.*?(file-preview|image-preview))\)"
-    matches = re.findall(pattern, content)
-    image_upload_file_ids = []
-    for match in matches:
-        if match[1] == "file-preview":
-            content_pattern = r"files/([^/]+)/file-preview"
-        else:
-            content_pattern = r"files/([^/]+)/image-preview"
-        content_match = re.search(content_pattern, match[0])
-        if content_match:
-            image_upload_file_id = content_match.group(1)
-            image_upload_file_ids.append(image_upload_file_id)
-    return image_upload_file_ids
+def get_image_upload_file_ids(content: str) -> list[str]:
+    """Compatibility wrapper around the shared Markdown image grammar."""
+
+    return list(extract_upload_file_ids_from_markdown(content))

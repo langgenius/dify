@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -300,8 +301,12 @@ class TestDisableSegmentFromIndexTask:
         document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
         segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
-        # Manually remove dataset association
-        segment.dataset_id = "00000000-0000-0000-0000-000000000000"
+        # Simulate a pre-ownership legacy row without weakening the immutable ORM writer.
+        db_session_with_containers.execute(
+            update(DocumentSegment)
+            .where(DocumentSegment.id == segment.id)
+            .values(dataset_id="00000000-0000-0000-0000-000000000000")
+        )
         db_session_with_containers.commit()
 
         # Act: Execute the task
@@ -328,8 +333,12 @@ class TestDisableSegmentFromIndexTask:
         document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
         segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
 
-        # Manually remove document association
-        segment.document_id = "00000000-0000-0000-0000-000000000000"
+        # Simulate a pre-ownership legacy row without weakening the immutable ORM writer.
+        db_session_with_containers.execute(
+            update(DocumentSegment)
+            .where(DocumentSegment.id == segment.id)
+            .values(document_id="00000000-0000-0000-0000-000000000000")
+        )
         db_session_with_containers.commit()
 
         # Act: Execute the task

@@ -1,6 +1,6 @@
 import json
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,7 +8,10 @@ from botocore.exceptions import ClientError
 from sqlalchemy.orm import Session
 
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
-from extensions.storage.clickzetta_volume.clickzetta_volume_storage import ClickZettaVolumeStorage
+from extensions.storage.clickzetta_volume.clickzetta_volume_storage import (
+    ClickZettaVolumeConfig,
+    ClickZettaVolumeStorage,
+)
 from extensions.storage.huawei_obs_storage import HuaweiObsStorage
 from extensions.storage.storage_type import StorageType
 from graphon.entities.pause_reason import PauseReasonType
@@ -18,11 +21,22 @@ from models import WorkflowType
 from models.enums import (
     ConversationFromSource,
     CreatorUserRole,
+    CustomizeTokenStrategy,
     EndUserType,
     ExecutionOffLoadType,
     WorkflowRunTriggeredFrom,
 )
-from models.model import AppMode, Conversation, EndUser, Message, MessageFile, UploadFile
+from models.model import (
+    AppMode,
+    Conversation,
+    EndUser,
+    IconType,
+    KnowledgeUploadFileReference,
+    Message,
+    MessageFile,
+    Site,
+    UploadFile,
+)
 from models.tools import ToolFile
 from models.workflow import (
     WorkflowNodeExecutionModel,
@@ -33,6 +47,31 @@ from models.workflow import (
     WorkflowRun,
 )
 from services import app_storage_cleanup_service as cleanup
+from services.knowledge.file_cleanup_gate import FilePhysicalCleanupDisabledError
+from tasks import clean_upload_files_task as upload_cleanup_task
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_app, make_upload_file
+from tests.unit_tests.repositories.knowledge.test_document_repository import _dataset, _document
+
+
+@dataclass
+class _RecordingStorage:
+    deleted: list[str] = field(default_factory=list)
+
+    def delete(self, key: str) -> None:
+        self.deleted.append(key)
+
+
+@dataclass(frozen=True)
+class _ObsDeleteResponse:
+    status: int
+    errorCode: str
+
+
+class _DenyingObsClient:
+    def deleteObject(self, *, bucketName: str, objectKey: str) -> _ObsDeleteResponse:  # noqa: N802, N803
+        del bucketName, objectKey
+        return _ObsDeleteResponse(status=403, errorCode="AccessDenied")
 
 
 def _offload(
@@ -107,8 +146,10 @@ def deleted_keys(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 
 
 @pytest.mark.parametrize("legacy_owner", [False, True])
-def test_nested_offload_cleanup_preserves_retry_references(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, deleted_keys: list[str], legacy_owner: bool
+def test_nested_offload_cleanup_preserves_durable_marker_for_fresh_recovery(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    legacy_owner: bool,
 ) -> None:
     sqlite_session.add(
         WorkflowRun(
@@ -134,16 +175,18 @@ def test_nested_offload_cleanup_preserves_retry_references(
     with pytest.raises(RuntimeError, match="storage unavailable"):
         cleanup.cleanup_app_storage("tenant-1", "app-1")
     sqlite_session.expire_all()
-    assert sqlite_session.get(UploadFile, file_id) is not None
-    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
+    pending = sqlite_session.get(UploadFile, file_id)
+    assert pending is not None
+    assert pending.knowledge_cleanup_started_at is not None
+    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
 
-    monkeypatch.setattr(cleanup.storage, "delete", deleted_keys.append)
-    cleanup.cleanup_app_storage("tenant-1", "app-1")
-    cleanup.cleanup_app_storage("tenant-1", "app-1")
+    recovery_storage = _RecordingStorage()
+    monkeypatch.setattr(upload_cleanup_task, "storage", recovery_storage)
+    upload_cleanup_task.recover_claimed_upload_file_cleanup_task.run()
     sqlite_session.expire_all()
-    assert deleted_keys == ["nested.json"]
     assert sqlite_session.get(UploadFile, file_id) is None
     assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
+    assert recovery_storage.deleted == ["nested.json"]
 
 
 @pytest.mark.parametrize(
@@ -217,6 +260,11 @@ def storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
+@pytest.fixture(autouse=True)
+def _enable_physical_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=True)
+
+
 def test_cleanup_removes_owned_offloads_and_preserves_other_owners(sqlite_session: Session, storage: MagicMock) -> None:
     owned = _offload(sqlite_session, "app-1", "owned.json")
     other_app = _offload(sqlite_session, "app-2", "other-app.json")
@@ -234,22 +282,56 @@ def test_cleanup_removes_owned_offloads_and_preserves_other_owners(sqlite_sessio
         assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
 
 
-def test_storage_failure_retains_references_for_retry(sqlite_session: Session, storage: MagicMock) -> None:
+def test_storage_failure_retains_marker_for_independent_recovery(
+    sqlite_session: Session,
+    storage: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     storage.delete.side_effect = RuntimeError("storage unavailable")
-    storage.exists.return_value = True
 
     with pytest.raises(RuntimeError, match="storage unavailable"):
         cleanup.cleanup_app_storage("tenant-1", "app-1")
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(UploadFile, file_id) is not None
-    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
+    pending = sqlite_session.get(UploadFile, file_id)
+    assert pending is not None
+    assert pending.knowledge_cleanup_started_at is not None
+    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
 
-    storage.delete.side_effect = None
-    cleanup.cleanup_app_storage("tenant-1", "app-1")
+    recovery_storage = _RecordingStorage()
+    monkeypatch.setattr(upload_cleanup_task, "storage", recovery_storage)
+    upload_cleanup_task.recover_claimed_upload_file_cleanup_task.run()
     sqlite_session.expire_all()
     assert sqlite_session.get(UploadFile, file_id) is None
+    assert recovery_storage.deleted == ["owned.json"]
+
+
+def test_gate_closing_after_offload_detach_preserves_all_markers(
+    sqlite_session: Session,
+    storage: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    offloads = (
+        _offload(sqlite_session, "app-1", "first.json"),
+        _offload(sqlite_session, "app-1", "second.json"),
+    )
+
+    def close_gate_after_first_delete(_key: str) -> None:
+        apply_config_overrides(monkeypatch, ENABLE_UPLOAD_FILE_PHYSICAL_CLEANUP=False)
+
+    storage.delete.side_effect = close_gate_after_first_delete
+
+    with pytest.raises(FilePhysicalCleanupDisabledError):
+        cleanup.cleanup_app_storage("tenant-1", "app-1")
+
+    assert storage.delete.call_count == 1
+    sqlite_session.expire_all()
+    for file_id, offload_id in offloads:
+        pending = sqlite_session.get(UploadFile, file_id)
+        assert pending is not None
+        assert pending.knowledge_cleanup_started_at is not None
+        assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
 
 
 def test_missing_object_allows_redelivery(sqlite_session: Session, storage: MagicMock) -> None:
@@ -263,50 +345,60 @@ def test_missing_object_allows_redelivery(sqlite_session: Session, storage: Magi
     assert sqlite_session.get(UploadFile, file_id) is None
 
 
-def test_access_denied_retains_references_even_if_exists_returns_false(
-    sqlite_session: Session, storage: MagicMock
-) -> None:
+def test_access_denied_retains_claim_even_if_exists_returns_false(sqlite_session: Session, storage: MagicMock) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     storage.delete.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "DeleteObject")
     storage.exists.return_value = False
     with pytest.raises(ClientError):
         cleanup.cleanup_app_storage("tenant-1", "app-1")
     sqlite_session.expire_all()
-    assert sqlite_session.get(UploadFile, file_id) is not None
-    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
+    pending = sqlite_session.get(UploadFile, file_id)
+    assert pending is not None
+    assert pending.knowledge_cleanup_started_at is not None
+    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
     storage.exists.assert_not_called()
 
 
-def test_obs_delete_failure_preserves_retry_references(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_obs_delete_failure_preserves_retry_claim(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     backend = HuaweiObsStorage.__new__(HuaweiObsStorage)
     backend.bucket_name = "bucket"
-    backend.client = MagicMock()
-    backend.client.deleteObject.return_value = SimpleNamespace(status=403, errorCode="AccessDenied")
+    monkeypatch.setattr(backend, "client", _DenyingObsClient(), raising=False)
     monkeypatch.setattr(cleanup, "storage", backend)
     with pytest.raises(RuntimeError, match="403"):
         cleanup.cleanup_app_storage("tenant-1", "app-1")
     sqlite_session.expire_all()
-    assert sqlite_session.get(UploadFile, file_id) is not None
-    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
+    pending = sqlite_session.get(UploadFile, file_id)
+    assert pending is not None
+    assert pending.knowledge_cleanup_started_at is not None
+    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
 
 
-def test_clickzetta_failed_existence_check_preserves_retry_references(
+def test_clickzetta_failed_existence_check_preserves_retry_claim(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     backend = ClickZettaVolumeStorage.__new__(ClickZettaVolumeStorage)
-    monkeypatch.setattr(backend, "_config", SimpleNamespace(volume_type="user", dify_prefix="dify"), raising=False)
-    monkeypatch.setattr(backend, "_execute_sql", MagicMock(side_effect=RuntimeError("backend unavailable")))
+    monkeypatch.setattr(
+        backend,
+        "_config",
+        ClickZettaVolumeConfig.model_construct(volume_type="user", dify_prefix="dify", permission_check=False),
+        raising=False,
+    )
+
+    def fail_execute(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("backend unavailable")
+
+    monkeypatch.setattr(backend, "_execute_sql", fail_execute)
     monkeypatch.setattr(cleanup, "storage", backend)
     with pytest.raises(RuntimeError, match="backend unavailable"):
         cleanup.cleanup_app_storage("tenant-1", "app-1")
     sqlite_session.expire_all()
-    assert sqlite_session.get(UploadFile, file_id) is not None
-    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
+    pending = sqlite_session.get(UploadFile, file_id)
+    assert pending is not None
+    assert pending.knowledge_cleanup_started_at is not None
+    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
 
 
 def test_shared_offload_file_is_retained(sqlite_session: Session, storage: MagicMock) -> None:
@@ -328,6 +420,47 @@ def test_shared_offload_file_is_retained(sqlite_session: Session, storage: Magic
     assert sqlite_session.get(UploadFile, file_id) is not None
     assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
     assert sqlite_session.get(WorkflowNodeExecutionOffload, shared.id) is not None
+
+
+def test_knowledge_reference_prevents_app_offload_storage_deletion(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class RecordingStorage:
+        def __init__(self) -> None:
+            self.deleted: list[str] = []
+
+        def delete(self, key: str) -> None:
+            self.deleted.append(key)
+
+        def scan(self, _prefix: str) -> list[str]:
+            return []
+
+    file_id, offload_id = _offload(sqlite_session, "app-1", "shared-with-knowledge.json")
+    sqlite_session.add_all(
+        [
+            _dataset("dataset-1", "tenant-1"),
+            _document("document-1", workspace_id="tenant-1"),
+            KnowledgeUploadFileReference(
+                tenant_id="tenant-1",
+                upload_file_id=file_id,
+                dataset_id="dataset-1",
+                document_id="document-1",
+                kind="document_source",
+                resource_id="document-1",
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    recording_storage = RecordingStorage()
+    monkeypatch.setattr(cleanup, "storage", recording_storage)
+
+    cleanup.cleanup_app_storage("tenant-1", "app-1")
+
+    sqlite_session.expire_all()
+    assert recording_storage.deleted == []
+    assert sqlite_session.get(UploadFile, file_id) is not None
+    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
 
 
 def test_trace_cleanup_stays_within_app_prefix(sqlite_session: Session, storage: MagicMock) -> None:
@@ -444,6 +577,7 @@ def test_shared_message_files_are_retained(sqlite_session: Session, storage: Mag
     assert upload is not None
     upload.created_by_role = CreatorUserRole.END_USER
     upload.created_by = user.id
+    sqlite_session.add(make_app(app_id="app-2", tenant_id="tenant-1"))
     conversation = Conversation(
         app_id="app-2", mode=AppMode.CHAT, name="other app", inputs={}, from_source=ConversationFromSource.API
     )
@@ -482,6 +616,59 @@ def test_shared_message_files_are_retained(sqlite_session: Session, storage: Mag
     assert sqlite_session.get(UploadFile, file_id) is not None
 
 
+def test_retained_site_icon_does_not_block_later_app_file_cleanup(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class RecordingStorage:
+        def __init__(self) -> None:
+            self.deleted: list[str] = []
+
+        def delete(self, key: str) -> None:
+            self.deleted.append(key)
+
+        def scan(self, _prefix: str) -> list[str]:
+            return []
+
+    user = _end_user(sqlite_session)
+    retained = make_upload_file(
+        file_id="a-shared-site-icon",
+        tenant_id="tenant-1",
+        key="upload_files/shared-site.png",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=user.id,
+    )
+    orphan = make_upload_file(
+        file_id="b-orphan",
+        tenant_id="tenant-1",
+        key="upload_files/orphan.png",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=user.id,
+    )
+    other_app = make_app(app_id="app-2", tenant_id="tenant-1")
+    site = Site(
+        app_id=other_app.id,
+        title="Shared site icon owner",
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        icon_type=IconType.IMAGE,
+        icon=retained.id,
+    )
+    sqlite_session.add_all([retained, orphan, other_app, site])
+    sqlite_session.commit()
+    retained_id, orphan_id, orphan_key = retained.id, orphan.id, orphan.key
+    recording_storage = RecordingStorage()
+    monkeypatch.setattr(cleanup, "storage", recording_storage)
+    monkeypatch.setattr(cleanup, "_BATCH_SIZE", 1)
+
+    cleanup.cleanup_app_storage("tenant-1", "app-1")
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, retained_id) is not None
+    assert sqlite_session.get(UploadFile, orphan_id) is None
+    assert recording_storage.deleted == [orphan_key]
+
+
 def test_partial_batch_failure_can_retry_already_deleted_objects(sqlite_session: Session, storage: MagicMock) -> None:
     first = _offload(sqlite_session, "app-1", "first.json")
     second = _offload(sqlite_session, "app-1", "second.json")
@@ -491,8 +678,10 @@ def test_partial_batch_failure_can_retry_already_deleted_objects(sqlite_session:
         cleanup.cleanup_app_storage("tenant-1", "app-1")
     sqlite_session.expire_all()
     for file_id, offload_id in (first, second):
-        assert sqlite_session.get(UploadFile, file_id) is not None
-        assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
+        pending = sqlite_session.get(UploadFile, file_id)
+        assert pending is not None
+        assert pending.knowledge_cleanup_started_at is not None
+        assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
     storage.delete.side_effect = [FileNotFoundError(), None]
     storage.exists.return_value = False
     cleanup.cleanup_app_storage("tenant-1", "app-1")

@@ -8,14 +8,17 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import redis_client
+from extensions.storage.storage_type import StorageType
 from graphon.file import FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import (
     ConversationFromSource,
+    CreatorUserRole,
     DataSourceType,
     FeedbackFromSource,
     FeedbackRating,
@@ -33,6 +36,7 @@ from models.model import (
     MessageChain,
     MessageFeedback,
     MessageFile,
+    UploadFile,
 )
 from models.web import SavedMessage
 from services.billing_service import BillingService
@@ -65,6 +69,7 @@ class TestMessagesCleanServiceIntegration:
         db_session_with_containers.query(MessageFeedback).delete()
         db_session_with_containers.query(Message).delete()
         db_session_with_containers.query(Conversation).delete()
+        db_session_with_containers.query(UploadFile).delete()
         db_session_with_containers.query(App).delete()
         db_session_with_containers.query(TenantAccountJoin).delete()
         db_session_with_containers.query(Tenant).delete()
@@ -260,14 +265,33 @@ class TestMessagesCleanServiceIntegration:
         db_session_with_containers.flush()
 
         # MessageFile
+        tenant_id = db_session_with_containers.scalar(select(App.tenant_id).where(App.id == message.app_id))
+        assert tenant_id is not None
+        created_by = str(uuid.uuid4())
+        upload_file = UploadFile(
+            tenant_id=tenant_id,
+            storage_type=StorageType.LOCAL,
+            key=f"messages/{uuid.uuid4()}.jpg",
+            name="test.jpg",
+            size=128,
+            extension="jpg",
+            mime_type="image/jpeg",
+            created_by_role=CreatorUserRole.END_USER,
+            created_by=created_by,
+            created_at=datetime.datetime.now(datetime.UTC),
+            used=True,
+        )
+        db_session_with_containers.add(upload_file)
+        db_session_with_containers.flush()
         file = MessageFile(
             message_id=message.id,
             type=FileType.IMAGE,
             transfer_method="local_file",
             url="http://example.com/test.jpg",
             belongs_to=MessageFileBelongsTo.USER,
-            created_by_role="end_user",
-            created_by=str(uuid.uuid4()),
+            created_by_role=CreatorUserRole.END_USER,
+            created_by=created_by,
+            upload_file_id=upload_file.id,
         )
         db_session_with_containers.add(file)
 

@@ -49,6 +49,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
 from fields.workflow_run_fields import node_execution_response_source
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
+from machinery.context import RequestContext
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
 from models.enums import CreatorUserRole
@@ -71,6 +72,26 @@ class SQLiteDatabase:
 
     engine: Engine
     session: scoped_session[Session]
+
+
+@dataclass
+class _PublishingWorkflows:
+    created_at: datetime
+    calls: list[tuple[RequestContext, str]]
+
+    def publish_workflow(self, context: RequestContext, *, pipeline_id: str) -> datetime:
+        self.calls.append((context, pipeline_id))
+        return self.created_at
+
+
+@dataclass(frozen=True)
+class _KnowledgeServices:
+    pipeline_workflows: _PublishingWorkflows
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
 
 
 @pytest.fixture(autouse=True)
@@ -532,35 +553,25 @@ class TestPublishedPipelineApis:
 
         assert result is None
 
-    def test_publish_success(self, app: Flask) -> None:
+    def test_publish_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = PublishedRagPipelineApi()
         method = unwrap(api.post)
-
-        tenant_id = str(uuid4())
-        pipeline = Pipeline(
-            tenant_id=tenant_id,
-            name="test-pipeline",
-            description="test",
-            created_by=str(uuid4()),
+        context = RequestContext("request-1", None, "account-1", "tenant-1")
+        created_at = naive_utc_now()
+        workflows = _PublishingWorkflows(created_at=created_at, calls=[])
+        pipeline_id = uuid4()
+        monkeypatch.setattr(
+            workflow_controller,
+            "application_services",
+            lambda: _ApplicationServices(_KnowledgeServices(workflows)),
         )
-        user = make_account(id="u1")
 
-        workflow = make_workflow(id=str(uuid4()), created_at=naive_utc_now())
-
-        service = MagicMock()
-        service.publish_workflow.return_value = workflow
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
-                return_value=service,
-            ),
-        ):
-            result = method(api, user, pipeline)
+        with app.test_request_context("/"):
+            result = method(api, context, pipeline_id)
 
         assert result["result"] == "success"
-        assert "created_at" in result
+        assert result["created_at"] == int(created_at.timestamp())
+        assert workflows.calls == [(context, str(pipeline_id))]
 
 
 class TestMiscApis:

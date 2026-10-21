@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-from configs import dify_config
 from controllers.common.fields import SimpleDataResponse
 from controllers.common.rbac import DatasetByPipeline, RBACCheck
 from controllers.common.schema import (
@@ -17,32 +16,35 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.app.wraps import with_session
-from controllers.console.datasets.wraps import get_rag_pipeline
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     enterprise_license_required,
     knowledge_pipeline_publish_enabled,
     model_validate,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from libs.login import login_required
-from models.account import Account
-from models.dataset import Pipeline
-from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from machinery.context import RequestContext
+from models.account import Account, TenantAccountRole
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
-from services.errors.base import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from services.knowledge.dataset_service import DatasetService
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.rag_pipeline.application import PipelineDatasetNotFoundError, PipelineNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+_DATASET_EDIT_ROLES = frozenset(
+    {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
+)
 
 
 class PipelineTemplateListQuery(BaseModel):
@@ -217,38 +219,29 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @console_ns.expect(console_ns.models[CustomizedPipelineTemplatePayload.__name__])
     @console_ns.response(204, "Pipeline template published")
     @console_ns.response(404, "Pipeline, workflow, or dataset not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
+    @console_account_admission(
+        require_valid_enterprise_license=True,
+        allowed_roles=_DATASET_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_PIPELINE_RELEASE, DatasetByPipeline()),),
+    )
     @knowledge_pipeline_publish_enabled
-    @with_current_user
-    @get_rag_pipeline
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_RELEASE, DatasetByPipeline()))
     @model_validate(CustomizedPipelineTemplatePayload)
     def post(
         self,
         req_data: CustomizedPipelineTemplatePayload,
-        current_user: Account,
-        pipeline: Pipeline,
+        request_context: RequestContext,
+        pipeline_id: str,
     ) -> tuple[str, int]:
-        session = db.session()
-        dataset = get_pipeline_dataset(pipeline, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found")
-
-        if not dify_config.RBAC_ENABLED:
-            if not current_user.is_dataset_editor:
-                raise Forbidden()
-            try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except NoPermissionError as exc:
-                raise Forbidden(str(exc)) from exc
-
         try:
-            RagPipelineService.publish_customized_pipeline_template(
-                pipeline, dataset, req_data.model_dump(), current_user, session=session
+            application_services().knowledge.pipeline_workflows.publish_customized_template(
+                request_context,
+                pipeline_id=pipeline_id,
+                values=req_data.model_dump(),
             )
+        except (DatasetNotFoundError, PipelineDatasetNotFoundError, PipelineNotFoundError) as exc:
+            raise NotFound(str(exc)) from exc
+        except DatasetAccessDeniedError as exc:
+            raise Forbidden(str(exc)) from exc
         except RagPipelineResourceNotFoundError as exc:
             raise NotFound(str(exc)) from exc
         return "", 204

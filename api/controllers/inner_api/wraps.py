@@ -99,11 +99,7 @@ def plugin_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def plugin_inner_api_admission[T, **P, R](
     view: Callable[Concatenate[T, RequestContext, P], R],
 ) -> Callable[Concatenate[T, P], R]:
-    """Authenticate the trusted plugin bridge and capture stable request metadata.
-
-    Plugin authentication admits a service, so the account and workspace fields
-    are empty. Caller app and tenant claims are validated by the application use case.
-    """
+    """Authenticate the plugin bridge and inject stable request metadata."""
 
     @wraps(view)
     def admitted(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:

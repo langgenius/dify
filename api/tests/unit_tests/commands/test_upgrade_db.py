@@ -29,7 +29,7 @@ def test_upgrade_db_skips_when_lock_not_acquired(monkeypatch, capsys):
 
     lock = MagicMock()
     lock.acquire.return_value = False
-    system_commands.redis_client.lock.return_value = lock
+    monkeypatch.setattr(system_commands.redis_client.lock, "return_value", lock)
 
     exit_code = _invoke_upgrade_db()
     captured = capsys.readouterr()
@@ -48,7 +48,7 @@ def test_upgrade_db_failure_not_masked_by_lock_release(monkeypatch, capsys):
     lock = MagicMock()
     lock.acquire.return_value = True
     lock.release.side_effect = LockNotOwnedError("simulated")
-    system_commands.redis_client.lock.return_value = lock
+    monkeypatch.setattr(system_commands.redis_client.lock, "return_value", lock)
 
     def _upgrade():
         raise RuntimeError("boom")
@@ -72,7 +72,7 @@ def test_upgrade_db_success_ignores_lock_not_owned_on_release(monkeypatch, capsy
     lock = MagicMock()
     lock.acquire.return_value = True
     lock.release.side_effect = LockNotOwnedError("simulated")
-    system_commands.redis_client.lock.return_value = lock
+    monkeypatch.setattr(system_commands.redis_client.lock, "return_value", lock)
 
     _install_fake_flask_migrate(monkeypatch, lambda: None)
 
@@ -97,7 +97,7 @@ def test_upgrade_db_renews_lock_during_migration(monkeypatch, capsys):
 
     lock = MagicMock()
     lock.acquire.return_value = True
-    system_commands.redis_client.lock.return_value = lock
+    monkeypatch.setattr(system_commands.redis_client.lock, "return_value", lock)
 
     renewed = threading.Event()
 
@@ -125,7 +125,7 @@ def test_upgrade_db_ignores_reacquire_errors(monkeypatch, capsys):
 
     lock = MagicMock()
     lock.acquire.return_value = True
-    system_commands.redis_client.lock.return_value = lock
+    monkeypatch.setattr(system_commands.redis_client.lock, "return_value", lock)
 
     attempted = threading.Event()
 

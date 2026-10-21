@@ -1,46 +1,27 @@
 from typing import cast
 
-from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from events.app_event import app_published_workflow_was_updated
-from extensions.ext_database import db
 from graphon.nodes import BuiltinNodeTypes
-from models.dataset import AppDatasetJoin
 from models.workflow import Workflow
+from repositories.knowledge.dataset_read_repository import sync_app_dataset_joins
 
 
 @app_published_workflow_was_updated.connect
-def handle(sender, **kwargs):
+def handle(sender, *, session: Session, **kwargs):
     app = sender
     published_workflow = kwargs.get("published_workflow")
     published_workflow = cast(Workflow, published_workflow)
 
     dataset_ids = get_dataset_ids_from_workflow(published_workflow)
-    app_dataset_joins = db.session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
-
-    removed_dataset_ids: set[str] = set()
-    if not app_dataset_joins:
-        added_dataset_ids = dataset_ids
-    else:
-        old_dataset_ids: set[str] = set()
-        old_dataset_ids.update(app_dataset_join.dataset_id for app_dataset_join in app_dataset_joins)
-
-        added_dataset_ids = dataset_ids - old_dataset_ids
-        removed_dataset_ids = old_dataset_ids - dataset_ids
-
-    if removed_dataset_ids:
-        for dataset_id in removed_dataset_ids:
-            db.session.execute(
-                delete(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id)
-            )
-
-    if added_dataset_ids:
-        for dataset_id in added_dataset_ids:
-            app_dataset_join = AppDatasetJoin(app_id=app.id, dataset_id=dataset_id)
-            db.session.add(app_dataset_join)
-
-    db.session.commit()
+    sync_app_dataset_joins(
+        session,
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        dataset_ids=dataset_ids,
+    )
 
 
 def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set[str]:

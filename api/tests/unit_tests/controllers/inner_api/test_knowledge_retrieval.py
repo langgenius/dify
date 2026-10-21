@@ -3,7 +3,8 @@
 import json
 from collections.abc import Generator
 from contextlib import contextmanager
-from unittest.mock import create_autospec, patch
+from dataclasses import dataclass
+from unittest.mock import Mock, patch
 
 import httpx
 import pytest
@@ -14,10 +15,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from controllers.inner_api import bp as inner_api_bp
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import Source, SourceMetadata
-from extensions.application_services.knowledge import KnowledgeServices
-from extensions.ext_application_services import ApplicationServices
 from models.dataset import ExternalKnowledgeApis, ExternalKnowledgeBindings
-from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalKnowledgeApiSetting
+from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveResult, InnerKnowledgeRetrieveUsage
 from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveAppNotFoundError,
     InnerKnowledgeRetrieveConfigError,
@@ -25,24 +25,37 @@ from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveExternalError,
     InnerKnowledgeRetrieveRateLimitError,
 )
-from services.knowledge.entities.external import ExternalKnowledgeApiSetting
-from services.knowledge.entities.inner_retrieval import InnerKnowledgeRetrieveResult, InnerKnowledgeRetrieveUsage
-from services.knowledge.external.adapters import ExternalKnowledgeGateway
-from services.knowledge.retrieval.adapters import WorkflowKnowledgeRetrievalGateway
+from services.knowledge.external import service as external_service
+from services.knowledge.retrieval.adapters import (
+    SQLAlchemyInnerKnowledgeRetrievalScope,
+    WorkflowKnowledgeRetrievalGateway,
+)
 from services.knowledge.retrieval.application import InnerKnowledgeRetrievalService
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_app, make_dataset, make_document
+
+
+@dataclass(frozen=True)
+class _KnowledgeServices:
+    inner_retrieval: InnerKnowledgeRetrievalService
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
 
 
 @pytest.fixture
 def inner_api_app(sqlite_session_factory: sessionmaker[Session]) -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
-    services = create_autospec(ApplicationServices, instance=True)
-    services.knowledge = create_autospec(KnowledgeServices, instance=True)
-    services.knowledge.inner_retrieval = InnerKnowledgeRetrievalService(
-        scope=SQLAlchemyDatasetRepository(session_factory=sqlite_session_factory),
-        retrieval=WorkflowKnowledgeRetrievalGateway(session_factory=sqlite_session_factory),
+    services = _ApplicationServices(
+        knowledge=_KnowledgeServices(
+            inner_retrieval=InnerKnowledgeRetrievalService(
+                scope=SQLAlchemyInnerKnowledgeRetrievalScope(session_factory=sqlite_session_factory),
+                retrieval=WorkflowKnowledgeRetrievalGateway(session_factory=sqlite_session_factory),
+            )
+        )
     )
     app.extensions["application_services"] = services
     app.register_blueprint(inner_api_bp)
@@ -130,17 +143,24 @@ def test_inner_entry_releases_validation_connections_before_external_http(
     connections_during_http: list[int] = []
     app_reads: list[str] = []
 
-    def checkout(_connection, record, _proxy) -> None:
+    def checkout(_connection: object, record: object, _proxy: object) -> None:
         active.add(record)
 
-    def checkin(_connection, record) -> None:
+    def checkin(_connection: object, record: object) -> None:
         active.discard(record)
 
-    def executed(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def executed(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: object,
+    ) -> None:
         if "FROM apps" in statement:
             app_reads.append(statement)
 
-    def send(request: ExternalKnowledgeApiSetting, _files: object) -> httpx.Response:
+    def send(request: ExternalKnowledgeApiSetting) -> httpx.Response:
         connections_during_http.append(len(active))
         assert request.params is not None
         assert request.params["knowledge_id"] == "knowledge-1"
@@ -155,7 +175,7 @@ def test_inner_entry_releases_validation_connections_before_external_http(
             )
         )
 
-    monkeypatch.setattr(ExternalKnowledgeGateway, "process_external_api", send)
+    monkeypatch.setattr(external_service, "_send_external_knowledge_request", send)
     monkeypatch.setattr(DatasetRetrieval, "_check_knowledge_rate_limit", lambda *_args: None)
     monkeypatch.setattr(DatasetRetrieval, "_on_query", lambda *_args: None)
     monkeypatch.setattr(DatasetRetrieval, "_on_retrieval_end", lambda *_args, **_kwargs: None)
@@ -196,14 +216,14 @@ def test_inner_entry_releases_validation_connections_before_external_http(
 
 
 class TestInnerKnowledgeRetrieveApi:
-    def test_post_returns_404_when_plugin_bridge_is_disabled(self, inner_api_app: Flask):
+    def test_post_returns_404_when_plugin_bridge_is_disabled(self, inner_api_app: Flask) -> None:
         with config_overrides_context(PLUGIN_DAEMON_KEY="", INNER_API_KEY_FOR_PLUGIN="inner-key"):
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve", json=_payload(), headers=_headers()
             )
         assert response.status_code == 404
 
-    def test_post_returns_404_when_api_key_missing(self, inner_api_app: Flask):
+    def test_post_returns_404_when_api_key_missing(self, inner_api_app: Flask) -> None:
         with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
@@ -213,7 +233,7 @@ class TestInnerKnowledgeRetrieveApi:
 
         assert response.status_code == 404
 
-    def test_post_returns_404_when_api_key_invalid(self, inner_api_app: Flask):
+    def test_post_returns_404_when_api_key_invalid(self, inner_api_app: Flask) -> None:
         with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
@@ -223,7 +243,7 @@ class TestInnerKnowledgeRetrieveApi:
 
         assert response.status_code == 404
 
-    def test_post_returns_400_for_invalid_body(self, inner_api_app: Flask):
+    def test_post_returns_400_for_invalid_body(self, inner_api_app: Flask) -> None:
         with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
@@ -235,7 +255,7 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.get_json()["code"] == "invalid_request"
 
     @patch("services.knowledge.retrieval.application.InnerKnowledgeRetrievalService.retrieve")
-    def test_post_returns_404_for_service_not_found_error(self, mock_retrieve, inner_api_app: Flask):
+    def test_post_returns_404_for_service_not_found_error(self, mock_retrieve: Mock, inner_api_app: Flask) -> None:
         mock_retrieve.side_effect = InnerKnowledgeRetrieveAppNotFoundError("app missing")
 
         with _plugin_inner_auth():
@@ -249,7 +269,7 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.get_json()["code"] == "app_not_found"
 
     @patch("services.knowledge.retrieval.application.InnerKnowledgeRetrievalService.retrieve")
-    def test_post_returns_403_for_service_forbidden_error(self, mock_retrieve, inner_api_app: Flask):
+    def test_post_returns_403_for_service_forbidden_error(self, mock_retrieve: Mock, inner_api_app: Flask) -> None:
         mock_retrieve.side_effect = InnerKnowledgeRetrieveDatasetTenantMismatchError("wrong tenant")
 
         with _plugin_inner_auth():
@@ -263,7 +283,7 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.get_json()["code"] == "dataset_tenant_mismatch"
 
     @patch("services.knowledge.retrieval.application.InnerKnowledgeRetrievalService.retrieve")
-    def test_post_returns_422_for_retrieval_config_value_error(self, mock_retrieve, inner_api_app: Flask):
+    def test_post_returns_422_for_retrieval_config_value_error(self, mock_retrieve: Mock, inner_api_app: Flask) -> None:
         mock_retrieve.side_effect = InnerKnowledgeRetrieveConfigError("invalid reranking config")
 
         with _plugin_inner_auth():
@@ -277,7 +297,7 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.get_json()["code"] == "retrieval_config_invalid"
 
     @patch("services.knowledge.retrieval.application.InnerKnowledgeRetrievalService.retrieve")
-    def test_post_returns_429_for_rate_limit_error(self, mock_retrieve, inner_api_app: Flask):
+    def test_post_returns_429_for_rate_limit_error(self, mock_retrieve: Mock, inner_api_app: Flask) -> None:
         mock_retrieve.side_effect = InnerKnowledgeRetrieveRateLimitError("knowledge rate limited")
 
         with _plugin_inner_auth():
@@ -290,7 +310,7 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.status_code == 429
         assert response.get_json()["code"] == "knowledge_rate_limited"
 
-    def test_post_returns_400_for_manual_metadata_without_conditions(self, inner_api_app: Flask):
+    def test_post_returns_400_for_manual_metadata_without_conditions(self, inner_api_app: Flask) -> None:
         payload = _payload()
         payload["metadata_filtering"] = {"mode": "manual"}
 
@@ -304,7 +324,7 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.status_code == 400
         assert response.get_json()["code"] == "invalid_request"
 
-    def test_post_returns_400_for_automatic_metadata_without_model_config(self, inner_api_app: Flask):
+    def test_post_returns_400_for_automatic_metadata_without_model_config(self, inner_api_app: Flask) -> None:
         payload = _payload()
         payload["metadata_filtering"] = {"mode": "automatic"}
 
@@ -319,7 +339,7 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.get_json()["code"] == "invalid_request"
 
     @patch("services.knowledge.retrieval.application.InnerKnowledgeRetrievalService.retrieve")
-    def test_post_returns_502_for_external_knowledge_failure(self, mock_retrieve, inner_api_app: Flask):
+    def test_post_returns_502_for_external_knowledge_failure(self, mock_retrieve: Mock, inner_api_app: Flask) -> None:
         mock_retrieve.side_effect = InnerKnowledgeRetrieveExternalError("upstream failed")
 
         with _plugin_inner_auth():
@@ -335,8 +355,12 @@ class TestInnerKnowledgeRetrieveApi:
     @patch("services.knowledge.retrieval.application.InnerKnowledgeRetrievalService.retrieve")
     @pytest.mark.parametrize("trace_id", [None, "trace-context"])
     def test_post_returns_service_response(
-        self, mock_retrieve, inner_api_app: Flask, monkeypatch: pytest.MonkeyPatch, trace_id: str | None
-    ):
+        self,
+        mock_retrieve: Mock,
+        inner_api_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        trace_id: str | None,
+    ) -> None:
         monkeypatch.setattr("controllers.inner_api.wraps.get_request_id", lambda: "request-1")
         monkeypatch.setattr("controllers.inner_api.wraps.get_trace_id", lambda: trace_id)
         mock_retrieve.return_value = InnerKnowledgeRetrieveResult(

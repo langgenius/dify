@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from inspect import unwrap
-from unittest.mock import ANY, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -21,13 +22,14 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
     PipelineTemplateListQuery,
     PublishCustomizedPipelineTemplateApi,
 )
-from models.account import Account, TenantAccountRole
-from models.dataset import Pipeline, PipelineCustomizedTemplate
+from machinery.context import RequestContext
+from models.account import Account
+from models.dataset import PipelineCustomizedTemplate
 from models.engine import db
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
-from services.errors.base import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from tests.unit_tests.config_override import config_overrides_context
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.rag_pipeline.application import PipelineDatasetNotFoundError, PipelineNotFoundError
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 from tests.unit_tests.model_factories import make_account
 
@@ -67,10 +69,31 @@ def _account() -> Account:
     return make_account(name="Test User", email="test@example.com")
 
 
-def _pipeline() -> Pipeline:
-    pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline")
-    pipeline.id = "pipeline-1"
-    return pipeline
+@dataclass
+class _PublishingWorkflows:
+    calls: list[tuple[RequestContext, str, dict[str, object]]] = field(default_factory=list)
+    error: Exception | None = None
+
+    def publish_customized_template(
+        self,
+        context: RequestContext,
+        *,
+        pipeline_id: str,
+        values: dict[str, object],
+    ) -> None:
+        self.calls.append((context, pipeline_id, values))
+        if self.error is not None:
+            raise self.error
+
+
+@dataclass(frozen=True)
+class _KnowledgeServices:
+    pipeline_workflows: _PublishingWorkflows
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
 
 
 @pytest.fixture
@@ -91,7 +114,9 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+        def get_pipeline_templates(
+            *, type: str, language: str, current_tenant_id: str, session: Session
+        ) -> dict[str, object]:
             del session
             service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": [_template_item()]}
@@ -121,7 +146,9 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+        def get_pipeline_templates(
+            *, type: str, language: str, current_tenant_id: str, session: Session
+        ) -> dict[str, object]:
             del session
             service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": []}
@@ -147,7 +174,7 @@ class TestPipelineTemplateDetailApi:
         service_calls: list[tuple[str, str, str]] = []
 
         def get_pipeline_template_detail(
-            template_id: str, current_tenant_id: str, type: str, *, session
+            template_id: str, current_tenant_id: str, type: str, *, session: Session
         ) -> dict[str, object]:
             del session
             service_calls.append((template_id, current_tenant_id, type))
@@ -174,7 +201,9 @@ class TestPipelineTemplateDetailApi:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
-        def get_pipeline_template_detail(template_id: str, current_tenant_id: str, type: str, *, session) -> None:
+        def get_pipeline_template_detail(
+            template_id: str, current_tenant_id: str, type: str, *, session: Session
+        ) -> None:
             del template_id, current_tenant_id, type, session
 
         with (
@@ -205,7 +234,7 @@ class TestCustomizedPipelineTemplateApi:
             current_user: Account,
             current_tenant_id: str,
             *,
-            session,
+            session: Session,
         ) -> None:
             del session
             service_calls.append((template_id, template_info, current_user, current_tenant_id))
@@ -251,7 +280,7 @@ class TestCustomizedPipelineTemplateApi:
             current_user: Account,
             current_tenant_id: str,
             *,
-            session,
+            session: Session,
         ) -> None:
             del session
             service_calls.append((template_id, template_info, current_user, current_tenant_id))
@@ -284,7 +313,7 @@ class TestCustomizedPipelineTemplateApi:
         tenant_id = "tenant-1"
         deleted_templates: list[tuple[str, str]] = []
 
-        def delete_template(template_id: str, current_tenant_id: str, *, session) -> None:
+        def delete_template(template_id: str, current_tenant_id: str, *, session: Session) -> None:
             del session
             deleted_templates.append((template_id, current_tenant_id))
 
@@ -365,26 +394,6 @@ class TestPublishCustomizedPipelineTemplateApi:
         [check] = rbac_checks(PublishCustomizedPipelineTemplateApi.post)
         assert check.scene == module.RBACPermission.DATASET_PIPELINE_RELEASE
 
-    def test_post_validates_payload_and_returns_empty_204(self) -> None:
-        api = PublishCustomizedPipelineTemplateApi()
-        method = unwrap(api.post)
-        payload = _payload()
-        account = _account()
-        pipeline = _pipeline()
-        dataset = object()
-
-        with (
-            config_overrides_context(RBAC_ENABLED=True),
-            patch.object(module, "get_pipeline_dataset", return_value=dataset),
-            patch.object(module.DatasetService, "check_dataset_permission") as legacy_acl,
-            patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
-        ):
-            response, status = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
-
-        assert (response, status) == ("", 204)
-        publish.assert_called_once_with(pipeline, dataset, payload, account, session=ANY)
-        legacy_acl.assert_not_called()
-
     @pytest.mark.parametrize(
         ("payload", "expected_icon_info"),
         [
@@ -395,119 +404,77 @@ class TestPublishCustomizedPipelineTemplateApi:
             ({"name": "Published template", "description": "Description", "icon_info": {}}, {}),
         ],
     )
-    def test_post_preserves_valid_icon_info(
+    def test_post_calls_application_service_with_valid_icon_info(
         self,
         payload: dict[str, object],
         expected_icon_info: dict[str, object | None],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
-        account = _account()
-        pipeline = _pipeline()
-        dataset = object()
+        context = RequestContext("request-1", None, "account-1", "tenant-1")
+        workflows = _PublishingWorkflows()
+        monkeypatch.setattr(
+            module,
+            "application_services",
+            lambda: _ApplicationServices(_KnowledgeServices(workflows)),
+        )
 
-        with (
-            config_overrides_context(RBAC_ENABLED=True),
-            patch.object(module, "get_pipeline_dataset", return_value=dataset),
-            patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
-        ):
-            response, status = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
+        response, status = method(
+            api,
+            CustomizedPipelineTemplatePayload.model_validate(payload),
+            context,
+            "pipeline-1",
+        )
 
         assert (response, status) == ("", 204)
-        publish.assert_called_once_with(pipeline, dataset, ANY, account, session=ANY)
-        assert publish.call_args.args[2]["icon_info"] == expected_icon_info
+        assert workflows.calls == [(context, "pipeline-1", {**payload, "icon_info": expected_icon_info})]
 
-    def test_post_translates_missing_owned_resource_to_not_found(self) -> None:
+    @pytest.mark.parametrize(
+        "error",
+        [
+            DatasetNotFoundError(),
+            PipelineDatasetNotFoundError(),
+            PipelineNotFoundError(),
+            RagPipelineResourceNotFoundError("missing"),
+        ],
+    )
+    def test_post_maps_missing_resource_to_not_found(
+        self,
+        error: Exception,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
-        payload = _payload()
+        workflows = _PublishingWorkflows(error=error)
+        monkeypatch.setattr(
+            module,
+            "application_services",
+            lambda: _ApplicationServices(_KnowledgeServices(workflows)),
+        )
 
-        with (
-            config_overrides_context(RBAC_ENABLED=True),
-            patch.object(module, "get_pipeline_dataset", return_value=object()),
-            patch.object(
-                module.RagPipelineService,
-                "publish_customized_pipeline_template",
-                side_effect=RagPipelineResourceNotFoundError("Workflow not found"),
-            ),
-            pytest.raises(NotFound, match="Workflow not found"),
-        ):
-            method(api, CustomizedPipelineTemplatePayload.model_validate(payload), _account(), _pipeline())
+        with pytest.raises(NotFound, match=str(error)):
+            method(
+                api,
+                CustomizedPipelineTemplatePayload.model_validate(_payload()),
+                RequestContext("request-1", None, "account-1", "tenant-1"),
+                "pipeline-1",
+            )
 
-    def test_post_allows_legacy_dataset_operator_after_dataset_acl(self) -> None:
+    def test_post_maps_dataset_access_denied_to_forbidden(self, monkeypatch: pytest.MonkeyPatch) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
-        account = _account()
-        account.role = TenantAccountRole.DATASET_OPERATOR
-        pipeline = _pipeline()
-        dataset = object()
-        payload = _payload()
+        workflows = _PublishingWorkflows(error=DatasetAccessDeniedError("private dataset"))
+        monkeypatch.setattr(
+            module,
+            "application_services",
+            lambda: _ApplicationServices(_KnowledgeServices(workflows)),
+        )
 
-        with (
-            config_overrides_context(RBAC_ENABLED=False),
-            patch.object(module, "get_pipeline_dataset", return_value=dataset),
-            patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
-            patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
-        ):
-            response = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
-
-        assert response == ("", 204)
-        assert check_permission.call_args.args[:2] == (dataset, account)
-        publish.assert_called_once_with(pipeline, dataset, payload, account, session=ANY)
-
-    def test_post_rejects_legacy_non_editor_before_dataset_acl(self) -> None:
-        api = PublishCustomizedPipelineTemplateApi()
-        method = unwrap(api.post)
-        account = _account()
-        account.role = TenantAccountRole.NORMAL
-
-        with (
-            config_overrides_context(RBAC_ENABLED=False),
-            patch.object(module, "get_pipeline_dataset", return_value=object()),
-            patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
-            patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
-            pytest.raises(Forbidden),
-        ):
-            method(api, CustomizedPipelineTemplatePayload.model_validate(_payload()), account, _pipeline())
-
-        check_permission.assert_not_called()
-        publish.assert_not_called()
-
-    def test_post_rejects_legacy_dataset_acl_before_publish(self) -> None:
-        api = PublishCustomizedPipelineTemplateApi()
-        method = unwrap(api.post)
-        account = _account()
-        account.role = TenantAccountRole.EDITOR
-
-        with (
-            config_overrides_context(RBAC_ENABLED=False),
-            patch.object(module, "get_pipeline_dataset", return_value=object()),
-            patch.object(
-                module.DatasetService,
-                "check_dataset_permission",
-                side_effect=NoPermissionError("Dataset is private"),
-            ),
-            patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
-            pytest.raises(Forbidden, match="Dataset is private"),
-        ):
-            method(api, CustomizedPipelineTemplatePayload.model_validate(_payload()), account, _pipeline())
-
-        publish.assert_not_called()
-
-    def test_post_rejects_missing_legacy_dataset_before_publish(self) -> None:
-        api = PublishCustomizedPipelineTemplateApi()
-        method = unwrap(api.post)
-        account = _account()
-        account.role = TenantAccountRole.EDITOR
-
-        with (
-            config_overrides_context(RBAC_ENABLED=False),
-            patch.object(module, "get_pipeline_dataset", return_value=None),
-            patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
-            patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
-            pytest.raises(NotFound, match="Dataset not found"),
-        ):
-            method(api, CustomizedPipelineTemplatePayload.model_validate(_payload()), account, _pipeline())
-
-        check_permission.assert_not_called()
-        publish.assert_not_called()
+        with pytest.raises(Forbidden, match="private dataset"):
+            method(
+                api,
+                CustomizedPipelineTemplatePayload.model_validate(_payload()),
+                RequestContext("request-1", None, "account-1", "tenant-1"),
+                "pipeline-1",
+            )

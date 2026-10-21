@@ -45,8 +45,20 @@ from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
 from models.enums import ConversationFromSource, DraftVariableType
 from models.utils.file_input_compat import build_file_from_stored_mapping
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
+from models.workflow import (
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowDraftVariableFile,
+    WorkflowDraftVariableUploadFileReference,
+    is_system_variable_editable,
+)
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.knowledge.upload_file_repository import (
+    detach_workflow_draft_variable_files_and_claim_uploads,
+    detach_workflow_draft_variables_and_claim_uploads,
+    fence_workflow_draft_variable_upload_file_upsert,
+    synchronize_workflow_draft_variable_upload_file_upsert,
+)
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
 
@@ -374,8 +386,7 @@ class WorkflowDraftVariableService:
         conv_var = conv_var_by_name.get(variable.name)
 
         if conv_var is None:
-            self._session.delete(instance=variable)
-            self._session.flush()
+            self.delete_variable(variable)
             logger.warning(
                 "Conversation variable not found for draft variable, id=%s, name=%s", variable.id, variable.name
             )
@@ -395,8 +406,7 @@ class WorkflowDraftVariableService:
             return variable
         # No execution record for this variable, delete the variable instead.
         if variable.node_execution_id is None:
-            self._session.delete(instance=variable)
-            self._session.flush()
+            self.delete_variable(variable)
             logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
 
@@ -408,8 +418,7 @@ class WorkflowDraftVariableService:
                 variable.name,
                 variable.node_execution_id,
             )
-            self._session.delete(instance=variable)
-            self._session.flush()
+            self.delete_variable(variable)
             return None
 
         outputs_dict = node_exec.load_full_outputs(self._session, storage) or {}
@@ -437,8 +446,7 @@ class WorkflowDraftVariableService:
         # the value of the output may be `None`.
         if output_value is absent:
             # If variable not found in execution data, delete the variable
-            self._session.delete(instance=variable)
-            self._session.flush()
+            self.delete_variable(variable)
             return None
         value_seg = WorkflowDraftVariable.build_segment_with_type(variable.value_type, output_value)
         # Extract variable value using unified logic
@@ -457,67 +465,103 @@ class WorkflowDraftVariableService:
             return self._reset_node_var_or_sys_var(workflow, variable)
 
     def delete_variable(self, variable: WorkflowDraftVariable):
-        if not variable.is_truncated():
-            self._session.delete(variable)
-            return
-
-        variable_query = (
-            select(WorkflowDraftVariable)
-            .options(
-                orm.selectinload(WorkflowDraftVariable.variable_file).selectinload(
-                    WorkflowDraftVariableFile.upload_file
-                ),
-            )
-            .where(WorkflowDraftVariable.id == variable.id)
+        tenant_ids = set(
+            self._session.scalars(select(Workflow.tenant_id).where(Workflow.app_id == variable.app_id).distinct()).all()
         )
-        variable_reloaded = self._session.execute(variable_query).scalars().first()
-        if variable_reloaded is None:
-            logger.warning("Associated WorkflowDraftVariable not found, draft_var_id=%s", variable.id)
-            self._session.delete(variable)
-            return
-        variable_file = variable_reloaded.variable_file
-        if variable_file is None:
-            logger.warning(
-                "Associated WorkflowDraftVariableFile not found, draft_var_id=%s, file_id=%s",
-                variable_reloaded.id,
-                variable_reloaded.file_id,
+        tenant_ids.update(
+            self._session.scalars(
+                select(WorkflowDraftVariableUploadFileReference.tenant_id).where(
+                    WorkflowDraftVariableUploadFileReference.draft_variable_id == variable.id,
+                )
+            ).all()
+        )
+        if variable.file_id:
+            tenant_ids.update(
+                self._session.scalars(
+                    select(WorkflowDraftVariableFile.tenant_id).where(
+                        WorkflowDraftVariableFile.id == variable.file_id,
+                    )
+                ).all()
             )
+        if not tenant_ids:
             self._session.delete(variable)
+            self._session.flush()
             return
-
-        upload_file = variable_file.upload_file
-        if upload_file is None:
-            logger.warning(
-                "Associated UploadFile not found, draft_var_id=%s, file_id=%s, upload_file_id=%s",
-                variable_reloaded.id,
-                variable_reloaded.file_id,
-                variable_file.upload_file_id,
-            )
-            self._session.delete(variable)
-            self._session.delete(variable_file)
-            return
-
-        storage.delete(upload_file.key)
-        self._session.delete(upload_file)
-        self._session.delete(upload_file)
-        self._session.delete(variable)
+        if len(tenant_ids) != 1:
+            raise ValueError("workflow draft variable app has ambiguous tenant ownership")
+        detach_workflow_draft_variables_and_claim_uploads(
+            self._session,
+            tenant_id=next(iter(tenant_ids)),
+            draft_variable_ids=(variable.id,),
+        )
 
     def delete_user_workflow_variables(self, app_id: str, user_id: str):
-        self._session.execute(
-            delete(WorkflowDraftVariable)
-            .where(
-                WorkflowDraftVariable.app_id == app_id,
-                WorkflowDraftVariable.user_id == user_id,
-            )
-            .execution_options(synchronize_session=False)
+        self._delete_workflow_variables(
+            WorkflowDraftVariable.app_id == app_id,
+            WorkflowDraftVariable.user_id == user_id,
         )
 
     def delete_app_workflow_variables(self, app_id: str):
-        self._session.execute(
-            delete(WorkflowDraftVariable)
-            .where(WorkflowDraftVariable.app_id == app_id)
-            .execution_options(synchronize_session=False)
-        )
+        self._delete_workflow_variables(WorkflowDraftVariable.app_id == app_id)
+
+    def _delete_workflow_variables(self, *where_clauses: Any) -> None:
+        rows = self._session.execute(
+            select(WorkflowDraftVariable.id, WorkflowDraftVariable.app_id, WorkflowDraftVariable.file_id)
+            .where(*where_clauses)
+            .order_by(WorkflowDraftVariable.id)
+        ).all()
+        if not rows:
+            return
+        app_ids = tuple(sorted({row.app_id for row in rows}))
+        tenant_rows = self._session.execute(
+            select(Workflow.app_id, Workflow.tenant_id)
+            .where(Workflow.app_id.in_(app_ids))
+            .distinct()
+            .order_by(Workflow.app_id, Workflow.tenant_id)
+        ).all()
+        tenant_by_app: dict[str, str] = {}
+        for app_id, tenant_id in tenant_rows:
+            previous = tenant_by_app.setdefault(app_id, tenant_id)
+            if previous != tenant_id:
+                raise ValueError("workflow draft variable app has ambiguous tenant ownership")
+        tenant_by_file_id: dict[str, str] = {}
+        for file_id, tenant_id in self._session.execute(
+            select(WorkflowDraftVariableFile.id, WorkflowDraftVariableFile.tenant_id).where(
+                WorkflowDraftVariableFile.id.in_(tuple(row.file_id for row in rows if row.file_id)),
+            )
+        ).all():
+            tenant_by_file_id[file_id] = tenant_id
+        normalized_tenants: dict[str, set[str]] = {}
+        for variable_id, tenant_id in self._session.execute(
+            select(
+                WorkflowDraftVariableUploadFileReference.draft_variable_id,
+                WorkflowDraftVariableUploadFileReference.tenant_id,
+            ).where(
+                WorkflowDraftVariableUploadFileReference.draft_variable_id.in_(tuple(row.id for row in rows)),
+            )
+        ).all():
+            normalized_tenants.setdefault(variable_id, set()).add(tenant_id)
+        variable_ids_by_tenant: dict[str, list[str]] = {}
+        for row in rows:
+            tenant_ids = set(normalized_tenants.get(row.id, ()))
+            workflow_tenant_id = tenant_by_app.get(row.app_id)
+            if workflow_tenant_id is not None:
+                tenant_ids.add(workflow_tenant_id)
+            if row.file_id and (file_tenant_id := tenant_by_file_id.get(row.file_id)) is not None:
+                tenant_ids.add(file_tenant_id)
+            if not tenant_ids:
+                self._session.execute(delete(WorkflowDraftVariable).where(WorkflowDraftVariable.id == row.id))
+                continue
+            if len(tenant_ids) != 1:
+                raise ValueError("workflow draft variable has ambiguous tenant ownership")
+            tenant_id = next(iter(tenant_ids))
+            variable_ids_by_tenant.setdefault(tenant_id, []).append(row.id)
+        for tenant_id, variable_ids in variable_ids_by_tenant.items():
+            detach_workflow_draft_variables_and_claim_uploads(
+                self._session,
+                tenant_id=tenant_id,
+                draft_variable_ids=variable_ids,
+            )
 
     def delete_workflow_draft_variable_file(self, deletions: list[DraftVarFileDeletion]):
         variable_files_query = (
@@ -527,6 +571,7 @@ class WorkflowDraftVariableService:
         )
         variable_files = self._session.execute(variable_files_query).scalars().all()
         variable_files_by_id = {i.id: i for i in variable_files}
+        owner_ids_by_tenant: dict[str, list[str]] = {}
         for i in deletions:
             variable_file = variable_files_by_id.get(i.draft_var_file_id)
             if variable_file is None:
@@ -537,32 +582,29 @@ class WorkflowDraftVariableService:
                 )
                 continue
 
-            upload_file = variable_file.upload_file
-            if upload_file is None:
+            if variable_file.upload_file is None:
                 logger.warning(
                     "Associated UploadFile not found, draft_var_id=%s, file_id=%s, upload_file_id=%s",
                     i.draft_var_id,
                     i.draft_var_file_id,
                     variable_file.upload_file_id,
                 )
-                self._session.delete(variable_file)
-            else:
-                storage.delete(upload_file.key)
-                self._session.delete(upload_file)
-                self._session.delete(variable_file)
+            owner_ids_by_tenant.setdefault(variable_file.tenant_id, []).append(variable_file.id)
+        for tenant_id, owner_ids in owner_ids_by_tenant.items():
+            detach_workflow_draft_variable_files_and_claim_uploads(
+                self._session,
+                tenant_id=tenant_id,
+                draft_file_ids=owner_ids,
+            )
 
     def delete_node_variables(self, app_id: str, node_id: str, user_id: str):
         return self._delete_node_variables(app_id, node_id, user_id=user_id)
 
     def _delete_node_variables(self, app_id: str, node_id: str, user_id: str):
-        self._session.execute(
-            delete(WorkflowDraftVariable)
-            .where(
-                WorkflowDraftVariable.app_id == app_id,
-                WorkflowDraftVariable.node_id == node_id,
-                WorkflowDraftVariable.user_id == user_id,
-            )
-            .execution_options(synchronize_session=False)
+        self._delete_workflow_variables(
+            WorkflowDraftVariable.app_id == app_id,
+            WorkflowDraftVariable.node_id == node_id,
+            WorkflowDraftVariable.user_id == user_id,
         )
 
     def _get_conversation_id_from_draft_variable(self, app_id: str, user_id: str) -> str | None:
@@ -733,7 +775,17 @@ def _batch_upsert_draft_variable(
 
     if policy not in [_UpsertPolicy.OVERWRITE, _UpsertPolicy.IGNORE]:
         raise Exception("Invalid value for update policy.")
+    replacement_fence = fence_workflow_draft_variable_upload_file_upsert(
+        session,
+        draft_vars,
+        ignore_existing=policy == _UpsertPolicy.IGNORE,
+    )
     session.execute(stmt)
+    synchronize_workflow_draft_variable_upload_file_upsert(
+        session,
+        draft_vars,
+        replacement_fence=replacement_fence,
+    )
 
 
 class _InsertionDict(TypedDict):

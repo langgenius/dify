@@ -367,6 +367,61 @@ class TestDraftVariableLoader(unittest.TestCase):
                 service.delete_app_workflow_variables(self._test_app_id)
                 session.commit()
 
+    def test_single_and_bulk_delete_detach_offloads_and_leave_recovery_markers(self) -> None:
+        def offloaded(name: str) -> tuple[UploadFile, WorkflowDraftVariableFile, WorkflowDraftVariable]:
+            upload = UploadFile(
+                tenant_id=self._test_tenant_id,
+                storage_type=StorageType.LOCAL,
+                key=f"draft/{name}.txt",
+                name=f"{name}.txt",
+                size=10,
+                extension="txt",
+                mime_type="text/plain",
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=self._test_user_id,
+                created_at=datetime_utils.naive_utc_now(),
+                used=True,
+            )
+            owner = WorkflowDraftVariableFile(
+                tenant_id=self._test_tenant_id,
+                app_id=self._test_app_id,
+                user_id=self._test_user_id,
+                upload_file_id=upload.id,
+                size=10,
+                length=10,
+                value_type=SegmentType.STRING,
+            )
+            variable = WorkflowDraftVariable.new_node_variable(
+                app_id=self._test_app_id,
+                user_id=self._test_user_id,
+                node_id="offload-node",
+                name=name,
+                value=StringSegment(value="truncated"),
+                node_execution_id=self._node_exec_id,
+                file_id=owner.id,
+            )
+            return upload, owner, variable
+
+        first_upload, first_owner, first_variable = offloaded("single")
+        second_upload, second_owner, second_variable = offloaded("bulk")
+        with Session(bind=self._engine, expire_on_commit=False) as session:
+            session.add_all([first_upload, first_owner, first_variable, second_upload, second_owner, second_variable])
+            session.flush()
+            service = WorkflowDraftVariableService(session)
+            service.delete_variable(first_variable)
+            service.delete_app_workflow_variables(self._test_app_id)
+            session.commit()
+
+        with Session(bind=self._engine) as session:
+            assert session.get(WorkflowDraftVariable, first_variable.id) is None
+            assert session.get(WorkflowDraftVariable, second_variable.id) is None
+            assert session.get(WorkflowDraftVariableFile, first_owner.id) is None
+            assert session.get(WorkflowDraftVariableFile, second_owner.id) is None
+            first_pending = session.get_one(UploadFile, first_upload.id)
+            second_pending = session.get_one(UploadFile, second_upload.id)
+            assert first_pending.knowledge_cleanup_started_at is not None
+            assert second_pending.knowledge_cleanup_started_at is not None
+
     def test_load_offloaded_variable_object_type_integration(self) -> None:
         """Test _load_offloaded_variable with object type using real storage and service."""
 

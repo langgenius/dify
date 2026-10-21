@@ -1,960 +1,401 @@
-"""Unit tests for Service API dataset controller behavior.
+"""Service API dataset controllers delegate use cases to application services."""
 
-Service boundaries stay mocked, while ORM collaborators are concrete model instances
-persisted through the shared SQLite session fixture.
-"""
-
-import uuid
-from datetime import UTC, datetime
+from dataclasses import dataclass, field
+from datetime import datetime
 from inspect import unwrap
-from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
-from flask import Flask, request
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
+from flask import Flask
+from flask_restx import Api, Resource
 
-import services.errors.base
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
-from extensions.ext_application_services import ApplicationServices
-from models.account import Account, Tenant, TenantAccountRole
-from models.dataset import AppDatasetJoin, Dataset, DatasetMetadata, Document
-from models.enums import PermissionEnum
-from models.model import App, Tag, TagBinding
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-DATASET_MODEL_TABLES = (
-    Account,
-    Tenant,
-    Dataset,
-    Document,
-    App,
-    AppDatasetJoin,
-    DatasetMetadata,
-    Tag,
-    TagBinding,
+from controllers.common.errors import ForbiddenError, NotFoundError
+from controllers.service_api.dataset.error import (
+    DatasetConcurrentUpdateError,
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    InvalidActionError,
 )
-pytestmark = pytest.mark.parametrize("sqlite_session", [DATASET_MODEL_TABLES], indirect=True)
+from core.errors.error import ProviderTokenNotInitError
+from fields.service_api.dataset import DatasetCreatePayload, DatasetUpdatePayload, DocumentStatusPayload
+from libs.external_api import register_external_error_handlers
+from machinery.context import RequestContext
+from services.errors.dataset import DatasetInUseError as DatasetInUseFailure
+from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
+from services.knowledge.dataset_access import (
+    AccessibleDataset,
+    DatasetAccess,
+    DatasetAccessDeniedError,
+    DatasetNotFoundError,
+)
+from services.knowledge.datasets.application import (
+    DatasetApplicationService,
+    DatasetMutationStore,
+    DatasetOperations,
+)
+from services.knowledge.datasets.contracts import (
+    DatasetConcurrentUpdateError as DatasetConcurrentUpdateFailure,
+)
+from services.knowledge.datasets.contracts import (
+    DatasetDetailProjection,
+    DatasetListFilter,
+    DatasetPermissionChangeSnapshot,
+    DatasetUpdateMutation,
+    DatasetUpdateSnapshot,
+)
+from services.knowledge.datasets.model_configuration import KnowledgeModelConfigurationGateway
+from services.knowledge.documents.application import DocumentIndexingStateError, DocumentInvalidActionError
+
+DATASET_ID = UUID("11111111-1111-4111-8111-111111111111")
+CONTEXT = RequestContext("request", None, "account", "workspace")
+
+
+@dataclass
+class DatasetServiceFake:
+    result: dict[str, object] = field(default_factory=lambda: {"id": str(DATASET_ID)})
+    error: Exception | None = None
+    calls: list[tuple[str, tuple[object, ...]]] = field(default_factory=list)
+
+    def _return(self) -> dict[str, object]:
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+    def list_workspace_datasets(self, context: RequestContext, query: DatasetListFilter) -> dict[str, object]:
+        self.calls.append(("list_workspace", (context, query)))
+        return self._return()
+
+    def create_dataset_with_requested_permission(
+        self,
+        context: RequestContext,
+        *,
+        values: dict[str, object],
+        projection: DatasetDetailProjection,
+    ) -> dict[str, object]:
+        self.calls.append(("create_with_requested_permission", (context, values, projection)))
+        return self._return()
+
+    def get_dataset(
+        self, context: RequestContext, *, dataset_id: str, projection: DatasetDetailProjection
+    ) -> dict[str, object]:
+        self.calls.append(("get", (context, dataset_id, projection)))
+        return self._return()
+
+    def update_dataset(
+        self,
+        context: RequestContext,
+        *,
+        dataset_id: str,
+        values: dict[str, object],
+        projection: DatasetDetailProjection,
+    ) -> dict[str, object]:
+        self.calls.append(("update", (context, dataset_id, values, projection)))
+        return self._return()
+
+    def delete_dataset(self, context: RequestContext, *, dataset_id: str) -> None:
+        self.calls.append(("delete", (context, dataset_id)))
+        if self.error is not None:
+            raise self.error
+
+
+@dataclass
+class DocumentServiceFake:
+    error: Exception | None = None
+    calls: list[tuple[RequestContext, str, tuple[str, ...], str]] = field(default_factory=list)
+
+    def change_status(
+        self,
+        context: RequestContext,
+        *,
+        dataset_id: str,
+        document_ids: list[str],
+        action: str,
+    ) -> None:
+        self.calls.append((context, dataset_id, tuple(document_ids), action))
+        if self.error is not None:
+            raise self.error
+
+
+@dataclass
+class KnowledgeFake:
+    datasets: DatasetServiceFake
+    documents: DocumentServiceFake
+
+
+@dataclass
+class ApplicationServicesFake:
+    knowledge: KnowledgeFake
+    tags: object = None
 
 
 @pytest.fixture
-def controller_session(sqlite_session: Session) -> Session:
-    """Expose the shared SQLite session under the controller-focused fixture name."""
-    return sqlite_session
+def datasets() -> DatasetServiceFake:
+    return DatasetServiceFake()
 
 
 @pytest.fixture
-def dataset_application_services(
-    monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices
-) -> ApplicationServices:
-    from controllers.service_api.dataset import dataset as dataset_module
+def documents() -> DocumentServiceFake:
+    return DocumentServiceFake()
 
-    monkeypatch.setattr(dataset_module, "application_services", lambda: account_application_services)
-    return account_application_services
 
+@pytest.fixture(autouse=True)
+def application_service_boundary(
+    monkeypatch: pytest.MonkeyPatch, datasets: DatasetServiceFake, documents: DocumentServiceFake
+) -> None:
+    from controllers.service_api.dataset import dataset as controller
 
-@pytest.fixture
-def tenant(controller_session: Session) -> Tenant:
-    tenant = Tenant(name="Dataset API Tenant")
-    controller_session.add(tenant)
-    controller_session.flush()
-    return tenant
+    services = ApplicationServicesFake(KnowledgeFake(datasets=datasets, documents=documents))
+    monkeypatch.setattr(controller, "application_services", lambda: services)
+    monkeypatch.setattr(controller, "_dump_service_dataset_detail", lambda value: value)
+    monkeypatch.setattr(controller, "_dump_service_dataset_with_partial_members", lambda value: value)
+    monkeypatch.setattr(controller, "_dump_service_dataset_list", lambda value: value)
 
 
-@pytest.fixture
-def account(controller_session: Session, tenant: Tenant, monkeypatch: pytest.MonkeyPatch) -> Account:
-    account = Account(name="Dataset API User", email=f"dataset-api-{uuid.uuid4()}@example.com")
-    account.role = TenantAccountRole.OWNER
-    account._current_tenant = tenant
-    controller_session.add(account)
-    controller_session.flush()
+def test_list_delegates_normalized_repeated_tag_ids(app: Flask, datasets: DatasetServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetListApi
 
-    # Inject the concrete account at the controller boundary without relying on Flask-Login globals.
-    from controllers.service_api.dataset import dataset as dataset_module
+    datasets.result = {"data": [], "has_more": False, "limit": 20, "total": 0, "page": 1}
+    with app.test_request_context("/datasets?tag_ids=a&tag_ids=b&limit=200"):
+        response, status = unwrap(DatasetListApi.get)(DatasetListApi(), CONTEXT)
 
-    monkeypatch.setattr(dataset_module, "current_user", account)
-    return account
+    assert (response, status) == (datasets.result, 200)
+    method, (context, query) = datasets.calls[0]
+    assert method == "list_workspace"
+    assert context is CONTEXT
+    assert isinstance(query, DatasetListFilter)
+    assert query == DatasetListFilter(page=1, limit=200, tag_ids=["a", "b"])
 
 
-def make_dataset(
-    session: Session,
-    tenant: Tenant,
-    account: Account,
-    **overrides: object,
-) -> Dataset:
-    """Create and flush a real dataset so its database-backed properties can be serialized."""
+def test_create_delegates_typed_settings(datasets: DatasetServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetListApi
 
-    base: dict[str, object] = {
-        "id": str(uuid.uuid4()),
-        "tenant_id": tenant.id,
-        "name": "Dataset",
-        "description": "desc",
-        "provider": "vendor",
-        "permission": PermissionEnum.ONLY_ME,
-        "data_source_type": None,
-        "indexing_technique": "economy",
-        "created_by": account.id,
-        "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
-        "updated_by": None,
-        "updated_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
-        "embedding_model": None,
-        "embedding_model_provider": None,
-        "retrieval_model": None,
-        "summary_index_setting": None,
-        "built_in_field_enabled": False,
-        "pipeline_id": None,
-        "runtime_mode": "general",
-        "chunk_structure": None,
-        "icon_info": None,
-        "enable_api": False,
-        "is_multimodal": False,
-    }
-    base.update(overrides)
-    created_at = cast(datetime, base.pop("created_at"))
-    updated_at = cast(datetime, base.pop("updated_at"))
-    dataset = Dataset(**base)  # type: ignore[bad-argument-type]
-    dataset.created_at = created_at
-    dataset.updated_at = updated_at
-    session.add(dataset)
-    session.flush()
-    return dataset
+    payload = DatasetCreatePayload(name="Knowledge", permission="only_me")
+    response, status = unwrap(DatasetListApi.post)(DatasetListApi(), payload, CONTEXT)
 
+    assert (response, status) == (datasets.result, 200)
+    method, (context, values, projection) = datasets.calls[0]
+    assert method == "create_with_requested_permission"
+    assert context is CONTEXT
+    assert isinstance(values, dict)
+    assert values["name"] == "Knowledge"
+    assert values["permission"] == "only_me"
+    assert values["retrieval_model"] is None
+    assert projection is DatasetDetailProjection.CORE
 
-@pytest.fixture
-def dataset(controller_session: Session, tenant: Tenant, account: Account) -> Dataset:
-    return make_dataset(controller_session, tenant, account)
 
+def test_create_translates_duplicate_name(datasets: DatasetServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetListApi
 
-DATASET_DETAIL_KEYS = {
-    "id",
-    "name",
-    "description",
-    "provider",
-    "permission",
-    "data_source_type",
-    "indexing_technique",
-    "app_count",
-    "document_count",
-    "word_count",
-    "created_by",
-    "author_name",
-    "created_at",
-    "updated_by",
-    "updated_at",
-    "embedding_model",
-    "embedding_model_provider",
-    "embedding_available",
-    "retrieval_model_dict",
-    "summary_index_setting",
-    "tags",
-    "doc_form",
-    "external_knowledge_info",
-    "external_retrieval_model",
-    "doc_metadata",
-    "built_in_field_enabled",
-    "pipeline_id",
-    "runtime_mode",
-    "chunk_structure",
-    "icon_info",
-    "is_published",
-    "total_documents",
-    "total_available_documents",
-    "enable_api",
-    "is_multimodal",
-    "maintainer",
-}
+    datasets.error = DatasetNameDuplicateFailure("duplicate")
+    with pytest.raises(DatasetNameDuplicateError):
+        unwrap(DatasetListApi.post)(DatasetListApi(), DatasetCreatePayload(name="Knowledge"), CONTEXT)
 
 
-def assert_dataset_detail_shape(response: dict[str, object], *, with_partial_members: bool = False) -> None:
-    expected_keys = set(DATASET_DETAIL_KEYS)
-    if with_partial_members:
-        expected_keys.add("partial_member_list")
-    assert set(response) == expected_keys
-    assert isinstance(response["created_at"], int)
-    assert isinstance(response["updated_at"], int)
-    retrieval_model = response["retrieval_model_dict"]
-    assert isinstance(retrieval_model, dict)
-    assert set(retrieval_model) == {
-        "search_method",
-        "reranking_enable",
-        "reranking_mode",
-        "reranking_model",
-        "weights",
-        "top_k",
-        "score_threshold_enabled",
-        "score_threshold",
-    }
-    external_retrieval_model = response["external_retrieval_model"]
-    if external_retrieval_model is not None:
-        assert isinstance(external_retrieval_model, dict)
-        assert set(external_retrieval_model) == {
-            "top_k",
-            "score_threshold",
-            "score_threshold_enabled",
-        }
-    if not with_partial_members:
-        assert "partial_member_list" not in response
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [(DatasetNotFoundError(), NotFoundError), (DatasetAccessDeniedError(), ForbiddenError)],
+)
+def test_get_translates_dataset_scope_errors(
+    datasets: DatasetServiceFake, error: Exception, expected: type[Exception]
+) -> None:
+    from controllers.service_api.dataset.dataset import DatasetApi
 
+    datasets.error = error
+    with pytest.raises(expected):
+        DatasetApi.get(DatasetApi(), CONTEXT, DATASET_ID)
 
-# ---------------------------------------------------------------------------
-# API endpoint tests — DatasetListApi
-# ---------------------------------------------------------------------------
 
+def test_get_requests_core_projection(datasets: DatasetServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetApi
 
-@pytest.mark.usefixtures("app_query_services")
-class TestDatasetListApiGet:
-    """Test suite for DatasetListApi.get() endpoint."""
+    response, status = DatasetApi.get(DatasetApi(), CONTEXT, DATASET_ID)
 
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_list_datasets_success(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetListApi
+    assert (response, status) == (datasets.result, 200)
+    assert datasets.calls == [("get", (CONTEXT, str(DATASET_ID), DatasetDetailProjection.CORE))]
 
-        mock_dataset_svc.get_datasets.return_value = ([make_dataset(controller_session, tenant, account)], 1)
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
 
-        with app.test_request_context("/datasets?page=1&limit=20", method="GET"):
-            api = DatasetListApi()
-            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+def test_update_serializes_permission_and_retrieval_model(datasets: DatasetServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetApi
 
-        assert status == 200
-        assert set(response) == {"data", "has_more", "limit", "total", "page"}
-        assert response["has_more"] is False
-        assert response["limit"] == 20
-        assert response["total"] == 1
-        assert response["page"] == 1
-        assert len(response["data"]) == 1
-        assert_dataset_detail_shape(response["data"][0])
-
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_list_datasets_preserves_repeated_tag_ids(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetListApi
-
-        mock_dataset_svc.get_datasets.return_value = ([make_dataset(controller_session, tenant, account)], 1)
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
-
-        with app.test_request_context("/datasets?tag_ids=tag-a&tag_ids=tag-b", method="GET"):
-            api = DatasetListApi()
-            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
-            page, limit, session, tenant_id, user, keyword, tag_ids, include_all = (
-                mock_dataset_svc.get_datasets.call_args.args
-            )
-            assert user is account
-
-        assert status == 200
-        assert response["total"] == 1
-        assert (page, limit, session, tenant_id, keyword, tag_ids, include_all) == (
-            1,
-            20,
-            controller_session,
-            tenant.id,
-            None,
-            ["tag-a", "tag-b"],
-            False,
-        )
-
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_list_datasets_has_more_false_on_last_page_exact_limit(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        """A full last page must set has_more false instead of forcing another fetch."""
-        from controllers.service_api.dataset.dataset import DatasetListApi
-
-        page_size = 20
-        dataset = make_dataset(controller_session, tenant, account)
-        mock_dataset_svc.get_datasets.return_value = ([dataset] * page_size, page_size)
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
-
-        with app.test_request_context(f"/datasets?page=1&limit={page_size}", method="GET"):
-            api = DatasetListApi()
-            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
-
-        assert status == 200
-        assert response["has_more"] is False
-        assert response["limit"] == page_size
-        assert response["total"] == page_size
-        assert response["page"] == 1
-
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_list_datasets_has_more_true_when_limit_exceeds_cap(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        """limit>100 still reports remaining rows after the server cap of 100."""
-        from controllers.service_api.dataset.dataset import DatasetListApi
-
-        returned_count = 100
-        total = 150
-        dataset = make_dataset(controller_session, tenant, account)
-        mock_dataset_svc.get_datasets.return_value = ([dataset] * returned_count, total)
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
-
-        with app.test_request_context("/datasets?page=1&limit=200", method="GET"):
-            api = DatasetListApi()
-            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
-
-        assert status == 200
-        assert response["has_more"] is True
-        assert response["limit"] == 100
-        assert response["total"] == total
-        assert response["page"] == 1
-        assert mock_dataset_svc.get_datasets.call_args.args[1] == 100
-
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_list_datasets_reports_the_page_size_the_query_used_for_limit_zero(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        """limit=0 is floored to one row by the query, so the response must report one."""
-        from controllers.service_api.dataset.dataset import DatasetListApi
-
-        total = 7
-        dataset = make_dataset(controller_session, tenant, account)
-        mock_dataset_svc.get_datasets.return_value = ([dataset], total)
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
-
-        with app.test_request_context("/datasets?page=1&limit=0", method="GET"):
-            api = DatasetListApi()
-            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
-
-        assert status == 200
-        assert response["limit"] == 1
-        assert response["page"] == 1
-        assert response["has_more"] is True
-        assert mock_dataset_svc.get_datasets.call_args.args[:2] == (1, 1)
-
-    @pytest.mark.usefixtures("account")
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_list_datasets_has_more_false_past_the_last_page_for_limit_zero(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        app: Flask,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        """A page past the end must end the walk instead of reporting more rows forever."""
-        from controllers.service_api.dataset.dataset import DatasetListApi
-
-        total = 7
-        mock_dataset_svc.get_datasets.return_value = (list[Dataset](), total)
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
-
-        with app.test_request_context("/datasets?page=8&limit=0", method="GET"):
-            api = DatasetListApi()
-            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
-
-        assert status == 200
-        assert response["has_more"] is False
-        assert response["limit"] == 1
-        assert response["page"] == 8
-        assert response["data"] == []
-
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_list_datasets_reports_the_page_size_the_query_used_for_negative_limit(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        """A negative limit is floored the same way, and is never echoed back."""
-        from controllers.service_api.dataset.dataset import DatasetListApi
-
-        total = 7
-        dataset = make_dataset(controller_session, tenant, account)
-        mock_dataset_svc.get_datasets.return_value = ([dataset], total)
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
-
-        with app.test_request_context("/datasets?page=1&limit=-1", method="GET"):
-            api = DatasetListApi()
-            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
-
-        assert status == 200
-        assert response["limit"] == 1
-        assert response["page"] == 1
-        assert mock_dataset_svc.get_datasets.call_args.args[:2] == (1, 1)
-
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_list_datasets_reports_the_page_the_query_used_for_page_zero(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        """page=0 is served as page 1, so the response must not offer page 1 as the next one."""
-        from controllers.service_api.dataset.dataset import DatasetListApi
-
-        total = 7
-        dataset = make_dataset(controller_session, tenant, account)
-        mock_dataset_svc.get_datasets.return_value = ([dataset] * total, total)
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
-
-        with app.test_request_context("/datasets?page=0&limit=20", method="GET"):
-            api = DatasetListApi()
-            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
-
-        assert status == 200
-        assert response["page"] == 1
-        assert response["has_more"] is False
-        assert mock_dataset_svc.get_datasets.call_args.args[:2] == (1, 20)
-
-
-class TestDatasetListApiPost:
-    """Test suite for DatasetListApi.post() endpoint."""
-
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_create_dataset_success(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-        dataset_application_services: ApplicationServices,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetCreatePayload, DatasetListApi
-
-        mock_dataset_svc.create_empty_dataset.return_value = make_dataset(
-            controller_session, tenant, account, name="New Dataset"
-        )
-
-        with app.test_request_context(
-            "/datasets",
-            method="POST",
-            json={"name": "New Dataset"},
-        ):
-            api = DatasetListApi()
-            # `post` is wrapped in @model_validate, so the unwrapped view expects
-            # the validated model where the decorator would have injected it.
-            validated_payload = DatasetCreatePayload.model_validate(request.get_json() or {})
-            response, status = unwrap(api.post)(api, validated_payload, controller_session, tenant_id=tenant.id)
-
-        assert status == 200
-        assert_dataset_detail_shape(response)
-        assert response["name"] == "New Dataset"
-        mock_dataset_svc.create_empty_dataset.assert_called_once()
-        kwargs = mock_dataset_svc.create_empty_dataset.call_args.kwargs
-        assert kwargs["session"] is controller_session
-        assert kwargs["external_templates"] is dataset_application_services.knowledge.external_templates
-
-    @pytest.mark.usefixtures("account")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_create_dataset_duplicate_name(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        tenant: Tenant,
-        controller_session: Session,
-        dataset_application_services: ApplicationServices,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetCreatePayload, DatasetListApi
-
-        mock_dataset_svc.create_empty_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
-
-        with app.test_request_context(
-            "/datasets",
-            method="POST",
-            json={"name": "Existing Dataset"},
-        ):
-            api = DatasetListApi()
-            validated_payload = DatasetCreatePayload.model_validate(request.get_json() or {})
-            with pytest.raises(DatasetNameDuplicateError):
-                unwrap(api.post)(api, validated_payload, controller_session, tenant_id=tenant.id)
-
-        assert (
-            mock_dataset_svc.create_empty_dataset.call_args.kwargs["external_templates"]
-            is dataset_application_services.knowledge.external_templates
-        )
-
-    @pytest.mark.usefixtures("account")
-    @patch("controllers.service_api.wraps.FeatureService")
-    @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    def test_invalid_body_is_rejected_before_the_handler_runs(
-        self,
-        mock_validate_token: MagicMock,
-        mock_feature_svc: MagicMock,
-        app: Flask,
-        tenant: Tenant,
-    ) -> None:
-        """The tests above unwrap the view, so this is what covers the decorator."""
-        from controllers.service_api.dataset.dataset import DatasetListApi
-
-        mock_validate_token.return_value = SimpleNamespace(tenant_id=tenant.id)
-        mock_feature_svc.get_knowledge_rate_limit.return_value = SimpleNamespace(enabled=False)
-
-        with app.test_request_context("/datasets", method="POST", json={}):
-            with pytest.raises(UnprocessableEntity):
-                DatasetListApi().post(tenant_id=tenant.id)
-
-
-# ---------------------------------------------------------------------------
-# API endpoint tests — DatasetApi
-# ---------------------------------------------------------------------------
-
-
-class TestDatasetApiGet:
-    """Test suite for DatasetApi.get() endpoint."""
-
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_get_dataset_success(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        app: Flask,
-        dataset: Dataset,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
-
-        mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
-
-        with app.test_request_context(
-            f"/datasets/{dataset.id}",
-            method="GET",
-        ):
-            api = DatasetApi()
-            response, status = unwrap(api.get)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
-
-        assert status == 200
-        assert_dataset_detail_shape(response)
-        assert response["embedding_available"] is True
-        assert response["retrieval_model_dict"]["search_method"] == "keyword_search"
-
-    @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_get_dataset_partial_members_shape(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        mock_perm_svc: MagicMock,
-        app: Flask,
-        dataset: Dataset,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
-
-        dataset.permission = PermissionEnum.PARTIAL_TEAM
-        mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_perm_svc.get_dataset_partial_member_list.return_value = ["user-1", "user-2"]
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
-
-        with app.test_request_context(
-            f"/datasets/{dataset.id}",
-            method="GET",
-        ):
-            api = DatasetApi()
-            response, status = unwrap(api.get)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
-
-        assert status == 200
-        assert_dataset_detail_shape(response, with_partial_members=True)
-        assert response["partial_member_list"] == ["user-1", "user-2"]
-
-    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_get_dataset_uses_default_external_retrieval_model(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_provider_mgr: MagicMock,
-        app: Flask,
-        dataset: Dataset,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
-
-        dataset.retrieval_model = None
-        mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
-
-        with app.test_request_context(f"/datasets/{dataset.id}", method="GET"):
-            api = DatasetApi()
-            response, status = unwrap(api.get)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
-
-        assert status == 200
-        assert_dataset_detail_shape(response)
-        assert response["external_retrieval_model"] == {
+    payload = DatasetUpdatePayload(
+        permission="all_team_members",
+        retrieval_model={
+            "search_method": "semantic_search",
+            "reranking_enable": False,
             "top_k": 2,
-            "score_threshold": 0.0,
-            "score_threshold_enabled": None,
-        }
+            "score_threshold_enabled": False,
+        },
+    )
+    unwrap(DatasetApi.patch)(DatasetApi(), payload, CONTEXT, DATASET_ID)
 
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_get_dataset_not_found(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        dataset: Dataset,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
-
-        mock_dataset_svc.get_dataset.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{dataset.id}",
-            method="GET",
-        ):
-            api = DatasetApi()
-            with pytest.raises(NotFound):
-                unwrap(api.get)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
-
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_get_dataset_no_permission(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        dataset: Dataset,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
-
-        mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.base.NoPermissionError()
-
-        with app.test_request_context(
-            f"/datasets/{dataset.id}",
-            method="GET",
-        ):
-            api = DatasetApi()
-            with pytest.raises(Forbidden):
-                unwrap(api.get)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
+    _, (_, dataset_id, values, projection) = datasets.calls[0]
+    assert isinstance(values, dict)
+    assert dataset_id == str(DATASET_ID)
+    assert values["permission"] == "all_team_members"
+    assert values["retrieval_model"]["search_method"] == "semantic_search"
+    assert projection is DatasetDetailProjection.CORE
 
 
-class TestDatasetApiPatch:
-    """Test suite for DatasetApi.patch() endpoint."""
+def test_update_maps_concurrent_change_to_retryable_conflict(datasets: DatasetServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetApi
 
-    @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_patch_dataset_success_shape(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_perm_svc: MagicMock,
-        app: Flask,
-        dataset: Dataset,
-        controller_session: Session,
-        dataset_application_services: ApplicationServices,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi, DatasetUpdatePayload
+    datasets.error = DatasetConcurrentUpdateFailure("changed")
 
-        dataset.name = "Updated Dataset"
-        mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.update_dataset.return_value = dataset
-        mock_perm_svc.check_permission.return_value = None
-        mock_perm_svc.get_dataset_partial_member_list.return_value = ["user-1"]
+    with pytest.raises(DatasetConcurrentUpdateError) as error:
+        unwrap(DatasetApi.patch)(DatasetApi(), DatasetUpdatePayload(name="Changed"), CONTEXT, DATASET_ID)
 
-        payload = {
-            "name": "Updated Dataset",
-            "permission": "partial_members",
-            "partial_member_list": [{"user_id": "user-1", "role": "editor"}],
-        }
-        with app.test_request_context(
-            f"/datasets/{dataset.id}",
-            method="PATCH",
-            json=payload,
-        ):
-            api = DatasetApi()
-            # `patch` is wrapped in @model_validate, so the unwrapped view expects
-            # the validated model where the decorator would have injected it.
-            validated_payload = DatasetUpdatePayload.model_validate(request.get_json() or {})
-            response, status = unwrap(api.patch)(
-                api,
-                validated_payload,
-                controller_session,
-                _=dataset.tenant_id,
-                dataset_id=dataset.id,
+    assert error.value.code == 409
+    assert error.value.error_code == "dataset_concurrent_update"
+
+
+def test_explicit_embedding_provider_failure_remains_invalid_param_at_http_boundary(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    documents: DocumentServiceFake,
+) -> None:
+    from controllers.service_api.dataset import dataset as controller
+
+    class Access:
+        def require_accessible(self, context: RequestContext, dataset_id: str) -> AccessibleDataset:
+            return AccessibleDataset(dataset_id, context.active_workspace_id)
+
+    class Mutations:
+        def get_update_snapshot(self, _ref: object) -> DatasetUpdateSnapshot:
+            return DatasetUpdateSnapshot(
+                provider="vendor",
+                indexing_technique="economy",
+                embedding_model_provider=None,
+                embedding_model=None,
+                updated_at=datetime(2026, 1, 1),
+                name="Dataset",
+                permission="all_team_members",
+                collection_binding_id=None,
+                runtime_mode="general",
+                pipeline_id=None,
+                chunk_structure=None,
+                keyword_number=10,
+                retrieval_model=None,
+                summary_index_setting=None,
+                is_multimodal=False,
             )
 
-        assert status == 200
-        assert_dataset_detail_shape(response, with_partial_members=True)
-        assert response["name"] == "Updated Dataset"
-        assert response["partial_member_list"] == ["user-1"]
-        mock_dataset_svc.update_dataset.assert_called_once()
-        _, update_data, _ = mock_dataset_svc.update_dataset.call_args.args
-        session = mock_dataset_svc.update_dataset.call_args.kwargs["session"]
-        assert session is controller_session
-        assert (
-            mock_dataset_svc.update_dataset.call_args.kwargs["external_templates"]
-            is dataset_application_services.knowledge.external_templates
-        )
-        assert update_data["name"] == "Updated Dataset"
-        assert update_data["permission"] == "partial_members"
-        mock_perm_svc.update_partial_member_list.assert_called_once_with(
-            dataset.tenant_id,
-            dataset.id,
-            [{"user_id": "user-1", "role": "editor"}],
-            controller_session,
-        )
+        def get_permission_change_snapshot(self, _ref: object, *, actor_id: str) -> DatasetPermissionChangeSnapshot:
+            assert actor_id == CONTEXT.account_id
+            return DatasetPermissionChangeSnapshot("owner", "all_team_members", ())
 
+        def update_dataset(self, _mutation: DatasetUpdateMutation) -> bool:
+            raise AssertionError("provider validation must precede persistence")
 
-class TestDatasetApiDelete:
-    """Test suite for DatasetApi.delete() endpoint."""
+    class FailingModelManager:
+        def get_model_instance(self, **_kwargs: object) -> object:
+            raise ProviderTokenNotInitError("provider setup required")
 
-    @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_delete_dataset_success(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_perm_svc: MagicMock,
-        app: Flask,
-        dataset: Dataset,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
+    monkeypatch.setattr(
+        KnowledgeModelConfigurationGateway,
+        "_manager",
+        staticmethod(lambda _tenant_id: FailingModelManager()),
+    )
+    service = DatasetApplicationService(
+        dataset_access=cast(DatasetAccess, Access()),
+        operations=cast(DatasetOperations, object()),
+        mutations=cast(DatasetMutationStore, Mutations()),
+        models=KnowledgeModelConfigurationGateway(),
+        rbac_enabled=False,
+        service_api_url="",
+        vector_store="milvus",
+        tidb_fulltext=False,
+    )
+    monkeypatch.setattr(
+        controller,
+        "application_services",
+        lambda: ApplicationServicesFake(KnowledgeFake(datasets=cast(DatasetServiceFake, service), documents=documents)),
+    )
+    method = unwrap(controller.DatasetApi.patch)
+    http_api = Api(app, doc=False)
+    register_external_error_handlers(http_api)
 
-        mock_dataset_svc.delete_dataset.return_value = True
-
-        with app.test_request_context(
-            f"/datasets/{dataset.id}",
-            method="DELETE",
-        ):
-            api = DatasetApi()
-            result = unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
-
-        assert result == ("", 204)
-        mock_perm_svc.clear_partial_member_list.assert_called_once_with(dataset.id, controller_session)
-
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_delete_dataset_not_found(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        dataset: Dataset,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
-
-        mock_dataset_svc.delete_dataset.return_value = False
-
-        with app.test_request_context(
-            f"/datasets/{dataset.id}",
-            method="DELETE",
-        ):
-            api = DatasetApi()
-            with pytest.raises(NotFound):
-                unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
-
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_delete_dataset_in_use(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        dataset: Dataset,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
-
-        mock_dataset_svc.delete_dataset.side_effect = services.errors.dataset.DatasetInUseError()
-
-        with app.test_request_context(
-            f"/datasets/{dataset.id}",
-            method="DELETE",
-        ):
-            api = DatasetApi()
-            with pytest.raises(DatasetInUseError):
-                unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
-
-
-# ---------------------------------------------------------------------------
-# API endpoint tests — DocumentStatusApi
-# ---------------------------------------------------------------------------
-
-
-class TestDocumentStatusApiPatch:
-    """Test suite for DocumentStatusApi.patch() endpoint."""
-
-    @patch("controllers.service_api.dataset.dataset.DocumentService")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_batch_update_status_success(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_doc_svc: MagicMock,
-        app: Flask,
-        tenant: Tenant,
-        dataset: Dataset,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DocumentStatusApi
-
-        mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_dataset_svc.check_dataset_model_setting.return_value = None
-        mock_doc_svc.batch_update_document_status.return_value = None
-
-        with app.test_request_context(
-            f"/datasets/{dataset.id}/documents/status/enable",
-            method="PATCH",
-            json={"document_ids": ["doc-1", "doc-2"]},
-        ):
-            api = DocumentStatusApi()
-            response, status = api.patch(
-                tenant_id=tenant.id,
-                dataset_id=dataset.id,
-                action="enable",
+    class Endpoint(Resource):
+        def patch(self) -> object:
+            return method(
+                controller.DatasetApi(),
+                DatasetUpdatePayload(
+                    indexing_technique="high_quality",
+                    embedding_model_provider="provider",
+                    embedding_model="embedding",
+                ),
+                CONTEXT,
+                DATASET_ID,
             )
 
-        assert status == 200
-        assert response["result"] == "success"
+    http_api.add_resource(Endpoint, "/model-provider-failure")
+    response = app.test_client().patch("/model-provider-failure")
 
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_batch_update_status_dataset_not_found(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        tenant: Tenant,
-        dataset: Dataset,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DocumentStatusApi
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "code": "invalid_param",
+        "message": "provider setup required",
+        "status": 400,
+    }
 
-        mock_dataset_svc.get_dataset.return_value = None
 
-        with app.test_request_context(
-            f"/datasets/{dataset.id}/documents/status/enable",
-            method="PATCH",
-            json={"document_ids": ["doc-1"]},
-        ):
-            api = DocumentStatusApi()
-            with pytest.raises(NotFound):
-                api.patch(
-                    tenant_id=tenant.id,
-                    dataset_id=dataset.id,
-                    action="enable",
-                )
+def test_delete_translates_dataset_in_use(datasets: DatasetServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetApi
 
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_batch_update_status_permission_error(
-        self,
-        mock_dataset_svc: MagicMock,
-        app: Flask,
-        tenant: Tenant,
-        dataset: Dataset,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DocumentStatusApi
+    datasets.error = DatasetInUseFailure()
+    with pytest.raises(DatasetInUseError):
+        unwrap(DatasetApi.delete)(DatasetApi(), CONTEXT, DATASET_ID)
 
-        mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.base.NoPermissionError("No permission")
 
-        with app.test_request_context(
-            f"/datasets/{dataset.id}/documents/status/enable",
-            method="PATCH",
-            json={"document_ids": ["doc-1"]},
-        ):
-            api = DocumentStatusApi()
-            with pytest.raises(Forbidden):
-                api.patch(
-                    tenant_id=tenant.id,
-                    dataset_id=dataset.id,
-                    action="enable",
-                )
+def test_batch_document_status_delegates_to_document_use_case(documents: DocumentServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DocumentStatusApi
 
-    @patch("controllers.service_api.dataset.dataset.DocumentService")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_batch_update_status_indexing_error(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_doc_svc: MagicMock,
-        app: Flask,
-        tenant: Tenant,
-        dataset: Dataset,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DocumentStatusApi
+    response, status = unwrap(DocumentStatusApi.patch)(
+        DocumentStatusApi(),
+        DocumentStatusPayload(document_ids=["doc-1", "doc-2"]),
+        CONTEXT,
+        DATASET_ID,
+        "archive",
+    )
 
-        mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_dataset_svc.check_dataset_model_setting.return_value = None
-        mock_doc_svc.batch_update_document_status.side_effect = services.errors.document.DocumentIndexingError()
+    assert (response, status) == ({"result": "success"}, 200)
+    assert documents.calls == [(CONTEXT, str(DATASET_ID), ("doc-1", "doc-2"), "archive")]
 
-        with app.test_request_context(
-            f"/datasets/{dataset.id}/documents/status/enable",
-            method="PATCH",
-            json={"document_ids": ["doc-1"]},
-        ):
-            api = DocumentStatusApi()
-            with pytest.raises(InvalidActionError):
-                api.patch(
-                    tenant_id=tenant.id,
-                    dataset_id=dataset.id,
-                    action="enable",
-                )
 
-    @patch("controllers.service_api.dataset.dataset.DocumentService")
-    @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_batch_update_status_value_error(
-        self,
-        mock_dataset_svc: MagicMock,
-        mock_doc_svc: MagicMock,
-        app: Flask,
-        tenant: Tenant,
-        dataset: Dataset,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DocumentStatusApi
+def test_batch_document_status_translates_invalid_action(documents: DocumentServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DocumentStatusApi
 
-        mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_dataset_svc.check_dataset_model_setting.return_value = None
-        mock_doc_svc.batch_update_document_status.side_effect = ValueError("Invalid action")
+    documents.error = DocumentInvalidActionError("invalid")
+    with pytest.raises(InvalidActionError):
+        unwrap(DocumentStatusApi.patch)(DocumentStatusApi(), DocumentStatusPayload(), CONTEXT, DATASET_ID, "enable")
 
-        with app.test_request_context(
-            f"/datasets/{dataset.id}/documents/status/enable",
-            method="PATCH",
-            json={"document_ids": ["doc-1"]},
-        ):
-            api = DocumentStatusApi()
-            with pytest.raises(InvalidActionError):
-                api.patch(
-                    tenant_id=tenant.id,
-                    dataset_id=dataset.id,
-                    action="enable",
-                )
+
+def test_batch_document_status_returns_indexing_state_as_invalid_action(
+    app: Flask, documents: DocumentServiceFake
+) -> None:
+    from controllers.service_api.dataset.dataset import DocumentStatusApi
+
+    documents.error = DocumentIndexingStateError("Document is being indexed, please try again later.")
+    method = unwrap(DocumentStatusApi.patch)
+    http_api = Api(app, doc=False)
+    register_external_error_handlers(http_api)
+
+    class Endpoint(Resource):
+        def patch(self) -> object:
+            return method(
+                DocumentStatusApi(),
+                DocumentStatusPayload(document_ids=["doc-1"]),
+                CONTEXT,
+                DATASET_ID,
+                "disable",
+            )
+
+    http_api.add_resource(Endpoint, "/document-indexing-state")
+    response = app.test_client().patch("/document-indexing-state")
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "code": "invalid_action",
+        "message": "Document is being indexed, please try again later.",
+        "status": 400,
+    }

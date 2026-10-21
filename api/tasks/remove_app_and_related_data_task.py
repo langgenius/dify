@@ -1,6 +1,8 @@
 import logging
 import time
 from collections.abc import Callable
+from contextlib import suppress
+from datetime import timedelta
 from typing import Any, cast
 
 import click
@@ -8,7 +10,6 @@ import sqlalchemy as sa
 from celery import shared_task
 from sqlalchemy import delete, select
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -18,6 +19,7 @@ from enums import DeploymentEdition
 from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
+from libs.datetime_utils import naive_utc_now
 from models import (
     ApiToken,
     AppAnnotationHitHistory,
@@ -52,15 +54,29 @@ from models.workflow import (
     WorkflowAppLog,
     WorkflowArchiveLog,
 )
+from repositories.app_cleanup_repository import AppCleanupLease, AppCleanupRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.knowledge.upload_file_repository import (
+    delete_orphan_upload_files,
+    detach_workflow_draft_variable_files_and_claim_uploads,
+    recheck_claimed_orphan_upload_files,
+)
 from services.api_token_service import ApiTokenCache
 from services.app_storage_cleanup_service import cleanup_app_storage
+from services.knowledge.file_cleanup_gate import (
+    FilePhysicalCleanupDisabledError,
+    assert_physical_file_cleanup_enabled,
+    physical_file_cleanup_enabled,
+)
+from services.knowledge.indexing.cleanup import UploadFileCleanup
 
 logger = logging.getLogger(__name__)
 
 NETWORK_ACCESS_BINDING_CLEANUP_DELAY_SECONDS = 10
 NETWORK_ACCESS_BINDING_CLEANUP_RETRY_BASE_SECONDS = 15
 NETWORK_ACCESS_BINDING_CLEANUP_RETRY_MAX_SECONDS = 10 * 60
+_APP_CLEANUP_LEASE = timedelta(minutes=15)
+_APP_CLEANUP_FAILURE_DEFER = timedelta(seconds=60)
 
 
 def _network_access_binding_cleanup_retry_delay(retries: int) -> int:
@@ -86,13 +102,13 @@ def cleanup_app_network_access_group_binding_task(self, tenant_id: str, app_id: 
             workspace_id=tenant_id,
             app_id=app_id,
         )
-    except Exception as e:
+    except Exception as error:
         countdown = _network_access_binding_cleanup_retry_delay(self.request.retries)
         logger.exception(
             "Failed to clean up App network access group binding",
             extra={"tenant_id": tenant_id, "app_id": app_id, "retry_countdown": countdown},
         )
-        raise self.retry(exc=e, countdown=countdown) from e
+        raise self.retry(exc=error, countdown=countdown) from error
 
 
 def _schedule_app_network_access_group_binding_cleanup(tenant_id: str, app_id: str) -> None:
@@ -106,58 +122,147 @@ def _schedule_app_network_access_group_binding_cleanup(tenant_id: str, app_id: s
     )
 
 
-@shared_task(queue="app_deletion", bind=True, max_retries=3)
-def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
+class AppCleanupLeaseLostError(RuntimeError):
+    """Raised when another recovery worker has taken over an expired cleanup."""
+
+
+def _app_cleanup_repository() -> AppCleanupRepository:
+    return AppCleanupRepository(session_factory=session_factory.get_session_maker())
+
+
+def _renew_app_cleanup_lease(repository: AppCleanupRepository, lease: AppCleanupLease) -> None:
+    if not repository.renew(lease, lease_until=naive_utc_now() + _APP_CLEANUP_LEASE):
+        raise AppCleanupLeaseLostError(f"App cleanup lease lost for {lease.app_id}")
+
+
+def _execute_app_cleanup(
+    *,
+    tenant_id: str,
+    app_id: str,
+    repository: AppCleanupRepository,
+    lease: AppCleanupLease,
+) -> None:
+    def run_step(step: Callable[[], object]) -> None:
+        _renew_app_cleanup_lease(repository, lease)
+        step()
+
+    # Preserve ownership records until storage cleanup succeeds, so a later
+    # execution can still locate files after a process or provider failure.
+    run_step(lambda: cleanup_app_storage(tenant_id, app_id))
+    run_step(lambda: _delete_app_model_configs(tenant_id, app_id))
+    run_step(lambda: _delete_app_site(tenant_id, app_id))
+    run_step(lambda: _delete_app_mcp_servers(tenant_id, app_id))
+    run_step(lambda: _delete_app_api_tokens(tenant_id, app_id))
+    run_step(lambda: _delete_app_resource_access_token_relations(tenant_id, app_id))
+    run_step(lambda: _delete_installed_apps(tenant_id, app_id))
+    run_step(lambda: _delete_app_stars(tenant_id, app_id))
+    run_step(lambda: _delete_recommended_apps(tenant_id, app_id))
+    run_step(lambda: _delete_app_annotation_data(tenant_id, app_id))
+    run_step(lambda: _delete_app_dataset_joins(tenant_id, app_id))
+    run_step(lambda: _delete_workflow_agent_node_bindings(tenant_id, app_id))
+    run_step(lambda: _delete_app_workflows(tenant_id, app_id))
+    run_step(lambda: _delete_app_workflow_runs(tenant_id, app_id))
+    run_step(lambda: _delete_app_workflow_node_executions(tenant_id, app_id))
+    run_step(lambda: _delete_app_workflow_app_logs(tenant_id, app_id))
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ARCHIVE_STORAGE_ENABLED:
+        run_step(lambda: _delete_app_workflow_archive_logs(tenant_id, app_id))
+        run_step(lambda: _delete_archived_workflow_run_files(tenant_id, app_id))
+    run_step(lambda: _delete_app_conversations(tenant_id, app_id))
+    run_step(lambda: _delete_app_messages(tenant_id, app_id))
+    run_step(lambda: _delete_workflow_tool_providers(tenant_id, app_id))
+    run_step(lambda: _delete_app_tag_bindings(tenant_id, app_id))
+    run_step(lambda: _delete_end_users(tenant_id, app_id))
+    run_step(lambda: _delete_trace_app_configs(tenant_id, app_id))
+    run_step(lambda: _delete_conversation_variables(app_id=app_id))
+    run_step(lambda: _delete_draft_variables(app_id))
+    run_step(lambda: _delete_app_triggers(tenant_id, app_id))
+    run_step(lambda: _delete_workflow_plugin_triggers(tenant_id, app_id))
+    run_step(lambda: _delete_workflow_webhook_triggers(tenant_id, app_id))
+    run_step(lambda: _delete_workflow_schedule_plans(tenant_id, app_id))
+    run_step(lambda: _delete_workflow_trigger_logs(tenant_id, app_id))
+
+
+@shared_task(
+    queue="app_deletion",
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def remove_app_and_related_data_task(tenant_id: str, app_id: str) -> None:
+    repository = _app_cleanup_repository()
+    now = naive_utc_now()
+    try:
+        # This remote binding is independent of local file cleanup and must not
+        # wait behind the physical-deletion deployment gate.
+        _schedule_app_network_access_group_binding_cleanup(tenant_id, app_id)
+    except Exception as error:
+        repository.defer_unclaimed(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            available_at=now + _APP_CLEANUP_FAILURE_DEFER,
+            error=str(error)[:4000],
+        )
+        logger.exception("Failed to schedule App network access binding cleanup: %s", app_id)
+        return
+    if not physical_file_cleanup_enabled():
+        repository.defer_unclaimed(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            available_at=now + timedelta(seconds=dify_config.UPLOAD_FILE_CLEANUP_DEFER_SECONDS),
+            error="Upload-file physical cleanup is disabled by the deployment gate",
+        )
+        logger.info("Deferred App cleanup because physical file cleanup is disabled: %s", app_id)
+        return
+
+    lease = repository.claim(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        now=now,
+        lease_until=now + _APP_CLEANUP_LEASE,
+    )
+    if lease is None:
+        return
     logger.info(click.style(f"Start deleting app and related data: {tenant_id}:{app_id}", fg="green"))
     start_at = time.perf_counter()
     try:
-        # AppService publishes this task after the App transaction commits.
-        # Schedule the independent high-retry SaaS cleanup before legacy local
-        # cleanup so a later local failure cannot strand the binding.
-        _schedule_app_network_access_group_binding_cleanup(tenant_id, app_id)
-        # Preserve ownership records until storage cleanup succeeds, so retries
-        # can still locate files. External I/O runs outside DB transactions.
-        cleanup_app_storage(tenant_id, app_id)
-        # Delete related data
-        _delete_app_model_configs(tenant_id, app_id)
-        _delete_app_site(tenant_id, app_id)
-        _delete_app_mcp_servers(tenant_id, app_id)
-        _delete_app_api_tokens(tenant_id, app_id)
-        _delete_app_resource_access_token_relations(tenant_id, app_id)
-        _delete_installed_apps(tenant_id, app_id)
-        _delete_app_stars(tenant_id, app_id)
-        _delete_recommended_apps(tenant_id, app_id)
-        _delete_app_annotation_data(tenant_id, app_id)
-        _delete_app_dataset_joins(tenant_id, app_id)
-        _delete_workflow_agent_node_bindings(tenant_id, app_id)
-        _delete_app_workflows(tenant_id, app_id)
-        _delete_app_workflow_node_executions(tenant_id, app_id)
-        _delete_app_workflow_runs(tenant_id, app_id)
-        _delete_app_workflow_app_logs(tenant_id, app_id)
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ARCHIVE_STORAGE_ENABLED:
-            _delete_app_workflow_archive_logs(tenant_id, app_id)
-            _delete_archived_workflow_run_files(tenant_id, app_id)
-        _delete_app_conversations(tenant_id, app_id)
-        _delete_app_messages(tenant_id, app_id)
-        _delete_workflow_tool_providers(tenant_id, app_id)
-        _delete_app_tag_bindings(tenant_id, app_id)
-        _delete_end_users(tenant_id, app_id)
-        _delete_trace_app_configs(tenant_id, app_id)
-        _delete_conversation_variables(app_id=app_id)
-        _delete_draft_variables(app_id)
-        _delete_app_triggers(tenant_id, app_id)
-        _delete_workflow_plugin_triggers(tenant_id, app_id)
-        _delete_workflow_webhook_triggers(tenant_id, app_id)
-        _delete_workflow_schedule_plans(tenant_id, app_id)
-        _delete_workflow_trigger_logs(tenant_id, app_id)
-        end_at = time.perf_counter()
-        logger.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
-    except SQLAlchemyError as e:
-        logger.exception(click.style(f"Database error occurred while deleting app {app_id} and related data", fg="red"))
-        raise self.retry(exc=e, countdown=60) from e  # Retry after 60 seconds
-    except Exception as e:
+        _execute_app_cleanup(tenant_id=tenant_id, app_id=app_id, repository=repository, lease=lease)
+    except Exception as error:
+        delay = (
+            timedelta(seconds=dify_config.UPLOAD_FILE_CLEANUP_DEFER_SECONDS)
+            if isinstance(error, FilePhysicalCleanupDisabledError)
+            else _APP_CLEANUP_FAILURE_DEFER
+        )
+        repository.defer_claim(
+            lease,
+            available_at=naive_utc_now() + delay,
+            error=str(error)[:4000],
+        )
         logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
-        raise self.retry(exc=e, countdown=60) from e  # Retry after 60 seconds
+        return
+    if not repository.complete(lease, finished_at=naive_utc_now()):
+        raise AppCleanupLeaseLostError(f"App cleanup lease lost before completion for {app_id}")
+    end_at = time.perf_counter()
+    logger.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
+
+
+@shared_task(queue="app_deletion")
+def recover_app_cleanup_operations() -> None:
+    """Re-publish due cleanup operations from durable database state."""
+
+    if not physical_file_cleanup_enabled():
+        return
+    requests = _app_cleanup_repository().reserve_recovery_batch(
+        now=naive_utc_now(),
+        limit=dify_config.UPLOAD_FILE_CLEANUP_RECOVERY_BATCH_SIZE,
+        redispatch_after=timedelta(seconds=dify_config.UPLOAD_FILE_CLEANUP_DEFER_SECONDS),
+    )
+    for request in requests:
+        try:
+            remove_app_and_related_data_task.delay(tenant_id=request.tenant_id, app_id=request.app_id)
+        except Exception:
+            logger.exception(
+                "Failed to republish durable App cleanup",
+                extra={"tenant_id": request.tenant_id, "app_id": request.app_id},
+            )
 
 
 def _delete_app_model_configs(tenant_id: str, app_id: str):
@@ -178,7 +283,9 @@ def _delete_app_model_configs(tenant_id: str, app_id: str):
 
 def _delete_app_site(tenant_id: str, app_id: str):
     def del_site(session: Session, site_id: str):
-        session.execute(delete(Site).where(Site.id == site_id).execution_options(synchronize_session=False))
+        site = session.get(Site, site_id)
+        if site is not None:
+            session.delete(site)
 
     _delete_records(
         """select id from sites where app_id=:app_id limit 1000""",
@@ -405,23 +512,25 @@ def _delete_archived_workflow_run_files(tenant_id: str, app_id: str):
     prefix = f"{tenant_id}/app_id={app_id}/"
     try:
         archive_storage = get_archive_storage()
-    except ArchiveStorageNotConfiguredError as e:
-        logger.info("Archive storage not configured, skipping archive file cleanup: %s", e)
-        return
+    except ArchiveStorageNotConfiguredError:
+        logger.exception("Archive storage not configured for archive file cleanup")
+        raise
 
     try:
         keys = archive_storage.list_objects(prefix)
     except Exception:
         logger.exception("Failed to list archive files for app %s", app_id)
-        return
+        raise
 
     deleted = 0
     for key in keys:
         try:
-            archive_storage.delete_object(key)
+            with suppress(FileNotFoundError):
+                archive_storage.delete_object(key)
             deleted += 1
         except Exception:
             logger.exception("Failed to delete archive object %s", key)
+            raise
 
     logger.info("Deleted %s archive objects for app %s", deleted, app_id)
 
@@ -630,77 +739,56 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
 
 
 def _delete_draft_variable_offload_data(file_ids: list[str]) -> int:
-    """
-    Delete Offload data associated with WorkflowDraftVariable file_ids.
-
-    This function:
-    1. Finds WorkflowDraftVariableFile records by file_ids
-    2. Deletes associated files from object storage
-    3. Deletes UploadFile records
-    4. Deletes WorkflowDraftVariableFile records
-
-    Object storage is external: the storage deletes below run outside any database
-    transaction (see api/AGENTS.md).
-
-    Args:
-        file_ids: List of WorkflowDraftVariableFile IDs
-
-    Returns:
-        Number of files cleaned up
-    """
+    """Delete large-value draft offloads without losing retry ownership."""
     from extensions.ext_storage import storage
 
     if not file_ids:
         return 0
+    owner_ids = tuple(dict.fromkeys(file_ids))
+    query_sql = """
+        SELECT wdvf.id, wdvf.tenant_id, uf.id AS upload_file_id, uf.key
+        FROM workflow_draft_variable_files wdvf
+        LEFT JOIN upload_files uf ON wdvf.upload_file_id = uf.id
+        WHERE wdvf.id IN :file_ids
+    """
+    with session_factory.create_session() as session:
+        rows = tuple(
+            (row[0], row[1], row[2], row[3]) for row in session.execute(sa.text(query_sql), {"file_ids": owner_ids})
+        )
+
+    claimed_by_tenant: dict[str, tuple[UploadFileCleanup, ...]] = {}
+    for tenant_id in sorted({row[1] for row in rows}):
+        tenant_rows = tuple(row for row in rows if row[1] == tenant_id)
+        with session_factory.create_session() as session, session.begin():
+            claimed = detach_workflow_draft_variable_files_and_claim_uploads(
+                session,
+                tenant_id=tenant_id,
+                draft_file_ids=tuple(row[0] for row in tenant_rows),
+            )
+        with session_factory.create_session() as session, session.begin():
+            claimed_by_tenant[tenant_id] = recheck_claimed_orphan_upload_files(
+                session,
+                tenant_id=tenant_id,
+                files=claimed,
+            )
 
     files_deleted = 0
+    for claimed in claimed_by_tenant.values():
+        for file in claimed:
+            if not file.key:
+                continue
+            assert_physical_file_cleanup_enabled()
+            with suppress(FileNotFoundError):
+                storage.delete(file.key)
+            files_deleted += 1
 
-    try:
-        # Get WorkflowDraftVariableFile records and their associated UploadFile keys
-        query_sql = """
-                    SELECT wdvf.id, uf.key, uf.id as upload_file_id
-                    FROM workflow_draft_variable_files wdvf
-                             JOIN upload_files uf ON wdvf.upload_file_id = uf.id
-                    WHERE wdvf.id IN :file_ids \
-                    """
-        with session_factory.create_session() as session:
-            result = session.execute(sa.text(query_sql), {"file_ids": tuple(file_ids)})
-            file_records = [(row[0], row[1], row[2]) for row in result]
-
-        # Delete from object storage and collect upload file IDs
-        upload_file_ids = []
-        for _, storage_key, upload_file_id in file_records:
-            try:
-                storage.delete(storage_key)
-                upload_file_ids.append(upload_file_id)
-                files_deleted += 1
-            except Exception:
-                logging.exception("Failed to delete storage object %s", storage_key)
-                # Continue with database cleanup even if storage deletion fails
-                upload_file_ids.append(upload_file_id)
-
-        with session_factory.create_session() as session, session.begin():
-            # Delete UploadFile records
-            if upload_file_ids:
-                delete_upload_files_sql = """
-                                          DELETE \
-                                          FROM upload_files
-                                          WHERE id IN :upload_file_ids \
-                                          """
-                session.execute(sa.text(delete_upload_files_sql), {"upload_file_ids": tuple(upload_file_ids)})
-
-            # Delete WorkflowDraftVariableFile records
-            delete_variable_files_sql = """
-                                        DELETE \
-                                        FROM workflow_draft_variable_files
-                                        WHERE id IN :file_ids \
-                                        """
-            session.execute(sa.text(delete_variable_files_sql), {"file_ids": tuple(file_ids)})
-
-    except Exception:
-        logging.exception("Error deleting draft variable offload data:")
-        # Don't raise, as we want to continue with the main deletion process
-
+    with session_factory.create_session() as session, session.begin():
+        session.execute(
+            sa.text("DELETE FROM workflow_draft_variable_files WHERE id IN :file_ids"),
+            {"file_ids": owner_ids},
+        )
+        for tenant_id, claimed in claimed_by_tenant.items():
+            delete_orphan_upload_files(session, tenant_id=tenant_id, files=claimed)
     return files_deleted
 
 
@@ -785,36 +873,26 @@ def _delete_workflow_trigger_logs(tenant_id: str, app_id: str):
 def _delete_records(
     query_sql: str, params: dict[str, Any], delete_func: Callable[[Session, str], None], name: str
 ) -> None:
+    """Commit each deletion and propagate failures to the durable cleanup owner.
+
+    Prior successful deletions remain committed. A later attempt reads only the
+    remaining records; an incomplete batch must never mark its App completed.
+    """
     while True:
         with session_factory.create_session() as session:
             rs = session.execute(sa.text(query_sql), params)
             rows = rs.fetchall()
+            rs.close()
             if not rows:
                 break
 
-            success_count = 0
             for i in rows:
                 record_id = str(i.id)
                 try:
                     delete_func(session, record_id)
-                    logger.info(click.style(f"Deleted {name} {record_id}", fg="green"))
                     session.commit()
-                    success_count += 1
                 except Exception:
                     logger.exception("Error occurred while deleting %s %s", name, record_id)
-                    # continue with next record even if one deletion fails
                     session.rollback()
-                    continue
-
-            rs.close()
-
-            # If we couldn't delete ANY records in this batch, we must break out of the while loop
-            # to prevent an infinite loop where we keep fetching the same failing records.
-            if success_count == 0:
-                logger.warning(
-                    click.style(
-                        f"Failed to delete any {name} in the current batch. Stopping to prevent infinite loop.",
-                        fg="yellow",
-                    )
-                )
-                break
+                    raise
+                logger.info(click.style(f"Deleted {name} {record_id}", fg="green"))

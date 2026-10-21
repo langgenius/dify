@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -20,6 +21,7 @@ from core.trigger.constants import (
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
 from extensions.ext_redis import redis_client
+from extensions.storage.storage_type import StorageType
 from graphon.enums import BuiltinNodeTypes
 from models import Account, App, AppMode
 from models.account import Tenant
@@ -35,7 +37,9 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.model import AppModelConfig, IconType
+from models.enums import CreatorUserRole
+from models.model import AppModelConfig, IconType, UploadFile
+from models.tools import ToolFile
 from models.workflow import Workflow, WorkflowType
 from services import app_dsl_service
 from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY, make_portable_agent_package
@@ -1143,13 +1147,37 @@ class TestAppDslService:
             )
         )
         assert source_snapshot is not None
+        source_skill_file = ToolFile(
+            user_id=account.id,
+            tenant_id=account.current_tenant_id,
+            conversation_id=None,
+            file_key=f"agent-skills/{uuid4()}.zip",
+            mimetype="application/zip",
+            name="research.zip",
+            size=123,
+        )
+        source_config_file = UploadFile(
+            tenant_id=account.current_tenant_id,
+            storage_type=StorageType.LOCAL,
+            key=f"agent-config/{uuid4()}.md",
+            name="guide.md",
+            size=456,
+            extension="md",
+            mime_type="text/markdown",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=account.id,
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        db_session_with_containers.add_all([source_skill_file, source_config_file])
+        db_session_with_containers.flush()
         source_snapshot.config_snapshot = AgentSoulConfig.model_validate(
             {
                 "config_skills": [
                     {
                         "name": "research",
                         "description": "Research source material.",
-                        "file_id": "source-skill-file-id",
+                        "file_id": source_skill_file.id,
                         "size": 123,
                     }
                 ],
@@ -1157,7 +1185,7 @@ class TestAppDslService:
                     {
                         "name": "guide.md",
                         "file_kind": "upload_file",
-                        "file_id": "source-config-file-id",
+                        "file_id": source_config_file.id,
                         "size": 456,
                         "mime_type": "text/markdown",
                     }
@@ -1198,8 +1226,8 @@ class TestAppDslService:
                 "mime_type": "text/markdown",
             }
         ]
-        assert "source-skill-file-id" not in yaml_content
-        assert "source-config-file-id" not in yaml_content
+        assert source_skill_file.id not in yaml_content
+        assert source_config_file.id not in yaml_content
 
         mock_external_service_dependencies["app_was_created"].send.side_effect = (
             lambda app, *, account, session, **_kwargs: create_site_record(app=app, account=account, session=session)

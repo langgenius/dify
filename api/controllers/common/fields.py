@@ -1,21 +1,26 @@
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, WithJsonSchema, computed_field
 
 from fields.base import ResponseModel
+from fields.types import (
+    DecimalString,
+    DoubleNumber,
+    FloatNumber,
+    Int64,
+    JSONObject,
+    ShallowJSONValue,
+    URLString,
+    UUIDString,
+)
+from fields.workflow_fields import (
+    PauseReasonResponseBase,
+    WorkflowBlockingResponse,  # noqa: F401 - shared response contract export
+)
 from graphon.file import helpers as file_helpers
 from models.model import IconType
-
-type ShallowJSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
-type JSONObject = dict[str, Any]
-URLString = Annotated[str, WithJsonSchema({"format": "url", "type": "string"})]
-UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
-Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
-FloatNumber = Annotated[float, WithJsonSchema({"format": "float", "type": "number"})]
-DoubleNumber = Annotated[float, WithJsonSchema({"format": "double", "type": "number"})]
-DecimalString = Annotated[str, WithJsonSchema({"format": "decimal", "type": "string"})]
 
 FeatureToggleObject = Annotated[
     JSONObject,
@@ -199,31 +204,8 @@ class ChatMessageBlockingResponse(ResponseModel):
     created_at: Int64
 
 
-class PauseReasonResponseBase(ResponseModel):
-    model_config = ConfigDict(extra="allow")
-
-    form_id: UUIDString | None = None
-    node_id: str | None = None
-    node_title: str | None = None
-    form_content: str | None = None
-    inputs: list[JSONObject] = Field(default_factory=list)
-    actions: list[JSONObject] = Field(default_factory=list)
-    display_in_ui: bool | None = None
-    resolved_default_values: dict[str, Any] = Field(default_factory=dict)
-    form_token: str | None = None
-    approval_channels: list[str] = Field(default_factory=list)
-    expiration_time: Int64 | None = None
-    message: str | None = None
-
-
 class ChatPauseReasonResponse(PauseReasonResponseBase):
     """Public pause reason emitted by a blocking Chatflow execution."""
-
-    TYPE: str
-
-
-class WorkflowPauseReasonResponse(PauseReasonResponseBase):
-    """Public pause reason emitted by a blocking Workflow execution."""
 
     TYPE: str
 
@@ -285,50 +267,6 @@ class CompletionBlockingResponse(ResponseModel):
     answer: str
     metadata: BlockingMetadataResponse = Field(description="Metadata including usage and retriever resources.")
     created_at: Int64
-
-
-class WorkflowBlockingDataBase(ResponseModel):
-    model_config = ConfigDict(extra="allow")
-
-    id: UUIDString
-    workflow_id: UUIDString
-    outputs: dict[str, Any] | None
-    error: str | None
-    elapsed_time: FloatNumber
-    total_tokens: int
-    total_steps: int
-    created_at: Int64
-    finished_at: Int64 | None
-
-
-class WorkflowFinishedBlockingDataResponse(WorkflowBlockingDataBase):
-    status: Literal["succeeded", "failed", "stopped", "partial-succeeded"]
-
-
-class WorkflowPausedBlockingDataResponse(WorkflowBlockingDataBase):
-    status: Literal["paused"]
-    paused_nodes: list[str]
-    reasons: list[WorkflowPauseReasonResponse]
-
-
-class WorkflowFinishedBlockingResponse(ResponseModel):
-    model_config = ConfigDict(extra="allow")
-
-    task_id: UUIDString
-    workflow_run_id: UUIDString
-    data: WorkflowFinishedBlockingDataResponse
-
-
-class WorkflowPausedBlockingResponse(ResponseModel):
-    model_config = ConfigDict(extra="allow")
-
-    task_id: UUIDString
-    workflow_run_id: UUIDString
-    data: WorkflowPausedBlockingDataResponse
-
-
-class WorkflowBlockingResponse(RootModel[WorkflowFinishedBlockingResponse | WorkflowPausedBlockingResponse]):
-    """Blocking workflow response for a finished or paused execution."""
 
 
 class SimpleResultResponse(ResponseModel):

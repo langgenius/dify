@@ -25,14 +25,19 @@ from models.model import UploadFile
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
-from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import IndexingExecutionAdapter
-from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.indexing.execution import DocumentIndexingService, IndexingDocument
+from services.knowledge.indexing.contracts import DocumentIndexingExecution, IndexingDocument
+from services.knowledge.indexing.errors import DocumentIndexingGenerationChangedError, DocumentIsPausedError
+from services.knowledge.indexing.execution import DocumentIndexingService
+from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.repositories.knowledge.test_document_repository import _dataset, _document
 
 MODULE = "services.knowledge.indexing.adapters.execution"
+
+
+def _noop_wake_after_commit(_session: Session) -> None:
+    pass
 
 
 BackendFixture = tuple[
@@ -47,12 +52,15 @@ BackendFixture = tuple[
 
 @pytest.fixture
 def backend(sqlite_session_factory: sessionmaker[Session]) -> Iterator[BackendFixture]:
+    generation = "generation-1"
+    document = _document("document-1", status=IndexingStatus.SPLITTING)
+    document.indexing_generation = generation
     with sqlite_session_factory.begin() as session:
-        session.add_all(
-            [_dataset("dataset-1", "workspace-1"), _document("document-1", status=IndexingStatus.SPLITTING)]
-        )
+        session.add_all([_dataset("dataset-1", "workspace-1"), document])
     documents = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
-    segments = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    segments = SQLAlchemySegmentRepository(
+        session_factory=sqlite_session_factory, wake_after_commit=_noop_wake_after_commit
+    )
     sources = MagicMock()
     adapter = IndexingExecutionAdapter(
         session_factory=sqlite_session_factory,
@@ -61,9 +69,17 @@ def backend(sqlite_session_factory: sessionmaker[Session]) -> Iterator[BackendFi
         uploads=SQLAlchemyKnowledgeUploadRepository(session_factory=sqlite_session_factory),
         sources=sources,
     )
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+
+    def assert_generation() -> None:
+        with sqlite_session_factory() as session:
+            current = session.scalar(select(Document.indexing_generation).where(Document.id == ref.document_id))
+        if current != generation:
+            raise DocumentIndexingGenerationChangedError(ref.document_id)
+
+    execution = DocumentIndexingExecution(generation, assert_generation)
     job = replace(
-        documents.get_indexing_document(DatasetRef("workspace-1", "dataset-1").document("document-1")),
-        processing_rule={"mode": "automatic", "rules": {}},
+        documents.get_indexing_document(ref, execution=execution), processing_rule={"mode": "automatic", "rules": {}}
     )
     with patch(f"{MODULE}.redis_client") as redis:
         redis.get.return_value = None
@@ -125,10 +141,7 @@ def test_vector_io_releases_transactions_and_preserves_chunk_structure(
         page_content="parent",
         metadata={"doc_id": "node", "doc_hash": "hash"},
         children=[child] if doc_form == IndexStructureType.PARENT_CHILD_INDEX else None,
-        attachments=[
-            AttachmentDocument(page_content="image", metadata={"doc_id": file.id, "doc_type": "image"})
-            for file in files
-        ],
+        attachments=[AttachmentDocument(page_content="image", metadata={"doc_id": files[0].id, "doc_type": "image"})],
     )
     segments.save_for_indexing(job, [chunk], [5])
     vector_backend = MagicMock()
@@ -162,7 +175,7 @@ def test_vector_io_releases_transactions_and_preserves_chunk_structure(
         patch("core.rag.datasource.vdb.vector_factory.storage") as storage,
     ):
         storage.load_once.side_effect = load_image
-        adapter._process_chunk(Flask(__name__), job.ref, [chunk], False)
+        adapter._process_chunk(Flask(__name__), job.ref, [chunk], False, job)
     embed.assert_called_once_with(["child" if doc_form == IndexStructureType.PARENT_CHILD_INDEX else "parent"])
     assert embed_images.call_args.args[0] == [{"content": "aW1hZ2U=", "content_type": "image", "file_id": files[0].id}]
     storage.load_once.assert_called_once_with(files[0].key)
@@ -230,7 +243,7 @@ def test_keyword_io_releases_transactions_and_commits_before_unlocking(
         storage.delete.side_effect = external_call
         storage.save.side_effect = external_call
         handler.return_value.extract_keywords.side_effect = extract_keywords
-        adapter._process_chunk(Flask(__name__), job.ref, [chunk], True)
+        adapter._process_chunk(Flask(__name__), job.ref, [chunk], True, job)
     assert not locked
     assert redis.lock.call_args.args == ("keyword_indexing_lock_dataset-1",)
     _, encoded = segments.get_keyword_table(job.ref.dataset)
@@ -289,7 +302,10 @@ def test_indexing_preserves_provider_and_source_error_descriptions(
         assert document is not None
         document.dataset_process_rule_id = rule.id
 
-    DocumentIndexingService(documents=documents, segments=segments, backend=adapter).run([job.ref])
+    assert job.execution is not None
+    DocumentIndexingService(documents=documents, segments=segments, backend=adapter).run(
+        [job.ref], executions={job.ref.document_id: job.execution}
+    )
 
     sources.resolve_for_indexing.assert_called_once()
     with sqlite_session_factory() as session:
@@ -392,7 +408,9 @@ def test_worker_failure_marks_document_error_and_keeps_retryable_segments(
     ):
         keyword.return_value.update_texts.side_effect = RuntimeError("worker failed")
         vector.return_value.create.side_effect = RuntimeError("worker failed")
-        DocumentIndexingService(documents=documents, segments=segments, backend=adapter).run_in_indexing_status(job.ref)
+        DocumentIndexingService(documents=documents, segments=segments, backend=adapter).run_in_indexing_status(
+            job.ref, execution=job.execution
+        )
     with sqlite_session_factory() as session:
         row = session.get(Document, job.ref.document_id)
         assert row is not None
@@ -443,7 +461,10 @@ def test_full_indexing_commits_phases_through_real_repositories(
         processor = factory.return_value.init_index_processor.return_value
         processor.extract.return_value = [chunk]
         processor.transform.return_value = [chunk]
-        DocumentIndexingService(documents=documents, segments=segments, backend=adapter).run([job.ref])
+        assert job.execution is not None
+        DocumentIndexingService(documents=documents, segments=segments, backend=adapter).run(
+            [job.ref], executions={job.ref.document_id: job.execution}
+        )
     with sqlite_session_factory() as session:
         row = session.get(Document, "document-1")
         assert row is not None
@@ -454,7 +475,7 @@ def test_full_indexing_commits_phases_through_real_repositories(
         assert row.completed_at is not None
 
 
-@pytest.mark.parametrize("change", ["paused", "deleted"])
+@pytest.mark.parametrize("change", ["paused", "deleted", "generation"])
 def test_document_changed_during_worker_io_cannot_be_completed(
     backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], change: str
 ) -> None:
@@ -468,6 +489,8 @@ def test_document_changed_during_worker_io_cannot_be_completed(
             assert row is not None
             if change == "paused":
                 row.is_paused = True
+            elif change == "generation":
+                row.indexing_generation = "generation-2"
             else:
                 writer.delete(row)
 
@@ -476,9 +499,9 @@ def test_document_changed_during_worker_io_cannot_be_completed(
         keyword.return_value.update_texts.side_effect = change_document
         if change == "paused":
             with pytest.raises(DocumentIsPausedError):
-                service.run_in_indexing_status(job.ref)
+                service.run_in_indexing_status(job.ref, execution=job.execution)
         else:
-            service.run_in_indexing_status(job.ref)
+            service.run_in_indexing_status(job.ref, execution=job.execution)
     with sqlite_session_factory() as session:
         segment = session.scalar(select(DocumentSegment))
         assert segment is not None
@@ -511,13 +534,13 @@ def test_partial_worker_failure_retries_only_incomplete_segments_and_keeps_total
     ):
         vector = factory.return_value
         vector.create.side_effect = load
-        service.run_in_indexing_status(job.ref)
+        service.run_in_indexing_status(job.ref, execution=job.execution)
         pending, tokens = segments.resume_indexing(job)
         assert [chunk.page_content for chunk in pending] == ["bad"]
         assert tokens == 30
         vector.create.reset_mock()
         vector.create.side_effect = None
-        service.run_in_indexing_status(job.ref)
+        service.run_in_indexing_status(job.ref, execution=job.execution)
         vector.create.assert_called_once()
         assert [chunk.page_content for chunk in vector.create.call_args.args[0]] == ["bad"]
     with sqlite_session_factory() as session:

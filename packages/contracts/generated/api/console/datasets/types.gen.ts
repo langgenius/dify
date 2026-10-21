@@ -78,6 +78,8 @@ export type DatasetDetailWithPartialMembersResponse = {
   total_documents: number
   updated_at: number
   updated_by: string | null
+  vector_indexing_error?: string | null
+  vector_indexing_status?: DatasetVectorIndexStatus | null
   word_count: number
 }
 
@@ -172,6 +174,8 @@ export type DatasetDetailResponse = {
   total_documents: number
   updated_at: number
   updated_by: string | null
+  vector_indexing_error?: string | null
+  vector_indexing_status?: DatasetVectorIndexStatus | null
   word_count: number
 }
 
@@ -280,6 +284,11 @@ export type ProviderQuotaExceededError = ErrorResponse & {
   status: 400
 }
 
+export type DocumentSourceConflictError = ErrorResponse & {
+  code: 'document_source_conflict'
+  status: 409
+}
+
 export type DatasetMetadataBuiltInFieldsResponse = {
   fields: Array<DatasetMetadataBuiltInFieldResponse>
 }
@@ -336,6 +345,11 @@ export type DatasetUpdatePayload = {
   } | null
 }
 
+export type DatasetConcurrentUpdateError = ErrorResponse & {
+  code: 'dataset_concurrent_update'
+  status: 409
+}
+
 export type SimpleResultResponse = {
   result: string
 }
@@ -352,6 +366,11 @@ export type DocumentAlreadyFinishedError = ErrorResponse & {
 
 export type DocumentStatusListResponse = {
   data: Array<DocumentStatusResponse>
+}
+
+export type ArchivedDocumentImmutableError = ErrorResponse & {
+  code: 'archived_document_immutable'
+  status: 403
 }
 
 export type DocumentWithSegmentsListResponse = {
@@ -406,6 +425,8 @@ export type DocumentDetailResponse = {
   hit_count?: number | null
   id: string
   indexing_latency?: number | null
+  indexing_retry_action?: 'archive' | 'disable' | 'enable' | 'retry' | null
+  indexing_state?: 'completed' | 'failed' | 'pending' | null
   indexing_status?: string | null
   name?: string | null
   need_summary?: boolean | null
@@ -432,6 +453,8 @@ export type DocumentStatusResponse = {
   error_code?: 'vector_space_estimate_exceeded' | null
   estimated_vector_space_mb?: number | null
   id: string
+  indexing_retry_action?: 'archive' | 'disable' | 'enable' | 'retry' | null
+  indexing_state?: 'completed' | 'failed' | 'pending' | null
   indexing_status:
     | 'cleaning'
     | 'completed'
@@ -472,11 +495,6 @@ export type DocumentIndexingError = ErrorResponse & {
   status: 400
 }
 
-export type ArchivedDocumentImmutableError = ErrorResponse & {
-  code: 'archived_document_immutable'
-  status: 403
-}
-
 export type DocumentRenamePayload = {
   name: string
 }
@@ -501,6 +519,8 @@ export type DocumentResponse = {
   error?: string | null
   hit_count?: number | null
   id: string
+  indexing_retry_action?: 'archive' | 'disable' | 'enable' | 'retry' | null
+  indexing_state?: 'completed' | 'failed' | 'pending' | null
   indexing_status?: string | null
   name: string
   need_summary?: boolean | null
@@ -576,11 +596,6 @@ export type ChildChunkDetailResponse = {
   data: ChildChunkResponse
 }
 
-export type ChildChunkDeleteIndexError = ErrorResponse & {
-  code: 'child_chunk_delete_index_error'
-  status: 500
-}
-
 export type ChildChunkUpdatePayload = {
   content: string
 }
@@ -624,7 +639,7 @@ export type HitTestingPayload = {
 
 export type HitTestingResponse = {
   query: HitTestingQuery
-  records: Array<HitTestingRecord>
+  records: Array<HitTestingRecord | ExternalHitTestingRecordResponse>
 }
 
 export type CompletionRequestError = ErrorResponse & {
@@ -632,9 +647,10 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
-export type DatasetNotInitializedError = ErrorResponse & {
-  code: 'dataset_not_initialized'
-  status: 400
+export type KnowledgeIndexUnavailableError = ErrorResponse & {
+  code: 'knowledge_index_unavailable'
+  details?: KnowledgeIndexUnavailableDetails
+  status: 503
 }
 
 export type DatasetMetadataListResponse = {
@@ -728,6 +744,8 @@ export type DatasetListItemResponse = {
   total_documents: number
   updated_at: number
   updated_by: string | null
+  vector_indexing_error?: string | null
+  vector_indexing_status?: DatasetVectorIndexStatus | null
   word_count: number
 }
 
@@ -784,6 +802,8 @@ export type DatasetTagResponse = {
   name: string
   type: string
 }
+
+export type DatasetVectorIndexStatus = 'completed' | 'error' | 'indexing'
 
 export type ExternalKnowledgeApiBindingResponse = {
   id: string
@@ -883,6 +903,8 @@ export type DocumentWithSegmentsResponse = {
   error?: string | null
   hit_count?: number | null
   id: string
+  indexing_retry_action?: 'archive' | 'disable' | 'enable' | 'retry' | null
+  indexing_state?: 'completed' | 'failed' | 'pending' | null
   indexing_status?: string | null
   name: string
   need_summary?: boolean | null
@@ -1007,6 +1029,10 @@ export type HitTestingRecord = {
   segment: HitTestingSegment
   summary: string | null
   tsne_position: unknown | null
+}
+
+export type KnowledgeIndexUnavailableDetails = {
+  reason: 'failed' | 'indexing'
 }
 
 export type DatasetMetadataListItemResponse = {
@@ -1657,6 +1683,7 @@ export type PostDatasetsInitErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1839,6 +1866,7 @@ export type PatchDatasetsByDatasetIdData = {
 export type PatchDatasetsByDatasetIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  409: DatasetConcurrentUpdateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1963,6 +1991,7 @@ export type DeleteDatasetsByDatasetIdDocumentsData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsErrors = {
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2021,6 +2050,7 @@ export type PostDatasetsByDatasetIdDocumentsErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
+  409: DocumentSourceConflictError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2147,6 +2177,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2302,7 +2333,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncErrors = {
-  403: DatasetAccessDeniedError | ErrorResponse
+  403: ArchivedDocumentImmutableError | DatasetAccessDeniedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2615,7 +2646,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2726,7 +2757,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
   {
-    500: ChildChunkDeleteIndexError | ErrorResponse
+    500: ChildChunkIndexingError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -2807,6 +2838,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncErrors = {
+  400: InvalidActionError | ErrorResponse
   403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
@@ -2883,13 +2915,12 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 export type PostDatasetsByDatasetIdHitTestingErrors = {
   400:
     | CompletionRequestError
-    | DatasetNotInitializedError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403: DatasetAccessDeniedError | ErrorResponse
   404: ErrorResponse
+  503: KnowledgeIndexUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3054,7 +3085,7 @@ export type GetDatasetsByDatasetIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdNotionSyncErrors = {
-  403: DatasetAccessDeniedError | ErrorResponse
+  403: ArchivedDocumentImmutableError | DatasetAccessDeniedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3152,6 +3183,7 @@ export type PostDatasetsByDatasetIdRetryData = {
 }
 
 export type PostDatasetsByDatasetIdRetryErrors = {
+  400: InvalidActionError | ErrorResponse
   default: ErrorResponse
 }
 

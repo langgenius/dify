@@ -10,11 +10,18 @@ from typing import NamedTuple, NotRequired, TypedDict
 
 from pydantic import JsonValue
 
+from enums.knowledge import DatasetVectorIndexStatus
+
 
 class DatasetTagRecord(TypedDict):
     id: str
     name: str
     type: str
+
+
+class DatasetVectorIndexProjection(NamedTuple):
+    status: DatasetVectorIndexStatus
+    error: str | None
 
 
 class DatasetDetailRecord(TypedDict):
@@ -57,6 +64,10 @@ class DatasetDetailRecord(TypedDict):
     is_multimodal: bool
     permission_keys: list[str]
     maintainer: str | None
+    # The latest durable vector rebuild for the current indexing technique and
+    # embedding model. Document extraction has its own status and error fields.
+    vector_indexing_status: DatasetVectorIndexStatus | None
+    vector_indexing_error: str | None
     # Detail/create responses may omit membership or explicitly return null;
     # listing and updates materialize a list, including an empty one.
     partial_member_list: NotRequired[list[str] | None]
@@ -78,6 +89,8 @@ class DatasetCleanupRecord(NamedTuple):
     indexing_technique: str | None
     index_struct: str | None
     collection_binding_id: str | None
+    embedding_model_provider: str | None
+    embedding_model: str | None
     # None means neither the dataset nor any of its documents declares a form.
     doc_form: str | None
     pipeline_id: str | None

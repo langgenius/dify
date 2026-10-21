@@ -1,14 +1,50 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Protocol
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from core.rag.models.document import AttachmentDocument, Document
-from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
+from models.dataset import ChildChunk, Dataset, DocumentSegment
 from models.enums import SegmentType
+
+SEGMENT_ATTACHMENT_WRITER_CONTEXT_KEY = "_dify_segment_attachment_writer"
+
+
+class SegmentAttachmentWriter(Protocol):
+    def delete_segments_for_replacement(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        dataset_id: str,
+        document_id: str,
+    ) -> None: ...
+
+    def replace_content_references(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        dataset_id: str,
+        document_id: str,
+        segment_id: str,
+        content: str,
+    ) -> None: ...
+
+    def add_bindings(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        dataset_id: str,
+        document_id: str,
+        segment_id: str,
+        attachment_ids: Sequence[str],
+    ) -> None: ...
 
 
 class DatasetDocumentStore:
@@ -17,10 +53,13 @@ class DatasetDocumentStore:
         dataset: Dataset,
         user_id: str,
         document_id: str | None = None,
+        *,
+        attachment_writer: SegmentAttachmentWriter | None = None,
     ):
         self._dataset = dataset
         self._user_id = user_id
         self._document_id = document_id
+        self._attachment_writer = attachment_writer
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> DatasetDocumentStore:
@@ -96,6 +135,7 @@ class DatasetDocumentStore:
                     f"doc_id {doc.metadata['doc_id']} already exists. Set allow_update to True to overwrite."
                 )
 
+            previous_content = segment_document.content if segment_document is not None else ""
             if not segment_document:
                 max_position += 1
                 assert self._document_id
@@ -117,6 +157,12 @@ class DatasetDocumentStore:
 
                 session.add(segment_document)
                 session.flush()
+                self._replace_content_references(
+                    segment_id=segment_document.id,
+                    previous_content=previous_content,
+                    content=segment_document.content,
+                    session=session,
+                )
                 self.add_multimodel_documents_binding(
                     segment_id=segment_document.id, multimodel_documents=doc.attachments, session=session
                 )
@@ -145,6 +191,12 @@ class DatasetDocumentStore:
                 segment_document.index_node_hash = doc.metadata.get("doc_hash")
                 segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
+                self._replace_content_references(
+                    segment_id=segment_document.id,
+                    previous_content=previous_content,
+                    content=segment_document.content,
+                    session=session,
+                )
                 self.add_multimodel_documents_binding(
                     segment_id=segment_document.id, multimodel_documents=doc.attachments, session=session
                 )
@@ -202,18 +254,6 @@ class DatasetDocumentStore:
             },
         )
 
-    def delete_document(self, doc_id: str, session: Session, raise_error: bool = True):
-        document_segment = self.get_document_segment(doc_id, session=session)
-
-        if document_segment is None:
-            if raise_error:
-                raise ValueError(f"doc_id {doc_id} not found.")
-            else:
-                return None
-
-        session.delete(document_segment)
-        session.flush()
-
     def set_document_hash(self, doc_id: str, doc_hash: str, session: Session):
         """Set the hash for a given doc_id."""
         document_segment = self.get_document_segment(doc_id, session=session)
@@ -249,12 +289,37 @@ class DatasetDocumentStore:
         self, segment_id: str, multimodel_documents: list[AttachmentDocument] | None, session: Session
     ):
         if multimodel_documents and self._document_id is not None:
-            for multimodel_document in multimodel_documents:
-                binding = SegmentAttachmentBinding(
-                    tenant_id=self._dataset.tenant_id,
-                    dataset_id=self._dataset.id,
-                    document_id=self._document_id,
-                    segment_id=segment_id,
-                    attachment_id=multimodel_document.metadata["doc_id"],
-                )
-                session.add(binding)
+            if self._attachment_writer is None:
+                raise RuntimeError("segment attachment writer is required for multimodal documents")
+            self._attachment_writer.add_bindings(
+                session,
+                tenant_id=self._dataset.tenant_id,
+                dataset_id=self._dataset.id,
+                document_id=self._document_id,
+                segment_id=segment_id,
+                attachment_ids=tuple(document.metadata["doc_id"] for document in multimodel_documents),
+            )
+
+    def _replace_content_references(
+        self,
+        *,
+        segment_id: str,
+        previous_content: str,
+        content: str,
+        session: Session,
+    ) -> None:
+        if self._document_id is None:
+            return
+        has_file_reference = bool(get_image_upload_file_ids(previous_content) or get_image_upload_file_ids(content))
+        if self._attachment_writer is None:
+            if has_file_reference:
+                raise RuntimeError("segment attachment writer is required for inline file references")
+            return
+        self._attachment_writer.replace_content_references(
+            session,
+            tenant_id=self._dataset.tenant_id,
+            dataset_id=self._dataset.id,
+            document_id=self._document_id,
+            segment_id=segment_id,
+            content=content,
+        )

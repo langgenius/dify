@@ -7,6 +7,12 @@ class DatasetNotInitializedError(BaseHTTPException):
     code = 400
 
 
+class ExternalKnowledgeRetrievalFailedError(BaseHTTPException):
+    error_code = "external_knowledge_failed"
+    description = "External knowledge retrieval failed."
+    code = 502
+
+
 class ArchivedDocumentImmutableError(BaseHTTPException):
     error_code = "archived_document_immutable"
     description = "The archived document is not editable."
@@ -16,6 +22,18 @@ class ArchivedDocumentImmutableError(BaseHTTPException):
 class DatasetNameDuplicateError(BaseHTTPException):
     error_code = "dataset_name_duplicate"
     description = "The dataset name already exists. Please modify your dataset name."
+    code = 409
+
+
+class DatasetConcurrentUpdateError(BaseHTTPException):
+    error_code = "dataset_concurrent_update"
+    description = "The dataset changed while it was being updated. Please retry the request."
+    code = 409
+
+
+class DocumentSourceConflictError(BaseHTTPException):
+    error_code = "document_source_conflict"
+    description = "The selected source file is being removed. Please upload it again."
     code = 409
 
 

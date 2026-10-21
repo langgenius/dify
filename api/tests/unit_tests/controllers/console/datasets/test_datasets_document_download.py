@@ -19,13 +19,33 @@ from controllers.console.datasets import datasets_document as controller
 from machinery.context import RequestContext
 from models.dataset import Dataset, Document
 from models.model import UploadFile
+from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess
+from services.knowledge.datasets.model_configuration import KnowledgeModelConfigurationGateway
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
-from services.knowledge.documents.application import DatasetDocumentApplicationService
+from services.knowledge.documents.application import (
+    DatasetCreatorAccess,
+    DatasetDocumentApplicationService,
+    DocumentLifecycleCache,
+)
+from services.knowledge.documents.contracts import DocumentCreationGateway
+from services.knowledge.indexing.locks import KnowledgeIndexingLock
 
 CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
 DOC_ID = str(UUID(int=1))
 FILE_ID = str(UUID(int=2))
+
+
+class UnusedDocumentUploads:
+    def upload_text(self, _context: RequestContext, *, name: str, text: str) -> str:
+        del name, text
+        raise AssertionError("upload is not part of a download use case")
+
+    def upload_file(self, _context: RequestContext, *, filename: str, content: bytes, mimetype: str) -> str:
+        del filename, content, mimetype
+        raise AssertionError("upload is not part of a download use case")
 
 
 def _document(**values):
@@ -68,10 +88,26 @@ def downloads(monkeypatch, sqlite_session_factory):
         session.add(upload)
     access = create_autospec(DatasetAccess, instance=True, spec_set=True)
     access.require_accessible.return_value = AccessibleDataset("dataset-1", "tenant-1")
+    model_configuration = KnowledgeModelConfigurationGateway()
     documents = DatasetDocumentApplicationService(
         dataset_access=access,
-        operations=SQLAlchemyDocumentOperations(session_factory=sqlite_session_factory),
-        metadata_schema={},
+        datasets=SQLAlchemyDatasetRepository(
+            revoke_keys_after_commit=lambda _session, _tokens: None,
+            session_factory=sqlite_session_factory,
+            wake_after_commit=lambda _session: None,
+        ),
+        documents=SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory),
+        operations=SQLAlchemyDocumentOperations(
+            session_factory=sqlite_session_factory,
+            documents=SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory),
+            uploads=SQLAlchemyKnowledgeUploadRepository(session_factory=sqlite_session_factory),
+        ),
+        uploads=UnusedDocumentUploads(),
+        indexing_locks=create_autospec(KnowledgeIndexingLock, instance=True, spec_set=True),
+        lifecycle_cache=create_autospec(DocumentLifecycleCache, instance=True, spec_set=True),
+        model_configuration=model_configuration,
+        creation=create_autospec(DocumentCreationGateway, instance=True, spec_set=True),
+        creator_access=create_autospec(DatasetCreatorAccess, instance=True, spec_set=True),
     )
     monkeypatch.setattr(
         controller, "application_services", lambda: SimpleNamespace(knowledge=SimpleNamespace(documents=documents))
@@ -80,7 +116,7 @@ def downloads(monkeypatch, sqlite_session_factory):
 
 
 def test_document_download_returns_signed_url(app, monkeypatch):
-    from services.knowledge import dataset_service
+    from services.knowledge.documents import adapters
 
     signed = []
 
@@ -88,7 +124,7 @@ def test_document_download_returns_signed_url(app, monkeypatch):
         signed.append(kwargs)
         return "https://files.example/download"
 
-    monkeypatch.setattr(dataset_service.file_helpers, "get_signed_file_url", sign)
+    monkeypatch.setattr(adapters.file_helpers, "get_signed_file_url", sign)
     with app.test_request_context("/"):
         result = unwrap(controller.DocumentDownloadApi.get)(
             controller.DocumentDownloadApi(), CONTEXT, "dataset-1", DOC_ID

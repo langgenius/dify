@@ -10,8 +10,8 @@ from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from models.dataset import Document, build_built_in_field_values
 from models.enums import DataSourceType
-from services.knowledge import dataset_service
-from services.knowledge.dataset_service import DocumentService
+from repositories.knowledge import document_repository
+from repositories.knowledge.document_repository import build_document
 from tests.unit_tests.model_factories import make_account, make_dataset, make_document
 
 CREATED_AT = datetime(2026, 10, 16, 8, 0, 0)
@@ -78,10 +78,10 @@ def test_build_built_in_field_values_maps_source_to_metadata_label(
 def test_build_document_writes_built_in_fields_in_shared_format(
     monkeypatch: pytest.MonkeyPatch, data_source_type: DataSourceType
 ) -> None:
-    monkeypatch.setattr(dataset_service, "naive_utc_now", lambda: CREATED_AT)
+    monkeypatch.setattr(document_repository, "naive_utc_now", lambda: CREATED_AT)
     dataset = make_dataset(built_in_field_enabled=True)
 
-    document = DocumentService.build_document(
+    document = build_document(
         dataset=dataset,
         process_rule_id=None,
         data_source_type=data_source_type,
@@ -107,7 +107,7 @@ def test_build_document_writes_built_in_fields_in_shared_format(
 def test_build_document_skips_built_in_fields_when_disabled() -> None:
     dataset = make_dataset(built_in_field_enabled=False)
 
-    document = DocumentService.build_document(
+    document = build_document(
         dataset=dataset,
         process_rule_id=None,
         data_source_type=DataSourceType.UPLOAD_FILE,

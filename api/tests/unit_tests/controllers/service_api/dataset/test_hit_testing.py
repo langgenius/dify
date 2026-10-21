@@ -1,265 +1,297 @@
-"""Service API retrieval uses shared application services after token admission."""
+"""Thin Service API hit-testing controller tests."""
 
-from collections.abc import Iterator
-from dataclasses import dataclass, replace
-from unittest.mock import Mock, create_autospec
-from uuid import uuid4
+from dataclasses import dataclass, field
+from inspect import unwrap
+from typing import Literal, cast
+from uuid import UUID, uuid4
 
 import pytest
 from flask import Flask
-from flask.testing import FlaskClient
-from flask_login import LoginManager
-from sqlalchemy import delete
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
-from werkzeug.test import TestResponse
+from flask_restx import Api, Resource
 
-from controllers.common.errors import UnauthorizedError
-from controllers.service_api import bp, wraps
+from controllers.common.errors import ForbiddenError, InternalServerError, NotFoundError
+from controllers.service_api.app.error import (
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.service_api.dataset import hit_testing as controller
-from extensions.ext_application_services import ApplicationServices
+from controllers.service_api.dataset.error import DatasetNotInitializedError, ExternalKnowledgeRetrievalFailedError
+from core.errors.error import KnowledgeIndexUnavailableError
 from fields.hit_testing_fields import HitTestingPayload
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-from models.dataset import Dataset
-from models.enums import ApiTokenType
-from models.model import ApiToken, DatasetApiTokenBinding
-from services.entities.feature_entities import KnowledgeRateLimitModel
-from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
+from libs.external_api import register_external_error_handlers
+from machinery.context import RequestContext
 from services.errors.index import IndexNotInitializedError
-from services.errors.knowledge_retrieval import HitTestingFailedError
-from services.knowledge.entities.hit_testing import HitTestingRequest, RetrieveResponseDict
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.entities.knowledge_entities import RetrievalModel
-from services.knowledge.hit_testing.application import HitTestingApplicationService
-from tests.unit_tests.controllers.console.datasets.test_hit_testing import hit_testing_record
+from services.knowledge.hit_testing.entities import HitTestingRequest, HitTestingResponse
+from services.knowledge.hit_testing.errors import (
+    HitTestingFailedError,
+    HitTestingInvocationError,
+    HitTestingProviderError,
+    HitTestingUpstreamError,
+)
+
+CONTEXT = RequestContext("request", "trace", "account", "tenant")
 
 
-@dataclass(frozen=True)
-class _Database:
-    engine: Engine
-    session: scoped_session[Session]
-
-
-@dataclass(frozen=True)
-class _Runtime:
-    client: FlaskClient
-    service: Mock
-    dataset_id: str
-    tenant_id: str
-    account_id: str
-    token_id: str
-
-
-@pytest.fixture
-def runtime(
-    monkeypatch: pytest.MonkeyPatch,
-    account_application_services: ApplicationServices,
-    sqlite_session_factory: sessionmaker[Session],
-    sqlite_engine: Engine,
-) -> Iterator[_Runtime]:
-    tenant = Tenant(name="Workspace")
-    account = Account(name="Owner", email="owner@example.com")
-    dataset = Dataset(tenant_id=tenant.id, name="Dataset", created_by=account.id, enable_api=True)
-    token = ApiToken(tenant_id=tenant.id, type=ApiTokenType.DATASET, token="test-token")
-    with sqlite_session_factory.begin() as session:
-        session.add_all(
-            [
-                tenant,
-                account,
-                dataset,
-                token,
-                TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER),
-            ]
-        )
-
-    sessions = scoped_session(sqlite_session_factory)
-    monkeypatch.setattr(wraps, "db", _Database(engine=sqlite_engine, session=sessions))
-
-    def validate_token(scope: str | None = None) -> ApiToken:
-        assert scope == "dataset"
-        if wraps.extract_service_api_bearer_token() != token.token:
-            raise UnauthorizedError(description="Invalid API token")
-        return token
-
-    validation = create_autospec(wraps.validate_and_get_api_token, spec_set=True, side_effect=validate_token)
-    monkeypatch.setattr(wraps, "validate_and_get_api_token", validation)
-    monkeypatch.setattr(wraps.FeatureService, "get_knowledge_rate_limit", lambda _tenant_id: KnowledgeRateLimitModel())
-    monkeypatch.setattr(wraps, "get_request_id", lambda: "request")
-    monkeypatch.setattr(wraps, "get_trace_id", lambda: "")
-    service = create_autospec(HitTestingApplicationService, instance=True, spec_set=True)
-    result: RetrieveResponseDict = {"query": {"content": "query"}, "records": []}
-    service.hit_testing.return_value = result
-    services = replace(
-        account_application_services, knowledge=replace(account_application_services.knowledge, hit_testing=service)
-    )
-    monkeypatch.setattr(controller, "application_services", lambda: services)
-    app = Flask(__name__)
-    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
-    LoginManager(app)
-    app.register_blueprint(bp)
-    try:
-        yield _Runtime(app.test_client(), service, dataset.id, tenant.id, account.id, token.id)
-    finally:
-        sessions.remove()
-
-
-def _request(
-    runtime: _Runtime,
-    *,
-    suffix: str = "retrieve",
-    dataset_id: str | None = None,
-    payload: dict[str, object] | None = None,
-) -> TestResponse:
-    return runtime.client.post(
-        f"/v1/datasets/{dataset_id or runtime.dataset_id}/{suffix}",
-        json={"query": "query"} if payload is None else payload,
-        headers={"Authorization": "Bearer test-token", "X-Trace-Id": "trace"},
-    )
-
-
-@pytest.mark.parametrize("suffix", ["retrieve", "hit-testing"])
-def test_aliases_forward_admitted_owner_context(runtime: _Runtime, suffix: str) -> None:
-    response = _request(runtime, suffix=suffix)
-    assert response.status_code == 200
-    assert response.get_json() == {"query": {"content": "query"}, "records": []}
-    context = runtime.service.hit_testing.call_args.args[0]
-    assert context.account_id == runtime.account_id
-    assert context.active_workspace_id == runtime.tenant_id
-    assert context.request_id == "request"
-    assert context.trace_id == "trace"
-    assert runtime.service.hit_testing.call_args.kwargs == {
-        "dataset_id": runtime.dataset_id,
-        "request": HitTestingRequest("query", None, None),
-    }
-
-
-def test_preserves_retrieval_options_and_metadata_filters(runtime: _Runtime) -> None:
-    model = {
-        "search_method": "semantic_search",
-        "reranking_enable": False,
-        "score_threshold_enabled": True,
-        "score_threshold": 0.8,
-        "top_k": 10,
-        "metadata_filtering_conditions": {
-            "logical_operator": "and",
-            "conditions": [{"name": "category", "comparison_operator": "is", "value": "finance"}],
+def hit_testing_record() -> dict[str, object]:
+    return {
+        "segment": {
+            "id": "segment-1",
+            "position": 1,
+            "document_id": "document-1",
+            "content": "Chunk text",
+            "sign_content": None,
+            "answer": None,
+            "word_count": 2,
+            "tokens": 3,
+            "keywords": None,
+            "index_node_id": None,
+            "index_node_hash": None,
+            "hit_count": 0,
+            "enabled": True,
+            "disabled_at": None,
+            "disabled_by": None,
+            "status": "completed",
+            "created_by": "account-1",
+            "created_at": 1_700_000_000,
+            "indexing_at": None,
+            "completed_at": None,
+            "error": None,
+            "stopped_at": None,
+            "document": {
+                "id": "document-1",
+                "data_source_type": "upload_file",
+                "name": "guide.md",
+                "doc_type": None,
+                "doc_metadata": None,
+            },
         },
+        "child_chunks": None,
+        "files": None,
+        "score": 0.9,
     }
-    response = _request(runtime, payload={"query": "query", "retrieval_model": model, "attachment_ids": ["upload"]})
-    assert response.status_code == 200
-    request = runtime.service.hit_testing.call_args.kwargs["request"]
-    assert request == HitTestingRequest(
-        "query", RetrievalModel.model_validate(model).model_dump(exclude_none=True), ["upload"]
+
+
+def empty_hit_testing_response() -> HitTestingResponse:
+    return {"query": {"content": "query"}, "records": []}
+
+
+@dataclass
+class HitTestingServiceStub:
+    result: HitTestingResponse = field(default_factory=empty_hit_testing_response)
+    error: Exception | None = None
+    calls: list[tuple[RequestContext, str, HitTestingRequest]] = field(default_factory=list)
+
+    def retrieve(
+        self,
+        context: RequestContext,
+        *,
+        dataset_id: str,
+        request: HitTestingRequest,
+    ) -> HitTestingResponse:
+        self.calls.append((context, dataset_id, request))
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+
+@dataclass(frozen=True)
+class KnowledgeStub:
+    hit_testing: HitTestingServiceStub
+
+
+@dataclass(frozen=True)
+class ApplicationServicesStub:
+    knowledge: KnowledgeStub
+
+
+def _call_post(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    service: HitTestingServiceStub,
+    payload: HitTestingPayload,
+    dataset_id: UUID,
+) -> dict[str, object]:
+    monkeypatch.setattr(
+        controller,
+        "application_services",
+        lambda: ApplicationServicesStub(KnowledgeStub(service)),
+    )
+    method = unwrap(controller.HitTestingApi.post)
+    with app.test_request_context():
+        return method(controller.HitTestingApi(), payload, CONTEXT, dataset_id)
+
+
+def test_post_forwards_transport_values_to_the_application_service(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = HitTestingServiceStub()
+    dataset_id = uuid4()
+    retrieval_model = RetrievalModel.model_validate(
+        {
+            "search_method": "semantic_search",
+            "reranking_enable": False,
+            "score_threshold_enabled": True,
+            "score_threshold": 0.8,
+            "top_k": 10,
+            "metadata_filtering_conditions": {
+                "logical_operator": "and",
+                "conditions": [{"name": "category", "comparison_operator": "is", "value": "finance"}],
+            },
+        }
+    )
+    payload = HitTestingPayload(
+        query="query",
+        retrieval_model=retrieval_model,
+        external_retrieval_model={"top_k": 3},
+        attachment_ids=["upload"],
     )
 
+    assert _call_post(app, monkeypatch, service, payload, dataset_id) == service.result
+    assert service.calls == [
+        (
+            CONTEXT,
+            str(dataset_id),
+            HitTestingRequest(
+                "query",
+                retrieval_model.model_dump(exclude_none=True),
+                {"top_k": 3},
+                ["upload"],
+            ),
+        )
+    ]
 
-def test_normalizes_nullable_response_collections(runtime: _Runtime) -> None:
-    runtime.service.hit_testing.return_value = {"query": {"content": "query"}, "records": [hit_testing_record()]}
-    response = _request(runtime)
-    assert response.status_code == 200
-    record = response.get_json()["records"][0]
-    assert record["segment"]["keywords"] == []
-    assert record["segment"]["sign_content"] is None
+
+def test_response_schema_normalizes_nullable_legacy_collections(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = HitTestingServiceStub(result={"query": {"content": "query"}, "records": [hit_testing_record()]})
+
+    response = _call_post(app, monkeypatch, service, HitTestingPayload(query="query"), uuid4())
+
+    records = cast(list[dict[str, object]], response["records"])
+    record = records[0]
+    segment = cast(dict[str, object], record["segment"])
+    assert segment["keywords"] == []
     assert record["child_chunks"] == []
     assert record["files"] == []
-    assert record["summary"] is None
     assert record["tsne_position"] is None
+    assert record["summary"] is None
 
 
-@pytest.mark.parametrize("payload", [{}, {"query": "x" * 251}, {"query": "query", "attachment_ids": "invalid"}])
-def test_invalid_payload_never_reaches_application(runtime: _Runtime, payload: dict[str, object]) -> None:
-    assert _request(runtime, payload=payload).status_code == 400
-    runtime.service.hit_testing.assert_not_called()
-
-
-@pytest.mark.parametrize("authorization", [None, "Bearer invalid-token"])
-def test_invalid_credentials_never_reach_application(runtime: _Runtime, authorization: str | None) -> None:
-    response = runtime.client.post(
-        f"/v1/datasets/{runtime.dataset_id}/retrieve",
-        json={"query": "query"},
-        headers={} if authorization is None else {"Authorization": authorization},
-    )
-    assert response.status_code == 401
-    runtime.service.hit_testing.assert_not_called()
-
-
-@pytest.mark.parametrize("reason", ["missing", "foreign", "disabled", "key_scope", "archived", "no_owner"])
-def test_token_admission_rejects_before_application(
-    runtime: _Runtime, sqlite_session_factory: sessionmaker[Session], reason: str
+def test_response_preserves_external_knowledge_records(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    dataset_id = runtime.dataset_id
-    with sqlite_session_factory.begin() as session:
-        if reason == "missing":
-            dataset_id = str(uuid4())
-        elif reason == "foreign":
-            foreign = Dataset(tenant_id=str(uuid4()), name="Foreign", created_by=str(uuid4()), enable_api=True)
-            session.add(foreign)
-            session.flush()
-            dataset_id = foreign.id
-        elif reason == "disabled":
-            dataset = session.get(Dataset, runtime.dataset_id)
-            assert dataset is not None
-            dataset.enable_api = False
-        elif reason == "key_scope":
-            session.add(DatasetApiTokenBinding(api_token_id=runtime.token_id, dataset_id=str(uuid4())))
-        elif reason == "archived":
-            tenant = session.get(Tenant, runtime.tenant_id)
-            assert tenant is not None
-            tenant.status = TenantStatus.ARCHIVE
-        else:
-            session.execute(delete(TenantAccountJoin).where(TenantAccountJoin.tenant_id == runtime.tenant_id))
-    response = _request(runtime, dataset_id=dataset_id)
-    expected_status = 404 if reason in {"missing", "foreign"} else 403 if reason in {"disabled", "key_scope"} else 401
-    assert response.status_code == expected_status
-    runtime.service.hit_testing.assert_not_called()
+    result: HitTestingResponse = {
+        "query": {"content": "query"},
+        "records": [{"content": "External text", "title": "Guide", "score": 0.8, "metadata": {"source": "remote"}}],
+    }
+    service = HitTestingServiceStub(result=result)
+
+    response = _call_post(app, monkeypatch, service, HitTestingPayload(query="query"), uuid4())
+
+    assert response == result
 
 
-def test_billing_rate_limit_precedes_application(runtime: _Runtime, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        wraps.FeatureService,
-        "get_knowledge_rate_limit",
-        lambda _tenant_id: KnowledgeRateLimitModel(enabled=True, limit=1, subscription_plan="pro"),
-    )
-    monkeypatch.setattr(wraps.redis_client, "zcard", lambda _key: 2)
-    response = _request(runtime)
-    assert response.status_code == 403
-    assert "rate limit" in response.get_json()["message"]
-    runtime.service.hit_testing.assert_not_called()
+def test_invalid_internal_record_cannot_fall_back_to_external_schema(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = HitTestingServiceStub(result={"query": {"content": "query"}, "records": [{"segment": {"id": "bad"}}]})
+
+    with pytest.raises(ValueError, match="document_id"):
+        _call_post(app, monkeypatch, service, HitTestingPayload(query="query"), uuid4())
 
 
 @pytest.mark.parametrize(
-    ("failure", "status", "code"),
+    ("failure", "transport_error"),
     [
-        (DatasetNotFoundError(), 404, "not_found"),
-        (DatasetAccessDeniedError(), 403, "dataset_access_denied"),
-        (IndexNotInitializedError(), 400, "dataset_not_initialized"),
-        (HitTestingFailedError("failed"), 500, "internal_server_error"),
-        (ValueError("invalid"), 400, "invalid_param"),
+        (DatasetNotFoundError(), NotFoundError),
+        (DatasetAccessDeniedError(), ForbiddenError),
+        (IndexNotInitializedError(), DatasetNotInitializedError),
+        (HitTestingProviderError("missing", kind="uninitialized"), ProviderNotInitializeError),
+        (HitTestingProviderError("quota", kind="quota"), ProviderQuotaExceededError),
+        (HitTestingProviderError("unsupported", kind="unsupported"), ProviderModelCurrentlyNotSupportError),
+        (HitTestingInvocationError("invoke"), CompletionRequestError),
+        (HitTestingUpstreamError("upstream"), ExternalKnowledgeRetrievalFailedError),
+        (HitTestingFailedError("failed"), InternalServerError),
     ],
 )
-def test_domain_errors_use_shared_response_mapping(
-    runtime: _Runtime, failure: Exception, status: int, code: str
+def test_domain_errors_are_translated_at_the_transport_boundary(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: Exception,
+    transport_error: type[Exception],
 ) -> None:
-    runtime.service.hit_testing.side_effect = failure
-    response = _request(runtime)
-    assert response.status_code == status
-    assert response.get_json()["code"] == code
+    service = HitTestingServiceStub(error=failure)
+
+    with pytest.raises(transport_error):
+        _call_post(app, monkeypatch, service, HitTestingPayload(query="query"), uuid4())
 
 
-class TestHitTestingPayload:
-    def test_required_query(self) -> None:
-        assert HitTestingPayload(query="query").query == "query"
+def test_external_provider_failure_reaches_the_unified_http_handler_as_502(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = HitTestingServiceStub(error=HitTestingUpstreamError("provider unavailable"))
+    monkeypatch.setattr(
+        controller,
+        "application_services",
+        lambda: ApplicationServicesStub(KnowledgeStub(service)),
+    )
+    method = unwrap(controller.HitTestingApi.post)
+    http_api = Api(app, doc=False)
+    register_external_error_handlers(http_api)
+    dataset_id = uuid4()
 
-    def test_optional_fields(self) -> None:
-        payload = HitTestingPayload(query="", attachment_ids=["upload"], external_retrieval_model={"top_k": 3})
-        assert payload.attachment_ids == ["upload"]
-        assert payload.external_retrieval_model == {"top_k": 3}
+    class Endpoint(Resource):
+        def post(self) -> object:
+            return method(controller.HitTestingApi(), HitTestingPayload(query="query"), CONTEXT, dataset_id)
 
-    def test_query_max_length(self) -> None:
-        assert len(HitTestingPayload(query="x" * 250).query) == 250
-        with pytest.raises(ValueError, match="1 validation error for HitTestingPayload\\\nquery"):
-            HitTestingPayload(query="x" * 251)
+    http_api.add_resource(Endpoint, "/retrieve")
+    response = app.test_client().post("/retrieve")
 
-    def test_unknown_fields_remain_ignored(self) -> None:
-        assert HitTestingPayload.model_validate({"query": "query", "top_k": 3}).model_dump(exclude_none=True) == {
-            "query": "query"
-        }
+    assert response.status_code == 502
+    assert response.get_json() == {
+        "code": "external_knowledge_failed",
+        "message": "provider unavailable",
+        "status": 502,
+    }
+
+
+def test_payload_preserves_public_validation_and_compatibility() -> None:
+    assert HitTestingPayload.model_validate({"query": "query", "top_k": 3}).model_dump(exclude_none=True) == {
+        "query": "query"
+    }
+    assert len(HitTestingPayload(query="x" * 250).query) == 250
+    with pytest.raises(ValueError, match="query"):
+        HitTestingPayload(query="x" * 251)
+
+
+@pytest.mark.parametrize("reason", ["indexing", "failed"])
+def test_unavailable_index_returns_503_with_recovery_reason(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    reason: Literal["indexing", "failed"],
+) -> None:
+    service = HitTestingServiceStub(error=KnowledgeIndexUnavailableError(reason))
+    monkeypatch.setattr(controller, "application_services", lambda: ApplicationServicesStub(KnowledgeStub(service)))
+    method = unwrap(controller.HitTestingApi.post)
+    http_api = Api(app, doc=False)
+    register_external_error_handlers(http_api)
+
+    class Endpoint(Resource):
+        def post(self) -> object:
+            return method(controller.HitTestingApi(), HitTestingPayload(query="query"), CONTEXT, uuid4())
+
+    http_api.add_resource(Endpoint, "/retrieve")
+    response = app.test_client().post("/retrieve")
+    assert response.status_code == 503
+    assert response.get_json()["code"] == "knowledge_index_unavailable"
+    assert response.get_json()["details"] == {"reason": reason}
