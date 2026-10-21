@@ -23,7 +23,9 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.engine_events import NodeRunPauseRequestedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -31,8 +33,7 @@ from graphon.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from graphon.graph_events import NodeRunPauseRequestedEvent
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.node_events import NodeEventPayload, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from models.agent_config_entities import WorkflowNodeJobConfig, WorkflowOutputRoutes
@@ -57,14 +58,14 @@ from .runtime_request_builder import (
 from .session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 logger = logging.getLogger(__name__)
 
 
 # Stage 4 §5+§7: the terminal events that `_consume_event_stream` may return.
-# Stream + started events are filtered out before we yield; transport errors
+# Stream + started events are filtered out (plain-run text deltas are yielded
+# as stream chunks instead); transport errors
 # are surfaced as a separate StreamCompletedEvent in the second tuple slot.
 type _TerminalAgentBackendEvent = (
     AgentBackendRunSucceededInternalEvent | AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent
@@ -87,8 +88,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         node_id: str,
         data: DifyAgentNodeData,
         *,
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         binding_resolver: WorkflowAgentBindingResolver,
         runtime_request_builder: WorkflowAgentRuntimeRequestBuilder,
         agent_backend_client: AgentBackendRunClient,
@@ -101,10 +102,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
-        # The base node parses the factory's serialized payload into node_data.
         if self.node_data.agent_output_routes.enabled and self.error_strategy == ErrorStrategy.DEFAULT_VALUE:
             raise ValueError("Output routes do not support the node-level default-value error strategy.")
         if self.node_data.agent_output_routes.enabled:
@@ -128,7 +128,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
 
     @override
-    def _run(self) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent]:
+    def _run(self) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent]:
         inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         metadata: dict[str, Any] = {
@@ -155,16 +155,16 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-    ) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent]:
+    ) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
-        workflow_id = self.graph_init_params.workflow_id
+        workflow_id = self.init_params.workflow_id
         workflow_run_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
         )
         # Chatflow sessions also carry their owning conversation.
         conversation_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.CONVERSATION_ID,
         )
 
@@ -178,6 +178,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 node_execution_id=self.execution_id,
                 conversation_id=conversation_id,
+                workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
             )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
@@ -186,7 +187,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
                 snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
-                conversation_id=conversation_id,
+                conversation_id=conversation_id if dify_ctx.workflow_tool_invocation_id is None else None,
             )
         except WorkflowAgentBindingError as error:
             yield self._failure_event(
@@ -214,6 +215,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "workflow_agent_binding_id": bundle.binding.id,
             }
         )
+        if dify_ctx.workflow_tool_invocation_id is not None:
+            process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] = dify_ctx.workflow_tool_invocation_id
         session_scope = existing_scope or WorkflowAgentSessionScope(
             tenant_id=dify_ctx.tenant_id,
             app_id=dify_ctx.app_id,
@@ -225,6 +228,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             agent_id=bundle.agent.id,
             agent_config_snapshot_id=bundle.snapshot.id,
             conversation_id=conversation_id,
+            workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
         )
 
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)
@@ -247,7 +251,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         workflow_run_id=workflow_run_id,
                         node_id=self._node_id,
                         node_execution_id=self.execution_id,
-                        variable_pool=self.graph_runtime_state.variable_pool,
+                        variable_pool=self.runtime_state.variable_pool,
                         binding=bundle.binding,
                         agent=bundle.agent,
                         snapshot=bundle.snapshot,
@@ -302,11 +306,14 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "status": create_response.status,
             }
 
-            terminal_event, exhausted = self._consume_event_stream(
+            terminal_event, exhausted = yield from self._consume_event_stream(
                 create_response.run_id,
                 inputs=inputs,
                 process_data=process_data,
                 metadata=metadata,
+                stream_text=not custom_outputs
+                and not node_job.output_routes.enabled
+                and self.error_strategy != ErrorStrategy.DEFAULT_VALUE,
             )
             # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
             if (
@@ -436,11 +443,24 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-    ) -> tuple[
-        _TerminalAgentBackendEvent | None,
-        StreamCompletedEvent | None,
+        stream_text: bool,
+    ) -> Generator[
+        StreamChunkEvent,
+        None,
+        tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
         """Consume the SSE stream for one Agent backend run.
+
+        When ``stream_text`` is set (plain runs whose final string becomes the
+        ``text`` output), agent-message deltas are yielded as ``text`` stream
+        chunks so Answer nodes can stream them. The stream is closed only after
+        at least one chunk was sent; otherwise the response coordinator falls
+        back to the final ``text`` variable. Structured runs keep deltas as
+        metadata because their ``text`` comes from the structured output.
+        Plain runs with the default-value error strategy stay buffered too:
+        once a selector has stream chunks, the response filter no longer reads
+        the variable pool, so a configured fallback ``text`` would be dropped
+        after a partial stream.
 
         Returns a 2-tuple ``(terminal_event, transport_failure)``:
         - ``terminal_event``: the first non-stream/non-started internal event,
@@ -450,6 +470,30 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
           terminal may accompany it so the caller can persist the final session
           snapshot while preserving the original transport failure.
         """
+        result = yield from self._read_event_stream(
+            run_id,
+            inputs=inputs,
+            process_data=process_data,
+            metadata=metadata,
+            stream_text=stream_text,
+        )
+        if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
+            yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
+        return result
+
+    def _read_event_stream(
+        self,
+        run_id: str,
+        *,
+        inputs: dict[str, Any],
+        process_data: dict[str, Any],
+        metadata: dict[str, Any],
+        stream_text: bool,
+    ) -> Generator[
+        StreamChunkEvent,
+        None,
+        tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
+    ]:
         stream_event_count = 0
         last_event_id: str | None = None
         try:
@@ -470,6 +514,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
                         if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
                             self._record_agent_message_delta_metadata(metadata, internal_event)
+                            if stream_text:
+                                yield StreamChunkEvent(
+                                    selector=[self._node_id, "text"],
+                                    chunk=internal_event.delta,
+                                    is_final=False,
+                                )
                         continue
                     metadata["agent_backend"] = {
                         **dict(metadata.get("agent_backend") or {}),
@@ -530,11 +580,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         return cancellation, None
 
     def _is_graph_aborted(self) -> bool:
-        """Let Agent SSE consumption observe GraphEngine's cooperative abort state."""
-        try:
-            return self.graph_runtime_state.graph_execution.aborted
-        except (AttributeError, RuntimeError):
-            return False
+        """Let Agent SSE consumption observe Engine's cooperative abort state."""
+        return self.runtime_state.graph_execution.aborted
 
     def _stream_stop_reason(self) -> str:
         return "workflow_graph_aborted" if self._is_graph_aborted() else "event_stream_failed"

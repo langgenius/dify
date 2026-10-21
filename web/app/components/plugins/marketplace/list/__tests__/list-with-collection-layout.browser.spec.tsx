@@ -64,6 +64,8 @@ describe('Partner collection header layout', () => {
       </div>,
     )
 
+    await expect.element(screen.getByRole('button', { name: 'Previous' })).toBeVisible()
+    await expect.element(screen.getByRole('link', { name: 'Torne-se um parceiro' })).toBeVisible()
     const titleRect = screen
       .getByText('Partners', { exact: true })
       .element()

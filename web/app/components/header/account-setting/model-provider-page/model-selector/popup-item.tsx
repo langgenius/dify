@@ -1,5 +1,5 @@
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ComponentProps } from 'react'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -37,8 +37,6 @@ export type ModelSelectorPreviewPayload = {
   provider: ModelSelectorProvider
   modelItem: ModelSelectorModel
 }
-
-type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
 
 type PopupItemProps = {
   defaultModel?: ModelSelectorValue
@@ -266,7 +264,7 @@ function PopupItem({
               </>
             )
             const row = needsConfiguration ? (
-              <div className={rowClassName} onPointerDown={onPreviewCardClose}>
+              <div className={rowClassName}>
                 {rowContent}
                 {canCreateCredential && (
                   <Button
@@ -286,7 +284,6 @@ function PopupItem({
                 aria-current={isSelected ? 'true' : undefined}
                 disabled={!isSelectable}
                 className={cn(rowClassName, 'w-[calc(100%-0.5rem)] justify-start')}
-                onPointerDown={onPreviewCardClose}
                 onClick={() => onSelect(model.provider, modelItem)}
               >
                 {rowContent}
@@ -296,6 +293,7 @@ function PopupItem({
             return (
               <li key={modelItem.model}>
                 <PreviewCardTrigger
+                  onPointerDown={onPreviewCardClose}
                   delay={150}
                   closeDelay={150}
                   handle={previewCardHandle}

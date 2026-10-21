@@ -1,4 +1,5 @@
 from collections.abc import Callable, Generator
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -19,6 +20,7 @@ from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubj
 from core.db.session_factory import get_session_maker
 from extensions.application_services.app import AppServices
 from extensions.application_services.resource_access_token import build_resource_access_token_service
+from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Tenant, TenantStatus
 from models.enums import CreatorUserRole
@@ -233,19 +235,17 @@ def test_workspace_list_returns_only_token_tenant(resource_fixture: ResourceFixt
         "name": "Token workspace",
         "role": "",
         "status": "normal",
-        "current": True,
     }
 
 
-@pytest.mark.parametrize("endpoint", ["detail", "members", "switch"])
+@pytest.mark.parametrize("endpoint", ["detail", "members"])
 def test_other_workspace_endpoints_reject_resource_token(resource_fixture: ResourceFixture, endpoint: str) -> None:
-    from controllers.openapi.workspaces import WorkspaceByIdApi, WorkspaceMembersApi, WorkspaceSwitchApi
+    from controllers.openapi.workspaces import WorkspaceByIdApi, WorkspaceMembersApi
 
     flask_app, _, _, tenant_id, _ = resource_fixture
     methods = {
         "detail": WorkspaceByIdApi().get,
         "members": WorkspaceMembersApi().get,
-        "switch": WorkspaceSwitchApi().post,
     }
     with flask_app.test_request_context(
         "/workspaces", headers={"Authorization": "Bearer sk-test", CATALOG_HEADER: catalog_for(flask_app)[1]}
@@ -254,7 +254,9 @@ def test_other_workspace_endpoints_reject_resource_token(resource_fixture: Resou
             methods[endpoint](workspace_id=tenant_id)
 
 
-def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) -> None:
+def test_stop_task_rejects_other_token_owner(
+    resource_fixture: ResourceFixture, account_application_services: ApplicationServices
+) -> None:
     import inspect
 
     from werkzeug.exceptions import NotFound
@@ -264,42 +266,49 @@ def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) 
     flask_app, app_id, _, _, end_user = resource_fixture
     data = call(flask_app, app_id)
     end_user.return_value.id = "machine-user"
-    with (
-        patch("controllers.openapi.app_run.redis_client") as redis,
-        patch("controllers.openapi.app_run.AppQueueManager.set_stop_flag_no_user_check") as stop,
-        patch("controllers.openapi.app_run.GraphEngineManager") as engine,
+    from services.app_task_service import AppTaskControlService
+    from tests.unit_tests.services.test_app_task_service import _StopRedis
+
+    redis = _StopRedis(values={"generate_task_belong:task": b"end-user-other-user"})
+    with patch(
+        "controllers.openapi.app_run.application_services",
+        return_value=replace(account_application_services, app_tasks=AppTaskControlService(redis_client=redis)),
     ):
-        redis.get.return_value = b"end-user-other-user"
         with pytest.raises(NotFound):
             inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
-        stop.assert_not_called()
-        engine.assert_not_called()
-        redis.get.return_value = b"end-user-machine-user"
+        assert redis.operations == []
+        redis.values["generate_task_belong:task"] = b"end-user-machine-user"
         inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
-        stop.assert_called_once_with("task")
+        assert redis.values["generate_task_stopped:task"] == b"1"
 
 
-@pytest.mark.parametrize("search_unbound", [False, True])
+@pytest.mark.parametrize("search", ["list", "bound", "unbound"])
+@pytest.mark.parametrize("empty_bindings", [False, True])
 def test_app_list_filters_unbound_apps_before_pagination(
-    resource_fixture: ResourceFixture, sqlite_session: Session, search_unbound: bool
+    resource_fixture: ResourceFixture, sqlite_session: Session, search: str, empty_bindings: bool
 ) -> None:
-    import inspect
-
-    from controllers.openapi._models import AppListQuery
     from controllers.openapi.apps import AppListApi
 
-    flask_app, app_id, _, tenant_id, _ = resource_fixture
+    flask_app, app_id, token_id, tenant_id, _ = resource_fixture
     unbound = App(
         id=str(uuid4()), tenant_id=tenant_id, name="Unbound app", mode=AppMode.CHAT, enable_api=True, enable_site=False
     )
     sqlite_session.add(unbound)
-    sqlite_session.commit()
-    with flask_app.test_request_context("/"):
-        data = call(flask_app, workspace_id=tenant_id, scope=Scope.APPS_READ)
-        result = inspect.unwrap(AppListApi.get)(
-            AppListApi(),
-            data,
-            query=AppListQuery(workspace_id=tenant_id, name=unbound.id if search_unbound else None),
+    if empty_bindings:
+        sqlite_session.execute(
+            delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token_id)
         )
-    assert result.total == (0 if search_unbound else 1)
-    assert [app.id for app in result.data] == ([] if search_unbound else [app_id])
+    sqlite_session.commit()
+    query = {"workspace_id": tenant_id}
+    if search != "list":
+        query["name"] = app_id if search == "bound" else unbound.id
+    with flask_app.test_request_context(
+        "/apps",
+        query_string=query,
+        headers={"Authorization": "Bearer sk-test", CATALOG_HEADER: catalog_for(flask_app)[1]},
+    ):
+        result, status = AppListApi().get()
+    expected_ids: list[str] = [] if empty_bindings or search == "unbound" else [app_id]
+    assert status == 200
+    assert result["total"] == len(expected_ids)
+    assert [app["id"] for app in result["data"]] == expected_ids

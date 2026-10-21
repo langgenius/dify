@@ -57,7 +57,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
 | `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, `e2b`, or `openshell` Home Snapshot + Execution Binding backend profile. |
 | `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
-| `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
+| `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Required nonblank bearer token when the Local endpoint is configured; must match shellctl's `SHELLCTL_AUTH_TOKEN`. |
 | `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
 | `DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT` | `/workspace` | Root directory, on the Local shellctl filesystem, for mutable Workspaces. |
 | `DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT` | `/home/dify/.snapshots` | Root directory, on the Local shellctl filesystem, for immutable Home Snapshots. |
@@ -183,6 +183,25 @@ must use `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` and
 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`. There is no compatibility setting for
 the removed shell-provider selector.
 
+Local shellctl deployments must start with `shellctl serve --require-auth-token`
+and set `SHELLCTL_AUTH_TOKEN` to the same secret as the Agent Backend. Compose's
+`local_sandbox` command enables this check; missing, empty, or whitespace-only
+tokens fail before service initialization. E2B and Enterprise retain their
+existing token requirements, and an unset Local endpoint still disables runtime.
+
+For Compose, set `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` in a shared interpolation
+source: the invoking shell, `docker/.env`, or a Compose `--env-file`. This supplies
+the same secret to Agent Backend and shellctl. Setting it only in a service env
+file is insufficient: Compose's explicit `environment` values override that
+file, including with an empty interpolated value. The legacy token alias remains
+accepted. Deploy this change with a rebuilt runtime image containing
+`--require-auth-token`; the previously published `1.17.1` image does not support
+the new flag.
+
+When shellctl path isolation is enabled, any Landlock setup error aborts the job
+with exit code `125` before its user script executes. Deployments may explicitly
+set `SHELLCTL_ENABLE_PATH_ISOLATION=false` to disable shellctl path isolation.
+
 The backend selection is deployment-private. Shell-enabled run requests use an
 Execution Context, `dify.runtime`, and `dify.shell` graph. Runtime config carries
 only the opaque `backend_binding_ref` resolved by Dify API. See
@@ -282,6 +301,29 @@ asynchronous E2B pause propagation make their ordering nondeterministic. A Shell
 provider `RuntimeError` observed first becomes a tool observation. In contrast,
 run-deadline cancellation propagates through the Shell boundary; only the Dify
 Agent run deadline owns the terminal `agent_run_limit_exceeded` failure.
+
+The E2B backend uses SDK 2.55.1 or later with three control-plane retries.
+The SDK retries `502` only for replayable operations, including when the response
+has `Retry-After`; a gateway can return `502` after a resource was already created.
+Sandbox and snapshot creation therefore surface `502` without replaying the
+request. The SDK still retries `503`, `429` with `Retry-After`, and safely
+replayable network failures. Backend adapters invoke each SDK operation once;
+exhausted retries and timeouts do not start a second SDK request budget.
+Resource creation and snapshot creation are also not replayed after an ambiguous
+post-write network failure. See the [SDK replay policy](https://github.com/e2b-dev/E2B/pull/1924).
+
+This policy covers E2B lifecycle API calls. Shell commands and normal file
+operations use the separate shellctl client, and usage collection uses its own
+HTTP client. Neither inherits the E2B SDK retry or connection-pool settings.
+
+The backend explicitly requests `mode="full"` for timeout pauses, explicit
+pauses, and Home Snapshots, preserving both filesystem and memory state. Binding
+acquisition uses `on_resume="restore"`; `connect` does not accept a snapshot
+mode. These settings preserve the existing full-memory restore intent while
+replacing the deprecated `keep_memory` option. They do not override platform
+fallbacks: E2B may save only the filesystem if a timeout pause is continuously
+refused because a previous snapshot is still being finalized. See the
+[E2B persistence contract](https://docs.e2b.dev/sandbox/persistence).
 
 ## OpenShell backend
 
@@ -489,6 +531,14 @@ progress:
   delivering a terminal event. Clients must stop reconnecting after consuming
   that event. Both cursor forms remain exclusive resume cursors, so the server
   does not resend a terminal event that the supplied cursor already excludes.
+
+Both event endpoints replay with nonblocking `XREAD`, which supports exclusive
+resume cursors on Redis 6.0, including 6.0.14. `0-0` starts at the earliest
+retained event. Polling returns at most `limit` events; an empty page preserves
+the supplied `after` as `next_cursor`. SSE switches to blocking reads after
+replay is exhausted. Both endpoints return `404` when the run record is missing.
+This read-command compatibility does not define the platform's full Redis
+support matrix; the Redis deployment constraints above still apply.
 
 Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
 `run_succeeded`. Failed runs end with `run_failed`, and accepted cancellations

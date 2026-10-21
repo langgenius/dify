@@ -85,7 +85,7 @@ def test_list_provider_tools_saves_all_pages(
     assert all(tool["description"] == "" for tool in json.loads(provider.tools))
     assert provider.authed is True
     db_session.flush.assert_called_once_with()
-    assert remote_session.list_tools.call_args_list == [call(cursor=None), call(cursor=cursor)]
+    assert remote_session.list_tools.call_args_list == [call(), call(cursor=cursor)]
 
 
 @pytest.mark.parametrize(
@@ -104,7 +104,7 @@ def test_list_provider_tools_preserves_saved_tools_on_cursor_cycle(
     original_tools, original_updated_at = provider.tools, provider.updated_at
     remote_session.list_tools.side_effect = [_page(f"tool-{index}", cursor) for index, cursor in enumerate(cursors)]
 
-    with pytest.raises(ValueError, match="Failed to connect to MCP server: .*repeated cursor"):
+    with pytest.raises(ValueError, match="Failed to connect to MCP server: .*repeated pagination cursor"):
         service.list_provider_tools(tenant_id=provider.tenant_id, provider_id=provider.id)
 
     assert provider.tools == original_tools
@@ -112,7 +112,7 @@ def test_list_provider_tools_preserves_saved_tools_on_cursor_cycle(
     assert provider.authed is True
     db_session.flush.assert_not_called()
     build_response.assert_not_called()
-    assert remote_session.list_tools.call_args_list == [call(cursor=cursor) for cursor in [None, *cursors[:-1]]]
+    assert remote_session.list_tools.call_args_list == [call(), *[call(cursor=cursor) for cursor in cursors[:-1]]]
 
 
 def test_list_provider_tools_preserves_saved_tools_on_later_page_error(
@@ -133,4 +133,4 @@ def test_list_provider_tools_preserves_saved_tools_on_later_page_error(
     assert provider.authed is True
     db_session.flush.assert_not_called()
     build_response.assert_not_called()
-    assert remote_session.list_tools.call_args_list == [call(cursor=None), call(cursor="next")]
+    assert remote_session.list_tools.call_args_list == [call(), call(cursor="next")]

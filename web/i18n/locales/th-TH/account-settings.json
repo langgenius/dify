@@ -55,13 +55,14 @@
   "account.sendVerificationButton": "ส่งรหัสยืนยัน",
   "account.setPassword": "ตั้งรหัสผ่าน",
   "account.showAppLength": "แสดง {{length}} แอป",
+  "account.timezoneNoResults": "ไม่พบเขตเวลาที่ตรงกัน",
+  "account.timezoneSearchPlaceholder": "ค้นหาเมืองหรือเขตเวลา…",
   "account.verificationLabel": "รหัสยืนยัน",
   "account.verificationPlaceholder": "วางรหัส 6 หลัก",
   "account.workspaceName": "ชื่อพื้นที่ทำงาน",
   "account.workspaceNamePlaceholder": "ใส่ชื่อพื้นที่ทำงาน",
   "resourceAccessToken.accessibleResources": "ทรัพยากรที่เข้าถึงได้",
   "resourceAccessToken.actions": "การดำเนินการ",
-  "resourceAccessToken.app": "แอป",
   "resourceAccessToken.appCount": "{{count}} แอป",
   "resourceAccessToken.appsCount": "{{count}} แอป",
   "resourceAccessToken.appsSection": "แอป",
@@ -78,7 +79,6 @@
   "resourceAccessToken.editTitle": "แก้ไขโทเค็นการเข้าถึง",
   "resourceAccessToken.empty": "ยังไม่มีโทเค็นการเข้าถึง",
   "resourceAccessToken.emptyDescription": "สร้างโทเค็นการเข้าถึงเพื่อให้งานอัตโนมัติและระบบภายนอกค้นหาและเข้าถึงทรัพยากรที่เลือกผ่าน Difyctl",
-  "resourceAccessToken.knowledge": "ฐานความรู้",
   "resourceAccessToken.knowledgeBasesSection": "ฐานความรู้",
   "resourceAccessToken.knowledgeCount": "{{count}} ฐานความรู้",
   "resourceAccessToken.knowledgesCount": "{{count}} ฐานความรู้",
@@ -98,6 +98,5 @@
   "resourceAccessToken.tabApps": "แอป",
   "resourceAccessToken.tabKnowledgeBases": "ฐานความรู้",
   "resourceAccessToken.token": "โทเค็น",
-  "resourceAccessToken.total": "ทั้งหมด {{total}} รายการ",
-  "resourceAccessToken.trackingId": "รหัสติดตาม"
+  "resourceAccessToken.total": "ทั้งหมด {{total}} รายการ"
 }

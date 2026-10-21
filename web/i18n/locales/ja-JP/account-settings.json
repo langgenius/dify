@@ -55,13 +55,14 @@
   "account.sendVerificationButton": "確認コードの送信",
   "account.setPassword": "パスワードを設定",
   "account.showAppLength": "{{length}}アプリを表示",
+  "account.timezoneNoResults": "一致するタイムゾーンが見つかりません",
+  "account.timezoneSearchPlaceholder": "都市またはタイムゾーンを検索…",
   "account.verificationLabel": "認証コード",
   "account.verificationPlaceholder": "6 桁のコードを貼り付けます",
   "account.workspaceName": "ワークスペース名",
   "account.workspaceNamePlaceholder": "ワークスペース名を入力",
   "resourceAccessToken.accessibleResources": "アクセス可能なリソース",
   "resourceAccessToken.actions": "操作",
-  "resourceAccessToken.app": "アプリ",
   "resourceAccessToken.appCount": "{{count}} アプリ",
   "resourceAccessToken.appsCount": "{{count}} アプリ",
   "resourceAccessToken.appsSection": "アプリ",
@@ -78,7 +79,6 @@
   "resourceAccessToken.editTitle": "アクセストークンを編集",
   "resourceAccessToken.empty": "アクセストークンはまだありません",
   "resourceAccessToken.emptyDescription": "自動化タスクや外部システムが Difyctl を使って選択したリソースを見つけ、利用できるようにアクセストークンを作成します。",
-  "resourceAccessToken.knowledge": "ナレッジベース",
   "resourceAccessToken.knowledgeBasesSection": "ナレッジベース",
   "resourceAccessToken.knowledgeCount": "{{count}} ナレッジベース",
   "resourceAccessToken.knowledgesCount": "{{count}} ナレッジベース",
@@ -98,6 +98,5 @@
   "resourceAccessToken.tabApps": "アプリ",
   "resourceAccessToken.tabKnowledgeBases": "ナレッジベース",
   "resourceAccessToken.token": "トークン",
-  "resourceAccessToken.total": "合計 {{total}} 件",
-  "resourceAccessToken.trackingId": "追跡 ID"
+  "resourceAccessToken.total": "合計 {{total}} 件"
 }

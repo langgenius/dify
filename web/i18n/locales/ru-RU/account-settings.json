@@ -55,13 +55,14 @@
   "account.sendVerificationButton": "Отправить код подтверждения",
   "account.setPassword": "Установить пароль",
   "account.showAppLength": "Показать {{length}} приложений",
+  "account.timezoneNoResults": "Подходящие часовые пояса не найдены",
+  "account.timezoneSearchPlaceholder": "Поиск городов или часовых поясов…",
   "account.verificationLabel": "Проверочный код",
   "account.verificationPlaceholder": "Вставьте 6-значный код",
   "account.workspaceName": "Название рабочего пространства",
   "account.workspaceNamePlaceholder": "Введите название рабочей области",
   "resourceAccessToken.accessibleResources": "Доступные ресурсы",
   "resourceAccessToken.actions": "Действия",
-  "resourceAccessToken.app": "Приложение",
   "resourceAccessToken.appCount": "{{count}} Приложение",
   "resourceAccessToken.appsCount": "{{count}} Приложения",
   "resourceAccessToken.appsSection": "Приложения",
@@ -78,7 +79,6 @@
   "resourceAccessToken.editTitle": "Изменить токен доступа",
   "resourceAccessToken.empty": "Токенов доступа пока нет",
   "resourceAccessToken.emptyDescription": "Создайте токен доступа, чтобы автоматизированные задачи и внешние системы могли находить выбранные ресурсы и получать к ним доступ через Difyctl.",
-  "resourceAccessToken.knowledge": "База знаний",
   "resourceAccessToken.knowledgeBasesSection": "Базы знаний",
   "resourceAccessToken.knowledgeCount": "{{count}} База знаний",
   "resourceAccessToken.knowledgesCount": "{{count}} Базы знаний",
@@ -98,6 +98,5 @@
   "resourceAccessToken.tabApps": "Приложения",
   "resourceAccessToken.tabKnowledgeBases": "Базы знаний",
   "resourceAccessToken.token": "Токен",
-  "resourceAccessToken.total": "Всего: {{total}}",
-  "resourceAccessToken.trackingId": "Идентификатор отслеживания"
+  "resourceAccessToken.total": "Всего: {{total}}"
 }

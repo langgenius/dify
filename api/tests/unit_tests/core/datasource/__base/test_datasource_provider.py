@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -18,12 +18,14 @@ class ConcreteDatasourcePluginProviderController(DatasourcePluginProviderControl
     Concrete implementation of DatasourcePluginProviderController for testing purposes.
     """
 
+    plugin_unique_identifier = "langgenius/example:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
     def get_datasource(self, datasource_name: str) -> DatasourcePlugin:
-        raise AssertionError("Credential validation must not fetch a datasource")
+        raise AssertionError(f"Credential validation must not fetch datasource {datasource_name!r}")
 
 
 class TestDatasourcePluginProviderController:
-    def test_init(self):
+    def test_init(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         tenant_id = "test-tenant-id"
@@ -35,26 +37,26 @@ class TestDatasourcePluginProviderController:
         assert controller.entity == entity
         assert controller.tenant_id == tenant_id
 
-    def test_need_credentials(self):
+    @pytest.mark.parametrize(
+        ("credentials_schema", "expected"),
+        [
+            (None, False),
+            ([], False),
+            ([ProviderConfig(name="api_key", type=ProviderConfigType.SECRET_INPUT)], True),
+        ],
+        ids=["schema_none", "schema_empty", "schema_with_items"],
+    )
+    def test_need_credentials(self, credentials_schema: list[ProviderConfig] | None, expected: bool) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
-        tenant_id = "test-tenant-id"
-        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id=tenant_id)
+        entity.credentials_schema = credentials_schema  # pyrefly: ignore[bad-assignment]
+        controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test-tenant-id")
 
-        # Case 1: credentials_schema is None
-        entity.credentials_schema = None
-        assert controller.need_credentials is False
-
-        # Case 2: credentials_schema is empty
-        entity.credentials_schema = []
-        assert controller.need_credentials is False
-
-        # Case 3: credentials_schema has items
-        entity.credentials_schema = [ProviderConfig(name="api_key", type=ProviderConfigType.SECRET_INPUT)]
-        assert controller.need_credentials is True
+        # Act & Assert
+        assert controller.need_credentials is expected
 
     @patch("core.datasource.__base.datasource_provider.PluginToolManager")
-    def test_validate_credentials(self, mock_manager_class):
+    def test_validate_credentials(self, mock_manager_class: MagicMock) -> None:
         # Arrange
         mock_manager = mock_manager_class.return_value
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
@@ -80,7 +82,7 @@ class TestDatasourcePluginProviderController:
         with pytest.raises(ToolProviderCredentialValidationError, match="Invalid credentials"):
             controller._validate_credentials(user_id, credentials)
 
-    def test_provider_type(self):
+    def test_provider_type(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
@@ -88,7 +90,7 @@ class TestDatasourcePluginProviderController:
         # Act & Assert
         assert controller.provider_type == DatasourceProviderType.LOCAL_FILE
 
-    def test_validate_credentials_format_empty_schema(self):
+    def test_validate_credentials_format_empty_schema(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         entity.credentials_schema = []
@@ -98,7 +100,7 @@ class TestDatasourcePluginProviderController:
         # Act & Assert (Should not raise anything)
         controller.validate_credentials_format(credentials)
 
-    def test_validate_credentials_format_unknown_credential(self):
+    def test_validate_credentials_format_unknown_credential(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         entity.credentials_schema = []
@@ -111,7 +113,7 @@ class TestDatasourcePluginProviderController:
         ):
             controller.validate_credentials_format(credentials)
 
-    def test_validate_credentials_format_required_missing(self):
+    def test_validate_credentials_format_required_missing(self) -> None:
         # Arrange
         config = ProviderConfig(
             name="api_key",
@@ -127,7 +129,7 @@ class TestDatasourcePluginProviderController:
         with pytest.raises(ToolProviderCredentialValidationError, match="credential api_key is required"):
             controller.validate_credentials_format({})
 
-    def test_validate_credentials_format_not_required_null(self):
+    def test_validate_credentials_format_not_required_null(self) -> None:
         # Arrange
         config = ProviderConfig(
             name="optional",
@@ -141,11 +143,11 @@ class TestDatasourcePluginProviderController:
         controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act & Assert
-        credentials = {"optional": None}
+        credentials: dict[str, object] = {"optional": None}
         controller.validate_credentials_format(credentials)
         assert credentials["optional"] is None
 
-    def test_validate_credentials_format_type_mismatch_text(self):
+    def test_validate_credentials_format_type_mismatch_text(self) -> None:
         # Arrange
         config = ProviderConfig(
             name="text_field",
@@ -161,7 +163,7 @@ class TestDatasourcePluginProviderController:
         with pytest.raises(ToolProviderCredentialValidationError, match="credential text_field should be string"):
             controller.validate_credentials_format({"text_field": 123})
 
-    def test_validate_credentials_format_select_validation(self):
+    def test_validate_credentials_format_select_validation(self) -> None:
         # Arrange
         option = ProviderConfig.Option(value="opt1", label=I18nObject(en_US="Option 1"))
 
@@ -181,7 +183,7 @@ class TestDatasourcePluginProviderController:
             controller.validate_credentials_format({"select_field": 123})
 
         # Case 2: Options not list
-        config.options = "invalid"
+        config.options = "invalid"  # pyrefly: ignore[bad-assignment]
         with pytest.raises(
             ToolProviderCredentialValidationError, match="credential select_field options should be list"
         ):
@@ -192,7 +194,7 @@ class TestDatasourcePluginProviderController:
         with pytest.raises(ToolProviderCredentialValidationError, match="credential select_field should be one of"):
             controller.validate_credentials_format({"select_field": "invalid_opt"})
 
-    def test_get_datasource_base(self):
+    def test_get_datasource_base(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
@@ -203,7 +205,7 @@ class TestDatasourcePluginProviderController:
         # Assert
         assert result is None
 
-    def test_validate_credentials_format_hits_pop(self):
+    def test_validate_credentials_format_hits_pop(self) -> None:
         # Arrange
         config = ProviderConfig(
             name="valid_field",
@@ -223,7 +225,7 @@ class TestDatasourcePluginProviderController:
         assert "valid_field" in credentials
         assert credentials["valid_field"] == "valid_value"
 
-    def test_validate_credentials_format_hits_continue(self):
+    def test_validate_credentials_format_hits_continue(self) -> None:
         # Arrange
         config = ProviderConfig(
             name="optional_field",
@@ -237,13 +239,13 @@ class TestDatasourcePluginProviderController:
         controller = ConcreteDatasourcePluginProviderController(entity=entity, tenant_id="test")
 
         # Act
-        credentials = {"optional_field": None}
+        credentials: dict[str, object] = {"optional_field": None}
         controller.validate_credentials_format(credentials)
 
         # Assert
         assert credentials["optional_field"] is None
 
-    def test_validate_credentials_format_default_values(self):
+    def test_validate_credentials_format_default_values(self) -> None:
         # Arrange
         config_text = ProviderConfig(
             name="text_def",

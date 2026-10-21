@@ -55,13 +55,14 @@
   "account.sendVerificationButton": "Enviar código de verificación",
   "account.setPassword": "Establecer una contraseña",
   "account.showAppLength": "Mostrar {{length}} apps",
+  "account.timezoneNoResults": "No se encontraron zonas horarias coincidentes",
+  "account.timezoneSearchPlaceholder": "Buscar ciudades o zonas horarias...",
   "account.verificationLabel": "Código de verificación",
   "account.verificationPlaceholder": "Pega el código de 6 dígitos",
   "account.workspaceName": "Nombre del espacio de trabajo",
   "account.workspaceNamePlaceholder": "Ingrese el nombre del espacio de trabajo",
   "resourceAccessToken.accessibleResources": "Recursos accesibles",
   "resourceAccessToken.actions": "Acciones",
-  "resourceAccessToken.app": "Aplicación",
   "resourceAccessToken.appCount": "{{count}} Aplicación",
   "resourceAccessToken.appsCount": "{{count}} Aplicaciones",
   "resourceAccessToken.appsSection": "Aplicaciones",
@@ -78,7 +79,6 @@
   "resourceAccessToken.editTitle": "Editar token de acceso",
   "resourceAccessToken.empty": "Todavía no hay tokens de acceso",
   "resourceAccessToken.emptyDescription": "Crea un token de acceso para que las tareas automatizadas y los sistemas externos descubran y utilicen los recursos seleccionados mediante Difyctl.",
-  "resourceAccessToken.knowledge": "Base de conocimientos",
   "resourceAccessToken.knowledgeBasesSection": "Bases de conocimientos",
   "resourceAccessToken.knowledgeCount": "{{count}} Base de conocimientos",
   "resourceAccessToken.knowledgesCount": "{{count}} Bases de conocimientos",
@@ -98,6 +98,5 @@
   "resourceAccessToken.tabApps": "Aplicaciones",
   "resourceAccessToken.tabKnowledgeBases": "Bases de conocimientos",
   "resourceAccessToken.token": "Token",
-  "resourceAccessToken.total": "{{total}} en total",
-  "resourceAccessToken.trackingId": "ID de seguimiento"
+  "resourceAccessToken.total": "{{total}} en total"
 }

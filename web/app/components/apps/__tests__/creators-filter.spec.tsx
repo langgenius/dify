@@ -5,6 +5,26 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import CreatorsFilter from '../creators-filter'
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({
+        accounts: [
+          { id: 'member-1', name: 'Zoe', avatar_url: null, status: 'active' },
+          { id: 'member-2', name: 'Alice', avatar_url: null, status: 'active' },
+          { id: 'member-3', name: 'Bob', avatar_url: null, status: 'active' },
+          { id: 'member-4', name: 'Pending User', avatar_url: null, status: 'pending' },
+          { id: 'member-5', name: 'Charlie', avatar_url: null, status: 'active' },
+          { id: 'member-6', name: 'Robin', avatar_url: null, status: 'active' },
+        ],
+      }),
+    }),
+  }
+})
+
 const mockOnChange = vi.hoisted(() => vi.fn())
 
 const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
@@ -17,19 +37,6 @@ const StatefulCreatorsFilter = ({ initialValue }: { initialValue: string[] }) =>
   return <CreatorsFilter value={value} onChange={setValue} />
 }
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        { id: 'member-1', name: 'Zoe', avatar_url: null, status: 'active' },
-        { id: 'member-2', name: 'Alice', avatar_url: null, status: 'active' },
-        { id: 'member-3', name: 'Bob', avatar_url: null, status: 'active' },
-        { id: 'member-4', name: 'Pending User', avatar_url: null, status: 'pending' },
-      ],
-    },
-  }),
-}))
-
 describe('CreatorsFilter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -41,11 +48,14 @@ describe('CreatorsFilter', () => {
 
     await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
 
+    await screen.findByRole('option', { name: /Alice/ })
     const options = screen.getAllByRole('option')
 
     expect(options.map((option) => option.textContent)).toEqual([
       expect.stringContaining('Alice'),
       expect.stringContaining('Bob'),
+      expect.stringContaining('Charlie'),
+      expect.stringContaining('Robin'),
       expect.stringContaining('Zoe'),
     ])
     expect(screen.getByText('app.studio.filters.you')).toBeInTheDocument()
@@ -62,7 +72,7 @@ describe('CreatorsFilter', () => {
     })
     await user.type(searchInput, 'zo')
 
-    const zoeOption = screen.getByRole('option', { name: /Zoe/ })
+    const zoeOption = await screen.findByRole('option', { name: /Zoe/ })
     expect(zoeOption).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Bob/ })).not.toBeInTheDocument()
     await waitFor(() => {
@@ -103,7 +113,7 @@ describe('CreatorsFilter', () => {
     )
 
     await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
-    const aliceOption = screen.getByRole('option', { name: /Alice/ })
+    const aliceOption = await screen.findByRole('option', { name: /Alice/ })
     expect(aliceOption).toHaveAttribute('aria-selected', 'true')
 
     await user.click(aliceOption)
@@ -111,14 +121,44 @@ describe('CreatorsFilter', () => {
     expect(mockOnChange).toHaveBeenCalledWith(['missing-member', 'member-3'])
   })
 
-  it('should expose the selected creator count from the closed trigger', () => {
-    render(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
+  it.each([
+    { value: ['member-2'], visibleInitials: ['A'], remainingCount: 0 },
+    {
+      value: ['member-2', 'member-3', 'member-1'],
+      visibleInitials: ['A', 'B', 'Z'],
+      remainingCount: 0,
+    },
+    {
+      value: ['member-2', 'member-3', 'member-1', 'member-5'],
+      visibleInitials: ['A', 'B', 'Z'],
+      remainingCount: 1,
+    },
+    {
+      value: ['member-2', 'member-3', 'member-1', 'member-5', 'member-6'],
+      visibleInitials: ['A', 'B', 'Z'],
+      remainingCount: 2,
+    },
+  ])(
+    'shows only the $remainingCount undisplayed creators in the overflow count',
+    async ({ value, visibleInitials, remainingCount }) => {
+      render(<CreatorsFilter value={value} onChange={mockOnChange} />)
 
-    const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
-    const selectedCount = within(trigger).getByText('common.dynamicSelect.selected:{"count":2}')
-    expect(selectedCount).toHaveClass('sr-only')
-    expect(within(trigger).getByText('+2').parentElement).toHaveAttribute('aria-hidden', 'true')
-  })
+      const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
+      for (const initial of visibleInitials) {
+        expect(await within(trigger).findByText(initial, { exact: true })).toBeInTheDocument()
+      }
+      expect(
+        within(trigger).getByText(`common.dynamicSelect.selected:{"count":${value.length}}`),
+      ).toBeInTheDocument()
+      expect(within(trigger).queryByText('C', { exact: true })).not.toBeInTheDocument()
+      expect(within(trigger).queryByText('R', { exact: true })).not.toBeInTheDocument()
+      if (remainingCount > 0) {
+        expect(within(trigger).getByText(`+${remainingCount}`)).toBeInTheDocument()
+      } else {
+        expect(within(trigger).queryByText(/^\+\d+$/)).not.toBeInTheDocument()
+      }
+    },
+  )
 
   it('should expose the creator picker as a named combobox with keyboard-owned options', async () => {
     const user = userEvent.setup()
@@ -130,9 +170,7 @@ describe('CreatorsFilter', () => {
     const searchInput = within(popup).getByRole('combobox', {
       name: 'app.studio.filters.searchCreators',
     })
-    expect(popup).toBeInTheDocument()
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    expect(within(popup).getByRole('option', { name: /Alice/ })).toHaveAttribute(
+    expect(await within(popup).findByRole('option', { name: /Alice/ })).toHaveAttribute(
       'aria-selected',
       'false',
     )

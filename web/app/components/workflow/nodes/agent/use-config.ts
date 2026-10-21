@@ -3,16 +3,18 @@ import type { AgentNodeType } from './types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   generateAgentToolValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { consoleQuery } from '@/service/console'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
-import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { VarType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -239,7 +241,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     },
     [inputs, setInputs],
   )
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   return {
     readOnly,
     inputs,
@@ -256,7 +258,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     availableNodesWithParent,
     outputSchema,
     handleMemoryChange,
-    isChatMode,
+    isChatflow,
   }
 }
 

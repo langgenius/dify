@@ -1,5 +1,3 @@
-from typing import override
-
 """Unit tests for Weaviate vector database implementation.
 
 Focuses on verifying that doc_type is properly handled in:
@@ -13,6 +11,7 @@ import datetime
 import json
 import unittest
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest

@@ -2,7 +2,7 @@
 
 import type { ReactElement, ReactNode } from 'react'
 import type { Theme } from '@/app/components/base/theme-selector'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -22,7 +22,7 @@ import {
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useQueryState } from 'nuqs'
-import { useSyncExternalStore } from 'react'
+import { useRef, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import {
@@ -33,6 +33,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
+import { getAvatarInitial } from '@/utils/avatar'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 type AccountDropdownProps = {
@@ -165,12 +166,10 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
               {userProfile.email}
             </div>
           </div>
-          <Avatar
-            avatar={userProfile.avatar_url}
-            name={userProfile.name}
-            size="lg"
-            className="shrink-0"
-          />
+          <Avatar size="lg" className="shrink-0" aria-hidden="true">
+            <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+            <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+          </Avatar>
         </div>
       </DropdownMenuGroup>
       <DropdownMenuGroup className="p-1">
@@ -214,6 +213,9 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
 }
 
 export default function AccountDropdown({ trigger }: AccountDropdownProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const keyboardNavigationRef = useRef(false)
   const isHydrating = useSyncExternalStore(
     subscribeHydrationState,
     getHydrationSnapshot,
@@ -225,14 +227,58 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
 
   return (
     <div>
-      <DropdownMenu>
+      <DropdownMenu
+        onOpenChange={(open, { event }) => {
+          if (open)
+            keyboardNavigationRef.current =
+              event.type.startsWith('key') ||
+              (event.type === 'click' && 'detail' in event && event.detail === 0)
+        }}
+      >
         <DropdownMenuTrigger
+          ref={triggerRef}
+          onKeyDownCapture={(event) => {
+            if (event.key !== 'Escape') keyboardNavigationRef.current = true
+          }}
           disabled={isHydrating}
           render={trigger({
             ariaLabel: t(($) => $['account.account'], { ns: 'accountSettings' }),
           })}
         />
         <DropdownMenuContent
+          ref={popupRef}
+          onKeyDownCapture={(event) => {
+            if (event.key !== 'Escape') keyboardNavigationRef.current = true
+          }}
+          finalFocus={(interactionType) => {
+            const canRestoreFocus = () => {
+              const activeElement = document.activeElement
+              return (
+                activeElement === document.body ||
+                activeElement === triggerRef.current ||
+                !!popupRef.current?.contains(activeElement)
+              )
+            }
+            if (
+              interactionType === 'touch' ||
+              interactionType === '' ||
+              (interactionType === 'keyboard' && keyboardNavigationRef.current)
+            )
+              return canRestoreFocus()
+            // Restore after dismissal, respecting focus moved into a destination dialog.
+            queueMicrotask(() => {
+              if (!canRestoreFocus()) return
+              const triggerElement = triggerRef.current
+              // Focusing an already focused element does not update its focus-visible state.
+              if (
+                document.activeElement === triggerElement &&
+                triggerElement?.matches(':focus-visible')
+              )
+                triggerElement.blur()
+              triggerElement?.focus({ preventScroll: true, focusVisible: false })
+            })
+            return false
+          }}
           placement="top-start"
           sideOffset={6}
           alignOffset={4}

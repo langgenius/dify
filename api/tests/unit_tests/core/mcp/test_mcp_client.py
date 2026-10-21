@@ -372,7 +372,7 @@ class TestMCPClient:
         """Test list_tools when session not initialized."""
         client = MCPClient(server_url="http://test.example.com")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Session not initialized\\.") as exc_info:
             client.list_tools()
 
         assert "Session not initialized" in str(exc_info.value)
@@ -487,7 +487,7 @@ class TestMCPClient:
         client, session, t, seen_cursors = self._client_with_paginated_server(pages, fail_on_extra_page=True)
 
         with session:
-            with pytest.raises(MCPConnectionError, match="repeated cursor"):
+            with pytest.raises(MCPConnectionError, match="repeated pagination cursor"):
                 client.list_tools()
         t.join(timeout=5)
 
@@ -512,7 +512,7 @@ class TestMCPClient:
         """Test invoke_tool when session not initialized."""
         client = MCPClient(server_url="http://test.example.com")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Session not initialized\\.") as exc_info:
             client.invoke_tool("test-tool", {"arg": "value"})
 
         assert "Session not initialized" in str(exc_info.value)
@@ -560,7 +560,7 @@ class TestMCPClient:
         client._session = Mock()
         client._initialized = True
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Error during cleanup: Cleanup error") as exc_info:
             client.cleanup()
 
         assert "Error during cleanup: Cleanup error" in str(exc_info.value)

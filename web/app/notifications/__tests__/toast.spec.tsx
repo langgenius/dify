@@ -4,6 +4,14 @@ import userEvent from '@testing-library/user-event'
 import { AppToastHost } from '../host'
 
 const copy = vi.fn()
+const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+const execCommandDescriptor = Object.getOwnPropertyDescriptor(document, 'execCommand')
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => false) })
+  vi.mocked(copy).mockResolvedValue(undefined)
+})
 
 function setup() {
   const manager = createToastManager()
@@ -14,10 +22,11 @@ function setup() {
   return { toast, user }
 }
 
-beforeEach(() => {
-  vi.clearAllMocks()
-  Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => false) })
-  vi.mocked(copy).mockResolvedValue(undefined)
+afterEach(() => {
+  if (clipboardDescriptor) Object.defineProperty(navigator, 'clipboard', clipboardDescriptor)
+  else Reflect.deleteProperty(navigator, 'clipboard')
+  if (execCommandDescriptor) Object.defineProperty(document, 'execCommand', execCommandDescriptor)
+  else Reflect.deleteProperty(document, 'execCommand')
 })
 
 it('copies the complete error text and shows feedback in the existing action', async () => {

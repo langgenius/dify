@@ -16,6 +16,7 @@ from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
     AppExportOptions,
+    AppFieldChanges,
     AppListParams,
     AppPage,
     AppRecord,
@@ -98,6 +99,8 @@ class ConsoleApps(Protocol):
 
     def update(self, context: RequestContext, app_id: str, params: UpdateAppParams) -> AppRecord: ...
 
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord: ...
+
     def rename(self, context: RequestContext, app_id: str, name: str) -> AppRecord: ...
 
     def update_icon(
@@ -107,6 +110,10 @@ class ConsoleApps(Protocol):
     def set_site_enabled(self, context: RequestContext, app_id: str, enabled: bool) -> AppChange: ...
 
     def set_api_enabled(self, context: RequestContext, app_id: str, enabled: bool) -> AppChange: ...
+
+    def access_ready(self, context: RequestContext, app_id: str) -> bool: ...
+
+    def agent_role(self, context: RequestContext, app_id: str) -> str | None: ...
 
     def set_starred(self, context: RequestContext, app_id: str, starred: bool) -> None: ...
 
@@ -157,7 +164,7 @@ class AppTransfers(Protocol):
 class CreatorsPlatform(Protocol):
     def require_enabled(self) -> None: ...
 
-    def upload(self, dsl: str) -> str: ...
+    def upload(self, source: BinaryIO, *, filename: str) -> str: ...
 
     def authorize(self, account_id: str) -> str | None: ...
 
@@ -172,6 +179,8 @@ class AppTraceProvider(Protocol):
 
 class AppLifecycle(Protocol):
     def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord: ...
+
+    def create_draft(self, context: RequestContext, app_id: str) -> None: ...
 
     def delete(self, context: RequestContext, app_id: str) -> AppDeletion: ...
 
@@ -203,6 +212,14 @@ class ConsoleAppService:
         self._creators = creators
         self._tracing = tracing
         self._lifecycle = lifecycle
+
+    def access_ready(self, context: RequestContext, app_id: str) -> bool:
+        """Whether an agent app has a published version its web app and Service API can serve."""
+        return self._apps.access_ready(context, app_id)
+
+    def agent_role(self, context: RequestContext, app_id: str) -> str | None:
+        """The role of an agent app's backing agent; None for other apps."""
+        return self._apps.agent_role(context, app_id)
 
     def import_app(self, context: RequestContext, params: AppImportParams, *, source: BinaryIO | None = None) -> Import:
         if source is not None:
@@ -269,7 +286,7 @@ class ConsoleAppService:
     ) -> Import:
         self._access.require_import(context, "dsl")
         result = self._transfers.import_dsl(context, params, package=package)
-        self._set_import_permissions(context, result, created=params.app_id is None)
+        self._set_import_permissions(context, result, created=result.app_created)
         if result.app_id:
             self._access.initialize_import_access(result.app_id)
         return result
@@ -296,16 +313,15 @@ class ConsoleAppService:
         return self._transfers.check_dependencies(context, app_id)
 
     def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
-        permissions = None
+        permissions = self._access.permissions(context)
         if isinstance(params, AppListParams):
-            permissions = self._access.permissions(context)
             params = permissions.filter_list(params)
         page = self._apps.list_apps(context, params)
         if not page.data:
             return page
         app_ids = [app.id for app in page.data]
         modes = self._access.access_modes(app_ids)
-        keys = permissions.keys_for(app_ids) if permissions is not None else {}
+        keys = permissions.keys_for(app_ids)
         return replace(
             page,
             data=[
@@ -333,8 +349,24 @@ class ConsoleAppService:
         self._access.initialize_created_app(context, app.id)
         return self._lifecycle.present(context, replace(app, permission_keys=keys))
 
+    def create_with_draft(self, context: RequestContext, params: CreateAppParams) -> AppRecord:
+        """Create a workflow-type app with the starter draft the editor saves on first open, so it exports as DSL.
+        An app whose draft could not be saved is deleted again."""
+        app = self.create(context, params)
+        try:
+            self._lifecycle.create_draft(context, app.id)
+        except Exception:
+            self.delete(context, app.id)
+            raise
+        return app
+
     def update(self, context: RequestContext, app_id: str, params: UpdateAppParams) -> AppRecord:
         app = self._apps.update(context, app_id, params)
+        self._lifecycle.updated(context, app)
+        return self.get(context, app_id)
+
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord:
+        app = self._apps.update_fields(context, app_id, changes)
         self._lifecycle.updated(context, app)
         return self.get(context, app_id)
 
@@ -396,6 +428,11 @@ class ConsoleAppService:
                 raise AppExportPaidPlanRequiredError("This feature requires a paid plan.")
         if options.format == "yaml":
             return self._transfers.export_dsl(context, app.id, options)
+        return self._export_package(context, app, options)
+
+    def _export_package(
+        self, context: RequestContext, app: AppReference, options: AppExportOptions
+    ) -> RosterAgentPackageExport:
         if app.mode == "agent":
             if app.bound_agent_id is None:
                 raise AppExportAgentNotFoundError("Agent not found")
@@ -408,10 +445,10 @@ class ConsoleAppService:
 
     def publish(self, context: RequestContext, app_id: str) -> str:
         # Validate ownership before producing external effects, including feature rejection.
-        self._apps.get_reference(context, app_id)
+        app = self._apps.get_reference(context, app_id)
         self._creators.require_enabled()
-        dsl = self._transfers.export_dsl(context, app_id, AppExportOptions(include_secret=False))
-        claim_code = self._creators.upload(dsl)
+        with self._export_package(context, app, AppExportOptions(format="ifpkg", include_secret=False)) as package:
+            claim_code = self._creators.upload(package.archive, filename=package.filename)
         code = self._creators.authorize(context.account_id)
         return self._creators.redirect_url(claim_code, code)
 
