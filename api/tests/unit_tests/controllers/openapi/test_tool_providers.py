@@ -19,9 +19,8 @@ from core.tools.entities.tool_entities import ToolProviderType
     ],
 )
 def test_other_failures_are_bad_request_with_the_service_message(message: str) -> None:
-    with pytest.raises(BadRequest, match=message):
-        with _credential_write_errors():
-            raise ValueError(message)
+    with pytest.raises(BadRequest, match=message), _credential_write_errors():
+        raise ValueError(message)
 
 
 Form = ToolParameter.ToolParameterForm

@@ -159,9 +159,9 @@ def test_invoke_maps_tool_runtime_app_not_found_value_error_to_specific_error_co
     with (
         patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=fake_tool),
         patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", side_effect=ValueError("app not found")),
+        pytest.raises(AgentToolInnerServiceError) as exc_info,
     ):
-        with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(_request(), session=sqlite_session)
+        AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "app_not_found"
     assert exc_info.value.status_code == 404
@@ -178,9 +178,9 @@ def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper(sqlite
             "services.agent_tool_inner_service.ToolEngine.generic_invoke",
             side_effect=ToolInvokeError("workflow crashed"),
         ),
+        pytest.raises(AgentToolInnerServiceError) as exc_info,
     ):
-        with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(_request(), session=sqlite_session)
+        AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "agent_tool_invoke_failed"
 
@@ -198,8 +198,10 @@ def test_invoke_maps_runtime_lookup_errors_to_service_error_codes(
 ) -> None:
     _persist_app(sqlite_session)
 
-    with patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", side_effect=error):
-        with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(_request(), session=sqlite_session)
+    with (
+        patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", side_effect=error),
+        pytest.raises(AgentToolInnerServiceError) as exc_info,
+    ):
+        AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == expected_code

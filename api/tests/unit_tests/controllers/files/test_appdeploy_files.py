@@ -219,15 +219,15 @@ def test_upload_stores_the_file_for_the_grant_end_user(
     with (
         patch.object(file_gateway, "store_upload", wraps=file_gateway.store_upload) as store_upload,
         patch.object(file_gateway._file_service, "upload_file", return_value=_stub_upload_file()),
-    ):
-        with app.test_request_context(
+        app.test_request_context(
             "/files/appdeploy/upload",
             method="POST",
             headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
             data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
             content_type="multipart/form-data",
-        ):
-            body, status = GrantedFileUploadApi().post()
+        ),
+    ):
+        body, status = GrantedFileUploadApi().post()
 
     assert status == 201
     assert body["id"] == UPLOAD_FILE_ID
@@ -240,19 +240,21 @@ def test_upload_answers_in_dify_s_own_upload_shape(
 ) -> None:
     """A client moving off ``POST /v1/files/upload`` must not meet a second shape."""
 
-    with patch.object(
-        file_gateway._file_service,
-        "upload_file",
-        return_value=_stub_upload_file(created_by=end_user.id),
-    ):
-        with app.test_request_context(
+    with (
+        patch.object(
+            file_gateway._file_service,
+            "upload_file",
+            return_value=_stub_upload_file(created_by=end_user.id),
+        ),
+        app.test_request_context(
             "/files/appdeploy/upload",
             method="POST",
             headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
             data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
             content_type="multipart/form-data",
-        ):
-            body, _ = GrantedFileUploadApi().post()
+        ),
+    ):
+        body, _ = GrantedFileUploadApi().post()
 
     source_url = body.pop("source_url")
     assert body == {
@@ -277,30 +279,34 @@ def test_upload_answers_in_dify_s_own_upload_shape(
 def test_upload_carries_every_key_dify_s_web_client_reads(
     app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway
 ) -> None:
-    with patch.object(file_gateway._file_service, "upload_file", return_value=_stub_upload_file()):
-        with app.test_request_context(
+    with (
+        patch.object(file_gateway._file_service, "upload_file", return_value=_stub_upload_file()),
+        app.test_request_context(
             "/files/appdeploy/upload",
             method="POST",
             headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
             data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
             content_type="multipart/form-data",
-        ):
-            body, _ = GrantedFileUploadApi().post()
+        ),
+    ):
+        body, _ = GrantedFileUploadApi().post()
 
     assert set(body) >= WEB_CLIENT_KEYS
 
 
 @pytest.mark.usefixtures("sqlite_db")
 def test_upload_rejects_a_grant_from_another_tenant(app: Flask, end_user: EndUser) -> None:
-    with app.test_request_context(
-        "/files/appdeploy/upload",
-        method="POST",
-        headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id, tenant_id=OTHER_TENANT_ID),
-        data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/files/appdeploy/upload",
+            method="POST",
+            headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id, tenant_id=OTHER_TENANT_ID),
+            data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(GrantedFileNotFoundError),
     ):
-        with pytest.raises(GrantedFileNotFoundError):
-            GrantedFileUploadApi().post()
+        GrantedFileUploadApi().post()
 
 
 @pytest.mark.usefixtures("sqlite_db")
@@ -309,15 +315,17 @@ def test_upload_applies_the_shared_per_extension_size_limit(
 ) -> None:
     config_overrides(UPLOAD_FILE_SIZE_LIMIT=1)
 
-    with app.test_request_context(
-        "/files/appdeploy/upload",
-        method="POST",
-        headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
-        data={"file": (BytesIO(b"0" * (1024 * 1024 + 1)), "big.bin")},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/files/appdeploy/upload",
+            method="POST",
+            headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+            data={"file": (BytesIO(b"0" * (1024 * 1024 + 1)), "big.bin")},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(FileTooLargeError),
     ):
-        with pytest.raises(FileTooLargeError):
-            GrantedFileUploadApi().post()
+        GrantedFileUploadApi().post()
 
 
 @pytest.mark.usefixtures("sqlite_db")
@@ -326,57 +334,65 @@ def test_upload_rejects_a_blacklisted_extension(
 ) -> None:
     config_overrides(inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe")
 
-    with app.test_request_context(
-        "/files/appdeploy/upload",
-        method="POST",
-        headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
-        data={"file": (BytesIO(b"MZ"), "payload.exe")},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/files/appdeploy/upload",
+            method="POST",
+            headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+            data={"file": (BytesIO(b"MZ"), "payload.exe")},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(BlockedFileExtensionError),
     ):
-        with pytest.raises(BlockedFileExtensionError):
-            GrantedFileUploadApi().post()
+        GrantedFileUploadApi().post()
 
 
 @pytest.mark.usefixtures("sqlite_db")
 def test_upload_rejects_a_request_carrying_no_file(app: Flask, end_user: EndUser) -> None:
-    with app.test_request_context(
-        "/files/appdeploy/upload",
-        method="POST",
-        headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
-        data={"note": "no file here"},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/files/appdeploy/upload",
+            method="POST",
+            headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+            data={"note": "no file here"},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(NoFileUploadedError),
     ):
-        with pytest.raises(NoFileUploadedError):
-            GrantedFileUploadApi().post()
+        GrantedFileUploadApi().post()
 
 
 @pytest.mark.usefixtures("sqlite_db")
 def test_upload_rejects_a_batch_of_files(app: Flask, end_user: EndUser) -> None:
-    with app.test_request_context(
-        "/files/appdeploy/upload",
-        method="POST",
-        headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
-        data={
-            "file": (BytesIO(b"first"), "first.pdf"),
-            "second": (BytesIO(b"second"), "second.pdf"),
-        },
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/files/appdeploy/upload",
+            method="POST",
+            headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+            data={
+                "file": (BytesIO(b"first"), "first.pdf"),
+                "second": (BytesIO(b"second"), "second.pdf"),
+            },
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(TooManyFilesError),
     ):
-        with pytest.raises(TooManyFilesError):
-            GrantedFileUploadApi().post()
+        GrantedFileUploadApi().post()
 
 
 @pytest.mark.usefixtures("sqlite_db")
 def test_upload_rejects_a_file_without_a_name(app: Flask, end_user: EndUser) -> None:
-    with app.test_request_context(
-        "/files/appdeploy/upload",
-        method="POST",
-        headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
-        data={"file": (BytesIO(b"nameless"), "")},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/files/appdeploy/upload",
+            method="POST",
+            headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+            data={"file": (BytesIO(b"nameless"), "")},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(FilenameNotExistsError),
     ):
-        with pytest.raises(FilenameNotExistsError):
-            GrantedFileUploadApi().post()
+        GrantedFileUploadApi().post()
 
 
 def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
@@ -391,16 +407,16 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
             return_value=RemoteFile(filename="report.pdf", mimetype="application/pdf", content=b"pdf-bytes"),
         ) as fetch,
         patch.object(file_gateway._file_service, "upload_file", return_value=_stub_upload_file()) as upload_file,
-    ):
-        with app.test_request_context(
+        app.test_request_context(
             "/files/appdeploy/remote-upload",
             method="POST",
             headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
             json={"url": url},
-        ):
-            with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
-                files_ns.payload = {"url": url}
-                body, status = GrantedRemoteFileUploadApi().post()
+        ),
+        patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns,
+    ):
+        files_ns.payload = {"url": url}
+        body, status = GrantedRemoteFileUploadApi().post()
 
     assert status == 201
     assert body["id"] == UPLOAD_FILE_ID
@@ -428,16 +444,16 @@ def test_remote_upload_answers_in_the_upload_shape_plus_dify_s_url_key(
             "upload_file",
             return_value=_stub_upload_file(source_url=url),
         ),
-    ):
-        with app.test_request_context(
+        app.test_request_context(
             "/files/appdeploy/remote-upload",
             method="POST",
             headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
             json={"url": url},
-        ):
-            with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
-                files_ns.payload = {"url": url}
-                body, _ = GrantedRemoteFileUploadApi().post()
+        ),
+        patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns,
+    ):
+        files_ns.payload = {"url": url}
+        body, _ = GrantedRemoteFileUploadApi().post()
 
     assert set(body) == DIFY_UPLOAD_RESPONSE_KEYS | {"url"}
     # The row records where the bytes came from; the response hands back the
@@ -449,21 +465,23 @@ def test_remote_upload_answers_in_the_upload_shape_plus_dify_s_url_key(
 
 def test_remote_upload_honours_the_size_precheck(app: Flask, end_user: EndUser, sqlite_db: FileGrantService) -> None:
     url = "https://example.com/docs/huge.pdf"
-    with patch.object(
-        sqlite_db._remote_files,
-        "fetch",
-        side_effect=FileTooLargeServiceError("too large"),
-    ):
-        with app.test_request_context(
+    with (
+        patch.object(
+            sqlite_db._remote_files,
+            "fetch",
+            side_effect=FileTooLargeServiceError("too large"),
+        ),
+        app.test_request_context(
             "/files/appdeploy/remote-upload",
             method="POST",
             headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
             json={"url": url},
-        ):
-            with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
-                files_ns.payload = {"url": url}
-                with pytest.raises(FileTooLargeError):
-                    GrantedRemoteFileUploadApi().post()
+        ),
+        patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns,
+    ):
+        files_ns.payload = {"url": url}
+        with pytest.raises(FileTooLargeError):
+            GrantedRemoteFileUploadApi().post()
 
 
 def test_produced_stores_a_tool_file_and_returns_both_urls(
@@ -476,15 +494,17 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(
         mimetype="image/png",
     )
 
-    with patch.object(file_gateway._tool_files, "create_file_by_raw", return_value=tool_file) as create_file:
-        with app.test_request_context(
+    with (
+        patch.object(file_gateway._tool_files, "create_file_by_raw", return_value=tool_file) as create_file,
+        app.test_request_context(
             "/files/appdeploy/produced",
             method="POST",
             headers=_bearer(FileGrantScope.PRODUCE, end_user_id=end_user.id),
             data={"file": (BytesIO(b"0" * 16), "chart.png")},
             content_type="multipart/form-data",
-        ):
-            body, status = ProducedFileApi().post()
+        ),
+    ):
+        body, status = ProducedFileApi().post()
 
     assert status == 201
     kwargs = create_file.call_args.kwargs
@@ -498,8 +518,9 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(
 
 
 def test_produced_rejects_a_grant_whose_subject_was_deleted(app: Flask, file_gateway: FileGrantFileGateway) -> None:
-    with patch.object(file_gateway._tool_files, "create_file_by_raw") as create_file:
-        with app.test_request_context(
+    with (
+        patch.object(file_gateway._tool_files, "create_file_by_raw") as create_file,
+        app.test_request_context(
             "/files/appdeploy/produced",
             method="POST",
             headers=_bearer(
@@ -508,9 +529,10 @@ def test_produced_rejects_a_grant_whose_subject_was_deleted(app: Flask, file_gat
             ),
             data={"file": (BytesIO(b"content"), "chart.png")},
             content_type="multipart/form-data",
-        ):
-            with pytest.raises(GrantedFileNotFoundError):
-                ProducedFileApi().post()
+        ),
+        pytest.raises(GrantedFileNotFoundError),
+    ):
+        ProducedFileApi().post()
 
     create_file.assert_not_called()
 
@@ -531,24 +553,26 @@ def one_megabyte_image_limit(config_overrides: Callable[..., None]) -> int:
 def test_produced_accepts_a_file_of_exactly_the_per_extension_limit(
     app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway, one_megabyte_image_limit: int
 ) -> None:
-    with patch.object(
-        file_gateway._tool_files,
-        "create_file_by_raw",
-        return_value=SimpleNamespace(
-            id="88888888-8888-4888-8888-888888888888",
-            name="chart.png",
-            size=one_megabyte_image_limit,
-            mimetype="image/png",
-        ),
-    ) as create_file:
-        with app.test_request_context(
+    with (
+        patch.object(
+            file_gateway._tool_files,
+            "create_file_by_raw",
+            return_value=SimpleNamespace(
+                id="88888888-8888-4888-8888-888888888888",
+                name="chart.png",
+                size=one_megabyte_image_limit,
+                mimetype="image/png",
+            ),
+        ) as create_file,
+        app.test_request_context(
             "/files/appdeploy/produced",
             method="POST",
             headers=_bearer(FileGrantScope.PRODUCE, end_user_id=end_user.id),
             data={"file": (BytesIO(b"0" * one_megabyte_image_limit), "chart.png")},
             content_type="multipart/form-data",
-        ):
-            _, status = ProducedFileApi().post()
+        ),
+    ):
+        _, status = ProducedFileApi().post()
 
     assert status == 201
     assert len(create_file.call_args.kwargs["file_binary"]) == one_megabyte_image_limit
@@ -559,16 +583,18 @@ def test_produced_rejects_a_file_one_byte_over_the_per_extension_limit(
 ) -> None:
     """``create_file_by_raw`` has no limit of its own, so nothing else would stop this."""
 
-    with patch.object(file_gateway._tool_files, "create_file_by_raw") as create_file:
-        with app.test_request_context(
+    with (
+        patch.object(file_gateway._tool_files, "create_file_by_raw") as create_file,
+        app.test_request_context(
             "/files/appdeploy/produced",
             method="POST",
             headers=_bearer(FileGrantScope.PRODUCE, end_user_id=end_user.id),
             data={"file": (BytesIO(b"0" * (one_megabyte_image_limit + 1)), "chart.png")},
             content_type="multipart/form-data",
-        ):
-            with pytest.raises(FileTooLargeError) as raised:
-                ProducedFileApi().post()
+        ),
+        pytest.raises(FileTooLargeError) as raised,
+    ):
+        ProducedFileApi().post()
 
     assert raised.value.code == 413
     create_file.assert_not_called()
@@ -598,14 +624,16 @@ def test_produced_stops_reading_an_oversized_body_at_the_per_extension_limit(
 
     stream = _CountingStream(one_megabyte_image_limit * 64)
 
-    with patch.object(file_gateway._tool_files, "create_file_by_raw") as create_file:
-        with pytest.raises(FileTooLargeServiceError):
-            sqlite_db.store_produced(
-                context=FileGrantContext(TENANT_ID, APP_ID, end_user.id),
-                filename="chart.png",
-                stream=cast(IO[bytes], stream),
-                mimetype="image/png",
-            )
+    with (
+        patch.object(file_gateway._tool_files, "create_file_by_raw") as create_file,
+        pytest.raises(FileTooLargeServiceError),
+    ):
+        sqlite_db.store_produced(
+            context=FileGrantContext(TENANT_ID, APP_ID, end_user.id),
+            filename="chart.png",
+            stream=cast(IO[bytes], stream),
+            mimetype="image/png",
+        )
 
     assert stream.bytes_read == one_megabyte_image_limit + 1
     create_file.assert_not_called()
@@ -624,15 +652,17 @@ def test_resolve_signs_urls_per_item_and_hides_foreign_files(
         ]
     }
 
-    with app.test_request_context(
-        "/files/appdeploy/resolve",
-        method="POST",
-        headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
-        json=payload,
+    with (
+        app.test_request_context(
+            "/files/appdeploy/resolve",
+            method="POST",
+            headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
+            json=payload,
+        ),
+        patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns,
     ):
-        with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
-            files_ns.payload = payload
-            body = GrantedFileResolveApi().post()
+        files_ns.payload = payload
+        body = GrantedFileResolveApi().post()
 
     resolved, hidden = body["files"]
     assert resolved["ok"] is True
@@ -671,15 +701,17 @@ def test_resolve_answers_a_mixed_batch_item_by_item(app: Flask, end_user: EndUse
         ]
     }
 
-    with app.test_request_context(
-        "/files/appdeploy/resolve",
-        method="POST",
-        headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
-        json=payload,
+    with (
+        app.test_request_context(
+            "/files/appdeploy/resolve",
+            method="POST",
+            headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
+            json=payload,
+        ),
+        patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns,
     ):
-        with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
-            files_ns.payload = payload
-            body = GrantedFileResolveApi().post()
+        files_ns.payload = payload
+        body = GrantedFileResolveApi().post()
 
     assert [(file["id"], file["ok"], file["kind"], file["error"]) for file in body["files"]] == [
         (owned_upload.id, True, "upload", None),
@@ -693,15 +725,17 @@ def test_resolve_answers_a_mixed_batch_item_by_item(app: Flask, end_user: EndUse
 def test_resolve_returns_an_empty_batch_unchanged(app: Flask, end_user: EndUser) -> None:
     payload: dict[str, object] = {"files": []}
 
-    with app.test_request_context(
-        "/files/appdeploy/resolve",
-        method="POST",
-        headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
-        json=payload,
+    with (
+        app.test_request_context(
+            "/files/appdeploy/resolve",
+            method="POST",
+            headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
+            json=payload,
+        ),
+        patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns,
     ):
-        with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
-            files_ns.payload = payload
-            assert GrantedFileResolveApi().post() == {"files": []}
+        files_ns.payload = payload
+        assert GrantedFileResolveApi().post() == {"files": []}
 
 
 def test_resolve_rejects_an_unbounded_batch(app: Flask, end_user: EndUser, sqlite_db: FileGrantService) -> None:
@@ -712,16 +746,18 @@ def test_resolve_rejects_an_unbounded_batch(app: Flask, end_user: EndUser, sqlit
             for index in range(MAX_FILE_GRANT_REFS + 1)
         ]
     }
-    with app.test_request_context(
-        "/files/appdeploy/resolve",
-        method="POST",
-        headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
-        json=payload,
+    with (
+        app.test_request_context(
+            "/files/appdeploy/resolve",
+            method="POST",
+            headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
+            json=payload,
+        ),
+        patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns,
     ):
-        with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
-            files_ns.payload = payload
-            with pytest.raises(InvalidFileRequestError):
-                GrantedFileResolveApi().post()
+        files_ns.payload = payload
+        with pytest.raises(InvalidFileRequestError):
+            GrantedFileResolveApi().post()
 
 
 @pytest.fixture
@@ -792,9 +828,11 @@ def test_content_rejects_an_expired_token(app: Flask, sqlite_session: Session) -
     tool_file = _persist_tool_file(sqlite_session, owner_id="anyone")
     token = _content_token(file_id=tool_file.id, kind=FileKind.TOOL, expires_in=-1)
 
-    with app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": token}):
-        with pytest.raises(FileGrantInvalidError):
-            GrantedFileContentApi().get(UUID(tool_file.id))
+    with (
+        app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": token}),
+        pytest.raises(FileGrantInvalidError),
+    ):
+        GrantedFileContentApi().get(UUID(tool_file.id))
 
 
 @pytest.mark.usefixtures("sqlite_db", "stored_bytes")
@@ -802,9 +840,11 @@ def test_content_rejects_a_token_minted_for_another_file(app: Flask, sqlite_sess
     tool_file = _persist_tool_file(sqlite_session, owner_id="anyone")
     token = _content_token(file_id=str(FILE_ID), kind=FileKind.TOOL)
 
-    with app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": token}):
-        with pytest.raises(GrantedFileNotFoundError):
-            GrantedFileContentApi().get(UUID(tool_file.id))
+    with (
+        app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": token}),
+        pytest.raises(GrantedFileNotFoundError),
+    ):
+        GrantedFileContentApi().get(UUID(tool_file.id))
 
 
 @pytest.mark.usefixtures("sqlite_db", "stored_bytes")
@@ -812,9 +852,11 @@ def test_content_rejects_a_token_naming_the_wrong_table(app: Flask, sqlite_sessi
     tool_file = _persist_tool_file(sqlite_session, owner_id="anyone")
     token = _content_token(file_id=tool_file.id, kind=FileKind.UPLOAD)
 
-    with app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": token}):
-        with pytest.raises(GrantedFileNotFoundError):
-            GrantedFileContentApi().get(UUID(tool_file.id))
+    with (
+        app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": token}),
+        pytest.raises(GrantedFileNotFoundError),
+    ):
+        GrantedFileContentApi().get(UUID(tool_file.id))
 
 
 @pytest.mark.usefixtures("sqlite_db", "stored_bytes")
@@ -828,6 +870,8 @@ def test_content_rejects_a_file_grant_replayed_as_a_content_token(app: Flask, sq
         ttl_seconds=600,
     )
 
-    with app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": grant}):
-        with pytest.raises(FileGrantInvalidError):
-            GrantedFileContentApi().get(UUID(tool_file.id))
+    with (
+        app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": grant}),
+        pytest.raises(FileGrantInvalidError),
+    ):
+        GrantedFileContentApi().get(UUID(tool_file.id))

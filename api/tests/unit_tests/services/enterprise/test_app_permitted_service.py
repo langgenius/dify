@@ -35,15 +35,19 @@ def test_list_permitted_apps_passes_filters_to_wrapper() -> None:
 
 
 def test_list_permitted_apps_503_on_ee_error() -> None:
-    with patch(WRAPPER, side_effect=EnterpriseAPIError("boom", status_code=500)):
-        with pytest.raises(PermittedAppsUnavailableError):
-            list_permitted_apps(page=1, limit=10)
+    with (
+        patch(WRAPPER, side_effect=EnterpriseAPIError("boom", status_code=500)),
+        pytest.raises(PermittedAppsUnavailableError),
+    ):
+        list_permitted_apps(page=1, limit=10)
 
 
 def test_list_permitted_apps_503_on_status_error() -> None:
-    with patch(WRAPPER, side_effect=EnterpriseAPIError("bad key", status_code=401)):
-        with pytest.raises(PermittedAppsUnavailableError):
-            list_permitted_apps(page=1, limit=10)
+    with (
+        patch(WRAPPER, side_effect=EnterpriseAPIError("bad key", status_code=401)),
+        pytest.raises(PermittedAppsUnavailableError),
+    ):
+        list_permitted_apps(page=1, limit=10)
 
 
 def test_list_permitted_apps_handles_empty_response() -> None:
