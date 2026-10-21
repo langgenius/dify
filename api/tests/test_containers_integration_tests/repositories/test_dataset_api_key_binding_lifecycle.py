@@ -105,9 +105,8 @@ def test_concurrent_last_binding_deletes_revoke_token_after_old_snapshot(mysql_e
             return revoked
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        results = [
-            future.result(timeout=30) for future in (executor.submit(delete_binding, value) for value in dataset_ids)
-        ]
+        futures = [executor.submit(delete_binding, value) for value in dataset_ids]
+        results = [future.result(timeout=30) for future in futures]
 
     assert sorted(value for result in results for value in result) == [token_value]
     with mysql_engine.connect() as connection:

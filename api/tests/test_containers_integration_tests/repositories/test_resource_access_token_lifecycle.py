@@ -15,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from libs.datetime_utils import naive_utc_now
+from models.types import StringUUID
 from repositories.resource_access_token_repository import (
     ResourceAccessTokenCleanupRepository,
     ResourceAccessTokenRepository,
@@ -37,8 +38,8 @@ def lifecycle_engine(request: pytest.FixtureRequest) -> Generator[Engine]:
     sa.Table(
         "apps",
         metadata,
-        sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("tenant_id", sa.String(36), nullable=False),
+        sa.Column("id", StringUUID, primary_key=True),
+        sa.Column("tenant_id", StringUUID, nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("status", sa.String(16), nullable=False),
         sa.Column("enable_api", sa.Boolean, nullable=False),
@@ -46,31 +47,31 @@ def lifecycle_engine(request: pytest.FixtureRequest) -> Generator[Engine]:
     sa.Table(
         "datasets",
         metadata,
-        sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("tenant_id", sa.String(36), nullable=False),
+        sa.Column("id", StringUUID, primary_key=True),
+        sa.Column("tenant_id", StringUUID, nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("enable_api", sa.Boolean, nullable=False),
     )
     sa.Table(
         "resource_access_tokens",
         metadata,
-        sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("tenant_id", sa.String(36), nullable=False),
+        sa.Column("id", StringUUID, primary_key=True),
+        sa.Column("tenant_id", StringUUID, nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("track_id", sa.String(32), nullable=False, unique=True),
         sa.Column("token", sa.String(255), nullable=False, unique=True),
-        sa.Column("created_by", sa.String(36), nullable=False),
+        sa.Column("created_by", StringUUID, nullable=False),
         sa.Column("last_used_at", sa.DateTime),
         sa.Column("created_at", sa.DateTime, nullable=False),
     )
     sa.Table(
         "resource_access_tokens_relation",
         metadata,
-        sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("token_id", sa.String(36), nullable=False, index=True),
+        sa.Column("id", StringUUID, primary_key=True),
+        sa.Column("token_id", StringUUID, nullable=False, index=True),
         sa.Column("resource_type", sa.String(16), nullable=False),
-        sa.Column("app_id", sa.String(36), index=True),
-        sa.Column("dataset_id", sa.String(36), index=True),
+        sa.Column("app_id", StringUUID, index=True),
+        sa.Column("dataset_id", StringUUID, index=True),
         sa.Column("created_at", sa.DateTime, nullable=False),
     )
     metadata.create_all(engine)
