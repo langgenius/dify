@@ -124,6 +124,20 @@ describe('human-input utils', () => {
   })
 
   describe('initializeInputs', () => {
+    it.each([
+      ['reject', 'reject'],
+      ['removed-option', ''],
+      ['', ''],
+      [undefined, ''],
+    ])('initializes a select default only when available: %s', (defaultValue, expected) => {
+      const input = selectInput({
+        output_variable_name: 'decision',
+        default_value: defaultValue,
+        option_source: { type: 'constant', selector: [], value: ['approve', 'reject'] },
+      })
+      expect(initializeInputs([input])).toEqual({ decision: expected })
+    })
+
     it('should initialize paragraph fields with constants and variable defaults', () => {
       const formInputs: FormInputItem[] = [
         paragraphInput({

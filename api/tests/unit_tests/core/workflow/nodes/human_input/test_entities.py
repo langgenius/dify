@@ -65,6 +65,23 @@ from models.account import TenantAccountJoin, TenantAccountRole
 from tests.unit_tests.model_factories import make_account, make_tenant
 
 
+@pytest.mark.parametrize("default_value", [None, "", "reject"])
+def test_select_default_survives_workflow_serialization(default_value: str | None) -> None:
+    input_data: dict[str, Any] = {
+        "type": "select",
+        "output_variable_name": "decision",
+        "option_source": {"type": "constant", "value": ["approve", "reject"]},
+    }
+    if default_value is not None:
+        input_data["default_value"] = default_value
+    node = HumanInputNodeData.model_validate({"type": "human-input", "title": "Review", "inputs": [input_data]})
+    restored = HumanInputNodeData.model_validate_json(node.model_dump_json())
+    select = restored.inputs[0]
+    assert isinstance(select, SelectInputConfig)
+    assert select.default_value == (default_value or "")
+    assert select.option_source.value == ["approve", "reject"]
+
+
 @dataclass
 class _InMemoryFormEntity(HumanInputFormEntity):
     form_id: str

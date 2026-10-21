@@ -303,6 +303,7 @@ def test_resolve_form_inputs_uses_runtime_select_options(
 ) -> None:
     configured_input = SelectInputConfig(
         output_variable_name="decision",
+        default_value="reject",
         option_source=StringListSource(
             type=ValueSourceType.VARIABLE,
             selector=["start", "options"],
@@ -335,6 +336,7 @@ def test_resolve_form_inputs_uses_runtime_select_options(
     assert resolved_input.option_source.type == ValueSourceType.CONSTANT
     assert resolved_input.option_source.selector == ()
     assert resolved_input.option_source.value == ["approve", "reject"]
+    assert resolved_input.default_value == "reject"
     workflow_run_repo.get_workflow_pause.assert_called_once_with(record.workflow_run_id)
 
 

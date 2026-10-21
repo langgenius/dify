@@ -149,7 +149,7 @@ export const Variable: React.FC<{ path: string }> = ({ path }) => {
 }
 
 const SelectPreview: React.FC<{ label: string; options: string[] }> = ({ label, options }) => {
-  const [value, setValue] = React.useState(options[0] || label)
+  const [value, setValue] = React.useState(label)
 
   return (
     <div data-testid="human-input-note-select-preview" className="my-3">
@@ -240,9 +240,12 @@ export const Note: React.FC<{ input: FormInputItem; nodeName: (nodeId: string) =
       )
     }
 
+    const defaultValue = input.default_value ?? ''
     const label =
-      input.option_source.value[0] || t(($) => $['variableConfig.select'], { ns: 'appDebug' })
-    return <SelectPreview label={label} options={input.option_source.value} />
+      (defaultValue && input.option_source.value.includes(defaultValue)
+        ? defaultValue
+        : input.option_source.value[0]) || t(($) => $['variableConfig.select'], { ns: 'appDebug' })
+    return <SelectPreview key={label} label={label} options={input.option_source.value} />
   }
 
   if (isFileFormInput(input)) {

@@ -87,6 +87,38 @@ describe('HumanInputForm', () => {
     })
   })
 
+  it('shows a select default and lets the recipient override it before submitting', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(
+      <HumanInputForm
+        formData={{
+          ...mockFormData,
+          form_content: '{{#$output.decision#}}',
+          inputs: [
+            {
+              type: InputVarType.select,
+              output_variable_name: 'decision',
+              default_value: 'reject',
+              option_source: { type: 'constant', selector: [], value: ['approve', 'reject'] },
+            },
+          ],
+        }}
+        onSubmit={onSubmit}
+      />,
+    )
+    const select = screen.getByRole('combobox', { name: 'decision' })
+    expect(select).toHaveTextContent('reject')
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeEnabled()
+    await user.click(select)
+    await user.click(await screen.findByRole('option', { name: 'approve' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(onSubmit).toHaveBeenCalledWith('token_123', {
+      action: 'action_1',
+      inputs: { decision: 'approve' },
+    })
+  })
+
   it('should submit file field values using the backend payload shape', async () => {
     const user = userEvent.setup()
     const mockOnSubmit = vi.fn().mockResolvedValue(undefined)

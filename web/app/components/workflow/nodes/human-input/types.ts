@@ -88,6 +88,7 @@ export type ParagraphFormInput = BaseFormInputItem & {
 
 export type SelectFormInput = BaseFormInputItem & {
   type: typeof InputVarType.select
+  default_value?: string
   option_source: StringListSource
 }
 

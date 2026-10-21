@@ -1571,6 +1571,7 @@ export const zStringListSource = z.object({
  * SelectInputConfig
  */
 export const zSelectInputConfig = z.object({
+  default_value: z.string().optional().default(''),
   option_source: zStringListSource,
   output_variable_name: z.string(),
   type: z.literal('select').optional().default('select'),
