@@ -2,7 +2,7 @@ import type { CallFlags } from '@/call/flags'
 import type { CommandContext } from '@/plugins/base'
 import type { CatalogOp } from '@/plugins/catalog'
 import { readFile } from 'node:fs/promises'
-import { readLocalFile } from '@/call/files'
+import { LOCAL_FILES } from '@/call/files'
 import { unsupportedFlags } from '@/call/flags'
 import { applyPins, loadInput, resolveFileRefs } from '@/call/input'
 import { rendererFor } from '@/call/render/index'
@@ -75,7 +75,7 @@ export async function executeCall(req: CallRequest, ctx: CommandContext): Promis
   const res = await (
     await ctx.get(http)
   ).request(async (cat) => ({
-    ...(await buildRequest(cat.opOrThrow(req.id), body, { readFile: readLocalFile })),
+    ...(await buildRequest(cat.opOrThrow(req.id), body, LOCAL_FILES)),
     signal,
   }))
 
