@@ -139,6 +139,7 @@
   "uploadFiles": "رفع الملفات",
   "uploadFilesDescription": "أضف ملفات من جهاز الكمبيوتر — ستتم فهرستها بمجرد إنشاء قاعدة معرفة Agent.",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "كلاسيكية",
   "viewLabel": "عرض المعرفة",
   "websiteCrawl": "الزحف إلى موقع الويب"

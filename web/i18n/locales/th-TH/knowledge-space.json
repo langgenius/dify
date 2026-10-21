@@ -139,6 +139,7 @@
   "uploadFiles": "อัปโหลดไฟล์",
   "uploadFilesDescription": "เพิ่มไฟล์จากคอมพิวเตอร์ ระบบจะจัดทำดัชนีทันทีที่คุณสร้างฐานความรู้ Agent",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "แบบดั้งเดิม",
   "viewLabel": "มุมมองความรู้",
   "websiteCrawl": "การรวบรวมข้อมูลเว็บไซต์"

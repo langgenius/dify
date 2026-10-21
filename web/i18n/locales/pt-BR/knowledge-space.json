@@ -139,6 +139,7 @@
   "uploadFiles": "Enviar arquivos",
   "uploadFilesDescription": "Adicione arquivos do computador — eles serão indexados assim que você criar a base de conhecimento Agent.",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "Clássica",
   "viewLabel": "Visualização de conhecimento",
   "websiteCrawl": "Rastreamento de site"

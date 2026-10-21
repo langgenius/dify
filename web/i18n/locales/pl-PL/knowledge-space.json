@@ -139,6 +139,7 @@
   "uploadFiles": "Prześlij pliki",
   "uploadFilesDescription": "Dodaj pliki z komputera — zostaną zindeksowane od razu po utworzeniu bazy wiedzy Agent.",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "Klasyczna",
   "viewLabel": "Widok wiedzy",
   "websiteCrawl": "Indeksowanie witryny"

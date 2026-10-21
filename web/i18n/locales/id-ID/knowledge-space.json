@@ -139,6 +139,7 @@
   "uploadFiles": "Unggah file",
   "uploadFilesDescription": "Tambahkan file dari komputer Anda — file akan langsung diindeks setelah basis pengetahuan Agent dibuat.",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "Klasik",
   "viewLabel": "Tampilan pengetahuan",
   "websiteCrawl": "Perayapan situs web"

@@ -139,6 +139,7 @@
   "uploadFiles": "上傳檔案",
   "uploadFilesDescription": "從電腦新增檔案，建立 Agent 知識庫後會立即建立索引。",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "經典",
   "viewLabel": "知識庫檢視",
   "websiteCrawl": "網站抓取"

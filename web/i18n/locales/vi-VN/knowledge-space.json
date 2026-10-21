@@ -139,6 +139,7 @@
   "uploadFiles": "Tải tệp lên",
   "uploadFilesDescription": "Thêm tệp từ máy tính — chúng sẽ được lập chỉ mục ngay khi bạn tạo cơ sở tri thức Agent.",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "Truyền thống",
   "viewLabel": "Chế độ xem kiến thức",
   "websiteCrawl": "Thu thập thông tin trang web"

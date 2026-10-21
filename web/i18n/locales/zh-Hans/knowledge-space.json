@@ -139,6 +139,7 @@
   "uploadFiles": "上传文件",
   "uploadFilesDescription": "从电脑添加文件，创建 Agent 知识库后会立即建立索引。",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "经典",
   "viewLabel": "知识库视图",
   "websiteCrawl": "网站抓取"

@@ -139,6 +139,7 @@
   "uploadFiles": "Importer des fichiers",
   "uploadFilesDescription": "Ajoutez des fichiers depuis votre ordinateur : ils seront indexés dès la création de la base de connaissances Agent.",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "Classique",
   "viewLabel": "Vue des connaissances",
   "websiteCrawl": "Exploration du site Web"

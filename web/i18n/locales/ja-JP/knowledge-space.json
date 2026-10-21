@@ -139,6 +139,7 @@
   "uploadFiles": "ファイルをアップロード",
   "uploadFilesDescription": "コンピューターからファイルを追加すると、Agent ナレッジベースの作成後すぐにインデックス化されます。",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "従来型",
   "viewLabel": "ナレッジ表示",
   "websiteCrawl": "ウェブサイトのクロール"

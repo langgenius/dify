@@ -54,6 +54,9 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           value="agent"
         >
           {t(($) => $['view.agent'])}
+          <span className="ml-1 badge badge-s badge-accent px-1 py-px system-2xs-medium-uppercase">
+            {t(($) => $['view.beta'])}
+          </span>
         </SegmentedControlItem>
       </SegmentedControl>
       <Popover open={guideOpen} onOpenChange={setGuideOpenOverride}>

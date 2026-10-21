@@ -139,6 +139,7 @@
   "uploadFiles": "Încarcă fișiere",
   "uploadFilesDescription": "Adaugă fișiere de pe computer — acestea vor fi indexate imediat ce creezi baza de cunoștințe Agent.",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "Clasică",
   "viewLabel": "Vizualizare cunoștințe",
   "websiteCrawl": "Accesare cu crawlere a site-ului"

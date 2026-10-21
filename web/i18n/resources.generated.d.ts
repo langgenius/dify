@@ -3722,6 +3722,7 @@ export default interface Resources {
     uploadFiles: 'Upload files'
     uploadFilesDescription: "Add files from your computer — they're indexed as soon as you create the Agent Knowledge Base."
     'view.agent': 'Agent'
+    'view.beta': 'Beta'
     'view.classic': 'Classic'
     viewLabel: 'Knowledge view'
     websiteCrawl: 'Website crawl'

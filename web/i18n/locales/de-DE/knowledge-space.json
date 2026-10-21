@@ -139,6 +139,7 @@
   "uploadFiles": "Dateien hochladen",
   "uploadFilesDescription": "Fügen Sie Dateien von Ihrem Computer hinzu — sie werden direkt nach dem Erstellen der Agent-Wissensdatenbank indexiert.",
   "view.agent": "Agent",
+  "view.beta": "Beta",
   "view.classic": "Klassisch",
   "viewLabel": "Wissensansicht",
   "websiteCrawl": "Website-Crawling"
