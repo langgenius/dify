@@ -1,11 +1,12 @@
 """Unit tests for SSRF-safe KnowledgeFS remote-image loading."""
 
+import socket
 from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
 
-from core.helper.ssrf_proxy import ResponseTooLargeError, UnsupportedResponseEncodingError
+from core.helper.ssrf_proxy import MaxRetriesExceededError, ResponseTooLargeError, UnsupportedResponseEncodingError
 from core.tools.errors import ToolSSRFError
 from services.knowledge_fs.remote_images import (
     KNOWLEDGE_FS_REMOTE_IMAGE_MAX_BYTES,
@@ -165,6 +166,76 @@ def test_load_remote_image_maps_transport_timeouts(make_request: MagicMock) -> N
 
     with pytest.raises(KnowledgeFSRemoteImageError) as unavailable:
         load_remote_image("https://cdn.example.test/stalled.png")
+
+    assert unavailable.value.code == "REMOTE_IMAGE_UPSTREAM_UNAVAILABLE"
+    assert unavailable.value.retryable is True
+
+
+@pytest.mark.parametrize(
+    "dns_error_code",
+    [
+        socket.EAI_NONAME,
+        *([socket.EAI_NODATA] if hasattr(socket, "EAI_NODATA") and socket.EAI_NODATA != socket.EAI_NONAME else []),
+        *([socket.EAI_FAIL] if socket.EAI_FAIL != socket.EAI_NONAME else []),
+    ],
+)
+@patch("services.knowledge_fs.remote_images.remote_fetcher.make_request")
+def test_load_remote_image_maps_permanent_dns_failures_to_not_found(
+    make_request: MagicMock,
+    dns_error_code: int,
+) -> None:
+    dns_error = socket.gaierror(dns_error_code, "host not found")
+    connect_error = httpx.ConnectError(
+        "host lookup failed",
+        request=httpx.Request("GET", "https://missing.example.test/image.png"),
+    )
+    connect_error.__cause__ = dns_error
+    retry_error = MaxRetriesExceededError("maximum retries reached")
+    retry_error.__cause__ = connect_error
+    make_request.side_effect = retry_error
+
+    with pytest.raises(KnowledgeFSRemoteImageError) as unavailable:
+        load_remote_image("https://missing.example.test/image.png")
+
+    assert unavailable.value.code == "REMOTE_IMAGE_HOST_NOT_FOUND"
+    assert unavailable.value.retryable is False
+
+
+@patch("services.knowledge_fs.remote_images.remote_fetcher.make_request")
+def test_load_remote_image_keeps_temporary_dns_failures_retryable(make_request: MagicMock) -> None:
+    dns_error = socket.gaierror(socket.EAI_AGAIN, "temporary lookup failure")
+    connect_error = httpx.ConnectError(
+        "host lookup failed",
+        request=httpx.Request("GET", "https://flaky.example.test/image.png"),
+    )
+    connect_error.__cause__ = dns_error
+    retry_error = MaxRetriesExceededError("maximum retries reached")
+    retry_error.__cause__ = connect_error
+    make_request.side_effect = retry_error
+
+    with pytest.raises(KnowledgeFSRemoteImageError) as unavailable:
+        load_remote_image("https://flaky.example.test/image.png")
+
+    assert unavailable.value.code == "REMOTE_IMAGE_UPSTREAM_UNAVAILABLE"
+    assert unavailable.value.retryable is True
+
+
+@patch("services.knowledge_fs.remote_images.remote_fetcher.make_request")
+def test_load_remote_image_does_not_treat_proxy_dns_failures_as_missing_remote_hosts(
+    make_request: MagicMock,
+) -> None:
+    dns_error = socket.gaierror(socket.EAI_NONAME, "proxy host not found")
+    proxy_error = httpx.ProxyError(
+        "proxy lookup failed",
+        request=httpx.Request("GET", "https://cdn.example.test/image.png"),
+    )
+    proxy_error.__cause__ = dns_error
+    retry_error = MaxRetriesExceededError("maximum retries reached")
+    retry_error.__cause__ = proxy_error
+    make_request.side_effect = retry_error
+
+    with pytest.raises(KnowledgeFSRemoteImageError) as unavailable:
+        load_remote_image("https://cdn.example.test/image.png")
 
     assert unavailable.value.code == "REMOTE_IMAGE_UPSTREAM_UNAVAILABLE"
     assert unavailable.value.retryable is True
