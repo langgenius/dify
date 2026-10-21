@@ -11,7 +11,7 @@ DEFAULT_QUEUE_PATTERN = re.compile(r'^\s*(?:QUEUES|DEFAULT_QUEUES)="([^"]+,.*?)"
 
 
 def test_advance_task_uses_dedicated_queue() -> None:
-    assert getattr(advance_session, "queue", None) == DIFY_BUILDER_QUEUE
+    assert advance_session.queue == DIFY_BUILDER_QUEUE
 
 
 @pytest.mark.parametrize(

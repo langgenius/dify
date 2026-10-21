@@ -77,7 +77,7 @@ def test_builder_insert_lifecycle_keeps_server_defaults_and_caller_ids(model):
             assert row.id is None
         for name in ("created_at", "updated_at"):
             if name in model.__table__.columns:
-                assert getattr(row, name) is None
+                assert sa.inspect(row).attrs[name].value is None
         with Session(engine) as session:
             session.add(row)
             session.flush()
@@ -86,7 +86,7 @@ def test_builder_insert_lifecycle_keeps_server_defaults_and_caller_ids(model):
             assert all(identity)
             for name in ("created_at", "updated_at"):
                 if name in model.__table__.columns:
-                    assert isinstance(getattr(row, name), datetime)
+                    assert isinstance(sa.inspect(row).attrs[name].value, datetime)
             if model is dify_builder.DifyBuilderSession:
                 assert row.version == 1
             session.commit()

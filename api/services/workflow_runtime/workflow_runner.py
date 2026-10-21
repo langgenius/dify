@@ -265,7 +265,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 node_id=root_node_id,
                 inputs=inputs,
                 aliases=get_compatible_start_aliases(
-                    workflow_kind=getattr(self._workflow, "kind_or_standard", None),
+                    workflow_kind=self._workflow.kind_or_standard,
                     root_node_id=root_node_id,
                 ),
             )

@@ -5,7 +5,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
+from typing import TYPE_CHECKING, Any, Literal, Protocol, overload, runtime_checkable
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -79,10 +79,22 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> dict[str, str]:
+@runtime_checkable
+class _DebugTraceArgs(Protocol):
+    @property
+    def trace_session_id(self) -> object: ...
+
+
+def _extract_trace_session_id_from_debug_args(args: object) -> dict[str, str]:
     if isinstance(args, Mapping):
         return extract_trace_session_id_from_args(args)
-    return extract_trace_session_id_from_args({"trace_session_id": getattr(args, "trace_session_id", None)})
+    if isinstance(args, _DebugTraceArgs):
+        try:
+            trace_session_id = args.trace_session_id
+        except AttributeError:
+            return {}
+        return extract_trace_session_id_from_args({"trace_session_id": trace_session_id})
+    return {}
 
 
 def _no_draft_variable_saver(

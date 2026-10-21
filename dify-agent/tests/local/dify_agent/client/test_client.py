@@ -1262,7 +1262,8 @@ def test_private_checkpoint_client_refuses_without_retry_or_history_leak(asynchr
                 with pytest.raises((DifyAgentHTTPError, client_module.DifyAgentClientError)) as caught:
                     client.read_native_checkpoint_sync("run-1", _private_checkpoint_request())
     assert "private-canary" not in str(caught.value)
-    assert "private-canary" not in str(getattr(caught.value, "detail", ""))
+    if isinstance(caught.value, DifyAgentHTTPError):
+        assert "private-canary" not in str(caught.value.detail)
     assert len(calls) == 1
 
 

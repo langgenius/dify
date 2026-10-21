@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override, runtime_checkable
 
 from pydantic import JsonValue
 from sqlalchemy import select
@@ -528,6 +528,12 @@ class _WorkflowToolRuntimeBinding:
     trace_session_id: str | None = None
 
 
+@runtime_checkable
+class _ConfirmedGuardTool(Protocol):
+    @property
+    def confirmed_guard(self) -> ConfirmedToolGuard | None: ...
+
+
 class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
     def __init__(
         self,
@@ -706,7 +712,11 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 raise self._map_invocation_exception(
                     BuilderExecutionPolicyError("confirmed_guard_unavailable"), provider_name=provider_name
                 )
-            if getattr(tool, "confirmed_guard", None) is not guard:
+            try:
+                same_guard = isinstance(tool, _ConfirmedGuardTool) and tool.confirmed_guard is guard
+            except AttributeError:
+                same_guard = False
+            if not same_guard:
                 raise self._map_invocation_exception(
                     BuilderExecutionPolicyError("execution_launch_mismatch"), provider_name=provider_name
                 )
