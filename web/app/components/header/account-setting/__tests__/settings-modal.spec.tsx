@@ -176,6 +176,12 @@ it('opens preferences from the URL control, switches real pages, and closes with
   for (const { name, tab, content } of destinations) {
     await user.click(within(dialog).getByRole('button', { name }))
     expect(await within(dialog).findByText(content)).toBeInTheDocument()
+    if (tab === TAB.BILLING) {
+      expect(within(dialog).getByRole('heading', { name, level: 3 })).toBeInTheDocument()
+      expect(
+        within(dialog).getByRole('heading', { name: 'billing.plans.sandbox.name', level: 4 }),
+      ).toBeInTheDocument()
+    }
     expect(within(dialog).getByRole('button', { name, current: 'page' })).toBeInTheDocument()
     expect(within(dialog).getAllByRole('button', { current: 'page' })).toHaveLength(1)
     await waitFor(() =>

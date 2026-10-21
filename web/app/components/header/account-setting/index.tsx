@@ -269,12 +269,14 @@ export default function AccountSetting({
           <ScrollArea className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-components-panel-bg">
             {activeMenu !== ACCOUNT_SETTING_TAB.IP_POLICIES && (
               <div className="mx-4 flex min-h-15 shrink-0 items-end bg-components-panel-bg pt-8 pr-12 pb-2 sm:mx-8">
-                <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-                  {activeItem?.title ?? activeItem?.name}
+                <div className="min-w-0 flex-1">
+                  <h3 className="title-2xl-semi-bold text-text-primary">
+                    {activeItem?.title ?? activeItem?.name}
+                  </h3>
                   {activeItem?.description && (
-                    <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
+                    <p className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
                       {activeItem?.description}
-                    </div>
+                    </p>
                   )}
                 </div>
               </div>

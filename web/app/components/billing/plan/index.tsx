@@ -71,9 +71,9 @@ const PlanComp: FC<Props> = ({ loc }) => {
         <div className="mt-1 flex flex-col items-start gap-y-3 @min-[28rem]/plan:flex-row @min-[28rem]/plan:flex-wrap @min-[28rem]/plan:items-center">
           <div className="max-w-full min-w-0 grow @min-[28rem]/plan:basis-52">
             <div className="mb-1 flex items-center gap-1">
-              <div className="system-md-semibold-uppercase wrap-anywhere text-text-primary">
+              <h4 className="system-md-semibold-uppercase wrap-anywhere text-text-primary">
                 {t(($) => $[`plans.${type}.name`], { ns: 'billing' })}
-              </div>
+              </h4>
             </div>
             <div className="system-xs-regular text-util-colors-gray-gray-600">
               {t(($) => $[`plans.${type}.for`], { ns: 'billing' })}
