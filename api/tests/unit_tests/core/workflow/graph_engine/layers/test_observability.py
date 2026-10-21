@@ -162,9 +162,8 @@ class TestObservabilityLayerNodeSpanLifecycle:
         parent = get_current_span()
         error = ValueError("node failed")
 
-        with pytest.raises(ValueError, match="node failed"):
-            with layer.node_run_context(mock_llm_node):
-                raise error
+        with pytest.raises(ValueError, match="node failed"), layer.node_run_context(mock_llm_node):
+            raise error
 
         assert get_current_span() is parent
         layer.on_node_run_end(mock_llm_node, error)

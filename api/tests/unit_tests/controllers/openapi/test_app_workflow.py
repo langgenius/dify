@@ -180,9 +180,11 @@ def test_set_env_rejects_mask_for_unknown_id(
 
     body = EnvVariableSetPayload(name="KEY", value_type="secret", value=encrypter.full_mask_token())
     api = AppEnvItemApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/env/unknown-id", method="PUT"):
-        with pytest.raises(SecretMaskUnknownId):
-            cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "unknown-id", body=body)
+    with (
+        app.test_request_context("/openapi/v1/apps/app-1/env/unknown-id", method="PUT"),
+        pytest.raises(SecretMaskUnknownId),
+    ):
+        cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "unknown-id", body=body)
 
     assert _env(draft) == []
 
@@ -223,9 +225,11 @@ def test_set_env_rejects_the_mask_as_a_plain_value(
 
     body = EnvVariableSetPayload(name="KEY", value_type="string", value=encrypter.full_mask_token())
     api = AppEnvItemApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/env/s-1", method="PUT"):
-        with pytest.raises(SecretMaskNotSecret):
-            cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "s-1", body=body)
+    with (
+        app.test_request_context("/openapi/v1/apps/app-1/env/s-1", method="PUT"),
+        pytest.raises(SecretMaskNotSecret),
+    ):
+        cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "s-1", body=body)
 
     assert _env(draft) == [("s-1", "plain", SecretVariable)]
 
@@ -276,9 +280,11 @@ def test_delete_env_with_an_unknown_id_is_not_found(
     draft = _add_draft(sqlite_session, environment_variables=[stored])
 
     api = AppEnvItemApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/env/typo", method="DELETE"):
-        with pytest.raises(EnvVariableNotFound):
-            cast(_EndpointView, api.delete).__handler__(api, ctx, "app-1", "typo")
+    with (
+        app.test_request_context("/openapi/v1/apps/app-1/env/typo", method="DELETE"),
+        pytest.raises(EnvVariableNotFound),
+    ):
+        cast(_EndpointView, api.delete).__handler__(api, ctx, "app-1", "typo")
 
     assert _env(draft) == [("e-1", "v", StringVariable)]
 
@@ -310,9 +316,11 @@ def test_set_env_payload_rejects_a_value_type_the_console_does_not_allow() -> No
 def test_restore_rejects_a_garbage_version_id(app: Flask, sqlite_session: Session) -> None:
     api = AppVersionRestoreApi()
     ctx = _app_context(sqlite_session, version_id="not-a-uuid")
-    with app.test_request_context("/openapi/v1/apps/app-1/versions/not-a-uuid:restore", method="POST"):
-        with pytest.raises(VersionNotFound):
-            cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", "not-a-uuid")
+    with (
+        app.test_request_context("/openapi/v1/apps/app-1/versions/not-a-uuid:restore", method="POST"),
+        pytest.raises(VersionNotFound),
+    ):
+        cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", "not-a-uuid")
 
 
 def test_version_list_excludes_the_draft(
@@ -542,9 +550,11 @@ def test_publish_refusal_is_a_bad_request(
     ctx = _app_context(sqlite_session)
 
     api = AppPublishApi()
-    with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
-        with pytest.raises(BadRequest, match="Missing provider"):
-            cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", body=PublishPayload())
+    with (
+        app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"),
+        pytest.raises(BadRequest, match="Missing provider"),
+    ):
+        cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", body=PublishPayload())
 
     stored_app = sqlite_session.get(App, APP_ID)
     assert stored_app is not None

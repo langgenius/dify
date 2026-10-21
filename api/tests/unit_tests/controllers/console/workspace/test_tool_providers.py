@@ -942,9 +942,11 @@ def test_tool_oauth_callback_rejects_replaced_package_before_dispatch(
 
     monkeypatch.setattr(controller_module.OAuthHandler, "get_credentials", unexpected_dispatch)
     api = controller_module.ToolOAuthCallback()
-    with app.test_request_context("/", headers={"Cookie": "context_id=ctx-id"}):
-        with pytest.raises(Forbidden, match="Plugin changed"):
-            unwrap(api.get)(api, provider=_OAUTH_PROVIDER_PATH)
+    with (
+        app.test_request_context("/", headers={"Cookie": "context_id=ctx-id"}),
+        pytest.raises(Forbidden, match="Plugin changed"),
+    ):
+        unwrap(api.get)(api, provider=_OAUTH_PROVIDER_PATH)
 
 
 @contextmanager

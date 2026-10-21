@@ -202,10 +202,9 @@ class OracleVector(BaseVector):
 
     @override
     def text_exists(self, id: str) -> bool:
-        with self._get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(f"SELECT id FROM {self.table_name} WHERE id = :1", (id,))
-                row = cur.fetchone()
+        with self._get_connection() as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT id FROM {self.table_name} WHERE id = :1", (id,))
+            row = cur.fetchone()
         return row is not None
 
     def get_by_ids(self, ids: list[str]) -> list[Document]:

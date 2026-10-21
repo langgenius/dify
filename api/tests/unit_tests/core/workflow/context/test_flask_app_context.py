@@ -187,12 +187,14 @@ class TestFlaskExecutionContextIntegration:
         token = test_var.set(caller_value) if caller_value is not None else None
 
         try:
-            with pytest.raises(ValueError, match="body failed") if raise_error else nullcontext():
-                with ctx.enter() if use_enter else ctx:
-                    assert test_var.get() == "captured"
-                    test_var.set("body")
-                    if raise_error:
-                        raise ValueError("body failed")
+            with (
+                pytest.raises(ValueError, match="body failed") if raise_error else nullcontext(),
+                ctx.enter() if use_enter else ctx,
+            ):
+                assert test_var.get() == "captured"
+                test_var.set("body")
+                if raise_error:
+                    raise ValueError("body failed")
 
             assert test_var.get(None) == caller_value
             assert (test_var in contextvars.copy_context()) == (caller_value is not None)

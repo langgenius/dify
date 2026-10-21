@@ -48,7 +48,9 @@ def test_workflow_stop_sets_flag_before_sending_command(
 def test_flag_failure_does_not_send_command(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
     redis, commands = redis_transport
     commands.side_effect = RuntimeError("flag store unavailable")
-    with patch.object(Pipeline, "execute", autospec=True) as execute:
-        with pytest.raises(RuntimeError, match="flag store unavailable"):
-            AppTaskControlService(redis_client=redis).stop_workflow_task_no_user_check(task_id="task-1")
+    with (
+        patch.object(Pipeline, "execute", autospec=True) as execute,
+        pytest.raises(RuntimeError, match="flag store unavailable"),
+    ):
+        AppTaskControlService(redis_client=redis).stop_workflow_task_no_user_check(task_id="task-1")
     execute.assert_not_called()

@@ -250,9 +250,8 @@ class TestDatasourceOAuthCallback:
 
         monkeypatch.setattr(OAuthHandler, "get_credentials", unexpected_dispatch)
         api = DatasourceOAuthCallback()
-        with app.test_request_context("/?context_id=ctx"):
-            with pytest.raises(Forbidden, match="Plugin changed"):
-                inspect.unwrap(api.get)(api, _PROVIDER_ID)
+        with app.test_request_context("/?context_id=ctx"), pytest.raises(Forbidden, match="Plugin changed"):
+            inspect.unwrap(api.get)(api, _PROVIDER_ID)
 
     def test_callback_success_new_credential(self, app: Flask):
         api = DatasourceOAuthCallback()

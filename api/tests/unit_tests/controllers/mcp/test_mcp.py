@@ -611,9 +611,8 @@ def test_identity_query_does_not_accept_a_server_bound_to_another_tenants_app() 
     server.tenant_id = str(uuid4())
     db.session.add_all([app_model, server])
     db.session.commit()
-    with sessionmaker(db.engine).begin() as session:
-        with pytest.raises(module.MCPServerNotFoundError):
-            module.MCPAppApi()._get_mcp_server_and_app("server-1", session)
+    with sessionmaker(db.engine).begin() as session, pytest.raises(module.MCPServerNotFoundError):
+        module.MCPAppApi()._get_mcp_server_and_app("server-1", session)
 
 
 class TestMCPProtocolVersionNegotiationApi:

@@ -862,19 +862,19 @@ class TestBillingPaidPlanRequired:
         def paid_view() -> str:
             return "paid_success"
 
-        with app.test_request_context():
-            with (
-                patch(
-                    "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(MockUser("test_user"), "tenant123"),
-                ),
-                patch(
-                    "controllers.console.wraps.BillingService.get_info",
-                    side_effect=httpx.ConnectError("billing unavailable"),
-                ),
-                pytest.raises(HTTPException) as exc_info,
-            ):
-                paid_view()
+        with (
+            app.test_request_context(),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch(
+                "controllers.console.wraps.BillingService.get_info",
+                side_effect=httpx.ConnectError("billing unavailable"),
+            ),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            paid_view()
 
         assert exc_info.value.code == 503
         assert "temporarily unavailable" in str(exc_info.value.description)

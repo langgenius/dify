@@ -800,9 +800,9 @@ class TestWorkflowEntryNodeLayers:
                 return_value=sentinel.read_only_runtime_state,
             ),
             pytest.raises(RuntimeError, match="boom"),
+            pytest.raises(RuntimeError, match="boom"),
         ):
-            with pytest.raises(RuntimeError, match="boom"):
-                list(workflow_entry.WorkflowEntry._run_node_with_layers(node))
+            list(workflow_entry.WorkflowEntry._run_node_with_layers(node))
 
         for layer in (observability_layer,):
             assert layer.on_node_run_end.call_args.args[0] is node

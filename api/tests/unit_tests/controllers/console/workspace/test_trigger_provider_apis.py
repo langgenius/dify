@@ -422,9 +422,11 @@ class TestTriggerOAuthApis:
 
         monkeypatch.setattr(controller_module.OAuthHandler, "get_credentials", unexpected_dispatch)
         api = TriggerOAuthCallbackApi()
-        with app.test_request_context("/", headers={"Cookie": "context_id=ctx"}):
-            with pytest.raises(Forbidden, match="Plugin changed"):
-                unwrap(api.get)(api, "github")
+        with (
+            app.test_request_context("/", headers={"Cookie": "context_id=ctx"}),
+            pytest.raises(Forbidden, match="Plugin changed"),
+        ):
+            unwrap(api.get)(api, "github")
 
     def test_oauth_authorize_success(self, app: Flask) -> None:
         api = TriggerOAuthAuthorizeApi()
