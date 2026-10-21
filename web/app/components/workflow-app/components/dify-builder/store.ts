@@ -70,7 +70,7 @@ export const difyBuilderCanvasPendingRefreshAtom = atom<{
 export const difyBuilderCanvasAppliedViewAtom = atom<{ sessionId: string; version: number } | null>(
   null,
 )
-export const difyBuilderChecklistEvaluatedGenerationAtom = atom(-1)
+const difyBuilderChecklistEvaluatedGenerationAtom = atom(-1)
 
 export const difyBuilderScopedAtoms = [
   difyBuilderRuntimeAtom,
@@ -100,7 +100,7 @@ export const difyBuilderHasSessionAtom = atom(
 export const difyBuilderInteractionRefAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.active_interaction ?? null,
 )
-export const difyBuilderInteractionAtom = atom<DifyBuilderActiveInteraction | null>((get) => {
+const difyBuilderInteractionAtom = atom<DifyBuilderActiveInteraction | null>((get) => {
   const interaction = get(difyBuilderInteractionRefAtom)
   if (!interaction) return null
   const card = get(difyBuilderConversationAtom).find((item) => item.seq === interaction.card_seq)
@@ -117,9 +117,6 @@ export const difyBuilderDecisionAtom = atom(
 export const difyBuilderInterruptedAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.interrupted ?? false,
 )
-export const difyBuilderRecoveryAtom = atom(
-  (get) => get(difyBuilderSessionViewAtom)?.recovery ?? null,
-)
 export const difyBuilderViewVersionAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.version ?? 0,
 )
@@ -132,7 +129,7 @@ export const difyBuilderSessionIdAtom = atom(
 export const difyBuilderPhaseAtom = atom(
   (get) => get(difyBuilderActiveCommandAtom)?.phase ?? get(difyBuilderSessionViewAtom)?.phase,
 )
-export const difyBuilderRunStatusAtom = atom(
+const difyBuilderRunStatusAtom = atom(
   (get) =>
     get(difyBuilderActiveCommandAtom)?.run_status ?? get(difyBuilderSessionViewAtom)?.run_status,
 )
