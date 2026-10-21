@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import event, text
 from sqlalchemy.orm import Session, sessionmaker
 
+from models.account import Tenant
 from models.enums import ApiTokenBindingResourceType, ApiTokenType
 from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
 from models.model import ApiToken, DatasetApiTokenBinding
@@ -17,6 +18,8 @@ from repositories.knowledge import dataset_api_key_bindings
 def test_concurrent_space_deletions_revoke_the_last_scoped_key(db_session_with_containers: Session) -> None:
     session = db_session_with_containers
     tenant_id, owner_id = str(uuid4()), str(uuid4())
+    session.add(Tenant(id=tenant_id, name="KnowledgeFS key deletion test"))
+    session.flush()
     spaces = [
         KnowledgeFSControlSpace(
             tenant_id=tenant_id,

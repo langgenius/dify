@@ -2,8 +2,6 @@
 
 from collections.abc import Callable
 from http import HTTPStatus
-from types import SimpleNamespace
-from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -18,8 +16,8 @@ from libs.login import AccountWithTenant
 from models.account import TenantAccountRole
 from models.knowledge_fs import KnowledgeFSControlSpaceState
 from services.enterprise.rbac_service import RBACService
-from services.knowledge_fs.product_application_service import KnowledgeFSProductApplicationService
 from services.knowledge_fs.product_dto import KnowledgeFSSpaceCreateResponse
+from tests.unit_tests.controllers.knowledge_fs_controller_fakes import FakeComponent, FakeRuntime, Recorder, invocation
 from tests.unit_tests.model_factories import make_account
 
 
@@ -49,21 +47,23 @@ def test_create_space_enforces_admission_before_provisioning(
     account = make_account(role=role)
     identity = AccountWithTenant(account, "workspace")
     monkeypatch.setattr(login, "_resolve_current_user", lambda: account)
-    monkeypatch.setattr(login, "check_csrf_token", Mock())
+    monkeypatch.setattr(login, "check_csrf_token", lambda _request, _user_id: None)
     monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: identity)
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
     monkeypatch.setattr(resources, "current_account_with_tenant", lambda: identity)
-    monkeypatch.setattr(wraps, "check_knowledge_rate_limit", Mock())
-    check_access = Mock(return_value=rbac_allowed)
+    monkeypatch.setattr(wraps, "check_knowledge_rate_limit", lambda: None)
+    check_access = Recorder(rbac_allowed)
     monkeypatch.setattr(RBACService.CheckAccess, "check", check_access)
-    application = create_autospec(KnowledgeFSProductApplicationService, instance=True, spec_set=True)
-    application.create_space.return_value = KnowledgeFSSpaceCreateResponse(
-        control_space_id="space",
-        state=KnowledgeFSControlSpaceState.PROVISIONING,
-        operation_id="operation",
-        model_setup_required=True,
+    create_space = Recorder(
+        KnowledgeFSSpaceCreateResponse(
+            control_space_id="space",
+            state=KnowledgeFSControlSpaceState.PROVISIONING,
+            operation_id="operation",
+            model_setup_required=True,
+        )
     )
-    monkeypatch.setattr(resources, "_console_services", lambda: SimpleNamespace(application=application))
+    runtime = FakeRuntime(application=FakeComponent(create_space=create_space))
+    monkeypatch.setattr(resources, "_console_services", lambda: runtime)
 
     with app.test_request_context("/knowledge-fs/spaces", method="POST", json={"name": "Test", "slug": "test"}):
         if allowed:
@@ -75,13 +75,12 @@ def test_create_space_enforces_admission_before_provisioning(
                 resources.KnowledgeFSSpacesApi().post()
 
     if allowed:
-        application.create_space.assert_called_once()
-        assert application.create_space.call_args.kwargs["tenant_id"] == "workspace"
-        assert application.create_space.call_args.kwargs["account_id"] == account.id
+        assert create_space.only_call.kwargs["tenant_id"] == "workspace"
+        assert create_space.only_call.kwargs["account_id"] == account.id
     else:
-        application.create_space.assert_not_called()
+        assert not create_space.calls
     if rbac_enabled:
-        check_access.assert_called_once_with(
+        assert check_access.only_call == invocation(
             "workspace",
             account.id,
             scene=RBACPermission.DATASET_CREATE_AND_MANAGEMENT.value,
@@ -89,4 +88,4 @@ def test_create_space_enforces_admission_before_provisioning(
             resource_id=None,
         )
     else:
-        check_access.assert_not_called()
+        assert not check_access.calls

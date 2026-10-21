@@ -42,6 +42,7 @@ from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
 from libs.exception import BaseHTTPException
+from machinery.context import RequestContext
 from models import Account
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs import source_edit_service
@@ -158,7 +159,11 @@ _CONSOLE_DELEGATION_CASES = (
     (
         console_resources.KnowledgeFSSpacesApi,
         console_resources.KnowledgeFSSpacesApi.post,
-        (),
+        (
+            RequestContext(
+                request_id="request-1", trace_id=None, account_id="account-1", active_workspace_id="tenant-1"
+            ),
+        ),
         "application",
         "create_space",
         dict[str, object](),
