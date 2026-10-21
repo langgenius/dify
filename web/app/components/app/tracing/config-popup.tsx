@@ -195,6 +195,7 @@ export function ConfigPopup({
             ) : (
               <RadioGroup<ConfigurableTracingProvider | null>
                 value={chosenProvider}
+                readOnly={pending}
                 aria-label={t(($) => $['tracing.configProviderTitle.configured'])}
                 className="block space-y-2"
                 onValueChange={(provider) => {

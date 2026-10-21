@@ -62,7 +62,6 @@ export function ProviderPanel({
         <RadioItem<ConfigurableTracingProvider>
           nativeButton
           value={type}
-          disabled={pending}
           aria-label={t(($) => $[`${I18N_PREFIX}.${type}.title`], { ns: 'app' })}
           render={<Button variant="ghost" />}
           className="absolute inset-0 h-auto w-full cursor-pointer rounded-xl p-0 hover:bg-transparent"
