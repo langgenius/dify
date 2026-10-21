@@ -81,6 +81,12 @@ class SystemFeatureService:
         edition = deployment_edition if deployment_edition is not None else dify_config.DEPLOYMENT_EDITION
         return edition == DeploymentEdition.ENTERPRISE
 
+    @staticmethod
+    def is_evaluation_enabled(*, deployment_edition: DeploymentEdition | None = None) -> bool:
+        """Return whether Evaluation is available for the deployment edition."""
+        edition = deployment_edition if deployment_edition is not None else dify_config.DEPLOYMENT_EDITION
+        return edition in {DeploymentEdition.ENTERPRISE, DeploymentEdition.CLOUD}
+
     @classmethod
     def get_license_status(cls) -> feature_entities.LicenseStatus:
         """Return the deployment license status used by internal admission policies."""

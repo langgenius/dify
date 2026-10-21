@@ -2,6 +2,7 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import dayjs from 'dayjs'
 import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
+import { isEvaluationEdition } from '@/features/system-features/utils'
 
 /**
  * Parse vectorSpace string from ALL_PLANS config and convert to MB
@@ -68,7 +69,8 @@ export const canAccessSnippetsAndEvaluation = ({
   deploymentEdition: DeploymentEdition
   planType?: CloudPlan
 }) => {
-  if (deploymentEdition !== 'CLOUD') return true
+  if (!isEvaluationEdition(deploymentEdition)) return false
+  if (deploymentEdition === 'ENTERPRISE') return true
 
   return planType === 'professional' || planType === 'team'
 }

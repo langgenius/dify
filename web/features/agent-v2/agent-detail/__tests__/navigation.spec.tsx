@@ -1,4 +1,5 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   deleteAgent: vi.fn(),
   exportAppDsl: vi.fn(),
   pathname: '/agents/agent-1/configure',
+  deploymentEdition: 'ENTERPRISE' as DeploymentEdition,
   queryData: undefined as ReturnType<typeof createAgentFixture> | undefined,
   replace: vi.fn(),
 }))
@@ -72,7 +74,7 @@ const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}) =>
 
 function renderAgentDetailSection(expand = true) {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
-    systemFeatures: { rbac_enabled: true },
+    systemFeatures: { deployment_edition: mocks.deploymentEdition, rbac_enabled: true },
   })
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
@@ -90,6 +92,7 @@ describe('AgentDetailSection', () => {
     mocks.exportAppDsl.mockResolvedValue(undefined)
     mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
+    mocks.deploymentEdition = 'ENTERPRISE'
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -239,6 +242,14 @@ describe('AgentDetailSection', () => {
 
   it('hides evaluation without test-and-run permission', () => {
     mocks.queryData = createAgent({ permission_keys: [AgentPermission.Preview] })
+    renderAgentDetailSection()
+
+    expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
+  })
+
+  it('hides evaluation in the community edition', () => {
+    mocks.deploymentEdition = 'COMMUNITY'
+
     renderAgentDetailSection()
 
     expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()

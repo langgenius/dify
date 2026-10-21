@@ -29,6 +29,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     cloud_utm_record,
     enterprise_license_required,
+    evaluation_edition_required,
     is_admin_or_owner_required,
     model_validate,
     only_edition_cloud,
@@ -806,6 +807,35 @@ class TestEditionChecks:
 
         # Assert
         assert result == "self_hosted_success"
+
+    @pytest.mark.parametrize(
+        "edition",
+        [DeploymentEdition.ENTERPRISE, DeploymentEdition.CLOUD],
+    )
+    def test_evaluation_edition_required_allows_supported_editions(
+        self,
+        config_overrides: Callable[..., None],
+        edition: DeploymentEdition,
+    ) -> None:
+        @evaluation_edition_required
+        def evaluation_view():
+            return "evaluation_success"
+
+        config_overrides(DEPLOYMENT_EDITION=edition)
+
+        assert evaluation_view() == "evaluation_success"
+
+    def test_evaluation_edition_required_rejects_community(self) -> None:
+        app = Flask(__name__)
+
+        @evaluation_edition_required
+        def evaluation_view():
+            return "evaluation_success"
+
+        with app.test_request_context(), pytest.raises(HTTPException) as exc_info:
+            evaluation_view()
+
+        assert exc_info.value.code == 404
 
 
 class TestBillingPaidPlanRequired:

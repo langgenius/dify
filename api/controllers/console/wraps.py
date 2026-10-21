@@ -182,6 +182,16 @@ def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
         CloudPlan.TEAM,
     )
 
+def evaluation_edition_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        if not SystemFeatureService.is_evaluation_enabled():
+            abort(404)
+
+        return view(*args, **kwargs)
+
+    return decorated
+
 
 def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)

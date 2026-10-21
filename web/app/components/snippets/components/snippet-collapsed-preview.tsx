@@ -11,11 +11,13 @@ export function SnippetCollapsedPreview({
   snippetId,
   section,
   isPublished,
+  evaluationEnabled,
 }: {
   inputFieldCount: number
   snippetId?: string
   section: SnippetSection
   isPublished?: boolean
+  evaluationEnabled: boolean
 }) {
   const { t } = useTranslation(['snippet', 'evaluation'])
   const orchestrateLabel = t(($) => $.sectionOrchestrate, { ns: 'snippet' })
@@ -37,14 +39,16 @@ export function SnippetCollapsedPreview({
             active={section === 'orchestrate'}
             iconMap={{ selected: 'i-ri-node-tree', normal: 'i-ri-node-tree' }}
           />
-          <NavLink
-            mode="collapse"
-            name={evaluationLabel}
-            href={`/snippets/${snippetId}/evaluation`}
-            active={section === 'evaluation'}
-            disabled={!isPublished}
-            iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
-          />
+          {evaluationEnabled && (
+            <NavLink
+              mode="collapse"
+              name={evaluationLabel}
+              href={`/snippets/${snippetId}/evaluation`}
+              active={section === 'evaluation'}
+              disabled={!isPublished}
+              iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
+            />
+          )}
         </nav>
       ) : (
         <div className="flex size-8 items-center justify-center rounded-lg border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active p-1.5 text-text-accent-light-mode-only">
