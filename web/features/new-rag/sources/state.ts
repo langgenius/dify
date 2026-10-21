@@ -30,7 +30,7 @@ export const sourcesSortAtom = atom<SourceSort>(null)
 export const sourcesAwaitedOperationIdAtom = atom<string | null>(null)
 
 const sourceOverridesAtom = atom<Record<string, Source>>({})
-export const removedSourceIdsAtom = atom<Set<string>>(new Set<string>())
+const removedSourceIdsAtom = atom<Set<string>>(new Set<string>())
 const sourcePollingTimeoutAtom = atom<{
   awaitedOperationId: string | null
   timedOut: boolean

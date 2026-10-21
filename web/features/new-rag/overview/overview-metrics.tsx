@@ -19,7 +19,7 @@ import {
   overviewStatsPendingAtom,
 } from './state'
 
-export function MetricCard({
+function MetricCard({
   change,
   empty,
   help,

@@ -52,7 +52,7 @@ export const knowledgeSettingsCanSubmitAtom = atom(
     get(knowledgeSettingsSaveErrorAtom) !== 'settings.revisionConflict' &&
     (get(knowledgeSettingsCanSaveAtom) || Boolean(get(pendingMigrationAtom))),
 )
-export const setKnowledgeSettingsSavePendingAtom = atom(
+const setKnowledgeSettingsSavePendingAtom = atom(
   null,
   (_get, set, { owner, pending }: { owner: string; pending: boolean }) => {
     set(pendingSaveOwnersAtom, (current) => {

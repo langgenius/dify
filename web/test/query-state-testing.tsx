@@ -1,8 +1,7 @@
 import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
-import type { ComponentProps, ReactElement, ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
 import { vi } from 'vite-plus/test'
-import { render } from '@/test/console/render'
 import { QueryTestingAdapter } from './query-state-testing-adapter'
 
 type QueryOnUrlUpdate = (event: UrlUpdateEvent) => void
@@ -24,14 +23,5 @@ export const createQueryTestWrapper = (options: QueryTestOptions = {}) => {
   return {
     wrapper,
     onUrlUpdate: urlUpdateSpy,
-  }
-}
-
-export const renderWithQueryState = (ui: ReactElement, options: QueryTestOptions = {}) => {
-  const { wrapper, onUrlUpdate } = createQueryTestWrapper(options)
-  const rendered = render(ui, { wrapper })
-  return {
-    ...rendered,
-    onUrlUpdate,
   }
 }

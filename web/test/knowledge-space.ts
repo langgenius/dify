@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import { createElement } from 'react'
 import { KnowledgeSpaceContext } from '@/features/new-rag/space/context'
 
-export const allKnowledgeSpacePermissions: KnowledgeFsProductPermission[] = [
+const allKnowledgeSpacePermissions: KnowledgeFsProductPermission[] = [
   'knowledge_space_access_config',
   'knowledge_space_create',
   'knowledge_space_delete',
