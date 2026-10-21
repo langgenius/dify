@@ -43,6 +43,8 @@ const avatarOuterRing =
   'data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjE1NiIgaGVpZ2h0PSIxNTYiIHZpZXdCb3g9IjAgMCAxNTYgMTU2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8Y2lyY2xlIGlkPSJFbGxpcHNlIDIiIG9wYWNpdHk9IjAuNCIgY3g9Ijc4IiBjeT0iNzgiIHI9Ijc3LjUiIHN0cm9rZT0iIzEwMTgyOCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDQiLz4KPC9zdmc+Cg=='
 
 const emptyDraft: ExternalContactDraft = { displayName: '', email: '' }
+const maxContactNameLength = 255
+
 function isValidEmail(value: string) {
   const parts = value.split('@')
   if (parts.length !== 2) return false
@@ -140,7 +142,7 @@ export function ExternalContactDialog({
     : emptyDraft
   const [draft, setDraft] = useState<ExternalContactDraft>(initialDraft)
   const [fieldError, setFieldError] = useState<
-    'name_required' | 'email_required' | 'email_invalid' | null
+    'name_required' | 'name_too_long' | 'email_required' | 'email_invalid' | null
   >(null)
   const [resultError, setResultError] = useState<string | null>(null)
   const resetMutation = createExternalContact.reset
@@ -213,6 +215,10 @@ export function ExternalContactDialog({
       setFieldError('name_required')
       return
     }
+    if ([...draft.displayName.trim()].length > maxContactNameLength) {
+      setFieldError('name_too_long')
+      return
+    }
     if (!draft.email.trim()) {
       setFieldError('email_required')
       return
@@ -240,7 +246,13 @@ export function ExternalContactDialog({
     setResultError(result.kind)
   }
 
-  const fieldErrorMessage = fieldError ? t(($) => $[`external.validation.${fieldError}`]) : null
+  const nameError = fieldError === 'name_required' || fieldError === 'name_too_long'
+  const fieldErrorMessage = fieldError
+    ? t(
+        ($) => $[`external.validation.${fieldError}`],
+        fieldError === 'name_too_long' ? { maxLength: maxContactNameLength } : undefined,
+      )
+    : null
   const resultErrorMessage = (() => {
     switch (resultError) {
       case 'duplicate_external_contact':
@@ -358,12 +370,10 @@ export function ExternalContactDialog({
             )}
           </div>
           <div className="space-y-4 px-6 py-3">
-            <Field name="displayName" invalid={fieldError === 'name_required'}>
+            <Field name="displayName" invalid={nameError}>
               <FieldLabel>{t(($) => $['external.name'])}</FieldLabel>
               <Input
-                aria-describedby={
-                  fieldError === 'name_required' ? 'external-name-error' : undefined
-                }
+                aria-describedby={nameError ? 'external-name-error' : undefined}
                 autoComplete="name"
                 placeholder={t(($) => $['external.namePlaceholder'])}
                 disabled={busy}
@@ -371,7 +381,7 @@ export function ExternalContactDialog({
                 value={draft.displayName}
                 onChange={(event) => updateDraft('displayName', event.currentTarget.value)}
               />
-              {fieldError === 'name_required' && (
+              {nameError && (
                 <p
                   id="external-name-error"
                   role="alert"

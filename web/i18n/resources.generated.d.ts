@@ -1955,6 +1955,7 @@ export default interface Resources {
     'external.validation.email_invalid': 'Enter a valid email address.'
     'external.validation.email_required': 'Email is required.'
     'external.validation.name_required': 'Name is required.'
+    'external.validation.name_too_long': 'Name must be {{maxLength}} characters or less.'
     'filter.all': 'All'
     'filter.external': 'External'
     'filter.platform': 'Platform'

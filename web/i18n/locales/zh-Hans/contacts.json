@@ -77,6 +77,7 @@
   "external.validation.email_invalid": "请输入有效的 Email 地址。",
   "external.validation.email_required": "Email 为必填项。",
   "external.validation.name_required": "名称为必填项。",
+  "external.validation.name_too_long": "名称不能超过 {{maxLength}} 个字符。",
   "filter.all": "全部",
   "filter.external": "外部",
   "filter.platform": "企业平台",

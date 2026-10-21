@@ -354,6 +354,58 @@ describe('ExternalContactDialog pending state', () => {
     expect(within(avatar).getByRole('presentation')).toBeInTheDocument()
   })
 
+  it.each(['create', 'edit'] as const)(
+    'rejects an overlong name before %s and allows correcting the Unicode boundary',
+    async (mode) => {
+      const contacts = consoleClient.workspaces.current.humanInput.contacts
+      const contact = {
+        id: 'name-boundary-contact',
+        name: 'Partner',
+        email: 'partner@example.com',
+        avatar_url: '',
+        created_at: 1,
+        type: 'external' as const,
+      }
+      vi.mocked(contacts.external.post).mockResolvedValue({ contact })
+      vi.mocked(contacts.external.byContactId.patch).mockResolvedValue({ contact })
+      renderAvatarDialog(mode === 'edit' ? contact : undefined)
+      const user = userEvent.setup()
+      const name = screen.getByRole('textbox', { name: 'contacts.external.name' })
+      const email = screen.getByRole('textbox', { name: 'contacts.external.email' })
+      const save = screen.getByRole('button', {
+        name: `contacts.external.${mode === 'edit' ? 'save' : 'add'}`,
+      })
+      if (mode === 'create') await user.type(email, contact.email)
+      await user.clear(name)
+      await user.click(name)
+      await user.paste('中'.repeat(256))
+      await user.click(save)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'contacts.external.validation.name_too_long',
+      )
+      expect(name).toHaveAttribute('aria-invalid', 'true')
+      expect(contacts.external.post).not.toHaveBeenCalled()
+      expect(contacts.external.byContactId.patch).not.toHaveBeenCalled()
+
+      const validName = '😀'.repeat(255)
+      await user.clear(name)
+      await user.click(name)
+      await user.paste(`  ${validName}  `)
+      await user.click(save)
+      const body = { name: validName, email: contact.email }
+      await waitFor(() => {
+        if (mode === 'create')
+          expect(contacts.external.post).toHaveBeenCalledWith({ body }, expect.anything())
+        else
+          expect(contacts.external.byContactId.patch).toHaveBeenCalledWith(
+            { params: { contact_id: contact.id }, body },
+            expect.anything(),
+          )
+      })
+    },
+  )
+
   it.each(['load', 'error'] as const)(
     'shows no fallback while the existing avatar loads, then handles its %s result',
     async (result) => {
