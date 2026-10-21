@@ -168,18 +168,18 @@ def test_rename_document_updates_upload_file_when_present(db_session_with_contai
     new_name = "Renamed"
     tenant_id = str(uuid4())
     dataset = make_dataset(db_session_with_containers, dataset_id, tenant_id)
+    upload_file = make_upload_file(
+        db_session_with_containers,
+        tenant_id=tenant_id,
+        file_id=file_id,
+        name="old.pdf",
+    )
     document = make_document(
         db_session_with_containers,
         document_id=document_id,
         dataset_id=dataset.id,
         tenant_id=tenant_id,
         data_source_info={"upload_file_id": file_id},
-    )
-    upload_file = make_upload_file(
-        db_session_with_containers,
-        tenant_id=tenant_id,
-        file_id=file_id,
-        name="old.pdf",
     )
 
     # Act

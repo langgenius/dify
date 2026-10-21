@@ -12,9 +12,11 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.knowledge_task import KnowledgeTaskOutbox
+from models.model import UploadFile
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.knowledge.documents.contracts import (
     DocumentPersistenceArchivedError,
@@ -52,12 +54,25 @@ def _document(
     indexing_status: IndexingStatus = IndexingStatus.COMPLETED,
     generation: str | None = None,
 ) -> Document:
+    upload_file = UploadFile(
+        tenant_id=dataset.tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"uploads/{uuid4()}",
+        name=f"document-{position}.txt",
+        size=128,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=dataset.created_by,
+        created_at=datetime(2026, 1, 1),
+        used=True,
+    )
     document = Document(
         tenant_id=dataset.tenant_id,
         dataset_id=dataset.id,
         position=position,
         data_source_type=DataSourceType.UPLOAD_FILE,
-        data_source_info=json.dumps({"upload_file_id": str(uuid4())}),
+        data_source_info=json.dumps({"upload_file_id": upload_file.id}),
         batch=f"batch-{uuid4()}",
         name=f"document-{position}.txt",
         created_from=DocumentCreatedFrom.API,
@@ -72,7 +87,7 @@ def _document(
         document.id = document_id
     if indexing_status == IndexingStatus.COMPLETED:
         document.completed_at = datetime(2026, 1, 1)
-    session.add(document)
+    session.add_all((upload_file, document))
     session.flush()
     return document
 
