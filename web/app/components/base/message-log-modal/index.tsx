@@ -58,6 +58,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
         <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
       </button>
       <Run
+        appId={appId}
         hideResult
         activeTab={activeTab}
         runDetailUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}`}
@@ -108,6 +109,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
         <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
       </button>
       <Run
+        appId={appId}
         hideResult
         activeTab={activeTab}
         runDetailUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}`}

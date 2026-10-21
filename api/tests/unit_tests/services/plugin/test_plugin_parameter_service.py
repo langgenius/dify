@@ -10,20 +10,41 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.trigger.provider import PluginTriggerProviderController
+from core.trigger.trigger_manager import TriggerManager
+from models.provider_ids import TriggerProviderID
 from services.plugin.plugin_parameter_service import PluginParameterService
+from tests.unit_tests.core.trigger.conftest import make_controller
+
+TOOL_IDENTIFIER = "org/plugin:1.0.0@" + "a" * 32
+
+
+@pytest.fixture(autouse=True)
+def trigger_declaration(monkeypatch: pytest.MonkeyPatch) -> None:
+    def resolve(tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController:
+        controller = make_controller(tenant_id=tenant_id, provider_id=str(provider_id))
+        controller.plugin_id = provider_id.plugin_id
+        controller.plugin_unique_identifier = f"{provider_id.plugin_id}:1.0.0@{'a' * 32}"
+        return controller
+
+    monkeypatch.setattr(TriggerManager, "get_trigger_provider", resolve)
 
 
 class TestGetDynamicSelectOptionsTool:
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
     def test_no_credentials_needed(self, mock_builtin_tool_service, mock_client_cls):
-        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = ({}, "unauthorized")
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = (
+            {},
+            "unauthorized",
+            TOOL_IDENTIFIER,
+        )
         mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
 
         result = PluginParameterService.get_dynamic_select_options(
             tenant_id="t1",
             user_id="u1",
-            plugin_id="p1",
+            plugin_id="org/plugin",
             provider="google",
             action="search",
             parameter="engine",
@@ -34,6 +55,11 @@ class TestGetDynamicSelectOptionsTool:
         assert result == ["opt1"]
         call_kwargs = mock_client_cls.return_value.fetch_dynamic_select_options.call_args
         assert call_kwargs[0][5] == {}  # empty credentials
+        assert call_kwargs[0][3] == "org/plugin/google"
+        assert call_kwargs.kwargs["plugin_unique_identifier"] == TOOL_IDENTIFIER
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.assert_called_once_with(
+            tenant_id="t1", provider="org/plugin/google", credential_id=None
+        )
 
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
@@ -41,13 +67,14 @@ class TestGetDynamicSelectOptionsTool:
         mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = (
             {"api_key": "decrypted"},
             "api-key",
+            TOOL_IDENTIFIER,
         )
         mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
 
         result = PluginParameterService.get_dynamic_select_options(
             tenant_id="t1",
             user_id="u1",
-            plugin_id="p1",
+            plugin_id="org/plugin",
             provider="google",
             action="search",
             parameter="engine",
@@ -65,7 +92,7 @@ class TestGetDynamicSelectOptionsTool:
             PluginParameterService.get_dynamic_select_options(
                 tenant_id="t1",
                 user_id="u1",
-                plugin_id="p1",
+                plugin_id="org/plugin",
                 provider="google",
                 action="search",
                 parameter="engine",
@@ -101,6 +128,10 @@ class TestGetDynamicSelectOptionsTrigger:
         assert builder_call["user_id"] == "u1"
         assert str(builder_call["provider_id"]) == "org/plugin/github"
         assert builder_call["subscription_builder_id"] == "builder-1"
+        assert (
+            mock_client_cls.return_value.fetch_dynamic_select_options.call_args.kwargs["plugin_unique_identifier"]
+            == TOOL_IDENTIFIER
+        )
 
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
@@ -127,6 +158,9 @@ class TestGetDynamicSelectOptionsTrigger:
         )
 
         assert result == ["opt"]
+        subscription_call = mock_provider_svc.get_subscription_by_id.call_args
+        assert subscription_call.args == ("t1", "sub-1")
+        assert str(subscription_call.kwargs["provider_id"]) == "org/plugin/github"
 
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
     @patch("services.plugin.plugin_parameter_service.TriggerSubscriptionBuilderService")
@@ -162,7 +196,7 @@ class TestGetDynamicSelectOptionsWithCredentials:
         result = PluginParameterService.get_dynamic_select_options_with_credentials(
             tenant_id="t1",
             user_id="u1",
-            plugin_id="p1",
+            plugin_id="org/plugin",
             provider="github",
             action="on_push",
             parameter="branch",
@@ -175,6 +209,12 @@ class TestGetDynamicSelectOptionsWithCredentials:
         resolved = call_args[5]
         assert resolved["token"] == "real-secret"  # replaced
         assert resolved["name"] == "new-name"  # kept as-is
+        call = mock_client_cls.return_value.fetch_dynamic_select_options.call_args
+        assert call.kwargs["plugin_unique_identifier"] == TOOL_IDENTIFIER
+        assert call.args[3] == "org/plugin/github"
+        subscription_call = mock_provider_svc.get_subscription_by_id.call_args
+        assert subscription_call.args == ("t1", "cred-1")
+        assert str(subscription_call.kwargs["provider_id"]) == "org/plugin/github"
 
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
     def test_raises_when_subscription_not_found(self, mock_provider_svc):
@@ -184,7 +224,7 @@ class TestGetDynamicSelectOptionsWithCredentials:
             PluginParameterService.get_dynamic_select_options_with_credentials(
                 tenant_id="t1",
                 user_id="u1",
-                plugin_id="p1",
+                plugin_id="org/plugin",
                 provider="github",
                 action="on_push",
                 parameter="branch",
@@ -197,17 +237,26 @@ class TestGetDynamicTreeSelectOptions:
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
     def test_no_credentials_needed(self, mock_builtin_tool_service, mock_client_cls):
-        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = ({}, "unauthorized")
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = (
+            {},
+            "unauthorized",
+            TOOL_IDENTIFIER,
+        )
         mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
 
         result = PluginParameterService.get_dynamic_tree_select_options(
             tenant_id="t1",
             user_id="u1",
-            plugin_id="p1",
+            plugin_id="org/plugin",
             provider="google",
             action="search",
             parameter="engine",
             credential_id=None,
+            parameter_values={"region": "us"},
         )
 
         assert result == ["opt1"]
+        call = mock_client_cls.return_value.fetch_dynamic_select_options.call_args
+        assert call.args[3] == "org/plugin/google"
+        assert call.kwargs["plugin_unique_identifier"] == TOOL_IDENTIFIER
+        assert call.kwargs["parameter_values"] == {"region": "us"}

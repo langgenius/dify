@@ -4,6 +4,7 @@ from typing import Any
 from core.plugin.entities.plugin_daemon import PluginDynamicSelectOptionsResponse
 from core.plugin.impl.base import BasePluginClient
 from models.provider_ids import GenericProviderID
+from services.plugin.dispatch_identity import plugin_dispatch_headers
 
 
 class DynamicSelectClient(BasePluginClient):
@@ -19,6 +20,7 @@ class DynamicSelectClient(BasePluginClient):
         parameter: str,
         *,
         parameter_values: Mapping[str, Any] | None = None,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginDynamicSelectOptionsResponse:
         """
         Fetch dynamic select options for a plugin parameter.
@@ -41,10 +43,7 @@ class DynamicSelectClient(BasePluginClient):
                 "user_id": user_id,
                 "data": payload,
             },
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for options in response:

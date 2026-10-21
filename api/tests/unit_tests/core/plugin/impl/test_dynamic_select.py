@@ -15,12 +15,13 @@ def _fetch(
         "tenant-1",
         "user-1",
         "org/plugin",
-        "google",
+        "org/plugin/google",
         "search",
         {"api_key": "secret"},
         "api-key",
         "region",
         parameter_values=parameter_values,
+        plugin_unique_identifier="org/plugin:1.0.0@" + "a" * 32,
     )
 
 
@@ -37,6 +38,7 @@ def test_fetch_dynamic_select_options_includes_parameter_values(mocker: MockerFi
 
     payload = stream.call_args.kwargs["data"]["data"]
     assert payload["provider"] == "google"
+    assert stream.call_args.kwargs["headers"]["X-Plugin-Unique-Identifier"] == "org/plugin:1.0.0@" + "a" * 32
     assert payload["parameter"] == "region"
     assert payload["parameter_values"] == {"region": "us"}
     assert stream.call_args.args[1] == "plugin/tenant-1/dispatch/dynamic_select/fetch_parameter_options"

@@ -1,32 +1,34 @@
+import { createLoader } from 'nuqs/server'
 import { describe, expect, it } from 'vite-plus/test'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 import { marketplaceSearchParamsParsers } from '../search-params'
 
+const loadSearchParams = createLoader(marketplaceSearchParamsParsers)
+
 describe('marketplace search params', () => {
   it('applies the expected default values', () => {
-    expect(marketplaceSearchParamsParsers.category.parseServerSide(undefined)).toBe(
-      PLUGIN_TYPE_SEARCH_MAP.all,
-    )
-    expect(marketplaceSearchParamsParsers.q.parseServerSide(undefined)).toBe('')
-    expect(marketplaceSearchParamsParsers.tags.parseServerSide(undefined)).toEqual([])
-    expect(marketplaceSearchParamsParsers.languages.parseServerSide(undefined)).toEqual([])
+    expect(loadSearchParams({})).toEqual({
+      category: PLUGIN_TYPE_SEARCH_MAP.all,
+      q: '',
+      tags: [],
+      languages: [],
+    })
   })
 
   it('parses supported query values with the configured parsers', () => {
     expect(
-      marketplaceSearchParamsParsers.category.parseServerSide(PLUGIN_TYPE_SEARCH_MAP.tool),
-    ).toBe(PLUGIN_TYPE_SEARCH_MAP.tool)
-    expect(marketplaceSearchParamsParsers.category.parseServerSide('unsupported')).toBe(
-      PLUGIN_TYPE_SEARCH_MAP.all,
-    )
-    expect(marketplaceSearchParamsParsers.q.parseServerSide('keyword')).toBe('keyword')
-    expect(marketplaceSearchParamsParsers.tags.parseServerSide('rag,search')).toEqual([
-      'rag',
-      'search',
-    ])
-    expect(marketplaceSearchParamsParsers.languages.parseServerSide('en,zh-Hans')).toEqual([
-      'en',
-      'zh-Hans',
-    ])
+      loadSearchParams({
+        category: PLUGIN_TYPE_SEARCH_MAP.tool,
+        q: 'keyword',
+        tags: 'rag,search',
+        languages: 'en,zh-Hans',
+      }),
+    ).toEqual({
+      category: PLUGIN_TYPE_SEARCH_MAP.tool,
+      q: 'keyword',
+      tags: ['rag', 'search'],
+      languages: ['en', 'zh-Hans'],
+    })
+    expect(loadSearchParams({ category: 'unsupported' }).category).toBe(PLUGIN_TYPE_SEARCH_MAP.all)
   })
 })

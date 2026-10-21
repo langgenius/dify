@@ -28,8 +28,8 @@ import {
 } from '@/app/components/snippets/utils/permission'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
-import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import {
   useDeleteSnippetMutation,
@@ -146,7 +146,10 @@ const SnippetCard = ({
   return (
     <>
       <article className="group relative col-span-1 inline-flex h-40 w-full cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg">
-        <Link href={`/snippets/${snippet.id}/orchestrate`} className="flex min-h-0 flex-1 flex-col">
+        <StudioListLink
+          href={`/snippets/${snippet.id}/orchestrate`}
+          className="flex min-h-0 flex-1 flex-col"
+        >
           <div className="flex h-16.5 shrink-0 grow-0 flex-col justify-center px-3.5 pt-3.5 pb-3">
             <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
               <div className="truncate" title={snippet.name}>
@@ -168,7 +171,7 @@ const SnippetCard = ({
               {snippet.description}
             </div>
           </div>
-        </Link>
+        </StudioListLink>
 
         <div className="absolute right-0 bottom-1 left-0 flex h-10.5 shrink-0 items-center pt-1 pr-1.5 pb-1.5 pl-3.5">
           <div className="flex w-0 grow items-center gap-1">

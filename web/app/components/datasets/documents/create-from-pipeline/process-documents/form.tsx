@@ -1,4 +1,4 @@
-import type { ZodSchema } from 'zod'
+import type { ZodType } from 'zod'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
 import { useCallback, useImperativeHandle } from 'react'
 import { useAppForm } from '@/app/components/base/form'
@@ -9,7 +9,7 @@ import Header from './header'
 type OptionsProps = {
   initialData: Record<string, any>
   configurations: BaseConfiguration[]
-  schema: ZodSchema
+  schema: ZodType
   onSubmit: (data: Record<string, any>) => void
   onPreview: () => void
   ref: React.RefObject<any>
