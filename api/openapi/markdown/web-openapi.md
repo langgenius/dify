@@ -110,6 +110,121 @@ Stop a running completion message task.
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /connections
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| provider | query |  | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Personal connections | **application/json**: [EndUserConnectionListResponse](#enduserconnectionlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /connections
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndUserConnectionCreatePayload](#enduserconnectioncreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | API-key connection created | **application/json**: [EndUserConnectionResponse](#enduserconnectionresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [WorkflowChangedError](#workflowchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /connections/{connection_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | API-key connection deleted |  |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections/{connection_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Personal connection | **application/json**: [EndUserConnectionResponse](#enduserconnectionresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /connections/{connection_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndUserConnectionUpdatePayload](#enduserconnectionupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Connection updated | **application/json**: [EndUserConnectionResponse](#enduserconnectionresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /connections/{connection_id}/check
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential check result | **application/json**: [EndUserConnectionCheckResponse](#enduserconnectioncheckresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /conversations
 Retrieve paginated list of conversations for a chat application.
 
@@ -1149,6 +1264,63 @@ Completion request failed.
 | ---- | ---- | ----------- | -------- |
 | CompletionRequestError |  | Completion request failed. |  |
 
+#### ConnectionConfigurationInvalidError
+
+The connection is not compatible with this tool configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionConfigurationInvalidError |  | The connection is not compatible with this tool configuration. |  |
+
+#### ConnectionConflictError
+
+Connection changed during the operation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionConflictError |  | Connection changed during the operation. |  |
+
+#### ConnectionCredentialStatus
+
+Last known credential lifecycle state, not readiness for a particular node.
+
+Keep the existing storage values. App-specific Client mismatches and unbinding
+must never be written back as a global credential state change.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialStatus | string | Last known credential lifecycle state, not readiness for a particular node.  Keep the existing storage values. App-specific Client mismatches and unbinding must never be written back as a global credential state change. |  |
+
+#### ConnectionCredentialType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialType | string |  |  |
+
+#### ConnectionCredentialsInvalidError
+
+Invalid credentials for this provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialsInvalidError |  | Invalid credentials for this provider. |  |
+
+#### ConnectionCredentialsUnavailableError
+
+Connection credentials are temporarily unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialsUnavailableError |  | Connection credentials are temporarily unavailable. |  |
+
+#### ConnectionNotFoundError
+
+Connection not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionNotFoundError |  | Connection not found. |  |
+
 #### ConversationInfiniteScrollPagination
 
 | Name | Type | Description | Required |
@@ -1172,6 +1344,23 @@ Completion request failed.
 | ---- | ---- | ----------- | -------- |
 | auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
 | name | string | Conversation name. Required when `auto_generate` is `false`. | No |
+
+#### CredentialCheckResult
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checked_at | integer |  | Yes |
+| reason_code | string, <br>**Available values:** "credential_expired", "credential_invalid", "credential_revoked", "provider_network_error", "provider_rate_limited", "provider_timeout", "provider_unavailable" |  | Yes |
+| retryable | boolean |  | Yes |
+| status | string, <br>**Available values:** "invalid", "temporarily_unavailable", "unsupported", "valid" | *Enum:* `"invalid"`, `"temporarily_unavailable"`, `"unsupported"`, `"valid"` | Yes |
+
+#### CredentialCheckUnavailableError
+
+Credential validation is temporarily unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CredentialCheckUnavailableError |  | Credential validation is temporarily unavailable. |  |
 
 #### DeploymentEdition
 
@@ -1219,6 +1408,69 @@ Too many emails have been sent from this IP address recently. Please try again l
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EmailSendIpLimitError |  | Too many emails have been sent from this IP address recently. Please try again later. |  |
+
+#### EndUserConnectionCheckResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| check | [CredentialCheckResult](#credentialcheckresult) |  | Yes |
+| connection_id | string |  | Yes |
+| credential_status | [ConnectionCredentialStatus](#connectioncredentialstatus) |  | Yes |
+
+#### EndUserConnectionCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object |  | Yes |
+| name | string |  | Yes |
+| node_id | string |  | Yes |
+| workflow_id | string (uuid) |  | Yes |
+
+#### EndUserConnectionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| provider | string |  | No |
+
+#### EndUserConnectionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EndUserConnectionResponse](#enduserconnectionresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### EndUserConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_label | string |  | Yes |
+| created_at | integer |  | Yes |
+| credential_status | [ConnectionCredentialStatus](#connectioncredentialstatus) |  | Yes |
+| credential_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
+| expires_at | integer |  | Yes |
+| id | string |  | Yes |
+| last_active_at | integer |  | Yes |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### EndUserConnectionUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object |  | No |
+| name | string |  | No |
+
+#### EndUserLoginRequiredError
+
+Sign in to manage personal connections.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EndUserLoginRequiredError |  | Sign in to manage personal connections. |  |
 
 #### ErrorResponse
 
@@ -2168,6 +2420,14 @@ Too many form requests. Please try again later.
 | show_workflow_steps | boolean |  | No |
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | No |
+
+#### WorkflowChangedError
+
+The workflow changed. Confirm the connection selection again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowChangedError |  | The workflow changed. Confirm the connection selection again. |  |
 
 #### WorkflowRunPayload
 

@@ -44,3 +44,13 @@ class ConnectionConflictError(ConnectionError):
 class ConnectionCheckUnavailableError(ConnectionError):
     def __init__(self) -> None:
         super().__init__("Credential validation is temporarily unavailable.")
+
+
+class ConnectionInvalidCredentialsError(ConnectionError):
+    def __init__(self) -> None:
+        super().__init__("Invalid credentials for this provider.")
+
+
+class ConnectionSecretUnavailableError(ConnectionError):
+    def __init__(self) -> None:
+        super().__init__("Connection credentials are temporarily unavailable.")
