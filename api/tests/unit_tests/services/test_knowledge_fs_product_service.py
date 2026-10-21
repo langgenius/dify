@@ -13,6 +13,7 @@ from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSAppSpaceJoinStatus,
     KnowledgeFSAppSpaceJoinType,
+    KnowledgeFSAuthorizationRevision,
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpacePermission,
     KnowledgeFSControlSpacePermissionRole,
@@ -23,8 +24,15 @@ from services.knowledge_fs.batch_capability import (
     KnowledgeFSBatchSpaceBinding,
     KnowledgeFSIssuedBatchCapability,
 )
+from services.knowledge_fs.capability_broker import KnowledgeFSCapabilityBroker
+from services.knowledge_fs.control_plane_service import (
+    KnowledgeFSControlPlaneService,
+    SQLKnowledgeFSWorkspaceMemberPort,
+)
 from services.knowledge_fs.product_authorization import (
     KnowledgeFSProductNotFoundError,
+    resolve_local_roles,
+    visible_control_space_statement,
 )
 from services.knowledge_fs.product_dto import KnowledgeFSTechnicalSummary
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
@@ -35,6 +43,7 @@ from services.knowledge_fs.product_remote import (
     UnavailableKnowledgeFSProductRemote,
 )
 from services.knowledge_fs.product_service import KnowledgeFSProductService
+from services.knowledge_fs_capability import CapabilityIssueRequest
 from tests.unit_tests.knowledge_fs_core_fakes import RecordingOperationalMetrics
 
 
@@ -158,6 +167,127 @@ class FakeCutoverGate:
 
     def require_capability_v2(self, *, tenant_id: str) -> None:
         _ = tenant_id
+
+
+class UnexpectedCapabilityIssuer:
+    def issue(self, request: CapabilityIssueRequest) -> Never:
+        raise AssertionError(f"A private space must reject {request.actor} before signing a new capability")
+
+
+@pytest.mark.parametrize(
+    "visibility",
+    [KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS, KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS],
+)
+@pytest.mark.parametrize(
+    ("role", "permission", "operation_id"),
+    [
+        (KnowledgeFSControlSpacePermissionRole.VIEWER, KnowledgeFSProductPermission.READ, "listLogicalDocuments"),
+        (KnowledgeFSControlSpacePermissionRole.VIEWER, KnowledgeFSProductPermission.QUERY, "retrieveEvidence"),
+        (
+            KnowledgeFSControlSpacePermissionRole.EDITOR,
+            KnowledgeFSProductPermission.DOCUMENT_WRITE,
+            "updateDocumentMetadata",
+        ),
+    ],
+)
+def test_only_me_rejects_retained_member_grants(
+    sqlite_session_factory: sessionmaker[Session],
+    visibility: KnowledgeFSControlSpaceVisibility,
+    role: KnowledgeFSControlSpacePermissionRole,
+    permission: KnowledgeFSProductPermission,
+    operation_id: str,
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        space = _space(visibility=visibility, key="narrowed", remote_id="space-narrowed")
+        session.add(space)
+        session.flush()
+        space_id = space.id
+        session.add_all(
+            [
+                KnowledgeFSControlSpacePermission(
+                    tenant_id="tenant-1", control_space_id=space_id, account_id="account-1", role=role
+                ),
+                KnowledgeFSAuthorizationRevision(tenant_id="tenant-1", control_space_id=space_id),
+            ]
+        )
+    gate = FakeCutoverGate()
+    service = KnowledgeFSProductService(
+        sqlite_session_factory,
+        batch_capabilities=FakeBatchCapabilities(),
+        cutover_gate=gate,
+        remote=FakeRemote({}),
+        rbac=FakeRBAC(),
+    )
+    control_plane = KnowledgeFSControlPlaneService(
+        sqlite_session_factory, product=service, members=SQLKnowledgeFSWorkspaceMemberPort()
+    )
+    service.authorize_control_space(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id=space_id,
+        permission=permission,
+        require_active=True,
+    )
+    control_plane.update_visibility(
+        tenant_id="tenant-1",
+        actor_account_id="owner-1",
+        control_space_id=space_id,
+        visibility=KnowledgeFSControlSpaceVisibility.ONLY_ME,
+    )
+
+    # The saved member selection survives narrowing, but neither direct access nor a new
+    # capability may reuse it. RBAC allows the operation, so local visibility must deny it.
+    with pytest.raises(KnowledgeFSProductNotFoundError):
+        service.authorize_control_space(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id=space_id,
+            permission=permission,
+            require_active=True,
+        )
+    broker = KnowledgeFSCapabilityBroker(
+        sqlite_session_factory, cutover_gate=gate, product=service, issuer=UnexpectedCapabilityIssuer()
+    )
+    with pytest.raises(KnowledgeFSProductNotFoundError):
+        broker.issue_interactive(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id=space_id,
+            operation_id=operation_id,
+            resource_id="document-1",
+        )
+    with sqlite_session_factory() as session:
+        narrowed = session.get(KnowledgeFSControlSpace, space_id)
+        assert narrowed is not None
+        assert (
+            list(session.scalars(visible_control_space_statement(tenant_id="tenant-1", account_id="account-1"))) == []
+        )
+        assert resolve_local_roles(session, control_spaces=[narrowed], account_id="account-1") == {space_id: None}
+        assert resolve_local_roles(session, control_spaces=[narrowed], account_id="owner-1") == {
+            space_id: KnowledgeFSControlSpacePermissionRole.OWNER
+        }
+    service.authorize_control_space(
+        tenant_id="tenant-1",
+        account_id="owner-1",
+        control_space_id=space_id,
+        permission=permission,
+        require_active=True,
+    )
+
+    # Restoring shared visibility must restore the saved grant without recreating members.
+    control_plane.update_visibility(
+        tenant_id="tenant-1",
+        actor_account_id="owner-1",
+        control_space_id=space_id,
+        visibility=visibility,
+    )
+    service.authorize_control_space(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id=space_id,
+        permission=permission,
+        require_active=True,
+    )
 
 
 def _space(

@@ -184,6 +184,9 @@ def resolve_local_role(
 ) -> KnowledgeFSControlSpacePermissionRole | None:
     if control_space.owner_account_id == account_id:
         return KnowledgeFSControlSpacePermissionRole.OWNER
+    # Retain member selections for later sharing without granting access while private.
+    if control_space.visibility is KnowledgeFSControlSpaceVisibility.ONLY_ME:
+        return None
     permission = session.scalar(
         sa.select(KnowledgeFSControlSpacePermission).where(
             KnowledgeFSControlSpacePermission.tenant_id == control_space.tenant_id,
@@ -224,6 +227,8 @@ def resolve_local_roles(
         control_space.id: (
             KnowledgeFSControlSpacePermissionRole.OWNER
             if control_space.owner_account_id == account_id
+            else None
+            if control_space.visibility is KnowledgeFSControlSpaceVisibility.ONLY_ME
             else explicit_roles.get((control_space.tenant_id, control_space.id))
             or (
                 KnowledgeFSControlSpacePermissionRole.VIEWER
