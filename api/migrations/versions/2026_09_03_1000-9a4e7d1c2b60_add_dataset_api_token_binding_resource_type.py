@@ -52,9 +52,37 @@ def upgrade():
         batch_op.create_index("dataset_api_token_binding_space_idx", ["control_space_id"], unique=False)
 
 
+def _count_knowledge_fs_only_keys() -> int:
+    return (
+        op.get_bind()
+        .execute(
+            sa.text(
+                "SELECT COUNT(DISTINCT api_token_id) FROM dataset_api_token_bindings AS space_binding"
+                " WHERE space_binding.resource_type = 'knowledge_fs_space'"
+                " AND NOT EXISTS ("
+                "SELECT 1 FROM dataset_api_token_bindings AS dataset_binding"
+                " WHERE dataset_binding.api_token_id = space_binding.api_token_id"
+                " AND dataset_binding.resource_type = 'dataset')"
+            )
+        )
+        .scalar_one()
+    )
+
+
 def downgrade():
-    # KnowledgeFS space bindings cannot be represented by the previous schema; drop them so
-    # the NOT NULL constraint on dataset_id can be restored.
+    # The previous schema treats a key with no bindings as tenant-wide. Dropping the space
+    # bindings of a key bound only to KnowledgeFS spaces would widen it to every legacy
+    # dataset, so those keys must be revoked through the API (which also clears the token
+    # cache) before downgrading.
+    if op.get_context().as_sql:
+        raise RuntimeError("Downgrading 9a4e7d1c2b60 must run online so KnowledgeFS-only API keys can be checked.")
+    knowledge_fs_only_keys = _count_knowledge_fs_only_keys()
+    if knowledge_fs_only_keys:
+        raise RuntimeError(
+            f"{knowledge_fs_only_keys} dataset API key(s) are bound only to KnowledgeFS spaces and would gain "
+            "access to every dataset in their tenant after this downgrade. Revoke them before downgrading."
+        )
+    # Keys that also bind legacy datasets keep those bindings and only lose their space scope.
     op.execute(sa.text("DELETE FROM dataset_api_token_bindings WHERE resource_type <> 'dataset'"))
     with op.batch_alter_table("dataset_api_token_bindings", schema=None) as batch_op:
         batch_op.drop_index("dataset_api_token_binding_space_idx")
