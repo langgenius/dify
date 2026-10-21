@@ -636,6 +636,34 @@ describe('Agent stop and failure ownership', () => {
     ).toBeInTheDocument()
   })
 
+  it('stops each execution independently while earlier stop requests are pending', async () => {
+    const user = userEvent.setup()
+    const firstStop = createDeferred<{ result: string }>()
+    const secondStop = createDeferred<{ result: string }>()
+    api.stop.mockReturnValueOnce(firstStop.promise).mockReturnValueOnce(secondStop.promise)
+    renderChat()
+    await send(user)
+    await receive()
+    const stop = () =>
+      user.click(screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }))
+    await stop()
+    await complete()
+    await send(user, 'Next turn')
+    await receive(1)
+    await stop()
+    expect(api.stop).toHaveBeenCalledTimes(2)
+    expect(api.stop).toHaveBeenLastCalledWith(
+      { params: { agent_id: 'agent-1', task_id: 'task-1' } },
+      { context: { silent: true } },
+    )
+    await act(async () => firstStop.resolve({ result: 'success' }))
+    expect(abortControllers[1]?.signal.aborted).toBe(false)
+    await stop()
+    expect(api.stop).toHaveBeenCalledTimes(2)
+    await act(async () => secondStop.resolve({ result: 'success' }))
+    await waitFor(() => expect(abortControllers[1]?.signal.aborted).toBe(true))
+  })
+
   it('keeps the stream active after a rejected stop and allows retrying', async () => {
     const user = userEvent.setup()
     api.stop.mockRejectedValueOnce(new Error('Forbidden'))
