@@ -20,6 +20,8 @@ _MIGRATION_PATH = (
 class _MigrationModule(Protocol):
     op: object
 
+    def _backfill_references(self) -> None: ...
+
     def upgrade(self) -> None: ...
 
     def downgrade(self) -> None: ...
@@ -41,6 +43,17 @@ def _run_step(module: _MigrationModule, engine: sa.Engine, step: Literal["upgrad
         module.op = operations
         try:
             module.upgrade() if step == "upgrade" else module.downgrade()
+        finally:
+            module.op = original_op
+
+
+def _run_backfill(module: _MigrationModule, engine: sa.Engine) -> None:
+    with engine.begin() as connection:
+        operations = Operations(MigrationContext.configure(connection))
+        original_op = module.op
+        module.op = operations
+        try:
+            module._backfill_references()
         finally:
             module.op = original_op
 
@@ -247,9 +260,38 @@ def test_upgrade_adds_reference_schema_without_activating_legacy_rows() -> None:
     assert "indexing_generation" in {column["name"] for column in inspector.get_columns("documents")}
     assert "indexing_generation" in {column["name"] for column in inspector.get_columns("document_segments")}
 
-    with engine.begin() as connection:
+    with engine.connect() as connection:
+        transaction = connection.begin()
         connection.execute(uploads.delete())
         assert connection.scalar(sa.select(sa.func.count()).select_from(uploads)) == 0
+        transaction.rollback()
+
+    _run_backfill(module, engine)
+    with engine.connect() as connection:
+        rows = connection.execute(
+            sa.select(references.c.kind, references.c.resource_id, references.c.upload_file_id).order_by(
+                references.c.kind,
+                references.c.resource_id,
+            )
+        ).all()
+        workflow_rows = connection.execute(
+            sa.select(
+                workflow_references.c.tenant_id,
+                workflow_references.c.app_id,
+                workflow_references.c.draft_variable_id,
+                workflow_references.c.node_id,
+                workflow_references.c.upload_file_id,
+            ).order_by(workflow_references.c.draft_variable_id)
+        ).all()
+    assert sum(row.kind == "document_source" for row in rows) == 1003
+    assert sum(row.kind == "segment_image" for row in rows) == 502
+    assert ("document_source", "document-local", "file-local") in rows
+    assert ("document_source", "bulk-document-1000", "file-upload") in rows
+    assert ("segment_image", "bulk-segment-0500", "file-image") in rows
+    assert len(workflow_rows) == 503
+    assert ("tenant-1", "workflow-app-1", "draft-array", "node-2", "workflow-array-file") in workflow_rows
+    assert ("tenant-1", "workflow-app-1", "draft-file", "node-1", "workflow-file") in workflow_rows
+    assert ("tenant-1", "workflow-app-1", "bulk-draft-0500", "bulk-node", "workflow-file") in workflow_rows
 
     _run_step(module, engine, "downgrade")
     assert "knowledge_upload_file_references" not in sa.inspect(engine).get_table_names()

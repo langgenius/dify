@@ -18,6 +18,8 @@ _MIGRATION_PATH = (
 class _MigrationModule(Protocol):
     op: object
 
+    def _backfill_owner_table(self, *, table_name: str, owner_kind: str) -> None: ...
+
     def upgrade(self) -> None: ...
 
     def downgrade(self) -> None: ...
@@ -39,6 +41,18 @@ def _run_step(module: _MigrationModule, engine: sa.Engine, step: Literal["upgrad
         module.op = operations
         try:
             module.upgrade() if step == "upgrade" else module.downgrade()
+        finally:
+            module.op = original_op
+
+
+def _run_backfill(module: _MigrationModule, engine: sa.Engine) -> None:
+    with engine.begin() as connection:
+        operations = Operations(MigrationContext.configure(connection))
+        original_op = module.op
+        module.op = operations
+        try:
+            module._backfill_owner_table(table_name="agent_config_drafts", owner_kind="draft")
+            module._backfill_owner_table(table_name="agent_config_snapshots", owner_kind="snapshot")
         finally:
             module.op = original_op
 
@@ -136,9 +150,25 @@ def test_upgrade_adds_reference_schema_without_activating_legacy_rows() -> None:
         ).all()
     assert rows == []
 
-    with engine.begin() as connection:
+    with engine.connect() as connection:
+        transaction = connection.begin()
         connection.execute(uploads.delete())
         assert connection.scalar(sa.select(sa.func.count()).select_from(uploads)) == 0
+        transaction.rollback()
+
+    _run_backfill(module, engine)
+    with engine.connect() as connection:
+        rows = connection.execute(
+            sa.select(
+                references.c.owner_kind,
+                references.c.owner_id,
+                references.c.upload_file_id,
+            ).order_by(references.c.owner_kind, references.c.owner_id)
+        ).all()
+    assert len(rows) == 502
+    assert ("draft", "draft-0500", "shared-file") in rows
+    assert ("snapshot", "snapshot-1", "snapshot-file") in rows
+    assert all(row.owner_id not in {"draft-foreign", "draft-tool-file", "draft-missing"} for row in rows)
 
     _run_step(module, engine, "downgrade")
     assert "agent_config_upload_file_references" not in sa.inspect(engine).get_table_names()
