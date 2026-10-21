@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from core.dify_builder.models import NodeOutput, Run, RunVerification
 from runtime_contracts.builder.execution import ExecutionEvidenceSummary
+from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix
 from services.dify_builder.application.verification import result_card
 
 
@@ -100,16 +101,14 @@ def test_runtime_attribution_uses_failed_native_resource_not_code_error_text():
 
 
 @pytest.mark.parametrize("flow", ["build", "edit", "fix"])
-def test_known_plugin_outage_does_not_ask_llm_to_rewrite_graph(flow):
+def test_known_plugin_outage_does_not_ask_llm_to_rewrite_graph(flow, mocker):
     import importlib
-    from unittest.mock import Mock
 
     from core.dify_builder.models import Turn
     from core.dify_builder.state import PcState
     from tests.unit_tests.core.dify_builder.fakes import saved_test_context
 
     helpers = importlib.import_module(f"tests.unit_tests.core.dify_builder.test_handlers_{flow}")
-    handlers = importlib.import_module(f"services.dify_builder.application.handlers_{flow}")
     env, repo = helpers._new_env()
     state = {
         "build": PcState.BUILD_TEST_AND_REPAIR,
@@ -131,13 +130,14 @@ def test_known_plugin_outage_does_not_ask_llm_to_rewrite_graph(flow):
             execution_evidence=summary(),
         ),
     )
-    env.dify.run_draft = Mock(return_value=raw)
-    env.agent.diagnose = Mock(side_effect=AssertionError("infrastructure is not a graph bug"))
-    env.agent.propose_repair = Mock(side_effect=AssertionError("infrastructure is not a graph bug"))
-    handler = getattr(
-        handlers,
-        {"build": "handle_test_and_repair", "edit": "handle_test_affected_paths", "fix": "handle_verify"}[flow],
-    )
+    mocker.patch.object(env.dify, "run_draft", return_value=raw)
+    mocker.patch.object(env.agent, "diagnose", side_effect=AssertionError("infrastructure is not a graph bug"))
+    mocker.patch.object(env.agent, "propose_repair", side_effect=AssertionError("infrastructure is not a graph bug"))
+    handler = {
+        "build": handlers_build.handle_test_and_repair,
+        "edit": handlers_edit.handle_test_affected_paths,
+        "fix": handlers_fix.handle_verify,
+    }[flow]
     result = handler(env, Turn(actor=helpers._actor()), session, context)
     assert not result.context.staged_repair
     assert result.run.dify_run_id == "native"

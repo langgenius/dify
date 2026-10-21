@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from math import isfinite
 from threading import Condition, RLock, Thread, current_thread
 from time import monotonic
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from graphon.nodes.base.node import Node
 from graphon.runtime import RuntimeState
@@ -44,6 +44,7 @@ def _key(ref: NativeTestContextRef) -> RefKey:
     return ref.policy_version, ref.request_id, ref.invocation_id, ref.context_digest
 
 
+@runtime_checkable
 class _Closable(Protocol):
     def close(self) -> None: ...
 
@@ -170,7 +171,11 @@ class NativeHostCallTicket:
     def own_stream(self, *, stream: _Closable) -> None:
         with self._lifetime._condition:
             self._require_owner()
-            if not callable(getattr(stream, "close", None)) or any(item is stream for item in self._streams):
+            if (
+                not isinstance(stream, _Closable)
+                or not callable(stream.close)
+                or any(item is stream for item in self._streams)
+            ):
                 raise ValueError("native_host_stream_invalid")
             self._streams.append(stream)
 

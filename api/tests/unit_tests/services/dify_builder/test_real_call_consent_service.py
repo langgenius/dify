@@ -23,7 +23,6 @@ from sqlalchemy import Table, event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.input_schema import schema_hash, start_schema
 from core.dify_builder.models import Actor, ConversationItem, DifyBuilderContext, MutationIntent
@@ -68,6 +67,7 @@ from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.serde import context_from_dict, context_to_dict
 from services.tools.builder_credential_reference import credential_revision, select_builder_credential
+from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.core.dify_builder.test_gmail_read_policy import gmail_graph, tool_data
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import (
     owned as owned,  # noqa: PLC0414 - shared pytest fixture
@@ -172,8 +172,8 @@ def consent_owner(
     owned: tuple[sessionmaker[Session], Actor, App, Workflow, str, str], monkeypatch: pytest.MonkeyPatch
 ) -> Owner:
     factory, actor, app, workflow, session_id, test_input_id = owned
-    monkeypatch.setattr(dify_config, "SECRET_KEY", SECRET)
-    monkeypatch.setattr(dify_config, "DIFY_BUILDER_CONFIRMED_TOOL_ENABLED", True)
+    apply_config_overrides(monkeypatch, SECRET_KEY=SECRET)
+    apply_config_overrides(monkeypatch, DIFY_BUILDER_CONFIRMED_TOOL_ENABLED=True)
     # SYNTHETIC qualification constants solely so the exact-match code paths run.
     monkeypatch.setattr(gmail_read_policy, "QUALIFIED_GMAIL_ARTIFACT", SYNTHETIC_ARTIFACT)
     monkeypatch.setattr(gmail_read_policy, "QUALIFIED_GMAIL_SCHEMA_DIGEST", SYNTHETIC_SCHEMA)
@@ -470,14 +470,14 @@ def test_unqualified_profile_or_disabled_flag_refuses_before_any_row(
     consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     owner = consent_owner
-    monkeypatch.setattr(dify_config, "DIFY_BUILDER_CONFIRMED_TOOL_ENABLED", False)
+    apply_config_overrides(monkeypatch, DIFY_BUILDER_CONFIRMED_TOOL_ENABLED=False)
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_action"):
         prepare(owner)
     assert owner.metadata_reads == []
     # Restore the real unavailable profile and the real metadata owner.
     monkeypatch.undo()
-    monkeypatch.setattr(dify_config, "SECRET_KEY", SECRET)
-    monkeypatch.setattr(dify_config, "DIFY_BUILDER_CONFIRMED_TOOL_ENABLED", True)
+    apply_config_overrides(monkeypatch, SECRET_KEY=SECRET)
+    apply_config_overrides(monkeypatch, DIFY_BUILDER_CONFIRMED_TOOL_ENABLED=True)
     assert gmail_read_policy.QUALIFIED_GMAIL_ARTIFACT is None
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_action"):
         prepare(owner)
@@ -641,7 +641,7 @@ def test_prepare_refusals_leave_no_row(
             assert session is not None
             session.current_state = str(PcState.BUILD_TEST_AND_REPAIR)
     elif change == "rotated_scope_key":
-        monkeypatch.setattr(dify_config, "SECRET_KEY", "")
+        apply_config_overrides(monkeypatch, SECRET_KEY="")
     with pytest.raises(BuilderExecutionPolicyError, match=reason):
         prepare(owner, **changes)
     assert owner.consents() == 0
@@ -653,7 +653,7 @@ def test_permission_denial_is_checked_outside_sql_and_creates_nothing(
     from services.enterprise.rbac_service import RBACService
 
     owner = consent_owner
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(RBACService.CheckAccess, "check", lambda *_args, **_kwargs: False)
     with pytest.raises(BuilderExecutionPolicyError, match="execution_permission_denied"):
         prepare(owner)
@@ -787,7 +787,7 @@ def test_scope_change_before_confirm_invalidates(
             assert grant is not None
             db.delete(grant)
     elif change == "scope_key":
-        monkeypatch.setattr(dify_config, "SECRET_KEY", "rotated-consent-secret")
+        apply_config_overrides(monkeypatch, SECRET_KEY="rotated-consent-secret")
     with pytest.raises(BuilderExecutionPolicyError):
         confirm(owner, prepared)
     current = get(owner, prepared.consent_id)
@@ -1081,7 +1081,7 @@ def test_known_pre_phase_denial_after_claim_is_failed(
     else:
         from services.enterprise.rbac_service import RBACService
 
-        monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         monkeypatch.setattr(RBACService.CheckAccess, "check", lambda *_args, **_kwargs: False)
     with pytest.raises(BuilderExecutionPolicyError):
         owner.service().claim_phase(binding=binding, phase="business", final_parameters=parameters)
@@ -1363,7 +1363,10 @@ class LockClock:
         self.jump_to: datetime | None = None
         self.jumps = 0
         module = service_module()
-        original: Callable[[Session, str | None], object] = getattr(module, lock_name)
+        original: Callable[[Session, str | None], object] = {
+            "_lock_consent": module._lock_consent,
+            "_lock_request": module._lock_request,
+        }[lock_name]
 
         def waiting_lock(db: Session, ident: str | None) -> object:
             row = original(db, ident)

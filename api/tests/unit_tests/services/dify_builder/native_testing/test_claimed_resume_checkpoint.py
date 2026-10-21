@@ -2,11 +2,13 @@
 
 from contextlib import contextmanager
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
+from sqlalchemy import inspect
 
+from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import (
     NativeContinuation,
@@ -20,10 +22,37 @@ from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTestContextRef
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
 
 NOW = datetime(2026, 10, 16, tzinfo=UTC)
 REF = NativeTestContextRef(request_id="request", invocation_id="root", context_digest="a" * 64)
+
+
+@dataclass
+class ClaimedCheckpointCase:
+    service: NativeTestLifecycleService
+    session: SQL
+    state: NativeInvocationState
+    scope: NativeTestScope
+    request: DifyBuilderExecutionRequest
+    dispatch: NativeDispatch
+    continuation: NativeContinuation
+    obj: NativePayloadObject
+    events: list[str]
+    authority: PrivateReadOwner
+    loader: OwnedNativeTestLoader
+    ref: NativeTestContextRef
+
+
+def checkpoint_metadata_snapshot(session: SQL):
+    """Snapshot actual ORM values to prove metadata selection never mutates rows."""
+    return deepcopy(
+        {
+            model: [tuple(inspect(row).attrs[column.key].value for column in inspect(model).columns) for row in rows]
+            for model, rows in session.rows.items()
+        }
+    )
 
 
 class NoPrivateIO:
@@ -34,7 +63,8 @@ class NoPrivateIO:
 @pytest.fixture
 def metadata_case(monkeypatch):
     events = []
-    state = SimpleNamespace(
+    state = NativeInvocationState(
+        resolution={},
         tenant_id="tenant",
         request_id="request",
         invocation_id="root",
@@ -48,10 +78,25 @@ def metadata_case(monkeypatch):
         pending_ids=[],
         wait_reason=None,
     )
-    scope = SimpleNamespace(
-        tenant_id="tenant", request_id="request", generation=1, cancelled=False, expires_at=NOW + timedelta(minutes=20)
+    scope = NativeTestScope(
+        task_approved=False,
+        max_calls=16,
+        max_dispatches=16,
+        max_cost_units=16,
+        budget_limits={},
+        budget_spent={},
+        profile={},
+        tenant_id="tenant",
+        request_id="request",
+        generation=1,
+        cancelled=False,
+        expires_at=NOW + timedelta(minutes=20),
     )
-    request = SimpleNamespace(
+    request = DifyBuilderExecutionRequest(
+        actor_id="actor",
+        session_id="session",
+        test_input_id="input",
+        context={},
         id="request",
         tenant_id="tenant",
         context_digest=REF.context_digest,
@@ -59,7 +104,8 @@ def metadata_case(monkeypatch):
         workflow_id="workflow",
         state="running",
     )
-    dispatch = SimpleNamespace(
+    dispatch = NativeDispatch(
+        idempotency_digest="f" * 64,
         id="dispatch",
         tenant_id="tenant",
         request_id="request",
@@ -69,7 +115,7 @@ def metadata_case(monkeypatch):
         checkpoint_id="checkpoint",
         claim_expires_at=NOW + timedelta(minutes=10),
     )
-    continuation = SimpleNamespace(
+    continuation = NativeContinuation(
         tenant_id="tenant",
         request_id="request",
         invocation_id="root",
@@ -78,7 +124,8 @@ def metadata_case(monkeypatch):
         payload_digest="b" * 64,
         payload_ref="protected-key",
     )
-    obj = SimpleNamespace(
+    obj = NativePayloadObject(
+        value_digest="b" * 64,
         id="checkpoint",
         tenant_id="tenant",
         request_id="request",
@@ -96,7 +143,9 @@ def metadata_case(monkeypatch):
         NativeContinuation: [continuation],
         NativePayloadObject: [obj],
         NativeTestInvocation: [
-            SimpleNamespace(tenant_id="tenant", request_id="request", invocation_id="root", active=True)
+            NativeTestInvocation(
+                tenant_id="tenant", request_id="request", invocation_id="root", active=True, bindings={}
+            )
         ],
     }
     session = SQL(rows, events)
@@ -113,9 +162,23 @@ def metadata_case(monkeypatch):
         events.append("normal-owner")
         if request.state not in {"running", "waiting"}:
             raise BuilderExecutionPolicyError("native_request_terminal")
-        return SimpleNamespace(ref=ref, tenant_id="tenant", actor_id="actor", expires_at=scope.expires_at), scope
+        return OwnedNativeTest(
+            ref=ref,
+            tenant_id="tenant",
+            actor_id="actor",
+            expires_at=scope.expires_at,
+            app_id="app",
+            workflow_id="workflow",
+            session_id="session",
+            test_input_id="input",
+            bindings={},
+            generation=1,
+            task_approved=False,
+            state=request.state,
+        ), scope
 
-    loader = SimpleNamespace(session_factory=factory, _load=load)
+    loader = OwnedNativeTestLoader(factory, actor=Actor(tenant_id="tenant", account_id="actor"), resolver=object())
+    monkeypatch.setattr(loader, "_load", load)
     authority = PrivateReadOwner(
         tenant_id="tenant",
         actor_id="actor",
@@ -141,7 +204,7 @@ def metadata_case(monkeypatch):
 
     monkeypatch.setattr("services.dify_builder.native_testing.lifecycle.validate_private_read", private_authority)
     service = NativeTestLifecycleService(loader, state_store=NoPrivateIO(), clock=lambda: NOW)
-    return SimpleNamespace(
+    return ClaimedCheckpointCase(
         service=service,
         session=session,
         state=state,
@@ -159,10 +222,10 @@ def metadata_case(monkeypatch):
 
 def test_returns_actual_claimed_checkpoint_metadata_without_io_or_mutation(metadata_case):
     c = metadata_case
-    before = deepcopy(c.session.rows)
+    before = checkpoint_metadata_snapshot(c.session)
     actual = c.service.claimed_resume_checkpoint(ref=c.ref, generation=1, dispatch_id="dispatch")
     assert actual == CheckpointRef(checkpoint_id="checkpoint", payload_digest="b" * 64)
-    assert c.session.rows == before
+    assert checkpoint_metadata_snapshot(c.session) == before
     assert c.events[0] == "current-permission"
     assert "normal-owner" in c.events
 
@@ -211,7 +274,9 @@ def test_missing_acknowledged_owner_metadata_refuses(metadata_case, model):
 )
 def test_foreign_metadata_cannot_supply_claimed_checkpoint(metadata_case, row_name, field, value):
     c = metadata_case
-    setattr(getattr(c, row_name), field, value)
+    setattr(
+        {"dispatch": c.dispatch, "state": c.state, "continuation": c.continuation, "obj": c.obj}[row_name], field, value
+    )
     with pytest.raises(BuilderExecutionPolicyError):
         c.service.claimed_resume_checkpoint(ref=c.ref, generation=1, dispatch_id="dispatch")
 
@@ -253,10 +318,10 @@ def test_current_execution_drift_refuses_without_mutation(metadata_case, fault):
         c.scope.cancelled = True
     else:
         c.scope.expires_at = NOW
-    before = deepcopy(c.session.rows)
+    before = checkpoint_metadata_snapshot(c.session)
     with pytest.raises(BuilderExecutionPolicyError):
         c.service.claimed_resume_checkpoint(ref=c.ref, generation=1, dispatch_id="dispatch")
-    assert c.session.rows == before
+    assert checkpoint_metadata_snapshot(c.session) == before
 
 
 @pytest.mark.parametrize(

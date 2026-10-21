@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_active_roster_drift_requires_reconfirmation():
@@ -70,10 +71,9 @@ def test_only_bound_new_agent_is_admitted_by_proposal_policy():
 
 @pytest.fixture
 def agent_case(sqlite_session, monkeypatch):
-    from configs import dify_config
     from tests.builder_agent_fixtures import make_case
 
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     case = make_case(sqlite_session)
     sqlite_session.commit()
     sqlite_session.begin()
@@ -304,7 +304,6 @@ def test_confirmed_ordinary_agent_rechecks_selection_before_backend(
     """The actual ordinary node must refuse changed authority before allocation or dispatch."""
     from contextlib import contextmanager
 
-    from configs import dify_config
     from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
     from core.rbac import RBACPermission
     from graphon.enums import WorkflowNodeExecutionStatus
@@ -361,7 +360,7 @@ def test_confirmed_ordinary_agent_rechecks_selection_before_backend(
         sqlite_session.delete(membership)
     sqlite_session.commit()
     if change == "preview":
-        monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         monkeypatch.setattr(
             access_service,
             "resolve_current_agent_access_filter",
@@ -480,7 +479,6 @@ def test_full_native_node_job_is_persisted_in_existing_binding_owner(agent_case,
 
 
 def test_native_authorization_rpc_precedes_draft_transaction(agent_case, sqlite_session, monkeypatch):
-    from configs import dify_config
     from models.agent_config_entities import WorkflowNodeJobConfig
     from services.agent import access_service
     from services.dify_builder.native_testing.agent_binding import AgentBindingService
@@ -488,7 +486,7 @@ def test_native_authorization_rpc_precedes_draft_transaction(agent_case, sqlite_
 
     app_id, agent_id = agent_case.workflow.app_id, agent_case.agent.id
     sqlite_session.rollback()
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     checked = []
 
     def remote_check(*_args, **_kwargs):

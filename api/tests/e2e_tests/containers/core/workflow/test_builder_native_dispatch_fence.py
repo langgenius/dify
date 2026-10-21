@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy import inspect as inspect_orm
 
 from models.dify_builder_native_tests import (
     NativeEffectAttempt,
@@ -22,8 +23,10 @@ from models.dify_builder_native_tests import (
 )
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit, PolicyStop, RecordedResult
+from services.dify_builder.native_testing.http_binding import NativeHttpDisclosure
 from services.dify_builder.native_testing.pending_actions import NativePendingActionService
 from services.dify_builder.native_testing.transitions import quarantine_unknown
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import ChildApprovalCase
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     _bind_child_effect,
     _child_case,
@@ -304,7 +307,6 @@ def test_real_pending_creation_and_fence_use_child_local_generation_after_unrela
 
 @pytest.mark.parametrize("stale_local", [False, True])
 def test_real_protected_child_approval_local_zero_shared_one_and_stale_local_rejection(fence_case, stale_local):
-    from types import SimpleNamespace
 
     from tests.test_containers_integration_tests.core.workflow.test_builder_native_approval_scope import (
         _decide,
@@ -320,13 +322,13 @@ def test_real_protected_child_approval_local_zero_shared_one_and_stale_local_rej
     context = c.store.load_context(ref=child)
     assert context.generation == 0
     effect = _bind_child_effect(c, child, approval_scope="operation", input_digest=canonical_digest({"limit": 1}))
-    selected = SimpleNamespace(
+    selected = ChildApprovalCase(
         ref=child,
         store=c.store,
         factory=c.factory,
         context=context,
         lifecycle=c.lifecycle,
-        ledger=SimpleNamespace(actor=c.ledger.actor, guard=c.ledger.guard),
+        ledger=c.ledger,
     )
     _, guards = _prepare_pending(selected, (effect,))
     with c.factory() as session:
@@ -406,8 +408,7 @@ def test_history_allows_fresh_pending_then_first_new_fence_replaces_only_old_evi
     assert (_state(c).pending_ids, _state(c).wait_reason) == ([fresh.pending_operation_id], "approval")
 
 
-def test_active_private_reason_does_not_publish_a_waiting_receipt(fence_case):
-    from types import SimpleNamespace
+def test_active_private_reason_does_not_publish_a_waiting_receipt(mocker, fence_case):
 
     from models.dify_builder import DifyBuilderExecutionRequest
     from services.dify_builder.native_testing.api_service import NativeTestApiService
@@ -417,6 +418,8 @@ def test_active_private_reason_does_not_publish_a_waiting_receipt(fence_case):
     _fence(c, wait.pending_operation_id)
     with c.factory() as session:
         session_id = session.get(DifyBuilderExecutionRequest, c.ref.request_id).session_id
+    disclosure = NativeHttpDisclosure(loader=c.store.loader, state_store=c.store)
+    mocker.patch.object(disclosure, "describe", side_effect=lambda **_kw: pytest.fail("running fence is private"))
     api = NativeTestApiService(
         session_factory=c.factory,
         actor=c.ledger.actor,
@@ -424,7 +427,7 @@ def test_active_private_reason_does_not_publish_a_waiting_receipt(fence_case):
         admission=None,
         resolution=c.resolution,
         runtime=None,
-        disclosure=SimpleNamespace(describe=lambda **_kw: pytest.fail("running fence is private")),
+        disclosure=disclosure,
     )
     receipt = api.get(actor=c.ledger.actor, session_id=session_id, request_id=c.ref.request_id)
     assert _state(c).state == "running"
@@ -537,11 +540,10 @@ def test_concurrent_generation_claim_has_one_owner_and_retains_exact_evidence(fe
 @pytest.mark.parametrize("child_status", ["running", "completed", "stopped"])
 @pytest.mark.parametrize("fault", [None, "permission", "revision", "input"])
 def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_input(
-    fence_case, monkeypatch, child_status, fault
+    mocker, fence_case, monkeypatch, child_status, fault
 ):
     """Root A stays authorized; actual parent B must qualify every lookup of C."""
     import json
-    from types import SimpleNamespace
 
     from sqlalchemy import inspect
 
@@ -559,11 +561,17 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
     # Copy real owned app/workflow metadata to a distinct invocation app B.
     with c.factory.begin() as session:
         original = session.get(App, c.context.app_id)
-        app = App(**{a.key: getattr(original, a.key) for a in inspect(App).column_attrs if a.key != "id"})
+        app = App(
+            **{a.key: inspect_orm(original).attrs[a.key].value for a in inspect(App).column_attrs if a.key != "id"}
+        )
         app.id, app.maintainer = str(uuid4()), str(uuid4())
         original_workflow = session.get(Workflow, c.context.workflow_id)
         workflow = Workflow(
-            **{a.key: getattr(original_workflow, a.key) for a in inspect(Workflow).column_attrs if a.key != "id"}
+            **{
+                a.key: inspect_orm(original_workflow).attrs[a.key].value
+                for a in inspect(Workflow).column_attrs
+                if a.key != "id"
+            }
         )
         workflow.id, workflow.app_id = str(uuid4()), app.id
         app.workflow_id = workflow.id
@@ -593,7 +601,12 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
                 }
             )
 
-        service = NativeChildInvocationService(c.store, resolver=SimpleNamespace(resolve_child=resolve_child))
+        class ChildResolver:
+            def resolve_child(self, **values):
+                return resolve_child(**values)
+
+        resolver = ChildResolver()
+        service = NativeChildInvocationService(c.store, resolver=resolver)
         args = {
             "parent_ref": parent_ref,
             "key": key,
@@ -618,7 +631,9 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
                     output_result_ref=None,
                 ),
             )
-        service.resolver = SimpleNamespace(resolve_child=lambda **_kw: pytest.fail("existing C must not resolve again"))
+        mocker.patch.object(
+            resolver, "resolve_child", side_effect=lambda **_kw: pytest.fail("existing C must not resolve again")
+        )
         before = _count(c, NativeInvocationState)
         if fault == "permission":
             monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)

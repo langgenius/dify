@@ -1,11 +1,13 @@
 """Actual retained lifetime and C02 wrapper, external persistence is a double."""
 
+from dataclasses import dataclass
+from datetime import datetime
 from time import monotonic
 from uuid import uuid4
 
 import pytest
 
-from runtime_contracts.builder.native.contracts import ApprovalWait
+from runtime_contracts.builder.native.contracts import ApprovalWait, NativeTestContextRef
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
 from services.dify_builder.native_testing.control import (
     NativeApprovalWait,
@@ -19,6 +21,19 @@ from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter imp
 from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import (
     LaunchCase,
 )
+
+
+@dataclass
+class ReservedCodeScope:
+    """Metadata returned by the labeled physical persistence boundary."""
+
+    scope_expires_at: datetime
+    scope_spec_digest: str
+    operation_id: str
+    ref: NativeTestContextRef
+    scope_id: str
+    scope_generation: int
+    destroyed_at: datetime | None
 
 
 def code_case():
@@ -125,8 +140,6 @@ class PhysicalStore:
         self.row = None
 
     def reserve_scope(self, **kwargs):
-        from types import SimpleNamespace
-
         assert self.owner.host.lifetime.code_participants
         self.events.append("reserve_scope")
         assert self.row is None
@@ -135,7 +148,7 @@ class PhysicalStore:
         )
         from runtime_contracts.builder.execution import canonical_digest
 
-        self.row = SimpleNamespace(
+        self.row = ReservedCodeScope(
             scope_expires_at=native.deadline,
             scope_spec_digest=canonical_digest(native.model_dump(mode="json")),
             operation_id=kwargs["permit"].operation_id,

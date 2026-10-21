@@ -1,16 +1,36 @@
 """Command composition at the existing ordinary resume task boundary."""
 
 import importlib
-from datetime import UTC
-from types import SimpleNamespace
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
+from dify_agent.client import Client
+from sqlalchemy.orm import sessionmaker
 
+from clients.agent_backend import DifyAgentBackendRunClient
 from core.dify_builder.models import Actor
+from models.dify_builder_native_tests import NativeTestScope
+from models.workflow import WorkflowPause
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.agent_contracts import (
+    AgentNodeAssociation,
+    AgentParentNodeRef,
+    AgentProtectedState,
+    AgentTestWorkspaceRef,
+    AgentWaitAssociation,
+)
+from runtime_contracts.builder.native.contracts import NativeTestContextRef, ResumeReceipt
+from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+from services.dify_builder.native_testing.api_service import NativeTestApiService
+from services.dify_builder.native_testing.confirmed_agent_continuation import (
+    ConfirmedAgentContinuation,
+    OwnedParentPause,
+)
+from services.dify_builder.native_testing.repository import OwnedNativeTest
+from tests.unit_tests.core.app.entities.test_app_invoke_entities import _create_workflow_generate_entity
+from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
 
 REF = NativeTestContextRef(request_id="request", invocation_id="invocation", context_digest="a" * 64)
 RUN = str(uuid4())
@@ -33,14 +53,142 @@ def envelope():
     }
 
 
-def entity():
-    return SimpleNamespace(builder_agent_execution=BuilderAgentExecutionContext(ref=REF, native_run_id=RUN))
+def entity(*, marked=True):
+    result = _create_workflow_generate_entity()
+    result.builder_agent_execution = BuilderAgentExecutionContext(ref=REF, native_run_id=RUN) if marked else None
+    return result
+
+
+def _api(factory=None, *, actor=ACTOR):
+    return NativeTestApiService(
+        session_factory=factory or sessionmaker(),
+        actor=actor,
+        resolver=None,
+        admission=None,
+        resolution=None,
+        runtime=None,
+        disclosure=None,
+    )
+
+
+def _context(*, generation=1, scope=None):
+    return ResolvedNativeTestContext.model_validate(
+        {
+            **CONTEXT,
+            "ref": REF,
+            "tenant_id": scope.tenant_id if scope else ACTOR.tenant_id,
+            "app_id": scope.app_id if scope else "app",
+            "workflow_id": scope.workflow_id if scope else "workflow",
+            "native_run_id": RUN,
+            "root_native_run_id": RUN,
+            "generation": generation,
+        }
+    )
+
+
+def _owned():
+    return OwnedNativeTest(
+        ref=REF,
+        tenant_id=ACTOR.tenant_id,
+        actor_id=ACTOR.account_id,
+        app_id="app",
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=1,
+        task_approved=True,
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
+        state="running",
+    )
+
+
+def _scope():
+    return NativeTestScope(
+        request_id=REF.request_id,
+        tenant_id=ACTOR.tenant_id,
+        generation=1,
+        task_approved=True,
+        cancelled=False,
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
+        budget_limits={},
+        budget_spent={},
+        profile={},
+        max_calls=1,
+        max_dispatches=1,
+        max_cost_units=1,
+    )
+
+
+def _continuation(api, backend=None):
+    return ConfirmedAgentContinuation(
+        loader=api.loader,
+        store=api.store,
+        operations=None,
+        backend=backend,
+        lifecycle=api.lifecycle,
+    )
+
+
+def _protected():
+    parent = AgentParentNodeRef(
+        ref=REF,
+        execution_id="00000000-0000-4000-8000-000000000001",
+        input_result_ref="input",
+        input_digest="b" * 64,
+    )
+    workspace = AgentTestWorkspaceRef(
+        binding_id="binding",
+        workspace_id="workspace",
+        backend_binding_ref="backend-binding",
+        backend_workspace_ref="backend-workspace",
+        pinned_snapshot_id="snapshot",
+        home_snapshot_id=None,
+        workspace_generation=0,
+    )
+    return AgentProtectedState(
+        association_object_ref="association",
+        association=AgentNodeAssociation(
+            parent_node=parent,
+            workflow_native_run_id=RUN,
+            agent_run_id="child",
+            config_ref="config",
+            config_digest="c" * 64,
+            pinned_snapshot_id="snapshot",
+            home_snapshot_id=None,
+            workspace=workspace,
+        ),
+        wait=AgentWaitAssociation(
+            parent_node=parent,
+            association_object_ref="association",
+            agent_generation=0,
+            checkpoint_object_ref="checkpoint",
+            checkpoint_digest="d" * 64,
+            backend_wait_event_id="100-0",
+        ),
+        checkpoint={},
+        terminal_result_ref=None,
+        terminal_result=None,
+    )
+
+
+def _pause(runtime=None):
+    from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+    from graphon.runtime import RuntimeState, VariablePool
+
+    return OwnedParentPause(
+        pause_id="pause",
+        state_object_key="pause-object",
+        native_run_id=RUN,
+        state=WorkflowResumptionContext(
+            serialized_graph_runtime_state="{}", generate_entity=_WorkflowGenerateEntityWrapper(entity=entity())
+        ),
+        runtime=runtime or RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0),
+    )
 
 
 def test_ordinary_legacy_resume_keeps_its_existing_path():
-    assert module().guard_confirmed_agent_resume(
-        payload={"workflow_run_id": RUN}, generate_entity=SimpleNamespace(builder_agent_execution=None)
-    )
+    assert module().guard_confirmed_agent_resume(payload={"workflow_run_id": RUN}, generate_entity=entity(marked=False))
 
 
 def test_actual_resume_task_refuses_malformed_marked_envelope_before_unscoped_storage():
@@ -90,13 +238,11 @@ def test_guard_uses_claim_owner_and_drops_redelivery_without_second_resume():
     assert len(calls) == 2
 
 
-def test_resume_publishes_only_after_committed_lifecycle_resume():
+def test_resume_publishes_only_after_committed_lifecycle_resume(mocker):
     events = []
-    receipt = SimpleNamespace(generation=1, dispatch_id="dispatch")
-    api = SimpleNamespace(
-        actor=ACTOR,
-        lifecycle=SimpleNamespace(resume=lambda **_: events.append("committed") or receipt),
-    )
+    receipt = ResumeReceipt(request_id=REF.request_id, generation=1, dispatch_id="dispatch", status="queued")
+    api = _api()
+    mocker.patch.object(api.lifecycle, "resume", side_effect=lambda **_: events.append("committed") or receipt)
     commands = module().ConfirmedAgentCommands(api=api, continuation=None, backend=None, publish=None)
     commands._request = lambda **_: None
     commands._root_ref = lambda **_: REF
@@ -111,12 +257,12 @@ def test_resume_publishes_only_after_committed_lifecycle_resume():
     assert events == ["committed", "published"]
 
 
-def test_actual_sql_outbox_survives_lost_enqueue_ack_and_reuses_dispatch(sqlite_session_factory):
+def test_actual_sql_outbox_survives_lost_enqueue_ack_and_reuses_dispatch(mocker, sqlite_session_factory):
     from contextlib import contextmanager
 
     from models.dify_builder_native_tests import NativeDispatch
 
-    owned = SimpleNamespace(tenant_id="tenant")
+    owned = _owned()
 
     @contextmanager
     def locked(**_values):
@@ -138,12 +284,9 @@ def test_actual_sql_outbox_survives_lost_enqueue_ack_and_reuses_dispatch(sqlite_
                 claim_expires_at=None,
             )
         )
-    loader = SimpleNamespace(session_factory=sqlite_session_factory, locked=locked)
-    api = SimpleNamespace(
-        actor=ACTOR,
-        loader=loader,
-        store=SimpleNamespace(load_context=lambda **_: SimpleNamespace(native_run_id=RUN, tenant_id="tenant")),
-    )
+    api = _api(sqlite_session_factory)
+    mocker.patch.object(api.loader, "locked", side_effect=locked)
+    mocker.patch.object(api.store, "load_context", return_value=_context())
     envelopes = []
 
     def publish(**values):
@@ -214,13 +357,8 @@ def test_continuation_readback_recovers_same_generation_without_second_continue(
     backend = DifyAgentBackendRunClient(
         Client(base_url="http://test.invalid", sync_http_client=httpx.Client(transport=httpx.MockTransport(transport)))
     )
-    commands = module().ConfirmedAgentCommands(
-        api=SimpleNamespace(actor=ACTOR), continuation=None, backend=backend, publish=None
-    )
-    protected = SimpleNamespace(
-        association=SimpleNamespace(agent_run_id="child"),
-        wait=SimpleNamespace(agent_generation=0, backend_wait_event_id="100-0"),
-    )
+    commands = module().ConfirmedAgentCommands(api=_api(), continuation=None, backend=backend, publish=None)
+    protected = _protected()
     if observed is None:
         with pytest.raises(BuilderExecutionPolicyError, match="native_agent_continuation_unknown"):
             commands._continuation_observed(protected=protected)
@@ -229,7 +367,7 @@ def test_continuation_readback_recovers_same_generation_without_second_continue(
     assert calls == ["/runs/child", "/runs/child/events"]
 
 
-def test_readback_accepts_actual_backend_retained_cursor_on_empty_event_page():
+def test_readback_accepts_actual_backend_retained_cursor_on_empty_event_page(mocker):
     from dify_agent.protocol.schemas import RunEventsResponse, RunResumedEvent, RunResumedEventData, RunStatusResponse
 
     cursors = []
@@ -247,25 +385,25 @@ def test_readback_accepts_actual_backend_retained_cursor_on_empty_event_page():
     status = RunStatusResponse(
         run_id="child", status="running", created_at="2026-10-17T00:00:00Z", updated_at="2026-10-17T00:00:01Z"
     )
+    raw = Client(base_url="http://127.0.0.1:1")
+    mocker.patch.object(raw, "get_run_sync", return_value=status)
+    mocker.patch.object(raw, "get_events_sync", side_effect=events)
     commands = module().ConfirmedAgentCommands(
-        api=SimpleNamespace(actor=ACTOR),
+        api=_api(),
         continuation=None,
         publish=None,
-        backend=SimpleNamespace(client=SimpleNamespace(get_run_sync=lambda _: status, get_events_sync=events)),
+        backend=DifyAgentBackendRunClient(raw),
     )
-    protected = SimpleNamespace(
-        association=SimpleNamespace(agent_run_id="child"),
-        wait=SimpleNamespace(agent_generation=0, backend_wait_event_id="100-0"),
-    )
+    protected = _protected()
     assert commands._continuation_observed(protected=protected)
     assert cursors == ["100-0", "101-0"]
     terminal_status = status.model_copy(update={"status": "succeeded"})
-    commands.backend.client.get_run_sync = lambda _: terminal_status
+    raw.get_run_sync.return_value = terminal_status
     with pytest.raises(BuilderExecutionPolicyError, match="native_agent_continuation_unknown"):
         commands._continuation_observed(protected=protected, require_terminal=True)
 
 
-def test_completed_child_recovery_requeues_original_claim_only_after_terminal_proof(sqlite_session_factory):
+def test_completed_child_recovery_requeues_original_claim_only_after_terminal_proof(mocker, sqlite_session_factory):
     """Actual SQL source identity; lifecycle's independently tested fencing port is explicit."""
     from contextlib import contextmanager
 
@@ -273,7 +411,7 @@ def test_completed_child_recovery_requeues_original_claim_only_after_terminal_pr
 
     from models.dify_builder_native_tests import NativeDispatch, NativeEffectOperation, NativeInvocationState
 
-    owned = SimpleNamespace(tenant_id="tenant")
+    owned = _owned()
     with sqlite_session_factory.begin() as sql:
         for table in (NativeDispatch.__table__, NativeEffectOperation.__table__, NativeInvocationState.__table__):
             table.create(sql.connection(), checkfirst=True)
@@ -327,7 +465,7 @@ def test_completed_child_recovery_requeues_original_claim_only_after_terminal_pr
     @contextmanager
     def locked(**_values):
         with sqlite_session_factory.begin() as sql:
-            yield sql, owned, SimpleNamespace(cancelled=False)
+            yield sql, owned, _scope()
 
     events = []
 
@@ -339,20 +477,20 @@ def test_completed_child_recovery_requeues_original_claim_only_after_terminal_pr
             dispatch.state = "queued"
         events.append("lifecycle-fence-recover")
 
-    api = SimpleNamespace(
-        actor=ACTOR,
-        loader=SimpleNamespace(session_factory=sqlite_session_factory, locked=locked),
-        lifecycle=SimpleNamespace(recover_dispatch=recover_dispatch),
-        store=SimpleNamespace(load_context=lambda **_: SimpleNamespace(generation=1, tenant_id="tenant")),
-    )
-    continuation = SimpleNamespace(
-        _parent_rows=lambda *_, **__: (None, SimpleNamespace(id="pause", state_object_key="pause-object"))
-    )
+    api = _api(sqlite_session_factory)
+    mocker.patch.object(api.loader, "locked", side_effect=locked)
+    mocker.patch.object(api.lifecycle, "recover_dispatch", side_effect=recover_dispatch)
+    mocker.patch.object(api.store, "load_context", return_value=_context())
+    continuation = _continuation(api)
+    pause = WorkflowPause(workflow_id="workflow", workflow_run_id=RUN, state_object_key="pause-object")
+    pause.id = "pause"
+    mocker.patch.object(continuation, "_parent_rows", return_value=(None, pause))
     commands = module().ConfirmedAgentCommands(api=api, continuation=continuation, backend=None, publish=None)
-    commands.load_wait = lambda **_: SimpleNamespace()
-    commands._terminal_recovery_proof = lambda **_: SimpleNamespace(pause_id="pause", state_object_key="pause-object")
+    protected = _protected()
+    mocker.patch.object(commands, "load_wait", return_value=protected)
+    mocker.patch.object(commands, "_terminal_recovery_proof", return_value=_pause())
     commands._publish_one = lambda **values: events.append(("publish", values))
-    assert commands._recover_terminal_continuation(ref=REF, parent_node=SimpleNamespace())
+    assert commands._recover_terminal_continuation(ref=REF, parent_node=protected.association.parent_node)
     assert events == [
         "lifecycle-fence-recover",
         ("publish", {"ref": REF, "generation": 1, "dispatch_id": "original-dispatch"}),
@@ -361,7 +499,7 @@ def test_completed_child_recovery_requeues_original_claim_only_after_terminal_pr
         assert len(sql.scalars(select(NativeDispatch)).all()) == 1
 
 
-def test_stored_profile_router_uses_actual_scoped_sql_request(sqlite_session_factory):
+def test_stored_profile_router_uses_actual_scoped_sql_request(mocker, sqlite_session_factory):
     from models.dify_builder import DifyBuilderExecutionRequest
 
     ids = {name: str(uuid4()) for name in ("tenant", "actor", "session", "app", "workflow", "input")}
@@ -386,11 +524,15 @@ def test_stored_profile_router_uses_actual_scoped_sql_request(sqlite_session_fac
                     observations=[],
                 )
             )
+    api = _api(sqlite_session_factory, actor=actor)
+    confirmed = module().ConfirmedAgentCommands(api=api, continuation=None, backend=None, publish=None)
+    mocker.patch.object(confirmed, "get", return_value="confirmed")
+    mocker.patch.object(api, "get", return_value="legacy")
     service = module().ProfiledNativeTestCommands(
         sessions=sqlite_session_factory,
         actor=actor,
-        confirmed_factory=lambda: SimpleNamespace(get=lambda **_: "confirmed"),
-        legacy_factory=lambda: SimpleNamespace(get=lambda **_: "legacy"),
+        confirmed_factory=lambda: confirmed,
+        legacy_factory=lambda: api,
     )
     assert (
         service.get(actor=actor, session_id=ids["session"], request_id=request_ids["builder-agent-confirmed-v1"])
@@ -427,7 +569,7 @@ def test_terminal_projection_does_not_erase_unknown_effects():
 
 
 def test_lost_create_ack_status_recovery_uses_saved_sql_identity_and_no_second_post(
-    sqlite_session_factory, monkeypatch
+    mocker, sqlite_session_factory, monkeypatch
 ):
     """Real SQL intent, SDK HTTP and Graphon state; C03 payload ports are explicit doubles."""
     import json
@@ -516,28 +658,23 @@ def test_lost_create_ack_status_recovery_uses_saved_sql_identity_and_no_second_p
             client=backend,
             on_persisted=lambda _: None,
         )
-    context = SimpleNamespace(
-        ref=REF,
-        tenant_id=scope.tenant_id,
-        app_id=scope.app_id,
-        workflow_id=scope.workflow_id,
-        native_run_id=RUN,
-        generation=0,
-    )
+    context = _context(generation=0, scope=scope)
     parent = AgentParentNodeRef(
         ref=REF, execution_id=scope.execution_id, input_result_ref="inputs", input_digest="b" * 64
     )
-    store = SimpleNamespace(
-        load_context=lambda **_: context,
-        load_agent_association=lambda **_: SimpleNamespace(association=SimpleNamespace(agent_run_id="original-child")),
+    api = _api(sqlite_session_factory)
+    mocker.patch.object(api.store, "load_context", return_value=context)
+    protected = _protected().model_copy(
+        update={"association": _protected().association.model_copy(update={"agent_run_id": "original-child"})}
     )
+    mocker.patch.object(api.store, "load_agent_association", return_value=protected)
     monkeypatch.setattr(agent_confirmed_workspace, "load_confirmed_agent_parent", lambda **_: parent)
     events = []
-    continuation = SimpleNamespace(
-        read_parent_pause=lambda **_: SimpleNamespace(runtime=runtime),
-        persist_parent_wait=lambda **values: events.append(("parent-commit", values)),
+    continuation = _continuation(api, backend)
+    mocker.patch.object(continuation, "read_parent_pause", return_value=_pause(runtime))
+    mocker.patch.object(
+        continuation, "persist_parent_wait", side_effect=lambda **values: events.append(("parent-commit", values))
     )
-    api = SimpleNamespace(actor=ACTOR, loader=SimpleNamespace(session_factory=sqlite_session_factory), store=store)
     commands = module().ConfirmedAgentCommands(api=api, continuation=continuation, backend=backend, publish=None)
     commands.prepare_wait = lambda **values: events.append(("selected-checkpoint", values))
     assert commands._recover_pending_ack(ref=REF)
@@ -562,7 +699,7 @@ def test_lost_create_ack_status_recovery_uses_saved_sql_identity_and_no_second_p
     ],
 )
 def test_public_pause_read_refreshes_callback_and_preserves_only_live_owned_resume(
-    sqlite_session_factory, recovery_raises, after
+    mocker, sqlite_session_factory, recovery_raises, after
 ):
     from datetime import datetime, timedelta
 
@@ -627,18 +764,13 @@ def test_public_pause_read_refreshes_callback_and_preserves_only_live_owned_resu
         reads.append("read")
         return initial if len(reads) == 1 else fresh
 
-    owned = SimpleNamespace(tenant_id=ACTOR.tenant_id)
-    api = SimpleNamespace(
-        actor=ACTOR,
-        get=get,
-        loader=SimpleNamespace(session_factory=sqlite_session_factory, _load=lambda *_args, **_kwargs: (owned, None)),
-    )
-    commands = module().ConfirmedAgentCommands(
-        api=api,
-        continuation=SimpleNamespace(read_parent_pause=lambda **kwargs: pause_checks.append(kwargs)),
-        backend=None,
-        publish=None,
-    )
+    owned = _owned()
+    api = _api(sqlite_session_factory)
+    mocker.patch.object(api, "get", side_effect=get)
+    mocker.patch.object(api.loader, "_load", return_value=(owned, None))
+    continuation = _continuation(api)
+    mocker.patch.object(continuation, "read_parent_pause", side_effect=lambda **kwargs: pause_checks.append(kwargs))
+    commands = module().ConfirmedAgentCommands(api=api, continuation=continuation, backend=None, publish=None)
     commands._request = lambda **_kwargs: None
     commands._root_ref = lambda **_kwargs: REF
 

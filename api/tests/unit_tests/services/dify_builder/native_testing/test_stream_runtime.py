@@ -11,11 +11,11 @@ import importlib.util
 from inspect import GEN_SUSPENDED, getgeneratorstate
 from threading import Event, Thread, current_thread
 from time import monotonic
-from types import SimpleNamespace
 from typing import cast
 
 import pytest
 
+from core.dify_builder.models import Actor
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowRun
@@ -23,7 +23,9 @@ from runtime_contracts.builder.native.contracts import ApprovalWait, CheckpointR
 from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
 from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
 from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
+from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
 from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase, native_entry
 
 
@@ -116,12 +118,14 @@ class StreamCase:
             scalar = staticmethod(read)
 
         self.sessions = SessionPort
-        lifecycle = SimpleNamespace(
-            _capacity=None,
-            loader=SimpleNamespace(session_factory=self.sessions),
-            pause=self.pause,
-            _mark_unknown=lambda **_kwargs: self.events.append("quarantine"),
+        loader = OwnedNativeTestLoader(
+            self.sessions,
+            actor=Actor(tenant_id=context.tenant_id, account_id=context.actor_id),
+            resolver=NativeHttpBindingResolver(),
         )
+        lifecycle = NativeTestLifecycleService(loader, state_store=case.state)
+        monkeypatch.setattr(lifecycle, "pause", self.pause)
+        monkeypatch.setattr(lifecycle, "_mark_unknown", lambda **_kwargs: self.events.append("quarantine"))
         self.capacity = NativeHostCapacity(cast(NativeTestLifecycleService, lifecycle), cleanup_verifier=case.lifetime)
         monkeypatch.setattr(self.capacity, "record_cleanup", self.cleanup)
         self.checkpoints = case.host._checkpoints

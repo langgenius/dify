@@ -24,8 +24,10 @@ def _checked_context(context: ResolvedNativeTestContext) -> ResolvedNativeTestCo
         raise NativeObservationError()
     if context.ref.model_extra or set(context.ref.__dict__) != set(NativeTestContextRef.model_fields):
         raise NativeObservationError()
-    data = {name: getattr(context, name) for name in ResolvedNativeTestContext.model_fields}
-    data["ref"] = {name: getattr(context.ref, name) for name in NativeTestContextRef.model_fields}
+    # Exact DTO types above make model iteration a raw field read: no serializer
+    # can render unchecked values before the shape validator rejects them.
+    data = dict(context)
+    data["ref"] = dict(context.ref)
     _shape(data)
     return ResolvedNativeTestContext.model_validate(data, strict=True)
 

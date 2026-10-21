@@ -5,8 +5,6 @@ This proves content/owner boundaries, not C03 resume provenance or physical IO.
 
 import json
 import logging
-from types import SimpleNamespace
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -44,6 +42,7 @@ from services.dify_builder.native_testing.observation_repository import bind_nat
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, native_workflow_revision
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from services.variable_truncator import VariableTruncator
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import ObservationHistoryCase
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414
 )
@@ -65,7 +64,7 @@ CANARY = "PRIVATE_NATIVE_HISTORY_FIXTURE_4f3a"
 
 @pytest.fixture
 def history_case(native_owner, no_live, migrated_continuation_tables, migrated_dispatch_claims, request):
-    shape = getattr(request, "param", "literal_http")
+    shape = request.param if hasattr(request, "param") else "literal_http"
     # Test-owned application logging sinks use the real installed privacy filter.
     filtering = SensitiveHttpLogFilter()
     handlers = tuple(logging.getLogger().handlers)
@@ -172,7 +171,7 @@ def history_case(native_owner, no_live, migrated_continuation_tables, migrated_d
             execution_mode="native",
         )
         store.initialize_context(context=context)
-        yield SimpleNamespace(factory=ledger.factory, actor=ledger.actor, store=store, ref=ref, shape=shape)
+        yield ObservationHistoryCase(factory=ledger.factory, actor=ledger.actor, store=store, ref=ref, shape=shape)
     finally:
         for handler in handlers:
             handler.removeFilter(filtering)
@@ -289,7 +288,7 @@ def test_actual_owner_or_legacy_content_refuses_before_cache(history_case, monke
     assert guard.failed
 
 
-def test_foreign_upload_owner_refuses_before_actual_storage_read(history_case, monkeypatch):
+def test_foreign_upload_owner_refuses_before_actual_storage_read(mocker, history_case, monkeypatch):
     from extensions.ext_storage import storage
 
     c = history_case
@@ -302,9 +301,7 @@ def test_foreign_upload_owner_refuses_before_actual_storage_read(history_case, m
         for link in links:
             session.get(UploadFile, link.file_id).created_by = str(uuid4())
 
-    forbidden = Mock(side_effect=AssertionError("foreign offload reached storage"))
-
-    monkeypatch.setattr(storage, "load", forbidden)
+    forbidden = mocker.patch.object(storage, "load", side_effect=AssertionError("foreign offload reached storage"))
     with pytest.raises(NativeObservationError):
         nodes.get_db_models_by_workflow_run(context.native_run_id)
     forbidden.assert_not_called()

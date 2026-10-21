@@ -1,13 +1,22 @@
 """The actual API dispatcher spends only a current, exact operation permit."""
 
-from types import SimpleNamespace
-
 import pytest
 from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
 from dify_agent.protocol.native_testing import AgentDispatchPermit, AgentEffectIntent, AgentNativeTestRef
 
+from core.dify_builder.models import Actor
+from models.dify_builder_native_tests import (
+    NativeEffectOperation,
+    NativeEffectOutcome,
+    NativeTestInvocation,
+)
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from services.dify_builder.native_testing.agent_operations import AgentOperationService
+from tests.unit_tests.services.dify_builder import native_owner_fixtures
 from tests.unit_tests.services.dify_builder.native_testing.test_authorization import intent
+
+operations_service = native_owner_fixtures.operations_service
+preparation_sql = native_owner_fixtures.preparation_sql
 
 
 def envelope():
@@ -23,7 +32,7 @@ def envelope():
     )
 
 
-def owner(events, *, drift=False):
+def owner(events, operations_service, monkeypatch, *, drift=False):
     from services.dify_builder.native_testing.agent_operations import AgentToolDispatchOwner
 
     def revalidate(**_kwargs):
@@ -31,22 +40,27 @@ def owner(events, *, drift=False):
         if drift:
             raise BuilderExecutionPolicyError("native_credential_drift")
 
+    authorization = operations_service.bridge.authorization
+    monkeypatch.setattr(authorization, "validate_dispatch", lambda **_kwargs: events.append("validate"))
+    monkeypatch.setattr(authorization, "claim_dispatch", lambda **_kwargs: events.append("claim"))
+    monkeypatch.setattr(
+        authorization,
+        "record_outcome",
+        lambda **kwargs: events.append(("outcome", kwargs["outcome"], kwargs["result_ref"])),
+    )
+    monkeypatch.setattr(
+        operations_service.state_store,
+        "store_result",
+        lambda **kwargs: events.append(("stored", kwargs["result"])) or "result",
+    )
     return AgentToolDispatchOwner(
-        authorization=SimpleNamespace(
-            validate_dispatch=lambda **_kwargs: events.append("validate"),
-            claim_dispatch=lambda **_kwargs: events.append("claim"),
-            record_outcome=lambda **kwargs: events.append(("outcome", kwargs["outcome"], kwargs["result_ref"])),
-        ),
-        state_store=SimpleNamespace(
-            store_result=lambda **kwargs: events.append(("stored", kwargs["result"])) or "result"
-        ),
-        revalidate=revalidate,
+        authorization=authorization, state_store=operations_service.state_store, revalidate=revalidate
     )
 
 
-def test_physical_claim_is_adjacent_to_dispatch_and_real_result_is_saved():
+def test_physical_claim_is_adjacent_to_dispatch_and_real_result_is_saved(operations_service, monkeypatch):
     events = []
-    operation = owner(events)
+    operation = owner(events, operations_service, monkeypatch)
     result = operation.invoke(envelope=envelope(), invoke=lambda: events.append("business") or {"observation": "real"})
     assert result == {"observation": "real"}
     assert events == [
@@ -59,14 +73,16 @@ def test_physical_claim_is_adjacent_to_dispatch_and_real_result_is_saved():
     ]
 
 
-def test_current_resource_drift_stops_before_physical_claim_or_business():
+def test_current_resource_drift_stops_before_physical_claim_or_business(operations_service, monkeypatch):
     events = []
     with pytest.raises(BuilderExecutionPolicyError, match="native_credential_drift"):
-        owner(events, drift=True).invoke(envelope=envelope(), invoke=lambda: events.append("business"))
+        owner(events, operations_service, monkeypatch, drift=True).invoke(
+            envelope=envelope(), invoke=lambda: events.append("business")
+        )
     assert events == ["validate", "revalidate"]
 
 
-def test_lost_business_response_closes_unknown_and_never_retries():
+def test_lost_business_response_closes_unknown_and_never_retries(operations_service, monkeypatch):
     events = []
 
     def invoke():
@@ -74,7 +90,7 @@ def test_lost_business_response_closes_unknown_and_never_retries():
         raise TimeoutError
 
     with pytest.raises(TimeoutError):
-        owner(events).invoke(envelope=envelope(), invoke=invoke)
+        owner(events, operations_service, monkeypatch).invoke(envelope=envelope(), invoke=invoke)
     assert events == ["validate", "revalidate", "claim", "business", ("outcome", "unknown", None)]
 
 
@@ -129,11 +145,13 @@ def test_reasoning_assessment_cannot_grant_or_hide_opaque_tool_scope():
 
 
 @pytest.mark.parametrize("boundary", ["core_tool", "model", "shell_run", "bootstrap", "config_pull"])
-def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth(monkeypatch, boundary):
+def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth(
+    monkeypatch, boundary, operations_service
+):
     from contextlib import contextmanager
     from datetime import UTC, datetime
 
-    from models.agent_config_entities import AgentSoulConfig
+    from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
     from runtime_contracts.builder.native.contracts import NativeTestContextRef, OperationKey, operation_digest
     from services.dify_builder.native_testing import agent_operations as module
     from services.dify_builder.native_testing.agent_tool_declarations import AgentToolMetadata
@@ -142,21 +160,63 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
     ref = NativeTestContextRef(request_id="request", invocation_id="inv", context_digest="a" * 64)
     execution = "a46d79e6-0ae1-4e19-90af-5b58e9a496f3"
     key = OperationKey(invocation_id="inv", occurrence_path=(execution, boundary, "call-1"), cursor=0)
-    invocation = SimpleNamespace(bindings={})
-    owned = SimpleNamespace(
-        tenant_id="tenant", bindings=invocation.bindings, expires_at=datetime(2030, 1, 1, tzinfo=UTC)
+    from models.dify_builder_native_tests import NativeTestScope
+    from runtime_contracts.builder.execution import canonical_digest
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
+    from services.dify_builder.native_testing.state_store import ObjectReceipt
+
+    service = operations_service
+    invocation = NativeTestInvocation(
+        id="invocation-row", tenant_id="tenant", request_id="request", invocation_id="inv", active=True, bindings={}
+    )
+    with service.loader.session_factory.begin() as session:
+        session.add(invocation)
+    owned = OwnedNativeTest(
+        ref=ref,
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=0,
+        task_approved=False,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="running",
+    )
+    scope = NativeTestScope(
+        request_id="request",
+        tenant_id="tenant",
+        max_calls=1,
+        max_dispatches=1,
+        max_cost_units=1,
+        generation=0,
+        task_approved=False,
+        cancelled=False,
+        expires_at=owned.expires_at,
+        budget_limits={},
+        budget_spent={},
+        profile={},
     )
 
     @contextmanager
     def locked(**_kwargs):
-        yield SimpleNamespace(scalar=lambda _query: invocation), owned, object()
+        with service.loader.session_factory.begin() as session:
+            yield session, owned, scope
 
-    loader = SimpleNamespace(load=lambda **_kwargs: owned, locked=locked)
+    monkeypatch.setattr(service.loader, "load", lambda **_kwargs: owned)
+    monkeypatch.setattr(service.loader, "locked", locked)
     stored = []
-    store = SimpleNamespace(
-        prepare_object=lambda **kwargs: stored.append(kwargs) or object(),
-        acknowledge_object=lambda _session, _receipt: None,
-    )
+
+    def prepare_object(**kwargs):
+        stored.append(kwargs)
+        digest = canonical_digest(kwargs["payload"])
+        return ObjectReceipt(
+            "object", "tenant", "request", "inv", "result", kwargs["logical_key"], "opaque-storage-key", digest, digest
+        )
+
+    monkeypatch.setattr(service.state_store, "prepare_object", prepare_object)
     reasoning = []
     assessment = {
         "action": "Write declared value",
@@ -166,11 +226,60 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
         "risk_notice": "Creates one test value.",
         "destructive": False,
     }
-    service = module.AgentOperationService(
-        loader=loader, state_store=store, assessor=lambda **kwargs: reasoning.append(kwargs) or assessment
+    from runtime_contracts.builder.native.agent_contracts import (
+        AgentParentNodeRef,
+        AgentPreparedConfig,
+        AgentTestWorkspaceRef,
     )
-    parent = SimpleNamespace(execution_id=execution, input_digest="b" * 64, model_dump=lambda **_kwargs: {})
-    monkeypatch.setattr(service, "_endpoint", lambda _ref: SimpleNamespace(config=SimpleNamespace(parent_node=parent)))
+    from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+    from services.dify_builder.native_testing.agent_lineage import NativeAgentEndpointContext
+    from services.dify_builder.native_testing.agent_runtime_config import NativeAgentDefinition
+
+    service.assessor = lambda **kwargs: reasoning.append(kwargs) or assessment
+    parent = AgentParentNodeRef(ref=ref, execution_id=execution, input_result_ref="input", input_digest="b" * 64)
+    workspace = AgentTestWorkspaceRef(
+        binding_id="binding",
+        workspace_id="workspace",
+        backend_binding_ref="binding",
+        backend_workspace_ref="workspace",
+        pinned_snapshot_id="snapshot",
+        home_snapshot_id=None,
+        workspace_generation=0,
+    )
+    endpoint = NativeAgentEndpointContext(
+        ref=AgentNativeTestRef.model_validate(ref.model_dump(mode="json")),
+        config=AgentPreparedConfig(
+            parent_node=parent,
+            workflow_native_run_id="workflow-run",
+            workspace=workspace,
+            config_digest="e" * 64,
+            config_ref="config",
+            config={},
+        ),
+        association=None,
+        native_test_profile="confirmed",
+    )
+    monkeypatch.setattr(service, "_endpoint", lambda _ref: endpoint)
+    resolved = ResolvedNativeTestContext(
+        ref=ref,
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        graph={"nodes": [{"id": "node"}]},
+        inputs={},
+        graph_revision="d" * 64,
+        input_revision="b" * 64,
+        resource_manifest=(),
+        generation=0,
+        root_native_run_id="workflow-run",
+        native_run_id="workflow-run",
+        parent_invocation_id=None,
+        call_depth=0,
+        budget_ref="budget",
+        cancellation_ref="cancel",
+        execution_mode="native",
+    )
     soul = AgentSoulConfig.model_validate(
         {
             "model": {
@@ -180,7 +289,14 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
             }
         }
     )
-    definition = SimpleNamespace(node_id="node", agent_id="agent", snapshot_id="snapshot", soul=soul, stamp="c" * 64)
+    definition = NativeAgentDefinition(
+        node_id="node",
+        agent_id="agent",
+        snapshot_id="snapshot",
+        soul=soul,
+        node_job=WorkflowNodeJobConfig(),
+        stamp="c" * 64,
+    )
     tool = module.AgentResolvedTool(
         "plugin",
         "test/plugin/provider",
@@ -192,33 +308,14 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
         None,
         False,
     )
-    monkeypatch.setattr(
-        service, "_tool", lambda **_kwargs: (SimpleNamespace(graph_revision="d" * 64), definition, tool, None)
-    )
+    monkeypatch.setattr(service, "_tool", lambda **_kwargs: (resolved, definition, tool, None))
     monkeypatch.setattr(module, "_sql_resource", lambda **_kwargs: None)
-    monkeypatch.setattr(
-        service, "_definition", lambda **_kwargs: (SimpleNamespace(graph_revision="d" * 64), definition)
-    )
+    monkeypatch.setattr(service, "_definition", lambda **_kwargs: (resolved, definition))
     if boundary in {"shell_run", "bootstrap", "config_pull"}:
         monkeypatch.setattr(
             service,
             "_shell",
-            lambda **_kwargs: (
-                SimpleNamespace(
-                    graph_revision="d" * 64, native_run_id="workflow-run", graph={"nodes": [{"id": "node"}]}
-                ),
-                definition,
-                SimpleNamespace(
-                    config=SimpleNamespace(
-                        config_digest="e" * 64,
-                        config_ref="config",
-                        workspace=SimpleNamespace(
-                            binding_id="binding", model_dump=lambda **_kwargs: {"binding_id": "binding"}
-                        ),
-                    )
-                ),
-                {"shell": {"runtime": "runtime"}},
-            ),
+            lambda **_kwargs: (resolved, definition, endpoint, {"shell": {"runtime": "runtime"}}),
             raising=False,
         )
     target = (
@@ -243,7 +340,10 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
         assert reasoning == []
         assert stored[0]["payload"]["assessment"]["action"] == "Invoke selected Agent model"
     assert stored[0]["payload"]["proposal"]["terms"]["max_calls"] == 1
-    binding = invocation.bindings[operation_digest(key)]
+    with service.loader.session_factory() as session:
+        persisted = session.get(NativeTestInvocation, invocation.id)
+        assert persisted is not None
+        binding = persisted.bindings[operation_digest(key)]
     assert binding["approval_scope"] == "operation"
     assert binding["isolated"] is False
     assert "parameters" not in binding
@@ -264,10 +364,15 @@ def test_only_the_selected_confirmed_model_can_use_the_outer_task_grant():
 
 
 def test_model_target_keeps_the_published_provider_and_model():
-    from models.agent_config_entities import AgentSoulConfig
-    from services.dify_builder.native_testing.agent_operations import AgentOperationService
+    from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+    from services.dify_builder.native_testing.agent_runtime_config import NativeAgentDefinition
 
-    definition = SimpleNamespace(
+    definition = NativeAgentDefinition(
+        node_id="node",
+        agent_id="agent",
+        snapshot_id="snapshot",
+        node_job=WorkflowNodeJobConfig(),
+        stamp="c" * 64,
         soul=AgentSoulConfig.model_validate(
             {
                 "model": {
@@ -276,7 +381,7 @@ def test_model_target_keeps_the_published_provider_and_model():
                     "model": "gpt-4o-mini",
                 }
             }
-        )
+        ),
     )
     assert AgentOperationService._model_target(definition) == {
         "plugin_id": "langgenius/openai",
@@ -286,24 +391,26 @@ def test_model_target_keeps_the_published_provider_and_model():
 
 
 @pytest.mark.parametrize("report", ["unknown", "completed"])
-def test_backend_lost_response_preserves_real_api_completed_result(report):
-    from contextlib import contextmanager
+def test_backend_lost_response_preserves_real_api_completed_result(report, operations_service, monkeypatch):
 
     from services.dify_builder.native_testing.agent_bridge import api_ref
-    from services.dify_builder.native_testing.agent_operations import AgentOperationService
 
     pending = envelope()
-    persisted = SimpleNamespace(
-        operation_id="operation", attempt_id="attempt", outcome="completed", result_ref="real-result"
-    )
-
-    @contextmanager
-    def sessions():
-        yield SimpleNamespace(scalar=lambda _query: persisted)
-
-    loader = SimpleNamespace(actor=SimpleNamespace(tenant_id="tenant"), session_factory=sessions)
-    service = AgentOperationService(loader=loader, state_store=object(), assessor=object())
-    service.bridge.authorization = SimpleNamespace(_permit_ref=lambda _permit: api_ref(pending.ref))
+    service = operations_service
+    with service.loader.session_factory.begin() as session:
+        session.add(
+            NativeEffectOutcome(
+                id="outcome",
+                tenant_id="tenant",
+                request_id="request",
+                invocation_id="inv",
+                operation_id="operation",
+                attempt_id="attempt",
+                outcome="completed",
+                result_ref="real-result",
+            )
+        )
+    monkeypatch.setattr(service.bridge.authorization, "_permit_ref", lambda _permit: api_ref(pending.ref))
     receipt = service.settle(
         ref=pending.ref,
         permit=pending.permit,
@@ -316,25 +423,50 @@ def test_backend_lost_response_preserves_real_api_completed_result(report):
         service.settle(ref=pending.ref, permit=pending.permit, outcome="completed", result_ref="fabricated-result")
 
 
-def test_result_upload_cannot_create_or_replace_a_physical_result(monkeypatch):
-    from contextlib import contextmanager
+def test_result_upload_cannot_create_or_replace_a_physical_result(monkeypatch, operations_service):
 
     from dify_agent.protocol.native_testing import AgentOperationKey
 
-    from services.dify_builder.native_testing.agent_operations import AgentOperationService
-
     pending = envelope()
-    operation = SimpleNamespace(result_ref="real-result")
+    from datetime import UTC, datetime
 
-    @contextmanager
-    def sessions():
-        yield SimpleNamespace(scalar=lambda _query: operation)
+    from runtime_contracts.builder.native.contracts import OperationKey, operation_digest
+    from services.dify_builder.native_testing.agent_bridge import api_ref
+    from services.dify_builder.native_testing.repository import OwnedNativeTest
 
-    loader = SimpleNamespace(load=lambda **_kwargs: SimpleNamespace(tenant_id="tenant"), session_factory=sessions)
-    service = AgentOperationService(
-        loader=loader, state_store=SimpleNamespace(load_result=lambda **_kwargs: "real"), assessor=object()
+    service = operations_service
+    key = OperationKey.model_validate(pending.intent.key.model_dump(mode="json"))
+    with service.loader.session_factory.begin() as session:
+        session.add(
+            NativeEffectOperation(
+                id="operation",
+                tenant_id="tenant",
+                request_id="request",
+                invocation_id="inv",
+                operation_digest=operation_digest(key),
+                intent_digest="a" * 64,
+                scope_digest="b" * 64,
+                state="completed",
+                result_ref="real-result",
+            )
+        )
+    owned = OwnedNativeTest(
+        ref=api_ref(pending.ref),
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        bindings={},
+        generation=0,
+        task_approved=False,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="running",
     )
-    monkeypatch.setattr(service, "_endpoint", lambda _ref: object())
+    monkeypatch.setattr(service.loader, "load", lambda **_kwargs: owned)
+    monkeypatch.setattr(service.state_store, "load_result", lambda **_kwargs: "real")
+    monkeypatch.setattr(service, "_endpoint", lambda _ref: None)
     kwargs = {"ref": pending.ref, "key": AgentOperationKey.model_validate(pending.intent.key.model_dump(mode="json"))}
     assert service.store_result(**kwargs, result="real") == "real-result"
     with pytest.raises(BuilderExecutionPolicyError, match="native_result_conflict"):
@@ -344,7 +476,7 @@ def test_result_upload_cannot_create_or_replace_a_physical_result(monkeypatch):
 @pytest.mark.parametrize("approved", [False, True])
 @pytest.mark.parametrize("sqlite_session", [("models.model.App",)], indirect=True)
 def test_actual_inner_tool_service_never_prepares_or_dispatches_before_permission(
-    sqlite_session, monkeypatch, approved
+    sqlite_session, monkeypatch, approved, operations_service
 ):
     from core.plugin.impl.oauth import OAuthHandler
     from core.tools.tool_engine import ToolEngine
@@ -378,20 +510,15 @@ def test_actual_inner_tool_service_never_prepares_or_dispatches_before_permissio
         if not approved:
             raise BuilderExecutionPolicyError("invalid_dispatch_permit")
 
-    authorization = SimpleNamespace(
-        validate_dispatch=validate,
-        claim_dispatch=lambda **_kwargs: calls.append("claim"),
-        record_outcome=lambda **_kwargs: calls.append("settled"),
+    service = operations_service
+    service.loader.actor = Actor(account_id=request.caller.user_id, tenant_id=request.caller.tenant_id)
+    authorization = service.bridge.authorization
+    monkeypatch.setattr(authorization, "validate_dispatch", validate)
+    monkeypatch.setattr(authorization, "claim_dispatch", lambda **_kwargs: calls.append("claim"))
+    monkeypatch.setattr(authorization, "record_outcome", lambda **_kwargs: calls.append("settled"))
+    monkeypatch.setattr(
+        service.state_store, "store_result", lambda **kwargs: calls.append(kwargs["result"]) or "real-result"
     )
-    loader = SimpleNamespace(
-        actor=SimpleNamespace(account_id=request.caller.user_id, tenant_id=request.caller.tenant_id)
-    )
-    service = module.AgentOperationService(
-        loader=loader,
-        state_store=SimpleNamespace(store_result=lambda **kwargs: calls.append(kwargs["result"]) or "real-result"),
-        assessor=object(),
-    )
-    service.bridge.authorization = authorization
     tool = module.AgentResolvedTool(
         "plugin",
         request.tool.provider_id,
@@ -445,7 +572,7 @@ def test_direct_service_cannot_lose_a_known_native_envelope_before_runtime():
             AgentToolInnerService().invoke(_request(), session=object())
 
 
-def test_confirmed_tool_error_never_returns_private_provider_text(monkeypatch):
+def test_confirmed_tool_error_never_returns_private_provider_text(monkeypatch, operations_service):
     from services.agent_tool_inner_service import AgentToolInnerService
     from services.dify_builder.native_testing import agent_operations as module
     from tests.unit_tests.services.test_agent_tool_inner_service import _request
@@ -453,7 +580,8 @@ def test_confirmed_tool_error_never_returns_private_provider_text(monkeypatch):
     def failed(**_kwargs):
         raise ValueError("PRIVATE_PROVIDER_TOKEN_CANARY")
 
-    monkeypatch.setattr(module, "agent_operations_for_ref", lambda _ref: SimpleNamespace(invoke_tool=failed))
+    monkeypatch.setattr(operations_service, "invoke_tool", failed)
+    monkeypatch.setattr(module, "agent_operations_for_ref", lambda _ref: operations_service)
     request = _request()
     request.native_dispatch = envelope()
     with pytest.raises(BuilderExecutionPolicyError) as error:
@@ -463,25 +591,28 @@ def test_confirmed_tool_error_never_returns_private_provider_text(monkeypatch):
 
 
 @pytest.mark.parametrize("phase", ["prepare", "invoke"])
-def test_confirmed_model_exception_never_returns_private_provider_text(monkeypatch, phase):
+def test_confirmed_model_exception_never_returns_private_provider_text(monkeypatch, phase, operations_service):
     from services.agent_llm_inner_service import AgentLLMInnerService
     from services.dify_builder.native_testing import agent_operations as module
 
     def failed(*_args, **_kwargs):
         raise ValueError("PRIVATE_MODEL_TOKEN_CANARY")
 
-    owner = SimpleNamespace(validate_model_request=lambda **_kwargs: None, invoke_model=failed)
-    monkeypatch.setattr(module, "agent_operations_for_ref", lambda _ref: owner)
+    from services.agent_llm_inner_service import PreparedAgentLLMInvocation
+    from tests.unit_tests.core.model_fixtures import make_model_instance
+    from tests.unit_tests.services.test_agent_llm_inner_service import _request
+
+    monkeypatch.setattr(operations_service, "validate_model_request", lambda **_kwargs: None)
+    monkeypatch.setattr(operations_service, "invoke_model", failed)
+    monkeypatch.setattr(module, "agent_operations_for_ref", lambda _ref: operations_service)
     service = AgentLLMInnerService()
     monkeypatch.setattr(service, "_validate_app_tenant", failed)
-    request = SimpleNamespace(
-        native_dispatch=envelope(), caller=SimpleNamespace(app_id="app", tenant_id="tenant"), target=object()
+    request = _request()
+    request.native_dispatch = envelope()
+    prepared = PreparedAgentLLMInvocation(
+        request=request, model_instance=make_model_instance(provider="openai", model="test-model")
     )
-    invoke = (
-        (lambda: service.prepare(request))
-        if phase == "prepare"
-        else (lambda: list(service.invoke(SimpleNamespace(request=request))))
-    )
+    invoke = (lambda: service.prepare(request)) if phase == "prepare" else (lambda: list(service.invoke(prepared)))
     with pytest.raises(BuilderExecutionPolicyError) as error:
         invoke()
     assert "PRIVATE_MODEL_TOKEN_CANARY" not in str(error.value)
