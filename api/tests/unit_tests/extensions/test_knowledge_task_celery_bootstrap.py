@@ -344,26 +344,43 @@ def _run_probe(
     )
 
 
-def test_worker_bootstrap_registers_durable_knowledge_tasks_when_beat_is_disabled() -> None:
-    disabled = _run_probe(beat_enabled=False, run_worker=True)
-    enabled = _run_probe(beat_enabled=True, run_worker=False)
+@pytest.mark.parametrize(
+    ("beat_enabled", "run_worker", "expected_schedule_queues"),
+    [
+        pytest.param(
+            False,
+            True,
+            {"knowledge_tenant_task_queue_recovery": "dataset_v2"},
+            id="worker-with-beat-disabled",
+        ),
+        pytest.param(
+            True,
+            False,
+            {
+                "knowledge_tenant_task_queue_recovery": "dataset_v2",
+                "knowledge_task_outbox_dispatch": "dataset_v2",
+            },
+            id="beat-enabled-without-worker",
+        ),
+    ],
+)
+def test_bootstrap_registers_durable_knowledge_tasks(
+    beat_enabled: bool,
+    run_worker: bool,
+    expected_schedule_queues: dict[str, str],
+) -> None:
+    probe = _run_probe(beat_enabled=beat_enabled, run_worker=run_worker)
 
-    assert disabled.imports >= _REQUIRED_MODULES
-    assert disabled.strategies >= _REQUIRED_TASKS
-    assert disabled.segment_task_contexts == dict.fromkeys(_SEGMENT_STATUS_TASKS, True)
-    assert disabled.imports == enabled.imports
-    assert disabled.outbox_schedule_enabled is False
-    assert enabled.outbox_schedule_enabled is True
-    assert disabled.knowledge_schedule_queues == {"knowledge_tenant_task_queue_recovery": "dataset_v2"}
-    assert enabled.knowledge_schedule_queues == {
-        "knowledge_tenant_task_queue_recovery": "dataset_v2",
-        "knowledge_task_outbox_dispatch": "dataset_v2",
-    }
-    assert disabled.knowledge_task_queues == {
+    assert probe.imports >= _REQUIRED_MODULES
+    assert probe.outbox_schedule_enabled is beat_enabled
+    assert probe.knowledge_schedule_queues == expected_schedule_queues
+    assert probe.knowledge_task_queues == {
         "tasks.knowledge_task_outbox_task.dispatch_knowledge_task_outbox": "dataset_v2",
         "tasks.knowledge_task_outbox_task.recover_knowledge_tenant_task_queue": "dataset_v2",
     }
-    assert enabled.knowledge_task_queues == disabled.knowledge_task_queues
+    if run_worker:
+        assert probe.strategies >= _REQUIRED_TASKS
+        assert probe.segment_task_contexts == dict.fromkeys(_SEGMENT_STATUS_TASKS, True)
 
 
 def test_worker_strategy_depends_on_required_bootstrap_module() -> None:
