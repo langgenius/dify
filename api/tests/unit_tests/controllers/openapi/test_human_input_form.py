@@ -140,27 +140,31 @@ class TestOpenApiHumanInputFormGet:
         _mock_service(monkeypatch, None)
 
         api = OpenApiWorkflowHumanInputFormApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/bad"):
-            with pytest.raises(HumanInputFormNotFound):
-                api.get.__handler__(
-                    api,
-                    _context(_make_account(), CreatorUserRole.ACCOUNT),
-                    app_id="app-1",
-                    form_token="bad",
-                )
+        with (
+            app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/bad"),
+            pytest.raises(HumanInputFormNotFound),
+        ):
+            api.get.__handler__(
+                api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
+                app_id="app-1",
+                form_token="bad",
+            )
 
     def test_get_form_wrong_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         _mock_service(monkeypatch, _make_form(app_id="other-app"))
 
         api = OpenApiWorkflowHumanInputFormApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
-            with pytest.raises(HumanInputFormNotFound):
-                api.get.__handler__(
-                    api,
-                    _context(_make_account(), CreatorUserRole.ACCOUNT),
-                    app_id="app-1",
-                    form_token="tok-1",
-                )
+        with (
+            app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"),
+            pytest.raises(HumanInputFormNotFound),
+        ):
+            api.get.__handler__(
+                api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
+                app_id="app-1",
+                form_token="tok-1",
+            )
 
 
 class TestOpenApiHumanInputFormPost:

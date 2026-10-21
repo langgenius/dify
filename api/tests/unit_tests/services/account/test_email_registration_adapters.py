@@ -184,15 +184,17 @@ def test_registration_gateway_preserves_domain_errors_and_translates_seat_limit(
 ) -> None:
     gateway = AccountLifecycleRegistrationGateway(accounts=create_autospec(AccountService, instance=True))
 
-    with patch.object(gateway._accounts, "create_account_and_tenant", side_effect=service_error):
-        with pytest.raises(application_error) as raised:
-            gateway.create(
-                email="user@example.com",
-                password="ValidPass123!",
-                interface_language="en-US",
-                timezone=None,
-                ip_address="127.0.0.1",
-            )
+    with (
+        patch.object(gateway._accounts, "create_account_and_tenant", side_effect=service_error),
+        pytest.raises(application_error) as raised,
+    ):
+        gateway.create(
+            email="user@example.com",
+            password="ValidPass123!",
+            interface_language="en-US",
+            timezone=None,
+            ip_address="127.0.0.1",
+        )
     if isinstance(service_error, application_error):
         assert raised.value is service_error
     else:

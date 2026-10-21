@@ -294,14 +294,14 @@ class TestAsyncWorkflowService:
         with (
             patch.object(async_workflow_service_module, "QueueDispatcherManager"),
             patch.object(async_workflow_service_module, "WorkflowService"),
+            pytest.raises(WorkflowNotFoundError, match="App not found: missing-app"),
         ):
             # Act / Assert
-            with pytest.raises(WorkflowNotFoundError, match="App not found: missing-app"):
-                AsyncWorkflowService.trigger_workflow_async(
-                    session=sqlite_session,
-                    user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
-                    trigger_data=trigger_data,
-                )
+            AsyncWorkflowService.trigger_workflow_async(
+                session=sqlite_session,
+                user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
+                trigger_data=trigger_data,
+            )
 
     def test_should_mark_log_rate_limited_and_reraise_when_quota_exceeded(
         self,

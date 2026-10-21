@@ -155,9 +155,11 @@ def test_invalid_signature_has_no_database_or_stream_side_effect(
     owner_exists = mocker.spy(owners, "owner_exists")
     stream = Mock()
 
-    with patch("services.plugin_file_upload_service.verify_plugin_file_signature", return_value=False):
-        with pytest.raises(PluginFileUploadAccessDeniedError):
-            _upload(service, stream=stream)
+    with (
+        patch("services.plugin_file_upload_service.verify_plugin_file_signature", return_value=False),
+        pytest.raises(PluginFileUploadAccessDeniedError),
+    ):
+        _upload(service, stream=stream)
 
     owner_exists.assert_not_called()
     stream.read.assert_not_called()
@@ -172,9 +174,11 @@ def test_unknown_owner_is_rejected_before_reading_or_storing(
     store = mocker.spy(files, "store")
     stream = Mock()
 
-    with patch("services.plugin_file_upload_service.verify_plugin_file_signature", return_value=True):
-        with pytest.raises(PluginFileUploadAccessDeniedError):
-            _upload(service, stream=stream, user_id="unknown-user", user_from="account")
+    with (
+        patch("services.plugin_file_upload_service.verify_plugin_file_signature", return_value=True),
+        pytest.raises(PluginFileUploadAccessDeniedError),
+    ):
+        _upload(service, stream=stream, user_id="unknown-user", user_from="account")
 
     stream.read.assert_not_called()
     store.assert_not_called()
@@ -230,9 +234,11 @@ def test_signed_size_rejects_oversized_content_before_storage(
     stream = Mock()
     stream.read.return_value = content
 
-    with patch("services.plugin_file_upload_service.verify_plugin_file_signature", return_value=True):
-        with pytest.raises(FileTooLargeError, match="signed upload limit"):
-            _upload(service, stream=stream, max_size=max_size)
+    with (
+        patch("services.plugin_file_upload_service.verify_plugin_file_signature", return_value=True),
+        pytest.raises(FileTooLargeError, match="signed upload limit"),
+    ):
+        _upload(service, stream=stream, max_size=max_size)
 
     stream.read.assert_called_once_with(max_size + 1)
     store.assert_not_called()

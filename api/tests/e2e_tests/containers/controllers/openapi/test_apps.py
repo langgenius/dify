@@ -151,11 +151,10 @@ class TestAppDescribe:
         missing_id = str(uuid4())
 
         api = AppDescribeApi()
-        with app.test_request_context(f"/openapi/v1/apps/{missing_id}"):
-            with pytest.raises(NotFound):
-                cast(_Endpoint[AppDescribeResponse], api.get).__handler__(
-                    api,
-                    AppRequestContext(tenant_id=tenant.id, app_id=missing_id),
-                    missing_id,
-                    query=AppDescribeQuery(),
-                )
+        with app.test_request_context(f"/openapi/v1/apps/{missing_id}"), pytest.raises(NotFound):
+            cast(_Endpoint[AppDescribeResponse], api.get).__handler__(
+                api,
+                AppRequestContext(tenant_id=tenant.id, app_id=missing_id),
+                missing_id,
+                query=AppDescribeQuery(),
+            )

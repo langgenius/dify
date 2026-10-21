@@ -82,9 +82,8 @@ def test_endpoint_edition_gate_404s_before_the_bearer_is_read(
     monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
     view = _guard(_nothing, edition=ENTERPRISE_ONLY)
 
-    with app.test_request_context("/openapi/v1/permitted-external-apps"):
-        with pytest.raises(NotFound):
-            view()
+    with app.test_request_context("/openapi/v1/permitted-external-apps"), pytest.raises(NotFound):
+        view()
 
 
 def test_a_dead_licence_403s_an_unauthenticated_caller_on_every_route_in_enterprise(
@@ -101,9 +100,8 @@ def test_a_dead_licence_403s_an_unauthenticated_caller_on_every_route_in_enterpr
     monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
     view = _guard(_nothing)
 
-    with app.test_request_context("/openapi/v1/account"):
-        with pytest.raises(Forbidden, match="license_invalid"):
-            view()
+    with app.test_request_context("/openapi/v1/account"), pytest.raises(Forbidden, match="license_invalid"):
+        view()
 
 
 def test_a_disabled_bearer_feature_503s_before_the_bearer_is_read(
@@ -118,9 +116,11 @@ def test_a_disabled_bearer_feature_503s_before_the_bearer_is_read(
     monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
     view = _guard(_nothing)
 
-    with app.test_request_context("/openapi/v1/account"):
-        with pytest.raises(ServiceUnavailable, match="bearer_auth_disabled"):
-            view()
+    with (
+        app.test_request_context("/openapi/v1/account"),
+        pytest.raises(ServiceUnavailable, match="bearer_auth_disabled"),
+    ):
+        view()
 
 
 INVALID_BEARER = "invalid bearer"
@@ -240,9 +240,11 @@ def _authenticates_for_real(
 
 def _refuse(app: Flask, token: str) -> Unauthorized:
     view = _guard(_nothing)
-    with app.test_request_context("/openapi/v1/account", headers={"Authorization": f"Bearer {token}"}):
-        with pytest.raises(Unauthorized) as raised:
-            view()
+    with (
+        app.test_request_context("/openapi/v1/account", headers={"Authorization": f"Bearer {token}"}),
+        pytest.raises(Unauthorized) as raised,
+    ):
+        view()
     return raised.value
 
 
@@ -361,9 +363,11 @@ def test_a_mutation_is_rolled_back_when_the_view_raises(
     monkeypatch.setattr(MOUNT, lambda _user: None)
     view = _guard(_rename_then_fail)
 
-    with app.test_request_context("/openapi/v1/account", headers=_admitted(app)):
-        with pytest.raises(RuntimeError, match="after the write"):
-            view()
+    with (
+        app.test_request_context("/openapi/v1/account", headers=_admitted(app)),
+        pytest.raises(RuntimeError, match="after the write"),
+    ):
+        view()
 
     with sqlite_session_factory() as verify:
         unchanged = verify.get(Account, ACCOUNT_ID)
