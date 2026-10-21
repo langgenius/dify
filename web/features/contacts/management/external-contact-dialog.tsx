@@ -72,7 +72,7 @@ function ContactAvatar({
     <AvatarRoot
       className={cn(
         'size-24 border-2 border-components-panel-bg data-loading:bg-background-section-burn',
-        !fallbackName && 'bg-components-avatar-default-avatar-bg',
+        fallbackName ? 'bg-text-accent' : 'bg-components-avatar-default-avatar-bg',
         className,
       )}
       render={(props, { imageLoadingStatus }) => (
@@ -99,6 +99,7 @@ function ContactAvatar({
         size="3xl"
         className={cn(
           'relative overflow-hidden rounded-full inset-ring-[0.5px] inset-ring-divider-regular',
+          fallbackName && 'text-5xl leading-[1.2] font-semibold',
           !fallbackName &&
             'bg-linear-to-br from-components-avatar-bg-mask-stop-0/50 to-components-avatar-bg-mask-stop-100/50 backdrop-blur-xs',
         )}
@@ -106,7 +107,7 @@ function ContactAvatar({
           <span {...props}>
             {(!avatar || imageLoadingStatus === 'error') &&
               (fallbackName ? (
-                fallbackName[0]?.toLocaleUpperCase()
+                [...fallbackName][0]?.toLocaleUpperCase()
               ) : (
                 <img
                   alt=""
@@ -292,7 +293,7 @@ export function ExternalContactDialog({
             >
               <ContactAvatar
                 avatar={avatarUrl}
-                fallbackName={contact?.name}
+                fallbackName={draft.displayName.trim()}
                 name=""
                 className="absolute -top-33 left-0 size-108 opacity-20 blur-[80px]"
               />
@@ -309,7 +310,7 @@ export function ExternalContactDialog({
             >
               <ContactAvatar
                 avatar={avatarUrl}
-                fallbackName={contact?.name}
+                fallbackName={draft.displayName.trim()}
                 name={draft.displayName}
               />
               <span className="absolute right-0 bottom-0 flex size-8 items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs backdrop-blur-[5px]">

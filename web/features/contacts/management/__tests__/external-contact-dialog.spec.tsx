@@ -301,7 +301,7 @@ describe('ExternalContactDialog pending state', () => {
     },
   )
 
-  it('preserves the existing initial avatar when editing only the name and does not overwrite the avatar on save', async () => {
+  it('updates the initial avatar while editing the name without overwriting the saved avatar', async () => {
     const contact = {
       id: 'existing-contact',
       name: 'Alice',
@@ -312,7 +312,7 @@ describe('ExternalContactDialog pending state', () => {
       consoleClient.workspaces.current.humanInput.contacts.external.byContactId.patch,
     )
     updateContact.mockResolvedValue({
-      contact: { ...contact, name: 'Updated Alice', created_at: 1, type: 'external' },
+      contact: { ...contact, name: 'Evan', created_at: 1, type: 'external' },
     })
     renderAvatarDialog(contact)
     const user = userEvent.setup()
@@ -322,15 +322,15 @@ describe('ExternalContactDialog pending state', () => {
 
     const name = screen.getByRole('textbox', { name: 'contacts.external.name' })
     await user.clear(name)
-    await user.type(name, 'Updated Alice')
-    expect(within(avatar).getByText('A')).toBeInTheDocument()
+    await user.type(name, 'Evan')
+    expect(within(avatar).getByText('E')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'contacts.external.save' }))
 
     await waitFor(() =>
       expect(updateContact).toHaveBeenCalledWith(
         {
           params: { contact_id: contact.id },
-          body: { name: 'Updated Alice', email: contact.email },
+          body: { name: 'Evan', email: contact.email },
         },
         expect.anything(),
       ),
@@ -338,7 +338,7 @@ describe('ExternalContactDialog pending state', () => {
     expect(uploadAvatar).not.toHaveBeenCalled()
   })
 
-  it('keeps the original default portrait for a new contact without an uploaded avatar', async () => {
+  it('derives a new contact avatar from the name and restores the portrait when cleared', async () => {
     renderAvatarDialog()
     const user = userEvent.setup()
     const avatar = screen.getByRole('button', { name: 'common.avatar.editAction' })
@@ -346,9 +346,12 @@ describe('ExternalContactDialog pending state', () => {
       'src',
       expect.stringMatching(/^data:image\/svg\+xml;base64,/),
     )
-    await user.type(screen.getByRole('textbox', { name: 'contacts.external.name' }), 'Alice')
+    const name = screen.getByRole('textbox', { name: 'contacts.external.name' })
+    await user.type(name, '  Evan')
+    expect(within(avatar).getByText('E')).toBeInTheDocument()
+    expect(within(avatar).queryByRole('presentation')).not.toBeInTheDocument()
+    await user.clear(name)
     expect(within(avatar).getByRole('presentation')).toBeInTheDocument()
-    expect(within(avatar).queryByText('A')).not.toBeInTheDocument()
   })
 
   it.each(['load', 'error'] as const)(
