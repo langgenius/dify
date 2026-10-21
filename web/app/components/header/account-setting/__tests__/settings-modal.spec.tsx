@@ -136,6 +136,9 @@ it('opens preferences from the URL control, switches real pages, and closes with
   await user.click(screen.getByRole('button', { name: 'Open preferences' }))
   const dialog = await findSettings()
   expect(within(dialog).getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
+  expect(
+    within(dialog).getByRole('button', { name: 'navigation.settings.preferences' }),
+  ).toHaveAttribute('aria-current', 'page')
   expect(onUrlUpdate.mock.lastCall?.[0]).toMatchObject({
     options: { history: 'replace', shallow: true },
   })
@@ -176,6 +179,9 @@ it('opens preferences from the URL control, switches real pages, and closes with
   for (const { name, tab, content } of destinations) {
     await user.click(within(dialog).getByRole('button', { name }))
     expect(await within(dialog).findByText(content)).toBeInTheDocument()
+    expect(within(dialog).getAllByRole('button', { current: 'page' })).toEqual([
+      within(dialog).getByRole('button', { name }),
+    ])
     await waitFor(() =>
       expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(tab),
     )
