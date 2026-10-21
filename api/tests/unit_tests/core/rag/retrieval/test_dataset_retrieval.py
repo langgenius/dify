@@ -4008,6 +4008,22 @@ class TestDatasetRetrievalAdditionalHelpers:
         assert [row.dataset_id for row in added_queries] == sorted(dataset_ids)
         assert all(row.created_by == user_id for row in added_queries)
 
+    def test_on_query_skips_non_uuid_user_id(
+        self, retrieval: DatasetRetrieval, sqlite_engine: Engine, sqlite_session: Session
+    ) -> None:
+        # AppDeploy runners forward the Service API caller's own user string.
+        with patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=sqlite_engine)):
+            retrieval._on_query(
+                query="python",
+                attachment_ids=None,
+                dataset_ids=[str(uuid4())],
+                app_id=str(uuid4()),
+                user_from="end-user",
+                user_id="api-user-42",
+            )
+
+        assert sqlite_session.scalars(select(DatasetQuery)).all() == []
+
     def test_on_query_normalizes_workflow_end_user_role(
         self, retrieval: DatasetRetrieval, sqlite_engine: Engine, sqlite_session: Session
     ) -> None:

@@ -80,7 +80,7 @@ from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMU
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from libs.helper import parse_uuid_str_or_none
+from libs.helper import parse_uuid_str_or_none, uuid_value
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import (
     ChildChunk,
@@ -1111,9 +1111,15 @@ class DatasetRetrieval:
         if not query and not attachment_ids:
             return
         created_by = parse_uuid_str_or_none(user_id)
+        if created_by is not None:
+            try:
+                created_by = uuid_value(created_by)
+            except ValueError:
+                # AppDeploy runners pass their API caller's own user string, which is not a Dify user ID.
+                created_by = None
         if created_by is None:
             logger.debug(
-                "Skipping dataset query log: empty created_by user_id (user_from=%s, app_id=%s)",
+                "Skipping dataset query log: created_by user_id is not a UUID (user_from=%s, app_id=%s)",
                 user_from,
                 app_id,
             )
