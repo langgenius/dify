@@ -800,7 +800,6 @@ class TestWorkflowEntryNodeLayers:
                 return_value=sentinel.read_only_runtime_state,
             ),
             pytest.raises(RuntimeError, match="boom"),
-            pytest.raises(RuntimeError, match="boom"),
         ):
             list(workflow_entry.WorkflowEntry._run_node_with_layers(node))
 
