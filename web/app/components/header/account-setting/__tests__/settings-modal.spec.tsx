@@ -176,6 +176,8 @@ it('opens preferences from the URL control, switches real pages, and closes with
   for (const { name, tab, content } of destinations) {
     await user.click(within(dialog).getByRole('button', { name }))
     expect(await within(dialog).findByText(content)).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name, current: 'page' })).toBeInTheDocument()
+    expect(within(dialog).getAllByRole('button', { current: 'page' })).toHaveLength(1)
     await waitFor(() =>
       expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(tab),
     )
