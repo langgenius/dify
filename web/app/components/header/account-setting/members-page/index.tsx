@@ -150,17 +150,19 @@ const MembersPage = () => {
                     {t(($) => $['plansCommon.member'], { ns: 'billing' })}
                     {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
                   </div>
-                  <div className="">{accounts.length}</div>
-                  <div>/</div>
-                  <div>
-                    {features.members.limit === 0
-                      ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
-                      : features.members.limit}
+                  <div className="flex gap-x-1">
+                    <span>{accounts.length}</span>
+                    <span>/</span>
+                    <span>
+                      {features.members.limit === 0
+                        ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
+                        : features.members.limit}
+                    </span>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-x-1">
-                  <div>{accounts.length}</div>
+                <div className="flex gap-x-1">
+                  <div className="shrink-0">{accounts.length}</div>
                   <div>
                     {t(($) => $['plansCommon.memberAfter'], { ns: 'billing' })}
                     {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
