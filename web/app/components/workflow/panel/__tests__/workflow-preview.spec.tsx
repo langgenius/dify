@@ -10,7 +10,7 @@ import {
   createWorkflowRunningData,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
-import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { submitHumanInputForm } from '@/service/workflow'
@@ -19,6 +19,22 @@ import { renderWorkflowEditor } from '@/test/workflow-editor'
 import WorkflowPreview from '../workflow-preview'
 
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
+const getChildExecutions = vi.hoisted(() =>
+  vi.fn<
+    typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.byRunId.nodeExecutions.byNodeExecutionId.children.get
+  >(),
+)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflowRuns.byRunId.nodeExecutions.byNodeExecutionId.children.get':
+        getChildExecutions,
+    }),
+  }
+})
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
   submitHumanInputForm: vi.fn(),
@@ -86,6 +102,7 @@ const createHumanInputFormData = (
 const createHumanInputFilledFormData = (
   overrides: Partial<HumanInputFilledFormData> = {},
 ): HumanInputFilledFormData => ({
+  form_id: 'form-1',
   node_id: 'node-1',
   node_title: 'Previous approval',
   rendered_content: 'Already approved',
@@ -95,6 +112,7 @@ const createHumanInputFilledFormData = (
 })
 
 beforeEach(() => {
+  getChildExecutions.mockReset()
   mockSubmitHumanInputForm.mockReset().mockResolvedValue({ result: 'success' })
   vi.mocked(copy).mockReset().mockResolvedValue(true)
   vi.spyOn(toast, 'success')
@@ -279,6 +297,43 @@ it('opens the trace from the partial-success warning', async () => {
   await user.click(screen.getByRole('link', { name: /TRACING/ }))
   expect(screen.getByText('Recoverable error')).toBeInTheDocument()
   expect(screen.queryByRole('link', { name: /TRACING/ })).not.toBeInTheDocument()
+})
+
+it('loads nested tool traces using the editor app identity and preview run ID', async () => {
+  const user = userEvent.setup()
+  getChildExecutions.mockResolvedValue({ data: [] })
+  renderPreview({
+    resource: { kind: 'app', appId: 'preview-app', mode: 'workflow' },
+    initialStoreState: {
+      workflowRunningData: createPreviewRunningData({
+        result: createWorkflowResult({
+          id: 'preview-run',
+          status: WorkflowRunningStatus.Succeeded,
+        }),
+        resultText: 'Completed',
+        tracing: [
+          createNodeTracing({
+            id: 'preview-tool',
+            node_type: BlockEnum.Tool,
+            title: 'Nested workflow',
+            status: 'succeeded',
+            expand: true,
+            extras: { workflow_tool: true },
+          }),
+        ],
+      }),
+    },
+  })
+
+  await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
+  expect(await screen.findByText('common.noData')).toBeInTheDocument()
+  expect(getChildExecutions).toHaveBeenCalledWith({
+    params: {
+      app_id: 'preview-app',
+      run_id: 'preview-run',
+      node_execution_id: 'preview-tool',
+    },
+  })
 })
 
 it('shows the test run destination from its execution identity', async () => {

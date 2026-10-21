@@ -75,7 +75,7 @@ def test_application_trace_migration_matches_models_and_roundtrips() -> None:
 @pytest.mark.parametrize("starting_revision", ["a9d4c1e6f823", "f7e2c9a6d481"])
 def test_deployment_and_tracing_upgrade_paths_join(starting_revision: str) -> None:
     scripts = ScriptDirectory(str(Path(__file__).resolve().parents[3] / "migrations"))
-    assert scripts.get_heads() == ["c9e2f4a8b630"]
+    assert scripts.get_heads() == ["e4f9a2c7b681"]
     steps = scripts._upgrade_revs("b8a7d3f9c621", starting_revision)
     assert steps[-1].revision.revision == "b8a7d3f9c621"
     applied = {step.revision.revision for step in steps}
@@ -112,15 +112,18 @@ def test_legacy_revision_preserves_billing_and_missing_main_ancestors() -> None:
         "f7e2c9a6d481",
         "b8a7d3f9c621",
         "c9e2f4a8b630",
+        "a8c3e7f4b912",
+        "d6b9e2f1a407",
+        "e4f9a2c7b681",
     }
     assert applied.index("a8c9e2f1b704") < applied.index("f1d3c5b7a902")
     assert applied.index("f1d3c5b7a902") < applied.index("a17c2980f3e6")
-    assert applied[-1] == "c9e2f4a8b630"
+    assert applied[-1] == "e4f9a2c7b681"
 
 
-def test_current_deployment_only_applies_no_ddl_compatibility_markers() -> None:
+def test_legacy_compatibility_join_only_applies_no_ddl_markers() -> None:
     scripts = ScriptDirectory(str(Path(__file__).resolve().parents[3] / "migrations"))
-    steps = scripts._upgrade_revs("head", "b8a7d3f9c621")
+    steps = scripts._upgrade_revs("c9e2f4a8b630", "b8a7d3f9c621")
     assert [step.revision.revision for step in steps] == ["a17c2980d3e6", "c9e2f4a8b630"]
     for step in steps:
         # Both marker functions must be runnable without an operations context.
@@ -267,5 +270,35 @@ def test_noncanonical_reflection_options_are_rejected(reflection: str, monkeypat
             with Operations.context(MigrationContext.configure(connection)):
                 with pytest.raises(RuntimeError, match="Application tracing schema mismatch"):
                     migration.upgrade()
+    finally:
+        engine.dispose()
+
+
+def test_current_deployment_applies_workflow_tool_columns_before_join() -> None:
+    scripts = ScriptDirectory(str(Path(__file__).resolve().parents[3] / "migrations"))
+    steps = scripts._upgrade_revs("head", "c9e2f4a8b630")
+    assert [step.revision.revision for step in steps] == [
+        "a8c3e7f4b912",
+        "d6b9e2f1a407",
+        "e4f9a2c7b681",
+    ]
+    engine = sa.create_engine("sqlite://")
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql("CREATE TABLE workflow_node_executions (id VARCHAR(36) PRIMARY KEY)")
+            connection.exec_driver_sql("INSERT INTO workflow_node_executions (id) VALUES ('existing-node')")
+            with Operations.context(MigrationContext.configure(connection)):
+                steps[0].revision.module.upgrade()
+            for step in steps[1:]:
+                step.revision.module.upgrade()
+                step.revision.module.downgrade()
+            assert connection.execute(sa.text("SELECT * FROM workflow_node_executions")).all() == [
+                ("existing-node", None, None)
+            ]
+            assert {column["name"] for column in sa.inspect(connection).get_columns("workflow_node_executions")} == {
+                "id",
+                "triggered_from_workflow_id",
+                "triggered_from_node_execution_id",
+            }
     finally:
         engine.dispose()

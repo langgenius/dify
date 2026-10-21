@@ -650,6 +650,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       act(() => {
         capturedCallbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-human-node',
             node_id: 'human-node',
             form_token: 'token-1',
             form_content: '{{#$output.answer#}}',
@@ -678,6 +679,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       act(() => {
         capturedCallbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-human-node',
             node_id: 'human-node',
             form_token: 'token-1',
             form_content: '{{#$output.answer#}}',
@@ -688,7 +690,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-2' },
+          data: { form_id: 'form-human-node', node_id: 'human-node', form_token: 'token-2' },
         })
       })
 
@@ -705,13 +707,13 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node-1', form_token: 'token-1' },
+          data: { form_id: 'form-human-node-1', node_id: 'human-node-1', form_token: 'token-1' },
         })
       })
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node-2', form_token: 'token-2' },
+          data: { form_id: 'form-human-node-2', node_id: 'human-node-2', form_token: 'token-2' },
         })
       })
 
@@ -732,6 +734,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       act(() => {
         capturedCallbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-human-node',
             node_id: 'human-node',
             form_token: 'token-1',
             form_content: '{{#$output.answer#}}',
@@ -742,7 +745,11 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputFormFilled({
-          data: { node_id: 'human-node', submitted_data: { answer: 'yes' } },
+          data: {
+            form_id: 'form-human-node',
+            node_id: 'human-node',
+            submitted_data: { answer: 'yes' },
+          },
         })
       })
 
@@ -769,13 +776,13 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { form_id: 'form-human-node', node_id: 'human-node', form_token: 'token-1' },
         })
       })
 
       act(() => {
         capturedCallbacks.onHumanInputFormTimeout({
-          data: { node_id: 'human-node', expiration_time: 1735689600 },
+          data: { form_id: 'form-human-node', node_id: 'human-node', expiration_time: 1735689600 },
         })
       })
 

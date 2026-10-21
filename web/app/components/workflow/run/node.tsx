@@ -8,6 +8,7 @@ import type {
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
@@ -18,7 +19,7 @@ import {
   RiLoader2Line,
   RiPauseCircleFill,
 } from '@remixicon/react'
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { use, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
@@ -35,6 +36,7 @@ import { ExternalTraceRow } from './external-trace-row'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
+import { WorkflowToolTracingContext } from './workflow-tool-tracing-context'
 
 type Props = {
   readonly className?: string
@@ -74,6 +76,7 @@ const NodePanel: FC<Props> = ({
   notShowLoopNav,
   externalTraceRun,
 }) => {
+  const workflowToolTracing = use(WorkflowToolTracingContext)
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback(
     (state: boolean) => {
@@ -82,7 +85,7 @@ const NodePanel: FC<Props> = ({
     },
     [hideProcessDetail],
   )
-  const { t } = useTranslation(['workflow', 'workflowLogic', 'workflowHumanInput'])
+  const { t } = useTranslation(['workflow', 'workflowLogic', 'workflowHumanInput', 'runLog'])
   const docLink = useDocLink()
   const detailsId = useId()
   const Header = hideProcessDetail ? 'div' : 'button'
@@ -250,11 +253,7 @@ const NodePanel: FC<Props> = ({
                 )}
                 {/* The nav to the Loop detail */}
                 {isLoopNode && !notShowLoopNav && onShowLoopDetail && (
-                  <LoopLogTrigger
-                    nodeInfo={nodeInfo}
-                    allExecutions={allExecutions}
-                    onShowLoopResultList={onShowLoopDetail}
-                  />
+                  <LoopLogTrigger nodeInfo={nodeInfo} onShowLoopResultList={onShowLoopDetail} />
                 )}
                 {isRetryNode && onShowRetryDetail && (
                   <RetryLogTrigger nodeInfo={nodeInfo} onShowRetryResultList={onShowRetryDetail} />
@@ -265,6 +264,20 @@ const NodePanel: FC<Props> = ({
                     onShowAgentOrToolLog={onShowAgentOrToolLog}
                   />
                 )}
+                {/* ponytail: enable retry drilldown when traces carry invocation identity. */}
+                {nodeInfo.node_type === BlockEnum.Tool &&
+                  nodeInfo.status !== 'retry' &&
+                  nodeInfo.extras?.workflow_tool === true &&
+                  workflowToolTracing && (
+                    <Button
+                      variant="ghost"
+                      className="mb-1 w-full justify-between"
+                      onClick={() => workflowToolTracing.onShowWorkflowTool(nodeInfo)}
+                    >
+                      {t(($) => $.tracing, { ns: 'runLog' })}
+                      <span aria-hidden className="i-ri-arrow-right-line size-4" />
+                    </Button>
+                  )}
                 {isBoundAgentV2Execution(nodeInfo) && externalTraceRun && (
                   <dl>
                     <ExternalTraceRow

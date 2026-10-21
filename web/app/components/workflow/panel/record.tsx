@@ -9,10 +9,10 @@ import { useStore } from '../store'
 import { formatWorkflowRunIdentifier } from '../utils'
 
 const Record = () => {
+  const appId = useAtomValue(editorAppIdAtom)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const getWorkflowRunAndTraceUrl = useHooksStore((s) => s.getWorkflowRunAndTraceUrl)
-  const appId = useAtomValue(editorAppIdAtom)
 
   const handleResultCallback = useCallback(
     (res: WorkflowRunDetailResponse) => {
@@ -29,7 +29,7 @@ const Record = () => {
   return (
     <div className="flex h-full w-100 flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
       <div className="flex items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
-        {`Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
+        {`Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at, historyWorkflowData?.status)}`}
       </div>
       <Run
         appId={appId}

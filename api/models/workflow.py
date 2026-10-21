@@ -27,6 +27,7 @@ from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_typ
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
 )
@@ -914,6 +915,7 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
 
     SINGLE_STEP = "single-step"
     WORKFLOW_RUN = "workflow-run"
+    WORKFLOW_TOOL = "workflow-tool"
     RAG_PIPELINE_RUN = "rag-pipeline-run"
 
 
@@ -967,6 +969,25 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
 
     __tablename__ = "workflow_node_executions"
 
+    @classmethod
+    def workflow_tool_owned_by_app(cls, *, tenant_id: str, app_id: str) -> sa.ColumnElement[bool]:
+        """Match trusted Tool lifecycle ownership, including rows written before it was captured."""
+        document = sa.cast(func.nullif(cls.process_data, ""), sa.JSON().with_variant(sa.Text(), "sqlite"))
+        root_app_id = document[WORKFLOW_TOOL_ROOT_APP_ID_KEY].as_string()
+        return sa.and_(
+            cls.tenant_id == tenant_id,
+            cls.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            sa.or_(
+                root_app_id == app_id,
+                sa.and_(
+                    root_app_id.is_(None),
+                    cls.workflow_run_id.in_(
+                        select(WorkflowRun.id).where(WorkflowRun.tenant_id == tenant_id, WorkflowRun.app_id == app_id)
+                    ),
+                ),
+            ),
+        )
+
     __table_args__ = (
         PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
         Index(
@@ -1006,6 +1027,8 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         EnumText(WorkflowNodeExecutionTriggeredFrom, length=255)
     )
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
+    triggered_from_workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    triggered_from_node_execution_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     index: Mapped[int] = mapped_column(sa.Integer)
     predecessor_node_id: Mapped[str | None] = mapped_column(String(255))
     node_execution_id: Mapped[str | None] = mapped_column(String(255))
@@ -1092,6 +1115,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
 
     @property
     def extras(self) -> dict[str, Any]:
+        from core.tools.entities.tool_entities import ToolProviderType
         from core.tools.tool_manager import ToolManager
         from core.trigger.trigger_manager import TriggerManager
 
@@ -1100,9 +1124,12 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         if execution_metadata:
             if self.node_type == BuiltinNodeTypes.TOOL and "tool_info" in execution_metadata:
                 tool_info: dict[str, Any] = execution_metadata["tool_info"]
+                provider_type = ToolProviderType(tool_info["provider_type"])
+                if provider_type == ToolProviderType.WORKFLOW:
+                    extras["workflow_tool"] = True
                 extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self.tenant_id,
-                    provider_type=tool_info["provider_type"],
+                    provider_type=provider_type,
                     provider_id=tool_info["provider_id"],
                 )
             elif self.node_type == BuiltinNodeTypes.DATASOURCE and "datasource_info" in execution_metadata:

@@ -16,8 +16,15 @@ from core.ops.entities.trace_entity import BaseTraceInfo
 from core.ops.exceptions import RetryableTraceDispatchError
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 from graphon.runtime import VariablePool
-from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
-from models.agent_config_entities import AgentSoulConfig
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.model import AppMode
 from repositories.application_trace_repository import ApplicationTraceRepository
 from services.tracing import runtime_bridge
@@ -104,7 +111,13 @@ def agent_context() -> AgentAppRuntimeBuildContext:
 def workflow_context(preview: bool) -> WorkflowAgentRuntimeBuildContext:
     return WorkflowAgentRuntimeBuildContext(
         dify_context=run_context("workflow-app"),
-        agent=Agent(id="referenced-agent", tenant_id="tenant", name="Agent"),
+        agent=Agent(
+            id="referenced-agent",
+            tenant_id="tenant",
+            name="Agent",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.ROSTER,
+        ),
         snapshot=AgentConfigSnapshot(
             id="snapshot", tenant_id="tenant", agent_id="referenced-agent", version=1, config_snapshot=AgentSoulConfig()
         ),
@@ -113,8 +126,11 @@ def workflow_context(preview: bool) -> WorkflowAgentRuntimeBuildContext:
             tenant_id="tenant",
             app_id="workflow-app",
             workflow_id="workflow",
+            workflow_version="draft",
             node_id="node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
             agent_id="referenced-agent",
+            node_job_config=WorkflowNodeJobConfig(),
         ),
         workflow_id="workflow",
         workflow_run_id=None if preview else "run",

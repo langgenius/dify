@@ -16,12 +16,12 @@ import StatusPanel from './status'
 import TracingPanel from './tracing-panel'
 
 type RunProps = {
+  appId?: string
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
   runDetailUrl: string
   tracingListUrl: string
-  appId?: string
 }
 
 type RunTab = NonNullable<RunProps['activeTab']>
@@ -34,12 +34,12 @@ type RequestLifetime = {
 }
 
 const RunPanel: FC<RunProps> = ({
+  appId,
   activeTab = 'RESULT',
   hideResult,
   getResultCallback,
   runDetailUrl,
   tracingListUrl,
-  appId,
 }) => {
   const [currentTab, setCurrentTab] = useState<RunTab>(activeTab)
   const isListening = useStore((s) => s.isListening)
@@ -51,11 +51,11 @@ const RunPanel: FC<RunProps> = ({
   return (
     <RunSession
       key={JSON.stringify([runDetailUrl, tracingListUrl])}
+      appId={appId}
       hideResult={hideResult}
       getResultCallback={getResultCallback}
       runDetailUrl={runDetailUrl}
       tracingListUrl={tracingListUrl}
-      appId={appId}
       currentTab={currentTab}
       onTabChange={setCurrentTab}
       isListening={isListening}
@@ -70,11 +70,11 @@ type RunSessionProps = Omit<RunProps, 'activeTab'> & {
 }
 
 function RunSession({
+  appId,
   hideResult,
   getResultCallback,
   runDetailUrl,
   tracingListUrl,
-  appId,
   currentTab,
   onTabChange,
   isListening,
@@ -257,10 +257,16 @@ function RunSession({
         <TabsPanel value="TRACING">
           {!loading && (
             <TracingPanel
-              className="bg-background-section-burn"
-              list={list}
               externalTraceRun={
                 appId && runDetail ? { appId, workflowRunId: runDetail.id } : undefined
+              }
+              key={runDetail?.id}
+              className="bg-background-section-burn"
+              list={list}
+              workflowRun={
+                appId && runDetail
+                  ? { appId, runId: runDetail.id, status: runDetail.status }
+                  : undefined
               }
             />
           )}

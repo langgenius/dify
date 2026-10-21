@@ -63,9 +63,14 @@ vi.mock('../use-workflow-template', () => ({
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: async (url: string) => {
-    if (url === '/files/upload') return workflowConfigState.data ?? createFileUploadConfigFixture()
-    throw new Error(`Unexpected GET ${url}`)
+  request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (request.method === 'POST' && new URL(url).pathname.endsWith('/apps/app-1/workflows/draft'))
+      return Response.json(await mockSyncWorkflowDraft(await request.json()))
+    if (new URL(url).pathname.endsWith('/files/upload'))
+      return Response.json(workflowConfigState.data ?? createFileUploadConfigFixture())
+    if (new URL(url).pathname.endsWith('/workflows/default-workflow-block-configs'))
+      return Response.json(await mockFetchNodesDefaultConfigs())
+    throw new Error(`Unexpected request ${url}`)
   },
 }))
 
@@ -84,8 +89,6 @@ const mockFetchWorkflowDraft = vi.fn()
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
-  syncWorkflowDraft: (...args: unknown[]) => mockSyncWorkflowDraft(...args),
-  fetchNodesDefaultConfigs: (...args: unknown[]) => mockFetchNodesDefaultConfigs(...args),
 }))
 
 const notExistError = () =>
@@ -174,13 +177,11 @@ describe('useWorkflowInit', () => {
     })
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        params: expect.objectContaining({
-          graph: {
-            nodes: [],
-            edges: [],
-          },
-          force: true,
-        }),
+        graph: {
+          nodes: [],
+          edges: [],
+        },
+        force: true,
       }),
     )
     expect(store.getState().syncWorkflowDraftHash).toBe('new-workflow-hash')
@@ -204,13 +205,11 @@ describe('useWorkflowInit', () => {
     await waitFor(() =>
       expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
         expect.objectContaining({
-          params: expect.objectContaining({
-            graph: {
-              nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
-              edges: [],
-            },
-            force: false,
-          }),
+          graph: {
+            nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
+            edges: [],
+          },
+          force: false,
         }),
       ),
     )

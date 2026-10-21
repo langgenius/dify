@@ -306,6 +306,7 @@ def test_request_builder_adds_dify_plugin_tools_layer_when_configured() -> None:
                 runtime_parameters={},
                 parameters=[],
                 parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                plugin_unique_identifier="langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
     )

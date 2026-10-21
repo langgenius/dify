@@ -309,7 +309,22 @@ class ToolManager:
                     tool_provider = ToolProviderID(provider_id)
                     provider_name = tool_provider.provider_name
                     redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
-                    system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
+                    plugin_unique_identifier = (
+                        provider_controller.plugin_unique_identifier
+                        if isinstance(provider_controller, PluginToolProviderController)
+                        else None
+                    )
+                    system_credentials = BuiltinToolManageService.get_oauth_client(
+                        tenant_id,
+                        provider_id,
+                        provider_controller=(
+                            provider_controller
+                            if isinstance(provider_controller, PluginToolProviderController)
+                            else None
+                        ),
+                    )
+                    if system_credentials is not None:
+                        plugin_unique_identifier = system_credentials.plugin_unique_identifier
 
                     oauth_handler = OAuthHandler()
                     try:
@@ -319,7 +334,10 @@ class ToolManager:
                             plugin_id=tool_provider.plugin_id,
                             provider=provider_name,
                             redirect_uri=redirect_uri,
-                            system_credentials=system_credentials or {},
+                            system_credentials=(
+                                dict(system_credentials.credentials) if system_credentials is not None else {}
+                            ),
+                            plugin_unique_identifier=plugin_unique_identifier,
                             credentials=decrypted_credentials,
                         )
                     except Exception as exc:
@@ -478,22 +496,35 @@ class ToolManager:
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: "VariablePool | None" = None,
         execution_driver: "WorkflowRunDriver | None" = None,
+        workflow_tool_definition: WorkflowTool | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
         """
 
-        tool_runtime = cls.get_tool_runtime(
-            provider_type=workflow_tool.provider_type,
-            provider_id=workflow_tool.provider_id,
-            tool_name=workflow_tool.tool_name,
-            tenant_id=tenant_id,
-            user_id=user_id,
-            invoke_from=invoke_from,
-            tool_invoke_from=ToolInvokeFrom.WORKFLOW,
-            credential_id=workflow_tool.credential_id,
-            execution_driver=execution_driver,
-        )
+        if workflow_tool_definition is None:
+            tool_runtime = cls.get_tool_runtime(
+                provider_type=workflow_tool.provider_type,
+                provider_id=workflow_tool.provider_id,
+                tool_name=workflow_tool.tool_name,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                invoke_from=invoke_from,
+                tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                credential_id=workflow_tool.credential_id,
+                execution_driver=execution_driver,
+            )
+        else:
+            tool_runtime = workflow_tool_definition.fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    credentials={},
+                    invoke_from=invoke_from,
+                    tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                )
+            )
+            tool_runtime.execution_driver = execution_driver
 
         parameters = tool_runtime.get_merged_runtime_parameters()
         runtime_parameters = cls._convert_tool_parameters_type(

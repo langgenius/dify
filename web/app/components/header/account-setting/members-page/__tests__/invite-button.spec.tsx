@@ -25,7 +25,7 @@ describe('InviteButton', () => {
     onTestFinished(() => client.clear())
     const { queryKey } = consoleQuery.workspaces.current.permission.get.queryOptions()
     if (isFetching) {
-      void queryClient.prefetchQuery({ queryKey, queryFn: () => new Promise(() => {}) })
+      void queryClient.query({ queryKey, queryFn: () => new Promise(() => {}) }).catch(() => {})
       return
     }
     queryClient.setQueryData(queryKey, {

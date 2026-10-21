@@ -1,10 +1,10 @@
 # Agent tracing 前端接入说明
 
-更新日期：2026-10-19。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
+更新日期：2026-10-21。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
 
 后端应用级 Agent tracing、Console API 与生成契约已实现。各 provider 的平台证据及边界记录于第 12 节。Weave 在 10 月 16 日的验收受账号试用状态限制；10 月 19 日切换 Free 后，项目、trace 树及调用链接已能实际打开，后续专项按独立证据记录。后续 Databricks、Opik、腾讯云、OSS MLflow 和 Phoenix 均通过 Dify UI 配置并发起业务，再独立查询平台。本文定义后端契约；dev 前端的具体联调范围单独记录。
 
-Langfuse、LangSmith 已有独立 Agent、内容策略与终态、mixed inline/reference Workflow、单节点 preview 和普通 Workflow legacy 兼容证据。腾讯云已有云端查询证据；OSS MLflow 与 Phoenix 的本轮证据来自私有匿名实例，不代表真实账号鉴权通过。Arize 尚无平台端到端证据，阿里云暂缓验收。Databricks 的 PAT / experiment storage 结果不代表 OAuth M2M 或 Unity Catalog；OSS MLflow 已作为独立 provider 单独验收。支持声明、供应商接收 ACK、独立查询和浏览器 UI 验收分别记载，跨 Workflow 内部节点不保证同树。
+Langfuse、LangSmith 已有独立 Agent、内容策略与终态、mixed inline/reference Workflow、单节点 preview 和普通 Workflow legacy 兼容证据。腾讯云已有云端查询证据；OSS MLflow 与 Phoenix 的本轮证据来自私有匿名实例，不代表真实账号鉴权通过。2026-10-20 已恢复 Arize Cloud 真实账号验收，当前证据与配置契约见第 12.11 节；此前暂缓记录保留为历史。Databricks 的 PAT / experiment storage 结果不代表 OAuth M2M 或 Unity Catalog；OSS MLflow 已作为独立 provider 单独验收。支持声明、供应商接收 ACK、独立查询和浏览器 UI 验收分别记载，跨 Workflow 内部节点不保证同树。
 
 ## 1. 接入位置与配置归属
 
@@ -482,7 +482,7 @@ API 没有 `pending` 和 `incomplete` 状态。若 UI 使用“处理中/pending
 
 先使用非空 `span_url` 定位 Agent 调用；没有 span 深链时使用非空 `trace_url`；两者都为空时，可使用运行响应中的非空 `project_url` 展示“查看项目”。三个 URL 都为空时隐藏跳转操作。项目链接不证明本次运行已上报或可查询。
 
-运行 `project_url` 只读取运行开始时冻结的目的地元数据，不查询当前应用配置、不解密凭据、不调用第三方。配置创建和更新时会尝试保存项目链接；Langfuse、LangSmith、Arize、Phoenix、Opik、Weave、MLflow、Databricks 可提供，解析失败返回 null。Weave 自配置验证修复后保存项目链接；Aliyun、Tencent 仅有平台控制台地址，运行接口不将其作为项目链接，均返回 null。旧运行快照缺少项目链接时也返回 null，不追溯补填。仅返回有效且不含 URL 用户名/密码的 HTTP(S) 链接。
+运行 `project_url` 只读取运行开始时冻结的目的地元数据，不查询当前应用配置、不解密凭据、不调用第三方。配置创建和更新时会尝试保存项目链接；Langfuse、LangSmith、Arize、Phoenix、Opik、Weave、MLflow、Databricks 可提供，解析失败返回 null。Arize 只使用显式保存时由官方元数据解析的精确项目链接；旧 `redirect_project_name` 实际落到 Home，不再作为有效项目链接展示，物理历史快照不改写。Weave 自配置验证修复后保存项目链接；Aliyun、Tencent 仅有平台控制台地址，运行接口不将其作为项目链接，均返回 null。旧运行快照缺少项目链接时也返回 null，不追溯补填。仅返回有效且不含 URL 用户名/密码的 HTTP(S) 链接。
 
 配置面板中的 `project_url` 对应当前配置，不能替代历史运行的回退链接，也不能要求仅有日志权限的用户读取配置凭据。运行详情只使用运行响应的 URL，不用 Dify message/workflow ID 自行拼供应商 URL。
 
@@ -805,13 +805,87 @@ reference Agent 日志弹窗仍未显示 tracing 面板，沿用 [DIFY-2985](htt
 ### 12.10 未验证范围与后续前端验收
 
 - 普通无 Agent Workflow legacy 已分别取得 Langfuse、LangSmith、Opik、腾讯云、OSS MLflow 与 Phoenix 平台证据；普通 Chatflow 未补独立真实平台证据。LangSmith 的同 tenant 两应用不同项目并发、双向零串数和恢复配置后的历史深链已验证；Opik 的独立项目并发证据见 12.8，只有项目链接回退，不据此声明 trace 深链。
-- Arize 仍没有平台端到端收数 / 查询验收，阿里云暂缓。Weave 平台 UI 的后续专项、OSS MLflow / Phoenix 的真实账号鉴权及各供应商列明的专项仍待完成；匿名实例、实现或协议测试不等于账号已验证。
+- 本节原始记录中 Arize 未验、阿里云暂缓；后续恢复的验收以各自补充记录为准，Arize 当前进展见 12.11。Weave 平台 UI 的后续专项、OSS MLflow / Phoenix 的真实账号鉴权及各供应商列明的专项仍单独记录；匿名实例、实现或协议测试不等于账号已验证。
 - LangSmith 的原生 cache token breakdown 和 first-token-time 专项未验证，当前相关值仅在存在时保留 metadata；`native_usage=true` 不代表所有 usage 细项全支持。
 - 跨 tenant 隔离、ingestion 写入 429 和凭据撤销没有在本轮 LangSmith 账号上执行；本次遇到的查询 429 不替代投递限流验收。公共层 / 合约测试不能写成 LangSmith 平台全部验收完成。
 - Agent 调用子 Workflow：只保证外层工具 span；内部节点仅关联，不承诺跨 Workflow 完整同树。
 - dev 新增 Web 页面中已核对上一节列出的 Agent 配置展示和保存；其他权限、状态轮询、Workflow 继承展示及供应商网页跳转需继续按前端任务验收，不将局部页面操作视为全部前端功能通过。
 - 全局 feature 已通过真实 Console HTTPS 回读：不传 app/provider 参数，在隔离 Agent 未选 provider 的情况下分别返回 false、true，dev 的 `model_billing_source` / `model_billing_migration_status` 字段保持。常规 base + override 两文件配置已核对 9 个相关开关持久为 true，无需临时 gate overlay；main 默认 false 未改。此轮结果不替代后续 CI 部署完成后的版本核对。
 - UI 验收中，原已配置 Agent 的不可用提示在开启后消失；通过页面发起的一次真实工具调用成功，Weave 独立查询得到 6 calls、2 LLM / 1 tool、4691 tokens，canonical ID、parent、session、内容及深链检查通过。DIFY-2995 对应的全局字段消费已出现在最新 dev 前端代码中；任务完整验收和状态另行跟踪，不能以 Databricks 成功主流程替代全部空配置 / 权限场景。
+
+### 12.11 Arize Cloud 真实账号验收与配置修复（2026-10-20）
+
+本批在 dev `d8c91c98919f` 通过 Dify UI 配置并触发业务，再使用 Arize 原生 UI 和官方只读 `/v2/projects`、`/v2/spans` 核对。以下均为独立业务执行；旧配置校验产生的 `api_check` 不计入。
+
+| 案例 | 原生 spans | 内容 / Agent 内部过程 | 结果 |
+| --- | ---: | --- | --- |
+| Agent OFF01 | 6 | 关闭 / 开启 | 2 LLM + 1 tool；4696 tokens；I/O 和工具参数未外发 |
+| Agent ON02 | 6 | 开启 / 开启 | 2 LLM + 1 tool；4906 tokens；保留本轮语义 I/O；上一轮快照不变 |
+| Agent OUTER03 | 1 | 开启 / 关闭 | 仅外层 CHAIN；无内部调用或 generation usage，原生 UI Cost 为 `--`，不补零 |
+| 并发 Agent A04 | 6 | 开启 / 开启 | 5375 tokens；与另一个项目的完整 Workflow 实际重叠 7.579576 秒 |
+| 普通 LLM + inline Agent Workflow | 10 | 关闭 / 开启 | 3 LLM + 1 tool；4762 tokens；4 个 Workflow 节点成功 |
+| 独立 inline 单节点预览 | 6 | 关闭 / 开启 | 2 LLM + 1 tool；4736 tokens；无父 Workflow run，session/trace/spans 独立 |
+| 普通 LLM + reference Agent Workflow | 10 | 关闭 / 开启 | 3 LLM + 1 tool；4766 tokens；归属调用方 Arize 项目，被引用 Agent 的 Aliyun 策略及 published v3 snapshot 不变 |
+
+核对完整分页下的 span ID、parent、trace/session、模型、tokens、状态、时间和 metadata 费用。两个实际项目分别有完整正例，反向查询对方 trace 均无命中。平台返回的 token 十进制字符串按无损整数/语义 hash 比较；平台费用值的来源尚未据此确定，`native_cost=false` 不变，metadata 费用不冒充原生成本能力。原生查询表示核对不等于原始 OTLP 字节相同。
+
+发现两项真实后端问题：旧项目 redirect 实际落到 Home；旧 `SimpleSpanProcessor` 校验忽略导出拒绝，使错误 Key 的 PATCH 返回 200 并保存。有效凭据随后由 UI 恢复，未使用错误配置运行业务。修复的生产代码为 `ba5f59c6f9`，严格类型断言兼容提交为 `d5b7d410af`；部署后实测单独记录，不能将这批 d8 的业务证据当作修复后版本验证。
+
+前端继续使用原 `api_key`、`space_id`、`project`、`endpoint` 字段和 Agent/App 的 POST/PATCH `trace-config` 路由：
+
+- 保存同步等待仅含 resource 的 gRPC Export ACK，RPC deadline 5 秒，无重试、不发送 span、不调用项目创建接口；该 ACK 不证明项目存在或已建立。拒绝、超时、partial 或未知响应返回 HTTP 400 `tracing_config_verification_failed`；原配置、激活及采集策略保持。沿用标准错误处理，不显示保存成功。
+- `api_key` 和 `space_id` 继续加密。PATCH 使用服务端实际脱敏回显，后端恢复原值后校验；前端不上传服务端目的地缓存。
+- 只有显式保存可读取官方元数据，解析后冻结精确 organization/space/project 链接。配置和运行 GET 无 vendor I/O；`project_url` 可以为空，配置面板禁用或隐藏跳转，运行详情在全部 URL 为空时隐藏操作，不使用 Home 或旧 redirect 替代。
+- 有效 ingest-only Key 不因缺少元数据读权限而被拒绝。项目不存在或旧 Space 响应缺少 organization ID 时无链接；实际业务建立项目后，可显式重存解析链接。默认 US collector 的可选链接解析不外推到其他 collector。
+- 旧 accepted 快照不回填、不重投，未经验证的旧 redirect 不再展示。`trace_url=false`、`span_url=false` 保持；精确项目链接仍只是项目级回退。
+
+同步 ACK、拒绝原子性及 masked PATCH 有实际 Flask Resource → SQL/RSA → 本地 gRPC 的自动化测试，共 532 项相关测试通过；这些不替代现场凭据撤销、重连、429/5xx 或完整故障恢复验收。
+
+#### 修复后 dev 回归
+
+dev `41eb10a66d` 已通过标准 Build/Deploy；7 服务与镜像 revision、5 个 API/worker/beat 容器的生产源码、Agent runtime、开关、持久 Compose 及数据库单头 `c9` 均实际核对，API 健康。该 dev 保留同事前端及部署兼容提交，不能将其整份代码等同于 main。
+
+| 场景 | 实际结果与边界 |
+| --- | --- |
+| 两入口配置保存 | Agent/App 的 masked PATCH 均成功，精确项目链接在原生 UI 打开各自项目；旧未经验证的配置链接变为不可点击。两次错误 Key PATCH 均 HTTP 400，表单保留校验失败提示；provider 全行/xmin/密文/项目缓存/App 策略及 6 份历史冻结记录的 hash 不变。该证据不冒充工作进程内 LRU 观测。 |
+| 修复后并发 09/10 | Agent 6 spans / 5580 tokens；完整 inline Workflow 10 spans / 4762 tokens，真实执行重叠 4.736072 秒。Workflow 详情显示已发送及“打开项目”，链接对应冻结项目。 |
+| 项目切换 11 | 新 Agent 运行 6 spans / 5787 tokens 仅在项目 B；恢复当前项目 A 后，09 仍仅在 A，11 仍仅在 B，两个反向查询均无命中且有完整正例控制。 |
+| 模型错误 12 | 4 spans / root ERROR；错误、ID、父子、内容与 metadata 匹配。canonical LLM usage 未知，生产 mapper 和 OTLP protobuf 均未发送 token 属性；Arize 查询却投影 total 字符串 0。保留严格 usage 比较不等的原始记录，不补 canonical 零值，不推断计费为零。 |
+| 工具超时 13 | 实际为工具超时后正常答复，6 spans / 6113 tokens；本轮没有点击 Stop，不能计作取消通过。 |
+| 工具执行中停止 14 | 明确点击 Stop，服务端 HTTP 200；真实 runtime status=cancelled 且唯一 run_cancelled 事件，工具关联 hash 与 SQL 匹配。Arize 完整 5 spans / 2350 tokens，root ERROR；不要求已完成的所有子 span 都变为 ERROR。 |
+| 停止后恢复 15 | 同一会话下一轮正常，6 spans / 4916 tokens，独立 source/trace，无旧任务关联。 |
+| 应用关闭 16 | 业务成功、5120 recorded tokens；冻结状态 not_collected，attempt/invocation/batch 均为 0，实际状态 DTO 无 trace/span/project URL。补充原生窄窗查询有 17 的完整 6-span 正例，16 自身关联记录为 0，排除按重新开启的当前配置误走旧异步出口。17 合法历史上下文包含 16 的文本，不等同于给 16 新建或补发 trace。 |
+| 重新开启 17 | 6 spans / 5327 tokens，实际父消息链 14→15→16→17 与同一会话匹配，均非重投旧记录。 |
+
+已采集的每个新 managed trace 均只领取投递一次，保留完整分页的原生树对照。取消后的正常运行与未采集记录的关联也由实际持久化 source 核对，不依赖点击时间猜测。原生 UI/查询表示、ACK、状态 DTO 和实际 runtime 终态分别记录。
+
+普通无 Agent Workflow（07）有原生 5 spans / 32 tokens；普通 Chat（08）有 3 spans / 72 tokens。两者保留旧 SDK 树：Workflow 节点使用持久 predecessor，不能要求按画布 graph.edges 重建；最外层 dispatch wrapper 的极短时长不代表业务耗时，真实 business/LLM 子 span 才对应源时间。Chat 实测还发现私有队列消息序列化丢失 model_provider，故旧样本不能称全部 metadata 保真。修复 `eabe2742d0` 仅让新 writer 保留准确值、reader 兼容缺字段/null；281 项相关测试和真实 Message→TaskData JSON→Celery consumer→Arize SDK 因果红绿测试通过，旧平台样本不回填或重投。
+
+该修复已正常发布到 dev `29acde9afe`，7 服务、16 份 API 源码（含上述模型文件）、开关、数据库 `c9` 和健康检查通过。新普通 Chat 18 的真实 SQL→TraceTask→TaskData JSON→consumer→Arize 链路保留准确 provider，平台完整 3 spans / 122 tokens；新 Agent 19 为完整 6 spans / 5538 tokens、仅投递一次，ID、父子、session、I/O、模型、usage、状态及 metadata 全部核对通过。此时共执行 20 个 UI 业务案例、查到 111 个唯一业务 spans；总数包含旧失败样本及上述投影边界，不能用总量冒充全部字段无差异。
+
+最终原始 Agent 的 published v3、已有 provider 配置与采集策略、克隆/新 fixture 的 Agent 快照及模型/工具均保持预期。Workflow B 的 draft 整份 graph JSON 与早期记录不完全相同，前后实际运行冻结图逐路径仅 viewport.x/y 改变，所有业务 node data、binding 和 snapshot 均相同；不宣称画布原字节未变。发布与新版本验收没有回填、覆盖或重投旧 accepted/failed/uncertain 样本。
+
+独立 Agent 的正式 Web App / 日志入口已于 10-21 经用户授权临时开放完成验收，详见 12.12；测试后入口已关闭。真实账号凭据撤销、断连重试/429/5xx、跨 tenant 及 ingest-only 权限专项仍未覆盖；没有依据将整个供应商矩阵标为完成。
+
+### 12.12 Arize 正式 Web App 与 Agent 日志闭环（2026-10-21）
+
+用户明确授权临时发布并开放隔离 Agent。通过 Dify UI 发布 snapshot v2，从正式 Web App 发送 `ARIZE-E2E-20261021-WEBAPP-20`，工具计算 `17*19` 后正常回复 `323` 及 marker。SQL 确认 `invoke_from=web-app`、browser EndUser 严格属于同 App/tenant，绑定正式 snapshot，而非预览草稿。
+
+| 检查 | 结果 |
+| --- | --- |
+| 正式来源 | message `cd5c9afc-b942-4088-b152-a1a1e2ea9374`；conversation `81695dce-5689-4be6-99e9-9af48df08b2f`；published snapshot v2 `01a15c3a-8c96-78b2-971e-1095bb19a5d1`。 |
+| 日志与跳转 | 正式 Agent 日志显示对应轮次及“已发送至 Arize”；“打开项目”实际落到当次冻结的 `dify-arize-e2e-20261020`，能看到该输入/回复。实际 DTO 的 `trace_url` / `span_url` 为 null，能力为 false，不把项目回退称作执行深链。 |
+| 原生数据 | trace `01a15c3b6aff7bcc9efc4aa6579f46e1` accepted 一次；官方只读精确查询完整 6 spans：2 LLM、1 tool、另 3 层 chain/agent。ID、父子、session、模型/provider、状态、内容及 usage 匹配；4648 input + 45 output = 4693 tokens。DTO `span_count=4` 是内部片段口径，不混同完整原生树的总数。`native_cost=false` 不变。 |
+| 访问恢复 | 10:14:10（Asia/Shanghai）从界面关闭 Web App；API 已关闭，未创建 API Key。刷新公开地址显示“此应用不存在，或无法从您的网络访问”。10:16:45 SQL 独立读回 `enable_site=false`、`enable_api=false`、API Key=0。授权发布的隔离 v2 及旧 seed v1 均保留，其他应用未改。 |
+| 版本边界 | 本次仍运行在 dev `29acde9afe`；7 服务、开关、关键源码和健康检查再次读回。此前 20 个案例加本次合计 21 次 UI 业务执行、117 个唯一原生业务 spans，包含旧失败及投影边界，不声称所有历史字段无差异。 |
+
+结合此前九供应商历史状态/冻结链接、正式多轮、Workflow 与错误文案回归，前端展示和跳转范围 [DIFY-2985](https://linear.app/dify/issue/DIFY-2985) 已设 Done；Databricks 的历史平台深链仍注明由用户人工确认。完整故障矩阵 DIFY-2986、Arize 供应商项 DIFY-2989 及后端汇总 DIFY-2976 继续 In Review；DIFY-2995 的关闭部署/低权限环境缺口按用户决定保留。
+
+10-21 后续为处理 main 新提交造成的合并冲突，保留双方持久化测试并重新生成 API 契约；新增无 DDL 的 migration merge `d6b9e2f1a407` 连接 `a8c3e7f4b912` 与 `f7e2c9a6d481`，不重写旧迁移。上游的 Workflow Tool 迁移及 Graphon Git pin 属于合入 main 的版本范围，不能用本节 dev `29acde9afe` 的验收冒充其端到端验证；新 head 的 CI 单独核对，dev 数据库未在此步骤升级。
+
+新引入的 **Workflow Tool 容器内部 Agent 暂不采集内部 Agent spans**：该子执行使用 source app 上下文，保留父 run ID，但子节点不在根 graph 中。本轮在 `workflow_tool_invocation_id` 非 None 时于 tracing 服务构造前跳过，避免按子应用当前策略预留父运行的记录或产生缺少父节点的树；不改变常规根 Workflow、inline/reference 和 detached preview 的既有范围。外层工具/legacy 记录不能作为内部 Agent 全树已采集的证明，相关 usage 也不据此宣称覆盖隐藏内部模型调用。完整根归属、开始时冻结、父子树、统计及真实平台验收由 [DIFY-3008](https://linear.app/dify/issue/DIFY-3008) 跟踪；这是新上游功能的明确边界，不宣称已发生真实供应商串数据。
+
+随后合入 main `7d039cb619`，保留新增的 Workflow Tool 对外导出过滤。`a1d41de2e8` 首轮 CI 在合成的主分支合并树上出现 29 个 API 单测失败：LogStore 读取已改为 `execute_sql`，两个旧 fixture 只隔离 `get_logs`；新增 MLflow 边界测试也只隔离全局 tracer，遗漏了私有客户端请求。修复仅调整三个测试的传输边界，保留租户/所有者/无 SQL 事务跨 I/O 及内部数据排除断言，并用底层 HTTP/socket tripwire 禁止真实网络；不是修改生产逻辑、timeout、skip 或覆盖率门槛来通过。旧 head 的覆盖率报告缺失失败的两个 API unit 上传，不能沿用其不完整比例或更早的全绿作为新 head 结论。该轮 Docker 基础镜像 token 超时与上述单测问题分开记录，失败/连带取消任务仅重跑一次后通过。最终 CI 以 PR 当前提交及其实际合并树的检查为准。
 
 ## 13. 定稿检查与代码定位
 

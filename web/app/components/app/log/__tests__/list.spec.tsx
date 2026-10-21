@@ -442,6 +442,40 @@ it('adds, edits and removes an annotation from a conversation answer', async () 
   })
 })
 
+it('removes the annotation of the displayed answer when the conversation has regenerated answers', async () => {
+  const user = userEvent.setup()
+  api.messages.mockResolvedValue({
+    data: [
+      createChatMessage('message-1'),
+      createChatMessage('message-2', { parent_message_id: 'message-1' }),
+      createChatMessage('message-3', {
+        parent_message_id: 'message-1',
+        annotation: {
+          id: 'annotation-3',
+          content: 'Annotated answer',
+          account: { id: 'account-1', email: 'admin@example.com', name: 'Admin' },
+          created_at: 1710000100,
+        },
+      }),
+    ],
+    has_more: false,
+    limit: 10,
+  })
+  renderConversationList({ searchParams: '?conversation_id=conversation-1' })
+  await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+  const editor = await screen.findByRole('dialog', { name: 'appAnnotation.editModal.title' })
+  await user.click(
+    within(editor).getByRole('button', { name: 'appAnnotation.editModal.removeThisCache' }),
+  )
+  const confirm = await screen.findByRole('alertdialog')
+  await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() =>
+    expect(api.removeAnnotation).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', annotation_id: 'annotation-3' },
+    }),
+  )
+})
+
 it('loads older messages at the top using the oldest answer as the pagination cursor', async () => {
   api.messages
     .mockResolvedValueOnce({

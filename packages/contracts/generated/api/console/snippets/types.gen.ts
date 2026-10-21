@@ -54,9 +54,7 @@ export type SnippetWorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
+export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type SnippetWorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
@@ -354,6 +352,13 @@ export type SimpleEndUser = {
   id: string
   is_anonymous: boolean
   session_id?: string | null
+  type: string
+}
+
+export type DefaultBlockConfigItemResponse = {
+  config: {
+    [key: string]: unknown
+  }
   type: string
 }
 

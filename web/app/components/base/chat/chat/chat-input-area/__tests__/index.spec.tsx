@@ -8,11 +8,21 @@ import { FeaturesProvider } from '@/app/components/base/features/context'
 import { transcribeAudio } from '@/app/components/base/voice-input/api'
 import { startVoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import { InputVarType } from '@/app/components/workflow/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
 import ChatInputArea from '../index'
 
-const render = (ui: React.ReactNode) => rtlRender(ui, { wrapper: FeaturesProvider })
+const render = (ui: React.ReactNode) => {
+  const { wrapper: ConsoleWrapper } = createConsoleQueryWrapper()
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <ConsoleWrapper>
+        <FeaturesProvider>{children}</FeaturesProvider>
+      </ConsoleWrapper>
+    ),
+  })
+}
 
 // ---------------------------------------------------------------------------
 // External dependency mocks

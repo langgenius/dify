@@ -99,6 +99,12 @@ def prepare_workflow_agent(
     if not dify_config.OPS_AGENT_TRACE_ENABLED:
         return None
     try:
+        # Hidden Tool nodes own a different app but share the caller's run and are
+        # absent from its outer trace. Neither a source-app snapshot nor an orphan
+        # parent is safe. Keep this new nested scope uncollected until it has an
+        # explicit owner/parent contract; ordinary nodes and previews are unchanged.
+        if context.dify_context.workflow_tool_invocation_id is not None:
+            return None
         source_id = context.workflow_run_id or context.node_execution_id
         return _service().prepare_invocation(
             tenant_id=context.dify_context.tenant_id,

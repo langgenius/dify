@@ -21,6 +21,7 @@ import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentBuildChat } from '../build-chat'
 import { AgentPreviewChat } from '../preview-chat'
 
+// oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing SSE transport used by Agent preview.
 const ssePost = vi.hoisted(() => vi.fn<typeof import('@/service/base').ssePost>())
 const api = vi.hoisted(() => ({
   history: vi.fn(),
@@ -41,10 +42,6 @@ vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   ssePost,
 }))
-vi.mock('@/service/common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/common')>()),
-  uploadRemoteFileInfo: api.uploadRemote,
-}))
 // Audio capture/encoding is a platform boundary; keep VoiceInput and its service routing real.
 vi.mock('@/app/components/base/voice-input/recorder', () => ({ startVoiceRecorder: api.record }))
 vi.mock('@/service/console', async (importOriginal) => {
@@ -55,6 +52,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.byAgentId.chatMessages.get': api.history,
+      'remoteFiles.upload.post': api.uploadRemote,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'agent.byAgentId.chatMessages.byMessageId.suggestedQuestions.get': api.suggestions,
@@ -682,6 +680,7 @@ it.each(['sse', 'http'])(
   'renders a persistent safe error from the real %s transport',
   async (transport) => {
     const actual = await vi.importActual<typeof import('@/service/base')>('@/service/base')
+    // oxlint-disable-next-line typescript/no-deprecated -- Restore the real SSE parser for the transport regression test.
     ssePost.mockImplementation(actual.ssePost)
     const payload = {
       event: 'error',

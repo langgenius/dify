@@ -58,9 +58,9 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
         <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
       </button>
       <Run
+        appId={appId}
         hideResult
         activeTab={activeTab}
-        appId={appId}
         runDetailUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}`}
         tracingListUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
       />
@@ -109,9 +109,9 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
         <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
       </button>
       <Run
+        appId={appId}
         hideResult
         activeTab={activeTab}
-        appId={appId}
         runDetailUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}`}
         tracingListUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
       />

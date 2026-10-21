@@ -286,6 +286,7 @@ const WorkflowPreview = () => {
           )}
           {currentTab === 'TRACING' && (
             <TracingPanel
+              key={workflowRunningData?.result.id}
               externalTraceRun={
                 appId && workflowRunningData?.result?.id
                   ? { appId, workflowRunId: workflowRunningData.result.id }
@@ -293,6 +294,15 @@ const WorkflowPreview = () => {
               }
               className="bg-background-section-burn"
               list={workflowRunningData?.tracing || []}
+              workflowRun={
+                appId && workflowRunningData?.result.id
+                  ? {
+                      appId,
+                      runId: workflowRunningData.result.id,
+                      status: workflowRunningData.result.status,
+                    }
+                  : undefined
+              }
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (

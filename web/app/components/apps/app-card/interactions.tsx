@@ -5,7 +5,7 @@ import type {
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
-import type { FormEventHandler, MouseEvent, ReactElement } from 'react'
+import type { MouseEvent, ReactElement, SubmitEventHandler } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
@@ -361,7 +361,7 @@ export function AppCardInteractions({
   const deleteNameMismatch = confirmDeleteInput !== app.name
   const isDeleteConfirmDisabled = isDeleting || deleteNameMismatch
 
-  const onDeleteDialogSubmit: FormEventHandler<HTMLFormElement> = useCallback(
+  const onDeleteDialogSubmit: SubmitEventHandler<HTMLFormElement> = useCallback(
     (e) => {
       e.preventDefault()
       if (isDeleteConfirmDisabled) return
