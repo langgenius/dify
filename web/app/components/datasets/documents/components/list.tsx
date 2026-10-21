@@ -37,7 +37,10 @@ type DocumentListProps = {
   embeddingAvailable: boolean
   documents: LocalDoc[]
   selectedIds: string[]
+  selectedDocuments: LocalDoc[]
   onSelectedIdChange: (selectedIds: string[]) => void
+  onRemoveSelectedDocuments: (documentIds: string[]) => void
+  onClearSelection: () => void
   datasetId: string
   pagination: PaginationProps
   onUpdate: () => void
@@ -53,7 +56,10 @@ const DocumentList = ({
   embeddingAvailable,
   documents = [],
   selectedIds,
+  selectedDocuments,
   onSelectedIdChange,
+  onRemoveSelectedDocuments,
+  onClearSelection,
   datasetId,
   pagination,
   onUpdate,
@@ -95,21 +101,20 @@ const DocumentList = ({
   })
 
   // Selection
-  const { hasErrorDocumentsSelected, downloadableSelectedIds, clearSelection } =
-    useDocumentSelection({
-      documents,
-      selectedIds,
-      onSelectedIdChange,
-    })
+  const { hasRecoverableDocumentsSelected, downloadableSelectedIds } = useDocumentSelection({
+    selectedDocuments,
+  })
   const documentIds = useMemo(() => documents.map((doc) => doc.id), [documents])
 
   // Actions
   const { handleAction, handleBatchReIndex, handleBatchDownload } = useDocumentActions({
     datasetId,
     selectedIds,
+    selectedDocuments,
     downloadableSelectedIds,
     onUpdate,
-    onClearSelection: clearSelection,
+    onClearSelection,
+    onRemoveFromSelection: onRemoveSelectedDocuments,
   })
 
   // Batch edit metadata
@@ -270,11 +275,11 @@ const DocumentList = ({
           }
           onEditMetadata={datasetACLCapabilities.canEdit ? showEditModal : undefined}
           onBatchReIndex={
-            datasetACLCapabilities.canEdit && hasErrorDocumentsSelected
+            datasetACLCapabilities.canEdit && hasRecoverableDocumentsSelected
               ? handleBatchReIndex
               : undefined
           }
-          onCancel={clearSelection}
+          onCancel={onClearSelection}
         />
       )}
 

@@ -72,6 +72,12 @@ function List() {
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
       placeholderData: keepPreviousData,
+      refetchInterval: (query) =>
+        query.state.data?.pages.some(({ data }) =>
+          data.some((dataset) => dataset.vector_indexing_status === 'indexing'),
+        )
+          ? 2500
+          : false,
     }),
   )
   const pages = datasetListQuery.data?.pages ?? []

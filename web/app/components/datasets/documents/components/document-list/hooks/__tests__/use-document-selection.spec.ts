@@ -1,6 +1,6 @@
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import { useDocumentSelection } from '../use-document-selection'
 
@@ -25,41 +25,44 @@ const createMockDocument = (overrides: Partial<LocalDoc> = {}): LocalDoc => ({
 })
 
 describe('useDocumentSelection', () => {
-  describe('hasErrorDocumentsSelected', () => {
-    it('should return false when no error documents are selected', () => {
+  describe('hasRecoverableDocumentsSelected', () => {
+    it('returns false when the selected error document has no server recovery action', () => {
       const docs = [
         createMockDocument({ id: 'doc1', display_status: 'available' }),
-        createMockDocument({ id: 'doc2', display_status: 'error' }),
+        createMockDocument({
+          id: 'doc2',
+          display_status: 'error',
+          enabled: false,
+          indexing_retry_action: null,
+        }),
       ]
-      const onSelectedIdChange = vi.fn()
 
       const { result } = renderHook(() =>
         useDocumentSelection({
-          documents: docs,
-          selectedIds: ['doc1'],
-          onSelectedIdChange,
+          selectedDocuments: docs,
         }),
       )
 
-      expect(result.current.hasErrorDocumentsSelected).toBe(false)
+      expect(result.current.hasRecoverableDocumentsSelected).toBe(false)
     })
 
-    it('should return true when an error document is selected', () => {
+    it('returns true when a selected document has a server recovery action', () => {
       const docs = [
         createMockDocument({ id: 'doc1', display_status: 'available' }),
-        createMockDocument({ id: 'doc2', display_status: 'error' }),
+        createMockDocument({
+          id: 'doc2',
+          display_status: 'error',
+          indexing_retry_action: 'enable',
+        }),
       ]
-      const onSelectedIdChange = vi.fn()
 
       const { result } = renderHook(() =>
         useDocumentSelection({
-          documents: docs,
-          selectedIds: ['doc2'],
-          onSelectedIdChange,
+          selectedDocuments: docs,
         }),
       )
 
-      expect(result.current.hasErrorDocumentsSelected).toBe(true)
+      expect(result.current.hasRecoverableDocumentsSelected).toBe(true)
     })
   })
 
@@ -70,13 +73,9 @@ describe('useDocumentSelection', () => {
         createMockDocument({ id: 'doc2', data_source_type: DataSourceType.NOTION }),
         createMockDocument({ id: 'doc3', data_source_type: DataSourceType.FILE }),
       ]
-      const onSelectedIdChange = vi.fn()
-
       const { result } = renderHook(() =>
         useDocumentSelection({
-          documents: docs,
-          selectedIds: ['doc1', 'doc2', 'doc3'],
-          onSelectedIdChange,
+          selectedDocuments: docs,
         }),
       )
 
@@ -88,13 +87,9 @@ describe('useDocumentSelection', () => {
         createMockDocument({ id: 'doc1', data_source_type: DataSourceType.NOTION }),
         createMockDocument({ id: 'doc2', data_source_type: DataSourceType.WEB }),
       ]
-      const onSelectedIdChange = vi.fn()
-
       const { result } = renderHook(() =>
         useDocumentSelection({
-          documents: docs,
-          selectedIds: ['doc1', 'doc2'],
-          onSelectedIdChange,
+          selectedDocuments: docs,
         }),
       )
 

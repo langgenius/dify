@@ -326,8 +326,9 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             {documentDetail && (
               <StatusItem
                 status={displayStatus ?? 'available'}
+                retryAction={documentDetail.indexing_retry_action}
                 scene="detail"
-                errorMessage={documentDetail.error || ''}
+                errorMessage={documentDetail.error ?? undefined}
                 textCls="font-semibold text-xs uppercase"
                 detail={statusDetail}
                 datasetId={datasetId}

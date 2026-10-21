@@ -16,6 +16,7 @@ import {
   hasOnlyDatasetPreviewPermission,
   hasPermission,
 } from '@/utils/permission'
+import { VectorIndexStatus } from '../../vector-index-status'
 import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
@@ -103,6 +104,7 @@ const DatasetCard = ({
     <>
       <DatasetCardHeader dataset={dataset} nameId={nameId} />
       <Description dataset={dataset} />
+      <VectorIndexStatus dataset={dataset} />
     </>
   )
   const entryClassName =

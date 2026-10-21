@@ -26,7 +26,7 @@ type IDocumentsProps = {
 
 const POLLING_INTERVAL = 2500
 const TERMINAL_INDEXING_STATUSES = new Set(['completed', 'paused', 'error'])
-const FORCED_POLLING_STATUSES = new Set(['queuing', 'indexing', 'paused'])
+const FORCED_POLLING_STATUSES = new Set(['queuing', 'indexing'])
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const router = useRouter()
@@ -60,7 +60,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     handlePageChange,
     handleLimitChange,
     selectedIds,
-    setSelectedIds,
+    selectedDocuments,
+    updateSelectedDocuments,
+    removeSelectedDocuments,
+    clearSelectedDocuments,
   } = useDocumentsPageState()
 
   // Fetch document list
@@ -154,6 +157,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   const total = documentsRes?.total || 0
   const documentsList = documentsRes?.data
+  const handleSelectedIdChange = useCallback(
+    (nextSelectedIds: string[]) => updateSelectedDocuments(documentsList ?? [], nextSelectedIds),
+    [documentsList, updateSelectedDocuments],
+  )
 
   // Render content based on loading and data state
   const renderContent = () => {
@@ -167,7 +174,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           datasetId={datasetId}
           onUpdate={handleUpdate}
           selectedIds={selectedIds}
-          onSelectedIdChange={setSelectedIds}
+          selectedDocuments={selectedDocuments}
+          onSelectedIdChange={handleSelectedIdChange}
+          onRemoveSelectedDocuments={removeSelectedDocuments}
+          onClearSelection={clearSelectedDocuments}
           remoteSortValue={sortValue}
           onSortChange={handleSortChange}
           pagination={{

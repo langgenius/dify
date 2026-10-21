@@ -5,7 +5,7 @@ import { fetchIndexingStatus, pauseDocIndexing, resumeDocIndexing } from '@/serv
 
 const NAME_SPACE = 'embedding'
 
-const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning'] as const
+const EMBEDDING_STATUSES = ['waiting', 'indexing', 'splitting', 'parsing', 'cleaning'] as const
 const TERMINAL_STATUSES = ['completed', 'error', 'paused'] as const
 
 export const isEmbeddingStatus = (status?: string): boolean => {
@@ -14,6 +14,10 @@ export const isEmbeddingStatus = (status?: string): boolean => {
 
 export const isTerminalStatus = (status?: string): boolean => {
   return TERMINAL_STATUSES.includes(status as (typeof TERMINAL_STATUSES)[number])
+}
+
+export const getIndexingStatusRefetchInterval = (status?: string): number | false => {
+  return isTerminalStatus(status) ? false : 2500
 }
 
 export const calculatePercent = (completed?: number, total?: number): number => {
@@ -36,7 +40,7 @@ export const useEmbeddingStatus = ({
   onComplete,
 }: UseEmbeddingStatusOptions) => {
   const queryClient = useQueryClient()
-  const isPolling = useRef(false)
+  const isPollingRef = useRef(false)
   const onCompleteRef = useRef(onComplete)
 
   useEffect(() => {
@@ -52,13 +56,7 @@ export const useEmbeddingStatus = ({
     queryKey,
     queryFn: () => fetchIndexingStatus({ datasetId: datasetId!, documentId: documentId! }),
     enabled: enabled && !!datasetId && !!documentId,
-    refetchInterval: (query) => {
-      const status = query.state.data?.indexing_status
-      if (isTerminalStatus(status)) {
-        return false
-      }
-      return 2500
-    },
+    refetchInterval: (query) => getIndexingStatusRefetchInterval(query.state.data?.indexing_status),
     refetchOnWindowFocus: false,
   })
 
@@ -74,12 +72,12 @@ export const useEmbeddingStatus = ({
 
   // Handle completion callback
   useEffect(() => {
-    if (isTerminalStatus(status) && isPolling.current) {
-      isPolling.current = false
+    if (isTerminalStatus(status) && isPollingRef.current) {
+      isPollingRef.current = false
       onCompleteRef.current?.()
     }
     if (isEmbedding) {
-      isPolling.current = true
+      isPollingRef.current = true
     }
   }, [status, isEmbedding])
 
