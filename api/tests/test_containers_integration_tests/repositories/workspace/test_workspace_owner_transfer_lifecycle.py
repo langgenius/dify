@@ -55,23 +55,27 @@ def test_only_one_concurrent_owner_transfer_commits(workspace_engine: Engine) ->
         connection.execute(_TENANT_TABLE.delete())
         connection.execute(_ACCOUNT_TABLE.delete())
 
+    workspace_id = "00000000-0000-0000-0000-000000000001"
     workspace = Tenant(name="Workspace")
-    workspace.id = "00000000-0000-0000-0000-000000000001"
+    workspace.id = workspace_id
     accounts = []
+    account_ids = []
     for suffix, name in ((2, "Owner"), (3, "First"), (4, "Second")):
+        account_id = f"00000000-0000-0000-0000-{suffix:012d}"
         account = Account(name=name, email=f"{name.lower()}@example.com")
-        account.id = f"00000000-0000-0000-0000-{suffix:012d}"
+        account.id = account_id
         accounts.append(account)
+        account_ids.append(account_id)
     with sessionmaker(bind=workspace_engine).begin() as session:
         session.add_all([workspace, *accounts])
         session.add_all(
             [
                 TenantAccountJoin(
-                    tenant_id=workspace.id,
-                    account_id=account.id,
+                    tenant_id=workspace_id,
+                    account_id=account_id,
                     role=TenantAccountRole.OWNER if index == 0 else TenantAccountRole.NORMAL,
                 )
-                for index, account in enumerate(accounts)
+                for index, account_id in enumerate(account_ids)
             ]
         )
     ready = Barrier(2)
@@ -106,8 +110,8 @@ def test_only_one_concurrent_owner_transfer_commits(workspace_engine: Engine) ->
     def transfer(target_id: str) -> bool:
         try:
             repository.update_member_role(
-                workspace_id=workspace.id,
-                actor_account_id=accounts[0].id,
+                workspace_id=workspace_id,
+                actor_account_id=account_ids[0],
                 account_id=target_id,
                 role=TenantAccountRole.OWNER,
             )
@@ -118,10 +122,8 @@ def test_only_one_concurrent_owner_transfer_commits(workspace_engine: Engine) ->
     event.listen(workspace_engine, "before_cursor_execute", align_workspace_locks)
     try:
         with ThreadPoolExecutor(max_workers=2, thread_name_prefix="owner-transfer") as executor:
-            outcomes = [
-                future.result(timeout=30)
-                for future in (executor.submit(transfer, account.id) for account in accounts[1:])
-            ]
+            futures = [executor.submit(transfer, account_id) for account_id in account_ids[1:]]
+            outcomes = [future.result(timeout=30) for future in futures]
     finally:
         event.remove(workspace_engine, "before_cursor_execute", align_workspace_locks)
 
@@ -133,7 +135,7 @@ def test_only_one_concurrent_owner_transfer_commits(workspace_engine: Engine) ->
                 select(func.count())
                 .select_from(TenantAccountJoin)
                 .where(
-                    TenantAccountJoin.tenant_id == workspace.id,
+                    TenantAccountJoin.tenant_id == workspace_id,
                     TenantAccountJoin.role == TenantAccountRole.OWNER,
                 )
             )
@@ -147,19 +149,23 @@ def test_only_one_concurrent_member_join_claims_the_last_workspace_slot(workspac
         connection.execute(_TENANT_TABLE.delete())
         connection.execute(_ACCOUNT_TABLE.delete())
 
+    workspace_id = "00000000-0000-0000-0000-000000000011"
     workspace = Tenant(name="Workspace")
-    workspace.id = "00000000-0000-0000-0000-000000000011"
+    workspace.id = workspace_id
     accounts = []
+    account_ids = []
     for suffix, name in ((12, "Owner"), (13, "First"), (14, "Second")):
+        account_id = f"00000000-0000-0000-0000-{suffix:012d}"
         account = Account(name=name, email=f"member-{suffix}@example.com")
-        account.id = f"00000000-0000-0000-0000-{suffix:012d}"
+        account.id = account_id
         accounts.append(account)
+        account_ids.append(account_id)
     with sessionmaker(bind=workspace_engine).begin() as session:
         session.add_all([workspace, *accounts])
         session.add(
             TenantAccountJoin(
-                tenant_id=workspace.id,
-                account_id=accounts[0].id,
+                tenant_id=workspace_id,
+                account_id=account_ids[0],
                 role=TenantAccountRole.OWNER,
             )
         )
@@ -197,7 +203,7 @@ def test_only_one_concurrent_member_join_claims_the_last_workspace_slot(workspac
     def join(account_id: str) -> bool:
         try:
             repository.upsert_member(
-                workspace_id=workspace.id,
+                workspace_id=workspace_id,
                 account_id=account_id,
                 role=TenantAccountRole.NORMAL,
                 quota=quota,
@@ -209,9 +215,8 @@ def test_only_one_concurrent_member_join_claims_the_last_workspace_slot(workspac
     event.listen(workspace_engine, "before_cursor_execute", align_workspace_locks)
     try:
         with ThreadPoolExecutor(max_workers=2, thread_name_prefix="member-join") as executor:
-            outcomes = [
-                future.result(timeout=30) for future in (executor.submit(join, account.id) for account in accounts[1:])
-            ]
+            futures = [executor.submit(join, account_id) for account_id in account_ids[1:]]
+            outcomes = [future.result(timeout=30) for future in futures]
     finally:
         event.remove(workspace_engine, "before_cursor_execute", align_workspace_locks)
 
@@ -220,7 +225,7 @@ def test_only_one_concurrent_member_join_claims_the_last_workspace_slot(workspac
     with workspace_engine.connect() as connection:
         assert (
             connection.scalar(
-                select(func.count()).select_from(TenantAccountJoin).where(TenantAccountJoin.tenant_id == workspace.id)
+                select(func.count()).select_from(TenantAccountJoin).where(TenantAccountJoin.tenant_id == workspace_id)
             )
             == 2
         )
@@ -293,7 +298,8 @@ def test_deployment_quota_serializes_current_usage_check_and_insert(workspace_en
     event.listen(workspace_engine, "before_cursor_execute", align_quota_locks)
     try:
         with ThreadPoolExecutor(max_workers=2, thread_name_prefix="quota-writer") as executor:
-            outcomes = [future.result(timeout=30) for future in (executor.submit(create_resource, i) for i in (1, 2))]
+            futures = [executor.submit(create_resource, index) for index in (1, 2)]
+            outcomes = [future.result(timeout=30) for future in futures]
     finally:
         event.remove(workspace_engine, "before_cursor_execute", align_quota_locks)
 

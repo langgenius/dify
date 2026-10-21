@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
@@ -20,6 +21,7 @@ from libs.exception import BaseHTTPException
 from libs.helper import TokenManager
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.workspace import WorkspaceOwnerTransferNotification, WorkspaceOwnerTransferOperation
 from services.workspace import gateways
 
 JsonResponse = dict[str, object]
@@ -295,13 +297,19 @@ class TestOwnerTransferApiWithContainers:
             role=TenantAccountRole.NORMAL,
         )
         token = factory.create_owner_transfer_token(current_user)
+        tenant_id = tenant.id
+        tenant_name = tenant.name
+        current_user_id = current_user.id
+        current_user_email = current_user.email
+        member_id = member.id
+        member_email = member.email
 
         with (
             flask_app_with_containers.test_request_context("/", json={"token": token}),
-            patch.object(gateways.send_new_owner_transfer_notify_email_task, "delay") as notify_new,
-            patch.object(gateways.send_old_owner_transfer_notify_email_task, "delay") as notify_old,
+            patch.object(gateways.send_new_owner_transfer_notify_email_task, "apply_async") as notify_new,
+            patch.object(gateways.send_old_owner_transfer_notify_email_task, "apply_async") as notify_old,
         ):
-            result = method(api, RequestContext("test", None, current_user.id, tenant.id), member.id)
+            result = method(api, RequestContext("test", None, current_user_id, tenant_id), member_id)
 
         assert result["result"] == "success"
         assert (
@@ -311,7 +319,45 @@ class TestOwnerTransferApiWithContainers:
             factory.get_join(db_session_with_containers, tenant=tenant, account=current_user).role
             == TenantAccountRole.NORMAL
         )
-        notify_new.assert_called_once_with(language="en-US", to=member.email, workspace=tenant.name)
+
+        db_session_with_containers.expire_all()
+        operation = db_session_with_containers.get(WorkspaceOwnerTransferOperation, tenant_id)
+        assert operation is not None
+        assert operation.status == "watch"
+        notifications = tuple(
+            db_session_with_containers.scalars(
+                select(WorkspaceOwnerTransferNotification)
+                .where(WorkspaceOwnerTransferNotification.operation_id == operation.operation_id)
+                .order_by(WorkspaceOwnerTransferNotification.recipient_type)
+            )
+        )
+        assert {notification.recipient_type for notification in notifications} == {"new_owner", "old_owner"}
+        assert all(notification.status == "sent" for notification in notifications)
+        assert all(notification.attempts == 1 for notification in notifications)
+        assert all(notification.claim_id is None for notification in notifications)
+        assert all(notification.sent_at is not None for notification in notifications)
+        notifications_by_recipient = {notification.recipient_type: notification for notification in notifications}
+        new_owner_notification = notifications_by_recipient["new_owner"]
+        old_owner_notification = notifications_by_recipient["old_owner"]
+
+        notify_new.assert_called_once_with(
+            kwargs={"language": "en-US", "to": member_email, "workspace": tenant_name},
+            task_id=new_owner_notification.notification_id,
+            headers={
+                "workspace_owner_transfer_operation_id": operation.operation_id,
+                "workspace_owner_transfer_recipient": "new_owner",
+            },
+        )
         notify_old.assert_called_once_with(
-            language="en-US", to=current_user.email, workspace=tenant.name, new_owner_email=member.email
+            kwargs={
+                "language": "en-US",
+                "to": current_user_email,
+                "workspace": tenant_name,
+                "new_owner_email": member_email,
+            },
+            task_id=old_owner_notification.notification_id,
+            headers={
+                "workspace_owner_transfer_operation_id": operation.operation_id,
+                "workspace_owner_transfer_recipient": "old_owner",
+            },
         )
