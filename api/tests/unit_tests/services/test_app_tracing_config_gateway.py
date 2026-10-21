@@ -232,13 +232,15 @@ def test_prepare_new_config_rejects_invalid_schema_before_verification(
 ) -> None:
     monkeypatch.setattr(gateway_module, "provider_config_map", {"langsmith": _provider_entry()})
 
-    with patch.object(gateway_module, "OpsTraceManager") as manager:
-        with pytest.raises(AppTracingConfigInvalidConfigurationError):
-            OpsTraceManagerGateway().prepare_new_config(
-                workspace_id="workspace-1",
-                tracing_provider="langsmith",
-                tracing_config={"endpoint": {"invalid": "value"}},
-            )
+    with (
+        patch.object(gateway_module, "OpsTraceManager") as manager,
+        pytest.raises(AppTracingConfigInvalidConfigurationError),
+    ):
+        OpsTraceManagerGateway().prepare_new_config(
+            workspace_id="workspace-1",
+            tracing_provider="langsmith",
+            tracing_config={"endpoint": {"invalid": "value"}},
+        )
 
     manager.check_trace_config_is_effective.assert_not_called()
     manager.encrypt_tracing_config.assert_not_called()
@@ -313,14 +315,16 @@ def test_updated_destination_drops_old_project_when_lookup_fails(monkeypatch: py
 def test_prepare_updated_config_validates_schema_before_encryption(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gateway_module, "provider_config_map", {"langsmith": _provider_entry()})
 
-    with patch.object(gateway_module, "OpsTraceManager") as manager:
-        with pytest.raises(AppTracingConfigInvalidConfigurationError):
-            OpsTraceManagerGateway().prepare_updated_config(
-                workspace_id="workspace-1",
-                tracing_provider="langsmith",
-                tracing_config={"endpoint": {"invalid": "value"}},
-                current_tracing_config={"api_key": "old-encrypted"},
-            )
+    with (
+        patch.object(gateway_module, "OpsTraceManager") as manager,
+        pytest.raises(AppTracingConfigInvalidConfigurationError),
+    ):
+        OpsTraceManagerGateway().prepare_updated_config(
+            workspace_id="workspace-1",
+            tracing_provider="langsmith",
+            tracing_config={"endpoint": {"invalid": "value"}},
+            current_tracing_config={"api_key": "old-encrypted"},
+        )
 
     manager.encrypt_tracing_config.assert_not_called()
     manager.decrypt_tracing_config.assert_not_called()

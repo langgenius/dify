@@ -73,9 +73,11 @@ def test_contended_month_lease_is_retryable(redis_transport: tuple[RedisClientWr
     redis, commands = redis_transport
 
     with patch.object(Lock, "acquire", return_value=False), patch.object(Lock, "release") as release:
-        with pytest.raises(WorkflowRunArchiveMonthBusyError):
-            with RedisWorkflowRunArchiveMonthLock(redis=redis)(tenant_id="tenant-1", year=2025, month=3):
-                pytest.fail("contended lease must not enter storage work")
+        with (
+            pytest.raises(WorkflowRunArchiveMonthBusyError),
+            RedisWorkflowRunArchiveMonthLock(redis=redis)(tenant_id="tenant-1", year=2025, month=3),
+        ):
+            pytest.fail("contended lease must not enter storage work")
 
         release.assert_not_called()
     commands.assert_not_called()

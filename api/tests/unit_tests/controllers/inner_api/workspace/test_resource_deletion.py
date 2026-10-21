@@ -38,9 +38,8 @@ def test_delete_requires_inner_api_key(
         "application_services",
         lambda: SimpleNamespace(workspaces=SimpleNamespace(resource_cleanup=service)),
     )
-    with app.test_request_context(method="DELETE"):
-        with pytest.raises(InnerApiUnauthorizedError):
-            controller.EnterpriseWorkspaceResourceDeletion().delete(WORKSPACE_ID)
+    with app.test_request_context(method="DELETE"), pytest.raises(InnerApiUnauthorizedError):
+        controller.EnterpriseWorkspaceResourceDeletion().delete(WORKSPACE_ID)
     service.cleanup.assert_not_called()
 
 

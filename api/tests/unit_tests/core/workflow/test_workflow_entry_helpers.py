@@ -620,15 +620,15 @@ class TestWorkflowEntryHelpers:
                 "mapping_user_inputs_to_variable_pool",
                 side_effect=RuntimeError("boom"),
             ),
+            pytest.raises(WorkflowNodeRunFailedError, match="Node Title run failed: boom"),
         ):
-            with pytest.raises(WorkflowNodeRunFailedError, match="Node Title run failed: boom"):
-                workflow_entry.WorkflowEntry.run_free_node(
-                    node_data={"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR, "title": "Node"},
-                    node_id="node-id",
-                    tenant_id="tenant-id",
-                    user_id="user-id",
-                    user_inputs={"question": "hello"},
-                )
+            workflow_entry.WorkflowEntry.run_free_node(
+                node_data={"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR, "title": "Node"},
+                node_id="node-id",
+                tenant_id="tenant-id",
+                user_id="user-id",
+                user_inputs={"question": "hello"},
+            )
 
     def test_handle_special_values_serializes_nested_files(self):
         file = File(
@@ -799,6 +799,7 @@ class TestWorkflowEntryNodeLayers:
                 "ReadOnlyRuntimeStateWrapper",
                 return_value=sentinel.read_only_runtime_state,
             ),
+            pytest.raises(RuntimeError, match="boom"),
         ):
             with pytest.raises(RuntimeError, match="boom"):
                 list(workflow_entry.WorkflowEntry._run_node_with_layers(node))

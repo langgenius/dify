@@ -75,10 +75,12 @@ def seeded_app(sqlite_session: Session) -> App:
 
 def _mint(app: Flask, payload: dict[str, object]) -> dict[str, object]:
     handler = EnterpriseFileGrantApi()
-    with app.test_request_context("/", method="POST", json=payload):
-        with patch(f"{CONTROLLER_MODULE}.inner_api_ns") as mock_ns:
-            mock_ns.payload = payload
-            return inspect.unwrap(handler.post)(handler)
+    with (
+        app.test_request_context("/", method="POST", json=payload),
+        patch(f"{CONTROLLER_MODULE}.inner_api_ns") as mock_ns,
+    ):
+        mock_ns.payload = payload
+        return inspect.unwrap(handler.post)(handler)
 
 
 def _subject_of(response: dict[str, object]) -> str:

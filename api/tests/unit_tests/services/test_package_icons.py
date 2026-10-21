@@ -24,9 +24,11 @@ from services.app_package_service import AppPackageService
 
 def _icon_archive(*, payload: bytes = b"image", digest: str | None = None, reference: str = "i_000001") -> io.BytesIO:
     dsl = yaml.safe_dump({"kind": "app", "app": {"mode": "chat", "icon_type": "image", "icon": reference}})
-    with AppPackageService().export(dsl=dsl.replace(reference, "legacy-id"), name="Example") as exported:
-        with zipfile.ZipFile(exported.archive) as package:
-            manifest = yaml.safe_load(package.read("manifest.yaml"))
+    with (
+        AppPackageService().export(dsl=dsl.replace(reference, "legacy-id"), name="Example") as exported,
+        zipfile.ZipFile(exported.archive) as package,
+    ):
+        manifest = yaml.safe_load(package.read("manifest.yaml"))
     app_bytes = dsl.encode()
     manifest["apps"][0].update(size=len(app_bytes), sha256=hashlib.sha256(app_bytes).hexdigest())
     manifest["icons"] = [
@@ -198,10 +200,12 @@ def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> Non
         dependencies=[],
     )
     app.site = SiteDsl(title="Agent Site", icon_type="image", icon="i_000001")
-    with RosterAgentPackageExporter(storage_backend=backend)._build_archive(app=app, resources=resources) as exported:
-        with RosterAgentPackageReader().read(exported.archive) as prepared:
-            assert prepared.apps["app.yaml"].package.metadata.icon == "i_000001"
-            assert prepared.apps["app.yaml"].site is not None
-            assert prepared.apps["app.yaml"].site.icon == "i_000001"
-            assert prepared.manifest.icons[0].path == "i_000001.png"
-            assert RosterAgentPackageReader().read_member_bytes(prepared, "i_000001.png", max_bytes=4) == b"icon"
+    with (
+        RosterAgentPackageExporter(storage_backend=backend)._build_archive(app=app, resources=resources) as exported,
+        RosterAgentPackageReader().read(exported.archive) as prepared,
+    ):
+        assert prepared.apps["app.yaml"].package.metadata.icon == "i_000001"
+        assert prepared.apps["app.yaml"].site is not None
+        assert prepared.apps["app.yaml"].site.icon == "i_000001"
+        assert prepared.manifest.icons[0].path == "i_000001.png"
+        assert RosterAgentPackageReader().read_member_bytes(prepared, "i_000001.png", max_bytes=4) == b"icon"

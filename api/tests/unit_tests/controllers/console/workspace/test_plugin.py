@@ -718,11 +718,8 @@ class TestPluginChangePermissionApi:
             "debug_permission": TenantPluginDebugPermission.EVERYONE,
         }
 
-        with (
-            app.test_request_context("/", json=payload),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, ParserPermissionChange(), "t1", user)
+        with app.test_request_context("/", json=payload), pytest.raises(Forbidden):
+            method(api, ParserPermissionChange(), "t1", user)
 
     def test_change_permission_success(self, app: Flask):
         api = PluginChangePermissionApi()

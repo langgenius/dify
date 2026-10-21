@@ -250,9 +250,8 @@ def test_send_request_auth_error(streams):
     t = threading.Thread(target=mock_error, daemon=True)
     t.start()
 
-    with session:
-        with pytest.raises(MCPAuthError):
-            session.send_request(request, MockResult)
+    with session, pytest.raises(MCPAuthError):
+        session.send_request(request, MockResult)
     t.join(timeout=1)
 
 
@@ -307,9 +306,8 @@ def test_send_request_http_status_auth_error(streams):
     t = threading.Thread(target=mock_error, daemon=True)
     t.start()
 
-    with session:
-        with pytest.raises(MCPAuthError):
-            session.send_request(request, MockResult)
+    with session, pytest.raises(MCPAuthError):
+        session.send_request(request, MockResult)
     t.join(timeout=1)
 
 
@@ -571,12 +569,13 @@ def test_receive_loop_fatal_exception(streams, caplog: pytest.LogCaptureFixture)
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
-    with patch.object(read_stream, "get", side_effect=RuntimeError("Fatal loop error")):
-        with caplog.at_level(logging.ERROR, logger="core.mcp.session.base_session"):
-            with pytest.raises(RuntimeError, match="Fatal loop error"):
-                with session:
-                    pass
-            assert "Error in message processing loop" in caplog.text
+    with (
+        patch.object(read_stream, "get", side_effect=RuntimeError("Fatal loop error")),
+        caplog.at_level(logging.ERROR, logger="core.mcp.session.base_session"),
+    ):
+        with pytest.raises(RuntimeError, match="Fatal loop error"), session:
+            pass
+        assert "Error in message processing loop" in caplog.text
 
 
 @pytest.mark.timeout(5)
@@ -608,6 +607,8 @@ def test_send_request_session_timeout_retry_6(streams):
 
     request = MockRequest(method="test", params=MockRequestParams(name="world"))
 
-    with patch.object(session, "check_receiver_status", side_effect=[None, RuntimeError("timeout_broken")]):
-        with pytest.raises(RuntimeError, match="timeout_broken"):
-            session.send_request(request, MockResult)
+    with (
+        patch.object(session, "check_receiver_status", side_effect=[None, RuntimeError("timeout_broken")]),
+        pytest.raises(RuntimeError, match="timeout_broken"),
+    ):
+        session.send_request(request, MockResult)

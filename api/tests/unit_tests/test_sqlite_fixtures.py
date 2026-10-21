@@ -64,13 +64,11 @@ def test_unbound_session_factory_disables_explicit_and_global_database_access(
 ) -> None:
     assert session_factory_module.session_factory.get_session_maker() is unbound_session_factory
 
-    with unbound_session_factory() as session:
-        with pytest.raises(UnboundExecutionError):
-            session.get_bind()
+    with unbound_session_factory() as session, pytest.raises(UnboundExecutionError):
+        session.get_bind()
 
-    with session_factory_module.session_factory.create_session() as session:
-        with pytest.raises(UnboundExecutionError):
-            session.execute(text("SELECT 1"))
+    with session_factory_module.session_factory.create_session() as session, pytest.raises(UnboundExecutionError):
+        session.execute(text("SELECT 1"))
 
 
 def test_unbound_session_rejects_database_access(unbound_session: Session) -> None:

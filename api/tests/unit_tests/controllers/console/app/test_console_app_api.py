@@ -346,8 +346,10 @@ def test_create_quota_is_part_of_admission_and_precedes_application_call(
 def test_request_validation_retains_422_and_redacts_submitted_values(app: Flask, boundary: AppBoundary) -> None:
     from werkzeug.exceptions import UnprocessableEntity
 
-    with app.test_request_context(method="PUT", json={"name": "", "icon": "private-input"}):
-        with pytest.raises(UnprocessableEntity) as error:
-            invoke(controller.AppApi, controller.AppApi.put, app_id=APP_ID)
+    with (
+        app.test_request_context(method="PUT", json={"name": "", "icon": "private-input"}),
+        pytest.raises(UnprocessableEntity) as error,
+    ):
+        invoke(controller.AppApi, controller.AppApi.put, app_id=APP_ID)
     assert "private-input" not in (error.value.description or "")
     assert boundary.calls == []

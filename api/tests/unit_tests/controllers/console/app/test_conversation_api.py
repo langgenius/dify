@@ -90,17 +90,19 @@ def test_completion_conversation_list_invalid_time_range(
         "parse_time_range",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad range")),
     )
-    with app.test_request_context(
-        "/console/api/apps/app-1/completion-conversations", method="GET", query_string={"start": "bad"}
+    with (
+        app.test_request_context(
+            "/console/api/apps/app-1/completion-conversations", method="GET", query_string={"start": "bad"}
+        ),
+        pytest.raises(BadRequest),
     ):
-        with pytest.raises(BadRequest):
-            method(
-                api,
-                conversation_module.CompletionConversationQuery(),
-                unbound_session,
-                account,
-                app_model=_app(mode=AppMode.COMPLETION),
-            )
+        method(
+            api,
+            conversation_module.CompletionConversationQuery(),
+            unbound_session,
+            account,
+            app_model=_app(mode=AppMode.COMPLETION),
+        )
 
 
 def test_chat_conversation_list_advanced_chat_calls_paginate(
@@ -321,15 +323,18 @@ def _captured_where_clauses(
     method = unwrap(api.get)
     account = _make_account()
 
-    with Session() as session, app.test_request_context("/", method="GET"):
-        with patch.object(sa.sql.selectable.Select, "where", spy_where):
-            method(
-                api,
-                query_instance,
-                session,
-                account,
-                app_model=_app(mode=app_mode),
-            )
+    with (
+        Session() as session,
+        app.test_request_context("/", method="GET"),
+        patch.object(sa.sql.selectable.Select, "where", spy_where),
+    ):
+        method(
+            api,
+            query_instance,
+            session,
+            account,
+            app_model=_app(mode=app_mode),
+        )
 
     return captured
 

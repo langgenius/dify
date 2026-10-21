@@ -2429,8 +2429,10 @@ class TestModelValidateDecorator(SQLiteEndpointTest):
     ) -> None:
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
 
-        with app.test_request_context(route, method=method, json={}, headers={"Authorization": "Bearer test_token"}):
-            with pytest.raises(UnprocessableEntity) as exc_info:
-                call()
+        with (
+            app.test_request_context(route, method=method, json={}, headers={"Authorization": "Bearer test_token"}),
+            pytest.raises(UnprocessableEntity) as exc_info,
+        ):
+            call()
 
         assert exc_info.value.code == 422
