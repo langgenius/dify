@@ -143,6 +143,35 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
+export type ConnectionConfigurationInvalidError = ErrorResponse & {
+  code: 'connection_configuration_invalid'
+  status: 400
+}
+
+export type ConnectionConflictError = ErrorResponse & {
+  code: 'connection_conflict'
+  status: 409
+}
+
+export type ConnectionCredentialStatus = 'connected' | 'invalid' | 'reconnect_required'
+
+export type ConnectionCredentialType = 'api-key' | 'oauth2'
+
+export type ConnectionCredentialsInvalidError = ErrorResponse & {
+  code: 'connection_credentials_invalid'
+  status: 400
+}
+
+export type ConnectionCredentialsUnavailableError = ErrorResponse & {
+  code: 'connection_credentials_unavailable'
+  status: 503
+}
+
+export type ConnectionNotFoundError = ErrorResponse & {
+  code: 'connection_not_found'
+  status: 404
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
@@ -168,6 +197,26 @@ export type ConversationRenamePayload = (
 ) & {
   auto_generate?: boolean
   name?: string | null
+}
+
+export type CredentialCheckResult = {
+  checked_at: number
+  reason_code:
+    | 'credential_expired'
+    | 'credential_invalid'
+    | 'credential_revoked'
+    | 'provider_network_error'
+    | 'provider_rate_limited'
+    | 'provider_timeout'
+    | 'provider_unavailable'
+    | null
+  retryable: boolean
+  status: 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
+}
+
+export type CredentialCheckUnavailableError = ErrorResponse & {
+  code: 'credential_check_unavailable'
+  status: 503
 }
 
 export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
@@ -196,6 +245,58 @@ export type EmailPasswordResetLimitError = ErrorResponse & {
 export type EmailSendIpLimitError = ErrorResponse & {
   code: 'email_send_ip_limit'
   status: 429
+}
+
+export type EndUserConnectionCheckResponse = {
+  check: CredentialCheckResult
+  connection_id: string
+  credential_status: ConnectionCredentialStatus
+}
+
+export type EndUserConnectionCreatePayload = {
+  credentials: {
+    [key: string]: JsonValue
+  }
+  name: string
+  node_id: string
+  workflow_id: string
+}
+
+export type EndUserConnectionListQuery = {
+  cursor?: string | null
+  limit?: number
+  provider?: string | null
+}
+
+export type EndUserConnectionListResponse = {
+  data: Array<EndUserConnectionResponse>
+  has_more: boolean
+  next_cursor: string | null
+}
+
+export type EndUserConnectionResponse = {
+  account_label: string | null
+  created_at: number
+  credential_status: ConnectionCredentialStatus
+  credential_type: ConnectionCredentialType
+  expires_at: number | null
+  id: string
+  last_active_at: number
+  name: string
+  provider: string
+  updated_at: number
+}
+
+export type EndUserConnectionUpdatePayload = {
+  credentials?: {
+    [key: string]: JsonValue
+  }
+  name?: string
+}
+
+export type EndUserLoginRequiredError = ErrorResponse & {
+  code: 'end_user_login_required'
+  status: 401
 }
 
 export type ErrorResponse = {
@@ -1214,6 +1315,11 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
+export type WorkflowChangedError = ErrorResponse & {
+  code: 'workflow_changed'
+  status: 409
+}
+
 export type WorkflowRunPayload = {
   files?: Array<
     | {
@@ -1437,6 +1543,163 @@ export type PostCompletionMessagesByTaskIdStopResponses = {
 
 export type PostCompletionMessagesByTaskIdStopResponse =
   PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
+
+export type GetConnectionsData = {
+  body?: never
+  path?: never
+  query?: {
+    cursor?: string
+    limit?: number
+    provider?: string
+  }
+  url: '/connections'
+}
+
+export type GetConnectionsErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsError = GetConnectionsErrors[keyof GetConnectionsErrors]
+
+export type GetConnectionsResponses = {
+  200: EndUserConnectionListResponse
+}
+
+export type GetConnectionsResponse = GetConnectionsResponses[keyof GetConnectionsResponses]
+
+export type PostConnectionsData = {
+  body: EndUserConnectionCreatePayload
+  path?: never
+  query?: never
+  url: '/connections'
+}
+
+export type PostConnectionsErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  409: WorkflowChangedError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsError = PostConnectionsErrors[keyof PostConnectionsErrors]
+
+export type PostConnectionsResponses = {
+  201: EndUserConnectionResponse
+}
+
+export type PostConnectionsResponse = PostConnectionsResponses[keyof PostConnectionsResponses]
+
+export type DeleteConnectionsByConnectionIdData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}'
+}
+
+export type DeleteConnectionsByConnectionIdErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteConnectionsByConnectionIdError =
+  DeleteConnectionsByConnectionIdErrors[keyof DeleteConnectionsByConnectionIdErrors]
+
+export type DeleteConnectionsByConnectionIdResponses = {
+  204: void
+}
+
+export type DeleteConnectionsByConnectionIdResponse =
+  DeleteConnectionsByConnectionIdResponses[keyof DeleteConnectionsByConnectionIdResponses]
+
+export type GetConnectionsByConnectionIdData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}'
+}
+
+export type GetConnectionsByConnectionIdErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsByConnectionIdError =
+  GetConnectionsByConnectionIdErrors[keyof GetConnectionsByConnectionIdErrors]
+
+export type GetConnectionsByConnectionIdResponses = {
+  200: EndUserConnectionResponse
+}
+
+export type GetConnectionsByConnectionIdResponse =
+  GetConnectionsByConnectionIdResponses[keyof GetConnectionsByConnectionIdResponses]
+
+export type PatchConnectionsByConnectionIdData = {
+  body: EndUserConnectionUpdatePayload
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}'
+}
+
+export type PatchConnectionsByConnectionIdErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchConnectionsByConnectionIdError =
+  PatchConnectionsByConnectionIdErrors[keyof PatchConnectionsByConnectionIdErrors]
+
+export type PatchConnectionsByConnectionIdResponses = {
+  200: EndUserConnectionResponse
+}
+
+export type PatchConnectionsByConnectionIdResponse =
+  PatchConnectionsByConnectionIdResponses[keyof PatchConnectionsByConnectionIdResponses]
+
+export type PostConnectionsByConnectionIdCheckData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}/check'
+}
+
+export type PostConnectionsByConnectionIdCheckErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsByConnectionIdCheckError =
+  PostConnectionsByConnectionIdCheckErrors[keyof PostConnectionsByConnectionIdCheckErrors]
+
+export type PostConnectionsByConnectionIdCheckResponses = {
+  200: EndUserConnectionCheckResponse
+}
+
+export type PostConnectionsByConnectionIdCheckResponse =
+  PostConnectionsByConnectionIdCheckResponses[keyof PostConnectionsByConnectionIdCheckResponses]
 
 export type GetConversationsData = {
   body?: never

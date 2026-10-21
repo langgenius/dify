@@ -137,6 +137,21 @@ export const zCompletionMessagePayload = z.object({
 })
 
 /**
+ * ConnectionCredentialStatus
+ *
+ * Last known credential lifecycle state, not readiness for a particular node.
+ *
+ * Keep the existing storage values. App-specific Client mismatches and unbinding
+ * must never be written back as a global credential state change.
+ */
+export const zConnectionCredentialStatus = z.enum(['connected', 'invalid', 'reconnect_required'])
+
+/**
+ * ConnectionCredentialType
+ */
+export const zConnectionCredentialType = z.enum(['api-key', 'oauth2'])
+
+/**
  * ConversationListQuery
  */
 export const zConversationListQuery = z.object({
@@ -167,6 +182,26 @@ export const zConversationRenamePayload = z.intersection(
 )
 
 /**
+ * CredentialCheckResult
+ */
+export const zCredentialCheckResult = z.object({
+  checked_at: z.int(),
+  reason_code: z
+    .enum([
+      'credential_expired',
+      'credential_invalid',
+      'credential_revoked',
+      'provider_network_error',
+      'provider_rate_limited',
+      'provider_timeout',
+      'provider_unavailable',
+    ])
+    .nullable(),
+  retryable: z.boolean(),
+  status: z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']),
+})
+
+/**
  * DeploymentEdition
  *
  * Enum representing the deployment edition of the platform.
@@ -188,6 +223,49 @@ export const zEmailCodeLoginVerifyPayload = z.object({
   code: z.string(),
   email: z.string(),
   token: z.string().min(1),
+})
+
+/**
+ * EndUserConnectionCheckResponse
+ */
+export const zEndUserConnectionCheckResponse = z.object({
+  check: zCredentialCheckResult,
+  connection_id: z.string(),
+  credential_status: zConnectionCredentialStatus,
+})
+
+/**
+ * EndUserConnectionListQuery
+ */
+export const zEndUserConnectionListQuery = z.object({
+  cursor: z.string().min(1).max(1024).nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  provider: z.string().min(1).max(255).nullish(),
+})
+
+/**
+ * EndUserConnectionResponse
+ */
+export const zEndUserConnectionResponse = z.object({
+  account_label: z.string().nullable(),
+  created_at: z.int(),
+  credential_status: zConnectionCredentialStatus,
+  credential_type: zConnectionCredentialType,
+  expires_at: z.int().nullable(),
+  id: z.string(),
+  last_active_at: z.int(),
+  name: z.string(),
+  provider: z.string(),
+  updated_at: z.int(),
+})
+
+/**
+ * EndUserConnectionListResponse
+ */
+export const zEndUserConnectionListResponse = z.object({
+  data: z.array(zEndUserConnectionResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
 })
 
 /**
@@ -303,6 +381,78 @@ export const zCompletionRequestError = zErrorResponse.and(
 )
 
 /**
+ * ConnectionConfigurationInvalidError
+ *
+ * The connection is not compatible with this tool configuration.
+ */
+export const zConnectionConfigurationInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_configuration_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionConflictError
+ *
+ * Connection changed during the operation.
+ */
+export const zConnectionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * ConnectionCredentialsInvalidError
+ *
+ * Invalid credentials for this provider.
+ */
+export const zConnectionCredentialsInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_credentials_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionCredentialsUnavailableError
+ *
+ * Connection credentials are temporarily unavailable.
+ */
+export const zConnectionCredentialsUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_credentials_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * ConnectionNotFoundError
+ *
+ * Connection not found.
+ */
+export const zConnectionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * CredentialCheckUnavailableError
+ *
+ * Credential validation is temporarily unavailable.
+ */
+export const zCredentialCheckUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('credential_check_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * EmailCodeError
  *
  * Email code is invalid or expired.
@@ -335,6 +485,18 @@ export const zEmailSendIpLimitError = zErrorResponse.and(
   z.object({
     code: z.literal('email_send_ip_limit'),
     status: z.literal(429),
+  }),
+)
+
+/**
+ * EndUserLoginRequiredError
+ *
+ * Sign in to manage personal connections.
+ */
+export const zEndUserLoginRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('end_user_login_required'),
+    status: z.literal(401),
   }),
 )
 
@@ -586,6 +748,24 @@ export const zInvalidUploadTokenError = zErrorResponse.and(
 export const zJsonValueType = z.unknown()
 
 export const zJsonValue = z.unknown()
+
+/**
+ * EndUserConnectionCreatePayload
+ */
+export const zEndUserConnectionCreatePayload = z.object({
+  credentials: z.record(z.string(), zJsonValue),
+  name: z.string().min(1).max(100),
+  node_id: z.string().min(1).max(255),
+  workflow_id: z.uuid(),
+})
+
+/**
+ * EndUserConnectionUpdatePayload
+ */
+export const zEndUserConnectionUpdatePayload = z.object({
+  credentials: z.record(z.string(), zJsonValue).optional(),
+  name: z.string().min(1).max(100).optional(),
+})
 
 /**
  * HumanInputFormSubmissionData
@@ -1820,6 +2000,18 @@ export const zHumanInputFormDefinitionResponse = z.object({
 })
 
 /**
+ * WorkflowChangedError
+ *
+ * The workflow changed. Confirm the connection selection again.
+ */
+export const zWorkflowChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_changed'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
@@ -1944,6 +2136,62 @@ export const zPostCompletionMessagesByTaskIdStopPath = z.object({
  * Success
  */
 export const zPostCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
+
+export const zGetConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  provider: z.string().min(1).max(255).optional(),
+})
+
+/**
+ * Personal connections
+ */
+export const zGetConnectionsResponse = zEndUserConnectionListResponse
+
+export const zPostConnectionsBody = zEndUserConnectionCreatePayload
+
+/**
+ * API-key connection created
+ */
+export const zPostConnectionsResponse = zEndUserConnectionResponse
+
+export const zDeleteConnectionsByConnectionIdPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * API-key connection deleted
+ */
+export const zDeleteConnectionsByConnectionIdResponse = z.void()
+
+export const zGetConnectionsByConnectionIdPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Personal connection
+ */
+export const zGetConnectionsByConnectionIdResponse = zEndUserConnectionResponse
+
+export const zPatchConnectionsByConnectionIdBody = zEndUserConnectionUpdatePayload
+
+export const zPatchConnectionsByConnectionIdPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Connection updated
+ */
+export const zPatchConnectionsByConnectionIdResponse = zEndUserConnectionResponse
+
+export const zPostConnectionsByConnectionIdCheckPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Credential check result
+ */
+export const zPostConnectionsByConnectionIdCheckResponse = zEndUserConnectionCheckResponse
 
 export const zGetConversationsQuery = z.object({
   last_id: z.string().optional(),

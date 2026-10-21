@@ -29,6 +29,7 @@ from extensions.application_services.data_sources import (
     build_data_source_services,
 )
 from extensions.application_services.datasets import build_dataset_dependencies
+from extensions.application_services.end_user_connections import build_end_user_connections
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
 from extensions.application_services.knowledge import (
     KnowledgeServices,
@@ -123,6 +124,7 @@ from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
+from services.end_user_connections.api_key import ApiKeyConnectionService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
@@ -310,6 +312,7 @@ class ApplicationServices:
     inner_mail: InnerMailService
     web_passport: WebPassportService
     web_identity: WebIdentityService
+    end_user_connections: ApiKeyConnectionService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
 
@@ -706,6 +709,7 @@ def build_application_services(
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_identity=web_identity,
+        end_user_connections=build_end_user_connections(database_client=database_client),
         web_passport=WebPassportService(
             passports=WebPassportRepository(
                 session_factory=database_client,

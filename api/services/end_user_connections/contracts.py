@@ -1,10 +1,9 @@
-"""Application inputs/results and use-case contracts; no HTTP routes or CRUD yet.
+"""Application inputs/results and use-case contracts for Connection management.
 
 Authority is a separate WebConnectionContext, never part of a submitted payload.
 The target resolver reconstructs the currently published node/Provider/Client from
 stored state. CRUD implementations must apply the ownership policy before decrypting
-or contacting a plugin. Controllers will map domain failures to documented HTTP
-errors when the corresponding vertical slice is implemented.
+or contacting a plugin. Controllers map domain failures to documented HTTP errors.
 """
 
 from datetime import datetime
