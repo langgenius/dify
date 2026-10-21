@@ -18,6 +18,7 @@ from services.errors.knowledge_retrieval import InnerKnowledgeRetrieveDatasetNot
 
 URL = "/v1/appdeploy/knowledge/retrieve"
 DATASET_ID = "5b3a1c2e-7f64-4c1d-9e0a-2f8b6d4c3a10"
+APP_ID = "9d2e4f6a-1b3c-4d5e-8f70-a1b2c3d4e5f6"
 RETRIEVE = "controllers.service_api.appdeploy.knowledge.InnerKnowledgeRetrievalService.retrieve"
 
 
@@ -57,7 +58,7 @@ def tokens(monkeypatch: pytest.MonkeyPatch) -> _Tokens:
 
 def _payload(**overrides: object) -> dict[str, object]:
     return {
-        "caller": {"user_id": "end-user-1", "app_id": "app-1", "user_from": "end-user", "invoke_from": "service-api"},
+        "caller": {"user_id": "end-user-1", "app_id": APP_ID, "user_from": "end-user", "invoke_from": "service-api"},
         "dataset_ids": [DATASET_ID.upper()],
         "query": "reset password",
         "retrieval": {"mode": "multiple", "top_k": 4},
@@ -119,6 +120,7 @@ def test_tenant_comes_from_the_token_and_results_keep_the_node_shape(client: Fla
     assert tokens.authorized == [{"token": "sk-managed", "dataset_ids": [DATASET_ID]}]
     request = retrieve.call_args.args[0]
     assert request.caller.tenant_id == "tenant-from-token"
+    assert request.caller.app_id == APP_ID
     assert request.dataset_ids == [DATASET_ID]
     body = response.get_json()
     assert body["results"][0]["metadata"]["_source"] == "knowledge"
@@ -131,9 +133,10 @@ def test_tenant_comes_from_the_token_and_results_keep_the_node_shape(client: Fla
         _payload(caller={**_payload()["caller"], "tenant_id": "attacker-tenant"}),  # type: ignore[dict-item]
         _payload(attachment_ids=["file-1"]),
         _payload(dataset_ids=[]),
+        _payload(caller={**_payload()["caller"], "app_id": "app-1"}),  # type: ignore[dict-item]
     ],
 )
-def test_payload_cannot_choose_tenant_or_attach_files(
+def test_invalid_payload_is_rejected_before_authorization(
     client: FlaskClient, tokens: _Tokens, payload: dict[str, object]
 ) -> None:
     with patch(RETRIEVE) as retrieve:

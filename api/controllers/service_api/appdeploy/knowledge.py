@@ -43,7 +43,7 @@ class AppDeployKnowledgeRetrieveCaller(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     user_id: str = Field(min_length=1)
-    app_id: str = Field(min_length=1)
+    app_id: UUID
     user_from: Literal["account", "end-user"]
     invoke_from: str = Field(min_length=1)
 
@@ -86,7 +86,7 @@ class AppDeployKnowledgeRetrieveApi(Resource):
             )
         try:
             request = InnerKnowledgeRetrieveRequest(
-                caller=InnerKnowledgeRetrieveCaller(tenant_id=tenant_id, **payload.caller.model_dump()),
+                caller=InnerKnowledgeRetrieveCaller(tenant_id=tenant_id, **payload.caller.model_dump(mode="json")),
                 dataset_ids=dataset_ids,
                 query=payload.query,
                 retrieval=payload.retrieval,
