@@ -4,17 +4,18 @@ Loopback test alone uses real HTTP transport, inside network-none Linux runner.
 No production input, credential, file identity or binding producer is qualified.
 """
 
-import importlib
-import importlib.util
 import io
 import logging
 import threading
+from collections.abc import Callable, Generator, Iterator
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import override
+from typing import NoReturn, cast, override
 
+import httpcore
 import httpx
 import pytest
+from httpx import Response
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.sdk.trace import TracerProvider
@@ -31,10 +32,12 @@ from graphon.nodes.http_request.executor import Executor
 from graphon.runtime import VariablePool
 from libs.sensitive_http_telemetry import SensitiveHttpLogFilter
 from runtime_contracts.builder.execution import canonical_digest
-from runtime_contracts.builder.native.contracts import ApprovalWait, EffectIntent, PolicyStop
+from runtime_contracts.builder.native.contracts import ApprovalWait, EffectIntent, JsonValue, PolicyStop, WaitReason
+from services.dify_builder.native_testing import http_adapter as http_owner
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
 from services.dify_builder.native_testing.control import NativeApprovalWait, NativePolicyStop
-from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
+from services.dify_builder.native_testing.http_adapter import PreparedHttpBinding, PreparedHttpRequest
+from services.dify_builder.native_testing.operation_journal import NodeOperationJournal, OperationCursor
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.logging_helpers import protect_existing_log_routes
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import (
@@ -47,7 +50,7 @@ from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter imp
 
 
 @pytest.fixture(autouse=True)
-def protected_application_logs(monkeypatch):
+def protected_application_logs(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     """Initialize real app filters once; also protect pytest's existing sinks.
 
     Pytest reattaches its setup capture handlers during the call phase. Their
@@ -77,21 +80,17 @@ def protected_application_logs(monkeypatch):
         root.setLevel(old_level)
 
 
-def owner():
-    name = "services.dify_builder.native_testing.http_adapter"
-    assert importlib.util.find_spec(name) is not None, "native HTTP owner is not implemented"
-    return importlib.import_module(name)
-
-
 class IntentProducer:
     """Synthetic trusted producer; no claim of real secret/file identity matching."""
 
-    def __init__(self, cursor):
+    def __init__(self, cursor: OperationCursor) -> None:
         self.cursor = cursor
-        self.requests = []
-        self.change = None
+        self.requests: list[tuple[PreparedHttpRequest, int, HttpResponse | None]] = []
+        self.change: Callable[[PreparedHttpBinding], PreparedHttpBinding] | None = None
 
-    def prepare(self, *, request, hop, previous_response):
+    def prepare(
+        self, *, request: PreparedHttpRequest, hop: int, previous_response: HttpResponse | None
+    ) -> PreparedHttpBinding:
         self.requests.append((request, hop, previous_response))
         intent = EffectIntent(
             key=self.cursor.next_key(),
@@ -104,14 +103,14 @@ class IntentProducer:
             input_digest=canonical_digest(INPUT),
             capability_digest="b" * 64,
         )
-        result = owner().PreparedHttpBinding(request=request, intent=intent)
+        result = http_owner.PreparedHttpBinding(request=request, intent=intent)
         return self.change(result) if self.change else result
 
 
 class Harness:
-    def __init__(self, monkeypatch, *, hops=3, response_bytes=4096):
-        self.module = owner()
-        self.events = []
+    def __init__(self, monkeypatch: pytest.MonkeyPatch, *, hops: int = 3, response_bytes: int = 4096) -> None:
+        self.module = http_owner
+        self.events: list[tuple[object, ...]] = []
         self.state, self.auth = State(self.events), Authorization(self.events)
         self.journal = NodeOperationJournal(state=self.state, authorization=self.auth)
         self.cursor = self.journal.open(ref=REF, occurrence_path=PATH)
@@ -127,23 +126,25 @@ class Harness:
             max_redirect_hops=hops,
             max_response_bytes=response_bytes,
         )
-        self.sent = []
-        self.responses = []
-        self.reply = lambda request: httpx.Response(200, content=b"ok", request=request)
+        self.sent: list[httpx.Request] = []
+        self.responses: list[httpx.Response] = []
+        self.reply: Callable[[httpx.Request], httpx.Response] = lambda request: httpx.Response(
+            200, content=b"ok", request=request
+        )
         self.lower = httpx.Client(transport=httpx.MockTransport(self.transport))
         monkeypatch.setattr(ssrf_proxy, "_get_ssrf_client", lambda _verify: self.lower)
         monkeypatch.setattr(ssrf_proxy, "_inject_trace_headers", lambda headers: headers)
         self.monkeypatch = monkeypatch
 
-    def transport(self, request):
+    def transport(self, request: httpx.Request) -> Response:
         self.events.append(("physical", request.method))
         self.sent.append(request)
         response = self.reply(request)
         self.responses.append(response)
         return response
 
-    def request(self, method="post", url="https://first.example/path", **kwargs):
-        args = {
+    def request(self, method: str = "post", url: str = "https://first.example/path", **kwargs: object) -> HttpResponse:
+        args: dict[str, object] = {
             "headers": {},
             "params": None,
             "json": None,
@@ -164,20 +165,20 @@ class Harness:
             "delete": self.client.delete,
         }[method](url, max_retries=0, **args)
 
-    def replay(self):
+    def replay(self) -> None:
         self.cursor = self.journal.open(ref=REF, occurrence_path=PATH)
         self.cursor.bind_input(input_result_ref="inputs", inputs=INPUT)
         self.producer.cursor = self.cursor
 
 
 @pytest.fixture
-def harness(monkeypatch):
+def harness(monkeypatch: pytest.MonkeyPatch) -> Generator[Harness]:
     value = Harness(monkeypatch)
     yield value
     value.lower.close()
 
 
-def test_real_ssrf_scalar_roundtrip_preserves_response_and_replays_without_dispatch(harness):
+def test_real_ssrf_scalar_roundtrip_preserves_response_and_replays_without_dispatch(harness: Harness) -> None:
     harness.reply = lambda request: httpx.Response(
         422,
         headers={"Content-Type": "text/plain; charset=iso-8859-1", "X-Case": "VALUE"},
@@ -205,7 +206,7 @@ def test_real_ssrf_scalar_roundtrip_preserves_response_and_replays_without_dispa
 
 
 @pytest.mark.parametrize("reason", ["approval", "configuration", "interaction"])
-def test_wait_before_transport_is_private_and_has_no_dispatch(harness, reason):
+def test_wait_before_transport_is_private_and_has_no_dispatch(harness: Harness, reason: WaitReason) -> None:
     harness.auth.decisions[0] = ApprovalWait(pending_operation_id="pending", wait_reason=reason)
     with pytest.raises(NativeApprovalWait) as caught:
         harness.request()
@@ -214,20 +215,20 @@ def test_wait_before_transport_is_private_and_has_no_dispatch(harness, reason):
 
 
 @pytest.mark.parametrize("method", ["get", "head", "post", "put", "delete", "patch"])
-def test_protocol_methods_use_actual_ssrf_owner_without_retry(harness, method):
+def test_protocol_methods_use_actual_ssrf_owner_without_retry(harness: Harness, method: str) -> None:
     harness.request(method=method)
     assert [request.method for request in harness.sent] == [method.upper()]
 
 
 @pytest.mark.parametrize("retry", [1, -1, True, None, "0"])
-def test_retry_option_refused_before_preparation_or_dispatch(harness, retry):
+def test_retry_option_refused_before_preparation_or_dispatch(harness: Harness, retry: object) -> None:
     with pytest.raises(NativePolicyStop):
-        harness.client.post("https://first.example", max_retries=retry)
+        harness.client.post("https://first.example", max_retries=cast(int, retry))
     assert harness.producer.requests == []
     assert harness.sent == []
 
 
-def test_native_executor_prepares_typed_json_query_and_header_before_attestation(harness):
+def test_native_executor_prepares_typed_json_query_and_header_before_attestation(harness: Harness) -> None:
     pool = VariablePool.from_bootstrap(system_variables=[], user_inputs={})
     pool.add(["input", "payload"], {"enabled": True, "values": [False, 2, "2"]})
     pool.add(["input", "header"], "resolved")
@@ -267,13 +268,15 @@ def test_native_executor_prepares_typed_json_query_and_header_before_attestation
     assert harness.sent[0].url.query == b"q=one&q=two"
 
 
-def test_frozen_snapshot_and_binding_never_expose_or_mutate_secret_values(harness):
+def test_frozen_snapshot_and_binding_never_expose_or_mutate_secret_values(harness: Harness) -> None:
     headers = {"X-Token": "private-canary"}
     files = [("upload", ("private-canary", b"\x00\xff", "application/octet-stream"))]
     harness.request(headers=headers, files=files)
     request = harness.producer.requests[0][0]
     assert "private-canary" not in repr(request)
-    assert "private-canary" not in repr(harness.module.PreparedHttpBinding(request=request, intent=None))
+    assert "private-canary" not in repr(
+        harness.module.PreparedHttpBinding(request=request, intent=cast(EffectIntent, None))
+    )
     headers["X-Token"] = "changed"
     extracted = request.arguments()
     extracted["headers"]["X-Token"] = "changed-again"
@@ -283,12 +286,12 @@ def test_frozen_snapshot_and_binding_never_expose_or_mutate_secret_values(harnes
 
 
 @pytest.mark.parametrize("change", ["request", "kind", "invocation", "bare"])
-def test_attestation_substitution_and_invalid_intent_fail_before_claim(harness, change):
-    def tamper(binding):
+def test_attestation_substitution_and_invalid_intent_fail_before_claim(harness: Harness, change: str) -> None:
+    def tamper(binding: PreparedHttpBinding) -> PreparedHttpBinding:
         if change == "request":
             return replace(binding, request=replace(binding.request))
         if change == "bare":
-            return binding.intent
+            return cast(PreparedHttpBinding, binding.intent)
         intent = (
             binding.intent.model_copy(update={"kind": "tool"})
             if change == "kind"
@@ -306,7 +309,9 @@ def test_attestation_substitution_and_invalid_intent_fail_before_claim(harness, 
 
 
 @pytest.mark.parametrize(("code", "expected"), [(301, "GET"), (302, "GET"), (303, "GET"), (307, "POST"), (308, "POST")])
-def test_redirect_hops_have_separate_authority_and_native_method_semantics(harness, code, expected):
+def test_redirect_hops_have_separate_authority_and_native_method_semantics(
+    harness: Harness, code: int, expected: str
+) -> None:
     harness.reply = lambda request: (
         httpx.Response(code, headers={"Location": "https://second.example/next"}, request=request)
         if len(harness.sent) == 1
@@ -333,7 +338,7 @@ def test_redirect_hops_have_separate_authority_and_native_method_semantics(harne
     assert len(harness.sent) == 2
 
 
-def test_redirect_to_new_host_waits_after_first_response_and_replays_first_hop(harness):
+def test_redirect_to_new_host_waits_after_first_response_and_replays_first_hop(harness: Harness) -> None:
     harness.reply = lambda request: httpx.Response(
         302, headers={"Location": "https://second.example/next"}, request=request
     )
@@ -348,7 +353,7 @@ def test_redirect_to_new_host_waits_after_first_response_and_replays_first_hop(h
     assert len(harness.sent) == 1
 
 
-def test_redirect_budget_does_not_dispatch_extra_hop(monkeypatch):
+def test_redirect_budget_does_not_dispatch_extra_hop(monkeypatch: pytest.MonkeyPatch) -> None:
     value = Harness(monkeypatch, hops=0)
     value.reply = lambda request: httpx.Response(302, headers={"Location": "/next"}, request=request)
     with pytest.raises(NativePolicyStop) as caught:
@@ -359,25 +364,25 @@ def test_redirect_budget_does_not_dispatch_extra_hop(monkeypatch):
 
 
 class Stream(httpx.SyncByteStream):
-    def __init__(self, mode):
+    def __init__(self, mode: str) -> None:
         self.mode, self.closes = mode, 0
 
     @override
-    def __iter__(self):
+    def __iter__(self) -> Iterator[bytes]:
         yield b"one"
         if self.mode == "truncate":
             raise httpx.ReadError("private-canary")
         yield b"two"
 
     @override
-    def close(self):
+    def close(self) -> None:
         self.closes += 1
         if self.mode == "close":
             raise RuntimeError("private-canary")
 
 
 @pytest.mark.parametrize("mode", ["truncate", "close", "large", "encoding"])
-def test_response_uncertainty_closes_once_stays_unknown_and_never_resends(harness, mode):
+def test_response_uncertainty_closes_once_stays_unknown_and_never_resends(harness: Harness, mode: str) -> None:
     stream = Stream(mode)
     if mode == "large":
         harness.client._max_response_bytes = 4
@@ -397,8 +402,8 @@ def test_response_uncertainty_closes_once_stays_unknown_and_never_resends(harnes
     assert len(harness.sent) == 1
 
 
-def test_post_timeout_never_retries_and_retains_dispatch(harness):
-    def timeout(request):
+def test_post_timeout_never_retries_and_retains_dispatch(harness: Harness) -> None:
+    def timeout(request: httpx.Request) -> NoReturn:
         raise httpx.ReadTimeout("private-canary", request=request)
 
     harness.reply = timeout
@@ -408,7 +413,7 @@ def test_post_timeout_never_retries_and_retains_dispatch(harness):
     assert harness.auth.outcomes[0] == ("unknown", None)
 
 
-def test_actual_ssrf_rejection_is_unknown_after_dispatch_and_not_retried(harness):
+def test_actual_ssrf_rejection_is_unknown_after_dispatch_and_not_retried(harness: Harness) -> None:
     harness.reply = lambda request: httpx.Response(403, headers={"Server": "squid"}, request=request)
     with pytest.raises(NativePolicyStop):
         harness.request()
@@ -417,7 +422,7 @@ def test_actual_ssrf_rejection_is_unknown_after_dispatch_and_not_retried(harness
 
 
 @pytest.mark.parametrize("failure", ["store", "ack"])
-def test_storage_or_completion_ack_uncertainty_never_resends(harness, failure):
+def test_storage_or_completion_ack_uncertainty_never_resends(harness: Harness, failure: str) -> None:
     if failure == "store":
         harness.state.store_error = RuntimeError("private-canary")
     else:
@@ -435,11 +440,13 @@ def test_storage_or_completion_ack_uncertainty_never_resends(harness, failure):
     assert len(harness.sent) == 1
 
 
-def test_real_in_container_loopback_canary_counts_allowed_then_denied(harness, monkeypatch):
+def test_real_in_container_loopback_canary_counts_allowed_then_denied(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
     counts = []
 
     class Handler(BaseHTTPRequestHandler):
-        def do_POST(self):
+        def do_POST(self) -> None:
             counts.append(self.path)
             self.send_response(201)
             self.send_header("Content-Length", "2")
@@ -447,7 +454,7 @@ def test_real_in_container_loopback_canary_counts_allowed_then_denied(harness, m
             self.wfile.write(b"ok")
 
         @override
-        def log_message(self, format, *args):
+        def log_message(self, format: str, *args: object) -> None:
             pass
 
     server = HTTPServer(("127.0.0.1", 0), Handler)
@@ -470,7 +477,7 @@ def test_real_in_container_loopback_canary_counts_allowed_then_denied(harness, m
         thread.join(timeout=3)
 
 
-def test_multipart_preserved_body_redirect_replay_ignores_random_wire_boundary(harness):
+def test_multipart_preserved_body_redirect_replay_ignores_random_wire_boundary(harness: Harness) -> None:
     harness.reply = lambda request: (
         httpx.Response(307, headers={"Location": "/upload"}, request=request)
         if len(harness.sent) == 1
@@ -483,13 +490,13 @@ def test_multipart_preserved_body_redirect_replay_ignores_random_wire_boundary(h
     assert len(harness.sent) == 2
 
 
-def test_ambient_pooled_client_cookie_never_enters_physical_request(harness):
+def test_ambient_pooled_client_cookie_never_enters_physical_request(harness: Harness) -> None:
     harness.lower.cookies.set("ambient", "private-canary", domain="first.example", path="/")
     harness.request()
     assert "private-canary" not in harness.sent[0].headers.get("cookie", "")
 
 
-def test_same_origin_redirect_preserves_actual_set_cookie_semantics(harness):
+def test_same_origin_redirect_preserves_actual_set_cookie_semantics(harness: Harness) -> None:
     harness.reply = lambda request: (
         httpx.Response(302, headers={"Location": "/next", "Set-Cookie": "chain=admitted; Path=/"}, request=request)
         if len(harness.sent) == 1
@@ -500,7 +507,7 @@ def test_same_origin_redirect_preserves_actual_set_cookie_semantics(harness):
     assert httpx.Headers(harness.producer.requests[1][0].headers).get("cookie") == "chain=admitted"
 
 
-def test_same_origin_chain_cookie_is_preserved_over_more_than_one_redirect(harness):
+def test_same_origin_chain_cookie_is_preserved_over_more_than_one_redirect(harness: Harness) -> None:
     harness.reply = lambda request: (
         httpx.Response(302, headers={"Location": "/second", "Set-Cookie": "chain=admitted; Path=/"}, request=request)
         if len(harness.sent) == 1
@@ -515,7 +522,7 @@ def test_same_origin_chain_cookie_is_preserved_over_more_than_one_redirect(harne
     assert len(harness.sent) == 3
 
 
-def test_declared_length_truncated_response_is_unknown(harness):
+def test_declared_length_truncated_response_is_unknown(harness: Harness) -> None:
     harness.reply = lambda request: httpx.Response(
         200, headers={"Content-Length": "20"}, stream=Stream("ok"), request=request
     )
@@ -533,7 +540,9 @@ def test_declared_length_truncated_response_is_unknown(harness):
         {"error_strategy": "fail-branch"},
     ],
 )
-def test_actual_native_http_node_cannot_convert_wait_to_retry_default_or_fail_branch(harness, policy):
+def test_actual_native_http_node_cannot_convert_wait_to_retry_default_or_fail_branch(
+    harness: Harness, policy: dict[str, JsonValue]
+) -> None:
     from tests.unit_tests.core.workflow.nodes.http_request.test_http_request_node import _build_http_node
 
     base = _build_http_node()
@@ -567,7 +576,7 @@ def test_actual_native_http_node_cannot_convert_wait_to_retry_default_or_fail_br
         ("max_response_bytes", None),
     ],
 )
-def test_admitted_budgets_require_exact_finite_integers(harness, option, value):
+def test_admitted_budgets_require_exact_finite_integers(harness: Harness, option: str, value: object) -> None:
     budgets = {"max_redirect_hops": 2, "max_response_bytes": 4096, option: value}
     reason = (
         "native_http_redirect_budget_required"
@@ -575,7 +584,13 @@ def test_admitted_budgets_require_exact_finite_integers(harness, option, value):
         else "native_http_response_budget_required"
     )
     with pytest.raises(ValueError, match=f"^{reason}$"):
-        harness.module.NativeHttpClient(ref=REF, calls=harness.calls, intents=harness.producer, **budgets)
+        harness.module.NativeHttpClient(
+            ref=REF,
+            calls=harness.calls,
+            intents=harness.producer,
+            max_redirect_hops=cast(int, budgets["max_redirect_hops"]),
+            max_response_bytes=cast(int, budgets["max_response_bytes"]),
+        )
 
 
 @pytest.mark.parametrize(
@@ -591,14 +606,14 @@ def test_admitted_budgets_require_exact_finite_integers(harness, option, value):
         ("content", iter([b"stream"])),
     ],
 )
-def test_unadmitted_or_nonfinite_material_refused_before_intent(harness, option, value):
+def test_unadmitted_or_nonfinite_material_refused_before_intent(harness: Harness, option: str, value: object) -> None:
     with pytest.raises(NativePolicyStop):
-        harness.request(**{option: value})
+        harness.request(**{option: cast(str, value)})
     assert harness.sent == []
     assert harness.producer.requests == []
 
 
-def test_cross_origin_domain_cookie_does_not_forward_or_reappear_from_pool(harness):
+def test_cross_origin_domain_cookie_does_not_forward_or_reappear_from_pool(harness: Harness) -> None:
     harness.reply = lambda request: (
         httpx.Response(
             302,
@@ -616,8 +631,10 @@ def test_cross_origin_domain_cookie_does_not_forward_or_reappear_from_pool(harne
     assert httpx.Headers(harness.producer.requests[1][0].headers).get("cookie") == ""
 
 
-def test_actual_ssrf_request_error_diagnostics_do_not_emit_request_secrets(harness, caplog):
-    def timeout(request):
+def test_actual_ssrf_request_error_diagnostics_do_not_emit_request_secrets(
+    harness: Harness, caplog: pytest.LogCaptureFixture
+) -> None:
+    def timeout(request: httpx.Request) -> NoReturn:
         raise httpx.ReadTimeout("private-canary-error", request=request)
 
     harness.reply = timeout
@@ -628,10 +645,10 @@ def test_actual_ssrf_request_error_diagnostics_do_not_emit_request_secrets(harne
 
 @pytest.mark.parametrize("code", [301, 302, 303, 307, 308])
 @pytest.mark.parametrize("method", ["post", "get", "head"])
-def test_redirect_compatibility_with_actual_locked_httpx(harness, code, method):
+def test_redirect_compatibility_with_actual_locked_httpx(harness: Harness, code: int, method: str) -> None:
     baseline = []
 
-    def baseline_transport(request):
+    def baseline_transport(request: httpx.Request) -> Response:
         baseline.append(request)
         return (
             httpx.Response(code, headers={"Location": "/next?new=2"}, request=request)
@@ -665,7 +682,7 @@ def test_redirect_compatibility_with_actual_locked_httpx(harness, code, method):
 
 
 @pytest.mark.parametrize("status", [599, 600, 799])
-def test_nonstandard_http_status_preserves_actual_native_response_semantics(harness, status):
+def test_nonstandard_http_status_preserves_actual_native_response_semantics(harness: Harness, status: int) -> None:
     harness.reply = lambda request: httpx.Response(status, content=b"body", request=request)
     response = harness.request()
     assert response.status_code == status
@@ -673,7 +690,7 @@ def test_nonstandard_http_status_preserves_actual_native_response_semantics(harn
     assert not response.is_success
 
 
-def test_successful_owned_stream_closes_once_and_current_denial_blocks_replay(harness):
+def test_successful_owned_stream_closes_once_and_current_denial_blocks_replay(harness: Harness) -> None:
     stream = Stream("ok")
     harness.reply = lambda request: httpx.Response(200, stream=stream, request=request)
     assert harness.request().content == b"onetwo"
@@ -688,7 +705,9 @@ def test_successful_owned_stream_closes_once_and_current_denial_blocks_replay(ha
 
 
 @pytest.mark.parametrize("configuration", ["missing", "unfiltered", "removed", "direct-emitter", "no-propagation"])
-def test_unready_telemetry_stops_before_metadata_claim_or_dispatch(harness, monkeypatch, configuration):
+def test_unready_telemetry_stops_before_metadata_claim_or_dispatch(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, configuration: str
+) -> None:
     root = logging.getLogger()
     with monkeypatch.context() as patch:
         if configuration == "missing":
@@ -711,13 +730,17 @@ def test_unready_telemetry_stops_before_metadata_claim_or_dispatch(harness, monk
     assert harness.sent == []
 
 
-def test_ready_check_is_repeated_for_redirect_metadata_before_new_claim(harness, monkeypatch):
+def test_ready_check_is_repeated_for_redirect_metadata_before_new_claim(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
     harness.reply = lambda request: httpx.Response(302, headers={"Location": "/next"}, request=request)
     original_prepare = harness.producer.prepare
 
-    def prepare(**kwargs):
-        binding = original_prepare(**kwargs)
-        assert kwargs["hop"] == 0
+    def prepare(
+        *, request: PreparedHttpRequest, hop: int, previous_response: HttpResponse | None
+    ) -> PreparedHttpBinding:
+        binding = original_prepare(request=request, hop=hop, previous_response=previous_response)
+        assert hop == 0
         monkeypatch.setattr(harness.state, "store_hook", lambda: logging.getLogger().handlers[0].filters.clear())
         return binding
 
@@ -730,7 +753,7 @@ def test_ready_check_is_repeated_for_redirect_metadata_before_new_claim(harness,
     assert len(harness.sent) == 1
 
 
-def test_context_rechecks_after_claim_and_fails_closed_without_transport(harness):
+def test_context_rechecks_after_claim_and_fails_closed_without_transport(harness: Harness) -> None:
     harness.auth.claim_hook = lambda: logging.getLogger().handlers[0].filters.clear()
     with pytest.raises(NativePolicyStop) as caught:
         harness.request()
@@ -740,7 +763,9 @@ def test_context_rechecks_after_claim_and_fails_closed_without_transport(harness
     assert harness.sent == []
 
 
-def test_actual_httpx_info_query_canary_suppressed_on_call_and_replay_but_ordinary_unchanged(harness, caplog):
+def test_actual_httpx_info_query_canary_suppressed_on_call_and_replay_but_ordinary_unchanged(
+    harness: Harness, caplog: pytest.LogCaptureFixture
+) -> None:
     caplog.set_level(logging.INFO, logger="httpx")
     url = "https://first.example/private-canary-path?token=private-canary-query"
     assert harness.request(url=url).content == b"ok"
@@ -753,14 +778,16 @@ def test_actual_httpx_info_query_canary_suppressed_on_call_and_replay_but_ordina
 
 
 @pytest.mark.parametrize("phase", ["send", "read", "close"])
-def test_scalar_contains_raw_transport_exception_before_outer_manual_span(harness, caplog, phase):
+def test_scalar_contains_raw_transport_exception_before_outer_manual_span(
+    harness: Harness, caplog: pytest.LogCaptureFixture, phase: str
+) -> None:
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     tracer = provider.get_tracer(__name__)
     stream = Stream("truncate" if phase == "read" else "close")
 
-    def reply(request):
+    def reply(request: httpx.Request) -> Response:
         if phase == "send":
             raise httpx.ReadTimeout("private-canary-exception", request=request)
         return httpx.Response(200, stream=stream, request=request)
@@ -787,8 +814,9 @@ def test_scalar_contains_raw_transport_exception_before_outer_manual_span(harnes
         provider.shutdown()
 
 
-def test_http_owner_suppresses_real_global_httpx_instrumentation_only_during_physical_io(harness, monkeypatch):
-    import httpcore
+def test_http_owner_suppresses_real_global_httpx_instrumentation_only_during_physical_io(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
 
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
@@ -799,7 +827,7 @@ def test_http_owner_suppresses_real_global_httpx_instrumentation_only_during_phy
     assert isinstance(transport._pool, httpcore.ConnectionPool)
     count = []
 
-    def handle_request(request):
+    def handle_request(request: httpcore.Request) -> httpcore.Response:
         count.append(request)
         if request.url.target.startswith(b"/private-canary"):
             assert not is_instrumentation_enabled()
@@ -807,15 +835,17 @@ def test_http_owner_suppresses_real_global_httpx_instrumentation_only_during_phy
 
     transport._pool.handle_request = handle_request
 
-    def before_authorization():
+    def before_authorization() -> None:
         assert is_instrumentation_enabled()
 
     harness.auth.before_hook = before_authorization
     original_prepare = harness.producer.prepare
 
-    def prepare(**kwargs):
+    def prepare(
+        *, request: PreparedHttpRequest, hop: int, previous_response: HttpResponse | None
+    ) -> PreparedHttpBinding:
         assert is_instrumentation_enabled()
-        return original_prepare(**kwargs)
+        return original_prepare(request=request, hop=hop, previous_response=previous_response)
 
     harness.producer.prepare = prepare
     try:
@@ -835,7 +865,9 @@ def test_http_owner_suppresses_real_global_httpx_instrumentation_only_during_phy
 
 @pytest.mark.parametrize("delivery", ["first", "replay"])
 @pytest.mark.parametrize("expires", [False, True])
-def test_repeated_set_cookie_fields_follow_locked_httpx_on_first_call_and_protected_replay(harness, delivery, expires):
+def test_repeated_set_cookie_fields_follow_locked_httpx_on_first_call_and_protected_replay(
+    harness: Harness, delivery: str, expires: str
+) -> None:
     expiry = "; Expires=Wed, 09 Jun 2038 10:18:14 GMT" if expires else ""
     headers = [
         ("Location", "/next"),
@@ -846,7 +878,7 @@ def test_repeated_set_cookie_fields_follow_locked_httpx_on_first_call_and_protec
     ]
     baseline = []
 
-    def native_reply(request):
+    def native_reply(request: httpx.Request) -> Response:
         baseline.append(request)
         return (
             httpx.Response(302, headers=headers, request=request)
@@ -865,6 +897,7 @@ def test_repeated_set_cookie_fields_follow_locked_httpx_on_first_call_and_protec
     response = harness.request()
     assert (response.status_code, response.content) == (native_response.status_code, native_response.content)
     public_previous = harness.producer.requests[1][2]
+    assert public_previous is not None
     assert dict(public_previous.headers) == dict(native_response.history[0].headers)
     assert public_previous.headers["x-repeat"] == "alpha, beta"
     if delivery == "first":
@@ -881,7 +914,9 @@ def test_repeated_set_cookie_fields_follow_locked_httpx_on_first_call_and_protec
 
 
 @pytest.mark.parametrize("delivery", ["first", "replay"])
-def test_multiple_domain_cookies_are_cleared_for_cross_origin_redirect_and_replay(harness, delivery):
+def test_multiple_domain_cookies_are_cleared_for_cross_origin_redirect_and_replay(
+    harness: Harness, delivery: str
+) -> None:
     headers = [
         ("Location", "https://other.first.example/next"),
         ("Set-Cookie", "a=one; Domain=first.example; Path=/; Expires=Wed, 09 Jun 2038 10:18:14 GMT"),
@@ -906,7 +941,7 @@ def test_multiple_domain_cookies_are_cleared_for_cross_origin_redirect_and_repla
 
 
 @pytest.mark.parametrize("invalid", ["missing", "bad-base64", "bad-pair", "conflicting-public-map"])
-def test_invalid_recorded_raw_headers_stop_unknown_without_resending(harness, invalid):
+def test_invalid_recorded_raw_headers_stop_unknown_without_resending(harness: Harness, invalid: str) -> None:
     assert harness.request().content == b"ok"
     recorded = harness.state.values["result-0"]
     assert isinstance(recorded, dict)

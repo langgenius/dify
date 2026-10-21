@@ -1,7 +1,9 @@
 """Actual response owners; Redis/SQL/provider ports are explicit test boundaries."""
 
+from collections.abc import Callable
 from importlib import import_module, util
-from typing import Protocol, cast
+from types import ModuleType
+from typing import NoReturn, Protocol, cast
 
 import pytest
 from redis import Redis
@@ -10,8 +12,23 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.entities.queue_entities import QueueWorkflowSucceededEvent, WorkflowQueueMessage
-from core.app.entities.task_entities import ErrorStreamResponse, WorkflowPauseStreamResponse
+from core.app.entities.queue_entities import (
+    QueueIterationCompletedEvent,
+    QueueIterationNextEvent,
+    QueueIterationStartEvent,
+    QueueLoopCompletedEvent,
+    QueueLoopNextEvent,
+    QueueLoopStartEvent,
+    QueueWorkflowSucceededEvent,
+    WorkflowQueueMessage,
+)
+from core.app.entities.task_entities import (
+    ErrorStreamResponse,
+    IterationNodeCompletedStreamResponse,
+    LoopNodeCompletedStreamResponse,
+    WorkflowPauseStreamResponse,
+)
+from core.base.tts.app_generator_tts_publisher import AppGeneratorTTSPublisher
 from core.workflow.system_variables import build_system_variables
 from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
@@ -19,6 +36,7 @@ from models.model import AppMode
 from models.workflow import Workflow
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
@@ -32,14 +50,14 @@ class _QueueWithRuntimeState(Protocol):
     runtime_state: RuntimeState
 
 
-def domain():
+def domain() -> ModuleType:
     name = "services.dify_builder.native_testing.observation_stream"
     assert util.find_spec(name) is not None, "native queue projection owner is missing"
     return import_module(name)
 
 
 @pytest.fixture
-def guard():
+def guard() -> NativeObservationGuard:
     return NativeObservationGuard(
         policy=NativeHttpObservationPolicy.qualify(context=context(), profile=build_native_http_profile()),
         on_failure=lambda: None,
@@ -67,7 +85,7 @@ def entity() -> WorkflowAppGenerateEntity:
     )
 
 
-def bind_queue_cache(monkeypatch):
+def bind_queue_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     """Use the actual Redis client with explicit cache command boundaries."""
     client = Redis()
     monkeypatch.setattr(client, "setex", lambda *_args, **_kwargs: True)
@@ -77,21 +95,23 @@ def bind_queue_cache(monkeypatch):
 
 
 class RejectDraftSaverFactory:
-    def __init__(self):
+    def __init__(self) -> None:
         self.calls = []
 
-    def __call__(self, app_id, node_id, node_type, node_execution_id, enclosing_node_id=None):
+    def __call__(
+        self, app_id: str, node_id: str, node_type: str, node_execution_id: str, enclosing_node_id: str | None = None
+    ) -> NoReturn:
         self.calls.append((app_id, node_id, node_type, node_execution_id, enclosing_node_id))
         raise AssertionError("unknown draft factory must never be invoked")
 
 
-def account():
+def account() -> Account:
     user = Account(name=SENTINEL, email=SENTINEL + "@example.com")
     user.id = "actor"
     return user
 
 
-def test_domain_projects_and_retains_independent_canonical_markers(guard):
+def test_domain_projects_and_retains_independent_canonical_markers(guard: NativeObservationGuard) -> None:
     raw = QueueWorkflowSucceededEvent(outputs={SENTINEL: SENTINEL})
     first = domain().project_native_queue_event(guard=guard, event=raw)
     second = domain().project_native_queue_event(guard=guard, event=first)
@@ -102,10 +122,10 @@ def test_domain_projects_and_retains_independent_canonical_markers(guard):
     assert raw.outputs == {SENTINEL: SENTINEL}
 
 
-def test_marked_converter_requires_guard_before_input_conversion(monkeypatch):
-    touch_calls = []
+def test_marked_converter_requires_guard_before_input_conversion(monkeypatch: pytest.MonkeyPatch) -> None:
+    touch_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    def touch(*args, **kwargs):
+    def touch(*args: object, **kwargs: object) -> NoReturn:
         touch_calls.append((args, kwargs))
         raise AssertionError("raw input conversion")
 
@@ -115,7 +135,7 @@ def test_marked_converter_requires_guard_before_input_conversion(monkeypatch):
     assert touch_calls == []
 
 
-def test_marked_pipeline_requires_guard_before_any_initialization():
+def test_marked_pipeline_requires_guard_before_any_initialization() -> None:
     with pytest.raises(NativeObservationError, match="native_observation_failed"):
         WorkflowAppGenerateTaskPipeline(
             application_generate_entity=entity(),
@@ -127,17 +147,22 @@ def test_marked_pipeline_requires_guard_before_any_initialization():
         )
 
 
-def test_queue_projects_before_base_model_dump_and_direct_publish(guard, monkeypatch):
+def test_queue_projects_before_base_model_dump_and_direct_publish(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     bind_queue_cache(monkeypatch)
     manager = WorkflowAppQueueManager("task", "actor", InvokeFrom.DEBUGGER, "workflow", native_observation=guard)
     raw = QueueWorkflowSucceededEvent(outputs={SENTINEL: SENTINEL})
     original = QueueWorkflowSucceededEvent.model_dump
 
-    def checked(event, *args, **kwargs):
-        assert event is not raw, "raw event reached model_dump"
-        return original(event, *args, **kwargs)
+    def checked_dump[**P, R](method: Callable[P, R]) -> Callable[P, R]:
+        def checked(*args: P.args, **kwargs: P.kwargs) -> R:
+            assert args[0] is not raw, "raw event reached model_dump"
+            return method(*args, **kwargs)
 
-    monkeypatch.setattr(QueueWorkflowSucceededEvent, "model_dump", checked)
+        return checked
+
+    monkeypatch.setattr(QueueWorkflowSucceededEvent, "model_dump", checked_dump(original))
     manager.publish(raw, PublishFrom.APPLICATION_MANAGER)
     message = manager._q.get_nowait()
     assert message is not None
@@ -149,7 +174,7 @@ def test_queue_projects_before_base_model_dump_and_direct_publish(guard, monkeyp
     assert SENTINEL not in direct.model_dump_json()
 
 
-def converter(guard) -> WorkflowResponseConverter:
+def converter(guard: NativeObservationGuard) -> WorkflowResponseConverter:
     return WorkflowResponseConverter(
         application_generate_entity=entity(),
         user=account(),
@@ -160,7 +185,9 @@ def converter(guard) -> WorkflowResponseConverter:
     )
 
 
-def test_native_finish_reads_live_outputs_without_converter_or_file_routes(guard, monkeypatch):
+def test_native_finish_reads_live_outputs_without_converter_or_file_routes(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from graphon.entities import WorkflowStartReason
     from graphon.enums import WorkflowExecutionStatus
 
@@ -170,9 +197,9 @@ def test_native_finish_reads_live_outputs_without_converter_or_file_routes(guard
     )
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
     state.set_output(SENTINEL, SENTINEL)
-    tripwire_calls = []
+    tripwire_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    def tripwire(*args, **kwargs):
+    def tripwire(*args: object, **kwargs: object) -> NoReturn:
         tripwire_calls.append((args, kwargs))
         raise AssertionError("raw encoding/file/truncation")
 
@@ -210,20 +237,22 @@ def test_native_finish_reads_live_outputs_without_converter_or_file_routes(guard
         {"redacted": True, "shape": {"type": SENTINEL}},
     ],
 )
-def test_marker_is_content_validation_not_caller_authority(guard, bad):
+def test_marker_is_content_validation_not_caller_authority(
+    guard: NativeObservationGuard, bad: dict[str, object]
+) -> None:
     result = domain().observed_values(guard=guard, values=bad)
     assert result != bad
     assert SENTINEL not in str(result)
 
 
 class Unrenderable:
-    def __str__(self):
+    def __str__(self) -> NoReturn:
         raise AssertionError("rendered private object")
 
     __repr__ = __str__
 
 
-def test_unknown_object_fails_without_rendering_and_latches(guard):
+def test_unknown_object_fails_without_rendering_and_latches(guard: NativeObservationGuard) -> None:
     with pytest.raises(NativeObservationError, match="native_observation_failed"):
         domain().project_native_queue_event(
             guard=guard, event=QueueWorkflowSucceededEvent(outputs={"x": Unrenderable()})
@@ -232,7 +261,7 @@ def test_unknown_object_fails_without_rendering_and_latches(guard):
 
 
 @pytest.mark.parametrize("kind", ["start", "success", "failed", "exception", "retry", "text", "pause", "stop", "error"])
-def test_supported_real_queue_dtos_are_fresh_and_safe(guard, kind):
+def test_supported_real_queue_dtos_are_fresh_and_safe(guard: NativeObservationGuard, kind: str) -> None:
     from core.app.entities import queue_entities as q
     from graphon.entities.pause_reason import SchedulingPause
     from graphon.enums import BuiltinNodeTypes
@@ -269,7 +298,7 @@ def test_supported_real_queue_dtos_are_fresh_and_safe(guard, kind):
         assert result.retry_index == 2
 
 
-def test_wrong_node_type_and_unqualified_hitl_fail_before_projection(guard):
+def test_wrong_node_type_and_unqualified_hitl_fail_before_projection(guard: NativeObservationGuard) -> None:
     from core.app.entities.queue_entities import QueueNodeStartedEvent
     from graphon.enums import BuiltinNodeTypes
 
@@ -287,7 +316,7 @@ def test_wrong_node_type_and_unqualified_hitl_fail_before_projection(guard):
 
 
 def make_pipeline(
-    guard, monkeypatch, **updates
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch, **updates: object
 ) -> tuple[WorkflowAppGenerateTaskPipeline, WorkflowAppQueueManager, RejectDraftSaverFactory]:
     from tests.unit_tests.core.app.apps.workflow.test_generate_task_pipeline_core import _make_pipeline
 
@@ -310,7 +339,9 @@ def make_pipeline(
     return pipeline, queue, saver
 
 
-def test_pipeline_projects_internal_events_and_noops_draft_saver(guard, monkeypatch):
+def test_pipeline_projects_internal_events_and_noops_draft_saver(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.app.entities.queue_entities import QueueNodeSucceededEvent
     from graphon.enums import BuiltinNodeTypes
 
@@ -335,11 +366,13 @@ def test_pipeline_projects_internal_events_and_noops_draft_saver(guard, monkeypa
     assert cast(_QueueWithRuntimeState, q).runtime_state is live
 
 
-def test_pipeline_refuses_tts_trace_and_files_before_actions(guard, monkeypatch):
+def test_pipeline_refuses_tts_trace_and_files_before_actions(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     p, q, saver = make_pipeline(guard, monkeypatch)
-    tts_calls = []
+    tts_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    def tts(*args, **kwargs):
+    def tts(*args: object, **kwargs: object) -> NoReturn:
         tts_calls.append((args, kwargs))
         raise AssertionError("TTS must not initialize")
 
@@ -350,7 +383,9 @@ def test_pipeline_refuses_tts_trace_and_files_before_actions(guard, monkeypatch)
     assert tts_calls == []
 
 
-def test_pause_live_fallback_is_safe_without_hitl_resolution(guard, monkeypatch):
+def test_pause_live_fallback_is_safe_without_hitl_resolution(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.app.entities.queue_entities import QueueWorkflowPausedEvent
     from graphon.entities import WorkflowStartReason
     from graphon.entities.pause_reason import SchedulingPause
@@ -361,9 +396,9 @@ def test_pause_live_fallback_is_safe_without_hitl_resolution(guard, monkeypatch)
     )
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
     state.set_output(SENTINEL, SENTINEL)
-    trip_calls = []
+    trip_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    def trip(*args, **kwargs):
+    def trip(*args: object, **kwargs: object) -> NoReturn:
         trip_calls.append((args, kwargs))
         raise AssertionError("HITL resolution")
 
@@ -388,13 +423,15 @@ def test_pause_live_fallback_is_safe_without_hitl_resolution(guard, monkeypatch)
     assert trip_calls == []
 
 
-def test_direct_native_error_handler_never_passes_raw_error_to_base(guard, monkeypatch):
+def test_direct_native_error_handler_never_passes_raw_error_to_base(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.app.entities.queue_entities import QueueErrorEvent
 
     p, q, saver = make_pipeline(guard, monkeypatch)
     original = p._base_task_pipeline.handle_error
 
-    def checked(*, event):
+    def checked(*, event: QueueErrorEvent) -> Exception:
         assert event.error == "native_execution_error"
         return original(event=event)
 
@@ -404,16 +441,18 @@ def test_direct_native_error_handler_never_passes_raw_error_to_base(guard, monke
     assert str(r[0].err) == "native_execution_error"
 
 
-def test_direct_native_text_handler_rejects_tts_before_publish(guard, monkeypatch):
+def test_direct_native_text_handler_rejects_tts_before_publish(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.app.entities.queue_entities import QueueTextChunkEvent
 
     p, q, saver = make_pipeline(guard, monkeypatch)
 
     class RejectedTTSPublisher:
-        def __init__(self):
+        def __init__(self) -> None:
             self.published = []
 
-        def publish(self, *args, **kwargs):
+        def publish(self, *args: object, **kwargs: object) -> NoReturn:
             self.published.append((args, kwargs))
             raise AssertionError("native text reached TTS")
 
@@ -422,7 +461,7 @@ def test_direct_native_text_handler_rejects_tts_before_publish(guard, monkeypatc
         list(
             p._handle_text_chunk_event(
                 QueueTextChunkEvent(text=SENTINEL),
-                tts_publisher=tts,
+                tts_publisher=cast(AppGeneratorTTSPublisher, tts),
                 queue_message=cast(WorkflowQueueMessage, object()),
             )
         )
@@ -430,7 +469,7 @@ def test_direct_native_text_handler_rejects_tts_before_publish(guard, monkeypatc
 
 
 @pytest.mark.parametrize("kind", ["iteration", "loop"])
-def test_real_container_queue_and_converter_preserve_counts_without_values(kind):
+def test_real_container_queue_and_converter_preserve_counts_without_values(kind: str) -> None:
     from core.app.entities import queue_entities as q
     from graphon.entities import WorkflowStartReason
     from graphon.enums import BuiltinNodeTypes
@@ -475,24 +514,40 @@ def test_real_container_queue_and_converter_preserve_counts_without_values(kind)
     for event, method in zip(events, ["start", "next", "completed"], strict=True):
         projected = domain().project_native_queue_event(guard=guard, event=event)
         assert projected == domain().project_native_queue_event(guard=guard, event=projected)
-        response = {
-            "iteration": {
-                "start": c.workflow_iteration_start_to_stream_response,
-                "next": c.workflow_iteration_next_to_stream_response,
-                "completed": c.workflow_iteration_completed_to_stream_response,
-            },
-            "loop": {
-                "start": c.workflow_loop_start_to_stream_response,
-                "next": c.workflow_loop_next_to_stream_response,
-                "completed": c.workflow_loop_completed_to_stream_response,
-            },
-        }[kind][method](task_id="task", workflow_execution_id="run", event=event)
+        match (kind, method, event):
+            case ("iteration", "start", QueueIterationStartEvent()):
+                response = c.workflow_iteration_start_to_stream_response(
+                    task_id="task", workflow_execution_id="run", event=event
+                )
+            case ("iteration", "next", QueueIterationNextEvent()):
+                response = c.workflow_iteration_next_to_stream_response(
+                    task_id="task", workflow_execution_id="run", event=event
+                )
+            case ("iteration", "completed", QueueIterationCompletedEvent()):
+                response = c.workflow_iteration_completed_to_stream_response(
+                    task_id="task", workflow_execution_id="run", event=event
+                )
+            case ("loop", "start", QueueLoopStartEvent()):
+                response = c.workflow_loop_start_to_stream_response(
+                    task_id="task", workflow_execution_id="run", event=event
+                )
+            case ("loop", "next", QueueLoopNextEvent()):
+                response = c.workflow_loop_next_to_stream_response(
+                    task_id="task", workflow_execution_id="run", event=event
+                )
+            case ("loop", "completed", QueueLoopCompletedEvent()):
+                response = c.workflow_loop_completed_to_stream_response(
+                    task_id="task", workflow_execution_id="run", event=event
+                )
+            case _:
+                pytest.fail("container fixture/event conversion mismatch")
         assert SENTINEL not in response.model_dump_json()
     assert response is not None
+    assert isinstance(response, IterationNodeCompletedStreamResponse | LoopNodeCompletedStreamResponse)
     assert response.data.steps == 4
 
 
-def test_retry_history_remains_safe_and_idempotent_in_queue_and_converter(guard):
+def test_retry_history_remains_safe_and_idempotent_in_queue_and_converter(guard: NativeObservationGuard) -> None:
     from core.app.entities.queue_entities import QueueNodeStartedEvent, QueueNodeSucceededEvent
     from graphon.entities import WorkflowStartReason
     from graphon.enums import BuiltinNodeTypes
@@ -542,12 +597,12 @@ def test_retry_history_remains_safe_and_idempotent_in_queue_and_converter(guard)
     assert SENTINEL not in result.model_dump_json()
 
 
-def test_live_output_read_failure_is_latched_without_raw_exception(guard):
+def test_live_output_read_failure_is_latched_without_raw_exception(guard: NativeObservationGuard) -> None:
     from graphon.entities import WorkflowStartReason
     from graphon.enums import WorkflowExecutionStatus
 
     class PrivateCopy:
-        def __deepcopy__(self, memo):
+        def __deepcopy__(self, memo: dict[int, object]) -> NoReturn:
             raise RuntimeError(SENTINEL)
 
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
@@ -564,12 +619,16 @@ def test_live_output_read_failure_is_latched_without_raw_exception(guard):
 
 
 @pytest.mark.parametrize("field", ["files", "trace_manager"])
-def test_native_pipeline_refuses_unqualified_setup_before_base(guard, monkeypatch, field):
+def test_native_pipeline_refuses_unqualified_setup_before_base(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch, field: str
+) -> None:
     with pytest.raises(NativeObservationError):
         make_pipeline(guard, monkeypatch, **{field: [object()] if field == "files" else object()})
 
 
-def test_native_pipeline_refuses_different_queue_guard(guard, monkeypatch):
+def test_native_pipeline_refuses_different_queue_guard(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     p, q, saver = make_pipeline(guard, monkeypatch)
     with pytest.raises(NativeObservationError):
         WorkflowAppGenerateTaskPipeline(
@@ -586,7 +645,7 @@ def test_native_pipeline_refuses_different_queue_guard(guard, monkeypatch):
         )
 
 
-def test_unqualified_queue_classes_refuse_without_serializing(guard):
+def test_unqualified_queue_classes_refuse_without_serializing(guard: NativeObservationGuard) -> None:
     from core.app.entities.queue_entities import QueueAgentLogEvent
 
     e = QueueAgentLogEvent(
@@ -596,7 +655,9 @@ def test_unqualified_queue_classes_refuse_without_serializing(guard):
         domain().project_native_queue_event(guard=guard, event=e)
 
 
-def test_pipeline_listen_projects_raw_internal_error_before_base(guard, monkeypatch):
+def test_pipeline_listen_projects_raw_internal_error_before_base(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.app.entities.queue_entities import QueueErrorEvent, WorkflowQueueMessage
 
     p, q, saver = make_pipeline(guard, monkeypatch)
@@ -618,12 +679,14 @@ def test_pipeline_listen_projects_raw_internal_error_before_base(guard, monkeypa
     assert saver.calls == []
 
 
-def test_queue_unknown_value_refuses_before_base_serializer(guard, monkeypatch):
+def test_queue_unknown_value_refuses_before_base_serializer(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     bind_queue_cache(monkeypatch)
     q = WorkflowAppQueueManager("task", "actor", InvokeFrom.DEBUGGER, "workflow", native_observation=guard)
-    trip_calls = []
+    trip_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    def trip(*args, **kwargs):
+    def trip(*args: object, **kwargs: object) -> NoReturn:
         trip_calls.append((args, kwargs))
         raise AssertionError("raw model_dump")
 
@@ -635,14 +698,17 @@ def test_queue_unknown_value_refuses_before_base_serializer(guard, monkeypatch):
 
 
 @pytest.mark.parametrize("bad", [None, object()])
-def test_marked_converter_wrong_guard_refuses_before_inputs(bad):
+def test_marked_converter_wrong_guard_refuses_before_inputs(bad: object) -> None:
     with pytest.raises(NativeObservationError):
         WorkflowResponseConverter(
-            application_generate_entity=entity(), user=account(), system_variables=[], native_observation=bad
+            application_generate_entity=entity(),
+            user=account(),
+            system_variables=[],
+            native_observation=cast(NativeObservationGuard, bad),
         )
 
 
-def test_native_no_hitl_or_history_resume(guard):
+def test_native_no_hitl_or_history_resume(guard: NativeObservationGuard) -> None:
     from core.app.entities.queue_entities import QueueWorkflowPausedEvent, QueueWorkflowStartedEvent
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
     from graphon.entities import WorkflowStartReason
@@ -664,7 +730,9 @@ def test_native_no_hitl_or_history_resume(guard):
 
 @pytest.mark.parametrize("route", ["projector", "publish", "direct", "converter"])
 @pytest.mark.parametrize("supplied_host", [None, object()])
-def test_resumption_requires_actual_host_not_a_caller_port(guard, monkeypatch, route, supplied_host):
+def test_resumption_requires_actual_host_not_a_caller_port(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch, route: str, supplied_host: object
+) -> None:
     from core.app.entities.queue_entities import QueueWorkflowStartedEvent
     from graphon.entities import WorkflowStartReason
 
@@ -672,17 +740,22 @@ def test_resumption_requires_actual_host_not_a_caller_port(guard, monkeypatch, r
     event = QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION)
     if supplied_host is not None and route != "projector":
 
-        def construct():
+        def construct() -> WorkflowAppQueueManager | WorkflowResponseConverter:
             if route == "converter":
                 return WorkflowResponseConverter(
                     application_generate_entity=entity(),
                     user=account(),
                     system_variables=[],
                     native_observation=guard,
-                    native_host=supplied_host,
+                    native_host=cast(NativeHostLaunch, supplied_host),
                 )
             return WorkflowAppQueueManager(
-                "task", "actor", InvokeFrom.DEBUGGER, "workflow", native_observation=guard, native_host=supplied_host
+                "task",
+                "actor",
+                InvokeFrom.DEBUGGER,
+                "workflow",
+                native_observation=guard,
+                native_host=cast(NativeHostLaunch, supplied_host),
             )
 
         with pytest.raises(BuilderExecutionPolicyError, match="native_resume_owner_mismatch"):
@@ -690,10 +763,12 @@ def test_resumption_requires_actual_host_not_a_caller_port(guard, monkeypatch, r
         return
     queue = None
 
-    def project():
+    def project() -> object:
         nonlocal queue
         if route == "projector":
-            return domain().project_native_queue_event(guard=guard, event=event, native_host=supplied_host)
+            return domain().project_native_queue_event(
+                guard=guard, event=event, native_host=cast(NativeHostLaunch, supplied_host)
+            )
         if route == "converter":
             return converter(guard).workflow_start_to_stream_response(
                 task_id="task", workflow_run_id="run", workflow_id="workflow", reason=WorkflowStartReason.RESUMPTION
@@ -711,7 +786,7 @@ def test_resumption_requires_actual_host_not_a_caller_port(guard, monkeypatch, r
 
 
 @pytest.mark.parametrize("price", ["0", "1", "NaN", "Infinity"])
-def test_generic_container_decimal_metadata_stays_refused_without_actual_host(price):
+def test_generic_container_decimal_metadata_stays_refused_without_actual_host(price: str) -> None:
     from decimal import Decimal
 
     from core.app.entities.queue_entities import QueueLoopCompletedEvent
@@ -740,7 +815,9 @@ def test_generic_container_decimal_metadata_stays_refused_without_actual_host(pr
     assert guard.failed
 
 
-def test_native_pause_response_reuses_cumulative_settled_duration_after_queue_delay(guard, monkeypatch):
+def test_native_pause_response_reuses_cumulative_settled_duration_after_queue_delay(
+    guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.app.entities.queue_entities import QueueWorkflowPausedEvent
     from core.app.entities.task_entities import WorkflowPauseStreamResponse
     from graphon.entities import WorkflowStartReason

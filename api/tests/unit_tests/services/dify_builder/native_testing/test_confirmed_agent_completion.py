@@ -1,19 +1,25 @@
 """Terminal C03 evidence closes the original Builder attempt, without another run."""
 
 import json
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
+import pytest_mock
+import sqlalchemy.orm
 from dify_agent.client import Client
-from sqlalchemy import Engine, select
+from dify_agent.protocol.schemas import RunStatusResponse
+from sqlalchemy import Engine, Table, select
+from sqlalchemy.orm import Session as SqlSession
 from sqlalchemy.orm import sessionmaker
 
 from clients.agent_backend import DifyAgentBackendRunClient
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.dify_builder.models import DifyBuilderContext, EntryMode, Run, Session
+from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, Run, Session
 from core.dify_builder.state import PcState
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.dify_builder import (
     DifyBuilderExecutionRequest,
     DifyBuilderRun,
@@ -40,6 +46,7 @@ from runtime_contracts.builder.native.runtime_contracts import (
     ResolvedNativeTestContext,
 )
 from services.dify_builder import dify_port
+from services.dify_builder.dify_port import BuilderExecutionRecorder
 from services.dify_builder.native_testing.api_service import NativeTestApiService
 from services.dify_builder.native_testing.confirmed_agent_commands import (
     ConfirmedAgentCommands,
@@ -65,7 +72,7 @@ class _CompletionDatabase:
 
 @dataclass
 class CompletedOwner:
-    factory: sessionmaker
+    factory: sessionmaker[SqlSession]
     repo: SqlDifyBuilderRepository
     case: AgentCase
     session: Session
@@ -83,7 +90,7 @@ class CompletedOwner:
     writer_depth: int = 0
 
 
-def _api(factory, actor):
+def _api(factory: sessionmaker[SqlSession], actor: Actor) -> NativeTestApiService:
     return NativeTestApiService(
         session_factory=factory,
         actor=actor,
@@ -95,7 +102,7 @@ def _api(factory, actor):
     )
 
 
-def _owned(owner, *, generation=1):
+def _owned(owner: CompletedOwner, *, generation: int = 1) -> OwnedNativeTest:
     return OwnedNativeTest(
         ref=owner.ref,
         tenant_id=owner.case.actor.tenant_id,
@@ -112,7 +119,7 @@ def _owned(owner, *, generation=1):
     )
 
 
-def _context(owner, *, generation=1):
+def _context(owner: CompletedOwner, *, generation: int = 1) -> ResolvedNativeTestContext:
     return ResolvedNativeTestContext(
         ref=owner.ref,
         tenant_id=owner.case.actor.tenant_id,
@@ -135,7 +142,7 @@ def _context(owner, *, generation=1):
     )
 
 
-def _protected(owner, execution_id):
+def _protected(owner: CompletedOwner, execution_id: str) -> AgentProtectedState:
     parent = AgentParentNodeRef(
         ref=owner.ref, execution_id=execution_id, input_result_ref="input", input_digest="b" * 64
     )
@@ -176,7 +183,12 @@ def _protected(owner, execution_id):
 
 
 @pytest.fixture
-def completed(mocker, sqlite_session_factory, monkeypatch, request):
+def completed(
+    mocker: pytest_mock.MockerFixture,
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+) -> CompletedOwner:
     factory = sqlite_session_factory
     with factory.begin() as sql:
         case = make_case(sql)
@@ -192,7 +204,7 @@ def completed(mocker, sqlite_session_factory, monkeypatch, request):
         )
         sql.flush()
         revision = execution_revision(case.workflow)
-        graph_revision = executable_graph_revision(case.workflow.graph_dict)
+        graph_revision = executable_graph_revision(dict(case.workflow.graph_dict))
         raw_revision = native_workflow_revision(case.workflow)
     repo = SqlDifyBuilderRepository(factory)
     session = Session(
@@ -263,6 +275,7 @@ def completed(mocker, sqlite_session_factory, monkeypatch, request):
     )
     with factory.begin() as sql:
         for table in (NativeTestScope.__table__, NativeInvocationState.__table__, NativeEffectOperation.__table__):
+            assert isinstance(table, Table)
             table.create(sql.connection(), checkfirst=True)
         sql.add(
             DifyBuilderExecutionRequest(
@@ -409,11 +422,11 @@ def completed(mocker, sqlite_session_factory, monkeypatch, request):
     )
 
 
-def observe(owner):
+def observe(owner: CompletedOwner) -> NativeTestPublicReceipt:
     return owner.commands.get(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
 
 
-def test_terminal_public_read_closes_same_builder_run_and_review_without_dispatch(completed):
+def test_terminal_public_read_closes_same_builder_run_and_review_without_dispatch(completed: CompletedOwner) -> None:
     owner = completed
     assert owner.repo.get_run(owner.verify_id).status == "running"
     observe(owner)
@@ -423,7 +436,10 @@ def test_terminal_public_read_closes_same_builder_run_and_review_without_dispatc
     assert run.id == context.verify_run_id == owner.verify_id
     assert run.inputs_ref == owner.saved_id
     assert run.dify_run_id == owner.native_id
+    assert run.verification is not None
+    assert run.verification.execution_evidence is not None
     assert run.verification.execution_evidence.sealed
+    assert run.verification is not None
     assert run.verification.terminal_outputs == {"summary": "actual output"}
     assert session.current_state == PcState.BUILD_REVIEW
     with owner.factory() as sql:
@@ -435,31 +451,44 @@ def test_terminal_public_read_closes_same_builder_run_and_review_without_dispatc
 
 
 @pytest.mark.parametrize("drift", ["version", "input", "verify", "native", "revision", "effect", "c03"])
-def test_terminal_projection_refuses_stale_or_unsettled_original_attempt(completed, drift):
+def test_terminal_projection_refuses_stale_or_unsettled_original_attempt(completed: CompletedOwner, drift: str) -> None:
     owner = completed
     with owner.factory.begin() as sql:
         if drift == "version":
-            sql.get(DifyBuilderSession, owner.session.id).version += 1
+            selected_row_17 = sql.get(DifyBuilderSession, owner.session.id)
+            assert selected_row_17 is not None
+            selected_row_17.version += 1
         elif drift in {"input", "verify"}:
             commit = sql.scalar(select(DifyBuilderSessionCommit).where(DifyBuilderSessionCommit.version == 2))
+            assert commit is not None
             commit.context = {**commit.context, "test_input_ref" if drift == "input" else "verify_run_id": "other"}
         elif drift == "native":
-            sql.get(DifyBuilderRun, owner.verify_id).dify_run_id = str(uuid4())
+            selected_row_62 = sql.get(DifyBuilderRun, owner.verify_id)
+            assert selected_row_62 is not None
+            selected_row_62.dify_run_id = str(uuid4())
         elif drift == "revision":
             from models.workflow import Workflow
 
-            sql.get(Workflow, owner.case.workflow.id).graph = '{"nodes":[],"edges":[]}'
+            selected_row_66 = sql.get(Workflow, owner.case.workflow.id)
+            assert selected_row_66 is not None
+            selected_row_66.graph = '{"nodes":[],"edges":[]}'
         elif drift == "effect":
-            sql.scalar(select(NativeEffectOperation)).state = "unknown"
+            selected_row_71 = sql.scalar(select(NativeEffectOperation))
+            assert selected_row_71 is not None
+            selected_row_71.state = "unknown"
         else:
-            sql.scalar(select(NativeInvocationState)).state = "unknown"
+            selected_row_72 = sql.scalar(select(NativeInvocationState))
+            assert selected_row_72 is not None
+            selected_row_72.state = "unknown"
     before = owner.repo.get_session(owner.session.id)[0].version
     observe(owner)
     assert owner.repo.get_run(owner.verify_id).status == "running"
     assert owner.repo.get_session(owner.session.id)[0].version == before
 
 
-def test_inflight_builder_command_keeps_its_session_lease(completed, monkeypatch):
+def test_inflight_builder_command_keeps_its_session_lease(
+    completed: CompletedOwner, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder import session_lock
 
     monkeypatch.setattr(session_lock, "acquire", lambda _: None)
@@ -467,22 +496,31 @@ def test_inflight_builder_command_keeps_its_session_lease(completed, monkeypatch
     assert completed.repo.get_run(completed.verify_id).status == "running"
 
 
-def test_actual_terminal_run_can_use_the_protected_context_native_id_without_a_column_ack(completed):
+def test_actual_terminal_run_can_use_the_protected_context_native_id_without_a_column_ack(
+    completed: CompletedOwner,
+) -> None:
     owner = completed
     with owner.factory.begin() as sql:
-        sql.get(DifyBuilderExecutionRequest, owner.request_id).native_run_id = None
+        selected_row_1 = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert selected_row_1 is not None
+        selected_row_1.native_run_id = None
     observe(owner)
     assert owner.repo.get_run(owner.verify_id).status == "succeeded"
     assert owner.repo.get_run(owner.verify_id).dify_run_id == owner.native_id
     with owner.factory() as sql:
-        assert sql.get(DifyBuilderExecutionRequest, owner.request_id).native_run_id is None
+        selected_row_18 = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert selected_row_18 is not None
+        assert selected_row_18.native_run_id is None
 
 
 @pytest.mark.parametrize("drift", ["column_disagrees", "actual_row_missing"])
-def test_context_native_identity_never_replaces_the_actual_owned_native_run(completed, drift):
+def test_context_native_identity_never_replaces_the_actual_owned_native_run(
+    completed: CompletedOwner, drift: str
+) -> None:
     owner = completed
     with owner.factory.begin() as sql:
         request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert request is not None
         request.native_run_id = str(uuid4()) if drift == "column_disagrees" else None
         if drift == "actual_row_missing":
             sql.delete(sql.get(WorkflowRun, owner.native_id))
@@ -495,13 +533,16 @@ def test_context_native_identity_never_replaces_the_actual_owned_native_run(comp
     [("confirmed", "canvas", True), ("confirmed", "task", False), ("legacy", "canvas", False)],
     indirect=["completed"],
 )
-def test_completion_uses_the_immutable_admitted_revision_basis(completed, change, expected):
+def test_completion_uses_the_immutable_admitted_revision_basis(
+    completed: CompletedOwner, change: str, expected: bool
+) -> None:
     from models.workflow import Workflow
 
     owner = completed
     with owner.factory.begin() as sql:
         workflow = sql.get(Workflow, owner.case.workflow.id)
-        graph = workflow.graph_dict
+        assert workflow is not None
+        graph = dict(workflow.graph_dict)
         if change == "canvas":
             graph["nodes"][1]["position"] = {"x": 900, "y": 42}
             graph["viewport"] = {"x": 50, "y": 60, "zoom": 0.8}
@@ -512,7 +553,9 @@ def test_completion_uses_the_immutable_admitted_revision_basis(completed, change
     assert (owner.repo.get_run(owner.verify_id).status == "succeeded") is expected
 
 
-def test_resume_finalizes_actual_c03_before_closing_original_builder_run(mocker, completed):
+def test_resume_finalizes_actual_c03_before_closing_original_builder_run(
+    mocker: pytest_mock.MockerFixture, completed: CompletedOwner
+) -> None:
     from contextlib import contextmanager
 
     from models.dify_builder_native_tests import NativeDispatch, NativeTestInvocation
@@ -521,9 +564,15 @@ def test_resume_finalizes_actual_c03_before_closing_original_builder_run(mocker,
     owner = completed
     with owner.factory.begin() as sql:
         for model in (NativeDispatch, NativeTestInvocation):
-            model.__table__.create(sql.connection(), checkfirst=True)
-        sql.get(DifyBuilderExecutionRequest, owner.request_id).state = "running"
+            table = model.__table__
+            assert isinstance(table, Table)
+            assert isinstance(table, Table)
+            table.create(sql.connection(), checkfirst=True)
+        selected_row_2 = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert selected_row_2 is not None
+        selected_row_2.state = "running"
         state = sql.scalar(select(NativeInvocationState))
+        assert state is not None
         state.state, state.outcome = "running", None
         sql.add(
             NativeTestInvocation(
@@ -548,7 +597,7 @@ def test_resume_finalizes_actual_c03_before_closing_original_builder_run(mocker,
         )
 
     @contextmanager
-    def locked(**_values):
+    def locked(**_values: object) -> Generator[tuple[SqlSession, OwnedNativeTest, NativeTestScope | None]]:
         with owner.factory.begin() as sql:
             yield (
                 sql,
@@ -564,18 +613,43 @@ def test_resume_finalizes_actual_c03_before_closing_original_builder_run(mocker,
     assert owner.repo.get_run(owner.verify_id).status == "succeeded"
     assert owner.repo.get_session(owner.session.id)[0].current_state == PcState.BUILD_REVIEW
     with owner.factory() as sql:
-        assert sql.get(NativeDispatch, "original-dispatch").state == "completed"
-        assert sql.get(DifyBuilderExecutionRequest, owner.request_id).state == "sealed"
+        selected_row_19 = sql.get(NativeDispatch, "original-dispatch")
+        assert selected_row_19 is not None
+        assert selected_row_19.state == "completed"
+        selected_row_20 = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert selected_row_20 is not None
+        assert selected_row_20.state == "sealed"
 
 
-def test_user_session_cas_wins_during_terminal_result_read(completed, monkeypatch):
+def test_user_session_cas_wins_during_terminal_result_read(
+    completed: CompletedOwner, monkeypatch: pytest.MonkeyPatch
+) -> None:
     original = dify_port.WorkflowServiceDifyPort._bind_run
 
-    def read_then_user_change(port, *args, **kwargs):
-        result = original(port, *args, **kwargs)
+    def read_then_user_change(
+        port: dify_port.WorkflowServiceDifyPort,
+        result: tuple[Run, object],
+        app_id: str,
+        actor: Actor,
+        before_revision: str,
+        before_graph_revision: str,
+        *,
+        execution_recorder: BuilderExecutionRecorder | None = None,
+        restricted: bool = True,
+    ) -> Run:
+        readback = original(
+            port,
+            result,
+            app_id,
+            actor,
+            before_revision,
+            before_graph_revision,
+            execution_recorder=execution_recorder,
+            restricted=restricted,
+        )
         session, context = completed.repo.get_session(completed.session.id)
         completed.repo.compare_and_advance(session.id, session.version, PcState.BUILD_EXECUTION, context, [])
-        return result
+        return readback
 
     monkeypatch.setattr(dify_port.WorkflowServiceDifyPort, "_bind_run", read_then_user_change)
     observe(completed)
@@ -584,12 +658,14 @@ def test_user_session_cas_wins_during_terminal_result_read(completed, monkeypatc
     assert completed.repo.get_session(completed.session.id)[0].current_state == PcState.BUILD_EXECUTION
 
 
-def test_actual_native_failure_closes_old_run_without_diagnosis_or_new_execution(completed):
+def test_actual_native_failure_closes_old_run_without_diagnosis_or_new_execution(completed: CompletedOwner) -> None:
     owner = completed
     with owner.factory.begin() as sql:
         run = sql.get(WorkflowRun, owner.native_id)
-        run.status, run.error = "failed", "actual native failure"
+        assert run is not None
+        run.status, run.error = WorkflowExecutionStatus.FAILED, "actual native failure"
         state = sql.scalar(select(NativeInvocationState))
+        assert state is not None
         state.outcome = confirmed_parent_outcome(
             ref=owner.ref, native_run_id=owner.native_id, native_status="failed", operation_states=("completed",)
         ).model_dump(mode="json")
@@ -598,6 +674,8 @@ def test_actual_native_failure_closes_old_run_without_diagnosis_or_new_execution
     session, context = owner.repo.get_session(owner.session.id)
     assert run.status == "failed"
     assert run.error == "actual native failure"
+    assert run.verification is not None
+    assert run.verification.execution_evidence is not None
     assert run.verification.execution_evidence.safety_outcome == "native_failed"
     assert session.current_state == PcState.BUILD_AWAIT_REPAIR
     assert context.diagnosis is None
@@ -606,7 +684,9 @@ def test_actual_native_failure_closes_old_run_without_diagnosis_or_new_execution
         assert len(sql.scalars(select(DifyBuilderRun)).all()) == 2
 
 
-def test_concurrent_terminal_observers_commit_one_result_on_the_same_attempt(completed, monkeypatch):
+def test_concurrent_terminal_observers_commit_one_result_on_the_same_attempt(
+    completed: CompletedOwner, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from concurrent.futures import ThreadPoolExecutor
     from threading import Event, Lock
 
@@ -617,8 +697,27 @@ def test_concurrent_terminal_observers_commit_one_result_on_the_same_attempt(com
     monkeypatch.setattr(session_lock, "release", lambda *_: lease.release())
     original = dify_port.WorkflowServiceDifyPort._bind_run
 
-    def bounded_read(port, *args, **kwargs):
-        run = original(port, *args, **kwargs)
+    def bounded_read(
+        port: dify_port.WorkflowServiceDifyPort,
+        result: tuple[Run, object],
+        app_id: str,
+        actor: Actor,
+        before_revision: str,
+        before_graph_revision: str,
+        *,
+        execution_recorder: BuilderExecutionRecorder | None = None,
+        restricted: bool = True,
+    ) -> Run:
+        run = original(
+            port,
+            result,
+            app_id,
+            actor,
+            before_revision,
+            before_graph_revision,
+            execution_recorder=execution_recorder,
+            restricted=restricted,
+        )
         reading.set()
         assert proceed.wait(5)
         return run
@@ -640,15 +739,25 @@ def test_concurrent_terminal_observers_commit_one_result_on_the_same_attempt(com
     assert len([item for item in page.data if item.kind == "test_result"]) == 1
 
 
-def test_declined_terminal_proof_closes_same_builder_attempt_and_returns_editable_review(completed):
+def test_declined_terminal_proof_closes_same_builder_attempt_and_returns_editable_review(
+    completed: CompletedOwner,
+) -> None:
     """A saved verified stop must escape the old pending repair view, once only."""
     owner = completed
     with owner.factory.begin() as sql:
-        sql.get(WorkflowRun, owner.native_id).status = "stopped"
-        sql.get(WorkflowRun, owner.native_id).error = "effect_denied"
-        sql.get(NativeTestScope, owner.request_id).cancelled = True
+        selected_row_3 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_3 is not None
+        selected_row_3.status = WorkflowExecutionStatus.STOPPED
+        selected_row_4 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_4 is not None
+        selected_row_4.error = "effect_denied"
+        selected_row_5 = sql.get(NativeTestScope, owner.request_id)
+        assert selected_row_5 is not None
+        selected_row_5.cancelled = True
         state = sql.scalar(select(NativeInvocationState))
+        assert state is not None
         state.state = "cancelled"
+        assert state.outcome is not None
         state.outcome = {
             **state.outcome,
             "status": "stopped",
@@ -661,6 +770,8 @@ def test_declined_terminal_proof_closes_same_builder_attempt_and_returns_editabl
     assert run.status == "failed"
     assert run.dify_run_id == owner.native_id
     assert run.inputs_ref == owner.saved_id
+    assert run.verification is not None
+    assert run.verification.execution_evidence is not None
     assert run.verification.execution_evidence.safety_outcome == "native_failed"
     assert session.current_state == PcState.BUILD_REVIEW
     assert not context.confirmed_consent_id
@@ -688,7 +799,12 @@ def test_declined_terminal_proof_closes_same_builder_attempt_and_returns_editabl
 
 
 @pytest.fixture
-def declining(mocker, completed, monkeypatch, request):
+def declining(
+    mocker: pytest_mock.MockerFixture,
+    completed: CompletedOwner,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+) -> CompletedOwner:
     """Real original SQL owners; private checkpoint reader and backend are bounded ports."""
     from models.dify_builder_native_tests import (
         NativeContinuation,
@@ -726,18 +842,31 @@ def declining(mocker, completed, monkeypatch, request):
             NativePayloadObject,
             NativeTestInvocation,
         ):
-            model.__table__.create(sql.connection(), checkfirst=True)
-        sql.get(WorkflowRun, owner.native_id).status = "paused"
-        sql.get(WorkflowRun, owner.native_id).finished_at = None
-        sql.get(DifyBuilderExecutionRequest, owner.request_id).state = "waiting"
+            table = model.__table__
+            assert isinstance(table, Table)
+            assert isinstance(table, Table)
+            table.create(sql.connection(), checkfirst=True)
+        selected_row_6 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_6 is not None
+        selected_row_6.status = WorkflowExecutionStatus.PAUSED
+        selected_row_7 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_7 is not None
+        selected_row_7.finished_at = None
+        selected_row_8 = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert selected_row_8 is not None
+        selected_row_8.state = "waiting"
         state = sql.scalar(select(NativeInvocationState))
+        assert state is not None
         state.state, state.outcome, state.checkpoint_id = "waiting", None, "checkpoint"
         state.generation = generation
         scope = sql.get(NativeTestScope, owner.request_id)
+        assert scope is not None
         scope.generation = generation
         scope.spent_dispatches = generation
         state.cleanup_complete = False
-        sql.scalar(select(NativeEffectOperation)).state = "denied"
+        selected_row_9 = sql.scalar(select(NativeEffectOperation))
+        assert selected_row_9 is not None
+        selected_row_9.state = "denied"
         pause = WorkflowPause(
             workflow_id=owned.workflow_id, workflow_run_id=owner.native_id, state_object_key="original-pause"
         )
@@ -750,9 +879,11 @@ def declining(mocker, completed, monkeypatch, request):
                 pause_id=pause_id, pause_reason=SchedulingPause(message="agent_tool_approval")
             )
         )
-        sql.scalar(
+        selected_row_10 = sql.scalar(
             select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "agent")
-        ).status = "paused"
+        )
+        assert selected_row_10 is not None
+        selected_row_10.status = WorkflowNodeExecutionStatus.PAUSED
         sql.add(
             NativeTestInvocation(
                 tenant_id=owned.tenant_id, request_id=owner.request_id, invocation_id="root", active=True, bindings={}
@@ -841,29 +972,46 @@ def declining(mocker, completed, monkeypatch, request):
         ),
     )
 
-    def revoke(**_):
+    def revoke(**_: object) -> None:
         with owner.factory.begin() as sql:
-            sql.get(NativeTestScope, owner.request_id).cancelled = True
-            sql.scalar(select(NativeInvocationState)).state = "cancelled"
-            sql.scalar(select(NativeInvocationState)).cancellation_key = "revoked"
-            sql.scalar(select(NativeTestInvocation)).active = False
-            sql.scalar(select(NativeEffectOperation)).state = "not_dispatched"
+            selected_row_21 = sql.get(NativeTestScope, owner.request_id)
+            assert selected_row_21 is not None
+            selected_row_21.cancelled = True
+            selected_row_22 = sql.scalar(select(NativeInvocationState))
+            assert selected_row_22 is not None
+            selected_row_22.state = "cancelled"
+            selected_row_23 = sql.scalar(select(NativeInvocationState))
+            assert selected_row_23 is not None
+            selected_row_23.cancellation_key = "revoked"
+            selected_row_24 = sql.scalar(select(NativeTestInvocation))
+            assert selected_row_24 is not None
+            selected_row_24.active = False
+            selected_row_25 = sql.scalar(select(NativeEffectOperation))
+            assert selected_row_25 is not None
+            selected_row_25.state = "not_dispatched"
 
     mocker.patch.object(owner.commands.api.lifecycle, "cancel", side_effect=revoke)
     owner.child_status = "cancelled"
     owner.cancel_calls = []
 
-    def cancel_child(child):
+    def cancel_child(child: str) -> None:
         with owner.factory() as sql:
-            assert sql.get(NativeTestScope, owner.request_id).cancelled
+            selected_row_26 = sql.get(NativeTestScope, owner.request_id)
+            assert selected_row_26 is not None
+            assert selected_row_26.cancelled
         owner.cancel_calls.append(child)
 
-    def child_status(child):
+    def child_status(child: str) -> RunStatusResponse:
         from dify_agent.protocol.schemas import RunStatusResponse
 
         assert child == "original-child"
-        return RunStatusResponse(
-            run_id=child, status=owner.child_status, created_at=datetime(2026, 1, 1), updated_at=datetime(2026, 1, 1)
+        return RunStatusResponse.model_validate(
+            {
+                "run_id": child,
+                "status": owner.child_status,
+                "created_at": datetime(2026, 1, 1),
+                "updated_at": datetime(2026, 1, 1),
+            }
         )
 
     raw = Client(base_url="http://127.0.0.1:1")
@@ -872,9 +1020,10 @@ def declining(mocker, completed, monkeypatch, request):
     mocker.patch.object(backend, "cancel_run", side_effect=cancel_child)
     owner.commands.backend = backend
 
-    def public(**_):
+    def public(**_: object) -> NativeTestPublicReceipt:
         with owner.factory() as sql:
             native = sql.get(WorkflowRun, owner.native_id)
+            assert native is not None
             return NativeTestPublicReceipt(
                 request_id=owner.request_id,
                 generation=generation,
@@ -920,7 +1069,7 @@ def declining(mocker, completed, monkeypatch, request):
 
 
 @pytest.mark.parametrize("declining", [0], indirect=True)
-def test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_once(declining):
+def test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_once(declining: CompletedOwner) -> None:
     """The initial ordinary generator owns a generation-zero pause without a dispatch row."""
     from models.dify_builder_native_tests import NativeDispatch
     from models.workflow import Workflow, WorkflowPause
@@ -928,8 +1077,12 @@ def test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_onc
     owner = declining
     with owner.factory() as sql:
         assert sql.scalars(select(NativeDispatch)).all() == []
-        assert sql.get(NativeTestScope, owner.request_id).generation == 0
-        graph = sql.get(Workflow, owner.case.workflow.id).graph
+        selected_row_27 = sql.get(NativeTestScope, owner.request_id)
+        assert selected_row_27 is not None
+        assert selected_row_27.generation == 0
+        selected_row_11 = sql.get(Workflow, owner.case.workflow.id)
+        assert selected_row_11 is not None
+        graph = selected_row_11.graph
     receipt = owner.commands.cancel(
         actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
     )
@@ -939,13 +1092,18 @@ def test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_onc
     assert receipt.cancellation.status == "cancelling"
     with owner.factory() as sql:
         native = sql.get(WorkflowRun, owner.native_id)
+        assert native is not None
         assert native.status == "stopped"
         finished_at = native.finished_at
         assert finished_at is not None
         assert sql.scalar(select(WorkflowPause)) is None
         assert sql.scalars(select(NativeDispatch)).all() == []
-        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
-        assert sql.get(Workflow, owner.case.workflow.id).graph == graph
+        selected_row_28 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_28 is not None
+        assert not selected_row_28.cleanup_complete
+        selected_row_29 = sql.get(Workflow, owner.case.workflow.id)
+        assert selected_row_29 is not None
+        assert selected_row_29.graph == graph
     verify = owner.repo.get_run(owner.verify_id)
     assert verify.status == "failed"
     assert verify.dify_run_id == owner.native_id
@@ -956,7 +1114,9 @@ def test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_onc
     assert observe(owner).outcome == "cancelled"
     assert owner.repo.get_session(owner.session.id)[0].version == session.version
     with owner.factory() as sql:
-        assert sql.get(WorkflowRun, owner.native_id).finished_at == finished_at
+        selected_row_30 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_30 is not None
+        assert selected_row_30.finished_at == finished_at
         assert sql.scalars(select(NativeDispatch)).all() == []
     assert (
         len(
@@ -971,12 +1131,15 @@ def test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_onc
 
 
 @pytest.mark.parametrize("source", ["missing", "earlier_generation"])
-def test_later_generation_requires_its_completed_source_before_declined_settlement(declining, source):
+def test_later_generation_requires_its_completed_source_before_declined_settlement(
+    declining: CompletedOwner, source: str
+) -> None:
     from models.dify_builder_native_tests import NativeDispatch
 
     owner = declining
     with owner.factory.begin() as sql:
         dispatch = sql.get(NativeDispatch, "source")
+        assert dispatch is not None
         if source == "missing":
             sql.delete(dispatch)
         else:
@@ -985,20 +1148,26 @@ def test_later_generation_requires_its_completed_source_before_declined_settleme
         actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
     )
     with owner.factory() as sql:
-        assert sql.get(WorkflowRun, owner.native_id).status == "paused"
-        assert sql.scalar(select(NativeInvocationState)).outcome is None
+        selected_row_31 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_31 is not None
+        assert selected_row_31.status == "paused"
+        selected_row_32 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_32 is not None
+        assert selected_row_32.outcome is None
     assert owner.repo.get_run(owner.verify_id).status == "running"
 
 
 @pytest.mark.parametrize("declining", [0], indirect=True)
 @pytest.mark.parametrize("dispatch_state", ["completed", "claimed"])
-def test_initial_no_source_proof_refuses_dispatch_added_after_child_cancel(declining, dispatch_state):
+def test_initial_no_source_proof_refuses_dispatch_added_after_child_cancel(
+    declining: CompletedOwner, dispatch_state: str
+) -> None:
     from models.dify_builder_native_tests import NativeDispatch
 
     owner = declining
     original = owner.commands.backend.cancel_run
 
-    def raced(child):
+    def raced(child: str) -> None:
         original(child)
         with owner.factory.begin() as sql:
             sql.add(
@@ -1019,13 +1188,19 @@ def test_initial_no_source_proof_refuses_dispatch_added_after_child_cancel(decli
         actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
     )
     with owner.factory() as sql:
-        assert sql.get(WorkflowRun, owner.native_id).status == "paused"
-        assert sql.scalar(select(NativeInvocationState)).outcome is None
-        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
+        selected_row_33 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_33 is not None
+        assert selected_row_33.status == "paused"
+        selected_row_34 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_34 is not None
+        assert selected_row_34.outcome is None
+        selected_row_35 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_35 is not None
+        assert not selected_row_35.cleanup_complete
     assert owner.repo.get_run(owner.verify_id).status == "running"
 
 
-def test_cancel_settles_original_paused_native_without_claiming_physical_cleanup(declining):
+def test_cancel_settles_original_paused_native_without_claiming_physical_cleanup(declining: CompletedOwner) -> None:
     from models.workflow import WorkflowPause, WorkflowPauseReason
 
     owner = declining
@@ -1038,22 +1213,30 @@ def test_cancel_settles_original_paused_native_without_claiming_physical_cleanup
     assert receipt.cancellation.status == "cancelling"
     with owner.factory() as sql:
         native = sql.get(WorkflowRun, owner.native_id)
+        assert native is not None
         assert native.status == "stopped"
         assert native.finished_at is not None
         assert sql.scalar(select(WorkflowPause)) is None
         assert sql.scalar(select(WorkflowPauseReason)) is None
-        assert sql.get(DifyBuilderExecutionRequest, owner.request_id).state == "sealed"
-        assert (
-            sql.scalar(select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "agent")).status
-            == "paused"
+        selected_row_36 = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert selected_row_36 is not None
+        assert selected_row_36.state == "sealed"
+        selected_row_37 = sql.scalar(
+            select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "agent")
         )
-        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
+        assert selected_row_37 is not None
+        assert selected_row_37.status == "paused"
+        selected_row_38 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_38 is not None
+        assert not selected_row_38.cleanup_complete
     assert owner.repo.get_run(owner.verify_id).status == "failed"
     assert owner.repo.get_session(owner.session.id)[0].current_state == PcState.BUILD_REVIEW
 
 
 @pytest.mark.parametrize("status", ["waiting", "running", "failed", "succeeded", "timeout"])
-def test_unverified_child_never_stops_native_or_projects_declined_result(declining, status):
+def test_unverified_child_never_stops_native_or_projects_declined_result(
+    declining: CompletedOwner, status: str
+) -> None:
     owner = declining
     owner.child_status = status
     if status == "timeout":
@@ -1063,10 +1246,18 @@ def test_unverified_child_never_stops_native_or_projects_declined_result(declini
     )
     assert receipt.outcome is None
     with owner.factory() as sql:
-        assert sql.get(WorkflowRun, owner.native_id).status == "paused"
-        assert sql.get(NativeTestScope, owner.request_id).cancelled
-        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
-        assert sql.scalar(select(NativeInvocationState)).outcome is None
+        selected_row_39 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_39 is not None
+        assert selected_row_39.status == "paused"
+        selected_row_12 = sql.get(NativeTestScope, owner.request_id)
+        assert selected_row_12 is not None
+        assert selected_row_12.cancelled
+        selected_row_40 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_40 is not None
+        assert not selected_row_40.cleanup_complete
+        selected_row_41 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_41 is not None
+        assert selected_row_41.outcome is None
     assert owner.repo.get_run(owner.verify_id).status == "running"
 
 
@@ -1087,55 +1278,87 @@ def test_unverified_child_never_stops_native_or_projects_declined_result(declini
         "generation",
     ],
 )
-def test_cancel_rechecks_owned_pause_dispatch_and_effect_facts_after_external_ack(declining, drift):
+def test_cancel_rechecks_owned_pause_dispatch_and_effect_facts_after_external_ack(
+    declining: CompletedOwner, drift: str
+) -> None:
     from models.dify_builder_native_tests import NativeDispatch, NativePayloadObject
     from models.workflow import WorkflowPause
 
     owner = declining
     original = owner.commands.backend.cancel_run
 
-    def raced(child):
+    def raced(child: str) -> None:
         original(child)
         with owner.factory.begin() as sql:
             if drift == "checkpoint":
-                sql.scalar(select(NativeInvocationState)).checkpoint_id = "changed"
+                selected_row_58 = sql.scalar(select(NativeInvocationState))
+                assert selected_row_58 is not None
+                selected_row_58.checkpoint_id = "changed"
             elif drift == "context":
-                sql.scalar(select(NativeInvocationState)).context_object_id = "changed"
+                selected_row_63 = sql.scalar(select(NativeInvocationState))
+                assert selected_row_63 is not None
+                selected_row_63.context_object_id = "changed"
             elif drift == "pause":
-                sql.scalar(select(WorkflowPause)).state_object_key = "changed"
+                selected_row_67 = sql.scalar(select(WorkflowPause))
+                assert selected_row_67 is not None
+                selected_row_67.state_object_key = "changed"
             elif drift == "resumed":
-                sql.scalar(select(WorkflowPause)).resumed_at = datetime(2026, 1, 1)
+                selected_row_73 = sql.scalar(select(WorkflowPause))
+                assert selected_row_73 is not None
+                selected_row_73.resumed_at = datetime(2026, 1, 1)
             elif drift in {"claimed", "unknown_source"}:
-                sql.scalar(select(NativeDispatch)).state = "claimed" if drift == "claimed" else "unknown"
+                selected_row_74 = sql.scalar(select(NativeDispatch))
+                assert selected_row_74 is not None
+                selected_row_74.state = "claimed" if drift == "claimed" else "unknown"
             elif drift.startswith("effect_"):
-                sql.scalar(select(NativeEffectOperation)).state = drift.removeprefix("effect_")
+                selected_row_75 = sql.scalar(select(NativeEffectOperation))
+                assert selected_row_75 is not None
+                selected_row_75.state = drift.removeprefix("effect_")
             elif drift == "native_success":
-                sql.get(WorkflowRun, owner.native_id).status = "succeeded"
+                selected_row_76 = sql.get(WorkflowRun, owner.native_id)
+                assert selected_row_76 is not None
+                selected_row_76.status = WorkflowExecutionStatus.SUCCEEDED
             elif drift == "foreign_native":
-                sql.get(WorkflowRun, owner.native_id).created_by = str(uuid4())
+                selected_row_77 = sql.get(WorkflowRun, owner.native_id)
+                assert selected_row_77 is not None
+                selected_row_77.created_by = str(uuid4())
             elif drift == "association_receipt":
-                sql.scalar(select(NativePayloadObject)).payload_digest = "9" * 64
+                selected_row_78 = sql.scalar(select(NativePayloadObject))
+                assert selected_row_78 is not None
+                selected_row_78.payload_digest = "9" * 64
             else:
-                sql.get(NativeTestScope, owner.request_id).generation += 1
+                selected_row_79 = sql.get(NativeTestScope, owner.request_id)
+                assert selected_row_79 is not None
+                selected_row_79.generation += 1
 
     owner.commands.backend.cancel_run = raced
     owner.commands.cancel(
         actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
     )
     with owner.factory() as sql:
-        assert sql.get(WorkflowRun, owner.native_id).status == ("succeeded" if drift == "native_success" else "paused")
-        assert sql.scalar(select(NativeInvocationState)).outcome is None
-        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
+        selected_row_42 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_42 is not None
+        assert selected_row_42.status == ("succeeded" if drift == "native_success" else "paused")
+        selected_row_43 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_43 is not None
+        assert selected_row_43.outcome is None
+        selected_row_44 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_44 is not None
+        assert not selected_row_44.cleanup_complete
     assert owner.repo.get_run(owner.verify_id).status == "running"
 
 
-def test_cancel_reconnect_finishes_only_original_preparation_and_projection_once(declining, monkeypatch):
+def test_cancel_reconnect_finishes_only_original_preparation_and_projection_once(
+    declining: CompletedOwner, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from models.workflow import Workflow
     from services.dify_builder import session_lock
 
     owner = declining
     with owner.factory() as sql:
-        graph = sql.get(Workflow, owner.case.workflow.id).graph
+        selected_row_13 = sql.get(Workflow, owner.case.workflow.id)
+        assert selected_row_13 is not None
+        graph = selected_row_13.graph
     owner.child_status = "waiting"
     first = owner.commands.cancel(
         actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
@@ -1145,23 +1368,34 @@ def test_cancel_reconnect_finishes_only_original_preparation_and_projection_once
     monkeypatch.setattr(session_lock, "acquire", lambda _: None)
     stopped = observe(owner)
     assert stopped.outcome == "cancelled"
+    assert stopped.cancellation is not None
     assert stopped.cancellation.status == "cancelling"
     assert owner.repo.get_run(owner.verify_id).status == "running"
     monkeypatch.setattr(session_lock, "acquire", lambda _: "projection-retry")
     observe(owner)
     version = owner.repo.get_session(owner.session.id)[0].version
     with owner.factory() as sql:
-        finished_at = sql.get(WorkflowRun, owner.native_id).finished_at
+        selected_row_14 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_14 is not None
+        finished_at = selected_row_14.finished_at
     owner.commands.cancel(
         actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
     )
     observe(owner)
     with owner.factory() as sql:
-        assert sql.get(WorkflowRun, owner.native_id).finished_at == finished_at
-        assert sql.get(Workflow, owner.case.workflow.id).graph == graph
+        selected_row_45 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_45 is not None
+        assert selected_row_45.finished_at == finished_at
+        selected_row_46 = sql.get(Workflow, owner.case.workflow.id)
+        assert selected_row_46 is not None
+        assert selected_row_46.graph == graph
         assert len(sql.scalars(select(DifyBuilderRun)).all()) == 2
-        assert len(sql.get(DifyBuilderExecutionRequest, owner.request_id).observations) == 1
-        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
+        selected_row_59 = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert selected_row_59 is not None
+        assert len(selected_row_59.observations) == 1
+        selected_row_47 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_47 is not None
+        assert not selected_row_47.cleanup_complete
     assert owner.repo.get_session(owner.session.id)[0].version == version
     assert (
         len(
@@ -1175,7 +1409,7 @@ def test_cancel_reconnect_finishes_only_original_preparation_and_projection_once
     )
 
 
-def test_failed_preparation_still_revokes_without_fabricating_native_stop(declining):
+def test_failed_preparation_still_revokes_without_fabricating_native_stop(declining: CompletedOwner) -> None:
     owner = declining
     owner.commands.api.store.load_agent_association = lambda **_: (_ for _ in ()).throw(
         BuilderExecutionPolicyError("native_agent_owner_mismatch")
@@ -1186,17 +1420,26 @@ def test_failed_preparation_still_revokes_without_fabricating_native_stop(declin
     assert receipt.status == "running"
     assert receipt.outcome is None
     with owner.factory() as sql:
-        assert sql.get(NativeTestScope, owner.request_id).cancelled
-        assert sql.get(WorkflowRun, owner.native_id).status == "paused"
-        assert not sql.get(DifyBuilderExecutionRequest, owner.request_id).observations
+        selected_row_15 = sql.get(NativeTestScope, owner.request_id)
+        assert selected_row_15 is not None
+        assert selected_row_15.cancelled
+        selected_row_48 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_48 is not None
+        assert selected_row_48.status == "paused"
+        selected_row_49 = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert selected_row_49 is not None
+        assert not selected_row_49.observations
 
 
 @pytest.mark.parametrize("terminal", ["verify", "reservation"])
-def test_declined_projection_preserves_prior_immutable_terminal_builder_evidence(declining, terminal):
+def test_declined_projection_preserves_prior_immutable_terminal_builder_evidence(
+    declining: CompletedOwner, terminal: str
+) -> None:
     owner = declining
     target = owner.verify_id if terminal == "verify" else owner.reservation.id
     with owner.factory.begin() as sql:
         row = sql.get(DifyBuilderRun, target)
+        assert row is not None
         row.status, row.immutable, row.error = "failed", True, "previous terminal evidence"
         sealed = row.verification
     owner.commands.cancel(
@@ -1204,6 +1447,7 @@ def test_declined_projection_preserves_prior_immutable_terminal_builder_evidence
     )
     with owner.factory() as sql:
         row = sql.get(DifyBuilderRun, target)
+        assert row is not None
         assert row.status == "failed"
         assert row.immutable
         assert row.error == "previous terminal evidence"
@@ -1211,15 +1455,36 @@ def test_declined_projection_preserves_prior_immutable_terminal_builder_evidence
     assert owner.repo.get_session(owner.session.id)[0].version == 2
 
 
-def test_declined_builder_cas_race_preserves_newer_user_work(declining, monkeypatch):
+def test_declined_builder_cas_race_preserves_newer_user_work(
+    declining: CompletedOwner, monkeypatch: pytest.MonkeyPatch
+) -> None:
     owner = declining
     original = dify_port.WorkflowServiceDifyPort._bind_run
 
-    def user_changes_session(port, *args, **kwargs):
-        result = original(port, *args, **kwargs)
+    def user_changes_session(
+        port: dify_port.WorkflowServiceDifyPort,
+        result: tuple[Run, object],
+        app_id: str,
+        actor: Actor,
+        before_revision: str,
+        before_graph_revision: str,
+        *,
+        execution_recorder: BuilderExecutionRecorder | None = None,
+        restricted: bool = True,
+    ) -> Run:
+        readback = original(
+            port,
+            result,
+            app_id,
+            actor,
+            before_revision,
+            before_graph_revision,
+            execution_recorder=execution_recorder,
+            restricted=restricted,
+        )
         session, context = owner.repo.get_session(owner.session.id)
         owner.repo.compare_and_advance(session.id, session.version, PcState.BUILD_EXECUTION, context, [])
-        return result
+        return readback
 
     monkeypatch.setattr(dify_port.WorkflowServiceDifyPort, "_bind_run", user_changes_session)
     receipt = owner.commands.cancel(
@@ -1238,7 +1503,7 @@ def test_declined_builder_cas_race_preserves_newer_user_work(declining, monkeypa
     ]
 
 
-def test_declined_result_cannot_publish_and_preserves_graph_and_original_ids(declining):
+def test_declined_result_cannot_publish_and_preserves_graph_and_original_ids(declining: CompletedOwner) -> None:
     from models.dify_builder_native_tests import NativeDispatch
     from models.workflow import Workflow
     from services.dify_builder.application.verification import publication_decision
@@ -1246,7 +1511,9 @@ def test_declined_result_cannot_publish_and_preserves_graph_and_original_ids(dec
     owner = declining
     owner.commands.publish = lambda **_: pytest.fail("denial dispatched a resume")
     with owner.factory() as sql:
-        graph = sql.get(Workflow, owner.case.workflow.id).graph
+        selected_row_16 = sql.get(Workflow, owner.case.workflow.id)
+        assert selected_row_16 is not None
+        graph = selected_row_16.graph
     owner.commands.api.decide = lambda **_: owner.commands.api.get()
     receipt = owner.commands.decide(
         actor=owner.case.actor,
@@ -1260,6 +1527,7 @@ def test_declined_result_cannot_publish_and_preserves_graph_and_original_ids(dec
     )
     assert receipt.outcome == "cancelled"
     run = owner.repo.get_run(owner.verify_id)
+    assert run.verification is not None
     assert not publication_decision(
         run,
         session_id=owner.session.id,
@@ -1267,18 +1535,22 @@ def test_declined_result_cannot_publish_and_preserves_graph_and_original_ids(dec
         current_graph_revision=run.verification.executed_graph_revision,
     ).allowed
     with owner.factory() as sql:
-        assert sql.get(Workflow, owner.case.workflow.id).graph == graph
+        selected_row_50 = sql.get(Workflow, owner.case.workflow.id)
+        assert selected_row_50 is not None
+        assert selected_row_50.graph == graph
         assert len(sql.scalars(select(NativeDispatch)).all()) == 1
         assert len(sql.scalars(select(NativeEffectOperation)).all()) == 1
         assert len(sql.scalars(select(DifyBuilderRun)).all()) == 2
     assert owner.cancel_calls == ["original-child"]
 
 
-def test_clean_physical_receipt_cannot_finish_confirmed_paused_parent_without_logical_proof(declining):
+def test_clean_physical_receipt_cannot_finish_confirmed_paused_parent_without_logical_proof(
+    declining: CompletedOwner,
+) -> None:
     owner = declining
     public = owner.commands.api.get
 
-    def physically_clean(**values):
+    def physically_clean(**values: object) -> None:
         receipt = public(**values)
         return receipt.model_copy(
             update={
@@ -1288,7 +1560,7 @@ def test_clean_physical_receipt_cannot_finish_confirmed_paused_parent_without_lo
             }
         )
 
-    def absent_association(**_):
+    def absent_association(**_: object) -> None:
         raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
 
     owner.commands.api.get = physically_clean
@@ -1301,13 +1573,19 @@ def test_clean_physical_receipt_cannot_finish_confirmed_paused_parent_without_lo
     assert receipt.native_status == "paused"
     assert receipt.cancellation.status == "cancelled"
     with owner.factory() as sql:
-        assert sql.scalar(select(NativeInvocationState)).outcome is None
-        assert sql.get(WorkflowRun, owner.native_id).status == "paused"
+        selected_row_51 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_51 is not None
+        assert selected_row_51.outcome is None
+        selected_row_52 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_52 is not None
+        assert selected_row_52.status == "paused"
     assert owner.repo.get_run(owner.verify_id).status == "running"
 
 
 @pytest.fixture
-def retrying_decline(mocker, declining, monkeypatch):
+def retrying_decline(
+    mocker: pytest_mock.MockerFixture, declining: CompletedOwner, monkeypatch: pytest.MonkeyPatch
+) -> CompletedOwner:
     """Retain real active-reader refusal and integrity-checked SQL object reads."""
     from contextlib import contextmanager
 
@@ -1352,6 +1630,7 @@ def retrying_decline(mocker, declining, monkeypatch):
         checkpoint_digest="d" * 64,
         backend_wait_event_id="1-0",
     )
+    assert owner.paused is not None
     payload = NativeCheckpointPayload(
         schema_version="1",
         native_run_id=owner.native_id,
@@ -1410,15 +1689,19 @@ def retrying_decline(mocker, declining, monkeypatch):
                 row.payload_digest, row.value_digest = digest, canonical_digest(value)
             objects[row.storage_key] = raw.encode()
             if kind == "checkpoint":
-                sql.scalar(select(NativeContinuation)).payload_digest = digest
+                selected_row_60 = sql.scalar(select(NativeContinuation))
+                assert selected_row_60 is not None
+                selected_row_60.payload_digest = digest
 
     loader = owner.commands.loader
     original_locked = loader.locked
     owner.writer_depth = 0
 
     @contextmanager
-    def tracked_writer(**values):
-        with original_locked(**values) as rows:
+    def tracked_writer(
+        *, ref: NativeTestContextRef, settlement: bool = False
+    ) -> Generator[tuple[SqlSession, OwnedNativeTest, NativeTestScope]]:
+        with original_locked(ref=ref, settlement=settlement) as rows:
             owner.writer_depth += 1
             try:
                 yield rows
@@ -1427,11 +1710,11 @@ def retrying_decline(mocker, declining, monkeypatch):
 
     loader.locked = tracked_writer
 
-    def active_waits(**_):
+    def active_waits(**_: object) -> tuple[AgentWaitAssociation]:
         loader.load(ref=owner.ref)
         return (wait,)
 
-    def active_association(**_):
+    def active_association(**_: object) -> AgentProtectedState:
         loader.load(ref=owner.ref)
         return AgentProtectedState(
             association_object_ref="association",
@@ -1442,7 +1725,8 @@ def retrying_decline(mocker, declining, monkeypatch):
             terminal_result=None,
         )
 
-    def active_pause(**_):
+    def active_pause(**_: object) -> OwnedParentPause:
+        assert owner.paused is not None
         loader.load(ref=owner.ref)
         return owner.paused
 
@@ -1452,9 +1736,10 @@ def retrying_decline(mocker, declining, monkeypatch):
     owner.commands.api.store.read_checkpoint = lambda **_: payload
     owner.commands.api.store._read_object = state_store.NativeExecutionStateStore._read_object
 
+    assert owner.paused is not None
     objects[owner.paused.state_object_key] = owner.paused.state.dumps().encode()
 
-    def load_object(key):
+    def load_object(key: str) -> bytes:
         assert owner.writer_depth == 0
         return objects[key]
 
@@ -1462,7 +1747,7 @@ def retrying_decline(mocker, declining, monkeypatch):
     monkeypatch.setattr(state_store.encrypter, "decrypt_token", lambda _tenant, raw: raw)
     owner.child_status = "waiting"
 
-    def cancel_after_one_lost_post(child):
+    def cancel_after_one_lost_post(child: str) -> None:
         assert owner.writer_depth == 0
         assert child == "original-child"
         owner.cancel_calls.append(child)
@@ -1473,7 +1758,7 @@ def retrying_decline(mocker, declining, monkeypatch):
     owner.commands.backend.cancel_run = cancel_after_one_lost_post
     original_status = owner.commands.backend.client.get_run_sync
 
-    def read_status(child):
+    def read_status(child: str) -> RunStatusResponse:
         assert owner.writer_depth == 0
         return original_status(child)
 
@@ -1482,17 +1767,15 @@ def retrying_decline(mocker, declining, monkeypatch):
     return owner
 
 
-def test_explicit_cancel_retry_reaches_same_child_after_real_active_reader_refusal(retrying_decline):
+def test_explicit_cancel_retry_reaches_same_child_after_real_active_reader_refusal(
+    retrying_decline: CompletedOwner,
+) -> None:
     from models.dify_builder_native_tests import NativeDispatch
 
     owner = retrying_decline
-    values = {
-        "actor": owner.case.actor,
-        "session_id": owner.session.id,
-        "request_id": owner.request_id,
-        "idempotency_key": "deny",
-    }
-    first = owner.commands.cancel(**values)
+    first = owner.commands.cancel(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
+    )
     assert first.status == "running"
     assert owner.child_status == "waiting"
     with pytest.raises(BuilderExecutionPolicyError):
@@ -1501,7 +1784,9 @@ def test_explicit_cancel_retry_reaches_same_child_after_real_active_reader_refus
         owner.commands.api.store.load_agent_association(ref=owner.ref)
     observe(owner)
     assert owner.cancel_calls == ["original-child"]
-    second = owner.commands.cancel(**values)
+    second = owner.commands.cancel(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
+    )
     assert owner.cancel_calls == ["original-child", "original-child"]
     assert second.outcome == "cancelled"
     assert second.native_status == "stopped"
@@ -1517,7 +1802,9 @@ def test_explicit_cancel_retry_reaches_same_child_after_real_active_reader_refus
         assert len(sql.scalars(select(NativeDispatch)).all()) == 1
         assert len(sql.scalars(select(NativeEffectOperation)).all()) == 1
         assert len(sql.scalars(select(DifyBuilderRun)).all()) == 2
-        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
+        selected_row_53 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_53 is not None
+        assert not selected_row_53.cleanup_complete
     assert (
         len(
             [
@@ -1533,22 +1820,21 @@ def test_explicit_cancel_retry_reaches_same_child_after_real_active_reader_refus
 @pytest.mark.parametrize(
     "drift", ["missing", "forged_child", "stale_checkpoint", "foreign_association", "foreign_owner"]
 )
-def test_cancel_retry_refuses_missing_forged_stale_or_foreign_retained_proof(retrying_decline, drift):
+def test_cancel_retry_refuses_missing_forged_stale_or_foreign_retained_proof(
+    retrying_decline: CompletedOwner, drift: str
+) -> None:
     from copy import deepcopy
 
     from models.dify_builder_native_tests import NativePayloadObject
     from services.dify_builder.native_testing.confirmed_agent_cancellation import PREPARATION
 
     owner = retrying_decline
-    values = {
-        "actor": owner.case.actor,
-        "session_id": owner.session.id,
-        "request_id": owner.request_id,
-        "idempotency_key": "deny",
-    }
-    owner.commands.cancel(**values)
+    owner.commands.cancel(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
+    )
     with owner.factory.begin() as sql:
         request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert request is not None
         if drift == "missing":
             request.observations = []
         elif drift == "forged_child":
@@ -1556,25 +1842,42 @@ def test_cancel_retry_refuses_missing_forged_stale_or_foreign_retained_proof(ret
             next(record[PREPARATION] for record in records if PREPARATION in record)["children"] = ["foreign-child"]
             request.observations = records
         elif drift == "stale_checkpoint":
-            sql.scalar(select(NativeInvocationState)).checkpoint_id = "stale-checkpoint"
+            selected_row_64 = sql.scalar(select(NativeInvocationState))
+            assert selected_row_64 is not None
+            selected_row_64.checkpoint_id = "stale-checkpoint"
         elif drift == "foreign_association":
-            sql.get(NativePayloadObject, "association").tenant_id = str(uuid4())
+            selected_row_68 = sql.get(NativePayloadObject, "association")
+            assert selected_row_68 is not None
+            selected_row_68.tenant_id = str(uuid4())
         else:
-            sql.get(DifyBuilderSession, owner.session.id).owner_account_id = str(uuid4())
-    receipt = owner.commands.cancel(**values)
+            selected_row_69 = sql.get(DifyBuilderSession, owner.session.id)
+            assert selected_row_69 is not None
+            selected_row_69.owner_account_id = str(uuid4())
+    receipt = owner.commands.cancel(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
+    )
     assert owner.cancel_calls == ["original-child"]
     assert owner.child_status == "waiting"
     assert receipt.outcome is None
     with owner.factory() as sql:
-        assert sql.get(WorkflowRun, owner.native_id).status == "paused"
-        assert sql.scalar(select(NativeInvocationState)).outcome is None
-        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
+        selected_row_54 = sql.get(WorkflowRun, owner.native_id)
+        assert selected_row_54 is not None
+        assert selected_row_54.status == "paused"
+        selected_row_55 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_55 is not None
+        assert selected_row_55.outcome is None
+        selected_row_56 = sql.scalar(select(NativeInvocationState))
+        assert selected_row_56 is not None
+        assert not selected_row_56.cleanup_complete
     assert owner.repo.get_run(owner.verify_id).status == "running"
 
 
-def _edit_attempt(owner, *, continued=False, state=PcState.EDIT_AWAIT_REPAIR):
+def _edit_attempt(
+    owner: CompletedOwner, *, continued: bool = False, state: PcState = PcState.EDIT_AWAIT_REPAIR
+) -> None:
     with owner.factory.begin() as sql:
         session = sql.get(DifyBuilderSession, owner.session.id)
+        assert session is not None
         session.entry_mode = str(EntryMode.BUILD if continued else EntryMode.EDIT)
         session.current_state = str(state)
         commit = sql.scalar(
@@ -1583,20 +1886,26 @@ def _edit_attempt(owner, *, continued=False, state=PcState.EDIT_AWAIT_REPAIR):
                 DifyBuilderSessionCommit.version == session.version,
             )
         )
+        assert commit is not None
         commit.state = str(state)
         commit.context = {**commit.context, "active_entry_mode": "edit" if continued else ""}
 
 
 @pytest.mark.parametrize("continued", [False, True])
 @pytest.mark.parametrize("state", [PcState.EDIT_TEST_AFFECTED_PATHS, PcState.EDIT_AWAIT_REPAIR])
-def test_edit_terminal_success_closes_same_attempt_in_edit_review_once(completed, continued, state):
+def test_edit_terminal_success_closes_same_attempt_in_edit_review_once(
+    completed: CompletedOwner, continued: bool, state: PcState
+) -> None:
     owner = completed
     _edit_attempt(owner, continued=continued, state=state)
     observe(owner)
     run = owner.repo.get_run(owner.verify_id)
     session, context = owner.repo.get_session(owner.session.id)
     assert run.status == "succeeded"
+    assert run.verification is not None
+    assert run.verification.execution_evidence is not None
     assert run.verification.execution_evidence.sealed
+    assert run.verification is not None
     assert run.verification.terminal_outputs == {"summary": "actual output"}
     assert session.current_state == PcState.EDIT_REVIEW
     assert context.verify_run_id == owner.verify_id
@@ -1618,17 +1927,24 @@ def test_edit_terminal_success_closes_same_attempt_in_edit_review_once(completed
 
 
 @pytest.mark.parametrize("declined", [False, True])
-def test_edit_terminal_failure_or_decline_preserves_edit_family_without_execution(completed, declined):
+def test_edit_terminal_failure_or_decline_preserves_edit_family_without_execution(
+    completed: CompletedOwner, declined: bool
+) -> None:
     owner = completed
     _edit_attempt(owner)
     with owner.factory.begin() as sql:
         native = sql.get(WorkflowRun, owner.native_id)
-        native.status = "stopped" if declined else "failed"
+        assert native is not None
+        native.status = WorkflowExecutionStatus.STOPPED if declined else WorkflowExecutionStatus.FAILED
         native.error = "effect_denied" if declined else "actual native failure"
         state = sql.scalar(select(NativeInvocationState))
+        assert state is not None
         if declined:
-            sql.get(NativeTestScope, owner.request_id).cancelled = True
+            selected_row_57 = sql.get(NativeTestScope, owner.request_id)
+            assert selected_row_57 is not None
+            selected_row_57.cancelled = True
             state.state = "cancelled"
+            assert state.outcome is not None
             state.outcome = {
                 **state.outcome,
                 "status": "stopped",
@@ -1643,6 +1959,8 @@ def test_edit_terminal_failure_or_decline_preserves_edit_family_without_executio
     run = owner.repo.get_run(owner.verify_id)
     session, context = owner.repo.get_session(owner.session.id)
     assert run.status == "failed"
+    assert run.verification is not None
+    assert run.verification.execution_evidence is not None
     assert run.verification.execution_evidence.sealed
     assert session.current_state == (PcState.EDIT_REVIEW if declined else PcState.EDIT_AWAIT_REPAIR)
     assert context.diagnosis is None
@@ -1652,19 +1970,28 @@ def test_edit_terminal_failure_or_decline_preserves_edit_family_without_executio
 
 
 @pytest.mark.parametrize("drift", ["version", "input", "effect_unknown", "outcome_unknown", "mode"])
-def test_edit_terminal_projection_refuses_stale_unknown_or_wrong_task_family(completed, drift):
+def test_edit_terminal_projection_refuses_stale_unknown_or_wrong_task_family(
+    completed: CompletedOwner, drift: str
+) -> None:
     owner = completed
     _edit_attempt(owner)
     with owner.factory.begin() as sql:
         session = sql.get(DifyBuilderSession, owner.session.id)
+        assert session is not None
         if drift == "version":
             session.version += 1
         elif drift == "input":
-            sql.get(DifyBuilderTestInput, owner.saved_id).inputs = {"contract_text": "changed"}
+            selected_row_61 = sql.get(DifyBuilderTestInput, owner.saved_id)
+            assert selected_row_61 is not None
+            selected_row_61.inputs = {"contract_text": "changed"}
         elif drift == "effect_unknown":
-            sql.scalar(select(NativeEffectOperation)).state = "unknown"
+            selected_row_65 = sql.scalar(select(NativeEffectOperation))
+            assert selected_row_65 is not None
+            selected_row_65.state = "unknown"
         elif drift == "outcome_unknown":
-            sql.scalar(select(NativeInvocationState)).state = "unknown"
+            selected_row_70 = sql.scalar(select(NativeInvocationState))
+            assert selected_row_70 is not None
+            selected_row_70.state = "unknown"
         else:
             session.entry_mode = "build"
     version = owner.repo.get_session(owner.session.id)[0].version

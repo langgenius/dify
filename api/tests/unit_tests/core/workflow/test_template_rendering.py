@@ -1,3 +1,5 @@
+from typing import Never
+
 import pytest
 
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
@@ -9,10 +11,10 @@ from services.workflow_runtime.node_factory import DefaultWorkflowCodeExecutor
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import REF
 
 
-def test_explicit_executor_owns_template_without_ordinary_fallback(monkeypatch):
+def test_explicit_executor_owns_template_without_ordinary_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     observed = []
 
-    def execute(**kwargs):
+    def execute(**kwargs: object) -> dict[str, str]:
         observed.append(kwargs)
         return {"result": "rendered"}
 
@@ -34,10 +36,10 @@ def test_explicit_executor_owns_template_without_ordinary_fallback(monkeypatch):
     ]
 
 
-def test_default_renderer_preserves_existing_executor_call(monkeypatch):
+def test_default_renderer_preserves_existing_executor_call(monkeypatch: pytest.MonkeyPatch) -> None:
     seen = []
 
-    def execute(**kwargs):
+    def execute(**kwargs: object) -> dict[str, str]:
         seen.append(kwargs)
         return {"result": "ordinary"}
 
@@ -55,10 +57,10 @@ def test_default_renderer_preserves_existing_executor_call(monkeypatch):
     ],
 )
 def test_explicit_renderer_translates_only_code_error_and_preserves_native_control(
-    error,
-    monkeypatch,
-):
-    def execute(**kwargs):
+    error: Exception,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def execute(**kwargs: object) -> Never:
         del kwargs
         raise error
 
@@ -74,7 +76,7 @@ def test_explicit_renderer_translates_only_code_error_and_preserves_native_contr
         assert caught.value is error
 
 
-def test_explicit_renderer_retains_native_string_result_validation(monkeypatch):
+def test_explicit_renderer_retains_native_string_result_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     executor = DefaultWorkflowCodeExecutor()
     monkeypatch.setattr(executor, "execute", lambda **_kw: {"result": 3})
     renderer = CodeExecutorJinja2TemplateRenderer(executor=executor)

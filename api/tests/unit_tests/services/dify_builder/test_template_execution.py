@@ -11,6 +11,7 @@ from typing import Never, override
 from unittest.mock import Mock
 
 import pytest
+import pytest_mock
 import yaml
 
 from core.dify_builder.models import Graph
@@ -24,22 +25,22 @@ from services.dify_builder.application.execution_policy import (
 )
 from services.dify_builder.restricted_execution import validate_restricted_node, validate_restricted_raw_node
 from tests.unit_tests.core.dify_builder.test_execution_policy import snapshot
-from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
-    FIXTURES,
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
+from tests.unit_tests.services.workflow_runtime.test_node_factory import (
+    RESTRICTED_FIXTURES,
     execute_native,
     init_runner_graph,
     prepare_native,
     receipts,
 )
-from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
+from tests.unit_tests.services.workflow_runtime.test_node_factory import (
     forbid_live as forbid_live,  # noqa: PLC0414
 )
-from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
-from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 
 
 @pytest.fixture(autouse=True)
-def no_jinja_compilation(mocker) -> Iterator[None]:
+def no_jinja_compilation(mocker: pytest_mock.MockerFixture) -> Iterator[None]:
     """Restricted rendering interprets finite AST only; lex/parse stay real."""
     from jinja2 import Environment, Template, debug
 
@@ -61,7 +62,7 @@ def no_jinja_compilation(mocker) -> Iterator[None]:
 
 
 def template_graph(template: str | None = None, names: tuple[str, ...] = ("subject", "body")) -> Graph:
-    graph = yaml.safe_load((FIXTURES / "template_notification.yml").read_text())
+    graph = yaml.safe_load((RESTRICTED_FIXTURES / "template_notification.yml").read_text())
     if template is not None:
         graph["nodes"][1]["data"]["template"] = template
     graph["nodes"][0]["data"]["variables"] = [{"variable": name, "label": name, "type": "text-input"} for name in names]
@@ -280,7 +281,7 @@ def test_template_raw_configuration_and_selector_capabilities_refuse(mutation: s
 @pytest.mark.parametrize("output", ["headers", "status_code", "file"])
 def test_template_cannot_select_non_body_http_capabilities(output: str) -> None:
     graph = template_graph("{{ subject }}")
-    http = yaml.safe_load((FIXTURES / "http_text.yml").read_text())["nodes"][1]
+    http = yaml.safe_load((RESTRICTED_FIXTURES / "http_text.yml").read_text())["nodes"][1]
     http["data"]["url"] = "https://sample.invalid/fixed"
     graph["nodes"].insert(1, http)
     graph["nodes"][2]["data"]["variables"][0]["value_selector"] = ["http", output]

@@ -3,20 +3,90 @@
 These exercise the API boundary, not a qualified Graphon execution.
 """
 
+from __future__ import annotations
+
+from multiprocessing.synchronize import Event as ProcessEvent
+from typing import TYPE_CHECKING, Literal, Unpack
+
+from pydantic import JsonValue
+from sqlalchemy import Engine
+
+from models.account import Account, AccountStatus
+from models.workflow import Workflow
+from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit
+from services.dify_builder.native_testing.pending_intents import PendingDecisionGuard
+from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+
+if TYPE_CHECKING:
+    from multiprocessing.connection import Connection as ProcessConnection
+    from multiprocessing.synchronize import Barrier
+
+    from runtime_contracts.builder.native.contracts import NativeTestContextRef
+    from services.dify_builder.native_testing.pending_intents import ResolvedPendingIntent
+
+
+from typing import TYPE_CHECKING
+
+from typing_extensions import TypedDict
+
+if TYPE_CHECKING:
+    pass
+
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy.orm.state import InstanceState
+
+from runtime_contracts.builder.native.contracts import EffectIntent
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from flask.testing import FlaskClient
+
+    from core.dify_builder.models import Actor
+    from dify_app import DifyApp
+    from runtime_contracts.builder.native.contracts import (
+        NativeTestContextRef,
+    )
+    from services.dify_builder.native_testing.api_service import NativeTestApiService
+    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.public_contracts import PendingActionDisclosure
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_continuation as _fixture_types_0,
+    )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import (
+        test_builder_native_continuation as _fixture_types_0,
+    )
+
+
 from datetime import UTC, datetime
 
 import pytest
+import pytest_mock
+from _pytest.monkeypatch import MonkeyPatch
 from sqlalchemy import inspect as inspect_orm
 from sqlalchemy import select
 
 from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
 from libs.passport import PassportService
 from libs.token import _real_cookie_name, generate_csrf_token
-from models.account import Account
 from models.model import DifySetup
+from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.http_binding import NativeHttpDisclosure
+from services.dify_builder.native_testing.pending_intents import ResolvedPendingIntent
 from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
 from services.entities.feature_entities import FeatureModel
+from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,  # noqa: PLC0414
 )
@@ -37,15 +107,34 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_c
 )
 
 
+class ConsoleCase(ContinuationCase):
+    client: FlaskClient
+    url: str
+    pending_id: str
+    scope_digest: str
+    api: NativeTestApiService
+    body: dict[str, JsonValue]
+
+
 @pytest.fixture
-def console_case(flask_app_with_containers, continuation_case, monkeypatch):
+def console_case(
+    flask_app_with_containers: DifyApp,
+    continuation_case: _fixture_types_0.ContinuationCase,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[ConsoleCase]:
     from controllers.console import dify_builder as controller
     from controllers.console import wraps
     from extensions.ext_database import db
 
-    case = continuation_case
+    case = ConsoleCase(
+        ledger=continuation_case.ledger,
+        store=continuation_case.store,
+        context=continuation_case.context,
+        lifecycle=continuation_case.lifecycle,
+        resolution=continuation_case.resolution,
+    )
     with case.factory.begin() as session:
-        session.get(Account, case.ledger.actor.account_id).status = "active"
+        require_instance(session.get(Account, case.ledger.actor.account_id), Account).status = AccountStatus.ACTIVE
         if session.scalar(select(DifySetup).limit(1)) is None:
             session.add(DifySetup(version="native-console-ci"))
     # Login, CSRF and SQL ownership use real owners. Entitlement and capability
@@ -67,28 +156,30 @@ def console_case(flask_app_with_containers, continuation_case, monkeypatch):
     with case.factory() as session:
         from models.dify_builder import DifyBuilderExecutionRequest
 
-        session_id = session.get(DifyBuilderExecutionRequest, case.ref.request_id).session_id
+        session_id = require_instance(
+            session.get(DifyBuilderExecutionRequest, case.ref.request_id), DifyBuilderExecutionRequest
+        ).session_id
     case.client = client
     case.url = f"/console/api/dify-builder/sessions/{session_id}/native-tests"
     yield case
     wraps._is_setup_completed.reset_success()
 
 
-def test_native_console_unauthenticated_is_rejected(console_case):
+def test_native_console_unauthenticated_is_rejected(console_case: ConsoleCase) -> None:
     c = console_case
     response = c.client.post(c.url, json={}, headers={"Authorization": ""})
     assert response.status_code == 401
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_native_console_invalid_csrf_is_rejected(console_case):
+def test_native_console_invalid_csrf_is_rejected(console_case: ConsoleCase) -> None:
     c = console_case
     response = c.client.post(c.url, json={}, headers={HEADER_NAME_CSRF_TOKEN: "invalid"})
     assert response.status_code == 401
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_decision_cannot_replace_effect_parameters(console_case):
+def test_decision_cannot_replace_effect_parameters(console_case: ConsoleCase) -> None:
     c = console_case
     waiting = c.pause()
     response = c.client.post(
@@ -111,16 +202,18 @@ def test_decision_cannot_replace_effect_parameters(console_case):
 class ConsoleDisclosure:
     """Qualified test disclosure for a single immutable approval proposal."""
 
-    def __init__(self, effect, item):
+    def __init__(self, effect: EffectIntent, item: PendingActionDisclosure) -> None:
         self.effect, self.item = effect, item
 
-    def describe(self, *, actor, resolved):
+    def describe(self, *, actor: Actor, resolved: ResolvedPendingIntent) -> PendingActionDisclosure:
         assert actor.account_id
         assert resolved.intent == self.effect
         return self.item
 
 
-def _prepare_approval(c, ref, effect):
+def _prepare_approval(
+    c: ConsoleCase, ref: NativeTestContextRef, effect: EffectIntent
+) -> tuple[EffectIntent, PendingActionDisclosure]:
     from datetime import timedelta
 
     from models.dify_builder_native_tests import NativePendingAction, NativeTestInvocation
@@ -131,7 +224,7 @@ def _prepare_approval(c, ref, effect):
     from services.dify_builder.native_testing.public_contracts import PendingActionDisclosure
 
     # Input and future effect output are distinct immutable result slots.
-    inputs = {"limit": 1}
+    inputs: dict[str, JsonValue] = {"limit": 1}
     effect = effect.model_copy(update={"input_digest": canonical_digest(inputs)})
     input_key = effect.key.model_copy(update={"occurrence_path": (*effect.key.occurrence_path, "input")})
     assert input_key != effect.key
@@ -149,9 +242,12 @@ def _prepare_approval(c, ref, effect):
                 NativeTestInvocation.invocation_id == ref.invocation_id,
             )
         )
-        binding = dict(root.bindings[operation_digest(c.ledger.intent.key)])
+        binding = dict(require_instance(root, NativeTestInvocation).bindings[operation_digest(c.ledger.intent.key)])
         binding["intent_digest"] = canonical_digest(effect.model_dump(mode="json"))
-        invocation.bindings = {**invocation.bindings, operation_digest(effect.key): binding}
+        require_instance(invocation, NativeTestInvocation).bindings = {
+            **require_instance(invocation, NativeTestInvocation).bindings,
+            operation_digest(effect.key): binding,
+        }
     waiting = c.ledger.guard.before_call(ref=ref, intent=effect)
     terms = NativeApprovalTerms(
         max_calls=2,
@@ -165,7 +261,7 @@ def _prepare_approval(c, ref, effect):
         generation=0,
         payload=NativeCheckpointPayload(
             schema_version="1",
-            native_run_id=context.native_run_id,
+            native_run_id=require_instance(context.native_run_id, str),
             generation=0,
             generate_entity_json='{"private":"secret-value"}',
             graph_runtime_state_json="{}",
@@ -188,12 +284,18 @@ def _prepare_approval(c, ref, effect):
         ),
     )
     c.lifecycle.pause(
-        ref=ref, checkpoint=cp, pending_operation_ids=(waiting.pending_operation_id,), expected_generation=0
+        ref=ref,
+        checkpoint=cp,
+        pending_operation_ids=(require_instance(waiting, ApprovalWait).pending_operation_id,),
+        expected_generation=0,
     )
     with c.factory() as session:
-        scope = session.get(NativePendingAction, waiting.pending_operation_id).owner_version
+        scope = require_instance(
+            session.get(NativePendingAction, require_instance(waiting, ApprovalWait).pending_operation_id),
+            NativePendingAction,
+        ).owner_version
     item = PendingActionDisclosure(
-        pending_operation_id=waiting.pending_operation_id,
+        pending_operation_id=require_instance(waiting, ApprovalWait).pending_operation_id,
         wait_reason="approval",
         version=1,
         scope_digest=scope,
@@ -209,11 +311,15 @@ def _prepare_approval(c, ref, effect):
     return effect, item
 
 
-def _install_approval_api(c, monkeypatch, effect, item):
+def _install_approval_api(
+    c: ConsoleCase, monkeypatch: MonkeyPatch, effect: EffectIntent, item: PendingActionDisclosure
+) -> None:
     from controllers.console import dify_builder as controller
     from services.dify_builder.native_testing.api_service import NativeTestApiService
 
-    c.pending_id, c.scope_digest = item.pending_operation_id, item.scope_digest
+    c.pending_id = item.pending_operation_id
+    assert item.scope_digest is not None
+    c.scope_digest = item.scope_digest
     c.api = NativeTestApiService(
         session_factory=c.factory,
         actor=c.ledger.actor,
@@ -235,7 +341,7 @@ def _install_approval_api(c, monkeypatch, effect, item):
 
 
 @pytest.fixture
-def pending_console(console_case, monkeypatch):
+def pending_console(console_case: ConsoleCase, monkeypatch: pytest.MonkeyPatch) -> ConsoleCase:
     c = console_case
     effect, item = _prepare_approval(c, c.ref, c.ledger.intent)
     c.ledger.intent = effect
@@ -243,7 +349,7 @@ def pending_console(console_case, monkeypatch):
     return c
 
 
-def test_protected_checkpoint_roundtrip_disclosure_and_same_key_receipt(pending_console):
+def test_protected_checkpoint_roundtrip_disclosure_and_same_key_receipt(pending_console: ConsoleCase) -> None:
     c = pending_console
     url = c.url + f"/{c.ref.request_id}/decisions"
     first = c.client.post(url, json=c.body)
@@ -257,7 +363,7 @@ def test_protected_checkpoint_roundtrip_disclosure_and_same_key_receipt(pending_
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_same_key_different_decision_conflicts_without_dispatch(pending_console):
+def test_same_key_different_decision_conflicts_without_dispatch(pending_console: ConsoleCase) -> None:
     c = pending_console
     url = c.url + f"/{c.ref.request_id}/decisions"
     assert c.client.post(url, json=c.body).status_code == 200
@@ -266,20 +372,20 @@ def test_same_key_different_decision_conflicts_without_dispatch(pending_console)
 
 
 @pytest.mark.parametrize("changes", [{"scope_digest": "f" * 64}, {"expected_version": 2}])
-def test_stale_scope_and_version_cannot_approve(pending_console, changes):
+def test_stale_scope_and_version_cannot_approve(pending_console: ConsoleCase, changes: dict[str, JsonValue]) -> None:
     c = pending_console
     assert c.client.post(c.url + f"/{c.ref.request_id}/decisions", json={**c.body, **changes}).status_code == 409
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_current_resource_rotation_cannot_approve(pending_console):
+def test_current_resource_rotation_cannot_approve(pending_console: ConsoleCase) -> None:
     c = pending_console
     c.ledger.metadata.credential_version = "rotated"
     assert c.client.post(c.url + f"/{c.ref.request_id}/decisions", json=c.body).status_code == 409
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def _claim_approved_generation(c):
+def _claim_approved_generation(c: ConsoleCase) -> None:
     generation = c.store.load_context(ref=c.ref).generation
     receipt = c.api.lifecycle.resume(
         actor=c.ledger.actor,
@@ -290,8 +396,8 @@ def _claim_approved_generation(c):
     assert c.api.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
 
 
-def test_frozen_two_call_proposal_cannot_authorize_third_call(pending_console):
-    from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit
+def test_frozen_two_call_proposal_cannot_authorize_third_call(pending_console: ConsoleCase) -> None:
+    from runtime_contracts.builder.native.contracts import ApprovalWait
 
     c = pending_console
     second, third = c.ledger.occurrence(1), c.ledger.occurrence(2)
@@ -303,7 +409,7 @@ def test_frozen_two_call_proposal_cannot_authorize_third_call(pending_console):
     assert c.ledger.dispatched_attempt_count() == 2
 
 
-def test_cross_session_request_is_not_visible(pending_console):
+def test_cross_session_request_is_not_visible(pending_console: ConsoleCase) -> None:
     from uuid import uuid4
 
     c = pending_console
@@ -312,7 +418,12 @@ def test_cross_session_request_is_not_visible(pending_console):
 
 
 @pytest.mark.parametrize("qualified_disclosure", [True, False])
-def test_old_checkpoint_without_full_intent_fails_closed(mocker, console_case, monkeypatch, qualified_disclosure):
+def test_old_checkpoint_without_full_intent_fails_closed(
+    mocker: pytest_mock.MockerFixture,
+    console_case: ConsoleCase,
+    monkeypatch: pytest.MonkeyPatch,
+    qualified_disclosure: bool,
+) -> None:
 
     from controllers.console import dify_builder as controller
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
@@ -321,7 +432,7 @@ def test_old_checkpoint_without_full_intent_fails_closed(mocker, console_case, m
     c = console_case
     failures = []
 
-    def never_disclose(**_kwargs):
+    def never_disclose(**_kwargs: object) -> None:
         pytest.fail("missing full intent must fail before disclosure")
 
     wait = c.pause()
@@ -338,7 +449,7 @@ def test_old_checkpoint_without_full_intent_fails_closed(mocker, console_case, m
     )
     original_load = service.pending.load
 
-    def observed_load(**kwargs):
+    def observed_load(**kwargs: Unpack[_ForwardArguments420]) -> ResolvedPendingIntent:
         try:
             return original_load(**kwargs)
         except BuilderExecutionPolicyError as error:
@@ -363,7 +474,7 @@ def test_old_checkpoint_without_full_intent_fails_closed(mocker, console_case, m
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_current_test_run_permission_is_required(pending_console, monkeypatch):
+def test_current_test_run_permission_is_required(pending_console: ConsoleCase, monkeypatch: pytest.MonkeyPatch) -> None:
     from uuid import uuid4
 
     from configs import dify_config
@@ -373,11 +484,11 @@ def test_current_test_run_permission_is_required(pending_console, monkeypatch):
 
     c = pending_console
     with c.factory.begin() as session:
-        session.get(App, c.context.app_id).maintainer = str(uuid4())
+        require_instance(session.get(App, c.context.app_id), App).maintainer = str(uuid4())
     monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
     scenes = []
 
-    def check(_tenant, _actor, *, scene, resource_type, resource_id):
+    def check(_tenant, _actor, *, scene: str, resource_type: str | None, resource_id: str | None) -> bool:
         assert resource_type is not None
         assert resource_id == c.context.app_id
         scenes.append(scene)
@@ -389,14 +500,15 @@ def test_current_test_run_permission_is_required(pending_console, monkeypatch):
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_actual_child_permission_revocation_blocks_root_public_receipt(console_case, monkeypatch):
+def test_actual_child_permission_revocation_blocks_root_public_receipt(
+    console_case: ConsoleCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from uuid import uuid4
 
     from sqlalchemy import inspect
 
     from configs import dify_config
     from models.model import App
-    from models.workflow import Workflow
     from services.enterprise.rbac_service import RBACService
     from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import _child_case
 
@@ -405,7 +517,7 @@ def test_actual_child_permission_revocation_blocks_root_public_receipt(console_c
         original = session.get(App, c.context.app_id)
         app = App(
             **{
-                col.key: inspect_orm(original).attrs[col.key].value
+                col.key: require_instance(inspect_orm(original), InstanceState).attrs[col.key].value
                 for col in inspect(App).column_attrs
                 if col.key != "id"
             }
@@ -414,7 +526,7 @@ def test_actual_child_permission_revocation_blocks_root_public_receipt(console_c
         source = session.get(Workflow, c.context.workflow_id)
         workflow = Workflow(
             **{
-                col.key: inspect_orm(source).attrs[col.key].value
+                col.key: require_instance(inspect_orm(source), InstanceState).attrs[col.key].value
                 for col in inspect(Workflow).column_attrs
                 if col.key != "id"
             }
@@ -429,7 +541,7 @@ def test_actual_child_permission_revocation_blocks_root_public_receipt(console_c
     monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
     checked = []
 
-    def check(_tenant, _actor, *, scene, resource_type, resource_id):
+    def check(_tenant, _actor, *, scene: str, resource_type: str | None, resource_id: str | None) -> bool:
         assert scene is not None
         assert resource_type is not None
         checked.append(resource_id)
@@ -442,7 +554,9 @@ def test_actual_child_permission_revocation_blocks_root_public_receipt(console_c
     assert child_app in checked
 
 
-def test_generation_changes_after_protected_read_cannot_write_grant(pending_console, monkeypatch):
+def test_generation_changes_after_protected_read_cannot_write_grant(
+    pending_console: ConsoleCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from sqlalchemy import func
 
     from models.dify_builder import DifyBuilderExecutionRequest
@@ -451,7 +565,7 @@ def test_generation_changes_after_protected_read_cannot_write_grant(pending_cons
     c = pending_console
     original = c.api.authorization.decide
 
-    def changed_generation(**kwargs):
+    def changed_generation(**kwargs: Unpack[PublicDecisionArguments]) -> NativeTestPublicReceipt:
         ref = kwargs["pending_guard"].resolved.ref
         with c.factory.begin() as session:
             state = session.scalar(
@@ -476,16 +590,23 @@ def test_generation_changes_after_protected_read_cannot_write_grant(pending_cons
             )
             == 0
         )
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).observations == []
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).observations
+            == []
+        )
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_auth_start_persists_compiled_context_and_replays_without_second_admission(console_case, monkeypatch):
+def test_auth_start_persists_compiled_context_and_replays_without_second_admission(
+    console_case: ConsoleCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from controllers.console import dify_builder as controller
     from models.dify_builder import DifyBuilderExecutionRequest
     from models.dify_builder_native_tests import NativeTestInvocation, NativeTestScope
     from runtime_contracts.builder.execution import canonical_digest
-    from runtime_contracts.builder.native.contracts import DispatchPermit, operation_digest
+    from runtime_contracts.builder.native.contracts import operation_digest
     from services.dify_builder.native_testing.api_service import NativeAdmissionDependencies, NativeTestApiService
     from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler, NativeRuntimeProfile
     from services.dify_builder.native_testing.repository import NativeBinding
@@ -494,7 +615,7 @@ def test_auth_start_persists_compiled_context_and_replays_without_second_admissi
     launched = []
 
     class LaunchWitness:
-        def launch(self, *, ref):
+        def launch(self, *, ref: NativeTestContextRef) -> None:
             launched.append(ref)
 
     compiler = NativeAdmissionCompiler(session_factory=c.factory, resources=lambda **_kwargs: ())
@@ -526,20 +647,20 @@ def test_auth_start_persists_compiled_context_and_replays_without_second_admissi
         from uuid import uuid4
 
         input_id = str(uuid4())
-        workflow = session.get(Workflow, row.workflow_id)
-        previous = session.get(DifyBuilderTestInput, row.test_input_id)
+        workflow = session.get(Workflow, require_instance(row, DifyBuilderExecutionRequest).workflow_id)
+        previous = session.get(DifyBuilderTestInput, require_instance(row, DifyBuilderExecutionRequest).test_input_id)
         session.add(
             DifyBuilderTestInput(
                 id=input_id,
-                session_id=row.session_id,
-                source=previous.source,
-                inputs=previous.inputs,
-                start_schema_hash=schema_hash(start_schema(workflow.graph_dict)),
+                session_id=require_instance(row, DifyBuilderExecutionRequest).session_id,
+                source=require_instance(previous, DifyBuilderTestInput).source,
+                inputs=require_instance(previous, DifyBuilderTestInput).inputs,
+                start_schema_hash=schema_hash(start_schema(dict(require_instance(workflow, Workflow).graph_dict))),
             )
         )
         session.add(
             DifyBuilderSessionCommit(
-                session_id=row.session_id,
+                session_id=require_instance(row, DifyBuilderExecutionRequest).session_id,
                 version=1,
                 state="build.review",
                 actor="user",
@@ -567,8 +688,8 @@ def test_auth_start_persists_compiled_context_and_replays_without_second_admissi
     ref = launched[0]
     with c.factory() as session:
         scope = session.get(NativeTestScope, ref.request_id)
-        assert scope.profile == profile.limits
-        assert all(type(value) is int for value in scope.profile.values())
+        assert require_instance(scope, NativeTestScope).profile == profile.limits
+        assert all(type(value) is int for value in require_instance(scope, NativeTestScope).profile.values())
     effect = c.ledger.intent.model_copy(
         update={
             "key": c.ledger.intent.key.model_copy(update={"invocation_id": ref.invocation_id}),
@@ -603,7 +724,9 @@ def test_auth_start_persists_compiled_context_and_replays_without_second_admissi
                 NativeTestInvocation.invocation_id == ref.invocation_id,
             )
         )
-        invocation.bindings = {operation_digest(effect.key): binding.model_dump(mode="json")}
+        require_instance(invocation, NativeTestInvocation).bindings = {
+            operation_digest(effect.key): binding.model_dump(mode="json")
+        }
     permit = service.authorization.before_call(ref=ref, intent=effect)
     assert isinstance(permit, DispatchPermit)
     reservation = service.authorization.resolve_budget_reservation(
@@ -619,12 +742,12 @@ def test_auth_start_persists_compiled_context_and_replays_without_second_admissi
     ) == {"cpu_ms": 10}
     with c.factory() as session:
         scope = session.get(NativeTestScope, ref.request_id)
-        assert scope.budget_spent == {"cpu_ms": 10}
-        assert scope.spent_calls == 1
-        assert scope.spent_dispatches == 1
+        assert require_instance(scope, NativeTestScope).budget_spent == {"cpu_ms": 10}
+        assert require_instance(scope, NativeTestScope).spent_calls == 1
+        assert require_instance(scope, NativeTestScope).spent_dispatches == 1
 
 
-def test_cancel_without_cleanup_ack_reports_cancelling(pending_console):
+def test_cancel_without_cleanup_ack_reports_cancelling(pending_console: ConsoleCase) -> None:
     c = pending_console
     response = c.client.post(
         c.url + f"/{c.ref.request_id}/cancel",
@@ -637,9 +760,9 @@ def test_cancel_without_cleanup_ack_reports_cancelling(pending_console):
     assert receipt["status"] == "running"
 
 
-def test_cleanup_ack_cannot_erase_unknown_dispatched_effect(mocker, pending_console):
-
-    from runtime_contracts.builder.native.contracts import DispatchPermit
+def test_cleanup_ack_cannot_erase_unknown_dispatched_effect(
+    mocker: pytest_mock.MockerFixture, pending_console: ConsoleCase
+) -> None:
 
     c = pending_console
     assert c.client.post(c.url + f"/{c.ref.request_id}/decisions", json=c.body).status_code == 200
@@ -660,7 +783,7 @@ def test_cleanup_ack_cannot_erase_unknown_dispatched_effect(mocker, pending_cons
     assert receipt["outcome"] == "unknown"
 
 
-def test_resume_reuses_same_durable_dispatch(pending_console):
+def test_resume_reuses_same_durable_dispatch(pending_console: ConsoleCase) -> None:
     from sqlalchemy import func
 
     from models.dify_builder_native_tests import NativeDispatch
@@ -683,7 +806,9 @@ def test_resume_reuses_same_durable_dispatch(pending_console):
 
 
 @pytest.mark.parametrize("category", ["configuration", "interaction"])
-def test_approval_cannot_replace_configuration_or_native_form(console_case, monkeypatch, category):
+def test_approval_cannot_replace_configuration_or_native_form(
+    console_case: ConsoleCase, monkeypatch: pytest.MonkeyPatch, category: str
+) -> None:
     from controllers.console import dify_builder as controller
     from services.dify_builder.native_testing.api_service import NativeTestApiService
     from services.dify_builder.native_testing.pending_actions import NativePendingActionService
@@ -733,20 +858,24 @@ def test_approval_cannot_replace_configuration_or_native_form(console_case, monk
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_expired_frozen_proposal_cannot_approve(pending_console):
+def test_expired_frozen_proposal_cannot_approve(pending_console: ConsoleCase) -> None:
     from datetime import timedelta
 
     from models.dify_builder_native_tests import NativeTestScope
 
     c = pending_console
     with c.factory.begin() as session:
-        session.get(NativeTestScope, c.ref.request_id).expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).expires_at = datetime.now(
+            UTC
+        ) - timedelta(seconds=1)
     assert c.client.post(c.url + f"/{c.ref.request_id}/decisions", json=c.body).status_code == 409
     assert c.ledger.dispatched_attempt_count() == 0
 
 
 @pytest.mark.parametrize("revoked_permission", ["APP_EDIT", "APP_TEST_AND_RUN"])
-def test_final_child_authority_refresh_precedes_decision_write(console_case, monkeypatch, revoked_permission):
+def test_final_child_authority_refresh_precedes_decision_write(
+    console_case: ConsoleCase, monkeypatch: pytest.MonkeyPatch, revoked_permission: str
+) -> None:
     from uuid import uuid4
 
     from sqlalchemy import func, inspect
@@ -756,7 +885,6 @@ def test_final_child_authority_refresh_precedes_decision_write(console_case, mon
     from models.dify_builder import DifyBuilderExecutionRequest
     from models.dify_builder_native_tests import NativeEffectGrant
     from models.model import App
-    from models.workflow import Workflow
     from services.enterprise.rbac_service import RBACService
     from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import _child_case
 
@@ -765,7 +893,7 @@ def test_final_child_authority_refresh_precedes_decision_write(console_case, mon
         original = session.get(App, c.context.app_id)
         child_app = App(
             **{
-                col.key: inspect_orm(original).attrs[col.key].value
+                col.key: require_instance(inspect_orm(original), InstanceState).attrs[col.key].value
                 for col in inspect(App).column_attrs
                 if col.key != "id"
             }
@@ -774,7 +902,7 @@ def test_final_child_authority_refresh_precedes_decision_write(console_case, mon
         source = session.get(Workflow, c.context.workflow_id)
         child_workflow = Workflow(
             **{
-                col.key: inspect_orm(source).attrs[col.key].value
+                col.key: require_instance(inspect_orm(source), InstanceState).attrs[col.key].value
                 for col in inspect(Workflow).column_attrs
                 if col.key != "id"
             }
@@ -793,7 +921,7 @@ def test_final_child_authority_refresh_precedes_decision_write(console_case, mon
     revoked = False
     checks = []
 
-    def check(_tenant, _actor, *, scene, resource_type, resource_id):
+    def check(_tenant, _actor, *, scene: str, resource_type: str | None, resource_id: str | None) -> bool:
         assert resource_type is not None
         checks.append((revoked, resource_id, scene))
         return not (revoked and resource_id == app_id and scene == RBACPermission[revoked_permission])
@@ -803,7 +931,7 @@ def test_final_child_authority_refresh_precedes_decision_write(console_case, mon
     assert c.client.get(c.url + f"/{c.ref.request_id}").status_code == 200
     original_decide = c.api.authorization.decide
 
-    def revoke_at_final_boundary(**kwargs):
+    def revoke_at_final_boundary(**kwargs: Unpack[PublicDecisionArguments]) -> NativeTestPublicReceipt:
         nonlocal revoked
         assert kwargs["ref"] == child
         assert kwargs["pending_guard"].invocation_app_id == app_id
@@ -824,11 +952,29 @@ def test_final_child_authority_refresh_precedes_decision_write(console_case, mon
             )
             == 0
         )
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).observations == []
+        assert (
+            require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).observations
+            == []
+        )
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def _decision_process(url, actor, ref, sibling, session_id, effect, item, body, index, first_snapshot, barrier, pipe):
+def _decision_process(
+    url: str,
+    actor: Actor,
+    ref: NativeTestContextRef,
+    sibling: NativeTestContextRef,
+    session_id: str,
+    effect: EffectIntent,
+    item: PendingActionDisclosure,
+    body: ConsoleDecisionArguments,
+    index: int,
+    first_snapshot: ProcessEvent,
+    barrier: Barrier,
+    pipe: ProcessConnection,
+) -> None:
     """Independent owners and real SQL races; this is not an HTTP transport test."""
     try:
         from sqlalchemy.orm import sessionmaker
@@ -853,7 +999,7 @@ def _decision_process(url, actor, ref, sibling, session_id, effect, item, body, 
         ext_storage.init_app(app)
         ext_key_provider.init_app(app)
         with app.app_context(), pytest.MonkeyPatch.context() as patch:
-            no_outbound = no_live.__wrapped__(patch)
+            no_outbound = no_live._get_wrapped_function()(patch)
             next(no_outbound)
             session_factory.configure(ext_database.db.engine)
             factory = sessionmaker(bind=ext_database.db.engine, expire_on_commit=False)
@@ -879,7 +1025,7 @@ def _decision_process(url, actor, ref, sibling, session_id, effect, item, body, 
                     generation=0,
                     payload=NativeCheckpointPayload(
                         schema_version="1",
-                        native_run_id=context.native_run_id,
+                        native_run_id=require_instance(context.native_run_id, str),
                         generation=0,
                         generate_entity_json="{}",
                         graph_runtime_state_json="{}",
@@ -898,7 +1044,7 @@ def _decision_process(url, actor, ref, sibling, session_id, effect, item, body, 
             original = service.authorization.decide
             snapshot = None
 
-            def serialize_after_both_snapshots(**kwargs):
+            def serialize_after_both_snapshots(**kwargs: Unpack[PublicDecisionArguments]) -> NativeTestPublicReceipt:
                 nonlocal snapshot
                 snapshot = kwargs["pending_guard"].receipt.model_dump(mode="json")
                 # Both requests reached the command boundary with no observation
@@ -923,7 +1069,7 @@ def _decision_process(url, actor, ref, sibling, session_id, effect, item, body, 
 
 
 @pytest.mark.parametrize("second_decision", ["confirm", "deny"])
-def test_concurrent_decisions_return_canonical_saved_receipt(console_case, second_decision):
+def test_concurrent_decisions_return_canonical_saved_receipt(console_case: ConsoleCase, second_decision: str) -> None:
     import multiprocessing
 
     from sqlalchemy import func
@@ -942,11 +1088,13 @@ def test_concurrent_decisions_return_canonical_saved_receipt(console_case, secon
     )
     effect, item = _prepare_approval(c, approval_child, effect)
     with c.factory() as session:
-        session_id = session.get(DifyBuilderExecutionRequest, c.ref.request_id).session_id
+        session_id = require_instance(
+            session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+        ).session_id
     ctx = multiprocessing.get_context("spawn")
     first_snapshot, barrier = ctx.Event(), ctx.Barrier(2)
     pairs = [ctx.Pipe(duplex=False) for _ in range(2)]
-    url = c.factory.kw["bind"].url.render_as_string(hide_password=False)
+    url = require_instance(c.factory.kw["bind"], Engine).url.render_as_string(hide_password=False)
     body = {
         "pending_operation_id": item.pending_operation_id,
         "scope_digest": item.scope_digest,
@@ -984,7 +1132,9 @@ def test_concurrent_decisions_return_canonical_saved_receipt(console_case, secon
         assert all(row[0] != "error" for row in results), results
         assert [len(row[2]["pending"]) for row in results] == [1, 2], results
         with c.factory() as session:
-            observations = session.get(DifyBuilderExecutionRequest, c.ref.request_id).observations
+            observations = require_instance(
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id), DifyBuilderExecutionRequest
+            ).observations
             assert len(observations) == 1
             assert (
                 session.scalar(
@@ -1012,7 +1162,7 @@ def test_concurrent_decisions_return_canonical_saved_receipt(console_case, secon
                 pipe.close()
 
 
-def test_public_decision_refresh_and_readiness_never_dispatch(pending_console):
+def test_public_decision_refresh_and_readiness_never_dispatch(pending_console: ConsoleCase) -> None:
     from sqlalchemy import func
 
     from models.dify_builder_native_tests import NativeDispatch, NativeTestScope
@@ -1027,7 +1177,7 @@ def test_public_decision_refresh_and_readiness_never_dispatch(pending_console):
     assert saved.get_json()["data"]["pending"][0]["decision"] == "confirm"
     assert saved.get_json()["data"]["decision_public_revision"] == 1
     with c.factory() as session:
-        generation = session.get(NativeTestScope, c.ref.request_id).generation
+        generation = require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).generation
         dispatch_count = session.scalar(select(func.count()).select_from(NativeDispatch))
     # The existing full preflight reads protected storage/permission facts but
     # must not acquire a claim, refresh a credential, or mutate any SQL row.
@@ -1036,7 +1186,7 @@ def test_public_decision_refresh_and_readiness_never_dispatch(pending_console):
     writes = []
     engine = c.factory.kw["bind"]
 
-    def observe(_connection, _cursor, statement, _parameters, _context, _executemany):
+    def observe(_connection: object, _cursor: object, statement: str, _parameters, _context, _executemany) -> None:
         if statement.lstrip().split(None, 1)[0].upper() in {"INSERT", "UPDATE", "DELETE"}:
             writes.append(statement.split(None, 1)[0])
 
@@ -1053,12 +1203,14 @@ def test_public_decision_refresh_and_readiness_never_dispatch(pending_console):
     assert current["can_resume"] is True
     assert current["resume_blocked_reason"] is None
     with c.factory() as session:
-        assert session.get(NativeTestScope, c.ref.request_id).generation == generation
+        assert (
+            require_instance(session.get(NativeTestScope, c.ref.request_id), NativeTestScope).generation == generation
+        )
         assert session.scalar(select(func.count()).select_from(NativeDispatch)) == dispatch_count
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_expired_saved_decision_stays_frozen_but_cannot_resume(pending_console):
+def test_expired_saved_decision_stays_frozen_but_cannot_resume(pending_console: ConsoleCase) -> None:
     from datetime import timedelta
 
     from models.dify_builder_native_tests import NativeEffectGrant
@@ -1068,9 +1220,34 @@ def test_expired_saved_decision_stays_frozen_but_cannot_resume(pending_console):
     assert c.client.post(url + "/decisions", json=c.body).status_code == 200
     with c.factory.begin() as session:
         grant = session.scalar(select(NativeEffectGrant).where(NativeEffectGrant.request_id == c.ref.request_id))
-        grant.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        require_instance(grant, NativeEffectGrant).expires_at = datetime.now(UTC) - timedelta(seconds=1)
     current = c.client.get(url).get_json()["data"]
     assert current["pending"][0]["decision"] == "confirm"
     assert current["pending"][0]["decision_status"] == "expired"
     assert current["can_resume"] is False
     assert c.ledger.dispatched_attempt_count() == 0
+
+
+class _ForwardArguments420(TypedDict, closed=True):
+    actor: Actor
+    request_id: str
+    pending_operation_id: str
+
+
+class PublicDecisionArguments(TypedDict, closed=True):
+    ref: NativeTestContextRef
+    intent: EffectIntent
+    decision: Literal["approved", "denied"]
+    max_calls: int
+    max_dispatches: int
+    max_cost_units: int
+    expires_at: datetime
+    pending_guard: PendingDecisionGuard
+
+
+class ConsoleDecisionArguments(TypedDict, closed=True):
+    pending_operation_id: str
+    decision: Literal["confirm", "deny"]
+    scope_digest: str
+    expected_version: int
+    idempotency_key: str

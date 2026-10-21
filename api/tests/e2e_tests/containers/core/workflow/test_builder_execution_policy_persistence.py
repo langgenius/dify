@@ -1,12 +1,19 @@
 """CI-only PostgreSQL locking and actual Alembic migration controls."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, TypedDict, cast
+
+if TYPE_CHECKING:
+    pass
+
+
 import importlib.util
 from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Barrier
-from typing import TYPE_CHECKING, TypedDict, cast
 from uuid import uuid4
 
 import pytest
@@ -38,9 +45,6 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_restrict
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 class _TableWitness(TypedDict):
@@ -228,7 +232,7 @@ def _isolated_migration_schema(connection: Connection, schema: str) -> Generator
         connection.commit()
 
 
-def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_containers: "DifyApp") -> None:
+def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_containers: DifyApp) -> None:
     """Real Alembic traversal upgrades both branches, merges/splits heads without changing their data."""
     from extensions.ext_database import db
 

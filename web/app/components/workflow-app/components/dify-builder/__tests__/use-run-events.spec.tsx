@@ -408,6 +408,7 @@ describe('Builder run event handlers', () => {
           data: {
             node_id: 'answer',
             node_title: 'Approval',
+            form_id: 'form-1',
             expiration_time: 1,
           },
         }),
@@ -443,6 +444,7 @@ describe('Builder run event handlers', () => {
           data: {
             node_id: 'answer',
             node_title: 'Approval',
+            form_id: 'form-1',
             rendered_content: 'Approved',
             action_id: 'approve',
             action_text: 'Approve',

@@ -7,7 +7,7 @@ import json
 from collections.abc import Callable, Coroutine
 from dataclasses import replace
 from pathlib import Path
-from typing import override
+from typing import Literal, Never, Unpack, cast, override
 
 import httpx2 as httpx
 import pytest
@@ -15,12 +15,16 @@ from dify_agent.runtime_backend.local import LocalNativeScopeClient
 from pydantic import SecretStr
 from shellctl.client.sdk import ShellctlClient
 from shellctl.shared.schemas import NativeScopeHandle
+from typing_extensions import TypedDict
 
 from runtime_contracts.code_execution import CodeExecutionError
 from services.code_execution.native_scope_transport import (
     NativeCodeBounds,
+    NativeCodeDurableOwner,
     NativeCodeIdentity,
+    NativeCodeLifetimeOwner,
     NativeCodeProfile,
+    NativeCodeSyncOwner,
     NativeScopeCodeExecutionTransport,
 )
 
@@ -170,14 +174,40 @@ class ScopedSDK(LocalNativeScopeClient):
         )
 
 
+class TransportArgs(TypedDict, closed=True):
+    identity: NativeCodeIdentity
+    profile: NativeCodeProfile
+    bounds: NativeCodeBounds
+    scope_client: LocalNativeScopeClient
+    durable_owner: NativeCodeDurableOwner | None
+    lifetime_owner: NativeCodeLifetimeOwner | None
+    sync_owner: NativeCodeSyncOwner | None
+
+
+class TransportOverrides(TypedDict, total=False, closed=True):
+    profile: NativeCodeProfile
+    scope_client: LocalNativeScopeClient
+    durable_owner: NativeCodeDurableOwner | None
+    lifetime_owner: NativeCodeLifetimeOwner | None
+    sync_owner: NativeCodeSyncOwner | None
+
+
+class BoundOverrides(TypedDict, total=False, closed=True):
+    timeout_seconds: float
+    output_bytes: int
+    max_pages: int
+    input_bytes: int
+    close_seconds: float
+
+
 def setup_transport(
-    outputs: list[dict[str, object]] | None = None, **overrides: object
+    outputs: list[dict[str, object]] | None = None, **overrides: Unpack[TransportOverrides]
 ) -> tuple[NativeScopeCodeExecutionTransport, ScopedSDK, DurableOwner, LifetimeOwner]:
     sdk = ScopedSDK(outputs)
-    sdk.final_offset = outputs[-1]["offset"] if outputs else len(b"<<RESULT>>{}<<RESULT>>\n")
+    sdk.final_offset = cast(int, outputs[-1]["offset"]) if outputs else len(b"<<RESULT>>{}<<RESULT>>\n")
     durable, lifetime = DurableOwner(), LifetimeOwner()
     sdk.durable = durable
-    args: dict[str, object] = {
+    args: TransportArgs = {
         "identity": NativeCodeIdentity(operation_ref="operation-1", scope_id="scope-1", generation=2),
         "profile": NativeCodeProfile(language="python3", executable="/usr/bin/python3", environment_digest="a" * 64),
         "bounds": NativeCodeBounds(
@@ -237,8 +267,10 @@ def test_bad_job_output_fails_redacted_and_closes(bad: dict[str, object]) -> Non
 
 
 @pytest.mark.parametrize("missing", ["durable_owner", "lifetime_owner", "sync_owner"])
-def test_missing_owner_refuses_before_io(missing: str) -> None:
-    transport, sdk, _, _ = setup_transport(**{missing: None})
+def test_missing_owner_refuses_before_io(missing: Literal["durable_owner", "lifetime_owner", "sync_owner"]) -> None:
+    overrides: TransportOverrides = {}
+    overrides[missing] = None
+    transport, sdk, _, _ = setup_transport(**overrides)
     with pytest.raises(CodeExecutionError):
         execute(transport)
     assert sdk.requests == []
@@ -372,9 +404,10 @@ def test_total_deadline_cancels_wait_and_closes_owned_client() -> None:
     def factory(handle: NativeScopeHandle) -> ShellctlClient:
         client = original_factory(handle)
 
-        async def run(*args: object, **kwargs: object) -> None:
+        async def run(*args: object, **kwargs: object) -> Never:
             del args, kwargs
             await asyncio.sleep(1)
+            raise AssertionError("deadline did not cancel the controlled SDK operation")
 
         client.run = run
         return client
@@ -409,7 +442,9 @@ def test_page_count_exhaustion_never_reports_partial_success() -> None:
 )
 def test_invalid_or_exceeded_bounds_refuse_before_sdk(bound: str, value: float) -> None:
     transport, sdk, _, _ = setup_transport()
-    transport = replace(transport, bounds=replace(transport.bounds, **{bound: value}))
+    # Invalid integer bounds deliberately retain their original noninteger runtime values.
+    overrides = cast(BoundOverrides, {bound: value})
+    transport = replace(transport, bounds=replace(transport.bounds, **overrides))
     with pytest.raises(CodeExecutionError):
         execute(transport)
     assert sdk.requests == []
@@ -522,6 +557,7 @@ def test_slow_http_close_cannot_escape_settlement_deadline() -> None:
         async def close() -> None:
             await original_close()
             await asyncio.sleep(1)
+            raise AssertionError("deadline did not cancel the controlled SDK operation")
 
         client.close = close
         return client
@@ -596,12 +632,13 @@ def test_external_cancellation_waits_for_bounded_ownership_handoff(phase: str) -
             client.close = close
             if phase == "body_then_repeated":
 
-                async def run(*args: object, **kwargs: object) -> None:
+                async def run(*args: object, **kwargs: object) -> Never:
                     del args, kwargs
                     nonlocal run_attempts
                     run_attempts += 1
                     body_entered.set()
                     await asyncio.Event().wait()
+                    raise AssertionError("controlled SDK operation unexpectedly resumed")
 
                 client.run = run
             return client

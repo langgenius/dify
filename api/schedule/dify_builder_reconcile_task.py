@@ -126,7 +126,12 @@ def reconcile_native_tests(*, limit: int = 100) -> int:
 
     with _session_factory()() as session:
         owners = session.execute(
-            select(DifyBuilderExecutionRequest.tenant_id, DifyBuilderExecutionRequest.actor_id)
+            select(
+                DifyBuilderExecutionRequest.tenant_id,
+                DifyBuilderExecutionRequest.actor_id,
+                DifyBuilderExecutionRequest.session_id,
+                DifyBuilderExecutionRequest.id,
+            )
             .outerjoin(NativeDispatch, NativeDispatch.request_id == DifyBuilderExecutionRequest.id)
             .join(NativeInvocationState, NativeInvocationState.request_id == DifyBuilderExecutionRequest.id)
             .where(
@@ -140,12 +145,16 @@ def reconcile_native_tests(*, limit: int = 100) -> int:
             .limit(limit)
         ).all()
     recovered = 0
-    for tenant_id, actor_id in owners:
+    for tenant_id, actor_id, session_id, request_id in owners:
         try:
-            service = build_native_test_api_service(actor=Actor(account_id=actor_id, tenant_id=tenant_id)).lifecycle
-            recovered += service.reconcile(limit=limit)
-            recovered += service.publish_pending(
-                publish=cast(Callable[..., None], advance_native_test.delay), limit=limit
+            actor = Actor(account_id=actor_id, tenant_id=tenant_id)
+            service = build_native_test_api_service(actor=actor)
+            recovered += service.reconcile_pending(
+                actor=actor,
+                session_id=session_id,
+                request_id=request_id,
+                publish=cast(Callable[..., None], advance_native_test.delay),
+                limit=limit,
             )
         except Exception:
             logger.warning("Dify Builder native continuation requires attention (tenant=%s)", tenant_id)

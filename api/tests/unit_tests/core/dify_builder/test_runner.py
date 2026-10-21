@@ -883,7 +883,7 @@ def test_recovery_clears_pending_confirmed_reference() -> None:
     assert (fc.confirmed_consent_id, fc.confirmed_command_id) == ("", "")
 
 
-def test_committed_test_input_remains_available_as_prefill_after_replanning():
+def test_committed_test_input_remains_available_as_prefill_after_replanning() -> None:
     env, repo = _new_env()
     session = _session()
     context = DifyBuilderContext(test_input_ref="latest-input")

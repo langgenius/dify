@@ -87,10 +87,12 @@ def _context(installation: InstalledJsonParse, expected: dict[str, str | bool]) 
             ("node3", "graphon.nodes.end.end_node.EndNode"),
         )
     )
-    qualified = QualifiedJsonToolBinding(
-        node_id="node2",
-        **installation.binding_fields(),
-        final_parameters_digest=canonical_digest(expected),
+    qualified = QualifiedJsonToolBinding.model_validate(
+        {
+            "node_id": "node2",
+            **installation.binding_fields(),
+            "final_parameters_digest": canonical_digest(expected),
+        }
     )
     initial = JsonToolExecutionContext(
         policy_version="builder-json-parse-v1",
@@ -618,7 +620,7 @@ def test_post_dispatch_metadata_change_prevents_receipt(monkeypatch: pytest.Monk
     reads = []
     installed = _installation()
 
-    def metadata_reader(_tenant) -> InstalledJsonParse:
+    def metadata_reader(_tenant: object) -> InstalledJsonParse:
         reads.append(True)
         if len(reads) == 1:
             return installed
@@ -648,7 +650,7 @@ def test_post_dispatch_runtime_variant_change_prevents_receipt(
     reads = []
     installed = _installation()
 
-    def metadata_reader(_tenant) -> InstalledJsonParse:
+    def metadata_reader(_tenant: object) -> InstalledJsonParse:
         reads.append(True)
         if len(reads) == 1:
             return installed
@@ -825,7 +827,7 @@ def test_metadata_and_native_dispatch_have_no_active_own_transaction(
     maker = sessionmaker(sqlite_engine, class_=TrackedSession)
     transaction_states = []
 
-    def metadata_reader(_tenant) -> InstalledJsonParse:
+    def metadata_reader(_tenant: object) -> InstalledJsonParse:
         transaction_states.append(sessions[-1].in_transaction())
         return _installation()
 

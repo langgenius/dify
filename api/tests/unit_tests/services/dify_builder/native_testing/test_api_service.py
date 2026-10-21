@@ -8,7 +8,7 @@ from core.dify_builder.models import Actor
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
 
-def test_missing_qualification_refuses_start_before_admission():
+def test_missing_qualification_refuses_start_before_admission() -> None:
     name = "services.dify_builder.native_testing.api_service"
     assert importlib.util.find_spec(name) is not None, "native API orchestration missing"
     module = __import__(name, fromlist=["NativeTestApiService"])

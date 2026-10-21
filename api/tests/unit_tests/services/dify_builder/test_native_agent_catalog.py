@@ -4,6 +4,7 @@ from dataclasses import asdict
 from uuid import uuid4
 
 import pytest
+import sqlalchemy.orm
 
 from models.agent import Agent, AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
@@ -11,7 +12,7 @@ from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 
 
-def test_projection_is_published_and_output_contract_is_honest():
+def test_projection_is_published_and_output_contract_is_honest() -> None:
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
     agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Risk reviewer", description="EDITABLE DRAFT SECRET")
@@ -41,7 +42,7 @@ def test_projection_is_published_and_output_contract_is_honest():
     assert "EDITABLE" not in repr(asdict(candidate))
 
 
-def test_projection_rejects_cross_owner_snapshot():
+def test_projection_rejects_cross_owner_snapshot() -> None:
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
     agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Reviewer")
@@ -53,7 +54,7 @@ def test_projection_rejects_cross_owner_snapshot():
 
 
 @pytest.mark.parametrize("summary", [None, "", "Published risk review"])
-def test_public_roster_description_is_an_honest_capability_fallback(summary):
+def test_public_roster_description_is_an_honest_capability_fallback(summary: None | str) -> None:
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
     agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Reviewer", description="Public report review")
@@ -75,7 +76,9 @@ def test_public_roster_description_is_an_honest_capability_fallback(summary):
 
 
 @pytest.mark.parametrize("phase", ["discovery", "generation"])
-def test_agent_contract_reaches_planning_without_private_soul_values(sqlite_session, monkeypatch, phase):
+def test_agent_contract_reaches_planning_without_private_soul_values(
+    sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch, phase: str
+) -> None:
     """An eligible real SQL projection must survive both planning consumers intact."""
     import json
 
@@ -103,7 +106,7 @@ def test_agent_contract_reaches_planning_without_private_soul_values(sqlite_sess
     payloads = []
     if phase == "discovery":
 
-        def recommend(_model, **kwargs):
+        def recommend(_model: object, **kwargs: object) -> dict[str, list[str]]:
             payloads.append(kwargs["user"])
             return {"resource_ids": [candidate.resource_id]}
 
@@ -124,7 +127,7 @@ def test_agent_contract_reaches_planning_without_private_soul_values(sqlite_sess
             ),
         )
 
-        def generate(**kwargs):
+        def generate(**kwargs: object) -> dict[str, object]:
             payloads.append(kwargs["instruction"])
             return {
                 "graph": {
@@ -175,6 +178,7 @@ def test_agent_contract_reaches_planning_without_private_soul_values(sqlite_sess
 
     assert len(payloads) == 1
     prompt = payloads[0]
+    assert isinstance(prompt, str)
     for public_value in (
         json.dumps({"report": {"type": "string", "required": True}}, sort_keys=True),
         "published_soul.app_variables",
@@ -188,7 +192,9 @@ def test_agent_contract_reaches_planning_without_private_soul_values(sqlite_sess
     assert "HIDDEN" not in prompt
 
 
-def test_catalog_source_failure_is_not_an_empty_catalog(monkeypatch, sqlite_session):
+def test_catalog_source_failure_is_not_an_empty_catalog(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     from services.agent import access_service
     from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
 
@@ -204,7 +210,7 @@ def test_catalog_source_failure_is_not_an_empty_catalog(monkeypatch, sqlite_sess
         )
 
 
-def test_selected_agent_uses_existing_resource_option_and_fresh_binding(monkeypatch):
+def test_selected_agent_uses_existing_resource_option_and_fresh_binding(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import build, resources
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
@@ -229,7 +235,7 @@ def test_selected_agent_uses_existing_resource_option_and_fresh_binding(monkeypa
     assert item.resource_id in build.bind_resources(None, agent.tenant_id, ["Review risk"], [item.resource_id])[0]
 
 
-def test_changed_agent_selection_cannot_silently_rebind(monkeypatch):
+def test_changed_agent_selection_cannot_silently_rebind(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import build, resources
     from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
 
@@ -243,7 +249,9 @@ def test_changed_agent_selection_cannot_silently_rebind(monkeypatch):
         build.bind_resources(None, "tenant-1", ["Review"], ["agent:agent-1:snapshot-3:" + "a" * 64])
 
 
-def test_native_catalog_filters_before_pagination(sqlite_session, monkeypatch):
+def test_native_catalog_filters_before_pagination(
+    sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from models.account import Tenant
     from models.agent import AgentStatus
     from services.agent import access_service
@@ -278,7 +286,9 @@ def test_native_catalog_filters_before_pagination(sqlite_session, monkeypatch):
     assert [item.agent_id for item in unpaginated] == [case.agent.id]
 
 
-def test_missing_tool_credentials_remain_discoverable_with_setup_status(sqlite_session, monkeypatch):
+def test_missing_tool_credentials_remain_discoverable_with_setup_status(
+    sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
     from tests.builder_agent_fixtures import make_case
 
@@ -293,7 +303,9 @@ def test_missing_tool_credentials_remain_discoverable_with_setup_status(sqlite_s
 
 
 @pytest.mark.parametrize("state", ["unchanged", "drifted", "revoked"])
-def test_confirmed_agent_is_revalidated_directly_after_catalog_page_movement(sqlite_session, monkeypatch, state):
+def test_confirmed_agent_is_revalidated_directly_after_catalog_page_movement(
+    sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch, state: str
+) -> None:
     from datetime import datetime
 
     from models.agent import AgentConfigRevision, AgentConfigRevisionOperation

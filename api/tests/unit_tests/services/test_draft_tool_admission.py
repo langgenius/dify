@@ -13,13 +13,14 @@ from typing import Never, Self
 
 import httpx
 import pytest
+from pydantic import JsonValue
 from sqlalchemy import Engine, Select, select, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import ORMExecuteState, Session, SessionTransaction, sessionmaker
 
 import services.app_generate_service as generate_module
 import services.workflow_service as workflow_module
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.dify_builder.models import Graph
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.__base.tool import Tool
@@ -31,7 +32,7 @@ from models.account import Account
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import EndUserType, PermissionEnum
 from models.model import App, AppMode, EndUser
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowRun, WorkflowType
 from services.app_generate_service import AppGenerateService
 from services.workflow_service import WorkflowService
 from tests.unit_tests.services.dify_builder.draft_tool_inventory import (
@@ -130,8 +131,15 @@ class ResumeEvidence:
     native_calls: list[str] = field(default_factory=list)
     pause_writes: list[object] = field(default_factory=list)
     storage_loads: list[str] = field(default_factory=list)
-    run: object = None
-    entity: object = None
+    run: WorkflowRun = field(init=False)
+    entity: WorkflowAppGenerateEntity | AdvancedChatAppGenerateEntity = field(init=False)
+    mode: AppMode = field(init=False)
+    executed_graph: Graph = field(init=False)
+    store: Callable[[AppMode, Graph | str | None], None] = field(init=False)
+    save_context: Callable[[], None] = field(init=False)
+    resume: Callable[[], None] = field(init=False)
+    assert_not_resumed: Callable[[], None] = field(init=False)
+    redis_values: dict[str, bytes | list[bytes]] = field(init=False)
 
 
 @dataclass
@@ -218,6 +226,7 @@ def native_draft(
 
 def set_tool(case: NativeDraftCase, session: Session, **values: object) -> None:
     graph = case.workflow.graph_dict
+    assert isinstance(graph, dict)
     graph["nodes"][1]["data"].update(values)
     case.workflow.graph = json.dumps(graph)
     session.commit()
@@ -237,6 +246,7 @@ ENTRYPOINTS = [
 def nest_tool_in_container(case: NativeDraftCase, session: Session, kind: str) -> None:
     """Use a real container id and enclosing Tool rather than a nonexistent node."""
     graph = case.workflow.graph_dict
+    assert isinstance(graph, dict)
     tool = next(node for node in graph["nodes"] if node["id"] == "t")
     tool["parentId"] = "container"
     tool["data"].update({f"isIn{kind.title()}": True, f"{kind}_id": "container"})
@@ -683,7 +693,7 @@ def test_native_publish_owners_read_declarations_before_writes_or_draft_locks(
                 APP_ID,
                 Actor(account_id=ACCOUNT_A, tenant_id=TENANT_ID),
                 expected_revision=execution_revision(native_draft.workflow),
-                expected_graph_revision=executable_graph_revision(native_draft.workflow.graph_dict),
+                expected_graph_revision=executable_graph_revision(dict(native_draft.workflow.graph_dict)),
             )
         assert requests, "native publication never verified the actual installed Tool declaration"
         sqlite_session.expire_all()
@@ -948,7 +958,7 @@ def native_draft_oauth(
     native_draft: NativeDraftCase,
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
-) -> Iterator[NativeDraftCase]:
+) -> Iterator[NativeOAuthCase]:
     """Authorized synthetic OAuth effects through real native/SQL ownership.
 
     Actual stored draft ownership, installed declaration, credential visibility,
@@ -977,7 +987,9 @@ def native_draft_oauth(
     reset_native_provider_cache()
     try:
         declaration = native_draft.tools.daemon.providers_by_tenant[TENANT_ID][0]["declaration"]
-        declaration["credentials_schema"] = []
+        assert isinstance(declaration, dict)
+        empty_schema: list[JsonValue] = []
+        declaration["credentials_schema"] = empty_schema
         declaration["oauth_schema"] = {
             "client_schema": [
                 {"name": "client_id", "type": "text-input"},
@@ -1134,7 +1146,7 @@ def native_draft_oauth(
 
 
 def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_expiry(
-    native_draft_oauth: NativeDraftCase,
+    native_draft_oauth: NativeOAuthCase,
 ) -> None:
     """Native rotation survives fresh SQL and a second resolution without refresh."""
     from models.tools import BuiltinToolProvider
@@ -1175,7 +1187,7 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
 
 @pytest.mark.parametrize("change", ["revoked", "rotated"])
 def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(
-    native_draft_oauth: NativeDraftCase, change: str
+    native_draft_oauth: NativeOAuthCase, change: str
 ) -> None:
     """Real current permission/token updates cannot be overwritten after OAuth I/O."""
     from core.tools.errors import ToolProviderCredentialValidationError
@@ -1278,7 +1290,7 @@ def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(
 @pytest.fixture
 def paused_native_draft(
     native_draft: NativeDraftCase, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-) -> Iterator[NativeDraftCase]:
+) -> Iterator[ResumeEvidence]:
     """Real saved run/pause/context; only blob, Redis and final resume effects are external."""
     from decimal import Decimal
 
@@ -1383,6 +1395,7 @@ def paused_native_draft(
         execution_id = (
             entity.workflow_execution_id if isinstance(entity, WorkflowAppGenerateEntity) else entity.workflow_run_id
         )
+        assert execution_id is not None
         state.native_calls.append(execution_id)
         # Keep the actual saved-graph restoration owner used by both native
         # workers; the final generator boundary stops before business effects.
@@ -1392,7 +1405,7 @@ def paused_native_draft(
                 workflow=workflow,
                 workflow_run_id=execution_id,
             )
-        state.executed_graph = workflow.graph_dict
+        state.executed_graph = dict(workflow.graph_dict)
         raise NativeDispatchReachedError("normal native resume reached before saved graph admission")
 
     monkeypatch.setattr(worker.WorkflowAppGenerator, "resume", resume_boundary)
@@ -1509,7 +1522,7 @@ def paused_native_draft(
     state.save_context = save_context
     state.resume = resume
     state.assert_not_resumed = assert_not_resumed
-    state.redis = redis
+    state.redis_values = redis.values
     event.listen(native_draft.tools.engine, "before_cursor_execute", observe_pause_write)
     try:
         yield state
@@ -1540,12 +1553,13 @@ def test_resume_refuses_saved_revoked_tool_before_any_resume_effect(
         name="Saved selected credential",
     )
     set_tool(native_draft, sqlite_session, credential_id=selected.id)
-    paused_native_draft.store(mode, native_draft.workflow.graph_dict)
+    paused_native_draft.store(mode, dict(native_draft.workflow.graph_dict))
     grant = sqlite_session.scalar(select(CredentialPermission).where(CredentialPermission.credential_id == selected.id))
     assert grant is not None
     grant.has_permission = False
     if draft_edit == "removed-tool":
         graph = native_draft.workflow.graph_dict
+        assert isinstance(graph, dict)
         graph["nodes"] = [node for node in graph["nodes"] if node["id"] != "t"]
         graph["edges"] = [{"id": "bypass", "source": "s", "target": "e"}]
         native_draft.workflow.graph = json.dumps(graph)
@@ -1575,7 +1589,7 @@ def test_resume_configured_saved_graph_ignores_later_unconfigured_draft_tool(
 
     selected = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
     set_tool(native_draft, sqlite_session, credential_id=selected.id)
-    saved_graph = native_draft.workflow.graph_dict
+    saved_graph = dict(native_draft.workflow.graph_dict)
     paused_native_draft.store(mode, saved_graph)
     # A later draft contains a different installed but unconfigured Tool. The
     # saved configured execution remains entitled to resume without regeneration.
@@ -1599,7 +1613,7 @@ def test_resume_configured_saved_graph_ignores_later_unconfigured_draft_tool(
         paused_native_draft.resume()
     assert paused_native_draft.executed_graph == saved_graph
     assert paused_native_draft.native_calls == [paused_native_draft.run_id]
-    assert "generate_task_stopped:eeeeeeee-0000-4000-8000-000000000003" not in paused_native_draft.redis.values
+    assert "generate_task_stopped:eeeeeeee-0000-4000-8000-000000000003" not in paused_native_draft.redis_values
     assert paused_native_draft.pause_writes
     assert native_draft.tools.forbidden == []
 
@@ -1613,11 +1627,11 @@ def test_resume_unverifiable_saved_graph_refuses_before_resume_effects(
     native_draft: NativeDraftCase,
     sqlite_session: Session,
     mode: AppMode,
-    saved_graph: Graph | str | None,
+    saved_graph: str | None,
 ) -> None:
     selected = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
     set_tool(native_draft, sqlite_session, credential_id=selected.id)
-    paused_native_draft.store(mode, native_draft.workflow.graph_dict)
+    paused_native_draft.store(mode, dict(native_draft.workflow.graph_dict))
     paused_native_draft.run.graph = saved_graph
     sqlite_session.commit()
     with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
@@ -1636,7 +1650,7 @@ def test_resume_saved_graph_requires_actual_run_and_invocation_owners(
 ) -> None:
     selected = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
     set_tool(native_draft, sqlite_session, credential_id=selected.id)
-    paused_native_draft.store(mode, native_draft.workflow.graph_dict)
+    paused_native_draft.store(mode, dict(native_draft.workflow.graph_dict))
     if scope == "run-tenant":
         paused_native_draft.run.tenant_id = OTHER_TENANT_ID
         sqlite_session.commit()
@@ -1645,8 +1659,10 @@ def test_resume_saved_graph_requires_actual_run_and_invocation_owners(
     elif scope == "context-workflow":
         paused_native_draft.entity.app_config.workflow_id = "dddddddd-0000-4000-8000-000000000002"
     elif mode == "workflow":
+        assert isinstance(paused_native_draft.entity, WorkflowAppGenerateEntity)
         paused_native_draft.entity.workflow_execution_id = "eeeeeeee-0000-4000-8000-000000000099"
     else:
+        assert isinstance(paused_native_draft.entity, AdvancedChatAppGenerateEntity)
         paused_native_draft.entity.workflow_run_id = "eeeeeeee-0000-4000-8000-000000000099"
     paused_native_draft.save_context()
     with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
@@ -1656,8 +1672,8 @@ def test_resume_saved_graph_requires_actual_run_and_invocation_owners(
 
 @pytest.mark.parametrize("change", ["default-swap", "rotation-before-read"])
 def test_builder_native_tool_refuses_changed_confirmed_credential_before_crypto(
-    native_draft, sqlite_session, monkeypatch, change
-):
+    native_draft: NativeDraftCase, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
     import hashlib
 
     from sqlalchemy import event
@@ -1680,9 +1696,9 @@ def test_builder_native_tool_refuses_changed_confirmed_credential_before_crypto(
             name="Different authorized account",
         )
     monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
-    rotated = []
+    rotated: list[bool] = []
 
-    def rotate_before_value_read(state):
+    def rotate_before_value_read(state: ORMExecuteState) -> None:
         descriptions = state.statement.column_descriptions if isinstance(state.statement, Select) else ()
         if (
             change == "rotation-before-read"
@@ -1708,23 +1724,30 @@ def test_builder_native_tool_refuses_changed_confirmed_credential_before_crypto(
 
 
 @pytest.mark.parametrize("external_rotation", [False, True])
-def test_builder_two_nodes_share_only_their_authorized_oauth_refresh_receipt(native_draft_oauth, external_rotation):
+def test_builder_two_nodes_share_only_their_authorized_oauth_refresh_receipt(
+    native_draft_oauth: NativeOAuthCase, external_rotation: bool
+) -> None:
     from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-    from core.workflow.node_runtime import DifyToolNodeRuntime
+    from core.workflow.node_runtime import DifyToolNodeRuntime, _WorkflowToolRuntimeBinding
     from models.tools import BuiltinToolProvider
     from services.tools.draft_tool_setup import tool_credential_fingerprint
 
     boundary = native_draft_oauth
     with Session(boundary.engine) as session:
         credential = session.get(BuiltinToolProvider, boundary.credential_id)
+        assert credential is not None
         fingerprint = tool_credential_fingerprint(credential)
     bindings = {"t": fingerprint, "second": fingerprint, "other-account": "unrelated-binding"}
     node, pool = native_tool_node(boundary.case, credential_bindings=bindings)
     first = node._runtime.get_runtime(node_id="t", node_data=node.node_data, variable_pool=pool)
+    assert isinstance(first.raw, _WorkflowToolRuntimeBinding)
     assert first.raw.tool.runtime.credentials["access_token"] == "synthetic-new-access"
     # A nested factory shares its DifyRunContext; serialization must preserve
     # this run's trusted rotation for native pause/rebuild as well.
+    assert isinstance(node._runtime, DifyToolNodeRuntime)
     context = node._runtime._run_context
+    assert context is not None
+    assert context.builder_tool_credential_bindings is not None
     assert context.builder_tool_credential_bindings["second"] != fingerprint
     assert context.builder_tool_credential_bindings["other-account"] == "unrelated-binding"
     restored = DifyRunContext.model_validate_json(context.model_dump_json())
@@ -1737,11 +1760,13 @@ def test_builder_two_nodes_share_only_their_authorized_oauth_refresh_receipt(nat
 
         with Session(boundary.engine) as session, session.begin():
             credential = session.get(BuiltinToolProvider, boundary.credential_id)
+            assert credential is not None
             credential.encrypted_credentials = '{"access_token":"external-rotation"}'
         with pytest.raises(ToolRuntimeResolutionError, match="credential changed after confirmation"):
             second_runtime.get_runtime(node_id="second", node_data=node.node_data, variable_pool=pool)
     else:
         second = second_runtime.get_runtime(node_id="second", node_data=node.node_data, variable_pool=pool)
+        assert isinstance(second.raw, _WorkflowToolRuntimeBinding)
         assert second.raw.tool.runtime.credentials["access_token"] == "synthetic-new-access"
     assert len(boundary.refresh_calls) == 1
     assert bindings["second"] == context.builder_tool_credential_bindings["second"]
