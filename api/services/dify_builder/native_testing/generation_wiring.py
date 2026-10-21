@@ -14,13 +14,13 @@ from services.dify_builder.native_testing.context_binding import NativeContextUn
 from services.dify_builder.native_testing.observation_repository import bind_native_repository_observation
 
 if TYPE_CHECKING:
-    from core.app.apps.base_app_queue_manager import AppQueueManager
     from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
     from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
     from graphon.engine.filter import ResponseStreamFilter
     from runtime_contracts.builder.native.contracts import NativeTestContextRef
     from services.dify_builder.native_testing.host_execution import NativeHostLaunch
     from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
+    from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 
 
 def validate_native_host(
@@ -65,7 +65,7 @@ def preflight_native_observation(*, host: NativeHostLaunch, entity: WorkflowAppG
         features = workflow.features_dict
         if (
             entity.files
-            or entity.trace_manager is not None
+            or entity.trace_scope is not None
             or entity.single_iteration_run
             or entity.single_loop_run
             or entity.builder_execution is not None
@@ -92,7 +92,7 @@ def bind_native_generation(
     *,
     host: NativeHostLaunch,
     entity: WorkflowAppGenerateEntity,
-    queue: AppQueueManager,
+    queue: WorkflowAppQueueManager,
     response_filter: ResponseStreamFilter,
     workflow_repository: WorkflowExecutionRepository,
     node_repository: WorkflowNodeExecutionRepository,

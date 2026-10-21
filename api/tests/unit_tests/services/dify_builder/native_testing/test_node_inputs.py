@@ -7,18 +7,28 @@ real encryption, actual Graphon identity, or authorization-owner qualification.
 import copy
 import json
 import warnings
+from collections.abc import Callable
 from contextlib import contextmanager
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
+from sqlalchemy import inspect
 
 from models.dify_builder import DifyBuilderExecutionRequest
-from models.dify_builder_native_tests import NativeInvocationState, NativePayloadObject, NativeTestInvocation
+from models.dify_builder_native_tests import (
+    NativeInvocationState,
+    NativePayloadObject,
+    NativeTestInvocation,
+    NativeTestScope,
+)
+from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import NativeTestContextRef, OperationKey, operation_digest
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing import state_store as module
+from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTest
 
 NATIVE_ID = "81d492fd-05ce-46a8-8c82-a35d4b343d48"
 CANARY = "private-input-canary-982314"
@@ -35,7 +45,11 @@ class SQLStandIn:
         if entity is NativePayloadObject:
             filters = {key.rsplit("_", 1)[0]: value for key, value in query.compile().params.items()}
             return next(
-                (row for row in self.owner.rows if all(getattr(row, key) == value for key, value in filters.items())),
+                (
+                    row
+                    for row in self.owner.rows
+                    if all(inspect(row).attrs[key].value == value for key, value in filters.items())
+                ),
                 None,
             )
         raise AssertionError("unexpected SQL entity")
@@ -64,7 +78,9 @@ class SQLStandIn:
 class LoaderStandIn:
     def __init__(self):
         self.ref = NativeTestContextRef(request_id="request", invocation_id="inv", context_digest="a" * 64)
-        self.state = SimpleNamespace(
+        self.state = NativeInvocationState(
+            pending_ids=[],
+            resolution={},
             tenant_id="tenant",
             request_id="request",
             invocation_id="inv",
@@ -75,11 +91,38 @@ class LoaderStandIn:
             generation=0,
             state="running",
         )
-        self.scope = SimpleNamespace(
-            generation=0, expires_at=datetime.now(UTC) + timedelta(minutes=10), cancelled=False
+        self.scope = NativeTestScope(
+            request_id="request",
+            tenant_id="tenant",
+            max_calls=100,
+            max_dispatches=100,
+            max_cost_units=100,
+            generation=0,
+            task_approved=True,
+            budget_limits={},
+            budget_spent={},
+            profile={},
+            expires_at=datetime.now(UTC) + timedelta(minutes=10),
+            cancelled=False,
         )
-        self.request = SimpleNamespace(context={"native_run_id": "run", "mode": "native"}, native_run_id=None)
-        self.owned = SimpleNamespace(
+        self.request = DifyBuilderExecutionRequest(
+            id="request",
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            actor_id="actor",
+            session_id="session",
+            test_input_id="input",
+            context_digest=self.ref.context_digest,
+            context={"native_run_id": "run", "mode": "native"},
+            native_run_id=None,
+        )
+        self.owned = OwnedNativeTest(
+            session_id="session",
+            test_input_id="input",
+            bindings={},
+            task_approved=True,
+            revision_context=None,
             ref=self.ref,
             tenant_id="tenant",
             actor_id="actor",
@@ -136,6 +179,31 @@ class LoaderStandIn:
             self.writing = False
 
 
+@dataclass
+class NodeInputsCase:
+    store: module.NativeExecutionStateStore
+    loader: LoaderStandIn
+    ref: NativeTestContextRef
+    context: ResolvedNativeTestContext
+    workflow: Workflow
+    events: list[str]
+    after_readback: list[Callable[[], None]]
+    blobs: dict[str, bytes]
+
+
+def ancestor_state(invocation_id: str, state: str) -> NativeInvocationState:
+    return NativeInvocationState(
+        tenant_id="tenant",
+        request_id="request",
+        invocation_id=invocation_id,
+        context_object_id="ancestor-context",
+        generation=0,
+        state=state,
+        pending_ids=[],
+        resolution={},
+    )
+
+
 @pytest.fixture
 def case(monkeypatch):
     loader = LoaderStandIn()
@@ -159,7 +227,7 @@ def case(monkeypatch):
         cancellation_ref="request",
         execution_mode="native",
     )
-    workflow = SimpleNamespace(graph=json.dumps(context.graph))
+    workflow = Workflow(graph=json.dumps(context.graph))
     blobs = {}
     events = []
     after_readback = [lambda: None]
@@ -188,7 +256,7 @@ def case(monkeypatch):
 
     def private_read(owner, ref):
         owner.load(ref=ref)
-        return SimpleNamespace(
+        return PrivateReadOwner(
             tenant_id="tenant",
             actor_id="actor",
             app_id=loader.state.app_id,
@@ -224,7 +292,7 @@ def case(monkeypatch):
     loader.rows.append(row)
     loader.state.context_object_id = row.id
     events.clear()
-    return SimpleNamespace(
+    return NodeInputsCase(
         store=store,
         loader=loader,
         ref=loader.ref,
@@ -237,7 +305,7 @@ def case(monkeypatch):
 
 
 def persist(case, inputs, **changes):
-    method = getattr(case.store, "store_node_inputs", None)
+    method = case.store.store_node_inputs
     assert callable(method), "independent node input persistence is unavailable"
     return method(ref=case.ref, generation=0, native_execution_id=NATIVE_ID, inputs=inputs, **changes)
 
@@ -320,13 +388,13 @@ def test_running_branch_retains_generation_after_unrelated_scope_resume(case, ph
     case.loader.rows = [row]
     case.loader.state.context_object_id = row.id
     case.loader.state.parent_invocation_id = parent_id
-    case.loader.ancestors = [SimpleNamespace(invocation_id=parent_id, parent_invocation_id=None, state="running")]
+    case.loader.ancestors = [ancestor_state(parent_id, "running")]
     case.loader.active_ancestors = [parent_id]
     case.events.clear()
 
     def resume_other_branch():
         case.loader.scope.generation = 1
-        case.loader.owned.generation = 1  # OwnedNativeTest.generation projects the scope, not this invocation.
+        case.loader.owned = replace(case.loader.owned, generation=1)  # Scope counter, not this invocation.
 
     if phase == "before-save":
         resume_other_branch()
@@ -345,7 +413,7 @@ def test_running_branch_retains_generation_after_unrelated_scope_resume(case, ph
     ["", NATIVE_ID.upper(), NATIVE_ID.replace("-", ""), "{" + NATIVE_ID + "}", "not-a-uuid", "a" * 129, None],
 )
 def test_invalid_identity_fails_before_private_storage(case, identity):
-    method = getattr(case.store, "store_node_inputs", None)
+    method = case.store.store_node_inputs
     assert callable(method), "independent node input persistence is unavailable"
     with pytest.raises(BuilderExecutionPolicyError):
         method(ref=case.ref, generation=0, native_execution_id=identity, inputs={"secret": CANARY})
@@ -407,7 +475,7 @@ def test_current_authority_drift_never_acknowledges(case, phase, mutation):
             owner.request.context["mode"] = "mock"
         elif mutation == "ancestor":
             owner.state.parent_invocation_id = "quarantined"
-            owner.ancestors = [SimpleNamespace(invocation_id="quarantined", parent_invocation_id=None, state="unknown")]
+            owner.ancestors = [ancestor_state("quarantined", "unknown")]
         elif mutation == "expiry":
             owner.scope.expires_at = datetime.now(UTC) - timedelta(seconds=1)
 
@@ -434,7 +502,11 @@ def test_failed_storage_or_ack_never_returns_reference_or_leaks_inputs(case, mon
     if failure in {"save", "decrypt", "readback"}:
         target = module.encrypter if failure == "decrypt" else module.storage
         name = {"save": "save", "decrypt": "decrypt_token", "readback": "load"}[failure]
-        original = getattr(target, name)
+        original = {
+            "save": module.storage.save,
+            "decrypt": module.encrypter.decrypt_token,
+            "readback": module.storage.load,
+        }[failure]
 
         def fail_inputs(*args, **kwargs):
             if "save" in case.events or failure == "save":

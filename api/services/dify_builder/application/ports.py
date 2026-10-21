@@ -162,6 +162,20 @@ class DifyBuilderAgent(Protocol):
 
 
 @runtime_checkable
+class DiagnosticReportingAgent(Protocol):
+    """Optional capability for operation-scoped diagnostic events."""
+
+    def set_diagnostic_callback(self, callback: Callable[[dict], None] | None) -> None: ...
+
+
+@runtime_checkable
+class ContinuationClassifyingAgent(Protocol):
+    """Optional capability for continuing a completed Builder session."""
+
+    def continuation_intent(self, context: DifyBuilderContext, graph: Graph, text: str) -> str: ...
+
+
+@runtime_checkable
 class ReasoningStreamingAgent(Protocol):
     """Optional capability for agents that expose model-provided reasoning."""
 

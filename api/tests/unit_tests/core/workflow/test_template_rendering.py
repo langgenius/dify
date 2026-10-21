@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import pytest
 
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
@@ -7,6 +5,7 @@ from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.nodes.code.entities import CodeLanguage
 from graphon.template_rendering import TemplateRenderError
 from services.dify_builder.native_testing.control import NativePolicyStop
+from services.workflow_runtime.node_factory import DefaultWorkflowCodeExecutor
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import REF
 
 
@@ -22,7 +21,9 @@ def test_explicit_executor_owns_template_without_ordinary_fallback(monkeypatch):
         "execute_workflow_code_template",
         lambda **_kw: pytest.fail("ordinary fallback"),
     )
-    renderer = CodeExecutorJinja2TemplateRenderer(executor=SimpleNamespace(execute=execute))
+    executor = DefaultWorkflowCodeExecutor()
+    monkeypatch.setattr(executor, "execute", execute)
+    renderer = CodeExecutorJinja2TemplateRenderer(executor=executor)
     assert renderer.render_template("{{ secret }}", {"secret": "private"}) == "rendered"
     assert observed == [
         {
@@ -55,12 +56,15 @@ def test_default_renderer_preserves_existing_executor_call(monkeypatch):
 )
 def test_explicit_renderer_translates_only_code_error_and_preserves_native_control(
     error,
+    monkeypatch,
 ):
     def execute(**kwargs):
         del kwargs
         raise error
 
-    renderer = CodeExecutorJinja2TemplateRenderer(executor=SimpleNamespace(execute=execute))
+    executor = DefaultWorkflowCodeExecutor()
+    monkeypatch.setattr(executor, "execute", execute)
+    renderer = CodeExecutorJinja2TemplateRenderer(executor=executor)
     if type(error) is CodeExecutionError:
         with pytest.raises(TemplateRenderError, match="fixed"):
             renderer.render_template("x", {})
@@ -70,7 +74,9 @@ def test_explicit_renderer_translates_only_code_error_and_preserves_native_contr
         assert caught.value is error
 
 
-def test_explicit_renderer_retains_native_string_result_validation():
-    renderer = CodeExecutorJinja2TemplateRenderer(executor=SimpleNamespace(execute=lambda **_kw: {"result": 3}))
+def test_explicit_renderer_retains_native_string_result_validation(monkeypatch):
+    executor = DefaultWorkflowCodeExecutor()
+    monkeypatch.setattr(executor, "execute", lambda **_kw: {"result": 3})
+    renderer = CodeExecutorJinja2TemplateRenderer(executor=executor)
     with pytest.raises(TemplateRenderError, match="must be a string"):
         renderer.render_template("x", {})

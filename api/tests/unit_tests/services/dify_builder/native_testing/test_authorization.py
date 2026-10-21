@@ -207,15 +207,36 @@ def test_operation_scope_preserves_typed_parameters_and_excludes_transport_corre
 
 
 def _binding_boundary(*, frozen, current):
-    from types import SimpleNamespace
+    from sqlalchemy.orm import sessionmaker
 
-    from runtime_contracts.builder.native.contracts import operation_digest
+    from core.dify_builder.models import Actor
+    from runtime_contracts.builder.native.contracts import NativeTestContextRef, operation_digest
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
+    from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
+    from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 
     effect = intent()
-    loader = SimpleNamespace(resolver=SimpleNamespace(resolve_binding=lambda **_kwargs: current))
-    owned = SimpleNamespace(ref=SimpleNamespace(invocation_id="inv"), bindings={operation_digest(effect.key): frozen})
-    return EffectAuthorizationService(loader)._binding(None, owned, effect)
+    resolver = NativeHttpBindingResolver()
+    loader = OwnedNativeTestLoader(
+        sessionmaker(), actor=Actor(tenant_id="tenant", account_id="actor"), resolver=resolver
+    )
+    owned = OwnedNativeTest(
+        ref=NativeTestContextRef(request_id="request", invocation_id=effect.key.invocation_id, context_digest="a" * 64),
+        bindings={operation_digest(effect.key): frozen},
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        session_id="session",
+        test_input_id="input",
+        generation=0,
+        task_approved=False,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        state="running",
+    )
+    with pytest.MonkeyPatch.context() as boundary:
+        boundary.setattr(resolver, "resolve_binding", lambda **_kwargs: current)
+        return EffectAuthorizationService(loader)._binding(None, owned, effect)
 
 
 @pytest.mark.parametrize("invalid", [None, True, 1, "", "OPERATION", "other", ["operation"]])

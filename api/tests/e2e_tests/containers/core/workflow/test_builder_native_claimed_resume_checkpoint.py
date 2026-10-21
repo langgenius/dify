@@ -8,11 +8,11 @@ immutable continuation/payload owner rows are never weakened to construct them.
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from operator import itemgetter
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import inspect, select
+from sqlalchemy import inspect as inspect_orm
 
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import (
@@ -26,6 +26,7 @@ from models.dify_builder_native_tests import (
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 from services.dify_builder.native_testing.pending_actions import NativePendingActionService
+from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     _root_with_child_dispatch,
 )
@@ -75,7 +76,9 @@ def _snapshot(c):
             rows = session.scalars(select(model).where(model.request_id == c.ref.request_id)).all()
             result[model.__name__] = sorted(
                 [
-                    deepcopy({column.key: getattr(row, column.key) for column in inspect(model).column_attrs})
+                    deepcopy(
+                        {column.key: inspect_orm(row).attrs[column.key].value for column in inspect(model).column_attrs}
+                    )
                     for row in rows
                 ],
                 key=itemgetter("request_id" if model is NativeTestScope else "id"),
@@ -112,14 +115,16 @@ def test_actual_claimed_checkpoint_ref_is_acknowledged_and_metadata_only(checkpo
         assert saved.payload_ref == obj.storage_key
 
 
-def test_explicit_recovery_reclaims_same_dispatch_and_keeps_authentic_checkpoint(checkpoint_case):
+def test_explicit_recovery_reclaims_same_dispatch_and_keeps_authentic_checkpoint(mocker, checkpoint_case):
     c = checkpoint_case
     checkpoint, dispatch = _claim(c)
     with c.factory.begin() as session:
         session.get(NativeDispatch, dispatch.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
     c.lifecycle.reconcile()
     # Existing trusted recovery port double; no physical lifetime qualification.
-    c.lifecycle.runtime = SimpleNamespace(recovery_evidence=lambda **_: "stopped")
+    runtime = DifyNativeRuntimeOwner()
+    mocker.patch.object(runtime, "recovery_evidence", return_value="stopped")
+    c.lifecycle.runtime = runtime
     c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=dispatch.dispatch_id)
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=dispatch.generation, dispatch_id=dispatch.dispatch_id)
     assert (

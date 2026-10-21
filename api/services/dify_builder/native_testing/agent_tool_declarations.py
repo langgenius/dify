@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import ToolEntity, ToolProviderType
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from models.agent_config_entities import AgentSoulToolsConfig
@@ -55,7 +56,7 @@ def _metadata(*, tenant_id: str, provider_type: ToolProviderType, provider_id: s
             else ToolManager.get_builtin_provider(provider_id, tenant_id)
         )
         declared = controller.get_tools() or []
-        revision = getattr(controller, "plugin_unique_identifier", None)
+        revision = controller.plugin_unique_identifier if isinstance(controller, PluginToolProviderController) else None
         needs_credentials = controller.need_credentials
     elif provider_type == ToolProviderType.API:
         controller, _encrypted = ToolManager.get_api_provider_controller(tenant_id, provider_id)

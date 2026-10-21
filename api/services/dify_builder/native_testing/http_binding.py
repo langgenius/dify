@@ -166,21 +166,21 @@ def _supported(raw: dict) -> HttpRequestNodeData:
 def _config_projection() -> dict:
     # Proxy strings may contain credentials. Qualify their exact value by digest;
     # never place a raw proxy URL in the manifest or a public notice.
-    names = (
-        "SSRF_PROXY_ALL_URL",
-        "SSRF_PROXY_HTTP_URL",
-        "SSRF_PROXY_HTTPS_URL",
-        "SSRF_DEFAULT_TIME_OUT",
-        "SSRF_DEFAULT_CONNECT_TIME_OUT",
-        "SSRF_DEFAULT_READ_TIME_OUT",
-        "SSRF_DEFAULT_WRITE_TIME_OUT",
-        "SSRF_POOL_MAX_CONNECTIONS",
-        "SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS",
-        "SSRF_POOL_KEEPALIVE_EXPIRY",
-    )
+    settings = {
+        "SSRF_PROXY_ALL_URL": dify_config.SSRF_PROXY_ALL_URL,
+        "SSRF_PROXY_HTTP_URL": dify_config.SSRF_PROXY_HTTP_URL,
+        "SSRF_PROXY_HTTPS_URL": dify_config.SSRF_PROXY_HTTPS_URL,
+        "SSRF_DEFAULT_TIME_OUT": dify_config.SSRF_DEFAULT_TIME_OUT,
+        "SSRF_DEFAULT_CONNECT_TIME_OUT": dify_config.SSRF_DEFAULT_CONNECT_TIME_OUT,
+        "SSRF_DEFAULT_READ_TIME_OUT": dify_config.SSRF_DEFAULT_READ_TIME_OUT,
+        "SSRF_DEFAULT_WRITE_TIME_OUT": dify_config.SSRF_DEFAULT_WRITE_TIME_OUT,
+        "SSRF_POOL_MAX_CONNECTIONS": dify_config.SSRF_POOL_MAX_CONNECTIONS,
+        "SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS": dify_config.SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS,
+        "SSRF_POOL_KEEPALIVE_EXPIRY": dify_config.SSRF_POOL_KEEPALIVE_EXPIRY,
+    }
     return {
         "native": asdict(native_http_config()),
-        "ssrf_settings_digest": canonical_digest({name: getattr(dify_config, name) for name in names}),
+        "ssrf_settings_digest": canonical_digest(settings),
     }
 
 
@@ -459,7 +459,14 @@ class NativeHttpBindingProducer:
             raise BuilderExecutionPolicyError("native_http_node_unsupported")
         raw = _node(context.graph, self.association.node_id)
         expected = _supported(raw)
-        nodes_by_id = {item["id"]: item for item in context.graph["nodes"]}
+        raw_nodes = context.graph.get("nodes")
+        if not isinstance(raw_nodes, list):
+            raise BuilderExecutionPolicyError("native_http_node_drift")
+        nodes_by_id: dict[str, dict] = {}
+        for item in raw_nodes:
+            if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+                raise BuilderExecutionPolicyError("native_http_node_drift")
+            nodes_by_id[item["id"]] = item
         owned_config = nodes_by_id[self.association.node_id]
 
         def normalized(data: dict) -> dict:
@@ -703,7 +710,15 @@ class DeferredNativeHttpClient:
             max_redirect_hops=policy["max_redirect_hops"],
             max_response_bytes=policy["max_response_bytes"],
         )
-        result = getattr(client, method)(url, max_retries=max_retries, **kwargs)
+        methods = {
+            "get": client.get,
+            "head": client.head,
+            "post": client.post,
+            "put": client.put,
+            "patch": client.patch,
+            "delete": client.delete,
+        }
+        result = methods[method](url, max_retries=max_retries, **kwargs)
         self._producer.finish()
         return result
 

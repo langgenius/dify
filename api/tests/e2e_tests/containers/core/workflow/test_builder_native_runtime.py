@@ -9,7 +9,6 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
-from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -31,6 +30,7 @@ from runtime_contracts.builder.native.contracts import decode_native_ref
 from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
 from services.dify_builder.native_testing.observation_repository import bind_native_repository_observation
 from services.dify_builder.native_testing.runtime import DifyNativeRuntime, DifyNativeRuntimeOwner, build_native_api
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import RuntimeDeliveryCase
 from tests.test_containers_integration_tests.core.workflow.builder_native_runtime_diagnostics import (
     native_runtime_resume_diagnostics as native_runtime_resume_diagnostics,  # noqa: PLC0414
 )
@@ -121,7 +121,7 @@ def runtime_case(
     monkeypatch,
     request,
 ):
-    kind = getattr(request, "param", "root")
+    kind = request.param if hasattr(request, "param") else "root"
     assert migrated_continuation_tables is migrated_dispatch_claims is no_live is None
     from core.helper import ssrf_proxy
     from extensions.ext_database import db
@@ -133,7 +133,13 @@ def runtime_case(
     # Pytest attaches these real capture/report sinks again for the call phase,
     # after this setup fixture has yielded. Protect those exact handlers too;
     # the production readiness check must continue to reject unfiltered sinks.
-    capture_handlers = (getattr(logging_plugin, name, None) for name in ("caplog_handler", "report_handler"))
+    from _pytest.logging import LoggingPlugin
+
+    capture_handlers = (
+        (logging_plugin.caplog_handler, logging_plugin.report_handler)
+        if isinstance(logging_plugin, LoggingPlugin)
+        else ()
+    )
     handlers = tuple(
         dict.fromkeys((*logging.getLogger().handlers, *(h for h in capture_handlers if isinstance(h, logging.Handler))))
     )
@@ -201,7 +207,7 @@ def runtime_case(
             idempotency_key="actual-initial",
         )
         assert len(published) == 1
-        yield SimpleNamespace(
+        yield RuntimeDeliveryCase(
             factory=factory,
             actor=actor,
             app=flask_app_with_containers,

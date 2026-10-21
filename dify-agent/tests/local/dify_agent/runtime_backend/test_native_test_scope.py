@@ -1,13 +1,16 @@
 """Native local composition tests; the supervisor kernel proof is a separate CI gate."""
 
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
 from pydantic import SecretStr
+from pydantic_ai.run import AgentRunResult
 
-from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.protocols import ExecutionBindingCreateSpec, RuntimeBackendProfile, RuntimeLayout
+from shellctl.client.sdk import ShellctlClient
 from shellctl.shared.schemas import NativeScopeHandle, NativeScopeLimits, NativeScopeSpec
+from tests.local.dify_agent.runtime.native_test_entities import native_effects, native_lease, run_context
 
 
 def scope():
@@ -49,7 +52,7 @@ class ScopeClient:
 
 
 def spec(native):
-    return SimpleNamespace(
+    return ExecutionBindingCreateSpec(
         tenant_id="tenant",
         agent_id="agent",
         binding_id="binding-1",
@@ -119,8 +122,8 @@ async def test_shell_saves_job_identity_and_reconnects_without_replay():
     def lease(generation=1):
         return NativeScopeLease(
             handle="native:binding-1:1",
-            layout=SimpleNamespace(home_dir="/home/dify", workspace_dir="/workspace"),
-            client=SimpleNamespace(),
+            layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace"),
+            client=ShellctlClient(base_url="http://runtime.invalid"),
             commands=commands,
             workspace_generation=generation,
         )
@@ -142,7 +145,7 @@ async def test_shell_saves_job_identity_and_reconnects_without_replay():
 
 
 @pytest.mark.anyio
-async def test_marked_runtime_requires_stored_lineage_before_scope_acquire():
+async def test_marked_runtime_requires_stored_lineage_before_scope_acquire(monkeypatch):
     from unittest.mock import AsyncMock
 
     from dify_agent.layers.runtime.configs import DifyRuntimeLayerConfig
@@ -151,12 +154,18 @@ async def test_marked_runtime_requires_stored_lineage_before_scope_acquire():
     from tests.local.dify_agent.module_support import deps_for
 
     deps = deps_for("runtime", DifyRuntimeLayerConfig(backend_binding_ref="native:binding-1:1"), {})
-    backend = SimpleNamespace(acquire=AsyncMock(), release=AsyncMock())
-    deps.services.runtime_backend_profile = SimpleNamespace(execution_bindings=backend)
-    deps.native_effects = SimpleNamespace(validate_shell_lineage=None)
+    backend = LocalExecutionBindingBackend(endpoint="http://runtime.invalid", auth_token="test")
+    acquire = AsyncMock()
+    monkeypatch.setattr(LocalExecutionBindingBackend, "acquire", acquire)
+    monkeypatch.setattr(LocalExecutionBindingBackend, "release", AsyncMock())
+    deps.services.runtime_backend_profile = RuntimeBackendProfile(
+        home_snapshots=LocalHomeSnapshotBackend(endpoint="http://runtime.invalid", auth_token="test"),
+        execution_bindings=backend,
+    )
+    deps.native_effects = native_effects(deps)
     with pytest.raises(NativePolicyStopped, match="native_shell_lineage_unavailable"):
-        await Capability("runtime").wrap_run(SimpleNamespace(deps=deps), handler=AsyncMock())
-    backend.acquire.assert_not_called()
+        await Capability("runtime").wrap_run(run_context(deps), handler=AsyncMock())
+    acquire.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -173,8 +182,8 @@ async def test_native_missing_job_is_terminal_control_not_retryable_model_text()
     session, _ = _layer(commands=commands)
     session.deps.resources.leases["runtime"] = NativeScopeLease(
         handle="native:binding-1:1",
-        layout=SimpleNamespace(home_dir="/home/dify", workspace_dir="/workspace"),
-        client=SimpleNamespace(),
+        layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace"),
+        client=ShellctlClient(base_url="http://runtime.invalid"),
         commands=commands,
     )
     await session._tool_run("read line", timeout=1)
@@ -184,21 +193,23 @@ async def test_native_missing_job_is_terminal_control_not_retryable_model_text()
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    "module,name",
-    [
-        ("enterprise", "EnterpriseExecutionBindingBackend"),
-        ("e2b", "E2BExecutionBindingBackend"),
-        ("openshell", "OpenShellExecutionBindingBackend"),
-    ],
-)
-async def test_unqualified_backend_stops_before_provider_access(module, name):
-    import importlib
-
+@pytest.mark.parametrize("backend_name", ["enterprise", "e2b", "openshell"])
+async def test_unqualified_backend_stops_before_provider_access(backend_name):
+    from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend, E2BSDKControlPlane
+    from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend
     from dify_agent.runtime_backend.errors import BindingAcquireError, BindingCreateError
+    from dify_agent.runtime_backend.openshell import OpenShellExecutionBindingBackend, OpenShellSDKControlPlane
 
-    backend_type = getattr(importlib.import_module(f"dify_agent.runtime_backend.{module}"), name)
-    backend = object.__new__(backend_type)
+    backends = {
+        "enterprise": EnterpriseExecutionBindingBackend(gateway_endpoint="http://provider.invalid", auth_token="test"),
+        "e2b": E2BExecutionBindingBackend(
+            control_plane=E2BSDKControlPlane(api_key="test"), template="test", active_timeout_seconds=60
+        ),
+        "openshell": OpenShellExecutionBindingBackend(
+            control_plane=OpenShellSDKControlPlane(endpoint="http://provider.invalid")
+        ),
+    }
+    backend = backends[backend_name]
     with pytest.raises(BindingCreateError, match="native_scope_unavailable"):
         await backend.create_binding(spec(scope()))
     with pytest.raises(BindingAcquireError, match="native_scope_unavailable"):
@@ -212,7 +223,9 @@ async def test_reconcile_only_inspects_reserved_scope_even_when_missing():
     client = ScopeClient()
     backend = LocalExecutionBindingBackend(endpoint="http://runtime", auth_token="private", native_scope_client=client)
     request = spec(scope())
-    request.native_scope_reconcile = True
+    from dataclasses import replace
+
+    request = replace(request, native_scope_reconcile=True)
     result = await backend.create_binding(request)
     assert result.binding_ref == "native:binding-1:1"
     assert client.inspected == [("binding-1", 1)]
@@ -239,29 +252,27 @@ async def test_wait_keeps_jobs_and_offsets_until_checkpoint_capture():
     session, _ = _layer(commands=commands)
     session.deps.resources.leases["runtime"] = NativeScopeLease(
         handle="native:binding-1:1",
-        layout=SimpleNamespace(home_dir="/home/dify", workspace_dir="/workspace"),
-        client=SimpleNamespace(),
+        layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace"),
+        client=ShellctlClient(base_url="http://runtime.invalid"),
         commands=commands,
     )
     await session._tool_run("read line", timeout=1)
     state = session.runtime_state
     state.initialized = True
     session.save_state(state)
-    session.deps.native_effects = SimpleNamespace(
-        continuation=SimpleNamespace(job_refs=(), native_test_profile="isolated")
-    )
+    session.deps.native_effects = native_effects(session.deps)
 
     async def wait():
-        return SimpleNamespace(output=DeferredToolRequests())
+        return AgentRunResult(output=DeferredToolRequests())
 
-    await Capability("shell").wrap_run(SimpleNamespace(deps=session.deps), handler=wait)
+    await Capability("shell").wrap_run(run_context(session.deps), handler=wait)
     assert commands.delete_calls == []
     assert State.model_validate(session.deps.layers["shell"]["state"]).job_refs["job-8"].output_offset == 12
 
     async def complete():
-        return SimpleNamespace(output="done")
+        return AgentRunResult(output="done")
 
-    await Capability("shell").wrap_run(SimpleNamespace(deps=session.deps), handler=complete)
+    await Capability("shell").wrap_run(run_context(session.deps), handler=complete)
     assert len(commands.delete_calls) == 1
     assert State.model_validate(session.deps.layers["shell"]["state"]).job_refs == {}
 
@@ -279,8 +290,8 @@ async def test_reconnected_input_cannot_substitute_response_job_identity():
     session, _ = _layer(commands=commands)
     session.deps.resources.leases["runtime"] = NativeScopeLease(
         handle="native:binding-1:1",
-        layout=SimpleNamespace(home_dir="/home/dify", workspace_dir="/workspace"),
-        client=SimpleNamespace(),
+        layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace"),
+        client=ShellctlClient(base_url="http://runtime.invalid"),
         commands=commands,
     )
     await session._tool_run("read line", timeout=1)
@@ -307,8 +318,10 @@ def app_client(monkeypatch, token, *, configured_stub=False, legacy_stub=False):
     backend = LocalExecutionBindingBackend(
         endpoint="http://runtime", auth_token="private", native_scope_client=scope_client, client_factory=factory
     )
+    monkeypatch.setattr(LocalHomeSnapshotBackend, "create_from_runtime", AsyncMock())
     profile = RuntimeBackendProfile(
-        home_snapshots=SimpleNamespace(create_from_runtime=AsyncMock()), execution_bindings=backend
+        home_snapshots=LocalHomeSnapshotBackend(endpoint="http://runtime.invalid", auth_token="test"),
+        execution_bindings=backend,
     )
     monkeypatch.setattr(ServerSettings, "build_runtime_backend_profile", lambda self: profile)
     settings = ServerSettings(api_token=token)
@@ -494,7 +507,9 @@ def test_ordinary_download_with_configured_stub_still_uploads_once(monkeypatch, 
     monkeypatch.setattr(AgentStubTokenCodec, "encode_connection_token", issue_token)
     client, scope_client, factory, _ = app_client(monkeypatch, token, configured_stub=True, legacy_stub=True)
     commands = _Commands(outputs=[json.dumps({"reference": _REFERENCE, "transfer_method": "tool_file"})])
-    runtime_client = SimpleNamespace(close=AsyncMock())
+    runtime_client = ShellctlClient(base_url="http://runtime.invalid")
+    close = AsyncMock()
+    monkeypatch.setattr(runtime_client, "close", close)
     lease = ShellctlRuntimeLease(
         handle="binding-1:workspace-1",
         layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace"),
@@ -515,7 +530,7 @@ def test_ordinary_download_with_configured_stub_still_uploads_once(monkeypatch, 
     assert len(commands.calls) == 1
     assert commands.calls[0][0] == "dify-agent file upload --no-download-link /workspace/report.txt"
     assert commands.deletes == ["job-1"]
-    runtime_client.close.assert_awaited_once()
+    close.assert_awaited_once()
     assert scope_client.inspected == []
     assert factory.runs == []
 
@@ -562,8 +577,8 @@ async def test_native_job_refs_survive_layer_snapshot_and_reconnect_without_run(
     session, _ = _layer(commands=commands)
     session.deps.resources.leases["runtime"] = NativeScopeLease(
         handle=saved.binding_ref,
-        layout=SimpleNamespace(home_dir="/home/dify", workspace_dir="/workspace"),
-        client=SimpleNamespace(),
+        layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace"),
+        client=ShellctlClient(base_url="http://runtime.invalid"),
         commands=commands,
     )
     session.save_state(restored)
@@ -590,8 +605,8 @@ async def test_native_legacy_state_without_job_identity_never_sends_stdin():
     session, _ = _layer(commands=commands)
     session.deps.resources.leases["runtime"] = NativeScopeLease(
         handle="native:binding-1:1",
-        layout=SimpleNamespace(home_dir="/home/dify", workspace_dir="/workspace"),
-        client=SimpleNamespace(),
+        layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace"),
+        client=ShellctlClient(base_url="http://runtime.invalid"),
         commands=commands,
     )
     session.save_state(State.model_validate({"initialized": True, "job_ids": ["job-8"], "job_offsets": {"job-8": 12}}))
@@ -644,33 +659,39 @@ def test_strict_runless_download_refuses_without_owner_before_issuance_or_io(mon
     assert factory.runs == []
     assert scope_client.created == []
     assert scope_client.inspected == []
-    cast(AsyncMock, getattr(scope_client, "destroy")).assert_not_called()
+    cast(AsyncMock, scope_client.destroy).assert_not_called()
     cast(AsyncMock, profile.home_snapshots.create_from_runtime).assert_not_called()
 
 
 @pytest.mark.anyio
-async def test_confirmed_runtime_borrows_ordinary_binding_only_after_owner_validation():
+async def test_confirmed_runtime_borrows_ordinary_binding_only_after_owner_validation(monkeypatch):
     from unittest.mock import AsyncMock
+
     from dify_agent.layers.runtime.configs import DifyRuntimeLayerConfig
     from dify_agent.layers.runtime.layer import Capability
     from tests.local.dify_agent.module_support import deps_for
 
     deps = deps_for("runtime", DifyRuntimeLayerConfig(backend_binding_ref="ordinary-binding"), {})
     calls = []
-    lease = SimpleNamespace()
+    lease = native_lease()
 
-    async def acquire(binding):
+    async def acquire(_self, binding):
         calls.append(("acquire", binding))
         return lease
 
     async def validate(**kwargs):
         calls.append(("validate", kwargs["target"]))
 
-    backend = SimpleNamespace(acquire=acquire, release=AsyncMock())
-    deps.services.runtime_backend_profile = SimpleNamespace(execution_bindings=backend)
-    deps.native_effects = SimpleNamespace(
-        validate_shell_lineage=validate, continuation=SimpleNamespace(ref="ref", native_test_profile="confirmed")
+    backend = LocalExecutionBindingBackend(endpoint="http://runtime.invalid", auth_token="test")
+    release = AsyncMock()
+    monkeypatch.setattr(LocalExecutionBindingBackend, "acquire", acquire)
+    monkeypatch.setattr(LocalExecutionBindingBackend, "release", release)
+    deps.services.runtime_backend_profile = RuntimeBackendProfile(
+        home_snapshots=LocalHomeSnapshotBackend(endpoint="http://runtime.invalid", auth_token="test"),
+        execution_bindings=backend,
     )
-    await Capability("runtime").wrap_run(SimpleNamespace(deps=deps), handler=AsyncMock(return_value="done"))
+    deps.native_effects = native_effects(deps, profile="confirmed")
+    deps.native_effects.validate_shell_lineage = validate
+    await Capability("runtime").wrap_run(run_context(deps), handler=AsyncMock(return_value="done"))
     assert calls == [("validate", {"backend_binding_ref": "ordinary-binding"}), ("acquire", "ordinary-binding")]
-    backend.release.assert_awaited_once_with(lease)
+    release.assert_awaited_once_with(lease)

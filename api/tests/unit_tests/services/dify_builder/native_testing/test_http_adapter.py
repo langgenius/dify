@@ -36,6 +36,7 @@ from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
 from services.dify_builder.native_testing.control import NativeApprovalWait, NativePolicyStop
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.logging_helpers import protect_existing_log_routes
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import (
     INPUT,
     PATH,
@@ -53,7 +54,10 @@ def protected_application_logs(monkeypatch):
     test-only initialization uses the exact application filter, so readiness
     still inspects actual handlers and never a mocked readiness assertion.
     """
+    from libs.sensitive_http_telemetry import _HTTP_LOGGERS
+
     root = logging.getLogger()
+    protect_existing_log_routes(monkeypatch, emitters=_HTTP_LOGGERS)
     old_handlers, old_level = root.handlers[:], root.level
     old_filters = {handler: handler.filters[:] for handler in old_handlers}
     for handler in old_handlers:
@@ -151,7 +155,14 @@ class Harness:
             "follow_redirects": True,
         }
         args.update(kwargs)
-        return getattr(self.client, method)(url, max_retries=0, **args)
+        return {
+            "get": self.client.get,
+            "head": self.client.head,
+            "post": self.client.post,
+            "put": self.client.put,
+            "patch": self.client.patch,
+            "delete": self.client.delete,
+        }[method](url, max_retries=0, **args)
 
     def replay(self):
         self.cursor = self.journal.open(ref=REF, occurrence_path=PATH)

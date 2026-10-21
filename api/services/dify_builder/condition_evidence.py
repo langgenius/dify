@@ -8,10 +8,10 @@ Only this projection can survive a step boundary; raw native rows stay local.
 import json
 import math
 from collections import Counter
-from collections.abc import Collection, Iterator, Mapping
+from collections.abc import Callable, Collection, Iterator, Mapping
 from copy import deepcopy
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from core.dify_builder.models import Actor, Diagnosis, Graph, MutationIntent, NodeOutput, Risk, Run
 from services.dify_builder import diagnostic_context
@@ -20,6 +20,28 @@ from services.dify_builder.revision import executable_graph_revision
 
 if TYPE_CHECKING:
     from services.dify_builder.application.runner import Env
+
+
+@runtime_checkable
+class HistoricalRunReader(Protocol):
+    def failed_run_context(
+        self, app_id: str, actor: Actor, run_id: str
+    ) -> tuple[Graph | None, list[NodeOutput], str]: ...
+
+
+@runtime_checkable
+class EvidenceDiagnoser(Protocol):
+    def diagnose_with_evidence(
+        self, run: Run, graph: Graph, outputs: list[NodeOutput], evidence: dict[str, Any]
+    ) -> Diagnosis: ...
+
+
+@runtime_checkable
+class EvidenceRepairProposer(Protocol):
+    def propose_with_evidence(
+        self, diagnosis: Diagnosis, current: Graph, safe_graph: Graph, redact_text: Callable[[str], str]
+    ) -> tuple[list[MutationIntent], Risk]: ...
+
 
 MAX_CONTEXT_BYTES = 16_000
 _MAX_CONDITIONS = 32
@@ -299,9 +321,8 @@ def build_evidence(
 
 def _read_context(env: "Env", app_id: str, actor: Actor, failed_run: Run) -> tuple[Graph | None, list[NodeOutput], Run]:
     """Optional native capability; older/test ports truthfully remain unbound."""
-    read = getattr(env.dify, "failed_run_context", None)
-    if callable(read):
-        historical, outputs, native_error = read(app_id, actor, failed_run.dify_run_id)
+    if isinstance(env.dify, HistoricalRunReader):
+        historical, outputs, native_error = env.dify.failed_run_context(app_id, actor, failed_run.dify_run_id)
     else:
         historical, outputs, native_error = None, env.dify.node_outputs(app_id, actor, failed_run.dify_run_id), ""
     if not outputs and historical is None:
@@ -316,9 +337,8 @@ def diagnose_failure(env: "Env", app_id: str, actor: Actor, failed_run: Run, cur
     """Keep authorized native evidence local while handing only its projection on."""
     historical, outputs, raw_run = _read_context(env, app_id, actor, failed_run)
     safe_run, safe_graph, safe_outputs, evidence = build_evidence(raw_run, current, historical, outputs)
-    diagnose = getattr(env.agent, "diagnose_with_evidence", None)
-    if callable(diagnose):
-        diagnosis = diagnose(safe_run, safe_graph, safe_outputs, evidence)
+    if isinstance(env.agent, EvidenceDiagnoser):
+        diagnosis = env.agent.diagnose_with_evidence(safe_run, safe_graph, safe_outputs, evidence)
     else:
         diagnosis = env.agent.diagnose(safe_run, safe_graph, safe_outputs)
     diagnosis.condition_evidence = evidence
@@ -429,7 +449,6 @@ def propose_failure(
             text, raw_run, {"current": current, "historical": historical}, outputs
         )
 
-    propose = getattr(env.agent, "propose_with_evidence", None)
-    if callable(propose):
-        return propose(diagnosis, current, safe_graph, redact_text)
+    if isinstance(env.agent, EvidenceRepairProposer):
+        return env.agent.propose_with_evidence(diagnosis, current, safe_graph, redact_text)
     return env.agent.propose_repair(diagnosis, current)

@@ -1,6 +1,7 @@
 """A failed replacement plan keeps the durable plan and an actionable gate."""
 
 from copy import deepcopy
+from dataclasses import asdict
 from datetime import datetime
 from unittest.mock import patch
 
@@ -90,6 +91,7 @@ def test_failed_replanning_preserves_snapshot_and_recovers_on_retry(
         assert failed.current_state == waiting_state
         assert create_checkpoint.call_count == 0
         _, stored = repo.get_session(session.id)
+        stored_fields, preserved_fields = asdict(stored), asdict(preserved)
         for key in (
             "plan_title",
             "plan_input_summary",
@@ -104,7 +106,7 @@ def test_failed_replanning_preserves_snapshot_and_recovers_on_retry(
             "unknown_outcome_count",
             "staged_repair",
         ):
-            assert getattr(stored, key) == getattr(preserved, key), key
+            assert stored_fields[key] == preserved_fields[key], key
         items = repo.list_conversation(session.id)
         assert [item for item in items if item.kind == "plan"] == [original_card]
         assistant = next(item for item in reversed(items) if item.kind == "assistant_turn")

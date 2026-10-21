@@ -1,33 +1,64 @@
 """Safe diagnostics must survive the real cognition boundary without response data."""
 
 import json
-from types import SimpleNamespace
 
 import pytest
 
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import build, llm
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+from services.dify_builder.agent.resources import TenantResources
 from tests.unit_tests.core.dify_builder.test_runner import _new_env, _session
+from tests.unit_tests.core.model_fixtures import make_model_instance
 from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import engine, repo  # noqa: F401
 
 
-def test_provider_failure_is_scoped_safe_and_recoverable(monkeypatch):
-    class BrokenModel:
-        def invoke_llm(self, **_kwargs):
-            raise ConnectionRefusedError("secret-token https://host/?key=secret")
+@pytest.fixture
+def diagnostic_model(monkeypatch):
+    """Keep the actual model owner and control only its provider invocation."""
 
+    def create(text="{}", *, failure=None, stream_failure=None, metadata=True):
+        model = make_model_instance(provider="langgenius/openai/openai", model="gpt-4")
+
+        def invoke(**_kwargs):
+            if failure is not None:
+                raise failure
+            if stream_failure is not None:
+
+                def chunks():
+                    raise stream_failure
+                    yield
+
+                return chunks()
+            return LLMResult(model="gpt-4", message=AssistantPromptMessage(content=text), usage=LLMUsage.empty_usage())
+
+        monkeypatch.setattr(model, "invoke_llm", invoke)
+        if not metadata:
+            del model.provider
+            del model.model_name
+        return model
+
+    return create
+
+
+def test_provider_failure_is_scoped_safe_and_recoverable(monkeypatch, diagnostic_model):
     monkeypatch.setattr(
-        build, "planning_catalogue", lambda *_a, **_k: SimpleNamespace(tools=[], agents=[], agent_source_error=None)
+        build, "planning_catalogue", lambda *_a, **_k: TenantResources(models=[], datasets=[], tools=[])
     )
     agent = LlmBuilderAgent("tenant")
-    agent._model_instance = BrokenModel()
+    agent._model_instance = diagnostic_model(
+        failure=ConnectionRefusedError("secret-token https://host/?key=secret"), metadata=False
+    )
     records = []
     agent.set_diagnostic_callback(records.append)
     assert agent.propose_plan_v1({}, goal_text="private prompt") is None
     provider = next(record for record in records if record["code"] == "provider_invocation_failed")
     assert provider["span_id"] == "propose-plan-v1"
     assert provider["exception_type"] == "ConnectionRefusedError"
+    assert "provider" not in provider
+    assert "model" not in provider
     assert "secret" not in json.dumps(records)
     assert "private prompt" not in json.dumps(records)
 
@@ -43,11 +74,9 @@ def test_resolution_failure_and_callback_failure_do_not_crash(monkeypatch):
     agent.analyze_goal("goal")
 
 
-def test_json_and_schema_have_distinct_codes():
+def test_json_and_schema_have_distinct_codes(diagnostic_model):
     records = []
-    model = SimpleNamespace(
-        invoke_llm=lambda **_: SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: "{}"))
-    )
+    model = diagnostic_model()
     with diagnostics.scope(records.append, "plan"):
         assert build.propose_plan_v1(model, {}) is None
     assert any(r["code"] == "response_schema_invalid" for r in records)
@@ -55,9 +84,7 @@ def test_json_and_schema_have_distinct_codes():
     with diagnostics.scope(records.append, "json"):
         with pytest.raises(llm.LlmError):
             llm.invoke_json(
-                SimpleNamespace(
-                    invoke_llm=lambda **_: SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: "[]"))
-                ),
+                diagnostic_model("[]"),
                 system="",
                 user="",
             )
@@ -100,7 +127,7 @@ def test_wrapped_plugin_connection_refusal_is_classified_without_echo():
     assert "secret" not in json.dumps(records)
 
 
-def test_cas_emission_and_reload_preserve_additive_safe_diagnostics(repo, monkeypatch):  # noqa: F811
+def test_cas_emission_and_reload_preserve_additive_safe_diagnostics(repo, monkeypatch, diagnostic_model):  # noqa: F811
     from core.dify_builder.contract import AssistantTurnItem, ExecutionProgress
     from core.dify_builder.models import Action, DifyBuilderContext, Turn
     from core.dify_builder.state import PcState
@@ -110,12 +137,10 @@ def test_cas_emission_and_reload_preserve_additive_safe_diagnostics(repo, monkey
     env, _ = _new_env()
     env.repo = repo
     agent = LlmBuilderAgent("tenant")
-    agent._model_instance = SimpleNamespace(
-        invoke_llm=lambda **_: (_ for _ in ()).throw(RuntimeError("connection refused http://internal?token=secret"))
-    )
+    agent._model_instance = diagnostic_model(failure=RuntimeError("connection refused http://internal?token=secret"))
     env.agent = agent
     monkeypatch.setattr(
-        build, "planning_catalogue", lambda *_a, **_k: SimpleNamespace(tools=[], agents=[], agent_source_error=None)
+        build, "planning_catalogue", lambda *_a, **_k: TenantResources(models=[], datasets=[], tools=[])
     )
     events = []
     env.emit_item = events.append
@@ -164,13 +189,9 @@ def test_context_scope_does_not_leak_between_nested_calls():
     assert [r["span_id"] for r in inner] == ["inner"]
 
 
-def test_resolved_model_identifiers_are_bounded_without_extra_config():
+def test_resolved_model_identifiers_are_bounded_without_extra_config(diagnostic_model):
     agent = LlmBuilderAgent("tenant", {"provider": "langgenius/openai/openai", "name": "gpt-4", "api_key": "secret"})
-    agent._model_instance = SimpleNamespace(
-        provider="langgenius/openai/openai",
-        model_name="gpt-4",
-        invoke_llm=lambda **_: (_ for _ in ()).throw(ConnectionRefusedError()),
-    )
+    agent._model_instance = diagnostic_model(failure=ConnectionRefusedError())
     records = []
     agent.set_diagnostic_callback(records.append)
     agent.analyze_goal("goal")
@@ -191,12 +212,10 @@ def test_previous_operation_callback_cannot_contaminate_new_operation():
     assert env.diagnostics == []
 
 
-def test_edit_fix_and_mock_response_shapes_are_observed():
+def test_edit_fix_and_mock_response_shapes_are_observed(diagnostic_model):
     from services.dify_builder.agent import edit, fix, mock_inputs
 
-    model = SimpleNamespace(
-        invoke_llm=lambda **_: SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: "{}"))
-    )
+    model = diagnostic_model()
     records = []
     with diagnostics.scope(records.append, "edit"):
         assert edit._invoke_intents(model, "", "", None) is None
@@ -226,15 +245,11 @@ def test_graph_generation_retry_evidence_survives_success(monkeypatch):
     assert "secret" not in json.dumps(records)
 
 
-def test_stream_iterator_failure_retains_scope():
-    def stream():
-        raise TimeoutError("secret")
-        yield
-
+def test_stream_iterator_failure_retains_scope(diagnostic_model):
     records = []
     with diagnostics.scope(records.append, "respond-to-message"):
         with pytest.raises(TimeoutError):
-            list(llm.invoke_text_stream(SimpleNamespace(invoke_llm=lambda **_: stream()), system="", user=""))
+            list(llm.invoke_text_stream(diagnostic_model(stream_failure=TimeoutError("secret")), system="", user=""))
     assert records[0]["reason"] == "timeout"
     assert records[0]["span_id"] == "respond-to-message"
     assert "secret" not in json.dumps(records)
@@ -291,11 +306,11 @@ def test_http_session_snapshot_retains_safe_diagnostics():
     assert result["diagnostics"] == [record]
 
 
-def test_language_detection_failure_is_scoped_and_keeps_existing_fallback():
+def test_language_detection_failure_is_scoped_and_keeps_existing_fallback(diagnostic_model):
     from services.dify_builder.agent.localize import LanguageDetector
 
     records = []
-    model = SimpleNamespace(invoke_llm=lambda **_: (_ for _ in ()).throw(ConnectionRefusedError("secret")))
+    model = diagnostic_model(failure=ConnectionRefusedError("secret"))
     with diagnostics.scope(records.append, "detect-language"):
         assert LanguageDetector(lambda: model).detect_language("请生成工作流") == "zh-Hans"
     assert any(r["code"] == "provider_invocation_failed" for r in records)

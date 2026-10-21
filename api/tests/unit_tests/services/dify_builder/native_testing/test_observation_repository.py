@@ -1,9 +1,9 @@
 """Real repositories/domain/guard, explicit in-memory SQL and storage ports only."""
 
+from collections import UserList
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime
-from types import SimpleNamespace
-from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.orm import sessionmaker
@@ -16,6 +16,7 @@ from models import Account, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
+from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
@@ -23,6 +24,17 @@ from services.dify_builder.native_testing.observation_repository import bind_nat
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import SENTINEL, context
 
 NOW = datetime(2026, 10, 16)
+
+
+class NativeRepositoryRows(UserList):
+    def all(self):
+        return list(self)
+
+    def first(self):
+        return next(iter(self), None)
+
+    def scalars(self):
+        return self
 
 
 class SQLPort:
@@ -59,10 +71,10 @@ class SQLPort:
     def scalars(self, _statement):
         if self.fail:
             raise RuntimeError(SENTINEL)
-        return SimpleNamespace(all=lambda: self.selected)
+        return NativeRepositoryRows(self.selected)
 
     def execute(self, _statement):
-        return SimpleNamespace(scalars=lambda: SimpleNamespace(first=lambda: next(iter(self.selected), None)))
+        return NativeRepositoryRows(self.selected)
 
     def merge(self, row):
         self.rows[type(row), row.id] = row
@@ -78,6 +90,16 @@ class SQLPort:
         if self.fail:
             raise RuntimeError(SENTINEL)
         self.commits += 1
+
+
+@dataclass
+class RepositoryCase:
+    context: ResolvedNativeTestContext
+    guard: NativeObservationGuard
+    sql: SQLPort
+    runs: SQLAlchemyWorkflowExecutionRepository
+    nodes: SQLAlchemyWorkflowNodeExecutionRepository
+    user: Account
 
 
 @pytest.fixture
@@ -97,7 +119,7 @@ def case():
         sessionmaker(), ctx.tenant_id, user, ctx.app_id, WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
     )
     runs._session_factory = nodes._session_factory = sql
-    return SimpleNamespace(context=ctx, guard=guard, sql=sql, runs=runs, nodes=nodes, user=user)
+    return RepositoryCase(context=ctx, guard=guard, sql=sql, runs=runs, nodes=nodes, user=user)
 
 
 def bind(c):
@@ -379,23 +401,25 @@ def test_real_offload_relation_decode_precedes_cache_and_only_loads_once(case, m
     file, content = offloaded(c, row)
     c.sql.selected = [row]
 
+    storage_calls = []
+
     def load(key, *, stream):
+        storage_calls.append(key)
         assert stream is True
         assert not c.sql.writing
         assert not c.nodes._node_execution_cache
         assert key == file.key
         return storage_chunks(content)
 
-    storage = Mock(side_effect=load)
-    monkeypatch.setattr("extensions.ext_storage.storage.load", storage)
+    monkeypatch.setattr("extensions.ext_storage.storage.load", load)
     result = c.nodes.get_by_workflow_execution(c.context.native_run_id)
     assert result[0].outputs["redacted"] is True
     assert result[0].outputs["shape"]["fields"] == 1
-    assert storage.call_count == 1
+    assert len(storage_calls) == 1
     cached = c.nodes._node_execution_cache["execution"]
     again = c.nodes._to_domain_model(cached)
     assert again.outputs == result[0].outputs
-    assert storage.call_count == 1
+    assert len(storage_calls) == 1
     assert row.offload_data[0].file is file
 
 
@@ -419,16 +443,21 @@ def test_bad_offload_or_late_content_never_enters_cache(case, monkeypatch, fault
     if fault == "hash":
         file.hash = "0" * 64
     c.sql.selected = [first, row]
-    storage = Mock(
-        side_effect=RuntimeError(SENTINEL) if fault == "late_error" else lambda _, **_kwargs: storage_chunks(content)
-    )
+    storage_calls = []
+
+    def storage(key, **_kwargs):
+        storage_calls.append(key)
+        if fault == "late_error":
+            raise RuntimeError(SENTINEL)
+        return storage_chunks(content)
+
     monkeypatch.setattr("extensions.ext_storage.storage.load", storage)
     with pytest.raises(NativeObservationError, match="native_observation_failed"):
         c.nodes.get_db_models_by_workflow_run(c.context.native_run_id)
     assert c.nodes._node_execution_cache == {}
     assert c.guard.failed
     if fault in {"tenant", "actor", "relation", "type"}:
-        storage.assert_not_called()
+        assert storage_calls == []
 
 
 def test_safe_retry_history_is_retained_and_foreign_metadata_refuses(case):
@@ -525,20 +554,30 @@ def test_native_actual_truncation_uploads_only_safe_data_then_cache_has_no_secon
     assert raw.outputs == {SENTINEL: SENTINEL}
     stored = c.sql.rows[WorkflowNodeExecutionModel, "row"]
     assert len(stored.offload_data) == 3
-    storage = Mock(side_effect=AssertionError("cached validated data loaded storage again"))
+    storage_calls = []
+
+    def storage(*args, **kwargs):
+        storage_calls.append((args, kwargs))
+        raise AssertionError("cached validated data loaded storage again")
+
     monkeypatch.setattr("extensions.ext_storage.storage.load", storage)
     cached = c.nodes._to_domain_model(c.nodes._node_execution_cache["execution"])
     assert cached.outputs["redacted"] is True
-    storage.assert_not_called()
+    assert storage_calls == []
     # The SQL port explicitly resolves real offload→UploadFile relationships for a fresh query.
     for link in stored.offload_data:
         link.file = files[link.file_id]
     c.sql.selected = [stored]
-    reads = Mock(side_effect=lambda key, **_kwargs: storage_chunks(bodies[key]))
+    read_keys = []
+
+    def reads(key, **_kwargs):
+        read_keys.append(key)
+        return storage_chunks(bodies[key])
+
     monkeypatch.setattr("extensions.ext_storage.storage.load", reads)
     history = c.nodes.get_by_workflow_execution(c.context.native_run_id)
     assert history[0].outputs == cached.outputs
-    assert reads.call_count == 3
+    assert len(read_keys) == 3
 
 
 def test_empty_success_error_remains_empty(case):
@@ -586,11 +625,16 @@ def test_foreign_storage_type_refuses_before_load(case, monkeypatch):
     file, content = offloaded(c, row)
     c.sql.selected = [row]
     file.storage_type = next(item for item in StorageType if item != file.storage_type)
-    load = Mock(return_value=content)
+    load_calls = []
+
+    def load(*args, **kwargs):
+        load_calls.append((args, kwargs))
+        return content
+
     monkeypatch.setattr("extensions.ext_storage.storage.load", load)
     with pytest.raises(NativeObservationError):
         c.nodes.get_db_models_by_workflow_run(c.context.native_run_id)
-    load.assert_not_called()
+    assert load_calls == []
 
 
 def test_context_drift_during_offload_refuses_before_cache(case, monkeypatch):
@@ -684,11 +728,16 @@ def test_public_native_run_read_wrong_id_refuses_before_sql(case, monkeypatch):
     c = case
     bind(c)
     assert hasattr(c.runs, "get_native_observation_run"), "public owned Run history read is missing"
-    read = Mock(side_effect=AssertionError("unexpected SQL"))
+    read_calls = []
+
+    def read(*args, **kwargs):
+        read_calls.append((args, kwargs))
+        raise AssertionError("unexpected SQL")
+
     monkeypatch.setattr(c.sql, "get", read)
     with pytest.raises(NativeObservationError):
         c.runs.get_native_observation_run(workflow_run_id="foreign-run")
-    read.assert_not_called()
+    assert read_calls == []
     assert c.runs._execution_cache == {}
 
 
@@ -962,9 +1011,9 @@ def test_native_node_non_none_malformed_metadata_refuses_before_write(case, meta
 
 @pytest.mark.parametrize("repository_name", ["runs", "nodes"])
 def test_service_binding_requires_exact_guard_before_attaching_observer(case, repository_name):
-    repository = getattr(case, repository_name)
+    repository = {"runs": case.runs, "nodes": case.nodes}[repository_name]
     with pytest.raises(NativeObservationError, match="^native_observation_failed$"):
-        bind_native_repository_observation(repository=repository, context=case.context, guard=SimpleNamespace())
+        bind_native_repository_observation(repository=repository, context=case.context, guard=object())
     assert repository._native_observation is None
     assert not repository._native_observation_started
 
@@ -974,7 +1023,7 @@ def test_repository_cannot_replace_retained_observer_even_with_same_guard(case, 
     from services.dify_builder.native_testing.observation_repository import NativeRepositoryObservation
 
     bind(case)
-    repository = getattr(case, repository_name)
+    repository = {"runs": case.runs, "nodes": case.nodes}[repository_name]
     original = repository._native_observation
     replacement = NativeRepositoryObservation(repository=repository, context=case.context, guard=case.guard)
     with pytest.raises(NativeObservationError, match="^native_observation_failed$"):

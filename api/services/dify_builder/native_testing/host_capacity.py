@@ -4,7 +4,7 @@ No ordinary workflow limiter, physical host, provider I/O or default cleanup pro
 """
 
 from contextlib import contextmanager
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from sqlalchemy import and_, select
 
@@ -28,6 +28,7 @@ from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleSe
 from services.dify_builder.native_testing.state_store import invocation_state, owner_query
 
 
+@runtime_checkable
 class NativeHostCleanupVerifier(Protocol):
     def consume_cleanup(self, *, ref: NativeTestContextRef, generation: int, dispatch_id: str) -> None:
         """Consume exact retained acquisition's genuine complete cleanup once.
@@ -44,7 +45,9 @@ class NativeHostCapacity:
     def __init__(
         self, lifecycle: NativeTestLifecycleService, *, cleanup_verifier: NativeHostCleanupVerifier, code_cleanup=None
     ):
-        if cleanup_verifier is None or not callable(getattr(cleanup_verifier, "consume_cleanup", None)):
+        if not isinstance(cleanup_verifier, NativeHostCleanupVerifier) or not callable(
+            cleanup_verifier.consume_cleanup
+        ):
             raise BuilderExecutionPolicyError("native_cleanup_verifier_required")
         if lifecycle._capacity is not None:
             raise BuilderExecutionPolicyError("native_capacity_already_bound")

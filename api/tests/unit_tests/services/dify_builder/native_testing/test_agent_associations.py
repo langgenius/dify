@@ -6,13 +6,25 @@ unit doubles. Actual PostgreSQL/tenant crypto witnesses remain normal-CI only.
 
 import importlib
 import importlib.util
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import inspect
 
+from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
+from runtime_contracts.builder.native.agent_contracts import AgentParentNodeRef
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
-from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, NodeJournalState
+from runtime_contracts.builder.native.runtime_contracts import (
+    NativeCheckpointPayload,
+    NodeJournalState,
+    ResolvedNativeTestContext,
+)
+from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.unit_tests.services.dify_builder.native_testing.test_node_inputs import LoaderStandIn
 
 EXECUTION = "81d492fd-05ce-46a8-8c82-a35d4b343d48"
 REF = NativeTestContextRef(request_id="request", invocation_id="inv", context_digest="a" * 64)
@@ -228,12 +240,23 @@ def test_contract_purity_guard_detects_runtime_dependencies(dependency, placemen
     assert dependency not in runtime_imports(f"if TYPE_CHECKING:\n    {statement}")
 
 
+@dataclass
+class AgentStateCase:
+    store: NativeExecutionStateStore
+    loader: LoaderStandIn
+    ref: NativeTestContextRef
+    context: ResolvedNativeTestContext
+    parent: AgentParentNodeRef
+    blobs: dict[str, bytes]
+    events: list[str]
+    after_readback: list[Callable[[], None]]
+
+
 @pytest.fixture
 def state_case(monkeypatch):
     """Actual state/codec; explicit SQL/permission/encryption/storage boundary doubles."""
     import json
     from contextlib import contextmanager
-    from types import SimpleNamespace
 
     from core.dify_builder.models import Actor
     from models.account import (
@@ -287,7 +310,8 @@ def state_case(monkeypatch):
                     (
                         row
                         for row in self.owner.rows
-                        if isinstance(row, entity) and all(getattr(row, key) == value for key, value in params.items())
+                        if isinstance(row, entity)
+                        and all(inspect(row).attrs[key].value == value for key, value in params.items())
                     ),
                     None,
                 )
@@ -311,7 +335,7 @@ def state_case(monkeypatch):
                         "current_snapshot_id",
                         "binding_type",
                     ):
-                        assert getattr(row, field) == value
+                        assert inspect(row).attrs[field].value == value
                 return row.id if entity is App else row
             return super().scalar(query)
 
@@ -368,15 +392,16 @@ def state_case(monkeypatch):
         }
     )
     job = WorkflowNodeJobConfig(workflow_prompt="Unit Agent task")
+    account = Account(name="Native owner", email="native-owner@example.invalid", status=AccountStatus.ACTIVE)
+    account.id = "actor"
+    tenant = Tenant(name="Native tenant", status=TenantStatus.NORMAL)
+    tenant.id = "tenant"
+    membership = TenantAccountJoin(tenant_id="tenant", account_id="actor", role=TenantAccountRole.OWNER)
+    membership.id = "membership"
     loader.resources = {
-        Account: SimpleNamespace(id="actor", status=AccountStatus.ACTIVE),
-        Tenant: SimpleNamespace(id="tenant", status=TenantStatus.NORMAL),
-        TenantAccountJoin: SimpleNamespace(
-            id="membership",
-            tenant_id="tenant",
-            account_id="actor",
-            role=TenantAccountRole.OWNER,
-        ),
+        Account: account,
+        Tenant: tenant,
+        TenantAccountJoin: membership,
         App: App(id="app", tenant_id="tenant", status="normal"),
         Agent: Agent(
             id="agent",
@@ -539,7 +564,7 @@ def state_case(monkeypatch):
     def authority(owner, ref):
         assert not owner.writing, "permission outside SQL writer"
         owner.load(ref=ref)
-        return SimpleNamespace(
+        return PrivateReadOwner(
             tenant_id="tenant",
             actor_id="actor",
             app_id=loader.state.app_id,
@@ -564,7 +589,7 @@ def state_case(monkeypatch):
     monkeypatch.setattr(
         module,
         "validate_invocation_workflow",
-        lambda *_args, **_kwargs: SimpleNamespace(graph=json.dumps(graph), version="published"),
+        lambda *_args, **_kwargs: Workflow(graph=json.dumps(graph), version="published"),
     )
     monkeypatch.setattr(module, "native_workflow_revision", lambda _workflow: "revision")
     store = module.NativeExecutionStateStore(loader)
@@ -585,7 +610,7 @@ def state_case(monkeypatch):
         input_digest=canonical_digest(INPUTS),
     )
     events.clear()
-    return SimpleNamespace(
+    return AgentStateCase(
         store=store,
         loader=loader,
         ref=loader.ref,
@@ -853,7 +878,8 @@ def test_backend_generation_seven_cp_local_zero_remains_readable_at_local_two_sc
     c = state_case
     _, wait, raw = wait_state(c)
     cp = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload_for(c, wait))
-    c.loader.state.generation = c.loader.owned.generation = 2
+    c.loader.state.generation = 2
+    c.loader.owned = replace(c.loader.owned, generation=2)
     c.loader.scope.generation = 3
     restored = c.store.read_checkpoint(ref=c.ref, checkpoint=cp)
     assert restored.generation == 0
@@ -1002,13 +1028,13 @@ def test_read_checkpoint_rechecks_selected_outer_metadata_after_private_io(state
         c.store.read_checkpoint(ref=c.ref, checkpoint=checkpoint_ref)
 
 
-def test_actual_operation_cursor_finish_is_untouched_by_agent_associations(state_case):
-    from unittest.mock import Mock
-
+def test_actual_operation_cursor_finish_is_untouched_by_agent_associations(state_case, mocker):
+    from services.dify_builder.native_testing.authorization import EffectAuthorizationService
     from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 
     c = state_case
-    authorization = Mock()
+    authorization = EffectAuthorizationService(c.loader)
+    before_call = mocker.spy(authorization, "before_call")
     journal = NodeOperationJournal(state=c.store, authorization=authorization)
     cursor = journal.open(ref=c.ref, occurrence_path=(EXECUTION,))
     cursor.bind_input(input_result_ref=c.parent.input_result_ref, inputs=INPUTS)
@@ -1018,7 +1044,7 @@ def test_actual_operation_cursor_finish_is_untouched_by_agent_associations(state
     assert cursor.snapshot() == original
     assert original.cursor == 0
     assert original.operation_keys == original.result_refs == ()
-    authorization.before_call.assert_not_called()
+    before_call.assert_not_called()
 
 
 def test_actual_sql_workspace_backend_reference_cannot_drift(state_case):
@@ -1058,7 +1084,8 @@ def test_current_local_generation_controls_config_write_without_shared_counter_a
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
-    c.loader.state.generation = c.loader.owned.generation = 2
+    c.loader.state.generation = 2
+    c.loader.owned = replace(c.loader.owned, generation=2)
     c.loader.scope.generation = 3
     with pytest.raises(BuilderExecutionPolicyError, match="native_generation_conflict"):
         c.store.store_agent_config(

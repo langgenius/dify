@@ -17,14 +17,14 @@ from dify_agent.protocol.native_testing import (
     AgentEffectReceipt,
     AgentNativeTestRef,
     AgentPreparedConfigResponse,
+    AgentPrepareIntentPayload,
     AgentPrepareRunPayload,
     AgentPrepareRunResponse,
     AgentReadPreparedConfigPayload,
-    AgentPrepareIntentPayload,
-    AgentStoreResultPayload,
-    AgentStoredResultResponse,
     AgentReadResultPayload,
     AgentReadResultResponse,
+    AgentStoredResultResponse,
+    AgentStoreResultPayload,
     NativeDTO,
     executable_request_digest,
 )
@@ -135,12 +135,14 @@ class HttpAgentPolicyClient:
         except (httpx.HTTPError, ValueError):
             raise AgentPolicyTransportUnavailable("native_policy_transport_unavailable") from None
 
-    async def _post_preparation(self, path: str, payload: NativeDTO, *, response_limit: int) -> bytes:
+    async def _post_preparation(
+        self, path: str, payload: AgentPrepareRunPayload | AgentReadPreparedConfigPayload, *, response_limit: int
+    ) -> bytes:
         body = payload.model_dump_json().encode()
         if len(body) > MAX_AGENT_CONTROL_BYTES:
             raise AgentPolicyTransportUnavailable("native_preparation_unavailable")
-        parent = getattr(payload, "parent_node", None)
-        if parent is None or (self.ref is not None and self.ref != parent.ref):
+        parent = payload.parent_node
+        if self.ref is not None and self.ref != parent.ref:
             raise AgentPolicyTransportUnavailable("native_policy_owner_mismatch")
         self.ref = parent.ref
         url, headers = agent_api_endpoint(

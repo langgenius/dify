@@ -3,6 +3,7 @@ import json
 import pytest
 
 from services.dify_builder.agent import build, resources
+from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     ACCOUNT_A,
     ACCOUNT_B,
@@ -16,6 +17,7 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     install_fake_daemon,
     provider_payload,
 )
+from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 
 
 class _Msg:
@@ -1074,14 +1076,12 @@ def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch):
 def test_initial_plan_uses_only_current_actor_eligible_published_agent_metadata(
     sqlite_session, monkeypatch, with_actor
 ):
-    from types import SimpleNamespace
 
-    from configs import dify_config
     from services.agent import access_service
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
     from tests.builder_agent_fixtures import add_agent, make_case
 
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     case = make_case(sqlite_session)
     case.snapshot.summary = "Review report evidence"
     unpublished, _ = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name="Unpublished", published=False)
@@ -1092,7 +1092,7 @@ def test_initial_plan_uses_only_current_actor_eligible_published_agent_metadata(
         "resolve_current_agent_access_filter",
         lambda **_kwargs: access_service.AgentAccessFilter(accessible_agent_ids={case.agent.id, unpublished.id}),
     )
-    monkeypatch.setattr(resources, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
     monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])

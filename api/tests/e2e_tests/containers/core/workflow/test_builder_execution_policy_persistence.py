@@ -1,11 +1,12 @@
 """CI-only PostgreSQL locking and actual Alembic migration controls."""
 
 import importlib.util
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
 from threading import Barrier
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 from uuid import uuid4
 
 import pytest
@@ -15,7 +16,13 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from alembic.runtime.migration import RevisionStep
 from alembic.script import ScriptDirectory
-from sqlalchemy import inspect, text
+from sqlalchemy import Connection, inspect, text
+from sqlalchemy.engine.interfaces import (
+    ReflectedCheckConstraint,
+    ReflectedIndex,
+    ReflectedPrimaryKeyConstraint,
+    ReflectedUniqueConstraint,
+)
 
 from dify_app import DifyApp
 from models.dify_builder import DifyBuilderExecutionRequest
@@ -34,6 +41,15 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_restrict
 
 if TYPE_CHECKING:
     pass
+
+
+class _TableWitness(TypedDict):
+    columns: list[tuple[str, str, bool, str | None]]
+    primary_key: ReflectedPrimaryKeyConstraint
+    indexes: list[ReflectedIndex]
+    unique: list[ReflectedUniqueConstraint]
+    checks: list[ReflectedCheckConstraint]
+    rows: list[tuple[object, ...]]
 
 
 def prepare(
@@ -198,12 +214,28 @@ def test_real_postgres_execution_migration_upgrade_downgrade(flask_app_with_cont
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 
 
+@contextmanager
+def _isolated_migration_schema(connection: Connection, schema: str) -> Generator[None]:
+    """Retain the selected schema across Alembic's commits and always reset the pool connection."""
+    connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+    connection.execute(text(f'SET search_path TO "{schema}"'))
+    try:
+        yield
+    finally:
+        connection.rollback()
+        connection.execute(text("SET search_path TO public"))
+        connection.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+        connection.commit()
+
+
 def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_containers: "DifyApp") -> None:
     """Real Alembic traversal upgrades both branches, merges/splits heads without changing their data."""
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "7d2b9c4e61a8"
+    current_head = "d41e6b8c2a75"
+    code_head = "7d2b9c4e61a8"
+    task_head = "c6f4a90d8b31"
     dispatch_head = "e59b7d32a6c1"
     owner_head = "f47a1c90d2e8"
     continuation_head = "d28f0e3c912a"
@@ -215,7 +247,14 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    code_revision = scripts.get_revision(current_head)
+    merged_head = scripts.get_revision(current_head)
+    assert merged_head is not None
+    assert isinstance(merged_head.down_revision, tuple)
+    assert set(merged_head.down_revision) == {code_head, task_head}
+    task_revision = scripts.get_revision(task_head)
+    assert task_revision is not None
+    assert task_revision.down_revision == "f1d3c5b7a902"
+    code_revision = scripts.get_revision(code_head)
     assert code_revision is not None
     assert code_revision.down_revision == dispatch_head
     dispatch_revision = scripts.get_revision(dispatch_head)
@@ -240,10 +279,12 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     assert set(merged.down_revision) == branch_heads
 
     schema = "builder_forward_merge_" + uuid4().hex
-    with flask_app_with_containers.app_context(), db.engine.begin() as connection:
+    with (
+        flask_app_with_containers.app_context(),
+        db.engine.connect() as connection,
+        _isolated_migration_schema(connection, schema),
+    ):
         assert connection.dialect.name == "postgresql"
-        connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-        connection.execute(text(f'SET LOCAL search_path TO "{schema}"'))
         # Only the two preexisting tables touched by descendants of 733 are prerequisites.
         # Their structures come from the real database; remove the later nullable additions.
         for table in ("dify_builder_test_inputs", "dify_builder_runs"):
@@ -283,9 +324,13 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                 )
                 return planner(target, current)
 
+            # Main builds its task index concurrently; let Alembic own each transaction
+            # and keep the isolated schema in the session search path across commits.
+            connection.commit()
             with EnvironmentContext(config, scripts, fn=revisions) as environment:
                 environment.configure(connection=connection, version_table_schema=schema)
-                environment.run_migrations()
+                with environment.begin_transaction():
+                    environment.run_migrations()
             return MigrationContext.configure(connection, opts={"version_table_schema": schema}).get_current_heads()
 
         # Execute real b6/c84/d82 and a8 migrations, not metadata.create_all or handwritten branch DDL.
@@ -362,9 +407,12 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             include_continuation: bool = False,
             include_dispatch_claims: bool = False,
             include_code_physical: bool = False,
-        ) -> dict[str, object]:
+            include_workflow_tasks: bool = False,
+        ) -> dict[str, _TableWitness]:
             inspector = inspect(connection)
             expected_tables = {*tables, "alembic_version"}
+            if include_workflow_tasks:
+                expected_tables.add("workflow_runs")
             if include_archive:
                 expected_tables.add("workflow_run_archive_bundles")
             if include_native:
@@ -418,7 +466,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         assert "deletion_status" not in archive_fields
         archive_projection = ",".join(f'"{field}"' for field in archive_fields)
 
-        def archive_witness() -> dict[str, object]:
+        def archive_witness() -> _TableWitness:
             inspector = inspect(connection)
             return {
                 "columns": [
@@ -473,9 +521,9 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         assert after_native == before
         assert archive_witness() == archive_before
 
-        def native_ledger_witness() -> dict[str, object]:
+        def native_ledger_witness() -> dict[str, _TableWitness]:
             inspector = inspect(connection)
-            result = {}
+            result: dict[str, _TableWitness] = {}
             for table in sorted(native_tables):
                 primary_key = inspector.get_pk_constraint(table, schema=schema)
                 order = ",".join(f'"{name}"' for name in primary_key["constrained_columns"])
@@ -519,7 +567,20 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             }
             for table in sorted(continuation_tables)
         }
+        connection.execute(text("CREATE TABLE workflow_runs (LIKE public.workflow_runs INCLUDING ALL)"))
+        connection.execute(text("ALTER TABLE workflow_runs DROP COLUMN task_id"))
+        connection.execute(text("ALTER TABLE workflow_runs DROP COLUMN stop_requested_at"))
+        workflow_columns = {
+            column["name"] for column in inspect(connection).get_columns("workflow_runs", schema=schema)
+        }
         assert migrate("head") == (current_head,)
+        workflow_after = inspect(connection).get_columns("workflow_runs", schema=schema)
+        assert {column["name"] for column in workflow_after} == {*workflow_columns, "task_id", "stop_requested_at"}
+        assert all(column["nullable"] for column in workflow_after if column["name"] not in workflow_columns)
+        assert any(
+            index["name"] == "workflow_run_task_id_idx"
+            for index in inspect(connection).get_indexes("workflow_runs", schema=schema)
+        )
         assert (
             witness(
                 include_archive=True,
@@ -527,6 +588,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                 include_continuation=True,
                 include_dispatch_claims=True,
                 include_code_physical=True,
+                include_workflow_tasks=True,
             )
             == before_continuation
         )
@@ -557,8 +619,6 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             text("SELECT app_id,workflow_id FROM dify_builder_native_invocation_states WHERE id=:id"),
             {"id": identity},
         ).one() == (None, None)
-        connection.execute(text("SET LOCAL search_path TO public"))
-        connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 
 
 @pytest.mark.parametrize(

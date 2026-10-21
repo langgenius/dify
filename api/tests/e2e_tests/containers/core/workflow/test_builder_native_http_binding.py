@@ -11,7 +11,6 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -31,7 +30,7 @@ from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPer
 from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, ResolvedNativeTestContext
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
-from services.dify_builder.native_testing.control import BoundaryOwnerState
+from services.dify_builder.native_testing.control import BoundaryOwnerState, NativeControlRefused
 from services.dify_builder.native_testing.http_adapter import NativeHttpClient, PreparedHttpBinding
 from services.dify_builder.native_testing.http_binding import (
     DeferredNativeHttpClient,
@@ -57,6 +56,11 @@ from services.dify_builder.native_testing.public_contracts import NativeTestPubl
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, native_workflow_revision
 from services.dify_builder.native_testing.runtime_bridge import NativeCollaborators, NativeRuntimeBridge
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    HttpBindingCase,
+    HttpConsentCase,
+    PreparedHttpCase,
+)
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414 - shared pytest fixture
 )
@@ -90,6 +94,14 @@ def literal_data():
         "authorization": {"type": "no-auth"},
         "body": {"type": "json", "data": [{"type": "text", "key": "", "value": '{"private":"SENTINEL","flag":true}'}]},
     }
+
+
+class _RefusingConstructorControl:
+    """Constructor-only binding has no host capable of accepting runtime control."""
+
+    def record_control(self, *, record):
+        assert record is not None
+        return NativeControlRefused()
 
 
 @pytest.fixture
@@ -172,7 +184,7 @@ def http_case(native_owner, no_live, migrated_continuation_tables, migrated_disp
         execution_mode="native",
     )
     store.initialize_context(context=context)
-    return SimpleNamespace(
+    return HttpBindingCase(
         ref=ref,
         loader=loader,
         store=store,
@@ -220,7 +232,7 @@ def prepare(c, execution_id=None, *, ref=None):
         collaborators=collaborators,
         node_arguments=arguments,
         boundary_owner=BoundaryOwnerState(ref=selected_ref),
-        control_sink=SimpleNamespace(record_control=lambda **_kw: None),
+        control_sink=_RefusingConstructorControl(),
     )
     runtime = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
     association = bridge.prepare_node(
@@ -250,7 +262,7 @@ def prepare(c, execution_id=None, *, ref=None):
     )
     request = client._prepare("POST", arguments.pop("url"), arguments)
     binding = producer.prepare(request=request, hop=0, previous_response=None)
-    return SimpleNamespace(producer=producer, binding=binding, journal=journal, association=association)
+    return PreparedHttpCase(producer=producer, binding=binding, journal=journal, association=association)
 
 
 def bindings(c):
@@ -416,8 +428,11 @@ def test_real_http_input_ack_and_external_work_stay_outside_install_writer(http_
                 active = False
 
     monkeypatch.setattr(c.loader, "locked", tracked_lock)
-    for name in ("prepare_object", "load_result", "load_context"):
-        original = getattr(c.store, name)
+    for name, original in (
+        ("prepare_object", c.store.prepare_object),
+        ("load_result", c.store.load_result),
+        ("load_context", c.store.load_context),
+    ):
 
         def checked(*args, _original=original, **kwargs):
             assert not active, "protected/storage work under root writer"
@@ -697,7 +712,7 @@ def _confirmed_http_resume(c, prepared, lifecycle, *, prior_journals=()):
     assert resumed.generation == context.generation + 1
     assert lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
     assert lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id) is False
-    return SimpleNamespace(
+    return HttpConsentCase(
         pending_id=wait.pending_operation_id,
         scope=disclosure.scope_digest,
         guard=guard,

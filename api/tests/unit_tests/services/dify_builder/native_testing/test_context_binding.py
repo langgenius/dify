@@ -1,15 +1,38 @@
 """Trusted reload must finish before any marked run reaches native setup."""
 
-from unittest.mock import Mock
+from datetime import datetime
 
 import pytest
+from sqlalchemy.orm import sessionmaker
 
+from core.dify_builder.models import Actor
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
-from runtime_contracts.builder.native.runtime_contracts import NativeStatePort, ResolvedNativeTestContext
+from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT, REF_DATA
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 from tests.unit_tests.services.dify_builder.test_native_agent_binding import agent_case as agent_case  # noqa: PLC0414
+
+
+def stored_context_boundary(monkeypatch, *, context=None, failure=None):
+    """Actual state owner with only its protected-object read method replaced."""
+    loader = OwnedNativeTestLoader(
+        sessionmaker(), actor=Actor(tenant_id="tenant", account_id="actor"), resolver=object()
+    )
+    state = NativeExecutionStateStore(loader)
+    calls = []
+
+    def load_context(*, ref):
+        calls.append(ref)
+        if failure is not None:
+            raise failure
+        assert context is not None, "refused marker reached protected context IO"
+        return context
+
+    monkeypatch.setattr(state, "load_context", load_context)
+    return state, calls
 
 
 def binding():
@@ -18,56 +41,54 @@ def binding():
     return NativeContextUnavailable, resolve_native_context
 
 
-def test_required_scope_never_falls_back_to_ordinary():
+def test_required_scope_never_falls_back_to_ordinary(monkeypatch):
     error, resolve = binding()
-    state = Mock(spec=NativeStatePort)
+    state, calls = stored_context_boundary(monkeypatch)
     with pytest.raises(error, match="^native_context_missing$"):
         resolve(required=True, ref=None, state=state)
-    state.load_context.assert_not_called()
+    assert calls == []
 
 
-def test_unmarked_ordinary_run_does_not_load_native_state():
+def test_unmarked_ordinary_run_does_not_load_native_state(monkeypatch):
     _, resolve = binding()
-    state = Mock(spec=NativeStatePort)
+    state, calls = stored_context_boundary(monkeypatch)
     assert resolve(required=False, ref=None, state=state) is None
-    state.load_context.assert_not_called()
+    assert calls == []
 
 
-def test_unknown_policy_never_reaches_owner():
+def test_unknown_policy_never_reaches_owner(monkeypatch):
     error, resolve = binding()
-    state = Mock(spec=NativeStatePort)
+    state, calls = stored_context_boundary(monkeypatch)
     ref = NativeTestContextRef.model_construct(**{**REF_DATA, "policy_version": "unknown"})
     with pytest.raises(error, match="^native_context_version$"):
         resolve(required=True, ref=ref, state=state)
-    state.load_context.assert_not_called()
+    assert calls == []
 
 
 @pytest.mark.parametrize("reason", ["native_owner_mismatch", "native_context_mismatch", "native_access_denied"])
-def test_owner_rejection_is_sanitized(reason):
+def test_owner_rejection_is_sanitized(reason, monkeypatch):
     error, resolve = binding()
-    state = Mock(spec=NativeStatePort)
-    state.load_context.side_effect = BuilderExecutionPolicyError(reason)
+    state, _calls = stored_context_boundary(monkeypatch, failure=BuilderExecutionPolicyError(reason))
     with pytest.raises(error, match="^native_context_unavailable$"):
         resolve(required=True, ref=NativeTestContextRef(**REF_DATA), state=state)
 
 
-def test_loaded_ref_must_exactly_match_requested_ref():
+def test_loaded_ref_must_exactly_match_requested_ref(monkeypatch):
     error, resolve = binding()
-    state = Mock(spec=NativeStatePort)
-    state.load_context.return_value = ResolvedNativeTestContext(**CONTEXT).model_copy(
+    changed_context = ResolvedNativeTestContext(**CONTEXT).model_copy(
         update={"ref": NativeTestContextRef(**{**REF_DATA, "context_digest": "b" * 64})}
     )
+    state, _calls = stored_context_boundary(monkeypatch, context=changed_context)
     with pytest.raises(error, match="^native_context_mismatch$"):
         resolve(required=True, ref=NativeTestContextRef(**REF_DATA), state=state)
 
 
-def test_reload_preserves_typed_inputs_and_isolates_mutable_snapshot():
+def test_reload_preserves_typed_inputs_and_isolates_mutable_snapshot(monkeypatch):
     _, resolve = binding()
     context = ResolvedNativeTestContext(
         **{**CONTEXT, "inputs": {"bool": True, "array": [1, None], "file": {"ref": "f"}}}
     )
-    state = Mock(spec=NativeStatePort)
-    state.load_context.return_value = context
+    state, _calls = stored_context_boundary(monkeypatch, context=context)
     actual = resolve(required=True, ref=context.ref, state=state)
     assert actual.inputs == context.inputs
     actual.inputs["array"].append(2)
@@ -97,7 +118,10 @@ def compile_owned(owned):
     from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler, NativeRuntimeProfile
 
     factory, actor, app, workflow, sid, tid = owned
-    metadata = Mock(return_value=())
+
+    def metadata(**_kwargs):
+        return ()
+
     compiler = NativeAdmissionCompiler(session_factory=factory, resources=metadata)
     profile = NativeRuntimeProfile(
         profile_id="qualification-1", implementation_revision="native-v1", limits={"calls": 10}
@@ -264,10 +288,10 @@ def _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory
     from services.workflow_service import WorkflowService
 
     monkeypatch.setattr(dify_port, "WorkflowService", lambda: WorkflowService(session_maker=sqlite_session_factory))
-    monkeypatch.setattr(dify_port, "notify_workflow_draft_changed", Mock())
+    monkeypatch.setattr(dify_port, "notify_workflow_draft_changed", lambda *_args, **_kwargs: None)
     from events.app_event import app_draft_workflow_was_synced
 
-    monkeypatch.setattr(app_draft_workflow_was_synced, "send", Mock())
+    monkeypatch.setattr(app_draft_workflow_was_synced, "send", lambda *_args, **_kwargs: None)
     port = dify_port.WorkflowServiceDifyPort()
     _, revision = port.read_graph(case.workflow.app_id, case.actor)
     result = port.apply_repair(
@@ -311,8 +335,6 @@ def test_real_apply_persists_confirmed_agent_graph_and_binding_together(
 def test_agent_apply_undo_refusal_preserves_bindings_and_allows_next_apply(
     agent_case, sqlite_session_factory, monkeypatch
 ):
-    from types import SimpleNamespace
-
     from sqlalchemy import select
 
     from core.dify_builder.models import Action, DifyBuilderContext, MutationIntent, Turn
@@ -327,16 +349,37 @@ def test_agent_apply_undo_refusal_preserves_bindings_and_allows_next_apply(
     port = dify_port.WorkflowServiceDifyPort()
     current, revision = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
     fc = DifyBuilderContext(checkpoint_id="before-agent", last_snapshot_hash=revision)
-    repo = Mock()
-    repo.get_checkpoint.return_value = (None, SimpleNamespace(graph=before))
-    env = SimpleNamespace(dify=port, repo=repo, emit_canvas=Mock())
-    session = SimpleNamespace(app_id=agent_case.workflow.app_id, id="builder-session")
+    from core.dify_builder.models import Checkpoint, EntryMode, Session, Snapshot
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.application.runner import Env
+    from services.dify_builder.repository import SqlDifyBuilderRepository
+
+    repo = SqlDifyBuilderRepository(sqlite_session_factory)
+    monkeypatch.setattr(
+        repo, "get_checkpoint", lambda _identity: (Checkpoint(state=PcState.BUILD_EXECUTION), Snapshot(graph=before))
+    )
+    emitted, invalidated = [], []
+    monkeypatch.setattr(repo, "invalidate_conversation_items", lambda *args: invalidated.append(args))
+    env = Env(
+        dify=port,
+        repo=repo,
+        agent=LlmBuilderAgent(agent_case.actor.tenant_id),
+        now=datetime.now,
+        emit_canvas=emitted.append,
+    )
+    session = Session(
+        app_id=agent_case.workflow.app_id,
+        id="builder-session",
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_EXECUTION,
+    )
     with pytest.raises(BuilderExecutionPolicyError, match="native_restore_unavailable$"):
         handle_execution(env, Turn(action=Action(kind="undo"), actor=agent_case.actor), session, fc)
     assert fc.checkpoint_id == "before-agent"
     assert fc.last_snapshot_hash == revision
-    env.emit_canvas.assert_not_called()
-    repo.invalidate_conversation_items.assert_not_called()
+    assert emitted == []
+    assert invalidated == []
     assert port.read_graph(session.app_id, agent_case.actor) == (current, revision)
 
     selection = _selection(agent_case)
@@ -382,7 +425,12 @@ def test_restore_refuses_native_agent_state_before_graph_sync(
             )
         sql.commit()
     current, revision = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
-    sync = Mock(side_effect=AssertionError("legacy graph sync"))
+    sync_calls = []
+
+    def sync(*args, **kwargs):
+        sync_calls.append((args, kwargs))
+        raise AssertionError("legacy graph sync")
+
     monkeypatch.setattr(dify_port, "_sync_graph_only", sync)
     with pytest.raises(BuilderExecutionPolicyError, match="native_restore_unavailable$"):
         port.restore_graph(
@@ -391,7 +439,7 @@ def test_restore_refuses_native_agent_state_before_graph_sync(
             target if agent_state == "target_only" else before,
             expected_revision=revision,
         )
-    sync.assert_not_called()
+    assert sync_calls == []
     assert port.read_graph(agent_case.workflow.app_id, agent_case.actor) == (current, revision)
 
 
@@ -574,8 +622,6 @@ def test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection(
 def test_unselected_agent_retention_refuses_changed_job_copy_pin_publication_or_access(
     agent_case, sqlite_session_factory, monkeypatch, mutation
 ):
-    from types import SimpleNamespace
-
     from sqlalchemy import select
 
     from core.dify_builder.models import MutationIntent
@@ -603,7 +649,7 @@ def test_unselected_agent_retention_refuses_changed_job_copy_pin_publication_or_
         monkeypatch.setattr(
             access_service,
             "resolve_current_agent_access_filter",
-            lambda **_kwargs: SimpleNamespace(accessible_agent_ids=frozenset()),
+            lambda **_kwargs: access_service.AgentAccessFilter(accessible_agent_ids=set()),
         )
     elif mutation in {"binding-pin", "published-pointer"}:
         with sqlite_session_factory() as sql:
@@ -693,7 +739,7 @@ def test_final_retained_binding_check_locks_and_refreshes_rows_before_sync(
         statements = []
 
         def capture(state):
-            descriptions = getattr(state.statement, "column_descriptions", [])
+            descriptions = state.statement.column_descriptions
             if descriptions and descriptions[0].get("entity") is WorkflowAgentNodeBinding:
                 statements.append(state.statement)
 
