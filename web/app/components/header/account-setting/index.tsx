@@ -249,6 +249,7 @@ export default function AccountSetting({
                           : 'system-sm-medium text-components-menu-item-text',
                       )}
                       aria-label={item.name}
+                      aria-current={activeMenu === item.key ? 'page' : undefined}
                       title={item.name}
                       onClick={() => {
                         onTabChangeAction(item.key)
