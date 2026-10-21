@@ -49,6 +49,7 @@ from clients.agent_backend import (
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
+from configs import dify_config
 from core.app.apps.agent_app import app_runner as app_runner_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext, AgentAppRuntimeRequestBuilder
@@ -935,6 +936,16 @@ def test_agent_message_deltas_are_debounced_to_agent_message(
     assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello agent"]
     rows = _thought_rows(sqlite_session)
     assert rows == []
+
+
+def test_default_agent_message_debounce_flushes_after_100ms(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(app_runner_module.time, "monotonic", _MonotonicClock(0.0, 0.1))
+    debouncer = app_runner_module._TextDeltaDebouncer(
+        debounce_seconds=dify_config.AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS
+    )
+
+    assert debouncer.push("hello ") is None
+    assert debouncer.push("agent") == "hello agent"
 
 
 def test_successful_turn_persists_thinking_and_tool_process_events(

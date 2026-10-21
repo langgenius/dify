@@ -75,5 +75,5 @@ class AgentBackendConfig(BaseSettings):
             "Buffer Agent App assistant text deltas for up to this many seconds before "
             "publishing SSE chunks. Set to 0 to publish each delta immediately."
         ),
-        default=0.5,
+        default=0.1,
     )
