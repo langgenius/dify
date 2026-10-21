@@ -4880,7 +4880,9 @@ class SkillManagementService:
                                 paragraph_text = []
                         elif event == "end" and tag == "t":
                             paragraph_text.append(node.text or "")
-                        elif (event == 'end' and tag in inline_text and (len(ancestors) > 1)) and (ancestors[-2] == 'r' or (tag == 'br' and ancestors[-2] == 'p')):
+                        elif (event == "end" and tag in inline_text and (len(ancestors) > 1)) and (
+                            ancestors[-2] == "r" or (tag == "br" and ancestors[-2] == "p")
+                        ):
                             paragraph_text.append(inline_text[tag])
                         if event == "end":
                             ancestors.pop()

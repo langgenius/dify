@@ -334,9 +334,13 @@ class DatasetService:
                 embedding_model = model_manager.get_default_model_instance(
                     tenant_id=tenant_id, model_type=ModelType.TEXT_EMBEDDING
                 )
-            if retrieval_model and retrieval_model.reranking_model and (
-                retrieval_model.reranking_model.reranking_provider_name
-                and retrieval_model.reranking_model.reranking_model_name
+            if (
+                retrieval_model
+                and retrieval_model.reranking_model
+                and (
+                    retrieval_model.reranking_model.reranking_provider_name
+                    and retrieval_model.reranking_model.reranking_model_name
+                )
             ):
                 # check if reranking model setting is valid
                 DatasetService.check_reranking_model_setting(
@@ -560,11 +564,15 @@ class DatasetService:
         if not dataset:
             raise ValueError("Dataset not found")
             #  check if dataset name is exists
-        if data.get("name") and data.get("name") != dataset.name and DatasetService._has_dataset_same_name(
-            tenant_id=dataset.tenant_id,
-            dataset_id=dataset_id,
-            name=data.get("name", dataset.name),
-            session=session,
+        if (
+            data.get("name")
+            and data.get("name") != dataset.name
+            and DatasetService._has_dataset_same_name(
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset_id,
+                name=data.get("name", dataset.name),
+                session=session,
+            )
         ):
             raise ValueError("Dataset name already exists")
 
@@ -2221,7 +2229,9 @@ class DocumentService:
         if not dataset.indexing_technique:
             if config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
                 raise ValueError("Indexing technique is invalid")
-            if config.indexing_technique == IndexTechniqueType.HIGH_QUALITY and (not config.embedding_model or not config.embedding_model_provider):
+            if config.indexing_technique == IndexTechniqueType.HIGH_QUALITY and (
+                not config.embedding_model or not config.embedding_model_provider
+            ):
                 model = ModelManager.for_tenant(tenant_id=dataset.tenant_id).get_default_model_instance(
                     tenant_id=dataset.tenant_id, model_type=ModelType.TEXT_EMBEDDING
                 )
@@ -3184,11 +3194,17 @@ class DocumentService:
         if not knowledge_config.data_source.info_list:
             raise ValueError("Data source info is required")
 
-        if knowledge_config.data_source.info_list.data_source_type == 'upload_file' and (not knowledge_config.data_source.info_list.file_info_list):
+        if knowledge_config.data_source.info_list.data_source_type == "upload_file" and (
+            not knowledge_config.data_source.info_list.file_info_list
+        ):
             raise ValueError("File source info is required")
-        if knowledge_config.data_source.info_list.data_source_type == 'notion_import' and (not knowledge_config.data_source.info_list.notion_info_list):
+        if knowledge_config.data_source.info_list.data_source_type == "notion_import" and (
+            not knowledge_config.data_source.info_list.notion_info_list
+        ):
             raise ValueError("Notion source info is required")
-        if knowledge_config.data_source.info_list.data_source_type == 'website_crawl' and (not knowledge_config.data_source.info_list.website_info_list):
+        if knowledge_config.data_source.info_list.data_source_type == "website_crawl" and (
+            not knowledge_config.data_source.info_list.website_info_list
+        ):
             raise ValueError("Website source info is required")
 
     @classmethod
@@ -3220,7 +3236,9 @@ class DocumentService:
 
             knowledge_config.process_rule.rules.pre_processing_rules = list(unique_pre_processing_rule_dicts.values())
 
-            if knowledge_config.process_rule.mode == ProcessRuleMode.HIERARCHICAL and (not knowledge_config.process_rule.rules.parent_mode):
+            if knowledge_config.process_rule.mode == ProcessRuleMode.HIERARCHICAL and (
+                not knowledge_config.process_rule.rules.parent_mode
+            ):
                 knowledge_config.process_rule.rules.parent_mode = "paragraph"
 
             if not knowledge_config.process_rule.rules.segmentation:
