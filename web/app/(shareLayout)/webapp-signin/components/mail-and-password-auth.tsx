@@ -1,6 +1,6 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
@@ -34,9 +34,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
-  const [email, setEmail] = useState(emailFromLink)
-  const [password, setPassword] = useState('')
-
   const [isLoading, setIsLoading] = useState(false)
   const redirectUrl = searchParams.get('redirect_url')
   const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
@@ -46,25 +43,13 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
   }, [redirectUrl, router])
 
-  const handleEmailPasswordLogin = async () => {
+  const handleEmailPasswordLogin = async (email: string, password: string) => {
+    if (isLoading) return
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
-    if (!email) {
-      toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
-      return
-    }
-    if (!emailRegex.test(email)) {
-      toast.error(t(($) => $['error.emailInValid'], { ns: 'login' }))
-      return
-    }
-    if (!password?.trim()) {
-      toast.error(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
-      return
-    }
-
     try {
       setIsLoading(true)
       const loginData = {
@@ -104,19 +89,27 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   }
 
   return (
-    <Form
-      onFormSubmit={() => {
-        void handleEmailPasswordLogin()
+    <Form<{ email: string; password: string }>
+      onFormSubmit={({ email, password }) => {
+        void handleEmailPasswordLogin(email, password)
       }}
     >
-      <Field name="email" className="mb-3 block">
+      <Field
+        name="email"
+        className="mb-3 block"
+        validate={(value) => {
+          if (typeof value !== 'string' || !value)
+            return t(($) => $['error.emailEmpty'], { ns: 'login' })
+          if (!emailRegex.test(value)) return t(($) => $['error.emailInValid'], { ns: 'login' })
+          return null
+        }}
+      >
         <FieldLabel className="my-2 py-0 text-sm leading-5 font-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
         </FieldLabel>
         <div className="mt-1">
           <Input
-            value={email}
-            onValueChange={setEmail}
+            defaultValue={emailFromLink}
             id="email"
             type="email"
             autoComplete="email"
@@ -124,9 +117,18 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
           />
         </div>
+        <FieldError />
       </Field>
 
-      <Field name="password" className="mb-3 block">
+      <Field
+        name="password"
+        className="mb-3 block"
+        validate={(value) => {
+          if (typeof value !== 'string' || !value.trim())
+            return t(($) => $['error.passwordEmpty'], { ns: 'login' })
+          return null
+        }}
+      >
         <div className="my-2 flex items-center justify-between">
           <FieldLabel className="py-0 text-sm leading-5 font-semibold text-text-secondary">
             {t(($) => $.password, { ns: 'login' })}
@@ -142,8 +144,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         </div>
         <InputGroup className="mt-1">
           <InputGroupInput
-            value={password}
-            onValueChange={setPassword}
             id="password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
@@ -152,6 +152,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           />
           <InputGroupAddon align="inline-end">
             <IconButton
+              type="button"
               size="lg"
               variant="ghost"
               aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
@@ -163,15 +164,11 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             </IconButton>
           </InputGroupAddon>
         </InputGroup>
+        <FieldError />
       </Field>
 
       <div className="mb-2">
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={isLoading || !email || !password}
-          className="w-full"
-        >
+        <Button type="submit" variant="primary" loading={isLoading} className="w-full">
           {t(($) => $.signBtn, { ns: 'login' })}
         </Button>
       </div>
