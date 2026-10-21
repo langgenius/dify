@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import JsonValue
 
+from core.dify_builder.models import Graph
 from core.entities.model_entities import ModelStatus
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
@@ -797,8 +798,8 @@ def test_unbound_draft_flag_cannot_skip_a_requested_concrete_resource(kind: str,
 def test_unbound_tool_draft_cannot_be_newly_connected_without_configuration() -> None:
     from services.dify_builder.resource_grounding import ResourceBindingError, validate_changed_resources
 
-    before = {"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}
-    after = {
+    before: Graph = {"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}
+    after: Graph = {
         "nodes": [*before["nodes"], {"id": "draft", "data": {"type": "tool", "provider_id": "", "tool_name": ""}}],
         "edges": [],
     }
@@ -815,7 +816,7 @@ def test_unbound_tool_draft_preserves_only_unchanged_historical_nodes(change: st
 
     from services.dify_builder.resource_grounding import ResourceBindingError, validate_changed_resources
 
-    before = {
+    before: Graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start"}},
             {"id": "upstream", "data": {"type": "code"}},
