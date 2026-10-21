@@ -10,7 +10,7 @@ from datetime import datetime
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
-from constants.end_user_connections import ConnectionCredentialType, ConnectionStatus, OAuthClientSource
+from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, OAuthClientSource
 from libs.datetime_utils import naive_utc_now
 
 from .base import DefaultFieldsDCMixin, TypeBase
@@ -71,7 +71,7 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
     )
     name: Mapped[str] = mapped_column(sa.String(100), nullable=False)
     encrypted_credentials: Mapped[str] = mapped_column(LongText, nullable=False, repr=False)
-    status: Mapped[ConnectionStatus] = mapped_column(EnumText(ConnectionStatus), nullable=False)
+    status: Mapped[ConnectionCredentialStatus] = mapped_column(EnumText(ConnectionCredentialStatus), nullable=False)
     # All client fields are absent for API keys. OAuth requires only a source.
     oauth_client_source: Mapped[OAuthClientSource | None] = mapped_column(EnumText(OAuthClientSource), nullable=True)
     # None means the client has no independent configuration record or no available public ID.

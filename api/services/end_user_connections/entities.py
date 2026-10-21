@@ -7,7 +7,8 @@ their authentication/persistence boundary. No workspace membership is implied.
 
 from dataclasses import dataclass, field
 
-from constants.end_user_connections import ConnectionCredentialType, ConnectionStatus, OAuthClientSource
+from clients.plugin.auth_entities import CredentialCheckResult
+from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, OAuthClientSource
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,25 +50,26 @@ class ConnectionOAuthClient:
     """Non-secret grant provenance; never serialize the raw client ID to browsers."""
 
     source: OAuthClientSource
-    # None means the provider has no independent config record or available public ID.
-    configuration_id: str | None
+    configuration_id: str
+    # None means the plugin does not expose a public Client ID.
     client_id: str | None = field(repr=False)
-
-    @property
-    def identifiable(self) -> bool:
-        return bool(self.configuration_id or self.client_id)
 
 
 @dataclass(frozen=True, slots=True)
 class ConnectionAccessRecord:
-    """Stored access metadata, loaded without decrypting credential material."""
+    """Stored access metadata, loaded without decrypting credential material.
+
+    credential_status is the persisted lifecycle state. Lifecycle services apply
+    refresh/repair results before projection; a status projection never revives a
+    stored invalid grant or writes an App-specific mismatch into this record.
+    """
 
     id: str
     tenant_id: str
     owner: ConnectionOwner
     provider: str
     credential_type: ConnectionCredentialType
-    status: ConnectionStatus
+    credential_status: ConnectionCredentialStatus
     # None for API keys; OAuth stores the reference captured for its grant.
     oauth_client: ConnectionOAuthClient | None
     revision: int
@@ -112,3 +114,22 @@ class ConnectionMutationGuard:
     tenant_id: str
     owner: ConnectionOwner
     revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class NodeConnectionSelection:
+    """An explicit choice for one graph-version node, never inferred from defaults."""
+
+    workflow_id: str
+    node_id: str
+    # None means unselected or explicitly disconnected.
+    connection_id: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectionCheckSnapshot:
+    """Bind a normalized check result to the exact credential revision checked."""
+
+    connection_id: str
+    revision: int
+    result: CredentialCheckResult

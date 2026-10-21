@@ -2,7 +2,7 @@ from dataclasses import replace
 
 import pytest
 
-from constants.end_user_connections import ConnectionCredentialType, ConnectionStatus, OAuthClientSource
+from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, OAuthClientSource
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
     ConnectionOAuthClient,
@@ -44,7 +44,7 @@ def record(context: WebConnectionContext) -> ConnectionAccessRecord:
         owner=context.owner,
         provider="vendor/calendar/calendar",
         credential_type=ConnectionCredentialType.API_KEY,
-        status=ConnectionStatus.CONNECTED,
+        credential_status=ConnectionCredentialStatus.CONNECTED,
         oauth_client=None,
         revision=3,
     )
@@ -114,11 +114,11 @@ def test_end_user_owner_cannot_reuse_another_apps_identity(
         require_owned_connection(replace(guest, app_id="other-app", end_user_id="other-user"), owned)
 
 
-@pytest.mark.parametrize("status", list(ConnectionStatus))
+@pytest.mark.parametrize("status", list(ConnectionCredentialStatus))
 def test_ownership_and_mutation_guards_do_not_depend_on_current_status(
-    context: WebConnectionContext, record: ConnectionAccessRecord, status: ConnectionStatus
+    context: WebConnectionContext, record: ConnectionAccessRecord, status: ConnectionCredentialStatus
 ) -> None:
-    owned = replace(record, status=status)
+    owned = replace(record, credential_status=status)
     guard = connection_mutation_guard(context, owned)
     assert guard.connection_id == record.id
     assert guard.tenant_id == context.tenant_id
@@ -193,18 +193,14 @@ def test_creation_requires_both_node_and_provider_support(
         )
 
 
-@pytest.mark.parametrize("missing", [True, False])
-def test_oauth_creation_requires_identifiable_client(
-    context: WebConnectionContext, target: ToolConnectionTarget, client: ConnectionOAuthClient, missing: bool
-) -> None:
-    unavailable = None if missing else replace(client, configuration_id=None, client_id=None)
+def test_oauth_creation_requires_configured_client(context: WebConnectionContext, target: ToolConnectionTarget) -> None:
     with pytest.raises(ConnectionConfigurationError):
         require_creation_target(
             context,
             workflow_id=target.workflow_id,
             node_id=target.node_id,
             credential_type=ConnectionCredentialType.OAUTH2,
-            target=replace(target, oauth_client=unavailable),
+            target=replace(target, oauth_client=None),
         )
 
 
@@ -252,7 +248,7 @@ def test_other_provider_connection_is_not_applicable(
         )
 
 
-@pytest.mark.parametrize("difference", ["source", "configuration_id", "client_id", "unknown"])
+@pytest.mark.parametrize("difference", ["source", "configuration_id", "client_id"])
 def test_oauth_grant_must_match_the_current_client(
     context: WebConnectionContext,
     record: ConnectionAccessRecord,
@@ -264,7 +260,6 @@ def test_oauth_grant_must_match_the_current_client(
         "source": replace(client, source=OAuthClientSource.PLATFORM),
         "configuration_id": replace(client, configuration_id="other-config"),
         "client_id": replace(client, client_id="other-client"),
-        "unknown": replace(client, configuration_id=None, client_id=None),
     }
     oauth = replace(record, credential_type=ConnectionCredentialType.OAUTH2, oauth_client=grants[difference])
     assert require_owned_connection(context, oauth) is oauth
@@ -284,7 +279,7 @@ def test_matching_client_does_not_certify_token_readiness_or_mutate_status(
         record,
         credential_type=ConnectionCredentialType.OAUTH2,
         oauth_client=client,
-        status=ConnectionStatus.INVALID,
+        credential_status=ConnectionCredentialStatus.INVALID,
     )
     assert (
         require_applicable_connection(
@@ -292,4 +287,24 @@ def test_matching_client_does_not_certify_token_readiness_or_mutate_status(
         )
         is oauth
     )
-    assert oauth.status == ConnectionStatus.INVALID
+    assert oauth.credential_status == ConnectionCredentialStatus.INVALID
+
+
+def test_configured_client_without_public_id_is_applicable(
+    context: WebConnectionContext,
+    record: ConnectionAccessRecord,
+    target: ToolConnectionTarget,
+    client: ConnectionOAuthClient,
+) -> None:
+    configured_client = replace(client, client_id=None)
+    oauth = replace(record, credential_type=ConnectionCredentialType.OAUTH2, oauth_client=configured_client)
+    assert (
+        require_applicable_connection(
+            context,
+            oauth,
+            workflow_id=target.workflow_id,
+            node_id=target.node_id,
+            target=replace(target, oauth_client=configured_client),
+        )
+        is oauth
+    )

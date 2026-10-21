@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session
 from libs.uuid_utils import uuidv7
 from models.end_user_connection import (
     AppConnection,
+    ConnectionCredentialStatus,
     ConnectionCredentialType,
-    ConnectionStatus,
     EndUserConnection,
     OAuthClientSource,
     SessionConnection,
@@ -30,7 +30,7 @@ def new_connection() -> EndUserConnection:
         credential_type=ConnectionCredentialType.API_KEY,
         name="Personal calendar",
         encrypted_credentials="encrypted-credential-payload",
-        status=ConnectionStatus.CONNECTED,
+        status=ConnectionCredentialStatus.CONNECTED,
         oauth_client_source=None,
         oauth_client_configuration_id=None,
         oauth_client_id=None,
@@ -365,7 +365,7 @@ class ConnectionPersistenceTests:
         connection_session.flush()
         connection_session.expire_all()
         assert connection_session.get(EndUserConnection, connection.id) is connection
-        connection.status = ConnectionStatus.RECONNECT_REQUIRED
+        connection.status = ConnectionCredentialStatus.RECONNECT_REQUIRED
         connection_session.flush()
         connection_session.expire_all()
         assert connection.last_active_at == datetime(2020, 1, 1)

@@ -14,7 +14,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, computed_field, field_validator, model_validator
 
 from clients.plugin.auth_entities import CredentialCheckResult
-from constants.end_user_connections import ConnectionCredentialType, ConnectionStatus
+from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, NodeConnectionStatus
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
 
 
@@ -75,6 +75,7 @@ class ConnectionSummary(BaseModel):
 
     No owner IDs, ciphertext, credential values, or raw OAuth Client IDs are exposed.
     account_label is already masked; API-key Connections have no account label.
+    credential_status is intrinsic lifecycle state, not the node's effective status.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -83,7 +84,7 @@ class ConnectionSummary(BaseModel):
     name: str
     provider: str
     credential_type: ConnectionCredentialType
-    status: ConnectionStatus
+    credential_status: ConnectionCredentialStatus
     account_label: str | None
     expires_at: datetime | None
     created_at: datetime
@@ -109,7 +110,35 @@ class ConnectionCheckView(BaseModel):
 
     connection_id: str
     check: CredentialCheckResult
-    status: ConnectionStatus
+    credential_status: ConnectionCredentialStatus
+
+
+class NodeConnectionState(BaseModel):
+    """Effective status for one node; only connected satisfies its connection gate.
+
+    The check result remains separate. Transient/unperformed checks on an otherwise
+    usable credential raise ConnectionCheckUnavailableError rather than fabricating
+    invalidity or claiming readiness. Scope expansion is not part of this release.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    workflow_id: str
+    node_id: str
+    # None when no visible Connection is selected, including deleted/unowned rows.
+    connection_id: str | None
+    status: NodeConnectionStatus
+    # None when no remote check was needed to establish a blocking state.
+    check: CredentialCheckResult | None
+
+    @model_validator(mode="after")
+    def validate_selection_state(self) -> Self:
+        if self.status == NodeConnectionStatus.DISCONNECTED:
+            if self.connection_id is not None or self.check is not None:
+                raise ValueError("Disconnected nodes cannot expose Connection or check metadata.")
+        elif self.connection_id is None:
+            raise ValueError("A connected or blocked Connection state requires a selected Connection.")
+        return self
 
 
 class ConnectionOAuthStart(BaseModel):

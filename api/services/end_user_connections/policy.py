@@ -29,6 +29,22 @@ def require_owned_connection(
     return record
 
 
+def require_target_reference(
+    context: WebConnectionContext,
+    *,
+    workflow_id: str,
+    node_id: str,
+    target: ToolConnectionTarget,
+) -> None:
+    """Check a requested graph reference against freshly resolved server state."""
+    if target.tenant_id != context.tenant_id or target.app_id != context.app_id:
+        raise ConnectionConfigurationError()
+    if target.workflow_id != workflow_id:
+        raise ConnectionWorkflowChangedError()
+    if target.node_id != node_id:
+        raise ConnectionConfigurationError()
+
+
 def require_creation_target(
     context: WebConnectionContext,
     *,
@@ -37,20 +53,13 @@ def require_creation_target(
     credential_type: ConnectionCredentialType,
     target: ToolConnectionTarget,
 ) -> None:
-    """Check a requested graph reference against freshly resolved server state."""
-    if target.tenant_id != context.tenant_id or target.app_id != context.app_id:
-        raise ConnectionConfigurationError()
-    if target.workflow_id != workflow_id:
-        raise ConnectionWorkflowChangedError()
+    require_target_reference(context, workflow_id=workflow_id, node_id=node_id, target=target)
     if (
-        target.node_id != node_id
-        or credential_type not in target.allowed_credential_types
+        credential_type not in target.allowed_credential_types
         or credential_type not in target.provider_credential_types
     ):
         raise ConnectionConfigurationError()
-    if credential_type == ConnectionCredentialType.OAUTH2 and (
-        target.oauth_client is None or not target.oauth_client.identifiable
-    ):
+    if credential_type == ConnectionCredentialType.OAUTH2 and target.oauth_client is None:
         raise ConnectionConfigurationError()
 
 
@@ -69,19 +78,15 @@ def require_applicable_connection(
     Connection's persisted status because one App's configuration changed.
     """
     owned = require_owned_connection(context, record)
-    require_creation_target(
-        context,
-        workflow_id=workflow_id,
-        node_id=node_id,
-        credential_type=owned.credential_type,
-        target=target,
-    )
-    if owned.provider != target.provider:
+    require_target_reference(context, workflow_id=workflow_id, node_id=node_id, target=target)
+    if (
+        owned.provider != target.provider
+        or owned.credential_type not in target.allowed_credential_types
+        or owned.credential_type not in target.provider_credential_types
+    ):
         raise ConnectionConfigurationError()
-    if owned.credential_type == ConnectionCredentialType.OAUTH2:
-        client = owned.oauth_client
-        if client is None or not client.identifiable or client != target.oauth_client:
-            raise ConnectionReauthorizationRequiredError()
+    if owned.credential_type == ConnectionCredentialType.OAUTH2 and owned.oauth_client != target.oauth_client:
+        raise ConnectionReauthorizationRequiredError()
     return owned
 
 

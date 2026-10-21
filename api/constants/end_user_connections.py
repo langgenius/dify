@@ -8,10 +8,25 @@ class ConnectionCredentialType(StrEnum):
     OAUTH2 = "oauth2"
 
 
-class ConnectionStatus(StrEnum):
+class ConnectionCredentialStatus(StrEnum):
+    """Last known credential lifecycle state, not readiness for a particular node.
+
+    Keep the existing storage values. App-specific Client mismatches and unbinding
+    must never be written back as a global credential state change.
+    """
+
     CONNECTED = "connected"
     RECONNECT_REQUIRED = "reconnect_required"
     INVALID = "invalid"
+
+
+class NodeConnectionStatus(StrEnum):
+    """The current selection's effective status for one published Tool node."""
+
+    CONNECTED = "connected"
+    RECONNECT_REQUIRED = "reconnect_required"
+    INVALID = "invalid"
+    DISCONNECTED = "disconnected"
 
 
 class OAuthClientSource(StrEnum):

@@ -4,7 +4,7 @@ from uuid import UUID
 import pytest
 from pydantic import ValidationError
 
-from constants.end_user_connections import ConnectionCredentialType, ConnectionStatus
+from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType
 from services.end_user_connections.contracts import (
     ConnectionOAuthStart,
     ConnectionPage,
@@ -98,7 +98,7 @@ def test_management_summary_cannot_serialize_internal_credential_state() -> None
         name="My calendar",
         provider="vendor/calendar/calendar",
         credential_type=ConnectionCredentialType.API_KEY,
-        status=ConnectionStatus.CONNECTED,
+        credential_status=ConnectionCredentialStatus.CONNECTED,
         account_label=None,
         expires_at=None,
         created_at=datetime(2026, 10, 21),
