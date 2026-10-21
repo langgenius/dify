@@ -30,6 +30,7 @@ from models.dataset import (
     Document,
     DocumentSegment,
 )
+from models.enums import DataSourceType
 from models.model import UploadFile
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo as PipelineIconInfo,
@@ -327,7 +328,7 @@ def _make_document(
         enabled=enabled,
         archived=archived,
         indexing_status=indexing_status,
-        data_source_type="upload_file",
+        data_source_type=DataSourceType("upload_file"),
         data_source_info="{}",
         completed_at=SimpleNamespace(),
         processing_started_at="started",
