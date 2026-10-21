@@ -1894,3 +1894,182 @@ def test_provisioning_retry_releases_execution_but_keeps_delivery_identity(
         runner._mark_running(job_id=job.id, celery_task_id="task-1")
     runner.release_for_retry(job_id=job.id, celery_task_id="task-1")
     assert runner._mark_running(job_id=job.id, celery_task_id="task-1") is not None
+
+
+def _pending_reconciliation_job(
+    sessions: sessionmaker[Session],
+) -> tuple[KnowledgeFSUpgradeJob, KnowledgeFSUpgradeDocument]:
+    job = _job(
+        status=KnowledgeFSUpgradeJobStatus.QUEUED,
+        stage=KnowledgeFSUpgradeStage.FINALIZING,
+        celery_task_id="parent-task",
+        new_control_space_id=_CONTROL_SPACE_ID,
+        total_documents=1,
+        completed_documents=1,
+    )
+    with sessions.begin() as session:
+        session.add(job)
+        session.flush()
+        document = KnowledgeFSUpgradeDocument(
+            job_id=job.id,
+            tenant_id=job.tenant_id,
+            old_document_id=_LOGICAL_DOCUMENT_ID,
+            name="archived.txt",
+            data_source_type="upload_file",
+            data_source_info={},
+            metadata_snapshot={},
+            desired_enabled=False,
+            legacy_archived=True,
+            legacy_indexing_status="completed",
+            status=KnowledgeFSUpgradeItemStatus.SUCCEEDED,
+            new_document_asset_id=_DOCUMENT_ASSET_ID,
+        )
+        session.add(document)
+    return job, document
+
+
+def test_recovery_sweep_finds_parent_success_without_a_reconciliation_claim(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from tasks.knowledge_fs_upgrade_tasks import (
+        reconcile_knowledge_fs_upgrade_documents,
+        recover_stalled_knowledge_fs_upgrades,
+    )
+
+    job, _ = _pending_reconciliation_job(sqlite_session_factory)
+    # The parent commits success, then its process dies before claiming any follow-up.
+    assert (
+        KnowledgeFSUpgradeRunner(sqlite_session_factory).run_next(job_id=job.id, celery_task_id="parent-task") is False
+    )
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted is not None
+        assert persisted.status is KnowledgeFSUpgradeJobStatus.SUCCEEDED
+        assert persisted.reconciliation_task_id is None
+        assert persisted.reconciliation_lease_expires_at is None
+
+    with patch.object(reconcile_knowledge_fs_upgrade_documents, "apply_async") as dispatch:
+        assert recover_stalled_knowledge_fs_upgrades.run() == 1
+        assert recover_stalled_knowledge_fs_upgrades.run() == 0
+    dispatch.assert_called_once()
+    assert dispatch.call_args.kwargs["kwargs"] == {"job_id": job.id}
+    reconciler = KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory)
+    assert reconciler.start_delivery(job_id=job.id, task_id=dispatch.call_args.kwargs["task_id"])
+
+
+def test_final_reconciliation_publication_failure_is_recovered_after_parent_success(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from celery.app.task import Context
+
+    from tasks.knowledge_fs_upgrade_tasks import (
+        reconcile_knowledge_fs_upgrade_documents,
+        recover_stalled_knowledge_fs_upgrades,
+        run_knowledge_fs_upgrade,
+    )
+
+    job, document = _pending_reconciliation_job(sqlite_session_factory)
+    run_knowledge_fs_upgrade.request_stack.push(Context(id="parent-task", retries=0))
+    try:
+        with patch.object(reconcile_knowledge_fs_upgrade_documents, "apply_async", side_effect=OSError("broker down")):
+            run_knowledge_fs_upgrade.run(job_id=job.id)
+    finally:
+        run_knowledge_fs_upgrade.pop_request()
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted is not None
+        assert persisted.status is KnowledgeFSUpgradeJobStatus.SUCCEEDED
+        assert persisted.reconciliation_lease_expires_at is not None
+        retry_at = persisted.reconciliation_lease_expires_at + timedelta(seconds=1)
+    assert recover_stalled_knowledge_fs_upgrades.run() == 0
+    monkeypatch.setattr(upgrade_module, "naive_utc_now", lambda: retry_at)
+    with patch.object(reconcile_knowledge_fs_upgrade_documents, "apply_async") as dispatch:
+        assert recover_stalled_knowledge_fs_upgrades.run() == 1
+    assert dispatch.call_args.kwargs["kwargs"] == {"job_id": job.id}
+    task_id = dispatch.call_args.kwargs["task_id"]
+
+    initial = _logical_document(enabled=True)
+    facade = FakeUpgradeFacade(
+        list_logical_documents=CallRecorder(
+            result=KnowledgeFSLogicalDocumentListResponse(data=[initial], next_cursor=None)
+        ),
+        update_logical_document_availability=CallRecorder(result=initial.model_copy(update={"enabled": False})),
+    )
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
+    reconcile_knowledge_fs_upgrade_documents.request_stack.push(Context(id=task_id))
+    try:
+        reconcile_knowledge_fs_upgrade_documents.run(job_id=job.id)
+        # Duplicate delivery must not repeat writes after the durable checkpoint.
+        reconcile_knowledge_fs_upgrade_documents.run(job_id=job.id)
+    finally:
+        reconcile_knowledge_fs_upgrade_documents.pop_request()
+    with sqlite_session_factory() as session:
+        persisted_document = session.get(KnowledgeFSUpgradeDocument, document.id)
+        assert persisted_document is not None
+        assert persisted_document.availability_reconciled_at is not None
+        assert persisted_document.state_reconciled_at is not None
+    assert len(facade.update_logical_document_availability.calls) == 1
+    monkeypatch.setattr(upgrade_module, "naive_utc_now", lambda: retry_at + UPGRADE_DELIVERY_TIMEOUT)
+    assert recover_stalled_knowledge_fs_upgrades.run() == 0
+
+
+@pytest.mark.parametrize("started", [False, True])
+def test_reconciliation_recovers_lost_deliveries_and_fences_stale_workers(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, started: bool
+) -> None:
+    job, _ = _pending_reconciliation_job(sqlite_session_factory)
+    KnowledgeFSUpgradeRunner(sqlite_session_factory).run_next(job_id=job.id, celery_task_id="parent-task")
+    reconciler = KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory)
+    now = naive_utc_now()
+    monkeypatch.setattr(upgrade_module, "naive_utc_now", lambda: now)
+    [(tenant_id, job_id, old_task_id)] = reconciler.claim_deliveries()
+    assert (tenant_id, job_id) == (job.tenant_id, job.id)
+    if started:
+        assert reconciler.start_delivery(job_id=job.id, task_id=old_task_id)
+        assert not reconciler.start_delivery(job_id=job.id, task_id=old_task_id)
+    assert reconciler.claim_deliveries() == []
+    now += UPGRADE_DELIVERY_TIMEOUT + timedelta(seconds=1)
+    [(tenant_id, job_id, task_id)] = reconciler.claim_deliveries()
+    assert task_id != old_task_id
+    assert not reconciler.start_delivery(job_id=job.id, task_id=old_task_id)
+    assert reconciler.start_delivery(job_id=job.id, task_id=task_id)
+    reconciler.finish_delivery(job_id=job.id, task_id=old_task_id)
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted is not None
+        assert persisted.reconciliation_task_id == task_id
+        assert persisted.reconciliation_started_at == now
+    assert reconciler.claim_deliveries() == []
+
+
+@pytest.mark.parametrize("raises", [False, True])
+def test_reconciliation_sweep_retries_unfinished_documents_without_a_celery_retry_limit(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, raises: bool
+) -> None:
+    from celery.app.task import Context
+
+    from tasks.knowledge_fs_upgrade_tasks import reconcile_knowledge_fs_upgrade_documents
+
+    job, _ = _pending_reconciliation_job(sqlite_session_factory)
+    KnowledgeFSUpgradeRunner(sqlite_session_factory).run_next(job_id=job.id, celery_task_id="parent-task")
+    reconciler = KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory)
+    now = naive_utc_now()
+    monkeypatch.setattr(upgrade_module, "naive_utc_now", lambda: now)
+    [(_, _, task_id)] = reconciler.claim_deliveries()
+    facade = FakeUpgradeFacade(
+        list_logical_documents=CallRecorder(
+            result=KnowledgeFSLogicalDocumentListResponse(data=[], next_cursor=None),
+            error=RuntimeError("KFS unavailable") if raises else None,
+        ),
+    )
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
+    reconcile_knowledge_fs_upgrade_documents.request_stack.push(Context(id=task_id, retries=20_000))
+    try:
+        reconcile_knowledge_fs_upgrade_documents.run(job_id=job.id)
+    finally:
+        reconcile_knowledge_fs_upgrade_documents.pop_request()
+    assert reconciler.claim_deliveries() == []
+    now += timedelta(seconds=61)
+    [(_, recovered_job_id, next_task_id)] = reconciler.claim_deliveries()
+    assert recovered_job_id == job.id
+    assert next_task_id != task_id

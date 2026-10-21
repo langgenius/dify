@@ -958,6 +958,74 @@ class KnowledgeFSUpgradeDocumentReconciler:
     def __init__(self, session_maker: sessionmaker[Session]) -> None:
         self._session_maker = session_maker
 
+    def claim_deliveries(self, *, job_id: str | None = None, limit: int = 100) -> list[tuple[str, str, str]]:
+        """Reserve bounded deliveries from durable unfinished document checkpoints.
+
+        A missing/expired lease also covers a publisher crash, lost broker message,
+        exhausted retry, or killed worker. Running workers have a hard time limit
+        shorter than the lease. NULL job_id is the periodic cross-workspace sweep;
+        a concrete id schedules the just-completed parent immediately.
+        """
+        now = naive_utc_now()
+        pending_document = sa.exists().where(
+            KnowledgeFSUpgradeDocument.job_id == KnowledgeFSUpgradeJob.id,
+            KnowledgeFSUpgradeDocument.tenant_id == KnowledgeFSUpgradeJob.tenant_id,
+            KnowledgeFSUpgradeDocument.status == KnowledgeFSUpgradeItemStatus.SUCCEEDED,
+            KnowledgeFSUpgradeDocument.state_reconciled_at.is_(None),
+        )
+        statement = sa.select(KnowledgeFSUpgradeJob).where(
+            KnowledgeFSUpgradeJob.status == KnowledgeFSUpgradeJobStatus.SUCCEEDED,
+            pending_document,
+            sa.or_(
+                KnowledgeFSUpgradeJob.reconciliation_lease_expires_at.is_(None),
+                KnowledgeFSUpgradeJob.reconciliation_lease_expires_at <= now,
+            ),
+        )
+        if job_id is not None:
+            statement = statement.where(KnowledgeFSUpgradeJob.id == job_id)
+        with self._session_maker.begin() as session:
+            jobs = session.scalars(
+                statement.order_by(KnowledgeFSUpgradeJob.updated_at, KnowledgeFSUpgradeJob.id)
+                .limit(limit)
+                .with_for_update(skip_locked=True)
+            ).all()
+            deliveries = []
+            for job in jobs:
+                task_id = str(uuid.uuid4())
+                job.reconciliation_task_id = task_id
+                job.reconciliation_started_at = None
+                job.reconciliation_lease_expires_at = now + UPGRADE_DELIVERY_TIMEOUT
+                deliveries.append((job.tenant_id, job.id, task_id))
+            return deliveries
+
+    def start_delivery(self, *, job_id: str, task_id: str) -> bool:
+        """Fence obsolete/duplicate deliveries and extend the lease from actual execution."""
+        now = naive_utc_now()
+        with self._session_maker.begin() as session:
+            job = session.get(KnowledgeFSUpgradeJob, job_id, with_for_update=True)
+            if (
+                job is None
+                or job.status is not KnowledgeFSUpgradeJobStatus.SUCCEEDED
+                or job.reconciliation_task_id != task_id
+                or job.reconciliation_started_at is not None
+                or job.reconciliation_lease_expires_at is None
+                or job.reconciliation_lease_expires_at <= now
+            ):
+                return False
+            job.reconciliation_started_at = now
+            job.reconciliation_lease_expires_at = now + UPGRADE_DELIVERY_TIMEOUT
+            return True
+
+    def finish_delivery(self, *, job_id: str, task_id: str) -> None:
+        """Release this attempt; unfinished checkpoints remain eligible after a short backoff."""
+        with self._session_maker.begin() as session:
+            job = session.get(KnowledgeFSUpgradeJob, job_id, with_for_update=True)
+            if job is None or job.reconciliation_task_id != task_id:
+                return
+            job.reconciliation_task_id = None
+            job.reconciliation_started_at = None
+            job.reconciliation_lease_expires_at = naive_utc_now() + timedelta(seconds=60)
+
     def reconcile(self, *, job_id: str) -> int:
         with self._session_maker() as session:
             job = session.get(KnowledgeFSUpgradeJob, job_id)

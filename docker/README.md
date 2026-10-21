@@ -115,6 +115,15 @@ progress for 11 minutes can be recovered automatically or through the upgrade re
 Stop existing upgrade workers before deploying this recovery change, then recreate the API,
 worker, upgrade worker, and Beat with the new image and pool configuration.
 
+Document reconciliation has its own durable delivery lease after the parent upgrade succeeds.
+Beat also scans successful upgrades with unfinished document checkpoints, so a failed publication
+or interrupted reconciliation is retried without restarting the upgrade. Unclaimed successful jobs
+are eligible immediately; lost deliveries are reclaimed after the 11-minute lease expires, and
+completed attempts with unfinished work become eligible again after one minute. Apply the
+`b9d3f7a5c102` migration before starting the updated processes; existing successful upgrades receive
+NULL leases and are picked up automatically. Reconciliation uses the same prefork pool and
+570/600-second task limits. Keep Beat running with the lifecycle rollout gates enabled.
+
 ## Client IP and trusted proxies
 
 Dify uses the request's resolved client IP for rate limits and audit records. The

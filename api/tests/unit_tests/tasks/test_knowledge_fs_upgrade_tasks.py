@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from unittest.mock import patch
 
 import pytest
-from celery.app.task import Context
+from celery.app.task import Context, Task
 
 from services.dataset_knowledge_fs_upgrade_service import (
     UPGRADE_CHECKPOINT_TIME_LIMIT_SECONDS,
@@ -72,7 +72,7 @@ def test_worker_enqueues_only_the_expected_follow_up(has_more: bool) -> None:
         patch("tasks.knowledge_fs_upgrade_tasks.session_factory.get_session_maker", return_value="maker"),
         patch("tasks.knowledge_fs_upgrade_tasks.KnowledgeFSUpgradeRunner", return_value=runner),
         patch("services.knowledge.datasets.upgrades.enqueue_upgrade_job") as continue_upgrade,
-        patch.object(reconcile_knowledge_fs_upgrade_documents, "apply_async") as reconcile,
+        patch("tasks.knowledge_fs_upgrade_tasks._dispatch_reconciliations") as reconcile,
     ):
         run_knowledge_fs_upgrade.run(job_id="job-1")
 
@@ -86,7 +86,7 @@ def test_worker_enqueues_only_the_expected_follow_up(has_more: bool) -> None:
     else:
         assert runner.releases == []
         continue_upgrade.assert_not_called()
-        reconcile.assert_called_once_with(kwargs={"job_id": "job-1"})
+        reconcile.assert_called_once_with(job_id="job-1")
 
 
 def test_worker_skips_dispatch_when_the_job_moved_on() -> None:
@@ -131,10 +131,11 @@ def test_worker_marks_parent_failed_when_provisioning_retries_are_exhausted() ->
     assert runner.failures == [{"job_id": "job-1", "celery_task_id": None, "error": error}]
 
 
-def test_upgrade_checkpoint_is_redelivered_on_worker_loss_and_bounded_before_recovery() -> None:
-    assert run_knowledge_fs_upgrade.acks_late is True
-    assert run_knowledge_fs_upgrade.reject_on_worker_lost is True
-    options = task_options(run_knowledge_fs_upgrade)
+@pytest.mark.parametrize("task", [run_knowledge_fs_upgrade, reconcile_knowledge_fs_upgrade_documents])
+def test_upgrade_checkpoint_is_redelivered_on_worker_loss_and_bounded_before_recovery(task: Task[..., None]) -> None:
+    assert task.acks_late is True
+    assert task.reject_on_worker_lost is True
+    options = task_options(task)
     assert options["time_limit"] == UPGRADE_CHECKPOINT_TIME_LIMIT_SECONDS
     assert options["soft_time_limit"] == UPGRADE_CHECKPOINT_TIME_LIMIT_SECONDS - 30
     assert UPGRADE_DELIVERY_TIMEOUT.total_seconds() > UPGRADE_CHECKPOINT_TIME_LIMIT_SECONDS
@@ -173,6 +174,7 @@ def test_waiting_delivery_preserves_live_execution_and_releases_provisioning_ret
 
 def test_recovery_sweep_dispatches_each_abandoned_job_even_if_one_publish_fails() -> None:
     with (
+        patch("tasks.knowledge_fs_upgrade_tasks._dispatch_reconciliations", return_value=0),
         patch("tasks.knowledge_fs_upgrade_tasks.KnowledgeFSUpgradeSnapshotService") as snapshots,
         patch(
             "services.knowledge.datasets.upgrades.enqueue_upgrade_job", side_effect=[OSError("broker down"), None]

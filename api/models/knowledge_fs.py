@@ -912,6 +912,10 @@ class KnowledgeFSUpgradeJob(DefaultFieldsDCMixin, TypeBase):
     completed_sources: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
     attempt_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    # Independent delivery lease: parent success does not imply document state reconciliation finished.
+    reconciliation_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    reconciliation_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    reconciliation_lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     last_error_code: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
     last_error_message: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)

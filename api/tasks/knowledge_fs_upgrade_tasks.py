@@ -60,7 +60,7 @@ def run_knowledge_fs_upgrade(self, *, job_id: str) -> None:
     if has_more:
         _dispatch_next_checkpoint(runner, job_id=job_id, celery_task_id=self.request.id)
     else:
-        reconcile_knowledge_fs_upgrade_documents.apply_async(kwargs={"job_id": job_id})
+        _dispatch_reconciliations(job_id=job_id)
 
 
 def _dispatch_next_checkpoint(runner: KnowledgeFSUpgradeRunner, *, job_id: str, celery_task_id: str | None) -> None:
@@ -75,24 +75,46 @@ def _dispatch_next_checkpoint(runner: KnowledgeFSUpgradeRunner, *, job_id: str, 
 @shared_task(
     bind=True,
     queue=KNOWLEDGE_FS_UPGRADE_QUEUE,
-    max_retries=10_080,
-    default_retry_delay=60,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    soft_time_limit=UPGRADE_CHECKPOINT_TIME_LIMIT_SECONDS - 30,
+    time_limit=UPGRADE_CHECKPOINT_TIME_LIMIT_SECONDS,
 )
 def reconcile_knowledge_fs_upgrade_documents(self, *, job_id: str) -> None:
-    """Eventually apply click-time metadata and availability without gating migration success."""
+    """Apply document checkpoints under a recoverable lease, independent of parent success."""
 
     reconciler = KnowledgeFSUpgradeDocumentReconciler(session_factory.get_session_maker())
+    task_id = self.request.id
+    if not reconciler.start_delivery(job_id=job_id, task_id=task_id):
+        return
     try:
-        remaining = reconciler.reconcile(job_id=job_id)
-    except Exception as error:
+        reconciler.reconcile(job_id=job_id)
+    except Exception:
         logger.warning(
             "KnowledgeFS Dataset upgrade document reconciliation is not ready",
             extra={"upgrade_job_id": job_id},
             exc_info=True,
         )
-        raise self.retry(exc=error) from error
-    if remaining:
-        raise self.retry(exc=KnowledgeFSUpgradeNotReadyError(f"{remaining} migrated documents are not visible yet"))
+    finally:
+        # Beat retries unfinished checkpoints, including failures to persist this release.
+        reconciler.finish_delivery(job_id=job_id, task_id=task_id)
+
+
+def _dispatch_reconciliations(*, job_id: str | None = None) -> int:
+    reconciler = KnowledgeFSUpgradeDocumentReconciler(session_factory.get_session_maker())
+    deliveries = reconciler.claim_deliveries(job_id=job_id)
+    for tenant_id, pending_job_id, task_id in deliveries:
+        try:
+            reconcile_knowledge_fs_upgrade_documents.apply_async(kwargs={"job_id": pending_job_id}, task_id=task_id)
+        except Exception:
+            # Retain the lease after ambiguous publication: a delivered message may already be
+            # executing. Beat reclaims it after the bounded worker must have stopped.
+            logger.exception(
+                "KnowledgeFS upgrade reconciliation dispatch failed tenant_id=%s job_id=%s",
+                tenant_id,
+                pending_job_id,
+            )
+    return len(deliveries)
 
 
 @shared_task(queue=KNOWLEDGE_FS_UPGRADE_QUEUE)
@@ -116,7 +138,7 @@ def recover_stalled_knowledge_fs_upgrades() -> int:
         except Exception:
             # The next sweep recovers this unclaimed job even if the broker is down.
             logger.exception("KnowledgeFS upgrade recovery dispatch failed tenant_id=%s job_id=%s", tenant_id, job_id)
-    return len(recovered)
+    return len(recovered) + _dispatch_reconciliations()
 
 
 __all__ = [
