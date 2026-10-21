@@ -446,6 +446,10 @@ class TestConvertMcpSchemaToParameter:
         ("prop", "expected_type"),
         [
             ({"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]}, "string"),
+            (
+                {"allOf": [{"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]}]},
+                "string",
+            ),
             ({"anyOf": [{"type": "array", "items": {"type": "string"}}, {"type": "string"}]}, "array"),
             ({"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]}, "string"),
             ({"oneOf": [{"type": "array", "items": {"type": "string"}}, {"type": "string"}]}, "array"),
@@ -458,6 +462,45 @@ class TestConvertMcpSchemaToParameter:
         schema = {"type": "object", "properties": {"domain": prop}, "required": []}
         param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
         assert param.type.value == expected_type
+        assert param.input_schema == prop
+
+    @pytest.mark.parametrize(
+        ("prop", "expected_type"),
+        [
+            (
+                {
+                    "allOf": [
+                        {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
+                        {"type": "array", "items": {"type": "string"}},
+                    ]
+                },
+                "array",
+            ),
+            (
+                {
+                    "allOf": [
+                        {"type": "array", "items": {"type": "string"}},
+                        {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
+                    ]
+                },
+                "array",
+            ),
+        ],
+    )
+    def test_all_of_resolves_the_intersected_parameter_type(self, prop, expected_type):
+        schema = {"type": "object", "properties": {"domain": prop}, "required": []}
+        param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
+        assert param.type.value == expected_type
+
+    def test_deeply_nested_all_of_preserves_schema_when_type_resolution_limit_is_reached(self):
+        prop = {"type": "array", "items": {"type": "string"}}
+        for _ in range(12):
+            prop = {"allOf": [prop]}
+
+        schema = {"type": "object", "properties": {"domain": prop}, "required": []}
+        param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
+
+        assert param.type.value == "string"
         assert param.input_schema == prop
 
     @pytest.mark.parametrize(

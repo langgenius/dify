@@ -22,7 +22,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
-from core.tools.mcp_tool.tool import MCPTool
+from core.tools.mcp_tool.tool import MCPTool, schema_accepts_multiple_types
 from enums import DeploymentEdition
 from services.tools.tools_transform_service import ToolTransformService
 
@@ -163,12 +163,22 @@ _STRING = {"type": "string"}
 _STRING_LIST = {"type": "array", "items": {"type": "string"}}
 
 
+def test_schema_accepts_multiple_types_respects_allof_intersections():
+    assert schema_accepts_multiple_types({"allOf": [{"anyOf": [_STRING, _STRING_LIST]}]})
+    assert not schema_accepts_multiple_types({"allOf": [{"type": "string"}, {"anyOf": [_STRING, _STRING_LIST]}]})
+    assert schema_accepts_multiple_types({"anyOf": [{}, _STRING_LIST]})
+    assert not schema_accepts_multiple_types({"allOf": [{"type": "array"}, {}]})
+
+
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 @pytest.mark.parametrize(
     "domain_schema",
     [
         {"anyOf": [_STRING, _STRING_LIST]},
+        {"anyOf": [{}, _STRING_LIST]},
+        {"allOf": [{"anyOf": [_STRING, _STRING_LIST]}]},
         {"anyOf": [_STRING_LIST, _STRING]},
+        {"allOf": [{"anyOf": [_STRING_LIST, _STRING]}]},
         {"oneOf": [_STRING, _STRING_LIST]},
         {"oneOf": [_STRING_LIST, _STRING]},
         {"type": ["string", "array"], "items": _STRING},
@@ -191,6 +201,31 @@ def test_mcp_tool_invoke_preserves_values_of_mixed_type_union_parameters(
     assert sent["domain"] == domain
     # Parameters with a single declared type keep the existing cast.
     assert sent["name"] == "1"
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_mcp_tool_invoke_uses_type_narrowed_by_allof(sqlite_session: Session):
+    tool = _build_mcp_tool()
+    array_schema = {"type": "array", "items": {"type": "string"}}
+    schema = {
+        "type": "object",
+        "properties": {
+            "domain": {
+                "allOf": [
+                    {"anyOf": [_STRING, _STRING_LIST]},
+                    array_schema,
+                ]
+            }
+        },
+        "required": [],
+    }
+    tool.entity.parameters = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+    result = CallToolResult(content=[TextContent(type="text", text="ok")])
+
+    with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result) as invoke_remote:
+        list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"domain": ["light", "cover"]}))
+
+    assert invoke_remote.call_args.args[0]["domain"] == ["light", "cover"]
 
 
 # ----- M2/M3 user-identity forwarding ---------------------------------------
