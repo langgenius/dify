@@ -1838,7 +1838,7 @@ describe('DocumentDetailPage', () => {
     await user.click(
       screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.metadata.type.number' }))
+    await user.click(screen.getByRole('radio', { name: 'dataset.metadata.type.number' }))
     await user.type(
       screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
       'priority',
@@ -1885,7 +1885,7 @@ describe('DocumentDetailPage', () => {
     await user.click(
       screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.metadata.type.number' }))
+    await user.click(screen.getByRole('radio', { name: 'dataset.metadata.type.number' }))
     await user.type(
       screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
       'priority',
@@ -1968,42 +1968,34 @@ describe('DocumentDetailPage', () => {
       name: 'dataset.metadata.createMetadata.name',
     })
     const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
-    expect(save).toBeDisabled()
+    expect(nameInput).toHaveFocus()
 
-    await user.type(nameInput, 'Priority')
+    await user.click(save)
+    expect(createMetadataField).not.toHaveBeenCalled()
     expect(nameInput).toHaveAttribute('aria-invalid', 'true')
-    expect(within(dialog).getByRole('alert')).toHaveTextContent(
-      'dataset.metadata.checkName.invalid',
-    )
-    expect(save).toBeDisabled()
+    expect(nameInput).toHaveAccessibleDescription(/dataset.metadata.checkName.empty/)
+    expect(nameInput).toHaveFocus()
 
-    await user.clear(nameInput)
-    await user.type(nameInput, 'existing_field')
-    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
-    expect(within(dialog).getByRole('alert')).toHaveTextContent(
-      'dataset.metadata.checkName.duplicate',
-    )
-    expect(save).toBeDisabled()
-
-    await user.clear(nameInput)
-    await user.type(nameInput, 'a'.repeat(256))
-    expect(within(dialog).getByRole('alert')).toHaveTextContent(
-      'dataset.metadata.checkName.tooLong',
-    )
-    expect(save).toBeDisabled()
-
-    await user.clear(nameInput)
-    await user.type(nameInput, 'sourceName')
-    expect(within(dialog).getByRole('alert')).toHaveTextContent(
-      'dataset.metadata.checkName.invalid',
-    )
-    expect(save).toBeDisabled()
+    const cases = [
+      ['Priority', 'invalid'],
+      ['existing_field', 'duplicate'],
+      ['a'.repeat(256), 'tooLong'],
+      ['sourceName', 'invalid'],
+    ] as const
+    for (const [name, error] of cases) {
+      await user.clear(nameInput)
+      await user.type(nameInput, name)
+      expect(nameInput).toHaveAccessibleDescription(
+        new RegExp(`dataset.metadata.checkName.${error}`),
+      )
+      await user.keyboard('{Enter}')
+      expect(createMetadataField).not.toHaveBeenCalled()
+    }
 
     await user.clear(nameInput)
     await user.type(nameInput, 'priority_1')
     expect(nameInput).not.toHaveAttribute('aria-invalid')
-    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
-    expect(save).toBeEnabled()
+    expect(nameInput).not.toHaveAccessibleDescription()
   })
 
   it('opens the New RAG metadata manager from the document picker', async () => {

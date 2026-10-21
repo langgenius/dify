@@ -2164,7 +2164,11 @@ def test_reconciliation_keeps_gate_closed_when_identity_resolution_is_unavailabl
     facade = FakeUpgradeFacade(
         list_logical_documents=CallRecorder(result=KnowledgeFSLogicalDocumentListResponse(data=[], next_cursor=None)),
     )
-    recorder = getattr(facade, failure_at)
+    recorder = {
+        "get_document": facade.get_document,
+        "resolve_document_reference": facade.resolve_document_reference,
+        "get_logical_document": facade.get_logical_document,
+    }[failure_at]
     recorder.error = RuntimeError("upstream unavailable")
     monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
     assert KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory).reconcile(job_id=job.id) == 1
