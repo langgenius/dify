@@ -514,7 +514,7 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
-    agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+    agent_log = result.metadata
     assert agent_log["agent_backend"]["run_id"] == "fake-run-1"
     assert agent_log["agent_backend"]["status"] == "succeeded"
     assert result.process_data["agent_id"] == "agent-1"
@@ -537,7 +537,7 @@ def test_agent_node_structured_success_preserves_text_and_checks_only_custom_out
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent", "summary": "Short summary"}
-    agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+    agent_log = result.metadata
     assert agent_log["output_type_check"] == {
         "passed": True,
         "results": [
@@ -562,7 +562,7 @@ def test_agent_node_structured_output_type_failure_stops_the_node():
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error_type == "output_type_check_failed"
-    agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+    agent_log = result.metadata
     assert agent_log["output_failure_decision"] == "fail_node"
 
 
@@ -693,7 +693,7 @@ def test_agent_node_run_streams_agent_message_delta_as_text_chunks():
     result = cast(StreamCompletedEvent, events[2]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    agent_backend = result.metadata["agent_backend"]
     assert agent_backend["status"] == "succeeded"
     assert agent_backend["agent_message_delta_count"] == 1
     assert agent_backend["agent_message_delta_length"] == len("hello ")
@@ -709,7 +709,7 @@ def test_agent_node_structured_run_keeps_agent_message_delta_out_of_text_stream(
 
     assert len(events) == 1
     result = cast(StreamCompletedEvent, events[0]).node_run_result
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    agent_backend = result.metadata["agent_backend"]
     assert agent_backend["agent_message_delta_count"] == 1
 
 
@@ -725,7 +725,7 @@ def test_agent_node_default_value_plain_run_keeps_agent_message_delta_out_of_tex
     assert len(events) == 1
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.outputs == {"text": "hello agent"}
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    agent_backend = result.metadata["agent_backend"]
     assert agent_backend["agent_message_delta_count"] == 1
 
 
@@ -871,7 +871,7 @@ def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_
     assert len(events) == 1
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    agent_backend = result.metadata["agent_backend"]
     assert agent_backend["session_snapshot_persisted"] is False
     assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_workspace_store_error"
 
@@ -894,7 +894,7 @@ def test_agent_node_snapshot_save_failure_preserves_original_failure(failure_kin
     else:
         assert result.error == "stream reconnect attempts exhausted"
         assert result.error_type == "agent_backend_stream_error"
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    agent_backend = result.metadata["agent_backend"]
     assert agent_backend["session_snapshot_persisted"] is False
     assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_workspace_store_error"
     assert store.save_attempts == [SessionSnapshot(layers={})]

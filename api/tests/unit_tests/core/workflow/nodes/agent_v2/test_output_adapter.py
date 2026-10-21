@@ -1,4 +1,6 @@
+import json
 from decimal import Decimal
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -9,11 +11,17 @@ from clients.agent_backend import (
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
+    AgentBackendStreamInternalEvent,
 )
+from configs import dify_config
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from core.workflow.nodes.agent_v2.output_adapter import (
+    WorkflowAgentOutputAdapter,
+    WorkflowAgentProcessProjection,
+)
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.variables.segments import ArrayFileSegment, FileSegment
 from models.agent_config_entities import DeclaredArrayItem, DeclaredOutputConfig, DeclaredOutputType
 
@@ -139,8 +147,8 @@ def test_success_output_adapter_preserves_dict_output():
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"summary": "ok"}
-    assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]["status"] == "succeeded"
-    assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]["session_snapshot"] == {
+    assert result.metadata["agent_backend"]["status"] == "succeeded"
+    assert result.metadata["agent_backend"]["session_snapshot"] == {
         "layer_count": 0,
     }
 
@@ -172,7 +180,7 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
     assert result.llm_usage.total_tokens == 21
     assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 21
     assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == Decimal("0.000210")
-    assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]["session_snapshot"] == {
+    assert result.metadata["agent_backend"]["session_snapshot"] == {
         "layer_count": 0
     }
 
@@ -608,4 +616,275 @@ def test_stream_exhausted_result_is_failed_with_stream_error():
 
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error_type == "agent_backend_stream_error"
-    assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]["run_id"] == "run-1"
+    assert result.metadata["agent_backend"]["run_id"] == "run-1"
+
+
+# ── Agent process projection and execution metadata flatting ──────────────
+
+
+def _projection() -> WorkflowAgentProcessProjection:
+    return WorkflowAgentProcessProjection(node_id="agent-node", node_execution_id="exec-1")
+
+
+def _stream_event(event_kind: str, **data: object) -> AgentBackendStreamInternalEvent:
+    return AgentBackendStreamInternalEvent(
+        run_id="run-1",
+        source_event_id="evt-1",
+        event_kind=event_kind,
+        data=cast(dict[str, object], data),
+    )
+
+
+def test_projection_records_thinking_segment():
+    projection = _projection()
+    projection.observe(_stream_event(
+        "part_start",
+        index=0,
+        part={"part_kind": "thinking", "content": "Let me start"},
+    ))
+    projection.observe(_stream_event(
+        "part_delta",
+        index=0,
+        delta={"part_delta_kind": "thinking", "content_delta": " with the skill"},
+    ))
+
+    entries = projection.entries()
+
+    assert len(entries) == 1
+    assert entries[0].label == "Thinking"
+    assert entries[0].data["thought"] == "Let me start with the skill"
+    assert entries[0].node_execution_id == "exec-1"
+    assert entries[0].node_id == "agent-node"
+
+
+def test_projection_starts_a_new_thinking_entry_after_a_tool_call():
+    projection = _projection()
+    projection.observe(_stream_event(
+        "part_delta",
+        index=0,
+        delta={"part_delta_kind": "thinking", "content_delta": "before tool"},
+    ))
+    projection.observe(_stream_event(
+        "function_tool_call",
+        index=1,
+        part={"part_kind": "tool-call", "tool_name": "shell_run", "tool_call_id": "tc-1", "args": {"cmd": "ls"}},
+    ))
+    projection.observe(_stream_event(
+        "part_delta",
+        index=0,
+        delta={"part_delta_kind": "thinking", "content_delta": "after tool"},
+    ))
+
+    entries = projection.entries()
+
+    assert len(entries) == 3
+    assert entries[0].data["thought"] == "before tool"
+    assert entries[1].label == "shell_run"
+    assert entries[1].data["tool_input"] == '{"cmd": "ls"}'
+    assert entries[2].data["thought"] == "after tool"
+
+
+def test_projection_merges_tool_call_and_result_by_tool_call_id():
+    projection = _projection()
+    projection.observe(_stream_event(
+        "part_delta",
+        index=0,
+        delta={"part_delta_kind": "tool_call", "tool_call_id": "tc-1", "tool_name": "shell_run"},
+    ))
+    projection.observe(_stream_event(
+        "function_tool_call",
+        index=0,
+        part={"tool_name": "shell_run", "tool_call_id": "tc-1", "args": {"cmd": "pwd"}},
+    ))
+    projection.observe(_stream_event(
+        "function_tool_result",
+        index=0,
+        part={"tool_name": "shell_run", "tool_call_id": "tc-1", "content": {"output": "/app"}},
+    ))
+
+    entries = projection.entries()
+
+    assert len(entries) == 1
+    assert entries[0].data["observation"] == '{"output": "/app"}'
+    assert entries[0].data["tool_input"] == '{"cmd": "pwd"}'
+
+
+def test_projection_falls_back_to_index_when_tool_call_id_is_missing():
+    projection = _projection()
+    projection.observe(_stream_event(
+        "part_start",
+        index=2,
+        part={"part_kind": "tool-call", "tool_name": "shell_wait", "args": {"seconds": 1}},
+    ))
+    projection.observe(_stream_event(
+        "function_tool_result",
+        index=2,
+        part={"tool_name": "shell_wait", "content": "done"},
+    ))
+
+    entries = projection.entries()
+
+    assert len(entries) == 1
+    assert entries[0].label == "shell_wait"
+    assert entries[0].data["observation"] == '"done"'
+
+
+def test_projection_discards_invalid_partial_tool_input():
+    projection = _projection()
+    projection.observe(_stream_event(
+        "part_delta",
+        index=0,
+        delta={
+            "part_delta_kind": "tool_call",
+            "tool_call_id": "tc-1",
+            "tool_name": "shell_run",
+            "args_delta": '{"cmd": "ech',
+        },
+    ))
+
+    entries = projection.entries()
+
+    assert entries[0].data["tool_input"] is None
+
+
+def test_projection_records_model_text_as_message_entries():
+    projection = _projection()
+    projection.observe_agent_message_delta("I will ")
+    projection.observe_agent_message_delta("pull the skill")
+    projection.observe(_stream_event(
+        "function_tool_call",
+        index=0,
+        part={"tool_name": "shell_run", "tool_call_id": "tc-1", "args": {}},
+    ))
+    projection.observe_agent_message_delta("Reading it now")
+
+    entries = projection.entries()
+
+    assert [entry.label for entry in entries] == ["Message", "shell_run", "Message"]
+    assert entries[0].data["answer"] == "I will pull the skill"
+    assert entries[2].data["answer"] == "Reading it now"
+
+
+def test_projection_truncates_a_single_field_over_the_string_limit(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 16, raising=False)
+    projection = _projection()
+    projection.observe(_stream_event(
+        "part_delta",
+        index=0,
+        delta={"part_delta_kind": "thinking", "content_delta": "x" * 40},
+    ))
+
+    entries = projection.entries()
+
+    assert entries[0].data["thought"] == "x" * 16 + "\n…[truncated]"
+
+
+def test_projection_evicts_oldest_entries_over_the_byte_budget(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 200, raising=False)
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 100_000, raising=False)
+    projection = _projection()
+    for index in range(6):
+        projection.observe(_stream_event(
+            "function_tool_call",
+            index=index,
+            part={"tool_name": "shell_run", "tool_call_id": f"tc-{index}", "args": {"n": index}},
+        ))
+
+    entries = projection.entries()
+
+    total = sum(
+        len(json.dumps(entry.data, ensure_ascii=False)) + len(entry.label) for entry in entries
+    )
+    assert entries[0].label == "Agent process truncated"
+    assert len(entries) < 6
+    assert total <= 200 + len("Agent process truncated") + len(json.dumps({"truncated": True}))
+
+
+def test_projection_skips_output_tool_calls_and_non_mapping_payloads():
+    projection = _projection()
+    projection.observe(AgentBackendStreamInternalEvent(
+        run_id="run-1",
+        source_event_id="evt-1",
+        event_kind="output_tool_call",
+        data=None,
+    ))
+    projection.observe(_stream_event(
+        "part_start",
+        index=0,
+        part={"part_kind": "output-tool-call", "tool_name": "final_output", "args": {"x": 1}},
+    ))
+    projection.observe(_stream_event(
+        "part_delta",
+        index=0,
+        delta={"part_delta_kind": "tool_return", "content": "ignored"},
+    ))
+
+    assert projection.entries() == []
+
+
+def test_projection_entries_is_idempotent():
+    projection = _projection()
+    projection.observe(_stream_event(
+        "part_delta",
+        index=0,
+        delta={"part_delta_kind": "thinking", "content_delta": "once"},
+    ))
+
+    first = projection.entries()
+    second = projection.entries()
+
+    assert first == second
+    assert len(first) == 1
+
+
+def test_node_execution_metadata_flattens_statistics_and_keeps_agent_log_array():
+    projection = _projection()
+    projection.observe(_stream_event(
+        "function_tool_call",
+        index=0,
+        part={"tool_name": "shell_run", "tool_call_id": "tc-1", "args": {"cmd": "ls"}},
+    ))
+
+    metadata = WorkflowAgentOutputAdapter.build_node_execution_metadata(
+        metadata={"agent_backend": {"run_id": "run-1"}, "attempt": 0},
+        agent_log=projection.entries(),
+    )
+
+    assert set(metadata) == {"agent_backend", "attempt", WorkflowNodeExecutionMetadataKey.AGENT_LOG}
+    assert metadata["agent_backend"] == {"run_id": "run-1"}
+    assert isinstance(metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG], list)
+    assert len(metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]) == 1
+
+
+def test_node_execution_metadata_defaults_to_an_empty_agent_log():
+    metadata = WorkflowAgentOutputAdapter.build_node_execution_metadata(
+        metadata={"agent_backend": {"run_id": "run-1"}},
+    )
+
+    assert metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG] == []
+
+
+def test_build_node_metadata_keeps_usage_fields_after_flatting():
+    usage = LLMUsage.from_metadata({"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12})
+
+    node_metadata = WorkflowAgentOutputAdapter._build_node_metadata(
+        metadata={"agent_backend": {"usage": {"total_tokens": 12}}},
+        usage=usage,
+    )
+
+    assert node_metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 12
+    assert node_metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == usage.total_price
+    assert node_metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] == usage.currency
+    assert node_metadata["agent_backend"] == {"usage": {"total_tokens": 12}}
+    assert node_metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG] == []
+
+
+def test_build_node_metadata_keeps_flattened_sibling_keys():
+    node_metadata = WorkflowAgentOutputAdapter._build_node_metadata(
+        metadata={"agent_backend": {"run_id": "run-1"}, "attempt": 1, "terminal_event_type": "run_failed"},
+        usage=None,
+    )
+
+    assert node_metadata["agent_backend"] == {"run_id": "run-1"}
+    assert node_metadata["attempt"] == 1
+    assert node_metadata["terminal_event_type"] == "run_failed"
