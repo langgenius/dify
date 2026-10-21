@@ -400,7 +400,7 @@ services:
   # Keep this queue out of the generic worker so large file copies cannot starve existing jobs.
   worker_knowledge_fs_upgrade:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.16.1
+    image: langgenius/dify-api:1.17.1
     environment:
       MODE: worker
       CELERY_WORKER_QUEUES: knowledge_fs_upgrade
