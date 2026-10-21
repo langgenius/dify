@@ -2,65 +2,59 @@
 
 import json
 from datetime import datetime
-from unittest.mock import Mock, call
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.auth_client import MCPClientWithAuthRetry
-from core.mcp.error import MCPConnectionError
-from core.mcp.types import ListToolsResult, Tool
+from core.mcp.types import ErrorData, ListToolsResult, Tool
+from models.account import Account
 from models.tools import MCPToolProvider
 from services.tools.mcp_tools_manage_service import MCPToolManageService
+from tests.unit_tests.core.mcp.test_mcp_tool_pagination import client_for_pages
 
 
 @pytest.fixture
-def provider() -> MCPToolProvider:
+def provider(sqlite_session: Session) -> MCPToolProvider:
+    owner = Account(name="MCP owner", email="mcp-owner@example.com")
+    sqlite_session.add(owner)
     provider = MCPToolProvider(
         name="Test server",
         server_identifier="test-server",
         server_url="https://example.com/mcp",
         server_url_hash="hash",
         icon="",
-        tenant_id="tenant-id",
-        user_id="user-id",
+        tenant_id=str(uuid4()),
+        user_id=owner.id,
         authed=True,
         tools=json.dumps([{"name": "saved-tool", "inputSchema": {}}]),
     )
     provider.created_at = datetime(2024, 1, 1)
     provider.updated_at = datetime(2024, 1, 1)
+    sqlite_session.add(provider)
+    sqlite_session.flush()
     return provider
 
 
 @pytest.fixture
-def db_session(provider: MCPToolProvider) -> Mock:
-    return Mock(scalar=Mock(return_value=provider))
+def flushes(sqlite_session: Session, provider: MCPToolProvider) -> list[None]:
+    assert provider in sqlite_session
+    flushes: list[None] = []
+    event.listen(sqlite_session, "after_flush", lambda *_args: flushes.append(None))
+    return flushes
 
 
 @pytest.fixture
-def remote_session() -> Mock:
-    return Mock()
-
-
-@pytest.fixture
-def build_response() -> Mock:
-    return Mock()
-
-
-@pytest.fixture
-def service(
-    db_session: Mock, remote_session: Mock, build_response: Mock, monkeypatch: pytest.MonkeyPatch
-) -> MCPToolManageService:
-    service = MCPToolManageService(db_session)
+def client(monkeypatch: pytest.MonkeyPatch) -> MCPClientWithAuthRetry:
     client = MCPClientWithAuthRetry(server_url="https://example.com/mcp")
-    client._session = remote_session
-    # Keep the real auth wrapper and pagination loop; only transport setup is stubbed.
-    monkeypatch.setattr(client, "_initialize", Mock())
-    monkeypatch.setattr("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry", Mock(return_value=client))
-    monkeypatch.setattr(MCPProviderEntity, "decrypt_server_url", Mock(return_value="https://example.com/mcp"))
-    monkeypatch.setattr(service, "_prepare_auth_headers", Mock(return_value={}))
-    monkeypatch.setattr(service, "_build_tool_provider_response", build_response)
-    return service
+    # Keep the real auth wrapper and session; in-memory JSON-RPC replaces transport setup.
+    monkeypatch.setattr(client, "_initialize", lambda: None)
+    monkeypatch.setattr("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry", lambda **_kwargs: client)
+    monkeypatch.setattr(MCPProviderEntity, "decrypt_server_url", lambda _self: "https://example.com/mcp")
+    return client
 
 
 def _page(name: str, cursor: str | None) -> ListToolsResult:
@@ -69,23 +63,23 @@ def _page(name: str, cursor: str | None) -> ListToolsResult:
 
 @pytest.mark.parametrize("cursor", ["next", ""])
 def test_list_provider_tools_saves_all_pages(
-    service: MCPToolManageService,
+    sqlite_session: Session,
     provider: MCPToolProvider,
-    db_session: Mock,
-    remote_session: Mock,
-    build_response: Mock,
+    flushes: list[None],
+    client: MCPClientWithAuthRetry,
     cursor: str,
 ) -> None:
-    remote_session.list_tools.side_effect = [_page("alpha", cursor), _page("beta", None)]
+    service = MCPToolManageService(sqlite_session)
+    with client_for_pages({None: _page("alpha", cursor), cursor: _page("beta", None)}, client) as (_, requests):
+        service.list_provider_tools(tenant_id=provider.tenant_id, provider_id=provider.id)
 
-    result = service.list_provider_tools(tenant_id=provider.tenant_id, provider_id=provider.id)
-
-    assert result is build_response.return_value
     assert [tool["name"] for tool in json.loads(provider.tools)] == ["alpha", "beta"]
     assert all(tool["description"] == "" for tool in json.loads(provider.tools))
     assert provider.authed is True
-    db_session.flush.assert_called_once_with()
-    assert remote_session.list_tools.call_args_list == [call(), call(cursor=cursor)]
+    assert len(flushes) == 1
+    assert [request.params.cursor if request.params is not None else None for request in requests] == [None, cursor]
+    sqlite_session.expire(provider)
+    assert [tool["name"] for tool in json.loads(provider.tools)] == ["alpha", "beta"]
 
 
 @pytest.mark.parametrize(
@@ -94,43 +88,53 @@ def test_list_provider_tools_saves_all_pages(
     ids=["repeated", "cycle", "empty-repeated"],
 )
 def test_list_provider_tools_preserves_saved_tools_on_cursor_cycle(
-    service: MCPToolManageService,
+    sqlite_session: Session,
     provider: MCPToolProvider,
-    db_session: Mock,
-    remote_session: Mock,
-    build_response: Mock,
+    flushes: list[None],
+    client: MCPClientWithAuthRetry,
     cursors: list[str],
 ) -> None:
     original_tools, original_updated_at = provider.tools, provider.updated_at
-    remote_session.list_tools.side_effect = [_page(f"tool-{index}", cursor) for index, cursor in enumerate(cursors)]
-
-    with pytest.raises(ValueError, match="Failed to connect to MCP server: .*repeated pagination cursor"):
-        service.list_provider_tools(tenant_id=provider.tenant_id, provider_id=provider.id)
+    pages = {
+        None if index == 0 else cursors[index - 1]: _page(f"tool-{index}", cursor)
+        for index, cursor in enumerate(cursors)
+    }
+    service = MCPToolManageService(sqlite_session)
+    with client_for_pages(pages, client) as (_, requests):
+        with pytest.raises(ValueError, match="Failed to connect to MCP server: .*repeated pagination cursor"):
+            service.list_provider_tools(tenant_id=provider.tenant_id, provider_id=provider.id)
 
     assert provider.tools == original_tools
     assert provider.updated_at == original_updated_at
     assert provider.authed is True
-    db_session.flush.assert_not_called()
-    build_response.assert_not_called()
-    assert remote_session.list_tools.call_args_list == [call(), *[call(cursor=cursor) for cursor in cursors[:-1]]]
+    assert not flushes
+    assert [request.params.cursor if request.params is not None else None for request in requests] == [
+        None,
+        *cursors[:-1],
+    ]
+    sqlite_session.expire(provider)
+    assert provider.tools == original_tools
+    assert provider.updated_at == original_updated_at
 
 
 def test_list_provider_tools_preserves_saved_tools_on_later_page_error(
-    service: MCPToolManageService,
+    sqlite_session: Session,
     provider: MCPToolProvider,
-    db_session: Mock,
-    remote_session: Mock,
-    build_response: Mock,
+    flushes: list[None],
+    client: MCPClientWithAuthRetry,
 ) -> None:
     original_tools, original_updated_at = provider.tools, provider.updated_at
-    remote_session.list_tools.side_effect = [_page("alpha", "next"), MCPConnectionError("later page failed")]
-
-    with pytest.raises(ValueError, match="Failed to connect to MCP server: later page failed"):
-        service.list_provider_tools(tenant_id=provider.tenant_id, provider_id=provider.id)
+    pages = {None: _page("alpha", "next"), "next": ErrorData(code=500, message="later page failed")}
+    service = MCPToolManageService(sqlite_session)
+    with client_for_pages(pages, client) as (_, requests):
+        with pytest.raises(ValueError, match="Failed to connect to MCP server: .*later page failed"):
+            service.list_provider_tools(tenant_id=provider.tenant_id, provider_id=provider.id)
 
     assert provider.tools == original_tools
     assert provider.updated_at == original_updated_at
     assert provider.authed is True
-    db_session.flush.assert_not_called()
-    build_response.assert_not_called()
-    assert remote_session.list_tools.call_args_list == [call(), call(cursor="next")]
+    assert not flushes
+    assert [request.params.cursor if request.params is not None else None for request in requests] == [None, "next"]
+    sqlite_session.expire(provider)
+    assert provider.tools == original_tools
+    assert provider.updated_at == original_updated_at
