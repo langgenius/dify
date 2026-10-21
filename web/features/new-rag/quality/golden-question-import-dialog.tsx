@@ -115,7 +115,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
   }
 
   return (
-    <DialogPopup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-180 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border-0 p-6 shadow-xl">
+    <DialogPopup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-180 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border-0 bg-components-panel-bg p-6 shadow-xl">
       <div className="flex items-center justify-between">
         <DialogTitle className="system-md-semibold text-text-primary">
           {t(($) => $['qualityPage.importTitle'], { ns: 'knowledgeQuality' })}

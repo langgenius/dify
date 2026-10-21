@@ -402,7 +402,7 @@ function CreateKnowledgeSession() {
         <DialogBackdrop className="bg-background-overlay-backdrop backdrop-blur-[6px]" />
         <DialogPopup
           aria-labelledby={dialogTitleId}
-          className="fixed inset-x-3 top-4 bottom-4 grid min-h-0 min-w-0 overflow-hidden xl:grid-cols-2"
+          className="fixed inset-x-3 top-4 bottom-4 grid min-h-0 min-w-0 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl xl:grid-cols-2"
         >
           <IconButton
             size="lg"

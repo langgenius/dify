@@ -173,7 +173,7 @@ function GoldenQuestionDialogSession({
     matchMutation.data?.candidates ??
     evidenceOptions.filter((option) => !initialValue.expectedEvidenceIds.includes(option.node_id))
   return (
-    <DialogPopup className="relative flex max-h-[calc(100dvh-2rem)] w-140 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border-0 p-0 shadow-xl">
+    <DialogPopup className="relative flex max-h-[calc(100dvh-2rem)] w-140 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border-0 bg-components-panel-bg p-0 shadow-xl">
       <div className="relative z-1 flex shrink-0 items-center justify-between bg-components-panel-bg px-6 pt-6 pb-5">
         <DialogTitle className="system-md-semibold text-text-primary">{title}</DialogTitle>
         <DialogClose
