@@ -1,6 +1,6 @@
 'use client'
 
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 import type { DialogState, ResourceCandidate } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -70,7 +70,7 @@ export default function ResourceAccessTokenDialog({
     })
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     const normalizedName = name.trim()
     if (!normalizedName) return

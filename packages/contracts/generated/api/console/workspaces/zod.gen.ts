@@ -1035,18 +1035,6 @@ export const zMcpAuthResponse = z.object({
 })
 
 /**
- * WorkflowToolHumanInputNotSupportedError
- *
- * Workflow with Human Input nodes cannot be published as a workflow tool.
- */
-export const zWorkflowToolHumanInputNotSupportedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('workflow_tool_human_input_not_supported'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * WorkflowToolDeletePayload
  */
 export const zWorkflowToolDeletePayload = z.object({

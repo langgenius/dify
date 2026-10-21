@@ -140,10 +140,6 @@ const FeaturesTrigger = () => {
     return deploymentEdition === 'CLOUD' && plan === 'sandbox' && entryCount > 2
   }, [nodes, plan, deploymentEdition])
 
-  const hasHumanInputNode = useMemo(() => {
-    return nodes.some((node) => node.data.type === BlockEnum.HumanInput)
-  }, [nodes])
-
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
 
   const handleShowFeatures = useCallback(() => {
@@ -272,7 +268,6 @@ const FeaturesTrigger = () => {
           hasTriggerNode,
           startNodeLimitExceeded,
           publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded || !canReleaseAndVersion,
-          hasHumanInputNode,
         }}
       />
     </>
