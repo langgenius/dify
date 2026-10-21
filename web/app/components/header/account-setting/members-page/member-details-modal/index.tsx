@@ -144,19 +144,25 @@ const MemberDetailsModal = ({
             />
           </DialogHeader>
 
-          <DialogBody className="flex items-center gap-3">
-            <Avatar size="2xl" aria-hidden="true">
-              <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
-              <AvatarImage src={member.avatar_url || undefined} alt="" />
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <div className="truncate system-md-semibold text-text-primary">{member.name}</div>
-              <div className="truncate system-xs-regular text-text-tertiary">{member.email}</div>
+          <DialogBody>
+            <div className="flex items-center gap-3">
+              <Avatar size="2xl" aria-hidden="true">
+                <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
+                <AvatarImage src={member.avatar_url || undefined} alt="" />
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="system-md-semibold wrap-break-word text-text-primary">
+                  {member.name}
+                </div>
+                <div className="system-xs-regular wrap-break-word text-text-tertiary">
+                  {member.email}
+                </div>
+              </div>
             </div>
 
             <div className="-mx-6 my-3 border-t border-divider-subtle" />
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 system-sm-semibold text-text-secondary">
                 <span>{assignedRolesLabel}</span>
                 {!isLoadingRolesOfMember && (
