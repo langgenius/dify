@@ -54,7 +54,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           value="agent"
         >
           {t(($) => $['view.agent'])}
-          <span className="ml-1 badge badge-s badge-accent px-1 py-px system-2xs-medium-uppercase">
+          <span className="ml-1 inline-flex items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-px system-2xs-medium-uppercase text-text-tertiary">
             {t(($) => $['view.beta'])}
           </span>
         </SegmentedControlItem>
