@@ -19,7 +19,13 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from libs.helper import convert_datetime_to_date, escape_like_pattern, to_timestamp
 from models.agent import WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
-from models.model import App, Conversation, Message, MessageFeedback
+from models.model import (
+    App,
+    Conversation,
+    Message,
+    MessageAgentThought,
+    MessageFeedback,
+)
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionModel,
@@ -222,11 +228,17 @@ class AgentObservabilityService:
                     source_filter=source_filter,
                 )
                 feedbacks_by_message = self._list_message_feedbacks(app=app, messages=messages)
+                thoughts_by_message = self._list_message_agent_thoughts(
+                    message_ids=[message.id for message in messages]
+                )
                 rows.extend(
-                    self.serialize_log_message(
-                        message,
-                        feedbacks=feedbacks_by_message.get(message.id, ()),
-                    )
+                    {
+                        **self.serialize_log_message(
+                            message,
+                            feedbacks=feedbacks_by_message.get(message.id, ()),
+                        ),
+                        "agent_thoughts": thoughts_by_message.get(message.id, []),
+                    }
                     for message in messages
                 )
             if source_filter.kind in {"all", "workflow"}:
@@ -391,6 +403,36 @@ class AgentObservabilityService:
         for feedback in self._session.scalars(stmt).all():
             feedbacks_by_message.setdefault(feedback.message_id, []).append(feedback)
         return feedbacks_by_message
+
+    def _list_message_agent_thoughts(self, *, message_ids: Sequence[str]) -> dict[str, list[dict[str, Any]]]:
+        """Batch-read persisted `MessageAgentThought` rows as AgentThought-shaped dicts."""
+        if not message_ids:
+            return {}
+
+        stmt = (
+            select(MessageAgentThought)
+            .where(MessageAgentThought.message_id.in_(message_ids))
+            .order_by(MessageAgentThought.position.asc(), MessageAgentThought.id.asc())
+        )
+        thoughts_by_message: dict[str, list[dict[str, Any]]] = {}
+        for row in self._session.scalars(stmt).all():
+            thoughts_by_message.setdefault(row.message_id, []).append(
+                {
+                    "id": row.id,
+                    "message_id": row.message_id,
+                    "position": row.position,
+                    "thought": row.thought,
+                    "answer": row.answer,
+                    "tool": row.tool or None,
+                    "tool_labels": row.tool_labels,
+                    "tool_input": row.tool_input,
+                    "created_at": to_timestamp(row.created_at),
+                    "observation": row.observation,
+                    "files": row.files,
+                    "chain_id": row.message_chain_id,
+                }
+            )
+        return thoughts_by_message
 
     def _list_conversation_feedback_rates(
         self, *, app: App, conversation_ids: Sequence[str]
@@ -735,8 +777,9 @@ class AgentObservabilityService:
         inputs = cls._json_mapping(node_execution.inputs)
         outputs = cls._json_mapping(node_execution.outputs)
         metadata = cls._json_mapping(node_execution.execution_metadata)
-        agent_log = cls._mapping_value(metadata, "agent_log")
-        agent_backend = cls._mapping_value(agent_log, "agent_backend")
+        agent_backend = cls._mapping_value(metadata, "agent_backend")
+        raw_agent_log = metadata.get("agent_log")
+        agent_log_entries = raw_agent_log if isinstance(raw_agent_log, list) else []
         usage = cls._mapping_value(agent_backend, "usage")
 
         prompt_tokens = cls._int_value(usage.get("prompt_tokens"))
@@ -770,6 +813,7 @@ class AgentObservabilityService:
             "latency": float(usage.get("latency") or node_execution.elapsed_time or 0),
             "created_at": to_timestamp(node_execution.created_at),
             "updated_at": to_timestamp(node_execution.finished_at or node_execution.created_at),
+            "agent_thoughts": cls._workflow_agent_thoughts(agent_log_entries),
         }
 
     @classmethod
@@ -779,6 +823,39 @@ class AgentObservabilityService:
             "content": feedback.content,
             "from_source": cls._enum_value(feedback.from_source),
         }
+
+    @classmethod
+    def _workflow_agent_thoughts(cls, entries: list[Any]) -> list[dict[str, Any]]:
+        """Map persisted ``AgentLogEvent`` entries onto the shared AgentThought shape."""
+        thoughts: list[dict[str, Any]] = []
+        for position, entry in enumerate(entries, start=1):
+            if not isinstance(entry, Mapping):
+                continue
+            data = cls._mapping_value(entry, "data")
+            label = entry.get("label") or ""
+            is_thinking = label == "Thinking"
+            tool = "" if is_thinking else label
+            thought_text = data.get("thought")
+            answer_text = data.get("answer")
+            thoughts.append(
+                {
+                    "id": str(entry.get("message_id") or position),
+                    "message_id": str(entry.get("node_execution_id") or ""),
+                    "position": position,
+                    "thought": thought_text if isinstance(thought_text, str) else None,
+                    "answer": answer_text if isinstance(answer_text, str) else None,
+                    "tool": tool or None,
+                    "tool_labels": {tool: {"en_US": tool, "zh_Hans": tool}} if tool else {},
+                    "tool_input": data.get("tool_input") if isinstance(data.get("tool_input"), str) else None,
+                    "created_at": None,
+                    "observation": (
+                        data.get("observation") if isinstance(data.get("observation"), str) else None
+                    ),
+                    "files": [],
+                    "chain_id": None,
+                }
+            )
+        return thoughts
 
     @staticmethod
     def _json_mapping(value: object) -> Mapping[str, Any]:
@@ -999,14 +1076,14 @@ WHERE
         converted_run_created_at = convert_datetime_to_date("aru.created_at")
         total_tokens = self._workflow_execution_metadata_numeric_sql(("total_tokens",), "BIGINT")
         nested_total_tokens = self._workflow_execution_metadata_numeric_sql(
-            ("agent_log", "agent_backend", "usage", "total_tokens"), "BIGINT"
+            ("agent_backend", "usage", "total_tokens"), "BIGINT"
         )
         total_price = self._workflow_execution_metadata_numeric_sql(("total_price",), "DECIMAL(65, 30)")
         nested_total_price = self._workflow_execution_metadata_numeric_sql(
-            ("agent_log", "agent_backend", "usage", "total_price"), "DECIMAL(65, 30)"
+            ("agent_backend", "usage", "total_price"), "DECIMAL(65, 30)"
         )
         completion_tokens = self._workflow_execution_metadata_numeric_sql(
-            ("agent_log", "agent_backend", "usage", "completion_tokens"), "BIGINT"
+            ("agent_backend", "usage", "completion_tokens"), "BIGINT"
         )
         binding_filters = self._statistics_workflow_binding_filters_sql(source_filter)
         binding_join = self._statistics_workflow_node_binding_join_sql()
