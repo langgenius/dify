@@ -6,7 +6,7 @@ from flask import Blueprint, Flask
 from flask_restx import Api, Namespace, Resource
 from flask_restx.swagger import Swagger
 from pydantic import BaseModel
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
+from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from core.errors.error import AppInvokeQuotaExceededError
@@ -172,6 +172,52 @@ def test_external_api_carries_exception_headers_to_429_response():
     assert res.status_code == 429
     assert res.headers["Retry-After"] == "23"
     assert (res.get_json() or {})["status"] == 429
+
+
+@pytest.mark.parametrize("retry_after", [None, 5])
+def test_external_api_preserves_service_unavailable_retry_after(retry_after: int | None) -> None:
+    app = Flask(__name__)
+    bp = Blueprint("test", __name__)
+    api = ExternalApi(bp)
+
+    @api.route("/unavailable")
+    class Unavailable(Resource):
+        def get(self) -> None:
+            raise ServiceUnavailable("Backend is initializing", retry_after=retry_after)
+
+    app.register_blueprint(bp, url_prefix="/api")
+    res = app.test_client().get("/api/unavailable")
+
+    assert res.status_code == 503
+    assert res.mimetype == "application/json"
+    assert res.get_json() == {
+        "code": "service_unavailable",
+        "message": "Backend is initializing",
+        "status": 503,
+    }
+    assert res.headers.get("Retry-After") == (str(retry_after) if retry_after is not None else None)
+
+
+@pytest.mark.parametrize("retry_after_header", ["Retry-After", "retry-after"])
+def test_external_api_explicit_headers_override_generated_headers(retry_after_header: str) -> None:
+    class ExplicitRetryAfter(ServiceUnavailable):
+        headers = {retry_after_header: "23", "X-Backend-State": ["initializing", "retryable"]}
+
+    app = Flask(__name__)
+    api = ExternalApi(app)
+
+    @api.route("/pending")
+    class Pending(Resource):
+        def get(self) -> None:
+            raise ExplicitRetryAfter("Backend is initializing", retry_after=5)
+
+    response = app.test_client().get("/pending")
+
+    assert response.status_code == 503
+    assert response.headers.getlist("Retry-After") == ["23"]
+    assert response.headers.getlist("X-Backend-State") == ["initializing", "retryable"]
+    assert response.mimetype == "application/json"
+    assert response.get_json()["status"] == 503
 
 
 def test_unauthorized_and_force_logout_clears_cookies():
