@@ -759,8 +759,12 @@ def test_shared_source_file_lease_is_released_after_every_document_handoff(
     assert len(staged.claim_calls) == 2
 
 
-def test_reconciler_applies_metadata_then_snapshot_availability(
-    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(("metadata_fails", "availability_fails"), [(False, False), (True, False), (False, True)])
+def test_reconciler_restores_availability_before_metadata_and_preserves_later_user_edits(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    metadata_fails: bool,
+    availability_fails: bool,
 ) -> None:
     job = _job(
         status=KnowledgeFSUpgradeJobStatus.SUCCEEDED,
@@ -788,14 +792,18 @@ def test_reconciler_applies_metadata_then_snapshot_availability(
         session.add(document)
 
     initial = _logical_document(enabled=True, row_version=1)
-    after_metadata = initial.model_copy(update={"row_version": 2})
-    after_availability = after_metadata.model_copy(update={"enabled": False, "row_version": 3})
+    after_availability = initial.model_copy(update={"enabled": False, "row_version": 2})
+    after_metadata = after_availability.model_copy(update={"row_version": 3})
     facade = FakeUpgradeFacade(
         list_logical_documents=CallRecorder(
             result=KnowledgeFSLogicalDocumentListResponse(data=[initial], next_cursor=None)
         ),
-        update_document_metadata=CallRecorder(result=after_metadata),
-        update_logical_document_availability=CallRecorder(result=after_availability),
+        update_document_metadata=CallRecorder(
+            result=after_metadata, error=RuntimeError("metadata rejected") if metadata_fails else None
+        ),
+        update_logical_document_availability=CallRecorder(
+            result=after_availability, error=RuntimeError("availability rejected") if availability_fails else None
+        ),
     )
     monkeypatch.setattr(
         upgrade_module,
@@ -803,15 +811,24 @@ def test_reconciler_applies_metadata_then_snapshot_availability(
         lambda _: FakeRuntime(facade=facade),
     )
 
-    assert KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory).reconcile(job_id=job.id) == 0
+    reconciler = KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory)
+    assert reconciler.reconcile(job_id=job.id) == int(metadata_fails or availability_fails)
+    if availability_fails:
+        assert facade.update_document_metadata.calls == []
+        with sqlite_session_factory() as session:
+            persisted = session.get(KnowledgeFSUpgradeDocument, document.id)
+            assert persisted is not None
+            assert persisted.availability_reconciled_at is None
+        facade.update_logical_document_availability.error = None
+        assert reconciler.reconcile(job_id=job.id) == 0
 
     metadata_payload = facade.update_document_metadata.last.kwargs["payload"]
     assert isinstance(metadata_payload, KnowledgeFSDocumentMetadataPayload)
-    assert metadata_payload.expected_row_version == 1
+    assert metadata_payload.expected_row_version == 2
     assert metadata_payload.patch == {"department": "support"}
     availability_payload = facade.update_logical_document_availability.last.kwargs["payload"]
     assert isinstance(availability_payload, KnowledgeFSDocumentAvailabilityPayload)
-    assert availability_payload.expected_row_version == 2
+    assert availability_payload.expected_row_version == 1
     assert availability_payload.enabled is False
     with sqlite_session_factory() as session:
         persisted = session.scalar(
@@ -819,7 +836,19 @@ def test_reconciler_applies_metadata_then_snapshot_availability(
         )
         assert persisted is not None
         assert persisted.new_logical_document_id == _LOGICAL_DOCUMENT_ID
-        assert persisted.state_reconciled_at is not None
+        assert persisted.availability_reconciled_at is not None
+        assert (persisted.state_reconciled_at is None) is metadata_fails
+
+    if metadata_fails:
+        # A subsequent metadata retry must not undo an owner's intentional re-enable.
+        reenabled = after_metadata.model_copy(update={"enabled": True, "row_version": 4})
+        facade.list_logical_documents.result = KnowledgeFSLogicalDocumentListResponse(
+            data=[reenabled], next_cursor=None
+        )
+        facade.update_document_metadata.error = None
+        facade.update_document_metadata.result = reenabled.model_copy(update={"row_version": 5})
+        assert reconciler.reconcile(job_id=job.id) == 0
+        assert len(facade.update_logical_document_availability.calls) == 1
 
 
 def test_metadata_fields_are_created_idempotently() -> None:

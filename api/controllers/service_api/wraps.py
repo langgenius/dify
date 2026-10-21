@@ -359,7 +359,13 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
             # request (not cached) so changes take effect immediately.
             # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
             # typed helper accepts it (runtime proxies every Session method through unchanged).
-            scope = dataset_api_key_bindings.get_key_scope(cast(Session, db.session), api_token.id)
+            if tenant_id is None:
+                raise Unauthorized("Tenant id is required for this token.")
+            scope = dataset_api_key_bindings.get_active_key_scope(
+                cast(Session, db.session), api_token_id=api_token.id, tenant_id=tenant_id
+            )
+            if scope is None:
+                raise Unauthorized("API key is no longer valid.")
             if not scope.allows_dataset(str(dataset_id) if dataset_id else None):
                 raise Forbidden("The API key is not authorized to access this knowledge base.")
 

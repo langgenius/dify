@@ -28,7 +28,7 @@ from sqlalchemy import Select, delete, or_, select
 from sqlalchemy.orm import Session
 
 from models.dataset import Dataset
-from models.enums import ApiTokenBindingResourceType
+from models.enums import ApiTokenBindingResourceType, ApiTokenType
 from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
 from models.model import ApiToken, DatasetApiTokenBinding
 
@@ -89,9 +89,32 @@ def _classify(resource_type: object, dataset_id: object, control_space_id: objec
 
 def get_key_scope(session: Session, api_token_id: str) -> ApiKeyScope:
     """Return the resources a key is scoped to (both empty means unrestricted)."""
+    rows = (
+        session.execute(select(*_binding_columns()).where(DatasetApiTokenBinding.api_token_id == api_token_id))
+        .tuples()
+        .all()
+    )
+    return _scope_from_rows(rows)
+
+
+def get_active_key_scope(session: Session, *, api_token_id: str, tenant_id: str) -> ApiKeyScope | None:
+    """Read identity and bindings in one snapshot; None means the cached key is no longer valid."""
+    rows = (
+        session.execute(
+            select(*_binding_columns())
+            .select_from(ApiToken)
+            .outerjoin(DatasetApiTokenBinding, DatasetApiTokenBinding.api_token_id == ApiToken.id)
+            .where(ApiToken.id == api_token_id, ApiToken.tenant_id == tenant_id, ApiToken.type == ApiTokenType.DATASET)
+        )
+        .tuples()
+        .all()
+    )
+    return _scope_from_rows(rows) if rows else None
+
+
+def _scope_from_rows(rows: Iterable[tuple[object, object, object, object]]) -> ApiKeyScope:
     dataset_ids: set[str] = set()
     knowledge_space_ids: set[str] = set()
-    rows = session.execute(select(*_binding_columns()).where(DatasetApiTokenBinding.api_token_id == api_token_id)).all()
     for _token_id, resource_type, dataset_id, control_space_id in rows:
         classified = _classify(resource_type, dataset_id, control_space_id)
         if classified is None:

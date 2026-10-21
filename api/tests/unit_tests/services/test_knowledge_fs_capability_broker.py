@@ -9,6 +9,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
+from libs.datetime_utils import naive_utc_now
 from models.enums import ApiTokenType
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
@@ -22,11 +23,13 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpaceState,
     KnowledgeFSExternalAccessPolicy,
     KnowledgeFSLifecycleOutbox,
+    KnowledgeFSUpgradeDocument,
+    KnowledgeFSUpgradeJobStatus,
 )
 from models.model import ApiToken
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppPrincipalProfile
 from services.knowledge_fs.capability_broker import KnowledgeFSCapabilityBroker
-from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
+from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERATIONS, KnowledgeFSProductPermission
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.product_service import AuthorizedKnowledgeFSControlSpace
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandProducer
@@ -36,6 +39,7 @@ from services.knowledge_fs.service_api_authorization import (
 )
 from services.knowledge_fs_capability import CapabilityIssueRequest
 from tests.unit_tests.services.knowledge_fs_fakes import revoke_payload
+from tests.unit_tests.services.knowledge_fs_services_a_fakes import upgrade_job
 
 
 class FakeProduct:
@@ -268,6 +272,8 @@ _ISSUANCE_FENCE_MODELS = (
     KnowledgeFSCapabilityIssuanceReservation,
     KnowledgeFSCapabilityIssuanceAudit,
     KnowledgeFSLifecycleOutbox,
+    KnowledgeFSUpgradeDocument,
+    KnowledgeFSUpgradeJobStatus,
 )
 
 
@@ -947,3 +953,128 @@ def test_uncutover_workspace_rejects_service_and_app_capabilities_before_issuanc
     assert cutover_gate.calls == ["tenant-1"]
     assert product.calls == []
     assert issuer.requests == []
+
+
+@pytest.mark.parametrize("caller", ["interactive", "service", "agent", "workflow"])
+@pytest.mark.parametrize(
+    "operation_id",
+    ["createQuery", "retrieveEvidence", "createResearchTask", "createQualityReplay", "matchGoldenQuestionEvidence"],
+)
+@pytest.mark.parametrize("job_status", list(KnowledgeFSUpgradeJobStatus))
+def test_upgrade_retrieval_waits_for_disabled_documents_across_all_callers(
+    sqlite_session: Session, caller: str, job_status: KnowledgeFSUpgradeJobStatus, operation_id: str
+) -> None:
+    space, service_profile, app_profile = _seed_external_principals(sqlite_session)
+    operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
+    assert operation.action is not None
+    app_profile = app_profile._replace(action=operation.action)
+    if caller == "workflow":
+        join = sqlite_session.get(AppKnowledgeFSSpaceJoin, app_profile.join_id)
+        assert join is not None
+        join.join_type = KnowledgeFSAppSpaceJoinType.WORKFLOW
+        policy = sqlite_session.scalar(
+            sa.select(KnowledgeFSExternalAccessPolicy).where(
+                KnowledgeFSExternalAccessPolicy.control_space_id == space.id
+            )
+        )
+        assert policy is not None
+        policy.workflow_enabled = True
+        app_profile = app_profile._replace(caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW)
+    job = upgrade_job(job_id=str(uuid.uuid4()), old_dataset_id=str(uuid.uuid4()))
+    job.new_control_space_id = space.id
+    job.status = job_status
+    document = KnowledgeFSUpgradeDocument(
+        job_id=job.id,
+        tenant_id=space.tenant_id,
+        old_document_id=str(uuid.uuid4()),
+        name="archived.txt",
+        data_source_type="upload_file",
+        data_source_info={},
+        metadata_snapshot={},
+        desired_enabled=False,
+        legacy_archived=True,
+        legacy_indexing_status="completed",
+    )
+    sqlite_session.add_all([job, document])
+    sqlite_session.commit()
+    issuer = FakeIssuer()
+    broker = KnowledgeFSCapabilityBroker(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        cutover_gate=FakeCutoverGate(),
+        product=FakeProduct(space),  # type: ignore[arg-type]
+        issuer=issuer,  # type: ignore[arg-type]
+    )
+
+    def issue() -> None:
+        if caller == "interactive":
+            broker.issue_interactive(
+                tenant_id=space.tenant_id,
+                account_id=space.owner_account_id,
+                control_space_id=space.id,
+                operation_id=operation_id,
+            )
+        elif caller == "service":
+            broker.issue_service(profile=service_profile, operation_id=operation_id)
+        else:
+            broker.issue_app(profile=app_profile, operation_id=operation_id)
+
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="availability is still pending"):
+        issue()
+    assert issuer.requests == []
+    assert sqlite_session.scalar(sa.select(sa.func.count(KnowledgeFSCapabilityIssuanceReservation.id))) == 0
+
+    # Reads/writes needed by the reconciler remain available.
+    broker.issue_interactive(
+        tenant_id=space.tenant_id,
+        account_id=space.owner_account_id,
+        control_space_id=space.id,
+        operation_id="listLogicalDocuments",
+    )
+    document.availability_reconciled_at = naive_utc_now()
+    sqlite_session.commit()
+    issue()
+    assert issuer.requests[-1].operation_id == operation.capability_operation_id
+    assert document.state_reconciled_at is None  # Metadata is not a retrieval gate.
+
+
+@pytest.mark.parametrize("mismatch", ["tenant", "space", "enabled"])
+def test_upgrade_availability_gate_ignores_unrelated_or_enabled_documents(
+    sqlite_session: Session, mismatch: str
+) -> None:
+    space, _, _ = _seed_external_principals(sqlite_session)
+    job = upgrade_job(
+        job_id=str(uuid.uuid4()),
+        old_dataset_id=str(uuid.uuid4()),
+        tenant_id="other-tenant" if mismatch == "tenant" else space.tenant_id,
+    )
+    job.new_control_space_id = str(uuid.uuid4()) if mismatch == "space" else space.id
+    sqlite_session.add(job)
+    sqlite_session.add(
+        KnowledgeFSUpgradeDocument(
+            job_id=job.id,
+            tenant_id=job.tenant_id,
+            old_document_id=str(uuid.uuid4()),
+            name="guide.txt",
+            data_source_type="website_crawl",
+            data_source_info={},
+            metadata_snapshot={},
+            desired_enabled=mismatch == "enabled",
+            legacy_archived=False,
+            legacy_indexing_status="completed",
+        )
+    )
+    sqlite_session.commit()
+    issuer = FakeIssuer()
+    broker = KnowledgeFSCapabilityBroker(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        cutover_gate=FakeCutoverGate(),
+        product=FakeProduct(space),  # type: ignore[arg-type]
+        issuer=issuer,  # type: ignore[arg-type]
+    )
+    broker.issue_interactive(
+        tenant_id=space.tenant_id,
+        account_id=space.owner_account_id,
+        control_space_id=space.id,
+        operation_id="createQuery",
+    )
+    assert len(issuer.requests) == 1

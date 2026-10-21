@@ -964,6 +964,8 @@ class KnowledgeFSUpgradeDocument(DefaultFieldsDCMixin, TypeBase):
         sa.Integer, nullable=False, server_default=sa.text("0"), default=0
     )
     state_reconciled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    # Persist availability separately: metadata retries must neither delay disabling nor undo later user edits.
+    availability_reconciled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     state_reconcile_error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     last_error_code: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
     last_error_message: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)

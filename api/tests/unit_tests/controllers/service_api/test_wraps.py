@@ -32,12 +32,15 @@ from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
 from models.enums import ApiTokenBindingResourceType, ApiTokenType, EndUserType
+from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
 from models.model import ApiToken, App, AppMode, DatasetApiTokenBinding, EndUser, IconType
 from models.resource_access_token import (
     ResourceAccessToken,
     ResourceAccessTokenRelation,
     ResourceAccessTokenResourceType,
 )
+from services.api_token_service import ApiTokenCache
+from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
 from tests.unit_tests.config_override import config_overrides_context
 
 
@@ -867,6 +870,8 @@ class TestValidateDatasetToken:
         tenant, account, _ = _persist_workspace(sqlite_session)
         api_token = _api_token(tenant_id=tenant.id, token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
 
         @validate_dataset_token
         def protected_view(tenant_id):
@@ -953,6 +958,8 @@ class TestValidateDatasetToken:
         # Arrange
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
 
         @validate_dataset_token
         def protected_view(dataset_id=None, **kwargs):
@@ -979,6 +986,8 @@ class TestValidateDatasetToken:
         """A key with no bindings passes the scope gate and proceeds to the dataset lookup."""
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
 
         @validate_dataset_token
         def protected_view(**kwargs):
@@ -996,6 +1005,8 @@ class TestValidateDatasetToken:
         """A key bound to one dataset is forbidden from reaching a different dataset."""
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
         sqlite_session.add(DatasetApiTokenBinding(api_token_id=api_token.id, dataset_id=str(uuid.uuid4())))
         sqlite_session.commit()
 
@@ -1018,6 +1029,8 @@ class TestValidateDatasetToken:
         """KnowledgeFS space bindings restrict the key but never grant legacy dataset access."""
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
         sqlite_session.add(
             DatasetApiTokenBinding(
                 api_token_id=api_token.id,
@@ -1046,6 +1059,8 @@ class TestValidateDatasetToken:
         """A scoped key cannot call collection endpoints (list/create) that carry no dataset id."""
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
         sqlite_session.add(DatasetApiTokenBinding(api_token_id=api_token.id, dataset_id=str(uuid.uuid4())))
         sqlite_session.commit()
 
@@ -1066,6 +1081,8 @@ class TestValidateDatasetToken:
         """A scoped key targeting one of its bound datasets passes the scope gate."""
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
         allowed_dataset_id = str(uuid.uuid4())
         sqlite_session.add(DatasetApiTokenBinding(api_token_id=api_token.id, dataset_id=allowed_dataset_id))
         sqlite_session.commit()
@@ -1082,6 +1099,54 @@ class TestValidateDatasetToken:
             # downstream lookup raises NotFound instead of the scope Forbidden.
             with pytest.raises(NotFound):
                 protected_view(dataset_id=allowed_dataset_id)
+
+
+@pytest.mark.parametrize("dataset_id", [None, "00000000-0000-0000-0000-000000000001"])
+def test_deleted_space_key_cannot_expand_scope_from_stale_authentication_cache(
+    app: Flask, sqlite_session: Session, dataset_id: str | None
+) -> None:
+    tenant_id = str(uuid.uuid4())
+    token = _api_token(tenant_id=tenant_id, token_type=ApiTokenType.DATASET)
+    space = KnowledgeFSControlSpace(
+        tenant_id=tenant_id,
+        owner_account_id=str(uuid.uuid4()),
+        provisioning_key=str(uuid.uuid4()),
+        knowledge_space_id="remote-space",
+        state=KnowledgeFSControlSpaceState.ACTIVE,
+    )
+    sqlite_session.add_all([token, space])
+    sqlite_session.flush()
+    sqlite_session.add(
+        DatasetApiTokenBinding(
+            api_token_id=token.id,
+            resource_type=ApiTokenBindingResourceType.KNOWLEDGE_FS_SPACE,
+            control_space_id=space.id,
+        )
+    )
+    sqlite_session.commit()
+    cached = ApiTokenCache._deserialize_token(ApiTokenCache._serialize_token(token))
+
+    @validate_dataset_token
+    def protected_view(tenant_id: str, dataset_id: str | None = None) -> None:
+        pytest.fail("A deleted scoped key must never reach the endpoint")
+
+    with (
+        app.test_request_context(headers={"Authorization": f"Bearer {token.token}"}),
+        patch.object(ApiTokenCache, "get", return_value=cached),
+        patch.object(ApiTokenCache, "invalidate_by_tenant", return_value=False),
+        patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+    ):
+        with pytest.raises(Forbidden):
+            protected_view(dataset_id=dataset_id)
+        sqlite_session.rollback()
+        KnowledgeFSControlSpaceCommandService(get_session_maker()).request_deletion(
+            tenant_id=tenant_id,
+            control_space_id=space.id,
+            operation_id="delete-space",
+            idempotency_key="delete-space",
+        )
+        with pytest.raises(Unauthorized, match="no longer valid"):
+            protected_view(dataset_id=dataset_id)
 
 
 class TestFetchUserArg:

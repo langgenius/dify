@@ -951,8 +951,8 @@ class KnowledgeFSUpgradeDocumentReconciler:
     """Apply snapshot metadata and availability after new logical documents appear.
 
     This is deliberately separate from parent-job success: KnowledgeFS owns parsing and
-    indexing task outcomes, while this best-effort loop preserves the legacy document's
-    click-time availability once the new logical document can be addressed.
+    indexing task outcomes. Capability issuance blocks retrieval until disabled documents
+    have their availability restored; metadata failures cannot delay that checkpoint.
     """
 
     def __init__(self, session_maker: sessionmaker[Session]) -> None:
@@ -1013,6 +1013,23 @@ class KnowledgeFSUpgradeDocumentReconciler:
                 continue
             try:
                 current = logical_document
+                if document.availability_reconciled_at is None:
+                    if current.enabled != document.desired_enabled:
+                        current = runtime.facade.update_logical_document_availability(
+                            tenant_id=job.tenant_id,
+                            account_id=job.owner_account_id,
+                            control_space_id=_required_space_id(job),
+                            document_id=current.id,
+                            payload=KnowledgeFSDocumentAvailabilityPayload(
+                                enabled=document.desired_enabled,
+                                expectedRowVersion=current.row_version,
+                            ),
+                        )
+                    with self._session_maker.begin() as session:
+                        persisted = session.get(KnowledgeFSUpgradeDocument, document.id)
+                        if persisted is not None and persisted.availability_reconciled_at is None:
+                            persisted.new_logical_document_id = current.id
+                            persisted.availability_reconciled_at = naive_utc_now()
                 if document.metadata_snapshot:
                     current = runtime.facade.update_document_metadata(
                         tenant_id=job.tenant_id,
@@ -1022,17 +1039,6 @@ class KnowledgeFSUpgradeDocumentReconciler:
                         payload=KnowledgeFSDocumentMetadataPayload(
                             expectedRowVersion=current.row_version,
                             patch=dict(document.metadata_snapshot),
-                        ),
-                    )
-                if current.enabled != document.desired_enabled:
-                    current = runtime.facade.update_logical_document_availability(
-                        tenant_id=job.tenant_id,
-                        account_id=job.owner_account_id,
-                        control_space_id=_required_space_id(job),
-                        document_id=current.id,
-                        payload=KnowledgeFSDocumentAvailabilityPayload(
-                            enabled=document.desired_enabled,
-                            expectedRowVersion=current.row_version,
                         ),
                     )
             except Exception as error:

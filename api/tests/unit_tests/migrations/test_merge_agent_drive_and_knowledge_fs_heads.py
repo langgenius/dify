@@ -20,7 +20,7 @@ def test_merge_migration_produces_a_single_head() -> None:
 
     assert migration.revision == "c4d8e2f7a1b6"
     assert migration.down_revision == ("89919253ca7a", "e6b4a2c9d731")
-    assert ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_heads() == ["3edd6cd27f54"]
+    assert ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_heads() == ["a8c2e6f4b901"]
 
 
 def test_workflow_pause_merge_joins_knowledge_fs_and_main_heads() -> None:
@@ -68,7 +68,7 @@ def test_upgrade_from_main_head_applies_knowledge_fs_chain_before_token_bindings
 
     assert pending[0] == "a4e7c2f91b30"
     assert pending.index("e6b4a2c9d731") < pending.index("c4d8e2f7a1b6") < pending.index("9a4e7d1c2b60")
-    assert pending[-2:] == ["d7b9e1f3a5c2", "3edd6cd27f54"]
+    assert pending[-3:] == ["d7b9e1f3a5c2", "3edd6cd27f54", "a8c2e6f4b901"]
 
 
 def test_branch_deployed_databases_keep_knowledge_fs_chain_applied() -> None:

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from typing import cast
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from models.enums import ApiTokenBindingResourceType, ApiTokenType
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSApiCredential,
@@ -21,6 +23,8 @@ from models.knowledge_fs import (
     KnowledgeFSLifecycleOperation,
     KnowledgeFSLifecycleOutbox,
 )
+from models.model import ApiToken, DatasetApiTokenBinding
+from services.api_token_service import ApiTokenCache
 from services.knowledge_fs.control_space_commands import (
     KnowledgeFSControlSpaceCommandService,
     KnowledgeFSProvisionIntent,
@@ -305,3 +309,43 @@ def test_workspace_finalizer_cannot_bypass_remote_deletion_and_purges_only_delet
         assert session.scalar(select(func.count()).select_from(KnowledgeFSAuthorizationRevision)) == 0
         assert session.scalar(select(func.count()).select_from(KnowledgeFSCapabilityIssuanceReservation)) == 0
         assert session.scalar(select(func.count()).select_from(KnowledgeFSLifecycleOutbox)) == 0
+
+
+def test_deletion_invalidates_token_cache_after_commit(sqlite_session: Session) -> None:
+    space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        provisioning_key="cache-delete",
+        knowledge_space_id="space-1",
+        state=KnowledgeFSControlSpaceState.ACTIVE,
+    )
+    token = ApiToken(tenant_id="tenant-1", type=ApiTokenType.DATASET, token="dataset-cache-delete")
+    sqlite_session.add_all([space, token])
+    sqlite_session.flush()
+    sqlite_session.add(
+        DatasetApiTokenBinding(
+            api_token_id=token.id,
+            resource_type=ApiTokenBindingResourceType.KNOWLEDGE_FS_SPACE,
+            control_space_id=space.id,
+        )
+    )
+    sqlite_session.commit()
+
+    def invalidate(tenant_id: str) -> bool:
+        assert tenant_id == "tenant-1"
+        with Session(sqlite_session.get_bind()) as session:
+            assert session.get(ApiToken, token.id) is None
+            assert (
+                session.scalar(select(DatasetApiTokenBinding).where(DatasetApiTokenBinding.api_token_id == token.id))
+                is None
+            )
+        return True
+
+    with patch.object(ApiTokenCache, "invalidate_by_tenant", side_effect=invalidate) as eviction:
+        _service(sqlite_session).request_deletion(
+            tenant_id="tenant-1",
+            control_space_id=space.id,
+            operation_id="cache-delete",
+            idempotency_key="cache-delete",
+        )
+    eviction.assert_called_once_with("tenant-1")

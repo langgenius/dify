@@ -54,7 +54,11 @@ def test_upgrade_schema_matches_upgrade_models_and_downgrades_cleanly() -> None:
     assert set(inspector.get_table_names()) == {model.__tablename__ for model in _MODELS}
     for model in _MODELS:
         migrated_columns = {column["name"] for column in inspector.get_columns(model.__tablename__)}
-        assert migrated_columns == set(model.__table__.columns.keys())
+        # The availability checkpoint is introduced by a later migration.
+        expected_columns = set(model.__table__.columns.keys())
+        if model is KnowledgeFSUpgradeDocument:
+            expected_columns.remove("availability_reconciled_at")
+        assert migrated_columns == expected_columns
 
     _run_step(module, engine, "downgrade")
     assert sa.inspect(engine).get_table_names() == []

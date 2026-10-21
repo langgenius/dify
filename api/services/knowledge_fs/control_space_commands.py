@@ -36,6 +36,7 @@ from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
 from repositories.sqlalchemy_knowledge_fs_lifecycle_outbox_repository import (
     SQLAlchemyKnowledgeFSLifecycleOutboxRepository,
 )
+from services.api_token_service import ApiTokenCache
 from services.knowledge_fs.control_space_lifecycle import (
     KnowledgeFSControlSpaceLifecycleService,
     KnowledgeFSControlSpaceNotFoundError,
@@ -323,7 +324,11 @@ class KnowledgeFSControlSpaceCommandService:
                     expected_knowledge_space_revision=transitioned.knowledge_space_revision,
                 )
             )
-            return KnowledgeFSDeletionIntentResult(transitioned, command)
+            result = KnowledgeFSDeletionIntentResult(transitioned, command)
+        # Evict only after commit, so an intervening request cannot refill from an uncommitted deletion.
+        # Authentication also checks the live key and scope atomically if eviction fails or races.
+        ApiTokenCache.invalidate_by_tenant(tenant_id)
+        return result
 
     def request_workspace_cleanup(self, *, tenant_id: str) -> tuple[KnowledgeFSDeletionIntentResult, ...]:
         """Enumerate independent control-spaces; never hard-delete them with the workspace."""

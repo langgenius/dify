@@ -22,6 +22,8 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpaceState,
     KnowledgeFSExternalAccessPolicy,
+    KnowledgeFSUpgradeDocument,
+    KnowledgeFSUpgradeJob,
 )
 from models.model import ApiToken
 from repositories.sqlalchemy_knowledge_fs_capability_issuance_reservation_repository import (
@@ -32,6 +34,7 @@ from services.knowledge_fs.cutover_runtime_gate import KnowledgeFSWorkspaceRunti
 from services.knowledge_fs.product_operations import (
     KNOWLEDGE_FS_PRODUCT_OPERATIONS,
     KnowledgeFSProductOperation,
+    KnowledgeFSProductPermission,
     is_product_operation_ready,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
@@ -139,6 +142,7 @@ class KnowledgeFSCapabilityBroker:
                 session,
                 tenant_id=tenant_id,
                 control_space_id=control_space_id,
+                operation=product_operation,
             )
             authorized = self._product.authorize_control_space_in_session(
                 session=session,
@@ -227,7 +231,7 @@ class KnowledgeFSCapabilityBroker:
         trace_id: str | None = None,
     ) -> KnowledgeFSIssuedProductCapability:
         self._cutover_gate.require_capability_v2(tenant_id=profile.tenant_id)
-        _, capability_operation_id = _operation_contract(operation_id)
+        product_operation, capability_operation_id = _operation_contract(operation_id)
         issuer = self._require_issuer()
         normalized_trace_id = _trace_id(trace_id)
         with self._session_maker.begin() as session:
@@ -235,6 +239,7 @@ class KnowledgeFSCapabilityBroker:
                 session,
                 tenant_id=profile.tenant_id,
                 control_space_id=profile.control_space_id,
+                operation=product_operation,
             )
             api_token, space, policy = _load_service_authorization(session, profile=profile)
             if (
@@ -279,7 +284,7 @@ class KnowledgeFSCapabilityBroker:
         trace_id: str | None = None,
     ) -> KnowledgeFSIssuedProductCapability:
         self._cutover_gate.require_capability_v2(tenant_id=profile.tenant_id)
-        _, capability_operation_id = _operation_contract(operation_id)
+        product_operation, capability_operation_id = _operation_contract(operation_id)
         issuer = self._require_issuer()
         normalized_trace_id = _trace_id(trace_id)
         capability_operation = KNOWLEDGE_FS_CAPABILITY_OPERATIONS[capability_operation_id]
@@ -288,6 +293,7 @@ class KnowledgeFSCapabilityBroker:
                 session,
                 tenant_id=profile.tenant_id,
                 control_space_id=profile.control_space_id,
+                operation=product_operation,
             )
             join, space, policy = _load_app_authorization(session, profile=profile)
             caller_kind = _app_caller_kind(profile.caller_kind)
@@ -392,7 +398,29 @@ def _lock_authorization_revision(
     *,
     tenant_id: str,
     control_space_id: str,
+    operation: KnowledgeFSProductOperation,
 ) -> KnowledgeFSAuthorizationSnapshot:
+    # Uploaded/imported documents publish enabled in KFS. No caller may query an upgrade
+    # destination until every legacy-disabled document has a durable availability checkpoint,
+    # even if the parent job failed or its post-success reconciliation has not run yet.
+    if operation.permission is KnowledgeFSProductPermission.QUERY or operation.capability_operation_id in {
+        "createQualityReplay",
+        "matchGoldenQuestionEvidence",
+    }:
+        pending = session.scalar(
+            sa.select(KnowledgeFSUpgradeDocument.id)
+            .join(KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJob.id == KnowledgeFSUpgradeDocument.job_id)
+            .where(
+                KnowledgeFSUpgradeJob.tenant_id == tenant_id,
+                KnowledgeFSUpgradeJob.new_control_space_id == control_space_id,
+                KnowledgeFSUpgradeDocument.tenant_id == tenant_id,
+                KnowledgeFSUpgradeDocument.desired_enabled.is_(False),
+                KnowledgeFSUpgradeDocument.availability_reconciled_at.is_(None),
+            )
+            .limit(1)
+        )
+        if pending is not None:
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS upgrade document availability is still pending")
     revision = session.scalar(
         sa.select(KnowledgeFSAuthorizationRevision)
         .where(
